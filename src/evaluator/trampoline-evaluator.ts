@@ -134,6 +134,8 @@ import type {
   ParallelBranchBarrierFrame,
   ParallelBranchContext,
   ParallelResumeFrame,
+  ReRunParallelFrame,
+  ResumeParallelFrame,
   PerformArgsFrame,
   QqFrame,
   RecurFrame,
@@ -1421,8 +1423,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       // TODO Phase 3: implement ReRunParallelFrame handler
       throw new RuntimeError('ReRunParallelFrame handler not yet implemented', undefined)
     case 'ResumeParallel':
-      // TODO Phase 3: implement ResumeParallelFrame handler
-      throw new RuntimeError('ResumeParallelFrame handler not yet implemented', undefined)
+      // Convert to a step that tick() handles with access to handlers/signal.
+      return { type: 'ResumeParallelExec', resumedBranchValue: value, frame, k }
     case 'EvalArgs':
       return applyEvalArgs(frame, value, k)
     case 'CallFn':
@@ -2695,13 +2697,131 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
   return { type: 'Eval', node: argNodes[index]!, env, k: cons<Frame>(newFrame, k) }
 }
 
+/**
+ * Prepare a continuation for checkpoint serialization by replacing every
+ * `ParallelBranchBarrierFrame` with a `ReRunParallelFrame`.
+ *
+ * During live execution, barriers are lightweight markers. But a serialized
+ * checkpoint must be a full-program continuation — the `ReRunParallelFrame`
+ * tells the resume logic to re-run sibling branches from their original AST.
+ *
+ * For nested parallel, multiple barriers may appear in the stack. Each is
+ * replaced independently — the walk continues through the entire stack.
+ *
+ * Returns a new continuation stack (PersistentList spine rebuilt from the
+ * first barrier upward; tail after the last barrier is shared).
+ */
+function composeCheckpointContinuation(k: ContinuationStack): ContinuationStack {
+  // Fast path: no barriers in k (not inside a parallel branch)
+  if (k === null) return k
+
+  // Collect frames into an array so we can rebuild the spine with replacements.
+  // We walk the entire stack because nested parallel can have multiple barriers.
+  const frames: Frame[] = []
+  let hasBarrier = false
+  let node: ContinuationStack = k
+  while (node !== null) {
+    if (node.head.type === 'ParallelBranchBarrier') {
+      hasBarrier = true
+    }
+    frames.push(node.head)
+    node = node.tail
+  }
+
+  // Fast path: no barriers found — return k as-is (no allocation)
+  if (!hasBarrier) return k
+
+  // Rebuild from bottom to top, replacing barriers with ReRunParallelFrames
+  let result: ContinuationStack = null
+  for (let i = frames.length - 1; i >= 0; i--) {
+    const frame = frames[i]!
+    if (frame.type === 'ParallelBranchBarrier') {
+      const { branchCtx } = frame
+      const rerunFrame: ReRunParallelFrame = {
+        type: 'ReRunParallel',
+        branchIndex: branchCtx.branchIndex,
+        branchCount: branchCtx.branchCount,
+        branches: branchCtx.branches,
+        env: branchCtx.env,
+        mode: branchCtx.mode,
+      }
+      result = cons<Frame>(rerunFrame, result)
+    } else {
+      result = cons<Frame>(frame, result)
+    }
+  }
+
+  return result
+}
+
+/**
+ * Replace the first `ParallelBranchBarrierFrame` in a continuation stack
+ * with a different frame, preserving the tail after the barrier.
+ *
+ * Used to swap a BarrierFrame for a ResumeParallelFrame during final
+ * suspension composition.
+ */
+function replaceBarrierWithFrame(k: ContinuationStack, replacement: Frame): ContinuationStack {
+  if (k === null) return null
+
+  // Collect frames above the barrier
+  const above: Frame[] = []
+  let node: ContinuationStack = k
+  while (node !== null) {
+    if (node.head.type === 'ParallelBranchBarrier') {
+      // Found the barrier — rebuild: above frames + replacement + tail after barrier
+      let result: ContinuationStack = cons<Frame>(replacement, node.tail)
+      for (let i = above.length - 1; i >= 0; i--) {
+        result = cons<Frame>(above[i]!, result)
+      }
+      return result
+    }
+    above.push(node.head)
+    node = node.tail
+  }
+
+  // No barrier found — return k unchanged (shouldn't happen in correct usage)
+  return k
+}
+
+/**
+ * Truncate a continuation stack at the first `ParallelBranchBarrierFrame`,
+ * returning only the frames above it.
+ *
+ * Used when storing sibling continuations in `ResumeParallelFrame` — the
+ * barrier and outerK tail are stripped because outerK is redundant (it's the
+ * same as the continuation after the ResumeParallelFrame). On resume, each
+ * sibling gets a fresh BarrierFrame + outerK reconstructed from context.
+ */
+function truncateAtBarrier(k: ContinuationStack): ContinuationStack {
+  if (k === null) return null
+
+  // Collect frames above the barrier
+  const frames: Frame[] = []
+  let node: ContinuationStack = k
+  while (node !== null) {
+    if (node.head.type === 'ParallelBranchBarrier') break
+    frames.push(node.head)
+    node = node.tail
+  }
+
+  // Rebuild as a PersistentList (bottom-up)
+  let result: ContinuationStack = null
+  for (let i = frames.length - 1; i >= 0; i--) {
+    result = cons<Frame>(frames[i]!, result)
+  }
+  return result
+}
+
 function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
   // Skipped when re-dispatching from an algebraic handler fallthrough (already captured upstream).
   if (effect.name === 'dvala.checkpoint' && snapshotState) {
     const message = arg as string
-    const continuation = serializeToObject(k)
+    // Replace BarrierFrames with ReRunParallelFrames so the checkpoint
+    // is a full-program continuation (not a branch-local one).
+    const continuation = serializeToObject(composeCheckpointContinuation(k))
     const snapshot = createSnapshot({
       continuation,
       timestamp: Date.now(),
@@ -2893,7 +3013,7 @@ function dispatchHostHandler(
         // Snapshot after (not before) so the effect result is baked in — re-execution from here
         // is pure and needs no effect-result replay.
         if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint' && effectName !== 'dvala.macro.expand') {
-          const continuation = serializeToObject(k)
+          const continuation = serializeToObject(composeCheckpointContinuation(k))
           const snapshot = createSnapshot({
             continuation,
             timestamp: Date.now(),
@@ -2942,7 +3062,7 @@ function dispatchHostHandler(
         if (!snapshotState) {
           throw new RuntimeError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
         }
-        const continuation = serializeToObject(k)
+        const continuation = serializeToObject(composeCheckpointContinuation(k))
         const snapshot = createSnapshot({
           continuation,
           timestamp: Date.now(),
@@ -3166,9 +3286,10 @@ async function executeParallelBranches(
   })
   const results = await Promise.allSettled(branchPromises)
 
-  // Collect outcomes
+  // Collect outcomes — suspended branches keep a reference to the full RunResult
+  // so we can access _rawSuspension for composition
   const completedBranches: { index: number; value: unknown }[] = []
-  const suspendedBranches: { index: number; snapshot: Snapshot }[] = []
+  const suspendedBranches: { index: number; result: RunResult & { type: 'suspended' } }[] = []
   const errors: DvalaError[] = []
 
   for (const settled of results) {
@@ -3182,7 +3303,7 @@ async function executeParallelBranches(
           completedBranches.push({ index, value: result.value })
           break
         case 'suspended':
-          suspendedBranches.push({ index, snapshot: result.snapshot })
+          suspendedBranches.push({ index, result })
           break
         case 'error':
           errors.push(result.error)
@@ -3196,20 +3317,55 @@ async function executeParallelBranches(
     throw errors[0]!
   }
 
-  // If any branch suspended, build a composite suspension
+  // If any branch suspended, compose a ResumeParallelFrame with sibling state
   if (suspendedBranches.length > 0) {
-    // Build a ParallelResumeFrame on the outer continuation
-    const parallelResumeFrame: ParallelResumeFrame = {
-      type: 'ParallelResume',
+    // Pick the first suspended branch as the "primary" — its continuation
+    // becomes the outermost resumable continuation. All others are siblings.
+    const primarySuspended = suspendedBranches[0]!
+    const primaryRaw = primarySuspended.result._rawSuspension!
+
+    // Build sibling lists for the ResumeParallelFrame.
+    // Sibling continuations are truncated at their BarrierFrame — the barrier
+    // and outerK tail are stripped (outerK is the same as k, which will be
+    // the tail after the ResumeParallelFrame).
+    const siblingsSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any }[] = []
+    for (let i = 1; i < suspendedBranches.length; i++) {
+      const sb = suspendedBranches[i]!
+      const raw = sb.result._rawSuspension!
+      siblingsSuspended.push({
+        index: sb.index,
+        k: truncateAtBarrier(raw.k),
+        effectName: raw.effectName,
+        effectArg: raw.effectArg,
+      })
+    }
+
+    // Replace the BarrierFrame in the primary branch's continuation with
+    // the ResumeParallelFrame. The primary branch's k is:
+    //   [branchFrames → BarrierFrame → outerK]
+    // We want:
+    //   [branchFrames → ResumeParallelFrame → outerK]
+    const resumeFrame: ResumeParallelFrame = {
+      type: 'ResumeParallel',
+      branchIndex: primarySuspended.index,
       branchCount: branches.length,
       completedBranches,
-      suspendedBranches: suspendedBranches.slice(1), // remaining after the first
+      suspendedBranches: siblingsSuspended,
+      mode: 'parallel',
     }
-    const resumeK: ContinuationStack = cons<Frame>(parallelResumeFrame, k)
 
-    // Throw SuspensionSignal with the first suspended branch's meta and effect info
-    const firstSuspended = suspendedBranches[0]!
-    return throwSuspension(resumeK, firstSuspended.snapshot.meta, firstSuspended.snapshot.effectName, firstSuspended.snapshot.effectArg)
+    // Rebuild the primary's continuation with the barrier replaced
+    const composedK = replaceBarrierWithFrame(primaryRaw.k, resumeFrame)
+
+    // Use the primary branch's snapshots for the composed timeline.
+    // Sibling branch snapshots are discarded (siblings will be resumed
+    // from their truncated continuations).
+    return throwSuspension(
+      composedK,
+      primaryRaw.meta,
+      primaryRaw.effectName,
+      primaryRaw.effectArg,
+    )
   }
 
   // All branches completed — build the result array in original order
@@ -3397,6 +3553,155 @@ function handleParallelResume(
     resultMutable[index] = v
   }
   return { type: 'Value', value: PersistentVector.from(resultMutable as Any[]), k }
+}
+
+/**
+ * Execute the sibling resumption logic for a `ResumeParallelFrame`.
+ *
+ * Called from `tick()` when a `ResumeParallelExecStep` is processed, so
+ * we have access to `handlers` and `signal`.
+ *
+ * The resumed branch already completed with `step.resumedBranchValue`.
+ * Suspended siblings are resumed from their stored continuations concurrently.
+ * Completed siblings use cached values.
+ */
+async function executeResumeParallel(
+  step: Step & { type: 'ResumeParallelExec' },
+  handlers: Handlers | undefined,
+  signal: AbortSignal | undefined,
+  _snapshotState?: SnapshotState,
+): Promise<Step> {
+  const { resumedBranchValue, frame, k: outerK } = step
+  const { branchIndex, branchCount, completedBranches, suspendedBranches, mode } = frame
+
+  // The resumed branch is now completed
+  const allCompleted: { index: number; value: unknown }[] = [
+    ...completedBranches,
+    { index: branchIndex, value: resumedBranchValue },
+  ]
+
+  // If no suspended siblings, all branches are done
+  if (suspendedBranches.length === 0) {
+    const resultMutable: unknown[] = Array.from({ length: branchCount })
+    for (const { index, value: v } of allCompleted) {
+      resultMutable[index] = v
+    }
+    return { type: 'Value', value: PersistentVector.from(resultMutable as Any[]), k: outerK }
+  }
+
+  // Resume suspended siblings concurrently.
+  // Each sibling's k was truncated at the BarrierFrame — reconstruct the
+  // full continuation by prepending a BarrierFrame + outerK.
+  const parallelAbort = new AbortController()
+  const effectSignal = signal
+    ? combineSignals(signal, parallelAbort.signal)
+    : parallelAbort.signal
+
+  const siblingPromises = suspendedBranches.map(async (sibling): Promise<{ index: number; result: RunResult }> => {
+    const branchCtx: ParallelBranchContext = {
+      branchIndex: sibling.index,
+      branchCount,
+      branches: [], // Not needed for resume path (only for re-run)
+      env: null as any, // Not needed for resume path
+      mode,
+    }
+    const barrierFrame: ParallelBranchBarrierFrame = { type: 'ParallelBranchBarrier', branchCtx }
+    // Reconstruct: truncated frames → BarrierFrame → outerK
+    let fullK: ContinuationStack = cons<Frame>(barrierFrame, outerK)
+    const truncatedFrames: Frame[] = []
+    let node = sibling.k
+    while (node !== null) {
+      truncatedFrames.push(node.head)
+      node = node.tail
+    }
+    for (let i = truncatedFrames.length - 1; i >= 0; i--) {
+      fullK = cons<Frame>(truncatedFrames[i]!, fullK)
+    }
+
+    // Re-trigger the sibling's effect via retriggerWithEffects if we have
+    // the captured effect info. Otherwise fall back to running with null.
+    if (sibling.effectName && sibling.effectArg !== undefined) {
+      const result = await retriggerWithEffects(
+        fullK,
+        sibling.effectName,
+        sibling.effectArg,
+        handlers,
+        undefined, // initialSnapshotState
+        undefined, // deserializeOptions
+        effectSignal,
+      )
+      if (result.type === 'suspended') {
+        parallelAbort.abort()
+      }
+      return { index: sibling.index, result }
+    }
+
+    // Fallback: resume with null (sibling had no captured effect)
+    const initialStep: Step = { type: 'Value', value: null as Any, k: fullK }
+    const result = await runEffectLoop(initialStep, handlers, effectSignal)
+    if (result.type === 'suspended') {
+      parallelAbort.abort()
+    }
+    return { index: sibling.index, result }
+  })
+
+  const settled = await Promise.allSettled(siblingPromises)
+
+  // Collect results
+  const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any }[] = []
+  const errors: DvalaError[] = []
+
+  for (const s of settled) {
+    if (s.status === 'rejected') {
+      errors.push(new DvalaError(`${s.reason}`, undefined))
+    } else {
+      const { index, result } = s.value
+      if (result.type === 'completed') {
+        allCompleted.push({ index, value: result.value })
+      } else if (result.type === 'suspended' && result._rawSuspension) {
+        const raw = result._rawSuspension
+        newSuspended.push({
+          index,
+          k: truncateAtBarrier(raw.k),
+          effectName: raw.effectName,
+          effectArg: raw.effectArg,
+        })
+      } else if (result.type === 'error') {
+        errors.push(result.error)
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    throw errors[0]!
+  }
+
+  // If siblings re-suspended, compose a new ResumeParallelFrame
+  if (newSuspended.length > 0) {
+    const primary = newSuspended[0]!
+    const newFrame: ResumeParallelFrame = {
+      type: 'ResumeParallel',
+      branchIndex: primary.index,
+      branchCount,
+      completedBranches: allCompleted,
+      suspendedBranches: newSuspended.slice(1).map(s => ({
+        index: s.index,
+        k: s.k,
+        effectName: s.effectName,
+        effectArg: s.effectArg,
+      })),
+      mode,
+    }
+    const composedK = cons<Frame>(newFrame, outerK)
+    return throwSuspension(composedK, primary.effectName ? undefined : undefined, primary.effectName, primary.effectArg)
+  }
+
+  // All done — build result array
+  const resultMutable: unknown[] = Array.from({ length: branchCount })
+  for (const { index, value: v } of allCompleted) {
+    resultMutable[index] = v
+  }
+  return { type: 'Value', value: PersistentVector.from(resultMutable as Any[]), k: outerK }
 }
 
 function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
@@ -4701,6 +5006,8 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
         // If we reach here, something is wrong — the branch trampoline didn't
         // intercept the BranchComplete step.
         return step
+      case 'ResumeParallelExec':
+        return executeResumeParallel(step, handlers, signal, snapshotState)
       case 'Error': {
         const patchedError = patchErrorWithMacroCallSite(step.error, step.k)
         const effectStep = tryDispatchDvalaError(patchedError, step.k)
@@ -4735,9 +5042,11 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       // gracefully by using null (no handler search possible).
       const kForDispatch = step.type === 'BranchComplete'
         ? null
-        : step.type === 'Value'
-          ? step.k?.tail ?? null
-          : step.k
+        : step.type === 'ResumeParallelExec'
+          ? step.k
+          : step.type === 'Value'
+            ? step.k?.tail ?? null
+            : step.k
 
       // If the error has no source location and we're inside a macro expansion,
       // patch it with the macro call site so error messages are meaningful.
@@ -5231,7 +5540,18 @@ export async function retriggerWithEffects(
         effectName: error.effectName,
         effectArg: error.effectArg,
       })
-      return { type: 'suspended', snapshot }
+      return {
+        type: 'suspended',
+        snapshot,
+        _rawSuspension: {
+          k: error.k,
+          snapshots: [...snapshotState.snapshots],
+          nextSnapshotIndex: snapshotState.nextSnapshotIndex,
+          meta: error.meta,
+          effectName: error.effectName,
+          effectArg: error.effectArg,
+        },
+      }
     }
     // Handler called halt() — return halted result
     if (isHaltSignal(error)) {
@@ -5390,7 +5710,18 @@ async function runEffectLoop(
           effectName: error.effectName,
           effectArg: error.effectArg,
         })
-        return { type: 'suspended', snapshot }
+        // Expose raw suspension data for parallel branch composition.
+        // executeParallelBranches uses this to build ResumeParallelFrame
+        // with raw (not serialized) sibling continuations.
+        const _rawSuspension = {
+          k: error.k,
+          snapshots: [...snapshotState.snapshots],
+          nextSnapshotIndex: snapshotState.nextSnapshotIndex,
+          meta: error.meta,
+          effectName: error.effectName,
+          effectArg: error.effectArg,
+        }
+        return { type: 'suspended', snapshot, _rawSuspension }
       }
       if (isHaltSignal(error)) {
         const snapshot = createTerminalSnapshot({ result: error.value, halted: true })

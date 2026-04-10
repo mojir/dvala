@@ -610,8 +610,9 @@ export interface ResumeParallelFrame {
   branchIndex: number
   branchCount: number
   completedBranches: { index: number; value: unknown }[]
-  /** Sibling continuations truncated at the BarrierFrame (no barrier or outerK tail) */
-  suspendedBranches: { index: number; k: ContinuationStack }[]
+  /** Sibling continuations truncated at the BarrierFrame (no barrier or outerK tail),
+   *  plus captured effect info for re-triggering on resume */
+  suspendedBranches: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any }[]
   mode: 'parallel' | 'race'
 }
 
