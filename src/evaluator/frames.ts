@@ -609,6 +609,12 @@ export interface ResumeParallelFrame {
   type: 'ResumeParallel'
   branchIndex: number
   branchCount: number
+  /** Original AST nodes for all branches — needed for checkpoint composition
+   *  (if a checkpoint is taken inside a re-triggered sibling, the ReRunParallelFrame
+   *  must have the full branch ASTs for subsequent resume) */
+  branches: AstNode[]
+  /** Environment at the parallel/race call site — needed for checkpoint composition */
+  env: ContextStack
   completedBranches: { index: number; value: unknown }[]
   /** Sibling continuations truncated at the BarrierFrame (no barrier or outerK tail),
    *  plus captured effect info for re-triggering on resume */

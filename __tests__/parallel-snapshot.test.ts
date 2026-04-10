@@ -752,6 +752,96 @@ describe('Phase 5: Race-specific', () => {
     }
   })
 
+  it('race re-suspension: all siblings re-suspend → new composed suspension', async () => {
+    // All branches suspend. Resume primary. All siblings re-suspend.
+    // The race should re-suspend with a new ResumeParallelFrame.
+    const r1 = await dvala.runAsync(
+      'race(perform(@task, "A"), perform(@task, "B"), perform(@task, "C"))',
+      {
+        effectHandlers: [
+          { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+        ],
+      },
+    )
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    // Resume primary: it completes. ALL siblings re-suspend → race must re-suspend
+    // because no sibling completed to win.
+    const r2 = await resumeContinuation(r1.snapshot, 'A-done', {
+      handlers: [
+        { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+      ],
+    })
+
+    // A completed but B and C re-suspended. Race has a winner (A), so it completes.
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      expect(r2.value).toBe('A-done')
+    }
+  })
+
+  // ---------------------------------------------------------------------------
+  // Bug exploit tests
+  // ---------------------------------------------------------------------------
+
+  it('BUG: checkpoint inside a re-triggered sibling should be resumable', async () => {
+    // This exploits a bug where executeResumeParallel creates BarrierFrames
+    // with branchCtx.branches=[] and branchCtx.env=null. If a checkpoint is
+    // taken inside the re-triggered sibling, composeCheckpointContinuation
+    // creates a ReRunParallelFrame with empty branches and null env.
+    // Resuming from that checkpoint crashes because executeReRunParallel
+    // tries to access branches[i] which is undefined.
+    let siblingCp: Snapshot | undefined
+
+    // Step 1: All branches suspend
+    const r1 = await dvala.runAsync(
+      'parallel(perform(@task, "A"), perform(@task, "B"))',
+      {
+        effectHandlers: [
+          { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+        ],
+      },
+    )
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    // Step 2: Resume branch A. Sibling B is re-triggered.
+    // B's handler takes a checkpoint before completing.
+    const r2 = await resumeContinuation(r1.snapshot, 'got-A', {
+      handlers: [
+        {
+          pattern: 'task',
+          handler: async ({ resume, checkpoint }: any) => {
+            siblingCp = checkpoint('sibling-mid-retrigger')
+            resume('got-B')
+          },
+        },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      expect(r2.value).toEqual(['got-A', 'got-B'])
+    }
+    expect(siblingCp).toBeDefined()
+
+    // Step 3: Resume from the sibling's checkpoint.
+    // This should re-run ALL siblings from AST (ReRunParallelFrame).
+    // BUG: the ReRunParallelFrame has branches=[] and env=null → crash
+    const r3 = await resumeContinuation(siblingCp!, 'replayed-B', {
+      handlers: [
+        { pattern: 'task', handler: async ({ arg, resume }: any) => { resume(`re-${arg}`) } },
+      ],
+    })
+
+    expect(r3.type).toBe('completed')
+    if (r3.type === 'completed') {
+      // Branch B gets the resume value, branch A is re-run from AST
+      expect(r3.value).toEqual(['re-A', 'replayed-B'])
+    }
+  })
+
   it('race: retrigger works with new frame types', async () => {
     const r1 = await dvala.runAsync(
       'race(perform(@task, "A"), perform(@task, "B"))',

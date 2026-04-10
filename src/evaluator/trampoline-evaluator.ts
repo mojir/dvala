@@ -3320,6 +3320,8 @@ async function executeParallelBranches(
       type: 'ResumeParallel',
       branchIndex: primarySuspended.index,
       branchCount: branches.length,
+      branches,
+      env,
       completedBranches,
       suspendedBranches: siblingsSuspended,
       mode: 'parallel',
@@ -3461,6 +3463,8 @@ async function executeRaceBranches(
         type: 'ResumeParallel',
         branchIndex: primarySuspended.index,
         branchCount: branches.length,
+        branches,
+        env,
         completedBranches: [], // Race never has completed branches (if one had, it would have won)
         suspendedBranches: siblingsSuspended,
         mode: 'race',
@@ -3573,6 +3577,8 @@ async function executeReRunParallel(
       type: 'ResumeParallel',
       branchIndex: primary.index,
       branchCount,
+      branches,
+      env,
       completedBranches: allCompleted,
       suspendedBranches: newSuspended.slice(1).map(s => ({
         index: s.index,
@@ -3656,8 +3662,8 @@ async function executeResumeParallel(
     const branchCtx: ParallelBranchContext = {
       branchIndex: sibling.index,
       branchCount,
-      branches: [], // Not needed for resume path (only for re-run)
-      env: null as any, // Not needed for resume path
+      branches: frame.branches,
+      env: frame.env,
       mode,
     }
     const barrierFrame: ParallelBranchBarrierFrame = { type: 'ParallelBranchBarrier', branchCtx }
@@ -3743,6 +3749,8 @@ async function executeResumeParallel(
       type: 'ResumeParallel',
       branchIndex: primary.index,
       branchCount,
+      branches: frame.branches,
+      env: frame.env,
       completedBranches: allCompleted,
       suspendedBranches: newSuspended.slice(1).map(s => ({
         index: s.index,
