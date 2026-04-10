@@ -1226,6 +1226,60 @@ describe('Phase 5: Race-specific', () => {
     expect(siblingBExecId).toBe(siblingCExecId)
   })
 
+  it('re-run re-suspension uses primary sibling snapshots, not outer session', async () => {
+    // When executeReRunParallel re-runs siblings and one re-suspends,
+    // the composed SuspensionSignal should use the primary suspended
+    // sibling's snapshot history (which includes its own branch-local
+    // checkpoints) — not the outer session's snapshotState.
+    //
+    // Setup: resume from checkpoint (Tier 1 → executeReRunParallel).
+    // The suspending sibling takes a checkpoint before suspending.
+    // The re-suspension blob should contain that checkpoint.
+    let branchACp: Snapshot | undefined
+
+    // Step 1: Branch A takes a checkpoint, all complete.
+    await dvala.runAsync(
+      'parallel(perform(@cp.task, "A"), perform(@sib, "B"))',
+      {
+        effectHandlers: [
+          {
+            pattern: 'cp.task',
+            handler: async ({ resume, checkpoint }: any) => {
+              branchACp = checkpoint('branch-a-cp')
+              resume('a-done')
+            },
+          },
+          { pattern: 'sib', handler: async ({ resume }: any) => { resume('sib-done') } },
+        ],
+      },
+    )
+    expect(branchACp).toBeDefined()
+
+    // Step 2: Resume from A's checkpoint. Sibling B is re-run.
+    // B takes a checkpoint, then suspends.
+    const r2 = await resumeContinuation(branchACp!, 'replayed-A', {
+      handlers: [
+        {
+          pattern: 'sib',
+          handler: async ({ checkpoint, suspend }: any) => {
+            checkpoint('sibling-B-cp-before-suspend')
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(r2.type).toBe('suspended')
+    if (r2.type !== 'suspended') return
+
+    // The re-suspension blob should contain B's checkpoint
+    // (B is the primary suspended sibling, so its snapshots survive)
+    const cont = r2.snapshot.continuation as any
+    const snapshotsInBlob = cont.snapshots ?? []
+
+    expect(snapshotsInBlob.length).toBeGreaterThan(0)
+  })
+
   it.skip('BUG: resumeFrom inside branch escapes branch boundary', async () => {
     // When a host handler inside a branch calls resumeFrom() to a pre-parallel
     // checkpoint, the restored continuation has no BarrierFrame. The branch's

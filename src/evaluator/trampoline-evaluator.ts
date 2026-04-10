@@ -3548,8 +3548,9 @@ async function executeReRunParallel(
 
   const settled = await Promise.allSettled(siblingPromises)
 
-  // Collect results
-  const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any }[] = []
+  // Collect results — track snapshots for the primary suspended sibling
+  // so the composed timeline includes branch-local checkpoints.
+  const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
   const errors: DvalaError[] = []
 
   for (const s of settled) {
@@ -3566,6 +3567,8 @@ async function executeReRunParallel(
           k: truncateAtBarrier(raw.k),
           effectName: raw.effectName,
           effectArg: raw.effectArg,
+          snapshots: raw.snapshots,
+          nextSnapshotIndex: raw.nextSnapshotIndex,
         })
       } else if (result.type === 'error') {
         errors.push(result.error)
@@ -3605,12 +3608,13 @@ async function executeReRunParallel(
       mode,
     }
     const composedK = cons<Frame>(newFrame, outerK)
-    // Throw with real snapshot history (same reasoning as executeResumeParallel)
+    // Use the primary suspended sibling's snapshot history — it contains
+    // the outer prefix + any branch-local checkpoints from the re-run.
     // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism
     throw new SuspensionSignal(
       composedK,
-      snapshotState ? snapshotState.snapshots : [],
-      snapshotState ? snapshotState.nextSnapshotIndex : 0,
+      primary.snapshots,
+      primary.nextSnapshotIndex,
       undefined,
       primary.effectName,
       primary.effectArg,
@@ -3707,12 +3711,18 @@ async function executeResumeParallel(
     // Re-trigger the sibling's effect via retriggerWithEffects if we have
     // the captured effect info. Otherwise fall back to running with null.
     if (sibling.effectName && sibling.effectArg !== undefined) {
+      // Pass the outer snapshot state so the sibling inherits the snapshot
+      // timeline (including pre-parallel checkpoints). The sibling adds its
+      // own checkpoints on top.
+      const siblingSnapshotState = snapshotState
+        ? { snapshots: [...snapshotState.snapshots], nextSnapshotIndex: snapshotState.nextSnapshotIndex }
+        : undefined
       const result = await retriggerWithEffects(
         fullK,
         sibling.effectName,
         sibling.effectArg,
         handlers,
-        undefined, // initialSnapshotState
+        siblingSnapshotState,
         undefined, // deserializeOptions
         effectSignal,
         snapshotState?.executionId,
@@ -3725,7 +3735,10 @@ async function executeResumeParallel(
 
     // Fallback: resume with null (sibling had no captured effect)
     const initialStep: Step = { type: 'Value', value: null as Any, k: fullK }
-    const result = await runEffectLoop(initialStep, handlers, effectSignal, undefined, undefined, undefined, undefined, undefined, undefined, snapshotState?.executionId)
+    const siblingSnapshotState = snapshotState
+      ? { snapshots: [...snapshotState.snapshots], nextSnapshotIndex: snapshotState.nextSnapshotIndex }
+      : undefined
+    const result = await runEffectLoop(initialStep, handlers, effectSignal, siblingSnapshotState, undefined, undefined, undefined, undefined, undefined, snapshotState?.executionId)
     if (result.type === 'suspended') {
       parallelAbort.abort()
     }
@@ -3734,8 +3747,8 @@ async function executeResumeParallel(
 
   const settled = await Promise.allSettled(siblingPromises)
 
-  // Collect results
-  const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any }[] = []
+  // Collect results — track snapshots for the primary suspended sibling
+  const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
   const errors: DvalaError[] = []
 
   for (const s of settled) {
@@ -3752,6 +3765,8 @@ async function executeResumeParallel(
           k: truncateAtBarrier(raw.k),
           effectName: raw.effectName,
           effectArg: raw.effectArg,
+          snapshots: raw.snapshots,
+          nextSnapshotIndex: raw.nextSnapshotIndex,
         })
       } else if (result.type === 'error') {
         errors.push(result.error)
@@ -3787,14 +3802,12 @@ async function executeResumeParallel(
       mode,
     }
     const composedK = cons<Frame>(newFrame, outerK)
-    // Throw SuspensionSignal with real snapshot history from the current session.
-    // throwSuspension() can't be used here — it always passes snapshots=[], nextSnapshotIndex=0,
-    // which would lose all accumulated checkpoints.
+    // Use the primary suspended sibling's snapshot history
     // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism
     throw new SuspensionSignal(
       composedK,
-      snapshotState ? snapshotState.snapshots : [],
-      snapshotState ? snapshotState.nextSnapshotIndex : 0,
+      primary.snapshots,
+      primary.nextSnapshotIndex,
       undefined,
       primary.effectName,
       primary.effectArg,
