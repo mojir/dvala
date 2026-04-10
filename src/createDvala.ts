@@ -15,7 +15,7 @@ import type { DvalaBundle } from './bundler/interface'
 import { isDvalaBundle } from './bundler/interface'
 import type { Handlers, RunResult, SnapshotState } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
-import { fromJS, toJS } from './utils/interop'
+import { toJS, validateFromJS } from './utils/interop'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
@@ -169,7 +169,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     if (!scope) return undefined
     const ctx: Context = {}
     for (const [k, v] of Object.entries(scope)) {
-      ctx[k] = { value: fromJS(v) }
+      ctx[k] = { value: validateFromJS(v, `scope binding "${k}"`) }
     }
     return ctx
   }

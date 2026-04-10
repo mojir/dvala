@@ -8,7 +8,7 @@ import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { continueWithEffects, resumeWithEffects } from './evaluator/trampoline-evaluator'
 import { deserializeFromObject } from './evaluator/suspension'
-import { fromJS, toJS } from './utils/interop'
+import { toJS, validateFromJS } from './utils/interop'
 import type { Any } from './interface'
 import type { Context } from './evaluator/interface'
 
@@ -66,7 +66,7 @@ export async function resume(snapshot: Snapshot, value: unknown, options?: Resum
     if (options?.scope) {
       scopeContext = {}
       for (const [k, v] of Object.entries(options.scope)) {
-        scopeContext[k] = { value: fromJS(v) }
+        scopeContext[k] = { value: validateFromJS(v, `scope binding "${k}"`) }
       }
     }
 
@@ -99,7 +99,7 @@ export async function resume(snapshot: Snapshot, value: unknown, options?: Resum
         deserializeOptions,
         options?.terminalSnapshot,
       )
-      : await resumeWithEffects(deserialized.k, fromJS(value), options?.handlers, initialSnapshotState, deserializeOptions)
+      : await resumeWithEffects(deserialized.k, validateFromJS(value, 'resume() value'), options?.handlers, initialSnapshotState, deserializeOptions)
     // Apply toJS to convert PV/PM to plain JS arrays/objects, matching run() semantics
     if (result.type === 'completed') {
       return { ...result, value: toJS(result.value as Any) }

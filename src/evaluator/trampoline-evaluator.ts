@@ -80,7 +80,7 @@ import { assertString } from '../typeGuards/string'
 import { deepEqual, toAny } from '../utils'
 import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '../utils/arity'
 import { valueToString } from '../utils/debug/debugTools'
-import { fromJS, toJS } from '../utils/interop'
+import { assertValidHostValue, fromJS, toJS, validateFromJS } from '../utils/interop'
 import type { MaybePromise } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
@@ -3041,11 +3041,12 @@ function dispatchHostHandler(
             snapshotState.snapshots.shift()
           }
         }
+        const resumeContext = `resume() in handler for '${effectName}'`
         if (value instanceof Promise) {
-          // Convert the resolved plain-JS value back to a Dvala value before feeding to continuation
-          outcome = { kind: 'asyncResume', promise: value.then(v => fromJS(v)) }
+          // Validate and convert the resolved plain-JS value before feeding to continuation
+          outcome = { kind: 'asyncResume', promise: value.then(v => validateFromJS(v, resumeContext)) }
         } else {
-          outcome = { kind: 'step', step: { type: 'Value', value: fromJS(value), k } }
+          outcome = { kind: 'step', step: { type: 'Value', value: validateFromJS(value, resumeContext), k } }
         }
       },
       fail: (msg?: string) => {
@@ -3055,6 +3056,9 @@ function dispatchHostHandler(
       },
       suspend: (meta?: unknown) => {
         assertNotSettled('suspend')
+        // Validate meta is serializable (it goes into snapshots) but don't convert to Dvala types
+        if (meta !== undefined)
+          assertValidHostValue(meta, `suspend() meta in handler for '${effectName}'`)
         outcome = {
           kind: 'throw',
           error: new SuspensionSignal(
@@ -3077,6 +3081,9 @@ function dispatchHostHandler(
         if (!snapshotState) {
           throw new RuntimeError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
         }
+        // Validate meta is serializable (it gets stored in snapshot) but don't convert to Dvala types
+        if (meta !== undefined)
+          assertValidHostValue(meta, `checkpoint() meta in handler for '${effectName}'`)
         const continuation = serializeToObject(composeCheckpointContinuation(k))
         const snapshot = createSnapshot({
           continuation,
@@ -3108,7 +3115,7 @@ function dispatchHostHandler(
           kind: 'throw',
           error: new ResumeFromSignal(
             found.continuation,
-            fromJS(value),
+            validateFromJS(value, `resumeFrom() in handler for '${effectName}'`),
             found.index,
             getParallelBoundaryPath(k),
           ),
