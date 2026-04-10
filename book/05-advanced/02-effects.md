@@ -110,6 +110,24 @@ Dvala provides built-in effects that are always available without explicit handl
 **Error:**
 * `dvala.error` — raises an error (covered in the Errors section below)
 
+**Host interaction:**
+* `dvala.host` — requests a named value from the host environment. The host must install a handler; if none is installed, a descriptive error is thrown. Use this to receive configuration and bindings from the TypeScript host.
+* `dvala.env` — reads an environment variable by name, resumes with the value as a string or `null` if not set
+* `dvala.args` — resumes with the command-line arguments as an array of strings (node and script path are stripped)
+
+```dvala no-run
+// Host values — the host provides a handler that maps names to values
+let config = perform(@dvala.host, "config");
+
+// Environment variables — null for unset, use ?? for defaults
+let port = perform(@dvala.env, "PORT") ?? "3000";
+
+// CLI arguments
+let args = perform(@dvala.args);
+```
+
+All three are blocked in pure mode.
+
 ---
 
 ## Handling Effects

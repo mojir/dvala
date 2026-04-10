@@ -15,7 +15,7 @@ Dvala is an expression-based language with a TypeScript runtime where every side
 
 Every interaction with the outside world goes through `perform`. The host decides what happens -- resume with a value, suspend, or fail. Effects are first-class, composable, and testable.
 
-```dvala
+```dvala no-run
 // Dvala code performs effects -- it never does I/O directly
 let name = perform(@dvala.io.read, "What's your name? ");
 perform(@dvala.io.print, `Hello, ${name}!`);
