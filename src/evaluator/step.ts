@@ -24,7 +24,7 @@ import type { DvalaError } from '../errors'
 import type { Any } from '../interface'
 import type { AstNode, EffectRef } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import type { ContinuationStack, Frame, ParallelBranchContext, ResumeParallelFrame } from './frames'
+import type { ContinuationStack, Frame, ParallelBranchContext, ReRunParallelFrame, ResumeParallelFrame } from './frames'
 import type { ContextStack } from './ContextStack'
 import type { Snapshot } from './effectTypes'
 
@@ -167,6 +167,20 @@ export interface BranchCompleteStep {
 }
 
 /**
+ * A `ReRunParallelFrame` received a value (the resumed branch completed).
+ *
+ * The trampoline needs to re-run sibling branches from their original AST
+ * concurrently, collect results, and continue with the outer program.
+ * Handled by `tick()` which has access to `handlers` and `signal`.
+ */
+export interface ReRunParallelExecStep {
+  type: 'ReRunParallelExec'
+  resumedBranchValue: Any
+  frame: ReRunParallelFrame
+  k: ContinuationStack
+}
+
+/**
  * A `ResumeParallelFrame` received a value (the resumed branch completed).
  *
  * The trampoline needs to resume suspended siblings concurrently, collect
@@ -223,6 +237,7 @@ export type Step =
   | ParallelStep
   | RaceStep
   | ParallelResumeStep
+  | ReRunParallelExecStep
   | ResumeParallelExecStep
   | BranchCompleteStep
   | ErrorStep
