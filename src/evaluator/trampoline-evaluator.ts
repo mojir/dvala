@@ -3333,13 +3333,15 @@ async function executeParallelBranches(
     // Rebuild the primary's continuation with the barrier replaced
     const composedK = replaceBarrierWithFrame(primaryRaw.k, resumeFrame)
 
-    // Throw SuspensionSignal with real snapshot history from this session.
-    // throwSuspension() can't be used — it always passes snapshots=[], losing checkpoint history.
+    // Use the primary branch's snapshot history for the composed timeline.
+    // The branch started with a copy of the outer snapshots and added its own
+    // checkpoints — this gives us [outer checkpoints + branch-local checkpoints].
+    // Sibling snapshots are discarded (siblings will be re-run or resumed).
     // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism
     throw new SuspensionSignal(
       composedK,
-      snapshotState ? snapshotState.snapshots : [],
-      snapshotState ? snapshotState.nextSnapshotIndex : 0,
+      primaryRaw.snapshots,
+      primaryRaw.nextSnapshotIndex,
       primaryRaw.meta,
       primaryRaw.effectName,
       primaryRaw.effectArg,
@@ -3476,11 +3478,12 @@ async function executeRaceBranches(
       }
 
       const composedK = replaceBarrierWithFrame(primaryRaw.k, resumeFrame)
+      // Use the primary branch's snapshot history (outer + branch-local checkpoints)
       // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism
       throw new SuspensionSignal(
         composedK,
-        snapshotState ? snapshotState.snapshots : [],
-        snapshotState ? snapshotState.nextSnapshotIndex : 0,
+        primaryRaw.snapshots,
+        primaryRaw.nextSnapshotIndex,
         primaryRaw.meta,
         primaryRaw.effectName,
         primaryRaw.effectArg,

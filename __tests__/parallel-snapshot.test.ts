@@ -1012,6 +1012,53 @@ describe('Phase 5: Race-specific', () => {
     }
   })
 
+  it('BUG: branch-local checkpoints must survive in composed suspension timeline', async () => {
+    // The design says the composed timeline should be:
+    //   [outer checkpoints + suspending branch's checkpoints]
+    //
+    // But executeParallelBranches uses snapshotState.snapshots (the OUTER
+    // session's) for the SuspensionSignal, not the branch's accumulated
+    // snapshots. Branch-local checkpoints taken before the branch suspends
+    // are lost from the serialized blob.
+    //
+    // Setup: branch takes a checkpoint, then suspends. The suspension
+    // snapshot should contain the branch's checkpoint in its history.
+
+    const r1 = await dvala.runAsync(
+      'parallel(perform(@branch.task, "A"), perform(@branch.task, "B"))',
+      {
+        effectHandlers: [
+          {
+            pattern: 'branch.task',
+            handler: async ({ arg, checkpoint, suspend, resume }: any) => {
+              if (arg === 'A') {
+                // Take a checkpoint inside the branch, then suspend
+                checkpoint('branch-A-checkpoint')
+                suspend({ branch: 'A' })
+              } else {
+                // B just suspends
+                suspend({ branch: 'B' })
+              }
+            },
+          },
+        ],
+      },
+    )
+
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    // The suspension blob should contain the branch-A checkpoint
+    const cont = r1.snapshot.continuation as any
+    const snapshotsInBlob = cont.snapshots ?? []
+
+    // BUG: snapshotsInBlob only has outer checkpoints (none in this case),
+    // NOT the branch-A checkpoint. The branch's local checkpoint was in
+    // primaryRaw.snapshots but executeParallelBranches used the outer
+    // snapshotState.snapshots instead.
+    expect(snapshotsInBlob.length).toBeGreaterThan(0)
+  })
+
   it('race: retrigger works with new frame types', async () => {
     const r1 = await dvala.runAsync(
       'race(perform(@task, "A"), perform(@task, "B"))',
