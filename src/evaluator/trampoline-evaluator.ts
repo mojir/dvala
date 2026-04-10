@@ -3224,19 +3224,6 @@ async function runBranch(
   )
 }
 
-/**
- * Legacy branch runner for race (no outerK threading, no barrier frame).
- * Will be removed in Phase 5 when race is unified with parallel.
- */
-async function runBranchLegacy(
-  node: AstNode,
-  env: ContextStack,
-  handlers: Handlers | undefined,
-  signal: AbortSignal,
-): Promise<RunResult> {
-  const initial: Step = { type: 'Eval', node, env, k: null }
-  return runEffectLoop(initial, handlers, signal)
-}
 
 /**
  * Execute a `parallel(...)` expression.
@@ -3379,15 +3366,17 @@ async function executeParallelBranches(
 /**
  * Execute a `race(...)` expression.
  *
- * Runs all branch expressions concurrently. The first branch to complete
- * wins — its value becomes the result. Losing branches are cancelled via
+ * Runs all branch expressions concurrently using the same infrastructure
+ * as parallel (BarrierFrame + outerK). The first branch to complete
+ * wins — its value becomes the result. Losers are cancelled via
  * per-branch AbortControllers.
  *
  * Branch outcome priority: completed > suspended > errored.
  * - First completed branch wins immediately.
  * - Errored branches are silently dropped.
- * - If no branch completes but some suspend, the race suspends with only
- *   the outer continuation. The host provides the winner value directly.
+ * - If no branch completes but some suspend, the race suspends with a
+ *   ResumeParallelFrame (mode: 'race'). On resume, the frame re-runs/resumes
+ *   branches and the first to complete wins automatically.
  * - If all branches error, throw an aggregate error.
  */
 async function executeRaceBranches(
@@ -3396,10 +3385,11 @@ async function executeRaceBranches(
   k: ContinuationStack,
   handlers: Handlers | undefined,
   signal: AbortSignal | undefined,
+  snapshotState?: SnapshotState,
 ): Promise<Step> {
   const parentSignal = signal ?? new AbortController().signal
 
-  // Each branch gets its own AbortController so losers can be cancelled
+  // Per-branch AbortControllers — losers are cancelled individually when a winner completes
   const branchControllers = branches.map(() => new AbortController())
 
   // Link: if parent signal aborts, abort all branches
@@ -3415,13 +3405,19 @@ async function executeRaceBranches(
     let winnerIndex = -1
     let winnerValue: unknown = null
 
-    // Run all branches concurrently, tracking completion order
+    // Run all branches concurrently with BarrierFrame + outerK, same as parallel
     const branchPromises = branches.map(async (branch, i) => {
+      const branchCtx: ParallelBranchContext = {
+        branchIndex: i,
+        branchCount: branches.length,
+        branches,
+        env,
+        mode: 'race',
+      }
       const branchSignal = branchControllers[i]!.signal
-      const result = await runBranchLegacy(branch, env, handlers, branchSignal)
+      const result = await runBranch(branch, env, handlers, branchSignal, k, branchCtx, snapshotState)
 
-      // First branch to complete wins (JavaScript is single-threaded,
-      // so the first resolved promise's continuation runs first)
+      // First branch to complete wins
       if (result.type === 'completed' && winnerIndex < 0) {
         winnerIndex = i
         winnerValue = result.value
@@ -3432,7 +3428,7 @@ async function executeRaceBranches(
           }
         }
       }
-      return result
+      return { index: i, result }
     })
 
     // Wait for all branches to settle (even cancelled ones)
@@ -3444,36 +3440,50 @@ async function executeRaceBranches(
     }
 
     // No completed branch — collect suspended and errored
-    const suspendedMetas: unknown[] = []
+    const suspendedBranches: { index: number; result: RunResult & { type: 'suspended' } }[] = []
     const errors: DvalaError[] = []
 
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i]!
-      if (result.status === 'rejected') {
-        errors.push(new DvalaError(`${result.reason}`, undefined))
+    for (const settled of results) {
+      if (settled.status === 'rejected') {
+        errors.push(new DvalaError(`${settled.reason}`, undefined))
       } else {
-        const r = result.value
-        switch (r.type) {
-          case 'suspended':
-            suspendedMetas.push(r.snapshot.meta ?? null)
-            break
-          case 'error':
-            errors.push(r.error)
-            break
-          /* v8 ignore next 3 */
-          case 'completed':
-            // Already handled via winnerIndex above
-            break
+        const { index, result } = settled.value
+        if (result.type === 'suspended') {
+          suspendedBranches.push({ index, result })
+        } else if (result.type === 'error') {
+          errors.push(result.error)
         }
       }
     }
 
-    // If some branches suspended, the race suspends
-    if (suspendedMetas.length > 0) {
-      // Race suspension: only outer k, host provides winner value directly
-      // Meta contains all branch metas so host knows who is waiting
-      const raceMeta: Any = toAny({ type: 'race', branches: suspendedMetas })
-      throwSuspension(k, raceMeta)
+    // If some branches suspended, compose a ResumeParallelFrame with mode: 'race'
+    if (suspendedBranches.length > 0) {
+      const primarySuspended = suspendedBranches[0]!
+      const primaryRaw = primarySuspended.result._rawSuspension!
+
+      const siblingsSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any }[] = []
+      for (let i = 1; i < suspendedBranches.length; i++) {
+        const sb = suspendedBranches[i]!
+        const raw = sb.result._rawSuspension!
+        siblingsSuspended.push({
+          index: sb.index,
+          k: truncateAtBarrier(raw.k),
+          effectName: raw.effectName,
+          effectArg: raw.effectArg,
+        })
+      }
+
+      const resumeFrame: ResumeParallelFrame = {
+        type: 'ResumeParallel',
+        branchIndex: primarySuspended.index,
+        branchCount: branches.length,
+        completedBranches: [], // Race never has completed branches (if one had, it would have won)
+        suspendedBranches: siblingsSuspended,
+        mode: 'race',
+      }
+
+      const composedK = replaceBarrierWithFrame(primaryRaw.k, resumeFrame)
+      return throwSuspension(composedK, primaryRaw.meta, primaryRaw.effectName, primaryRaw.effectArg)
     }
 
     // All branches errored — throw aggregate error
@@ -3629,12 +3639,21 @@ async function executeReRunParallel(
     }
   }
 
-  if (errors.length > 0) {
+  // Error handling: parallel throws on first error, race drops errors silently
+  if (mode === 'parallel' && errors.length > 0) {
     throw errors[0]!
   }
 
+  // Race with errors: if some branches completed, those win. If only errors + suspensions,
+  // treat errors as dropped and continue with suspensions.
+  // If ALL branches errored (no completed, no suspended), throw aggregate.
+  if (mode === 'race' && errors.length > 0 && allCompleted.length === 0 && newSuspended.length === 0) {
+    const messages = errors.map(e => e.message).join('; ')
+    throw new RuntimeError(`race: all branches failed: ${messages}`, undefined)
+  }
+
   // If siblings suspended, compose a ResumeParallelFrame (upgrade Tier 1 → Tier 2)
-  if (newSuspended.length > 0) {
+  if (newSuspended.length > 0 && (mode === 'parallel' || allCompleted.length === 0)) {
     const primary = newSuspended[0]!
     const newFrame: ResumeParallelFrame = {
       type: 'ResumeParallel',
@@ -3653,10 +3672,30 @@ async function executeReRunParallel(
     return throwSuspension(composedK, undefined, primary.effectName, primary.effectArg)
   }
 
-  // All done — build result array in order
+  // All done (or race: at least one completed) — collect results based on mode
+  return buildParallelResult(allCompleted, branchCount, mode, outerK)
+}
+
+/**
+ * Build the final result for a parallel/race expression.
+ * - parallel: array of all results in order
+ * - race: first completed value (scalar)
+ */
+function buildParallelResult(
+  completed: { index: number; value: unknown }[],
+  branchCount: number,
+  mode: 'parallel' | 'race',
+  outerK: ContinuationStack,
+): Step {
+  if (mode === 'race') {
+    // Race: return the first completed value (any will do since all are done)
+    const winner = completed[0]
+    return { type: 'Value', value: (winner?.value ?? null) as Any, k: outerK }
+  }
+  // Parallel: build result array in order
   const resultMutable: unknown[] = Array.from({ length: branchCount })
-  for (const { index, value: v } of allCompleted) {
-    resultMutable[index] = v
+  for (const { index, value } of completed) {
+    resultMutable[index] = value
   }
   return { type: 'Value', value: PersistentVector.from(resultMutable as Any[]), k: outerK }
 }
@@ -3688,11 +3727,7 @@ async function executeResumeParallel(
 
   // If no suspended siblings, all branches are done
   if (suspendedBranches.length === 0) {
-    const resultMutable: unknown[] = Array.from({ length: branchCount })
-    for (const { index, value: v } of allCompleted) {
-      resultMutable[index] = v
-    }
-    return { type: 'Value', value: PersistentVector.from(resultMutable as Any[]), k: outerK }
+    return buildParallelResult(allCompleted, branchCount, mode, outerK)
   }
 
   // Resume suspended siblings concurrently.
@@ -3778,12 +3813,17 @@ async function executeResumeParallel(
     }
   }
 
-  if (errors.length > 0) {
+  // Error handling: parallel throws on first error, race drops errors silently
+  if (mode === 'parallel' && errors.length > 0) {
     throw errors[0]!
   }
+  if (mode === 'race' && errors.length > 0 && allCompleted.length === 0 && newSuspended.length === 0) {
+    const messages = errors.map(e => e.message).join('; ')
+    throw new RuntimeError(`race: all branches failed: ${messages}`, undefined)
+  }
 
-  // If siblings re-suspended, compose a new ResumeParallelFrame
-  if (newSuspended.length > 0) {
+  // If siblings re-suspended (and not a race with a winner), compose a new ResumeParallelFrame
+  if (newSuspended.length > 0 && (mode === 'parallel' || allCompleted.length === 0)) {
     const primary = newSuspended[0]!
     const newFrame: ResumeParallelFrame = {
       type: 'ResumeParallel',
@@ -3799,15 +3839,11 @@ async function executeResumeParallel(
       mode,
     }
     const composedK = cons<Frame>(newFrame, outerK)
-    return throwSuspension(composedK, primary.effectName ? undefined : undefined, primary.effectName, primary.effectArg)
+    return throwSuspension(composedK, undefined, primary.effectName, primary.effectArg)
   }
 
-  // All done — build result array
-  const resultMutable: unknown[] = Array.from({ length: branchCount })
-  for (const { index, value: v } of allCompleted) {
-    resultMutable[index] = v
-  }
-  return { type: 'Value', value: PersistentVector.from(resultMutable as Any[]), k: outerK }
+  // All done — collect results based on mode
+  return buildParallelResult(allCompleted, branchCount, mode, outerK)
 }
 
 function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
@@ -5104,7 +5140,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'Parallel':
         return executeParallelBranches(step.branches, step.env, step.k, handlers, signal, snapshotState)
       case 'Race':
-        return executeRaceBranches(step.branches, step.env, step.k, handlers, signal)
+        return executeRaceBranches(step.branches, step.env, step.k, handlers, signal, snapshotState)
       case 'ParallelResume':
         return handleParallelResume(step, handlers, signal)
       case 'BranchComplete':

@@ -201,10 +201,8 @@ describe('stress: race + checkpoints/suspend', () => {
     })
     expect(result.type).toBe('suspended')
     if (result.type === 'suspended') {
-      expect(result.snapshot.meta).toEqual({
-        type: 'race',
-        branches: [{ branch: 'A' }, { branch: 'B' }],
-      })
+      // Meta is from the primary suspended branch (first to suspend)
+      expect(result.snapshot.meta).toEqual({ branch: 'A' })
     }
   })
 
