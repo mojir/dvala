@@ -1180,6 +1180,52 @@ describe('Phase 5: Race-specific', () => {
     }
   })
 
+  it('BUG: re-triggered siblings in ResumeParallel should share executionId', async () => {
+    // executeResumeParallel re-triggers siblings via retriggerWithEffects,
+    // which always generates a fresh executionId (line 5439). Siblings get
+    // a different executionId than the outer resume session.
+    //
+    // This is the same class of bug as #2 (executeReRunParallel), but on
+    // the ResumeParallel path instead of the ReRun path.
+    let siblingBExecId: string | undefined
+    let siblingCExecId: string | undefined
+
+    // Step 1: All 3 branches suspend
+    const r1 = await dvala.runAsync(
+      'parallel(perform(@task, "A"), perform(@task, "B"), perform(@task, "C"))',
+      {
+        effectHandlers: [
+          { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+        ],
+      },
+    )
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    // Step 2: Resume branch A. Siblings B and C are re-triggered.
+    // Both take checkpoints — their executionIds should match each other.
+    const r2 = await resumeContinuation(r1.snapshot, 'got-A', {
+      handlers: [
+        {
+          pattern: 'task',
+          handler: async ({ arg, resume, checkpoint }: any) => {
+            const snap = checkpoint(`sibling-${arg}-cp`)
+            if (arg === 'B') siblingBExecId = snap.executionId
+            else siblingCExecId = snap.executionId
+            resume(`got-${arg}`)
+          },
+        },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    expect(siblingBExecId).toBeDefined()
+    expect(siblingCExecId).toBeDefined()
+
+    // Both siblings should share the same executionId
+    expect(siblingBExecId).toBe(siblingCExecId)
+  })
+
   it.skip('BUG: resumeFrom inside branch escapes branch boundary', async () => {
     // When a host handler inside a branch calls resumeFrom() to a pre-parallel
     // checkpoint, the restored continuation has no BarrierFrame. The branch's

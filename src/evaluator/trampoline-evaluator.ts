@@ -3715,6 +3715,7 @@ async function executeResumeParallel(
         undefined, // initialSnapshotState
         undefined, // deserializeOptions
         effectSignal,
+        snapshotState?.executionId,
       )
       if (result.type === 'suspended') {
         parallelAbort.abort()
@@ -3724,7 +3725,7 @@ async function executeResumeParallel(
 
     // Fallback: resume with null (sibling had no captured effect)
     const initialStep: Step = { type: 'Value', value: null as Any, k: fullK }
-    const result = await runEffectLoop(initialStep, handlers, effectSignal)
+    const result = await runEffectLoop(initialStep, handlers, effectSignal, undefined, undefined, undefined, undefined, undefined, undefined, snapshotState?.executionId)
     if (result.type === 'suspended') {
       parallelAbort.abort()
     }
@@ -5427,6 +5428,7 @@ export async function retriggerWithEffects(
   initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
   deserializeOptions?: DeserializeOptions,
   outerSignal?: AbortSignal,
+  inheritedExecutionId?: string,
 ): Promise<RunResult> {
   const abortController = new AbortController()
   const signal = outerSignal
@@ -5436,7 +5438,7 @@ export async function retriggerWithEffects(
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState?.snapshots ?? [],
     nextSnapshotIndex: initialSnapshotState?.nextSnapshotIndex ?? 0,
-    executionId: generateUUID(),
+    executionId: inheritedExecutionId ?? generateUUID(),
     maxSnapshots: initialSnapshotState?.maxSnapshots,
     autoCheckpoint: initialSnapshotState?.autoCheckpoint,
   }
