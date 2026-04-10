@@ -112,9 +112,14 @@ jobs:
           echo "Timed out waiting for PR merge"
           exit 1
 
+      # Use RELEASE_TOKEN so the tag push triggers the publish workflow.
+      # GITHUB_TOKEN doesn't trigger workflows on events it creates.
       - name: Tag and push
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           VERSION="${{ needs.release.outputs.version }}"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git fetch origin main
           git checkout main
           git tag "v${VERSION}"
