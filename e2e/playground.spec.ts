@@ -808,6 +808,7 @@ test.describe('playground effects', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
+    await navigateToPlayground(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
   })
 
