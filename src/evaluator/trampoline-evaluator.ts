@@ -3494,7 +3494,7 @@ async function executeReRunParallel(
   step: Step & { type: 'ReRunParallelExec' },
   handlers: Handlers | undefined,
   signal: AbortSignal | undefined,
-  _snapshotState?: SnapshotState,
+  snapshotState?: SnapshotState,
 ): Promise<Step> {
   const { resumedBranchValue, frame, k: outerK } = step
   const { branchIndex, branchCount, branches, env, mode } = frame
@@ -3522,7 +3522,7 @@ async function executeReRunParallel(
       mode,
     }
     siblingPromises.push((async () => {
-      const result = await runBranch(branches[i]!, env, handlers, effectSignal, outerK, branchCtx)
+      const result = await runBranch(branches[i]!, env, handlers, effectSignal, outerK, branchCtx, snapshotState)
       if (result.type === 'suspended') {
         parallelAbort.abort()
       }

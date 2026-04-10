@@ -842,6 +842,65 @@ describe('Phase 5: Race-specific', () => {
     }
   })
 
+  it('BUG: re-run siblings should share executionId within the same resume session', async () => {
+    // When a Tier 1 checkpoint is resumed and executeReRunParallel re-runs
+    // siblings, the siblings should inherit the outer snapshot state (including
+    // executionId) so that checkpoints form a coherent timeline.
+    //
+    // BUG: executeReRunParallel didn't pass snapshotState to runBranch,
+    // so each sibling got a fresh executionId. Checkpoints from different
+    // siblings in the same re-run had different executionIds.
+    let primaryCp: Snapshot | undefined
+    let siblingBExecId: string | undefined
+    let siblingCExecId: string | undefined
+
+    // Step 1: Branch A takes a checkpoint. All branches complete.
+    await dvala.runAsync(
+      'parallel(perform(@cp.branch, "A"), perform(@sibling, "B"), perform(@sibling, "C"))',
+      {
+        effectHandlers: [
+          {
+            pattern: 'cp.branch',
+            handler: async ({ resume, checkpoint }: any) => {
+              primaryCp = checkpoint('primary-cp')
+              resume('first-A')
+            },
+          },
+          {
+            pattern: 'sibling',
+            handler: async ({ resume }: any) => { resume('first') },
+          },
+        ],
+      },
+    )
+
+    expect(primaryCp).toBeDefined()
+
+    // Step 2: Resume from A's checkpoint. Siblings B and C are re-run from AST.
+    // Both take checkpoints — their executionIds should match each other.
+    const r2 = await resumeContinuation(primaryCp!, 'replayed-A', {
+      handlers: [
+        {
+          pattern: 'sibling',
+          handler: async ({ arg, resume, checkpoint }: any) => {
+            const snap = checkpoint(`sibling-${arg}-cp`)
+            if (arg === 'B') siblingBExecId = snap.executionId
+            else siblingCExecId = snap.executionId
+            resume(`re-${arg}`)
+          },
+        },
+      ],
+    })
+
+    if (r2.type === 'error') throw new Error(`Resume error: ${r2.error.message}`)
+    expect(r2.type).toBe('completed')
+    expect(siblingBExecId).toBeDefined()
+    expect(siblingCExecId).toBeDefined()
+
+    // Both siblings should share the same executionId (from the resume session)
+    expect(siblingBExecId).toBe(siblingCExecId)
+  })
+
   it('race: retrigger works with new frame types', async () => {
     const r1 = await dvala.runAsync(
       'race(perform(@task, "A"), perform(@task, "B"))',
