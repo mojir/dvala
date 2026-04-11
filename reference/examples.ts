@@ -38,7 +38,7 @@ perform(@dvala.io.print, [1, 2, 3][2]);`,
   {
     id: 'atoms-and-tagged-results',
     name: 'Atoms and tagged results',
-    description: 'Atoms are self-evaluating named constants starting with :. Use them as tags in arrays for type-safe result handling.',
+    description: 'Atoms are self-evaluating named constants starting with :. Tags for result handling, as used by settled().',
     category: 'Basics',
     code: dvala`
 // Atoms are lightweight tags
