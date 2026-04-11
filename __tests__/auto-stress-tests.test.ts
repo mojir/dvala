@@ -46,10 +46,7 @@ describe('stress: parallel + checkpoints', () => {
     let outerSnapshots: readonly Snapshot[] = []
     const result = await dvala.runAsync(`
       perform(@dvala.checkpoint, "loc outer");
-      let results = parallel(
-        perform(@my.op, "a"),
-        perform(@my.op, "b")
-      );
+      let results = parallel([-> perform(@my.op, "a"), -> perform(@my.op, "b")]);
       perform(@my.check);
       results
     `, {
@@ -77,11 +74,7 @@ describe('stress: parallel + checkpoints', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      parallel(
-        perform(@my.ask, "q1"),
-        perform(@my.ask, "q2"),
-        perform(@my.ask, "q3")
-      )
+      parallel([-> perform(@my.ask, "q1"), -> perform(@my.ask, "q2"), -> perform(@my.ask, "q3")])
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -109,10 +102,7 @@ describe('stress: parallel + checkpoints', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let results = parallel(
-        perform(@my.fast),
-        perform(@my.slow)
-      );
+      let results = parallel([-> perform(@my.fast), -> perform(@my.slow)]);
       map(results, -> upperCase($))
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -128,11 +118,7 @@ describe('stress: parallel + checkpoints', () => {
 
   it('parallel with error in one branch reports error', async () => {
     const result = await dvala.runAsync(`
-      parallel(
-        1 + 2,
-        perform(@dvala.error, "branch error"),
-        3 + 4
-      )
+      parallel([-> 1 + 2, -> perform(@dvala.error, "branch error"), -> 3 + 4])
     `)
     expect(result.type).toBe('error')
   })
@@ -141,10 +127,7 @@ describe('stress: parallel + checkpoints', () => {
     let capturedSnapshots: readonly Snapshot[] = []
     const result = await dvala.runAsync(`
       perform(@dvala.checkpoint, "pos before-parallel");
-      let results = parallel(
-        perform(@my.op, 1),
-        perform(@my.op, 2)
-      );
+      let results = parallel([-> perform(@my.op, 1), -> perform(@my.op, 2)]);
       perform(@dvala.checkpoint, "pos after-parallel");
       perform(@my.check);
       results
@@ -169,10 +152,7 @@ describe('stress: parallel + checkpoints', () => {
 
   it('nested parallel should work', async () => {
     const result = await dvala.runAsync(`
-      parallel(
-        parallel(1 + 1, 2 + 2),
-        parallel(3 + 3, 4 + 4)
-      )
+      parallel([-> parallel([-> 1 + 1, -> 2 + 2]), -> parallel([-> 3 + 3, -> 4 + 4])])
     `)
     expect(result).toMatchObject({
       type: 'completed',
@@ -188,10 +168,7 @@ describe('stress: parallel + checkpoints', () => {
 describe('stress: race + checkpoints/suspend', () => {
   it('race where all branches suspend returns suspended with branch metas', async () => {
     const result = await dvala.runAsync(`
-      race(
-        perform(@my.a),
-        perform(@my.b)
-      )
+      race([-> perform(@my.a), -> perform(@my.b)])
     `, {
       effectHandlers: [
         { pattern: 'my.a', handler: async ({ suspend }) => { suspend({ branch: 'A' }) } },
@@ -208,10 +185,7 @@ describe('stress: race + checkpoints/suspend', () => {
 
   it('race with one completing and one suspending picks completed', async () => {
     const result = await dvala.runAsync(`
-      race(
-        perform(@my.fast),
-        perform(@my.slow)
-      )
+      race([-> perform(@my.fast), -> perform(@my.slow)])
     `, {
       effectHandlers: [
         { pattern: 'my.fast', handler: async ({ resume: r }) => { r('winner') } },
@@ -230,10 +204,7 @@ describe('stress: race + checkpoints/suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let winner = race(
-        perform(@my.a),
-        perform(@my.b)
-      );
+      let winner = race([-> perform(@my.a), -> perform(@my.b)]);
       "winner: " ++ winner
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -246,10 +217,7 @@ describe('stress: race + checkpoints/suspend', () => {
 
   it('race with all branches erroring produces aggregate error', async () => {
     const result = await dvala.runAsync(`
-      race(
-        perform(@dvala.error, "err-1"),
-        perform(@dvala.error, "err-2")
-      )
+      race([-> perform(@dvala.error, "err-1"), -> perform(@dvala.error, "err-2")])
     `)
     expect(result.type).toBe('error')
     if (result.type === 'error') {
@@ -259,16 +227,7 @@ describe('stress: race + checkpoints/suspend', () => {
 
   it('race inside parallel — each race picks its winner', async () => {
     const result = await dvala.runAsync(`
-      parallel(
-        race(
-          perform(@my.slow),
-          perform(@my.fast)
-        ),
-        race(
-          perform(@my.fast),
-          perform(@my.slow)
-        )
-      )
+      parallel([-> race([-> perform(@my.slow), -> perform(@my.fast)]), -> race([-> perform(@my.fast), -> perform(@my.slow)])])
     `, {
       effectHandlers: [
         { pattern: 'my.slow', handler: async ({ resume: r }) => {
@@ -1342,11 +1301,11 @@ describe('stress: runSync edge cases', () => {
   })
 
   it('runSync throws on parallel', () => {
-    expect(() => dvala.run('parallel(1, 2)')).toThrow()
+    expect(() => dvala.run('parallel([-> 1, -> 2])')).toThrow()
   })
 
   it('runSync throws on race', () => {
-    expect(() => dvala.run('race(1, 2)')).toThrow()
+    expect(() => dvala.run('race([-> 1, -> 2])')).toThrow()
   })
 })
 

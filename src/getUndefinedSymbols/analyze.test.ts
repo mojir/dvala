@@ -22,10 +22,10 @@ describe('analyze', () => {
           let data3 = data2 + 1;
           data3`),
     ).toEqual(new Set([]))
-    expect(getUndefinedSymbols('parallel(a, b, 1)')).toEqual(new Set(['a', 'b']))
-    expect(getUndefinedSymbols('parallel(1, 2, 3)')).toEqual(new Set([]))
-    expect(getUndefinedSymbols('race(x, y)')).toEqual(new Set(['x', 'y']))
-    expect(getUndefinedSymbols('race(1, 2)')).toEqual(new Set([]))
+    expect(getUndefinedSymbols('parallel([-> a, -> b, -> 1])')).toEqual(new Set(['a', 'b']))
+    expect(getUndefinedSymbols('parallel([-> 1, -> 2, -> 3])')).toEqual(new Set([]))
+    expect(getUndefinedSymbols('race([-> x, -> y])')).toEqual(new Set(['x', 'y']))
+    expect(getUndefinedSymbols('race([-> 1, -> 2])')).toEqual(new Set([]))
   })
 
   it('do...with handler', () => {

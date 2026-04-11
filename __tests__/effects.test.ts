@@ -2899,11 +2899,7 @@ describe('phase 6 — Parallel & Race', () => {
   describe('6a: parallel(...expressions)', () => {
     it('should evaluate all branches and return array of results', async () => {
       const result = await dvala.runAsync(`
-        parallel(
-          1 + 2,
-          3 + 4,
-          5 + 6
-        )
+        parallel([-> 1 + 2, -> 3 + 4, -> 5 + 6])
       `)
       expect(result).toMatchObject({ type: 'completed', value: [3, 7, 11] })
     })
@@ -2911,10 +2907,7 @@ describe('phase 6 — Parallel & Race', () => {
     it('should return results in original order', async () => {
       // Branch 2 is faster than branch 1, but results are ordered by position
       const result = await dvala.runAsync(`
-        parallel(
-          perform(@slow.op, "first"),
-          perform(@fast.op, "second")
-        )
+        parallel([-> perform(@slow.op, "first"), -> perform(@fast.op, "second")])
       `, {
         effectHandlers: [
           { pattern: 'slow.op', handler: async ({ arg, resume: res }) => {
@@ -2937,11 +2930,7 @@ describe('phase 6 — Parallel & Race', () => {
     it('should work with host effect handlers', async () => {
       const result = await dvala.runAsync(`
         let llm = @llm.complete;
-        parallel(
-          perform(llm, "Summarize"),
-          perform(llm, "Critique"),
-          perform(llm, "Keywords")
-        )
+        parallel([-> perform(llm, "Summarize"), -> perform(llm, "Critique"), -> perform(llm, "Keywords")])
       `, {
         effectHandlers: [
           { pattern: 'llm.complete', handler: async ({ arg, resume: res }) => {
@@ -2957,28 +2946,21 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('should error if any branch errors', async () => {
       const result = await dvala.runAsync(`
-        parallel(
-          1 + 2,
-          perform(@dvala.error, "branch error"),
-          5 + 6
-        )
+        parallel([-> 1 + 2, -> perform(@dvala.error, "branch error"), -> 5 + 6])
       `)
       expect(result.type).toBe('error')
     })
 
     it('should work with a single branch', async () => {
       const result = await dvala.runAsync(`
-        parallel(42)
+        parallel([-> 42])
       `)
       expect(result).toMatchObject({ type: 'completed', value: [42] })
     })
 
     it('should handle standard effects in branches', async () => {
       const result = await dvala.runAsync(`
-        parallel(
-          perform(@dvala.random),
-          perform(@dvala.random)
-        )
+        parallel([-> perform(@dvala.random), -> perform(@dvala.random)])
       `)
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
@@ -2992,11 +2974,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('should support destructuring the result', async () => {
       const result = await dvala.runAsync(`
-        let [a, b, c] = parallel(
-          perform(@llm, "task1"),
-          perform(@llm, "task2"),
-          perform(@llm, "task3")
-        );
+        let [a, b, c] = parallel([-> perform(@llm, "task1"), -> perform(@llm, "task2"), -> perform(@llm, "task3")]);
         { a: a, b: b, c: c }
       `, {
         effectHandlers: [
@@ -3014,10 +2992,7 @@ describe('phase 6 — Parallel & Race', () => {
     describe('parallel suspension', () => {
       it('should suspend when any branch suspends', async () => {
         const result = await dvala.runAsync(`
-          parallel(
-            perform(@fast.op),
-            perform(@needs.approval)
-          )
+          parallel([-> perform(@fast.op), -> perform(@needs.approval)])
         `, {
           effectHandlers: [
             { pattern: 'fast.op', handler: async ({ resume: res }) => {
@@ -3045,10 +3020,7 @@ describe('phase 6 — Parallel & Race', () => {
         ]
 
         const result1 = await dvala.runAsync(`
-          parallel(
-            perform(@fast.op),
-            perform(@needs.approval)
-          )
+          parallel([-> perform(@fast.op), -> perform(@needs.approval)])
         `, { effectHandlers: handlers })
 
         expect(result1.type).toBe('suspended')
@@ -3079,11 +3051,7 @@ describe('phase 6 — Parallel & Race', () => {
         ]
 
         const result1 = await dvala.runAsync(`
-          parallel(
-            perform(@approval.a),
-            perform(@approval.b),
-            perform(@approval.c)
-          )
+          parallel([-> perform(@approval.a), -> perform(@approval.b), -> perform(@approval.c)])
         `, { effectHandlers: handlers })
 
         expect(result1.type).toBe('suspended')
@@ -3121,11 +3089,7 @@ describe('phase 6 — Parallel & Race', () => {
 
         // Branch 0: suspends, Branch 1: completes, Branch 2: suspends
         const result1 = await dvala.runAsync(`
-          parallel(
-            perform(@slow.approve),
-            perform(@fast),
-            perform(@slow.approve)
-          )
+          parallel([-> perform(@slow.approve), -> perform(@fast), -> perform(@slow.approve)])
         `, { effectHandlers: handlers })
 
         expect(result1.type).toBe('suspended')
@@ -3154,11 +3118,7 @@ describe('phase 6 — Parallel & Race', () => {
         ]
 
         let result = await dvala.runAsync(`
-          parallel(
-            perform(@ask.human, "Q1"),
-            perform(@ask.human, "Q2"),
-            perform(@ask.human, "Q3")
-          )
+          parallel([-> perform(@ask.human, "Q1"), -> perform(@ask.human, "Q2"), -> perform(@ask.human, "Q3")])
         `, { effectHandlers: handlers })
 
         // Standard host-side loop — identical to single suspension
@@ -3178,10 +3138,7 @@ describe('phase 6 — Parallel & Race', () => {
   describe('6b: race(...expressions)', () => {
     it('should return the first completed branch', async () => {
       const result = await dvala.runAsync(`
-        race(
-          perform(@slow.op, "tortoise"),
-          perform(@fast.op, "hare")
-        )
+        race([-> perform(@slow.op, "tortoise"), -> perform(@fast.op, "hare")])
       `, {
         effectHandlers: [
           { pattern: 'slow.op', handler: async ({ arg, resume: res }) => {
@@ -3199,10 +3156,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('should return the first completed even if others error', async () => {
       const result = await dvala.runAsync(`
-        race(
-          perform(@fail.op),
-          perform(@ok.op)
-        )
+        race([-> perform(@fail.op), -> perform(@ok.op)])
       `, {
         effectHandlers: [
           { pattern: 'fail.op', handler: async ({ resume: res }) => {
@@ -3219,10 +3173,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('should error if all branches error', async () => {
       const result = await dvala.runAsync(`
-        race(
-          perform(@dvala.error, "error-1"),
-          perform(@dvala.error, "error-2")
-        )
+        race([-> perform(@dvala.error, "error-1"), -> perform(@dvala.error, "error-2")])
       `)
       expect(result.type).toBe('error')
       if (result.type === 'error') {
@@ -3232,7 +3183,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('should work with pure expressions (first wins)', async () => {
       const result = await dvala.runAsync(`
-        race(42, 99)
+        race([-> 42, -> 99])
       `)
       // Both complete immediately — first completed in results order wins
       expect(result).toMatchObject({ type: 'completed', value: 42 })
@@ -3240,7 +3191,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('should work with a single branch', async () => {
       const result = await dvala.runAsync(`
-        race(perform(@op, "only"))
+        race([-> perform(@op, "only")])
       `, {
         effectHandlers: [
           { pattern: 'op', handler: async ({ arg, resume: res }) => {
@@ -3253,10 +3204,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('should suspend if all branches suspend (none complete)', async () => {
       const result = await dvala.runAsync(`
-        race(
-          perform(@slow.a),
-          perform(@slow.b)
-        )
+        race([-> perform(@slow.a), -> perform(@slow.b)])
       `, {
         effectHandlers: [
           { pattern: 'slow.a', handler: async ({ suspend }) => {
@@ -3283,10 +3231,7 @@ describe('phase 6 — Parallel & Race', () => {
       ]
 
       const result1 = await dvala.runAsync(`
-        race(
-          perform(@slow.a),
-          perform(@slow.b)
-        )
+        race([-> perform(@slow.a), -> perform(@slow.b)])
       `, { effectHandlers: handlers })
 
       expect(result1.type).toBe('suspended')
@@ -3300,10 +3245,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('should prefer completed over suspended branches', async () => {
       const result = await dvala.runAsync(`
-        race(
-          perform(@suspend.op),
-          perform(@complete.op)
-        )
+        race([-> perform(@suspend.op), -> perform(@complete.op)])
       `, {
         effectHandlers: [
           { pattern: 'suspend.op', handler: async ({ suspend }) => {
@@ -3322,10 +3264,7 @@ describe('phase 6 — Parallel & Race', () => {
     it('should pass signal to branch handlers', async () => {
       const abortReasons: string[] = []
       const result = await dvala.runAsync(`
-        race(
-          perform(@fast.op),
-          perform(@slow.op)
-        )
+        race([-> perform(@fast.op), -> perform(@slow.op)])
       `, {
         effectHandlers: [
           { pattern: 'fast.op', handler: async ({ resume: res }) => {
@@ -3347,10 +3286,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('should use race result in subsequent computation', async () => {
       const result = await dvala.runAsync(`
-        let winner = race(
-          perform(@op.a),
-          perform(@op.b)
-        );
+        let winner = race([-> perform(@op.a), -> perform(@op.b)]);
         "Winner: " ++ winner
       `, {
         effectHandlers: [
@@ -3370,19 +3306,16 @@ describe('phase 6 — Parallel & Race', () => {
 
   describe('6: parallel and race edge cases', () => {
     it('parallel should not work in dvala.run()', () => {
-      expect(() => dvala.run('parallel(1, 2, 3)')).toThrow('Unexpected async result in run()')
+      expect(() => dvala.run('parallel([-> 1, -> 2, -> 3])')).toThrow('Unexpected async result in run()')
     })
 
     it('race should not work in dvala.run()', () => {
-      expect(() => dvala.run('race(1, 2, 3)')).toThrow('Unexpected async result in run()')
+      expect(() => dvala.run('race([-> 1, -> 2, -> 3])')).toThrow('Unexpected async result in run()')
     })
 
     it('parallel with nested parallel should work', async () => {
       const result = await dvala.runAsync(`
-        parallel(
-          parallel(1, 2),
-          parallel(3, 4)
-        )
+        parallel([-> parallel([-> 1, -> 2]), -> parallel([-> 3, -> 4])])
       `)
       expect(result).toMatchObject({
         type: 'completed',
@@ -3392,10 +3325,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('parallel inside let binding should work', async () => {
       const result = await dvala.runAsync(`
-        let results = parallel(
-          perform(@op, "a"),
-          perform(@op, "b")
-        );
+        let results = parallel([-> perform(@op, "a"), -> perform(@op, "b")]);
         map(results, -> "got:" ++ $)
       `, {
         effectHandlers: [
@@ -3410,16 +3340,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('race inside parallel should work', async () => {
       const result = await dvala.runAsync(`
-        parallel(
-          race(
-            perform(@slow, "a"),
-            perform(@fast, "b")
-          ),
-          race(
-            perform(@fast, "c"),
-            perform(@slow, "d")
-          )
-        )
+        parallel([-> race([-> perform(@slow, "a"), -> perform(@fast, "b")]), -> race([-> perform(@fast, "c"), -> perform(@slow, "d")])])
       `, {
         effectHandlers: [
           { pattern: 'slow', handler: async ({ arg, resume: res }) => {
@@ -3440,10 +3361,7 @@ describe('phase 6 — Parallel & Race', () => {
 
     it('parallel with handler errors in some branches', async () => {
       const result = await dvala.runAsync(`
-        parallel(
-          perform(@ok.op),
-          perform(@err.op)
-        )
+        parallel([-> perform(@ok.op), -> perform(@err.op)])
       `, {
         effectHandlers: [
           { pattern: 'ok.op', handler: async ({ resume: res }) => { res('ok') } },

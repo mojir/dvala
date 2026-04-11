@@ -80,6 +80,7 @@ describe('frame types', () => {
       EveryPred: true,
       SomePred: true,
       ParallelResume: true,
+      ConcurrentArg: true,
       ParallelBranchBarrier: true,
       ReRunParallel: true,
       ResumeParallel: true,
@@ -102,7 +103,7 @@ describe('frame types', () => {
       MacroEval: true,
       CodeTemplateBuild: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(47)
+    expect(Object.keys(frameTypes)).toHaveLength(48)
   })
 
   it('should support ContinuationStack as null (empty persistent list)', () => {
@@ -141,6 +142,7 @@ describe('frame types', () => {
         case 'EveryPred': return 'compound'
         case 'SomePred': return 'compound'
         case 'ParallelResume': return 'parallel'
+        case 'ConcurrentArg': return 'parallel'
         case 'ParallelBranchBarrier': return 'parallel'
         case 'ReRunParallel': return 'parallel'
         case 'ResumeParallel': return 'parallel'

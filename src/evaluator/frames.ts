@@ -531,14 +531,26 @@ export interface ParallelResumeFrame {
  * used to construct `ReRunParallelFrame` or `ResumeParallelFrame` during
  * checkpoint serialization and final suspension composition.
  */
+/**
+ * Intermediate frame that evaluates the array argument of parallel/race/settled.
+ * After the value arrives (should be an array of functions), creates branches
+ * and dispatches to the concurrent execution machinery.
+ */
+export interface ConcurrentArgFrame {
+  type: 'ConcurrentArg'
+  mode: 'parallel' | 'race' | 'settled'
+  env: ContextStack
+}
+
 export interface ParallelBranchContext {
   /** Index of this branch within the parallel/race expression */
   branchIndex: number
   /** Total number of branches */
   branchCount: number
-  /** Original AST nodes for ALL branches (needed for re-run on resume) */
-  branches: AstNode[]
-  /** Environment at the parallel/race call site (needed for re-run) */
+  /** Function values for ALL branches (needed for re-run on resume). Typed as unknown[]
+   *  to avoid circular dependency — actual values are DvalaFunction instances. */
+  branches: unknown[]
+  /** Environment at the parallel/race/settled call site */
   env: ContextStack
   /** Result collection strategy: parallel collects all, race picks first */
   mode: 'parallel' | 'race' | 'settled'
@@ -588,7 +600,9 @@ export interface ReRunParallelFrame {
   type: 'ReRunParallel'
   branchIndex: number
   branchCount: number
-  branches: AstNode[]
+  /** Function values for all branches */
+  branches: unknown[]
+  /** Environment at the parallel/race/settled call site */
   env: ContextStack
   mode: 'parallel' | 'race' | 'settled'
 }
@@ -609,11 +623,9 @@ export interface ResumeParallelFrame {
   type: 'ResumeParallel'
   branchIndex: number
   branchCount: number
-  /** Original AST nodes for all branches — needed for checkpoint composition
-   *  (if a checkpoint is taken inside a re-triggered sibling, the ReRunParallelFrame
-   *  must have the full branch ASTs for subsequent resume) */
-  branches: AstNode[]
-  /** Environment at the parallel/race call site — needed for checkpoint composition */
+  /** Function values for all branches */
+  branches: unknown[]
+  /** Environment at the parallel/race/settled call site */
   env: ContextStack
   completedBranches: { index: number; value: unknown }[]
   /** Sibling continuations truncated at the BarrierFrame (no barrier or outerK tail),
@@ -1025,7 +1037,8 @@ export type Frame =
   | SomePredFrame
   // Parallel resume
   | ParallelResumeFrame
-  // Parallel branch barrier and snapshot frames
+  // Parallel/race/settled argument evaluation + branch barrier + snapshot frames
+  | ConcurrentArgFrame
   | ParallelBranchBarrierFrame
   | ReRunParallelFrame
   | ResumeParallelFrame

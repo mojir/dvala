@@ -29,14 +29,13 @@ describe('step types', () => {
       Perform: true,
       Parallel: true,
       Race: true,
-      Settled: true,
       ParallelResume: true,
       BranchComplete: true,
       ReRunParallelExec: true,
       ResumeParallelExec: true,
       Error: true,
     }
-    expect(Object.keys(stepTypes)).toHaveLength(12)
+    expect(Object.keys(stepTypes)).toHaveLength(11)
   })
 
   it('should cover all step type discriminants exhaustively', () => {
@@ -48,7 +47,6 @@ describe('step types', () => {
         case 'Perform': return 'effect'
         case 'Parallel': return 'concurrent'
         case 'Race': return 'concurrent'
-        case 'Settled': return 'concurrent'
         case 'ParallelResume': return 'concurrent'
         case 'BranchComplete': return 'concurrent'
         case 'ReRunParallelExec': return 'concurrent'

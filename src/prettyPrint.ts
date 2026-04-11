@@ -266,11 +266,11 @@ function printNode(node: AstNode, ind: number, isRoot = false): string {
     case NodeTypes.TmplStr:
       return printTemplateString(payload as unknown[][])
     case NodeTypes.Parallel:
-      return printCommaSeparated('parallel', payload as unknown[][], ind)
+      return `parallel(${printNode(payload as AstNode, ind)})`
     case NodeTypes.Race:
-      return printCommaSeparated('race', payload as unknown[][], ind)
+      return `race(${printNode(payload as AstNode, ind)})`
     case NodeTypes.Settled:
-      return printCommaSeparated('settled', payload as unknown[][], ind)
+      return `settled(${printNode(payload as AstNode, ind)})`
     case NodeTypes.CodeTmpl:
       return printCodeTemplate(payload as [unknown[][], unknown[][]], ind)
     case NodeTypes.Splice:

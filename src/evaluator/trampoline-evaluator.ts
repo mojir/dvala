@@ -133,6 +133,7 @@ import type {
   FiniteCheckFrame,
   ObjectBuildFrame,
   OrFrame,
+  ConcurrentArgFrame,
   ParallelBranchBarrierFrame,
   ParallelBranchContext,
   ReRunParallelFrame,
@@ -356,16 +357,21 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       }
     }
     case NodeTypes.Parallel: {
-      const branches = node[1] as AstNode[]
-      return { type: 'Parallel', branches, env, k }
+      // Evaluate the single argument expression; a ConcurrentArgFrame catches
+      // the result and dispatches to executeParallelBranches.
+      const argExpr = node[1] as AstNode
+      const frame: ConcurrentArgFrame = { type: 'ConcurrentArg', mode: 'parallel', env }
+      return { type: 'Eval', node: argExpr, env, k: cons<Frame>(frame, k) }
     }
     case NodeTypes.Race: {
-      const branches = node[1] as AstNode[]
-      return { type: 'Race', branches, env, k }
+      const argExpr = node[1] as AstNode
+      const frame: ConcurrentArgFrame = { type: 'ConcurrentArg', mode: 'race', env }
+      return { type: 'Eval', node: argExpr, env, k: cons<Frame>(frame, k) }
     }
     case NodeTypes.Settled: {
-      const branches = node[1] as AstNode[]
-      return { type: 'Settled', branches, env, k }
+      const argExpr = node[1] as AstNode
+      const frame: ConcurrentArgFrame = { type: 'ConcurrentArg', mode: 'settled', env }
+      return { type: 'Eval', node: argExpr, env, k: cons<Frame>(frame, k) }
     }
     case NodeTypes.Perform: {
       const [effectExpr, payloadExpr] = node[1] as [AstNode, AstNode | undefined]
@@ -1431,6 +1437,28 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
     case 'ParallelResume':
       // Legacy frame type — no longer produced but may exist in old continuations
       throw new RuntimeError('ParallelResumeFrame is no longer supported. Snapshot format has changed.', undefined)
+    case 'ConcurrentArg': {
+      // The evaluated array of functions. Validate, then dispatch to concurrent execution.
+      if (!isPersistentVector(value)) {
+        throw new TypeError(`${frame.mode}: expected an array of functions, got ${typeof value}`, undefined)
+      }
+      const fns: unknown[] = []
+      let i = 0
+      for (const item of value) {
+        if (!isDvalaFunction(item as Any)) {
+          throw new TypeError(`${frame.mode}: branch at index ${i} is not a function`, undefined)
+        }
+        fns.push(item)
+        i++
+      }
+      if (fns.length === 0) {
+        throw new TypeError(`${frame.mode}: requires at least one branch`, undefined)
+      }
+      if (frame.mode === 'race') {
+        return { type: 'Race', branches: fns, env: frame.env, k }
+      }
+      return { type: 'Parallel', branches: fns, env: frame.env, k, mode: frame.mode }
+    }
     case 'ParallelBranchBarrier':
       // Branch completed — return BranchComplete step to exit the branch trampoline.
       // Do NOT flow into outerK; the parallel collector handles result aggregation.
@@ -3245,15 +3273,16 @@ function throwSuspension(k: ContinuationStack, meta?: unknown, effectName?: stri
 /**
  * Run a single trampoline branch to completion with effect handler support.
  *
- * This is the core building block for `parallel` and `race`. Each branch
- * runs as an independent trampoline invocation through `runEffectLoop`,
+ * This is the core building block for `parallel`, `race`, and `settled`.
+ * Each branch is a function value called with no arguments. The branch runs
+ * as an independent trampoline invocation through `runEffectLoop`,
  * producing a `RunResult` that is either `completed`, `suspended`, or `error`.
  *
  * The branch receives the same `handlers` and the given `signal`, allowing
  * the caller to cancel branches via AbortController.
  */
 async function runBranch(
-  node: AstNode,
+  branchFn: unknown,
   env: ContextStack,
   handlers: Handlers | undefined,
   signal: AbortSignal,
@@ -3266,7 +3295,10 @@ async function runBranch(
   // a BranchComplete step instead of continuing into outerK.
   const barrierFrame: ParallelBranchBarrierFrame = { type: 'ParallelBranchBarrier', branchCtx }
   const barrierK: ContinuationStack = cons<Frame>(barrierFrame, outerK)
-  const initial: Step = { type: 'Eval', node, env, k: barrierK }
+  // Call the branch function with no arguments
+  const initial: Step = dispatchFunction(
+    branchFn as FunctionLike, PersistentVector.empty(), [], env, undefined, barrierK,
+  ) as Step
 
   return runEffectLoop(
     initial,
@@ -3296,7 +3328,7 @@ async function runBranch(
  *   but errors take priority)
  */
 async function executeParallelBranches(
-  branches: AstNode[],
+  branches: unknown[],
   env: ContextStack,
   k: ContinuationStack,
   handlers: Handlers | undefined,
@@ -3409,7 +3441,7 @@ async function executeParallelBranches(
       env,
       completedBranches,
       suspendedBranches: siblingsSuspended,
-      mode: 'parallel',
+      mode,
     }
 
     // Rebuild the primary's continuation with the barrier replaced
@@ -3455,7 +3487,7 @@ async function executeParallelBranches(
  * - If all branches error, throw an aggregate error.
  */
 async function executeRaceBranches(
-  branches: AstNode[],
+  branches: unknown[],
   env: ContextStack,
   k: ContinuationStack,
   handlers: Handlers | undefined,
@@ -3598,10 +3630,10 @@ async function executeReRunParallel(
 
   // The resumed branch is now completed
   const allCompleted: { index: number; value: unknown }[] = [
-    { index: branchIndex, value: resumedBranchValue },
+    { index: branchIndex, value: mode === 'settled' ? wrapSettledOk(resumedBranchValue) : resumedBranchValue },
   ]
 
-  // Re-run all sibling branches from their original AST
+  // Re-run all sibling branches by calling stored function values
   const parallelAbort = new AbortController()
   const effectSignal = signal
     ? combineSignals(signal, parallelAbort.signal)
@@ -3619,7 +3651,7 @@ async function executeReRunParallel(
       mode,
     }
     siblingPromises.push((async () => {
-      const result = await runBranch(branches[i]!, env, handlers, effectSignal, outerK, branchCtx, snapshotState)
+      const result = await runBranch(branches[i], env, handlers, effectSignal, outerK, branchCtx, snapshotState)
       if (result.type === 'suspended') {
         parallelAbort.abort()
       }
@@ -3756,12 +3788,12 @@ async function executeResumeParallel(
   snapshotState?: SnapshotState,
 ): Promise<Step> {
   const { resumedBranchValue, frame, k: outerK } = step
-  const { branchIndex, branchCount, completedBranches, suspendedBranches, mode } = frame
+  const { branchIndex, branchCount, branches, env, completedBranches, suspendedBranches, mode } = frame
 
   // The resumed branch is now completed
   const allCompleted: { index: number; value: unknown }[] = [
     ...completedBranches,
-    { index: branchIndex, value: resumedBranchValue },
+    { index: branchIndex, value: mode === 'settled' ? wrapSettledOk(resumedBranchValue) : resumedBranchValue },
   ]
 
   // If no suspended siblings, all branches are done
@@ -3781,8 +3813,8 @@ async function executeResumeParallel(
     const branchCtx: ParallelBranchContext = {
       branchIndex: sibling.index,
       branchCount,
-      branches: frame.branches,
-      env: frame.env,
+      branches,
+      env,
       mode,
     }
     const barrierFrame: ParallelBranchBarrierFrame = { type: 'ParallelBranchBarrier', branchCtx }
@@ -3880,8 +3912,8 @@ async function executeResumeParallel(
       type: 'ResumeParallel',
       branchIndex: primary.index,
       branchCount,
-      branches: frame.branches,
-      env: frame.env,
+      branches,
+      env,
       completedBranches: allCompleted,
       suspendedBranches: newSuspended.slice(1).map(s => ({
         index: s.index,
@@ -5200,11 +5232,9 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'Perform':
         return dispatchPerform(step.effect, step.arg, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
       case 'Parallel':
-        return executeParallelBranches(step.branches, step.env, step.k, handlers, signal, snapshotState)
+        return executeParallelBranches(step.branches, step.env, step.k, handlers, signal, snapshotState, step.mode)
       case 'Race':
         return executeRaceBranches(step.branches, step.env, step.k, handlers, signal, snapshotState)
-      case 'Settled':
-        return executeParallelBranches(step.branches, step.env, step.k, handlers, signal, snapshotState, 'settled')
       case 'ParallelResume':
         throw new RuntimeError('ParallelResumeStep is no longer supported.', undefined)
       case 'BranchComplete':

@@ -211,12 +211,10 @@ describe('prettyPrint — recur / parallel / race', () => {
     expect(result).toContain('recur(')
   })
   it('parallel', () => {
-    const ast = ['Parallel', [['Num', 1, 0], ['Num', 2, 0]], 0]
-    expect(prettyPrint(ast)).toBe('parallel(1, 2)')
+    expect(pp('parallel([-> 1, -> 2])')).toBe('parallel([-> 1, -> 2])')
   })
   it('race', () => {
-    const ast = ['Race', [['Num', 1, 0], ['Num', 2, 0]], 0]
-    expect(prettyPrint(ast)).toBe('race(1, 2)')
+    expect(pp('race([-> 1, -> 2])')).toBe('race([-> 1, -> 2])')
   })
 })
 

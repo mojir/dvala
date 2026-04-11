@@ -115,13 +115,9 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
     case NodeTypes.Parallel:
     case NodeTypes.Race:
     case NodeTypes.Settled: {
-      const branches = node[1] as AstNode[]
-      const unresolvedSymbols = new Set<string>()
-      for (const branch of branches) {
-        getUndefinedSymbols([branch], contextStack, builtin)
-          ?.forEach(symbol => unresolvedSymbols.add(symbol))
-      }
-      return unresolvedSymbols
+      // Single argument expression (the array of functions)
+      const argExpr = node[1] as AstNode
+      return getUndefinedSymbols([argExpr], contextStack, builtin)
     }
     case NodeTypes.Perform: {
       const [effectExpr, payloadExpr] = node[1] as [AstNode, AstNode | undefined]

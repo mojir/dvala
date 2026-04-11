@@ -33,7 +33,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
       let hostHandlerCalled = false
 
       const result = await dvala.runAsync(
-        'do with handler @test.eff(x) -> resume(x * 100) end; parallel(perform(@test.eff, 5), 10) end',
+        'do with handler @test.eff(x) -> resume(x * 100) end; parallel([-> perform(@test.eff, 5), -> 10]) end',
         {
           effectHandlers: [
             {
@@ -60,7 +60,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
       // Handlers defined inside a branch should work normally — the BarrierFrame
       // only blocks propagation OUT, not within the branch.
       const result = await dvala.runAsync(
-        'parallel(do with handler @inner.eff(x) -> resume(x * 2) end; perform(@inner.eff, 21) end, 42)',
+        'parallel([-> do with handler @inner.eff(x) -> resume(x * 2) end; perform(@inner.eff, 21) end, -> 42])',
       )
 
       expect(result.type).toBe('completed')
@@ -74,7 +74,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
       // Errors inside branches should produce branch-level errors, not propagate
       // to outer algebraic @dvala.error handlers.
       const result = await dvala.runAsync(
-        'do with handler @dvala.error(e) -> resume("caught-outer") end; parallel(throw("branch-error"), 10) end',
+        'do with handler @dvala.error(e) -> resume("caught-outer") end; parallel([-> throw("branch-error"), -> 10]) end',
       )
 
       // The error should NOT be caught by the outer handler — it should
@@ -85,7 +85,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
     it('dvala.error handler INSIDE a branch catches errors within that branch', async () => {
       // Error handlers inside a branch work normally.
       const result = await dvala.runAsync(
-        'parallel(do with handler @dvala.error(e) -> resume("caught-inner") end; throw("branch-error") end, 42)',
+        'parallel([-> do with handler @dvala.error(e) -> resume("caught-inner") end; throw("branch-error") end, -> 42])',
       )
 
       expect(result.type).toBe('completed')
@@ -97,7 +97,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
 
   describe('branch completion through BarrierFrame', () => {
     it('pure-computation branches complete correctly', async () => {
-      const result = await dvala.runAsync('parallel(1 + 2, 3 * 4, 5 + 5)')
+      const result = await dvala.runAsync('parallel([-> 1 + 2, -> 3 * 4, -> 5 + 5])')
 
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
@@ -107,7 +107,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
 
     it('branches with host effects complete correctly', async () => {
       const result = await dvala.runAsync(
-        'parallel(perform(@val, "a"), perform(@val, "b"))',
+        'parallel([-> perform(@val, "a"), -> perform(@val, "b")])',
         {
           effectHandlers: [
             { pattern: 'val', handler: async ({ arg, resume }) => { resume(`got-${arg}`) } },
@@ -123,7 +123,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
 
     it('mixed completion and suspension works', async () => {
       const result = await dvala.runAsync(
-        'parallel(42, perform(@slow, "x"))',
+        'parallel([-> 42, -> perform(@slow, "x")])',
         {
           effectHandlers: [
             { pattern: 'slow', handler: async ({ suspend }) => { suspend() } },
@@ -136,7 +136,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
 
     it('all branches suspended produces a suspension', async () => {
       const result = await dvala.runAsync(
-        'parallel(perform(@wait, "a"), perform(@wait, "b"))',
+        'parallel([-> perform(@wait, "a"), -> perform(@wait, "b")])',
         {
           effectHandlers: [
             { pattern: 'wait', handler: async ({ suspend }) => { suspend() } },
@@ -156,7 +156,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
       let branchExecutionId: string | undefined
 
       const result = await dvala.runAsync(
-        'parallel(perform(@check.id), 1)',
+        'parallel([-> perform(@check.id), -> 1])',
         {
           effectHandlers: [
             {
@@ -183,7 +183,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
       let branchSnapshotCount = 0
 
       const result = await dvala.runAsync(
-        'perform(@outer, null); parallel(perform(@inner), 1)',
+        'perform(@outer, null); parallel([-> perform(@inner), -> 1])',
         {
           effectHandlers: [
             { pattern: 'outer', handler: async ({ resume }) => { resume(null) } },
@@ -210,7 +210,7 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
       const snapshotsSeenLater: string[] = []
 
       const result = await dvala.runAsync(
-        'parallel(perform(@branch), 1); perform(@after)',
+        'parallel([-> perform(@branch), -> 1]); perform(@after)',
         {
           effectHandlers: [
             {
@@ -248,7 +248,7 @@ describe('Phase 2: Checkpoint composition', () => {
     let branchCheckpoint: Snapshot | undefined
 
     const result1 = await dvala.runAsync(
-      'parallel(perform(@task, "a"), perform(@task, "b"))',
+      'parallel([-> perform(@task, "a"), -> perform(@task, "b")])',
       {
         effectHandlers: [
           {
@@ -300,7 +300,7 @@ describe('Phase 2: Checkpoint composition', () => {
     let checkpoint1: Snapshot | undefined
 
     const result1 = await dvala.runAsync(
-      'parallel(perform(@cp, "a"), perform(@slow, "b"))',
+      'parallel([-> perform(@cp, "a"), -> perform(@slow, "b")])',
       {
         effectHandlers: [
           {
@@ -342,7 +342,7 @@ describe('Phase 2: Checkpoint composition', () => {
     // Inside a parallel branch, these should be full-program continuations.
     const dvalaAuto = createDvala()
     const result = await dvalaAuto.runAsync(
-      'parallel(perform(@eff, "x"), 42)',
+      'parallel([-> perform(@eff, "x"), -> 42])',
       {
         effectHandlers: [
           { pattern: 'eff', handler: async ({ resume }) => { resume('got-x') } },
@@ -375,7 +375,7 @@ describe('Phase 3: Resume logic', () => {
     ]
 
     const r1 = await dvala.runAsync(
-      'parallel(perform(@task, "A"), perform(@task, "B"), perform(@task, "C"))',
+      'parallel([-> perform(@task, "A"), -> perform(@task, "B"), -> perform(@task, "C")])',
       { effectHandlers: handlers },
     )
     expect(r1.type).toBe('suspended')
@@ -400,7 +400,7 @@ describe('Phase 3: Resume logic', () => {
   it('ResumeParallelFrame: sibling re-suspends during resume', async () => {
     // All branches suspend. Resume A. B re-suspends, C completes.
     const r1 = await dvala.runAsync(
-      'parallel(perform(@task, "A"), perform(@task, "B"), perform(@task, "C"))',
+      'parallel([-> perform(@task, "A"), -> perform(@task, "B"), -> perform(@task, "C")])',
       {
         effectHandlers: [
           { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
@@ -437,7 +437,7 @@ describe('Phase 3: Resume logic', () => {
     let bCallCount = 0
 
     const r1 = await dvala.runAsync(
-      'parallel(perform(@cp.branch, "a"), perform(@simple, "b"))',
+      'parallel([-> perform(@cp.branch, "a"), -> perform(@simple, "b")])',
       {
         effectHandlers: [
           {
@@ -484,7 +484,7 @@ describe('Phase 3: Resume logic', () => {
   it('retrigger works with new ResumeParallelFrame', async () => {
     // Verify the retrigger path works with the new frame types
     const r1 = await dvala.runAsync(
-      'parallel(perform(@task, "A"), 42)',
+      'parallel([-> perform(@task, "A"), -> 42])',
       {
         effectHandlers: [
           { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
@@ -508,7 +508,7 @@ describe('Phase 3: Resume logic', () => {
   it('multi-shot: host resumes same composed snapshot twice independently', async () => {
     // Each resume from the same snapshot should run independently.
     const r1 = await dvala.runAsync(
-      'parallel(perform(@task, "A"), perform(@task, "B"))',
+      'parallel([-> perform(@task, "A"), -> perform(@task, "B")])',
       {
         effectHandlers: [
           { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
@@ -539,7 +539,7 @@ describe('Phase 3: Resume logic', () => {
     // A handler inside a branch that calls resume() multiple times should
     // work the same as without the BarrierFrame.
     const result = await dvala.runAsync(
-      'parallel(do with handler @choose(opts) -> reduce(opts, (acc, x) -> [...acc, resume(x)], []) end; perform(@choose, [1, 2, 3]) end, 42)',
+      'parallel([-> do with handler @choose(opts) -> reduce(opts, (acc, x) -> [...acc, resume(x)], []) end; perform(@choose, [1, 2, 3]) end, -> 42])',
     )
 
     expect(result.type).toBe('completed')
@@ -553,7 +553,7 @@ describe('Phase 3: Resume logic', () => {
     let cp: Snapshot | undefined
 
     await dvala.runAsync(
-      'parallel(do with handler @local.eff(x) -> resume(x * 10) end; let r = perform(@trigger); perform(@local.eff, r) end, 1)',
+      'parallel([-> do with handler @local.eff(x) -> resume(x * 10) end; let r = perform(@trigger); perform(@local.eff, r) end, -> 1])',
       {
         effectHandlers: [
           {
@@ -589,13 +589,13 @@ describe('Phase 3: Resume logic', () => {
 // ---------------------------------------------------------------------------
 
 describe('Nested parallel and time travel', () => {
-  it('nested parallel(parallel(...), ...) checkpoint composition', async () => {
+  it('nested parallel([-> parallel([...]), -> ...]) checkpoint composition', async () => {
     // Checkpoint inside an inner parallel branch should compose through
     // both levels: inner ReRunFrame → outer ReRunFrame → outerK
     let innerCp: Snapshot | undefined
 
     const r1 = await dvala.runAsync(
-      'parallel(parallel(perform(@inner, "a"), perform(@inner, "b")), perform(@outer, "c"))',
+      'parallel([-> parallel([-> perform(@inner, "a"), -> perform(@inner, "b")]), -> perform(@outer, "c")])',
       {
         effectHandlers: [
           {
@@ -641,7 +641,7 @@ describe('Nested parallel and time travel', () => {
     let preParallelCp: Snapshot | undefined
 
     const r1 = await dvala.runAsync(
-      'perform(@setup); parallel(perform(@task, "a"), perform(@task, "b"))',
+      'perform(@setup); parallel([-> perform(@task, "a"), -> perform(@task, "b")])',
       {
         effectHandlers: [
           {
@@ -687,7 +687,7 @@ describe('Nested parallel and time travel', () => {
 describe('Phase 5: Race-specific', () => {
   it('race suspension: resume completes race (first wins)', async () => {
     const r1 = await dvala.runAsync(
-      'race(perform(@slow.a), perform(@slow.b))',
+      'race([-> perform(@slow.a), -> perform(@slow.b)])',
       {
         effectHandlers: [
           { pattern: 'slow.a', handler: async ({ suspend }: any) => { suspend({ branch: 'A' }) } },
@@ -714,7 +714,7 @@ describe('Phase 5: Race-specific', () => {
 
   it('race re-suspension: all branches re-suspend', async () => {
     const r1 = await dvala.runAsync(
-      'race(perform(@task, "A"), perform(@task, "B"))',
+      'race([-> perform(@task, "A"), -> perform(@task, "B")])',
       {
         effectHandlers: [
           { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
@@ -745,7 +745,7 @@ describe('Phase 5: Race-specific', () => {
     let cp: Snapshot | undefined
 
     const r1 = await dvala.runAsync(
-      'race(perform(@fast), perform(@slow))',
+      'race([-> perform(@fast), -> perform(@slow)])',
       {
         effectHandlers: [
           {
@@ -785,7 +785,7 @@ describe('Phase 5: Race-specific', () => {
     // All branches suspend. Resume primary. All siblings re-suspend.
     // The race should re-suspend with a new ResumeParallelFrame.
     const r1 = await dvala.runAsync(
-      'race(perform(@task, "A"), perform(@task, "B"), perform(@task, "C"))',
+      'race([-> perform(@task, "A"), -> perform(@task, "B"), -> perform(@task, "C")])',
       {
         effectHandlers: [
           { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
@@ -825,7 +825,7 @@ describe('Phase 5: Race-specific', () => {
 
     // Step 1: All branches suspend
     const r1 = await dvala.runAsync(
-      'parallel(perform(@task, "A"), perform(@task, "B"))',
+      'parallel([-> perform(@task, "A"), -> perform(@task, "B")])',
       {
         effectHandlers: [
           { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
@@ -885,7 +885,7 @@ describe('Phase 5: Race-specific', () => {
 
     // Step 1: Branch A takes a checkpoint. All branches complete.
     await dvala.runAsync(
-      'parallel(perform(@cp.branch, "A"), perform(@sibling, "B"), perform(@sibling, "C"))',
+      'parallel([-> perform(@cp.branch, "A"), -> perform(@sibling, "B"), -> perform(@sibling, "C")])',
       {
         effectHandlers: [
           {
@@ -947,7 +947,7 @@ describe('Phase 5: Race-specific', () => {
     let preParallelCp: Snapshot | undefined
 
     const r1 = await dvala.runAsync(
-      'perform(@setup); parallel(perform(@task, "A"), perform(@task, "B"))',
+      'perform(@setup); parallel([-> perform(@task, "A"), -> perform(@task, "B")])',
       {
         effectHandlers: [
           {
@@ -992,7 +992,7 @@ describe('Phase 5: Race-specific', () => {
     let hostHandlerCalled = false
 
     await dvala.runAsync(
-      'do with handler @leak.eff(x) -> resume("LEAKED") end; parallel(do let tmp = perform(@cp.task); perform(@leak.eff, 42) end, 1) end',
+      'do with handler @leak.eff(x) -> resume("LEAKED") end; parallel([-> do let tmp = perform(@cp.task); perform(@leak.eff, 42) end, -> 1]) end',
       {
         effectHandlers: [
           {
@@ -1053,7 +1053,7 @@ describe('Phase 5: Race-specific', () => {
     // snapshot should contain the branch's checkpoint in its history.
 
     const r1 = await dvala.runAsync(
-      'parallel(perform(@branch.task, "A"), perform(@branch.task, "B"))',
+      'parallel([-> perform(@branch.task, "A"), -> perform(@branch.task, "B")])',
       {
         effectHandlers: [
           {
@@ -1098,7 +1098,7 @@ describe('Phase 5: Race-specific', () => {
     // share the same index.
 
     const r1 = await dvala.runAsync(
-      'parallel(perform(@branch.task, "A"), perform(@branch.task, "B"))',
+      'parallel([-> perform(@branch.task, "A"), -> perform(@branch.task, "B")])',
       {
         effectHandlers: [
           {
@@ -1141,7 +1141,7 @@ describe('Phase 5: Race-specific', () => {
 
     // All 3 branches suspend. Host gets a snapshot.
     const r1 = await dvala.runAsync(
-      'parallel(perform(@task, "A"), perform(@task, "B"), perform(@task, "C"))',
+      'parallel([-> perform(@task, "A"), -> perform(@task, "B"), -> perform(@task, "C")])',
       {
         effectHandlers: [
           { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
@@ -1169,12 +1169,12 @@ describe('Phase 5: Race-specific', () => {
   })
 
   it('nested parallel: re-run sibling that is itself a parallel', async () => {
-    // Branch A takes a checkpoint. Branch B is parallel(b1, b2).
+    // Branch A takes a checkpoint. Branch B is parallel([-> b1, -> b2]).
     // Resume from A's checkpoint → B is re-run from AST → inner parallel runs.
     let cp: Snapshot | undefined
 
     const r1 = await dvala.runAsync(
-      'parallel(perform(@cp.task), parallel(perform(@inner, "b1"), perform(@inner, "b2")))',
+      'parallel([-> perform(@cp.task), -> parallel([-> perform(@inner, "b1"), -> perform(@inner, "b2")])])',
       {
         effectHandlers: [
           {
@@ -1195,7 +1195,7 @@ describe('Phase 5: Race-specific', () => {
     }
     expect(cp).toBeDefined()
 
-    // Resume from checkpoint — sibling is parallel(b1, b2), re-run from AST
+    // Resume from checkpoint — sibling is parallel([-> b1, -> b2]), re-run from AST
     const r2 = await resumeContinuation(cp!, 'replayed-a', {
       handlers: [
         { pattern: 'inner', handler: async ({ arg, resume }: any) => { resume(`re-${arg}`) } },
@@ -1220,7 +1220,7 @@ describe('Phase 5: Race-specific', () => {
 
     // Step 1: All 3 branches suspend
     const r1 = await dvala.runAsync(
-      'parallel(perform(@task, "A"), perform(@task, "B"), perform(@task, "C"))',
+      'parallel([-> perform(@task, "A"), -> perform(@task, "B"), -> perform(@task, "C")])',
       {
         effectHandlers: [
           { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
@@ -1267,7 +1267,7 @@ describe('Phase 5: Race-specific', () => {
 
     // Step 1: Branch A takes a checkpoint, all complete.
     await dvala.runAsync(
-      'parallel(perform(@cp.task, "A"), perform(@sib, "B"))',
+      'parallel([-> perform(@cp.task, "A"), -> perform(@sib, "B")])',
       {
         effectHandlers: [
           {
@@ -1314,7 +1314,7 @@ describe('Phase 5: Race-specific', () => {
 
     let callCount = 0
     const result = await dvala.runAsync(
-      'perform(@setup); parallel(perform(@branch.task), 100)',
+      'perform(@setup); parallel([-> perform(@branch.task), -> 100])',
       {
         effectHandlers: [
           {
@@ -1350,7 +1350,7 @@ describe('Phase 5: Race-specific', () => {
 
   it('race: retrigger works with new frame types', async () => {
     const r1 = await dvala.runAsync(
-      'race(perform(@task, "A"), perform(@task, "B"))',
+      'race([-> perform(@task, "A"), -> perform(@task, "B")])',
       {
         effectHandlers: [
           { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
