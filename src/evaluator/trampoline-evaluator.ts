@@ -3718,7 +3718,9 @@ async function executeReRunParallel(
   }
 
   // If siblings suspended, compose a ResumeParallelFrame (upgrade Tier 1 → Tier 2)
-  if (newSuspended.length > 0 && (mode === 'parallel' || allCompleted.length === 0)) {
+  // Re-suspend if any siblings are still running. Parallel and settled wait for ALL
+  // branches; race only re-suspends if no branch has completed yet (first wins).
+  if (newSuspended.length > 0 && (mode !== 'race' || allCompleted.length === 0)) {
     const primary = newSuspended[0]!
     const newFrame: ResumeParallelFrame = {
       type: 'ResumeParallel',
@@ -3914,7 +3916,9 @@ async function executeResumeParallel(
   }
 
   // If siblings re-suspended (and not a race with a winner), compose a new ResumeParallelFrame
-  if (newSuspended.length > 0 && (mode === 'parallel' || allCompleted.length === 0)) {
+  // Re-suspend if any siblings are still running. Parallel and settled wait for ALL
+  // branches; race only re-suspends if no branch has completed yet (first wins).
+  if (newSuspended.length > 0 && (mode !== 'race' || allCompleted.length === 0)) {
     const primary = newSuspended[0]!
     const newFrame: ResumeParallelFrame = {
       type: 'ResumeParallel',
