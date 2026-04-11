@@ -363,6 +363,10 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       const branches = node[1] as AstNode[]
       return { type: 'Race', branches, env, k }
     }
+    case NodeTypes.Settled: {
+      const branches = node[1] as AstNode[]
+      return { type: 'Settled', branches, env, k }
+    }
     case NodeTypes.Perform: {
       const [effectExpr, payloadExpr] = node[1] as [AstNode, AstNode | undefined]
       const sourceCodeInfo = env.resolve(node[2])
@@ -2187,6 +2191,25 @@ function buildErrorPayload(error: DvalaError): Obj {
   return payload
 }
 
+// -- Settled mode helpers: wrap results as [:ok, value] or [:error, errorPayload] --
+
+function makeAtom(name: string): Atom {
+  const atom: Atom = { [ATOM_SYMBOL]: true, name }
+  Object.defineProperty(atom, Symbol.for('nodejs.util.inspect.custom'), {
+    value: () => `:${name}`,
+    enumerable: false,
+  })
+  return atom
+}
+
+function wrapSettledOk(value: unknown): Arr {
+  return PersistentVector.from([makeAtom('ok'), value])
+}
+
+function wrapSettledError(error: DvalaError): Arr {
+  return PersistentVector.from([makeAtom('error'), buildErrorPayload(error) as unknown])
+}
+
 /**
  * Validate and normalize a manual perform(@dvala.error, payload).
  * Returns the normalized payload or throws TypeError if invalid.
@@ -3279,6 +3302,7 @@ async function executeParallelBranches(
   handlers: Handlers | undefined,
   signal: AbortSignal | undefined,
   snapshotState?: SnapshotState,
+  mode: 'parallel' | 'settled' = 'parallel',
 ): Promise<Step> {
   // AbortController for this parallel group — aborted when any branch suspends,
   // which signals remaining effect handlers to auto-suspend via ctx.signal.
@@ -3297,7 +3321,7 @@ async function executeParallelBranches(
       branchCount: branches.length,
       branches,
       env,
-      mode: 'parallel',
+      mode,
     }
     const result = await runBranch(branch, env, handlers, effectSignal, k, branchCtx, snapshotState)
     if (result.type === 'suspended') {
@@ -3313,28 +3337,39 @@ async function executeParallelBranches(
   const suspendedBranches: { index: number; result: RunResult & { type: 'suspended' } }[] = []
   const errors: DvalaError[] = []
 
-  for (const settled of results) {
-    if (settled.status === 'rejected') {
+  for (const settledResult of results) {
+    if (settledResult.status === 'rejected') {
       // branchPromises should never reject, but handle defensively
-      errors.push(new DvalaError(`${settled.reason}`, undefined))
+      if (mode === 'settled') {
+        // In settled mode, wrap rejected promises as [:error, payload]
+        const err = new DvalaError(`${settledResult.reason}`, undefined)
+        completedBranches.push({ index: -1, value: wrapSettledError(err) })
+      } else {
+        errors.push(new DvalaError(`${settledResult.reason}`, undefined))
+      }
     } else {
-      const { index, result } = settled.value
+      const { index, result } = settledResult.value
       switch (result.type) {
         case 'completed':
-          completedBranches.push({ index, value: result.value })
+          completedBranches.push({ index, value: mode === 'settled' ? wrapSettledOk(result.value) : result.value })
           break
         case 'suspended':
           suspendedBranches.push({ index, result })
           break
         case 'error':
-          errors.push(result.error)
+          if (mode === 'settled') {
+            // In settled mode, wrap errors as [:error, errorPayload] results
+            completedBranches.push({ index, value: wrapSettledError(result.error) })
+          } else {
+            errors.push(result.error)
+          }
           break
       }
     }
   }
 
-  // If any branch errored, throw the first error
-  if (errors.length > 0) {
+  // In parallel mode, throw on first error. Settled never throws.
+  if (mode !== 'settled' && errors.length > 0) {
     throw errors[0]!
   }
 
@@ -3592,20 +3627,25 @@ async function executeReRunParallel(
     })())
   }
 
-  const settled = await Promise.allSettled(siblingPromises)
+  const reRunSettled = await Promise.allSettled(siblingPromises)
 
   // Collect results — track snapshots for the primary suspended sibling
   // so the composed timeline includes branch-local checkpoints.
   const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
   const errors: DvalaError[] = []
 
-  for (const s of settled) {
+  for (const s of reRunSettled) {
     if (s.status === 'rejected') {
-      errors.push(new DvalaError(`${s.reason}`, undefined))
+      const err = new DvalaError(`${s.reason}`, undefined)
+      if (mode === 'settled') {
+        allCompleted.push({ index: -1, value: wrapSettledError(err) })
+      } else {
+        errors.push(err)
+      }
     } else {
       const { index, result } = s.value
       if (result.type === 'completed') {
-        allCompleted.push({ index, value: result.value })
+        allCompleted.push({ index, value: mode === 'settled' ? wrapSettledOk(result.value) : result.value })
       } else if (result.type === 'suspended' && result._rawSuspension) {
         const raw = result._rawSuspension
         newSuspended.push({
@@ -3617,12 +3657,16 @@ async function executeReRunParallel(
           nextSnapshotIndex: raw.nextSnapshotIndex,
         })
       } else if (result.type === 'error') {
-        errors.push(result.error)
+        if (mode === 'settled') {
+          allCompleted.push({ index, value: wrapSettledError(result.error) })
+        } else {
+          errors.push(result.error)
+        }
       }
     }
   }
 
-  // Error handling: parallel throws on first error, race drops errors silently
+  // Error handling: parallel throws on first error, race drops errors silently, settled never throws
   if (mode === 'parallel' && errors.length > 0) {
     throw errors[0]!
   }
@@ -3679,7 +3723,7 @@ async function executeReRunParallel(
 function buildParallelResult(
   completed: { index: number; value: unknown }[],
   branchCount: number,
-  mode: 'parallel' | 'race',
+  mode: 'parallel' | 'race' | 'settled',
   outerK: ContinuationStack,
 ): Step {
   if (mode === 'race') {
@@ -3782,19 +3826,24 @@ async function executeResumeParallel(
     return { index: sibling.index, result }
   })
 
-  const settled = await Promise.allSettled(siblingPromises)
+  const resumeSettled = await Promise.allSettled(siblingPromises)
 
   // Collect results — track snapshots for the primary suspended sibling
   const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
   const errors: DvalaError[] = []
 
-  for (const s of settled) {
+  for (const s of resumeSettled) {
     if (s.status === 'rejected') {
-      errors.push(new DvalaError(`${s.reason}`, undefined))
+      const err = new DvalaError(`${s.reason}`, undefined)
+      if (mode === 'settled') {
+        allCompleted.push({ index: -1, value: wrapSettledError(err) })
+      } else {
+        errors.push(err)
+      }
     } else {
       const { index, result } = s.value
       if (result.type === 'completed') {
-        allCompleted.push({ index, value: result.value })
+        allCompleted.push({ index, value: mode === 'settled' ? wrapSettledOk(result.value) : result.value })
       } else if (result.type === 'suspended' && result._rawSuspension) {
         const raw = result._rawSuspension
         newSuspended.push({
@@ -3806,12 +3855,16 @@ async function executeResumeParallel(
           nextSnapshotIndex: raw.nextSnapshotIndex,
         })
       } else if (result.type === 'error') {
-        errors.push(result.error)
+        if (mode === 'settled') {
+          allCompleted.push({ index, value: wrapSettledError(result.error) })
+        } else {
+          errors.push(result.error)
+        }
       }
     }
   }
 
-  // Error handling: parallel throws on first error, race drops errors silently
+  // Error handling: parallel throws on first error, race drops errors silently, settled never throws
   if (mode === 'parallel' && errors.length > 0) {
     throw errors[0]!
   }
@@ -5150,6 +5203,8 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
         return executeParallelBranches(step.branches, step.env, step.k, handlers, signal, snapshotState)
       case 'Race':
         return executeRaceBranches(step.branches, step.env, step.k, handlers, signal, snapshotState)
+      case 'Settled':
+        return executeParallelBranches(step.branches, step.env, step.k, handlers, signal, snapshotState, 'settled')
       case 'ParallelResume':
         throw new RuntimeError('ParallelResumeStep is no longer supported.', undefined)
       case 'BranchComplete':

@@ -134,6 +134,17 @@ export interface RaceStep {
 }
 
 /**
+ * Settled: run all branches concurrently, wrap each result as [:ok, value] or [:error, error].
+ * Never throws — all errors are captured as tagged results.
+ */
+export interface SettledStep {
+  type: 'Settled'
+  branches: AstNode[]
+  env: ContextStack
+  k: ContinuationStack
+}
+
+/**
  * A parallel resumption is in progress.
  *
  * Created when a `ParallelResumeFrame` receives a value (the resume result
@@ -236,6 +247,7 @@ export type Step =
   | PerformStep
   | ParallelStep
   | RaceStep
+  | SettledStep
   | ParallelResumeStep
   | ReRunParallelExecStep
   | ResumeParallelExecStep

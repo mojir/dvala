@@ -16,6 +16,7 @@ import { importSpecialExpression } from './specialExpressions/import'
 import { parallelSpecialExpression } from './specialExpressions/parallel'
 import { performSpecialExpression } from './specialExpressions/perform'
 import { raceSpecialExpression } from './specialExpressions/race'
+import { settledSpecialExpression } from './specialExpressions/settled'
 import { specialExpressionTypes } from './specialExpressionTypes'
 
 export const specialExpressions = {
@@ -35,6 +36,7 @@ export const specialExpressions = {
   [specialExpressionTypes.perform]: performSpecialExpression,
   [specialExpressionTypes.parallel]: parallelSpecialExpression,
   [specialExpressionTypes.race]: raceSpecialExpression,
+  [specialExpressionTypes.settled]: settledSpecialExpression,
 } as const
 
 export type SpecialExpressions = typeof specialExpressions

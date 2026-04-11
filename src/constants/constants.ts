@@ -22,6 +22,7 @@ export const NodeTypes = {
   Array: 'Array',
   Parallel: 'Parallel',
   Race: 'Race',
+  Settled: 'Settled',
   Perform: 'Perform',
   Object: 'Object',
   Function: 'Function',

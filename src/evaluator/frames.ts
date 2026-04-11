@@ -541,7 +541,7 @@ export interface ParallelBranchContext {
   /** Environment at the parallel/race call site (needed for re-run) */
   env: ContextStack
   /** Result collection strategy: parallel collects all, race picks first */
-  mode: 'parallel' | 'race'
+  mode: 'parallel' | 'race' | 'settled'
 }
 
 // ---------------------------------------------------------------------------
@@ -590,7 +590,7 @@ export interface ReRunParallelFrame {
   branchCount: number
   branches: AstNode[]
   env: ContextStack
-  mode: 'parallel' | 'race'
+  mode: 'parallel' | 'race' | 'settled'
 }
 
 /**
@@ -619,7 +619,7 @@ export interface ResumeParallelFrame {
   /** Sibling continuations truncated at the BarrierFrame (no barrier or outerK tail),
    *  plus captured effect info for re-triggering on resume */
   suspendedBranches: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any }[]
-  mode: 'parallel' | 'race'
+  mode: 'parallel' | 'race' | 'settled'
 }
 
 // ---------------------------------------------------------------------------

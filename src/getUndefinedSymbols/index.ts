@@ -113,7 +113,8 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
       return getUndefinedSymbols(node[1] as AstNode[], contextStack, builtin)
     }
     case NodeTypes.Parallel:
-    case NodeTypes.Race: {
+    case NodeTypes.Race:
+    case NodeTypes.Settled: {
       const branches = node[1] as AstNode[]
       const unresolvedSymbols = new Set<string>()
       for (const branch of branches) {

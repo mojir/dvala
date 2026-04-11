@@ -103,6 +103,12 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       ctx.setNodeEnd(node[2])
       return node
     }
+    if (specialExpressionType === specialExpressionTypes.settled) {
+      assertNumberOfParams({ min: 1 }, params.length, symbolSci)
+      const node = withSourceCodeInfo([NodeTypes.Settled, params, 0], symbolDebugInfo, ctx) as unknown as AstNode
+      ctx.setNodeEnd(node[2])
+      return node
+    }
     if (specialExpressionType === specialExpressionTypes.perform) {
       assertNumberOfParams({ min: 1, max: 2 }, params.length, symbolSci)
       const [effectExpr, payloadExpr] = params
@@ -148,6 +154,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       | typeof specialExpressionTypes.object
       | typeof specialExpressionTypes.parallel
       | typeof specialExpressionTypes.race
+      | typeof specialExpressionTypes.settled
     >
     const specialExpression: SpecialExpression = builtin.specialExpressions[type]
     assertNumberOfParams(specialExpression.arity, params.length, symbolSci)

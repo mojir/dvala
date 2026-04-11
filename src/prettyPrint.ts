@@ -32,6 +32,7 @@ const NodeTypes = {
   Array: 'Array',
   Parallel: 'Parallel',
   Race: 'Race',
+  Settled: 'Settled',
   Perform: 'Perform',
   Object: 'Object',
   Function: 'Function',
@@ -268,6 +269,8 @@ function printNode(node: AstNode, ind: number, isRoot = false): string {
       return printCommaSeparated('parallel', payload as unknown[][], ind)
     case NodeTypes.Race:
       return printCommaSeparated('race', payload as unknown[][], ind)
+    case NodeTypes.Settled:
+      return printCommaSeparated('settled', payload as unknown[][], ind)
     case NodeTypes.CodeTmpl:
       return printCodeTemplate(payload as [unknown[][], unknown[][]], ind)
     case NodeTypes.Splice:
