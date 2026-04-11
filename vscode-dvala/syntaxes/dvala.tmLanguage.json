@@ -10,6 +10,7 @@
     { "include": "#strings" },
     { "include": "#regexp-shorthand" },
     { "include": "#effect-names" },
+    { "include": "#atoms" },
     { "include": "#numeric-constants" },
     { "include": "#numbers" },
     { "include": "#reserved-symbols" },
@@ -80,6 +81,7 @@
             { "include": "#template-strings" },
             { "include": "#strings" },
             { "include": "#effect-names" },
+            { "include": "#atoms" },
             { "include": "#numbers" },
             { "include": "#reserved-symbols" },
             { "include": "#special-expressions" },
@@ -102,6 +104,7 @@
             { "include": "#template-strings" },
             { "include": "#strings" },
             { "include": "#effect-names" },
+            { "include": "#atoms" },
             { "include": "#numbers" },
             { "include": "#reserved-symbols" },
             { "include": "#special-expressions" },
@@ -124,6 +127,7 @@
             { "include": "#template-strings" },
             { "include": "#strings" },
             { "include": "#effect-names" },
+            { "include": "#atoms" },
             { "include": "#numbers" },
             { "include": "#reserved-symbols" },
             { "include": "#special-expressions" },
@@ -147,6 +151,7 @@
         { "include": "#template-strings" },
         { "include": "#strings" },
         { "include": "#effect-names" },
+        { "include": "#atoms" },
         { "include": "#numbers" },
         { "include": "#reserved-symbols" },
         { "include": "#special-expressions" },
@@ -184,6 +189,7 @@
                 { "include": "#template-strings" },
                 { "include": "#strings" },
                 { "include": "#effect-names" },
+                { "include": "#atoms" },
                 { "include": "#numbers" },
                 { "include": "#reserved-symbols" },
                 { "include": "#special-expressions" },
@@ -238,6 +244,18 @@
           "captures": {
             "1": { "name": "punctuation.definition.effect-name.dvala" },
             "2": { "name": "support.constant.effect-name.dvala" }
+          }
+        }
+      ]
+    },
+    "atoms": {
+      "patterns": [
+        {
+          "comment": "Atom literal: :name (only when not preceded by identifier char)",
+          "match": "(?<![a-zA-Z0-9_$])(:)([a-zA-Z][a-zA-Z0-9]*)",
+          "captures": {
+            "1": { "name": "punctuation.definition.atom.dvala" },
+            "2": { "name": "constant.other.atom.dvala" }
           }
         }
       ]

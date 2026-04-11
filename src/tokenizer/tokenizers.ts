@@ -1,5 +1,5 @@
 import { isSymbolicOperator } from './operators'
-import type { BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroPrefixToken, MacroQualifiedToken, MultiLineCommentToken, NumberToken, OperatorToken, QuoteSpliceToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, ShebangToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type { AtomToken, BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroPrefixToken, MacroQualifiedToken, MultiLineCommentToken, NumberToken, OperatorToken, QuoteSpliceToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, ShebangToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
@@ -94,6 +94,28 @@ const tokenizeMacroPrefix: Tokenizer<MacroPrefixToken> = (input, position) => {
   return [i - position, ['MacroPrefix', name]]
 }
 
+// Tokenize atom literal: :name where name starts with a letter and contains letters/digits.
+// Only matches when ':' is NOT immediately preceded by an identifier character — this prevents
+// `{x:x}` (object key-value colon) from being parsed as `x` followed by atom `:x`.
+// `match :ok` works because there's whitespace between `match` and `:ok`.
+const tokenizeAtom: Tokenizer<AtomToken> = (input, position) => {
+  if (input[position] !== ':') return NO_MATCH
+
+  // If the character immediately before ':' is an identifier character, treat ':' as
+  // a key-value separator (e.g. `{x:y}`), not the start of an atom.
+  if (position > 0 && jsIdentifierCharRegExp.test(input[position - 1]!)) return NO_MATCH
+
+  const nextChar = input[position + 1]
+  if (!nextChar || !jsIdentifierFirstCharRegExp.test(nextChar)) return NO_MATCH
+
+  let i = position + 2
+  while (i < input.length && jsIdentifierCharRegExp.test(input[i]!)) i++
+
+  // Atom name is the part after ':'
+  const name = input.slice(position + 1, i)
+  return [i - position, ['Atom', name]]
+}
+
 function tokenizeToken<T extends Token>(
   type: T[0],
   value: string,
@@ -135,7 +157,7 @@ export const tokenizeNumber: Tokenizer<NumberToken> = (input, position, prevToke
   // Only allow -/+ prefix when NOT after an expression (number, symbol, closing bracket)
   if ((negate || plusPrefix) && prevToken) {
     const prevType = prevToken[0]
-    if (prevType === 'Number' || prevType === 'BasePrefixedNumber' || prevType === 'Symbol'
+    if (prevType === 'Number' || prevType === 'BasePrefixedNumber' || prevType === 'Symbol' || prevType === 'Atom'
       || prevType === 'ReservedSymbol' || prevType === 'RParen' || prevType === 'RBracket' || prevType === 'RBrace') {
       return NO_MATCH
     }
@@ -564,6 +586,7 @@ export const tokenizers = [
   tokenizeTemplateString,
   tokenizeRegexpShorthand,
   tokenizeMacroPrefix,
+  tokenizeAtom,
   tokenizeBasePrefixedNumber,
   tokenizeNumber,
   tokenizeOperator,

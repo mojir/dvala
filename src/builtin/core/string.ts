@@ -1,7 +1,7 @@
 import { TypeError } from '../../errors'
 import type { Arr } from '../../interface'
 import { assertArray } from '../../typeGuards/array'
-import { assertStringOrRegularExpression, isObj } from '../../typeGuards/dvala'
+import { assertStringOrRegularExpression, isAtom, isObj } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
@@ -17,11 +17,13 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
         const paramStr
           = param === undefined || param === null
             ? ''
-            : isObj(param)
-              ? JSON.stringify(param.toRecord())
-              : isPersistentVector(param)
-                ? JSON.stringify(param.toArray())
-                : `${param}`
+            : isAtom(param)
+              ? `:${param.name}`
+              : isObj(param)
+                ? JSON.stringify(param.toRecord())
+                : isPersistentVector(param)
+                  ? JSON.stringify(param.toArray())
+                  : `${param}`
         result = result + paramStr
       }
       return result

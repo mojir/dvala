@@ -54,6 +54,8 @@ import type {
   FunctionLike,
   ResumeFunction,
   NormalExpressionNode,
+  Atom,
+  AtomNode,
   NumberNode,
   PartialFunction,
   ReservedNode,
@@ -82,7 +84,7 @@ import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '../utils/ar
 import { valueToString } from '../utils/debug/debugTools'
 import { assertValidHostValue, fromJS, toJS, validateFromJS } from '../utils/interop'
 import type { MaybePromise } from '../utils/maybePromise'
-import { FUNCTION_SYMBOL } from '../utils/symbols'
+import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
 import { HaltSignal, ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, createSnapshot, qualifiedNameMatchesPattern, findMatchingHandlers, generateUUID, isHaltSignal, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
@@ -247,6 +249,16 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: (node as NumberNode)[1], k }
     case NodeTypes.Str:
       return { type: 'Value', value: (node as StringNode)[1], k }
+    case NodeTypes.Atom: {
+      const name = (node as AtomNode)[1]
+      const atomValue: Atom = { [ATOM_SYMBOL]: true, name }
+      // Custom inspect for Node console.log display
+      Object.defineProperty(atomValue, Symbol.for('nodejs.util.inspect.custom'), {
+        value: () => `:${name}`,
+        enumerable: false,
+      })
+      return { type: 'Value', value: atomValue, k }
+    }
     case NodeTypes.Builtin:
     case NodeTypes.Special:
     case NodeTypes.Sym:

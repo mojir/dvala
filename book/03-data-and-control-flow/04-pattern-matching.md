@@ -18,12 +18,21 @@ match "b"
 end;
 ```
 
-All value types work as literal patterns — numbers, strings, booleans, and `null`:
+All value types work as literal patterns — numbers, strings, booleans, atoms, and `null`:
 
 ```dvala
 match true
   case true then "yes"
   case false then "no"
+end;
+```
+
+Atoms are particularly useful as tags in pattern matching:
+
+```dvala
+match :ok
+  case :ok then "success"
+  case :error then "failure"
 end;
 ```
 
@@ -82,6 +91,16 @@ Mix literals and variables — literals must match exactly:
 match [1, 2, 3]
   case [ 1, x, 3] then x
   case _ then "no match"
+end;
+```
+
+Atoms work as literal elements in array patterns — a common pattern for tagged results:
+
+```dvala
+let result = [:ok, 42];
+match result
+  case [ :ok, value] then `Got ${value}`
+  case [ :error, msg] then `Error: ${msg}`
 end;
 ```
 

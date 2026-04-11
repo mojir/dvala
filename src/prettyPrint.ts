@@ -17,6 +17,7 @@ const INDENT_SIZE = 2
 const NodeTypes = {
   Num: 'Num',
   Str: 'Str',
+  Atom: 'Atom',
   Call: 'Call',
   Sym: 'Sym',
   Builtin: 'Builtin',
@@ -187,6 +188,8 @@ function printNode(node: AstNode, ind: number, isRoot = false): string {
   switch (type) {
     case NodeTypes.Num:
       return String(payload)
+    case NodeTypes.Atom:
+      return `:${String(payload)}`
     case NodeTypes.Str:
       // Escape backslash first, then special characters, then double-quote.
       return `"${String(payload)

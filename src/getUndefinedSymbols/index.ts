@@ -231,6 +231,10 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
     case NodeTypes.InlinedData:
       return new Set()
 
+    // Atom literal — self-evaluating, no symbols
+    case NodeTypes.Atom:
+      return new Set()
+
     /* v8 ignore next 2 */
     default:
       throw new RuntimeError(`Unhandled node type: ${nodeType satisfies never}`, undefined)

@@ -1,5 +1,5 @@
 import { isMatrix } from '../src/typeGuards/annotatedCollections'
-import { isEffect, isRegularExpression } from '../src/typeGuards/dvala'
+import { isAtom, isEffect, isRegularExpression } from '../src/typeGuards/dvala'
 import { isDvalaFunction } from '../src/typeGuards/dvalaFunction'
 
 export function stringifyValue(value: unknown, html: boolean): string {
@@ -23,6 +23,9 @@ export function stringifyValue(value: unknown, html: boolean): string {
   if (typeof value === 'number') {
     return `${value}`
   }
+
+  if (isAtom(value))
+    return `:${value.name}`
 
   if (isEffect(value))
     return `${lt}effect ${value.name}${gt}`
@@ -51,6 +54,7 @@ function smartStringify(value: unknown, indent: number): string {
   if (typeof value === 'boolean') return String(value)
   if (typeof value === 'number') return String(value)
   if (typeof value === 'string') return JSON.stringify(value)
+  if (isAtom(value)) return `:${value.name}`
 
   if (Array.isArray(value)) {
     if (value.length === 0) return '[]'

@@ -1,7 +1,7 @@
 import { TypeError } from '../../errors'
 import type { QualifiedMatcherFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
-import { asAny, asEffect, isEffect, isRegularExpression } from '../../typeGuards/dvala'
+import { asAny, asEffect, isAtom, isEffect, isRegularExpression } from '../../typeGuards/dvala'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
 import { asStringOrNumber, assertStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
@@ -433,6 +433,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         return 'number'
       if (typeof value === 'string')
         return 'string'
+      if (isAtom(value))
+        return 'atom'
       if (isEffect(value))
         return 'effect'
       if (isRegularExpression(value))
@@ -455,8 +457,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: 'any', description: 'The value to inspect.' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns a string representing the type of `x`. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"array"`, `"object"`, `"function"`, `"macro"`, `"regexp"`, and `"effect"`.',
-      seeAlso: ['isNumber', 'isString', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isFunction', 'isMacro', 'isRegexp', 'isEffect'],
+      description: 'Returns a string representing the type of `x`. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"atom"`, `"array"`, `"object"`, `"function"`, `"macro"`, `"regexp"`, and `"effect"`.',
+      seeAlso: ['isNumber', 'isString', 'isBoolean', 'isNull', 'isAtom', 'isArray', 'isObject', 'isFunction', 'isMacro', 'isRegexp', 'isEffect'],
       examples: [
         'typeOf(42)',
         'typeOf("hello")',

@@ -23,6 +23,7 @@ const dataTypes = [
   'matrix',
   'grid',
   'boolean',
+  'atom',
   'function',
   'integer',
   'any',

@@ -6,7 +6,7 @@ import type { Context } from '../evaluator/interface'
 import type { Any, Arr, Coll } from '../interface'
 import type { ReservedSymbol } from '../tokenizer/reservedNames'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import type { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
+import type { ATOM_SYMBOL, EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
 
 export type EvaluatedFunction = [BindingTarget[], AstNode[], Context]
 
@@ -30,6 +30,12 @@ export type QualifiedName = string
 export interface EffectRef {
   [EFFECT_SYMBOL]: true
   name: QualifiedName // e.g. 'llm.complete'
+}
+
+/** Atom: a self-evaluating named constant, e.g. :ok, :error */
+export interface Atom {
+  [ATOM_SYMBOL]: true
+  name: string // e.g. 'ok', 'error'
 }
 
 export interface UserDefinedFunction extends GenericDvalaFunction {
@@ -194,9 +200,10 @@ export type AstNode<T extends NodeType = NodeType, Payload = unknown> = [T, Payl
 export type SpreadNode = AstNode<typeof NodeTypes.Spread, AstNode> // Payload should be array or object depending on context
 export type NumberNode = AstNode<typeof NodeTypes.Num, number>
 export type StringNode = AstNode<typeof NodeTypes.Str, string>
+export type AtomNode = AstNode<typeof NodeTypes.Atom, string>
 export type TemplateStringNode = AstNode<typeof NodeTypes.TmplStr, (StringNode | AstNode)[]>
 
-export type ExpressionNode = NormalExpressionNode | SpecialExpressionNode | NumberNode | StringNode | TemplateStringNode
+export type ExpressionNode = NormalExpressionNode | SpecialExpressionNode | NumberNode | StringNode | AtomNode | TemplateStringNode
 export type UserDefinedSymbolNode = AstNode<typeof NodeTypes.Sym, string>
 export type BuiltinSymbolNode = AstNode<typeof NodeTypes.Builtin, string>
 export type SpecialSymbolNode = AstNode<typeof NodeTypes.Special, SpecialExpressionType>

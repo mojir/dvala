@@ -5,6 +5,7 @@ export const MAX_MACRO_EXPANSION_DEPTH = 128
 export const NodeTypes = {
   Num: 'Num',
   Str: 'Str',
+  Atom: 'Atom',
   Call: 'Call',
   SpecialExpression: 'SpecialExpression',
   Sym: 'Sym',

@@ -89,6 +89,48 @@ true;
 null;
 ```
 
+## Atoms
+
+Atoms are self-evaluating named constants — lightweight tags that represent themselves. They start with `:` followed by a name:
+
+```dvala
+:ok;
+```
+
+```dvala
+:error;
+```
+
+Atoms are ideal as tags in data structures, especially for results and status values:
+
+```dvala
+[:ok, 42];
+```
+
+```dvala
+[:error, "not found"];
+```
+
+Two atoms with the same name are always equal. Use `isAtom` to test and `typeOf` to inspect:
+
+```dvala
+:ok == :ok;
+```
+
+```dvala
+typeOf(:hello);
+```
+
+Atoms work naturally in pattern matching:
+
+```dvala
+let result = [:ok, 42];
+match result
+  case [ :ok, value] then `Success: ${value}`
+  case [ :error, msg] then `Error: ${msg}`
+end;
+```
+
 ## Arrays
 
 Arrays hold ordered collections of any types:
@@ -142,7 +184,7 @@ reMatch("abc123", regexp("[a-z]+(\\d+)", ""));
 
 ## Type Predicates
 
-Check the type of a value with predicate functions that end in `?`:
+Check the type of a value with predicate functions:
 
 ```dvala
 isNumber(42);
@@ -150,6 +192,10 @@ isNumber(42);
 
 ```dvala
 isString("hello");
+```
+
+```dvala
+isAtom(:ok);
 ```
 
 ```dvala
@@ -174,4 +220,14 @@ Values are compared by structure, not by reference. Two arrays with the same ele
 
 ```dvala
 { a: 1, b: 2 } == { b: 2, a: 1 };
+```
+
+Atoms are equal when they have the same name:
+
+```dvala
+:ok == :ok;
+```
+
+```dvala
+[:ok, 42] == [:ok, 42];
 ```

@@ -88,6 +88,18 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
       snippet('false'),
     ],
   },
+  '-type-atom': {
+    datatype: true,
+    title: 'atom',
+    category: 'datatype',
+    description: 'An atom — a self-evaluating named constant used as a tag or label. Atoms start with `:` followed by a name. Two atoms with the same name are always equal. Common atoms include `:ok` and `:error`.',
+    examples: [
+      snippet(':ok'),
+      snippet(':error'),
+      snippet('[:ok, 42]'),
+      snippet(':ok == :ok'),
+    ],
+  },
   '-type-function': {
     datatype: true,
     title: 'function',
