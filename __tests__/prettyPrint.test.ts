@@ -216,6 +216,9 @@ describe('prettyPrint — recur / parallel / race', () => {
   it('race', () => {
     expect(pp('race([-> 1, -> 2])')).toBe('race([-> 1, -> 2])')
   })
+  it('settled', () => {
+    expect(pp('settled([-> 1, -> 2])')).toBe('settled([-> 1, -> 2])')
+  })
 })
 
 describe('prettyPrint — loops', () => {

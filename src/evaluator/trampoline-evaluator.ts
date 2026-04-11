@@ -3369,13 +3369,15 @@ async function executeParallelBranches(
   const suspendedBranches: { index: number; result: RunResult & { type: 'suspended' } }[] = []
   const errors: DvalaError[] = []
 
-  for (const settledResult of results) {
+  for (let ri = 0; ri < results.length; ri++) {
+    const settledResult = results[ri]!
     if (settledResult.status === 'rejected') {
       // branchPromises should never reject, but handle defensively
       if (mode === 'settled') {
-        // In settled mode, wrap rejected promises as [:error, payload]
+        // In settled mode, wrap rejected promises as [:error, payload].
+        // Use ri as branch index since Promise.allSettled preserves order.
         const err = new DvalaError(`${settledResult.reason}`, undefined)
-        completedBranches.push({ index: -1, value: wrapSettledError(err) })
+        completedBranches.push({ index: ri, value: wrapSettledError(err) })
       } else {
         errors.push(new DvalaError(`${settledResult.reason}`, undefined))
       }
@@ -3640,6 +3642,8 @@ async function executeReRunParallel(
     : parallelAbort.signal
 
   const siblingPromises: Promise<{ index: number; result: RunResult }>[] = []
+  // Track branch indices in parallel with siblingPromises for rejected-promise fallback
+  const siblingIndices: number[] = []
   for (let i = 0; i < branchCount; i++) {
     if (i === branchIndex) continue // Skip the already-completed branch
 
@@ -3650,6 +3654,7 @@ async function executeReRunParallel(
       env,
       mode,
     }
+    siblingIndices.push(i)
     siblingPromises.push((async () => {
       const result = await runBranch(branches[i], env, handlers, effectSignal, outerK, branchCtx, snapshotState)
       if (result.type === 'suspended') {
@@ -3666,11 +3671,12 @@ async function executeReRunParallel(
   const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
   const errors: DvalaError[] = []
 
-  for (const s of reRunSettled) {
+  for (let ri = 0; ri < reRunSettled.length; ri++) {
+    const s = reRunSettled[ri]!
     if (s.status === 'rejected') {
       const err = new DvalaError(`${s.reason}`, undefined)
       if (mode === 'settled') {
-        allCompleted.push({ index: -1, value: wrapSettledError(err) })
+        allCompleted.push({ index: siblingIndices[ri]!, value: wrapSettledError(err) })
       } else {
         errors.push(err)
       }
@@ -3864,11 +3870,13 @@ async function executeResumeParallel(
   const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
   const errors: DvalaError[] = []
 
-  for (const s of resumeSettled) {
+  for (let ri = 0; ri < resumeSettled.length; ri++) {
+    const s = resumeSettled[ri]!
     if (s.status === 'rejected') {
+      // Use suspendedBranches[ri].index to recover the branch index for rejected promises
       const err = new DvalaError(`${s.reason}`, undefined)
       if (mode === 'settled') {
-        allCompleted.push({ index: -1, value: wrapSettledError(err) })
+        allCompleted.push({ index: suspendedBranches[ri]!.index, value: wrapSettledError(err) })
       } else {
         errors.push(err)
       }

@@ -297,7 +297,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         b: { type: ['number', 'string', 'atom'] },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Compares two values. Returns `-1` if `a` < `b`, `1` if `a` > `b` and `0` if `a` and `b` have the same sort order. Works on numbers, strings, and atoms.',
+      description: 'Compares two values. Returns `-1` if `a` < `b`, `1` if `a` > `b` and `0` if `a` and `b` have the same sort order. Works on numbers, strings, and atoms. Note: the `<`, `>`, `<=`, `>=` operators only accept numbers and strings, not atoms — use `compare` for atom ordering.',
       seeAlso: ['<', '>', '<=', '>=', 'sort', 'sequence.sortBy'],
       examples: [
         'compare(0, 1)',
