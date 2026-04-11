@@ -3295,8 +3295,10 @@ async function runBranch(
   // a BranchComplete step instead of continuing into outerK.
   const barrierFrame: ParallelBranchBarrierFrame = { type: 'ParallelBranchBarrier', branchCtx }
   const barrierK: ContinuationStack = cons<Frame>(barrierFrame, outerK)
-  // Call the branch function with no arguments
-  const initial: Step = dispatchFunction(
+  // Call the branch function with no arguments.
+  // dispatchFunction returns Step | Promise<Step>; cast to Step is safe because
+  // runEffectLoop's inner loop handles Promise<Step> via `step instanceof Promise`.
+  const initial = dispatchFunction(
     branchFn as FunctionLike, PersistentVector.empty(), [], env, undefined, barrierK,
   ) as Step
 

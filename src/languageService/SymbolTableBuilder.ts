@@ -243,14 +243,20 @@ function walkNode(node: AstNode, state: BuilderState): void {
     }
 
     case NodeTypes.Array:
-    case NodeTypes.Recur:
-    case NodeTypes.Parallel:
-    case NodeTypes.Race: {
+    case NodeTypes.Recur: {
       // Array of sub-expressions
       const elements = payload as AstNode[]
       for (const element of elements) {
         walkNode(element, state)
       }
+      break
+    }
+
+    case NodeTypes.Parallel:
+    case NodeTypes.Race:
+    case NodeTypes.Settled: {
+      // Single argument expression (array of functions)
+      walkNode(payload as AstNode, state)
       break
     }
 
@@ -321,6 +327,7 @@ function walkNode(node: AstNode, state: BuilderState): void {
     // Leaf nodes — no children to walk
     case NodeTypes.Num:
     case NodeTypes.Str:
+    case NodeTypes.Atom:
     case NodeTypes.Builtin:
     case NodeTypes.Special:
     case NodeTypes.Reserved:
