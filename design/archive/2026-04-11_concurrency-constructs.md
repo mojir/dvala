@@ -1,7 +1,8 @@
 # Concurrency Constructs: parallel, settled, race + Atoms
 
-**Status:** Draft
+**Status:** Complete ✅
 **Created:** 2026-04-11
+**Completed:** 2026-04-11
 **Branch:** `concurrency-constructs`
 
 ## Goal
