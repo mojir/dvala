@@ -201,6 +201,14 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     | 'MacroPrefix' // Handled above
   >
   switch (tokenType) {
+    case 'Atom': {
+      ctx.builder?.startNode('AtomLiteral')
+      ctx.advance()
+      const atomNode = withSourceCodeInfo([NodeTypes.Atom, token[1], 0], token[2], ctx)
+      ctx.setNodeEnd(atomNode[2])
+      ctx.builder?.endNode()
+      return atomNode
+    }
     case 'Number':
     case 'BasePrefixedNumber':
       return parseNumber(ctx)

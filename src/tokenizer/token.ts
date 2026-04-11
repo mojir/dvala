@@ -3,6 +3,7 @@ import type { ReservedSymbol } from './reservedNames'
 import { type SymbolicBinaryOperator, type SymbolicOperator, isBinaryOperator } from './operators'
 
 export const tokenTypes = [
+  'Atom',
   'LBrace',
   'LBracket',
   'RBrace',
@@ -37,6 +38,7 @@ type GenericToken<T extends TokenType, V extends string = string> = [T, V] | [T,
 
 export type ErrorToken = ['Error', string, TokenDebugInfo | undefined, string]
 
+export type AtomToken = GenericToken<'Atom'>
 export type LBraceToken = GenericToken<'LBrace', '{'>
 export type LBracketToken = GenericToken<'LBracket', '['>
 export type LParenToken = GenericToken<'LParen', '('>
@@ -65,6 +67,7 @@ export type MacroPrefixToken = GenericToken<'MacroPrefix'>
 export type WhitespaceToken = GenericToken<'Whitespace'>
 
 export type Token =
+  | AtomToken
   | LBraceToken
   | LBracketToken
   | LParenToken
@@ -98,6 +101,10 @@ export interface SourceCodeInfo {
   }
   code: string
   filePath?: string
+}
+
+export function isAtomToken(token: Token | undefined): token is AtomToken {
+  return token?.[0] === 'Atom'
 }
 
 export function isSymbolToken<T extends string>(token: Token | undefined, symbolName?: T): token is SymbolToken<T> {

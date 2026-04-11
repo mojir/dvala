@@ -874,10 +874,7 @@ describe('host handler — checkpoint and resumeFrom', () => {
 describe('parallel and race — error paths', () => {
   it('should handle parallel with multiple branches', async () => {
     const result = await dvala.runAsync(`
-      parallel(
-        1 + 2,
-        3 + 4
-      )
+      parallel([-> 1 + 2, -> 3 + 4])
     `)
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
@@ -887,20 +884,14 @@ describe('parallel and race — error paths', () => {
 
   it('should handle race where all branches error via effects', async () => {
     const result = await dvala.runAsync(`
-      race(
-        perform(@dvala.error, "race error 1"),
-        perform(@dvala.error, "race error 2")
-      )
+      race([-> perform(@dvala.error, "race error 1"), -> perform(@dvala.error, "race error 2")])
     `)
     expect(result.type).toBe('error')
   })
 
   it('should handle race where one branch completes first', async () => {
     const result = await dvala.runAsync(`
-      race(
-        42,
-        99
-      )
+      race([-> 42, -> 99])
     `)
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
@@ -1387,14 +1378,14 @@ describe('host handler — fail and late errors', () => {
 describe('parallel/race — error paths', () => {
   it('should handle parallel where a branch errors', async () => {
     const result = await dvalaFull.runAsync(`
-      parallel(1 + 1, assert(false, "branch error"))
+      parallel([-> 1 + 1, -> assert(false, "branch error")])
     `)
     expect(result.type).toBe('error')
   })
 
   it('should handle race where all branches error', async () => {
     const result = await dvalaFull.runAsync(`
-      race(assert(false, "err1"), assert(false, "err2"))
+      race([-> assert(false, "err1"), -> assert(false, "err2")])
     `)
     expect(result.type).toBe('error')
   })
@@ -1813,10 +1804,7 @@ describe('trampoline — effect execution via run()', () => {
 describe('trampoline — parallel with suspending branches', () => {
   it('should collect suspended results from parallel branches', async () => {
     const result = await dvala.runAsync(`
-      parallel(
-        perform(@test.work, 1),
-        perform(@test.work, 2)
-      )
+      parallel([-> perform(@test.work, 1), -> perform(@test.work, 2)])
     `, {
       effectHandlers: [
         { pattern: 'test.work', handler: async ({ arg, resume: doResume }) => {
@@ -1835,10 +1823,7 @@ describe('trampoline — parallel with suspending branches', () => {
 describe('trampoline — race expression', () => {
   it('should return first completed branch', async () => {
     const result = await dvala.runAsync(`
-      race(
-        perform(@test.fast),
-        perform(@test.slow)
-      )
+      race([-> perform(@test.fast), -> perform(@test.slow)])
     `, {
       effectHandlers: [
         { pattern: 'test.fast', handler: async ({ resume: doResume }) => { doResume(42) } },
@@ -2035,7 +2020,7 @@ describe('dedupSubTrees — via suspend/resume', () => {
 describe('trampoline — race with abort handling', () => {
   it('should cancel losing branches when winner completes', async () => {
     const result = await dvala.runAsync(`
-      race(42, 99)
+      race([-> 42, -> 99])
     `)
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
@@ -2592,7 +2577,7 @@ describe('trampoline.ts — or terminal false (line 1623)', () => {
 describe('trampoline.ts — special expression async fallback (line 159)', () => {
   it('should handle special expression that triggers async', async () => {
     // parallel inside a let expression triggers async fallback for SpecialExpression
-    const result = await dvalaFull.runAsync('parallel(1, 2)')
+    const result = await dvalaFull.runAsync('parallel([-> 1, -> 2])')
     expect(result.type).toBe('completed')
     if (result.type === 'completed')
       expect(result.value).toEqual([1, 2])
@@ -2741,7 +2726,7 @@ describe('trampoline.ts — dvala.error with non-string arg (line 2344)', () => 
 describe('trampoline.ts — setupUserDefinedCall async fallbacks (lines 1334-1369)', () => {
   it('should handle async binding value in user-defined function (line 1334)', async () => {
     // defn with destructuring binding that involves async evaluation
-    const result = await dvalaFull.runAsync('let f = ([a, b]) -> a + b; f(parallel(1, 2))')
+    const result = await dvalaFull.runAsync('let f = ([a, b]) -> a + b; f(parallel([-> 1, -> 2]))')
     expect(result.type).toBe('completed')
     if (result.type === 'completed')
       expect(result.value).toBe(3)
@@ -2797,7 +2782,7 @@ describe('trampoline.ts — wrapMaybePromiseAsStep error (line 2980-2989)', () =
   it('should handle error in parallel branch via async.run', async () => {
     // Use async.run with a race where one branch errors
     // This tests the async trampoline error handling path
-    const result = await dvalaFull.runAsync('race(perform(@dvala.error, "err"), 42)')
+    const result = await dvalaFull.runAsync('race([-> perform(@dvala.error, "err"), -> 42])')
     // race resolves to first completed branch (42), the errored branch is dropped
     expect(result.type).toBe('completed')
     if (result.type === 'completed')

@@ -1,6 +1,6 @@
 import type { Any, Coll, Obj } from '../interface'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import { isColl, isObj, isRegularExpression } from '../typeGuards/dvala'
+import { isAtom, isColl, isObj, isRegularExpression } from '../typeGuards/dvala'
 import { isNumber } from '../typeGuards/number'
 import { asString, assertStringOrNumber } from '../typeGuards/string'
 import { isUnknownRecord } from '../typeGuards'
@@ -30,7 +30,12 @@ export function collHasKey(coll: unknown, key: string | number): boolean {
   return false
 }
 
-export function compare<T extends string | number>(a: T, b: T, sourceCodeInfo: SourceCodeInfo | undefined): number {
+export function compare(a: unknown, b: unknown, sourceCodeInfo: SourceCodeInfo | undefined): number {
+  // Atoms compare alphabetically by name
+  if (isAtom(a) && isAtom(b)) {
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+  }
+
   assertStringOrNumber(a, sourceCodeInfo)
   assertStringOrNumber(b, sourceCodeInfo)
 
@@ -49,6 +54,10 @@ export function deepEqual(a: unknown, b: unknown, sourceCodeInfo?: SourceCodeInf
 
   if (typeof a === 'number' && typeof b === 'number')
     return approxEqual(a, b)
+
+  // Atoms — structural equality by name
+  if (isAtom(a) && isAtom(b))
+    return a.name === b.name
 
   // Persistent vectors — structural equality
   if (isPersistentVector(a) && isPersistentVector(b)) {

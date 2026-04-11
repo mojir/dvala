@@ -1,7 +1,7 @@
 import { TypeError } from '../../errors'
 import type { Arr } from '../../interface'
 import { assertArray } from '../../typeGuards/array'
-import { assertStringOrRegularExpression, isObj } from '../../typeGuards/dvala'
+import { assertStringOrRegularExpression, isAtom, isObj } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
@@ -17,11 +17,13 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
         const paramStr
           = param === undefined || param === null
             ? ''
-            : isObj(param)
-              ? JSON.stringify(param.toRecord())
-              : isPersistentVector(param)
-                ? JSON.stringify(param.toArray())
-                : `${param}`
+            : isAtom(param)
+              ? `:${param.name}`
+              : isObj(param)
+                ? JSON.stringify(param.toRecord())
+                : isPersistentVector(param)
+                  ? JSON.stringify(param.toArray())
+                  : `${param}`
         result = result + paramStr
       }
       return result
@@ -32,13 +34,14 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'string' },
       args: { values: { type: 'any', rest: true } },
       variants: [{ argumentNames: ['values'] }],
-      description: 'Concatenats `values` into one string. If `value` equals `null` empty string is returned.',
+      description: 'Concatenats `values` into one string. If `value` equals `null` empty string is returned. Atoms are converted to `":name"` format.',
       seeAlso: ['++', 'join', 'string.template', 'string.stringRepeat', 'number'],
       examples: [
         'str("A string", ", and another string", " ...and more")',
         'str("Just one string")',
         'str()',
         'str(0, false, true, null, #"^kalle", [1, 2, 3], {a: "a"})',
+        'str(:ok)',
       ],
       hideOperatorForm: true,
     },

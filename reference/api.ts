@@ -1106,6 +1106,7 @@ export const api = {
     '-type-matrix',
     '-type-grid',
     '-type-boolean',
+    '-type-atom',
     '-type-function',
     '-type-integer',
     '-type-any',

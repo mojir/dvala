@@ -36,6 +36,29 @@ perform(@dvala.io.print, "Albert"[3]);
 perform(@dvala.io.print, [1, 2, 3][2]);`,
   },
   {
+    id: 'atoms-and-tagged-results',
+    name: 'Atoms and tagged results',
+    description: 'Atoms are self-evaluating named constants starting with :. Use them as tags in arrays for type-safe result handling.',
+    category: 'Basics',
+    code: dvala`
+// Atoms are lightweight tags
+let status = :ok;
+perform(@dvala.io.print, status);
+perform(@dvala.io.print, typeOf(status));
+
+// Tagged results — a common pattern
+let results = [[:ok, 42], [:error, "not found"], [:ok, 99]];
+
+for(result in results) -> match result
+  case [:ok, value] then perform(@dvala.io.print, \`Success: \${value}\`)
+  case [:error, msg] then perform(@dvala.io.print, \`Error: \${msg}\`)
+end;
+
+// Atoms are structurally equal
+perform(@dvala.io.print, :ok == :ok);
+perform(@dvala.io.print, :ok == :error);`,
+  },
+  {
     id: 'template-strings',
     name: 'Template strings',
     description: 'Template strings use backticks and support ${...} interpolation for embedding expressions directly in strings.',

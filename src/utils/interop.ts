@@ -16,7 +16,7 @@
 
 import type { Any } from '../interface'
 import { isPersistentMap, isPersistentVector, PersistentMap, PersistentVector } from './persistent'
-import { isEffect, isRegularExpression } from '../typeGuards/dvala'
+import { isAtom, isEffect, isRegularExpression } from '../typeGuards/dvala'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
 
 /**
@@ -53,7 +53,7 @@ export function assertValidHostValue(value: unknown, context: string, seen = new
     throw new TypeError(`${context}: BigInt${path ? ` at ${path}` : ''} is not supported. Convert to number first.`)
 
   // Already a Dvala value — no further validation needed
-  if (isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
+  if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
     return
   if (isPersistentVector(value) || isPersistentMap(value))
     return
@@ -115,7 +115,7 @@ export function toJS(value: Any): unknown {
   if (value === null || typeof value !== 'object')
     return value
 
-  if (isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
+  if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
     return value
 
   if (isPersistentVector(value)) {
@@ -139,7 +139,7 @@ export function fromJS(value: unknown): Any {
   if (value === null || typeof value !== 'object')
     return value as Any
 
-  if (isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
+  if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
     return value as Any
 
   // Already persistent — pass through

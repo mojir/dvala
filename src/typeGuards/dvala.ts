@@ -1,9 +1,9 @@
 import type { Any, Arr, Coll, Obj, Seq } from '../interface'
-import type { EffectRef, FunctionLike, RegularExpression } from '../parser/types'
+import type { Atom, EffectRef, FunctionLike, RegularExpression } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getAssertionError } from '../utils/getAssertionError'
 import { isPersistentMap, isPersistentVector } from '../utils/persistent'
-import { EFFECT_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
+import { ATOM_SYMBOL, EFFECT_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
 import { isDvalaFunction } from './dvalaFunction'
 
 export function isAny(value: unknown): value is Any {
@@ -101,6 +101,12 @@ export function assertStringOrRegularExpression(
 ): asserts value is string | RegularExpression {
   if (!isStringOrRegularExpression(value))
     throw getAssertionError('string or RegularExpression', value, sourceCodeInfo)
+}
+
+export function isAtom(value: unknown): value is Atom {
+  if (value === null || typeof value !== 'object')
+    return false
+  return !!(value as Atom)[ATOM_SYMBOL]
 }
 
 export function isEffect(value: unknown): value is EffectRef {

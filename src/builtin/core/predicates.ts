@@ -1,5 +1,5 @@
 import { isDvalaFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
-import { assertColl, isArr, isColl, isEffect, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
+import { assertColl, isArr, isAtom, isColl, isEffect, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../interface'
 import { isGrid, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
@@ -17,7 +17,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a function (not a macro), otherwise `false`.',
-      seeAlso: ['isMacro', 'isString', 'isNumber', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isRegexp', 'typeOf'],
+      seeAlso: ['isMacro', 'isString', 'isNumber', 'isBoolean', 'isAtom', 'isNull', 'isArray', 'isObject', 'isRegexp', 'typeOf'],
       examples: [
         'isFunction(+)',
         'isFunction(/)',
@@ -56,7 +56,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a string, otherwise `false`.',
-      seeAlso: ['isBlank', 'isNumber', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isRegexp', 'isFunction', 'isCollection', 'isSequence', 'typeOf'],
+      seeAlso: ['isBlank', 'isNumber', 'isBoolean', 'isAtom', 'isNull', 'isArray', 'isObject', 'isRegexp', 'isFunction', 'isCollection', 'isSequence', 'typeOf'],
       examples: [
         'isString("")',
         'isString("A string")',
@@ -77,7 +77,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a number, otherwise `false`.',
-      seeAlso: ['isInteger', 'isZero', 'isPos', 'isNeg', 'number', 'isString', 'isBoolean', 'isNull', 'isFunction', 'typeOf'],
+      seeAlso: ['isInteger', 'isZero', 'isPos', 'isNeg', 'number', 'isString', 'isBoolean', 'isAtom', 'isNull', 'isFunction', 'typeOf'],
       examples: [
         'isNumber(0)',
         'isNumber(2)',
@@ -121,13 +121,32 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a `boolean`, otherwise `false`.',
-      seeAlso: ['isTrue', 'isFalse', 'boolean', 'isString', 'isNumber', 'isNull', 'isFunction', 'typeOf'],
+      seeAlso: ['isTrue', 'isFalse', 'boolean', 'isString', 'isNumber', 'isAtom', 'isNull', 'isFunction', 'typeOf'],
       examples: [
         'isBoolean(true)',
         'isBoolean(false)',
         'isBoolean([1, 2, 3])',
         'isBoolean(0)',
         'isBoolean("A string")',
+      ],
+    },
+  },
+
+  'isAtom': {
+    evaluate: ([first]): boolean => isAtom(first),
+    arity: toFixedArity(1),
+    docs: {
+      category: 'predicate',
+      returns: { type: 'boolean' },
+      args: { x: { type: 'any' } },
+      variants: [{ argumentNames: ['x'] }],
+      description: 'Returns `true` if `x` is an atom (e.g. `:ok`, `:error`), otherwise `false`.',
+      seeAlso: ['isString', 'isNumber', 'isBoolean', 'isNull', 'isFunction', 'typeOf'],
+      examples: [
+        'isAtom(:ok)',
+        'isAtom(:error)',
+        'isAtom("atom")',
+        'isAtom(42)',
       ],
     },
   },
@@ -141,7 +160,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is `null`, otherwise `false`.',
-      seeAlso: ['isEmpty', 'isNotEmpty', 'isString', 'isNumber', 'isBoolean', 'isFunction', 'typeOf'],
+      seeAlso: ['isEmpty', 'isNotEmpty', 'isString', 'isNumber', 'isBoolean', 'isAtom', 'isFunction', 'typeOf'],
       examples: [
         'isNull(null)',
         'isNull(false)',

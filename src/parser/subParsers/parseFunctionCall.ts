@@ -92,14 +92,20 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       return node
     }
     if (specialExpressionType === specialExpressionTypes.parallel) {
-      assertNumberOfParams({ min: 1 }, params.length, symbolSci)
-      const node = withSourceCodeInfo([NodeTypes.Parallel, params, 0], symbolDebugInfo, ctx) as unknown as AstNode
+      assertNumberOfParams({ min: 1, max: 1 }, params.length, symbolSci)
+      const node = withSourceCodeInfo([NodeTypes.Parallel, params[0], 0], symbolDebugInfo, ctx) as unknown as AstNode
       ctx.setNodeEnd(node[2])
       return node
     }
     if (specialExpressionType === specialExpressionTypes.race) {
-      assertNumberOfParams({ min: 1 }, params.length, symbolSci)
-      const node = withSourceCodeInfo([NodeTypes.Race, params, 0], symbolDebugInfo, ctx) as unknown as AstNode
+      assertNumberOfParams({ min: 1, max: 1 }, params.length, symbolSci)
+      const node = withSourceCodeInfo([NodeTypes.Race, params[0], 0], symbolDebugInfo, ctx) as unknown as AstNode
+      ctx.setNodeEnd(node[2])
+      return node
+    }
+    if (specialExpressionType === specialExpressionTypes.settled) {
+      assertNumberOfParams({ min: 1, max: 1 }, params.length, symbolSci)
+      const node = withSourceCodeInfo([NodeTypes.Settled, params[0], 0], symbolDebugInfo, ctx) as unknown as AstNode
       ctx.setNodeEnd(node[2])
       return node
     }
@@ -148,6 +154,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       | typeof specialExpressionTypes.object
       | typeof specialExpressionTypes.parallel
       | typeof specialExpressionTypes.race
+      | typeof specialExpressionTypes.settled
     >
     const specialExpression: SpecialExpression = builtin.specialExpressions[type]
     assertNumberOfParams(specialExpression.arity, params.length, symbolSci)

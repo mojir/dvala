@@ -1,7 +1,7 @@
 import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget, SymbolNode, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
-import { type Token, assertOperatorToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
+import { type Token, assertOperatorToken, isAtomToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
 import { isSpecialSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { getSymbolName, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -62,6 +62,13 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     }
     if (isStringToken(firstToken)) {
       const node = parseString(ctx, firstToken)
+      const target = withSourceCodeInfo([bindingTargetTypes.literal, [node], 0], firstToken[2], ctx)
+      ctx.setNodeEnd(target[2])
+      return target
+    }
+    if (isAtomToken(firstToken)) {
+      ctx.advance()
+      const node: AstNode = withSourceCodeInfo([NodeTypes.Atom, firstToken[1], 0], firstToken[2], ctx)
       const target = withSourceCodeInfo([bindingTargetTypes.literal, [node], 0], firstToken[2], ctx)
       ctx.setNodeEnd(target[2])
       return target
@@ -274,6 +281,7 @@ function isLiteralToken(token: Token | undefined): boolean {
     || isBasePrefixedNumberToken(token)
     || isStringToken(token)
     || isTemplateStringToken(token)
+    || isAtomToken(token)
     || isReservedSymbolToken(token, 'true')
     || isReservedSymbolToken(token, 'false')
     || isReservedSymbolToken(token, 'null')

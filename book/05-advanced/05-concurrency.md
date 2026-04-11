@@ -27,11 +27,7 @@ end;
 
 ```dvala no-run
 // Each branch runs concurrently
-parallel(
-  perform(@fetch.user, "alice"),
-  perform(@fetch.user, "bob"),
-  perform(@fetch.user, "carol")
-)
+parallel([-> perform(@fetch.user, "alice"), -> perform(@fetch.user, "bob"), -> perform(@fetch.user, "carol")])
 // => [alice-data, bob-data, carol-data]
 ```
 
@@ -47,10 +43,7 @@ Key properties:
 
 ```dvala no-run
 // First response wins — others are cancelled
-race(
-  perform(@api.primary, query),
-  perform(@api.fallback, query)
-)
+race([-> perform(@api.primary, query), -> perform(@api.fallback, query)])
 ```
 
 Key properties:
@@ -65,10 +58,7 @@ Key properties:
 
 ```dvala no-run
 // Fetch user data and preferences concurrently
-let [user, prefs] = parallel(
-  perform(@db.get-user, id),
-  perform(@db.get-prefs, id)
-)
+let [user, prefs] = parallel([-> perform(@db.get-user, id), -> perform(@db.get-prefs, id)])
 ```
 
 ## Suspension and parallel
@@ -83,11 +73,7 @@ Process multiple items concurrently, then combine:
 
 ```dvala no-run
 // Process all items concurrently
-let results = parallel(
-  perform(@process.item, items(0)),
-  perform(@process.item, items(1)),
-  perform(@process.item, items(2))
-);
+let results = parallel([-> perform(@process.item, items(0)), -> perform(@process.item, items(1)), -> perform(@process.item, items(2))]);
 reduce(results, +, 0)
 ```
 
@@ -97,13 +83,10 @@ Race a computation against a timer:
 
 ```dvala no-run
 // Either get the result or time out
-race(
-  perform(@compute.heavy, data),
-  do
+race([-> perform(@compute.heavy, data), -> do
     perform(@dvala.sleep, 5000);
     "timeout"
-  end
-)
+  end])
 ```
 
 ### Primary / Fallback
@@ -112,10 +95,7 @@ Try the preferred source first, fall back on failure:
 
 ```dvala no-run
 // Fastest successful response wins
-race(
-  perform(@cache.get, key),
-  perform(@db.get, key)
-)
+race([-> perform(@cache.get, key), -> perform(@db.get, key)])
 ```
 
 ## Error Handling

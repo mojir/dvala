@@ -17,6 +17,7 @@ const INDENT_SIZE = 2
 const NodeTypes = {
   Num: 'Num',
   Str: 'Str',
+  Atom: 'Atom',
   Call: 'Call',
   Sym: 'Sym',
   Builtin: 'Builtin',
@@ -31,6 +32,7 @@ const NodeTypes = {
   Array: 'Array',
   Parallel: 'Parallel',
   Race: 'Race',
+  Settled: 'Settled',
   Perform: 'Perform',
   Object: 'Object',
   Function: 'Function',
@@ -187,6 +189,8 @@ function printNode(node: AstNode, ind: number, isRoot = false): string {
   switch (type) {
     case NodeTypes.Num:
       return String(payload)
+    case NodeTypes.Atom:
+      return `:${String(payload)}`
     case NodeTypes.Str:
       // Escape backslash first, then special characters, then double-quote.
       return `"${String(payload)
@@ -262,9 +266,11 @@ function printNode(node: AstNode, ind: number, isRoot = false): string {
     case NodeTypes.TmplStr:
       return printTemplateString(payload as unknown[][])
     case NodeTypes.Parallel:
-      return printCommaSeparated('parallel', payload as unknown[][], ind)
+      return `parallel(${printNode(payload as AstNode, ind)})`
     case NodeTypes.Race:
-      return printCommaSeparated('race', payload as unknown[][], ind)
+      return `race(${printNode(payload as AstNode, ind)})`
+    case NodeTypes.Settled:
+      return `settled(${printNode(payload as AstNode, ind)})`
     case NodeTypes.CodeTmpl:
       return printCodeTemplate(payload as [unknown[][], unknown[][]], ind)
     case NodeTypes.Splice:

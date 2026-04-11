@@ -106,29 +106,26 @@ export interface PerformStep {
  * Only available in async mode (`run()`). In `runSync()`, this step causes
  * a "Unexpected async operation" error because it returns `Promise<Step>`.
  */
+/**
+ * Parallel/settled: run all branches concurrently.
+ * Branches are pre-evaluated function values (not AST nodes).
+ * Mode determines error handling: parallel=fail-fast, settled=wrap errors.
+ */
 export interface ParallelStep {
   type: 'Parallel'
-  branches: AstNode[]
+  branches: unknown[] // FunctionValue[] — typed as unknown to avoid circular dep
   env: ContextStack
   k: ContinuationStack
+  mode: 'parallel' | 'settled'
 }
 
 /**
- * A `race(...)` expression was encountered.
- *
- * The trampoline runs all branch expressions concurrently. The first branch
- * to complete wins — its value becomes the result. Losers are cancelled via
- * per-branch AbortControllers. Errored branches are silently dropped.
- *
- * If all branches error, throws an aggregate error. If no branch completes
- * but some suspend, the race suspends with only the outer continuation.
- * On resume, the host provides the winner value directly.
- *
- * Only available in async mode (`run()`).
+ * Race: run all branches concurrently, first success wins.
+ * Branches are pre-evaluated function values.
  */
 export interface RaceStep {
   type: 'Race'
-  branches: AstNode[]
+  branches: unknown[] // FunctionValue[] — typed as unknown to avoid circular dep
   env: ContextStack
   k: ContinuationStack
 }

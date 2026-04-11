@@ -684,6 +684,7 @@ function formatNode(node: UntypedCstNode): Doc {
     // -- Leaf nodes --
     case 'NumberLiteral':
     case 'StringLiteral':
+    case 'AtomLiteral':
     case 'TemplateString':
     case 'RegexpShorthand':
     case 'Symbol':

@@ -54,6 +54,8 @@ import type {
   FunctionLike,
   ResumeFunction,
   NormalExpressionNode,
+  Atom,
+  AtomNode,
   NumberNode,
   PartialFunction,
   ReservedNode,
@@ -82,7 +84,7 @@ import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '../utils/ar
 import { valueToString } from '../utils/debug/debugTools'
 import { assertValidHostValue, fromJS, toJS, validateFromJS } from '../utils/interop'
 import type { MaybePromise } from '../utils/maybePromise'
-import { FUNCTION_SYMBOL } from '../utils/symbols'
+import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
 import { HaltSignal, ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, createSnapshot, qualifiedNameMatchesPattern, findMatchingHandlers, generateUUID, isHaltSignal, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
@@ -131,6 +133,7 @@ import type {
   FiniteCheckFrame,
   ObjectBuildFrame,
   OrFrame,
+  ConcurrentArgFrame,
   ParallelBranchBarrierFrame,
   ParallelBranchContext,
   ReRunParallelFrame,
@@ -247,6 +250,16 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: (node as NumberNode)[1], k }
     case NodeTypes.Str:
       return { type: 'Value', value: (node as StringNode)[1], k }
+    case NodeTypes.Atom: {
+      const name = (node as AtomNode)[1]
+      const atomValue: Atom = { [ATOM_SYMBOL]: true, name }
+      // Custom inspect for Node console.log display
+      Object.defineProperty(atomValue, Symbol.for('nodejs.util.inspect.custom'), {
+        value: () => `:${name}`,
+        enumerable: false,
+      })
+      return { type: 'Value', value: atomValue, k }
+    }
     case NodeTypes.Builtin:
     case NodeTypes.Special:
     case NodeTypes.Sym:
@@ -344,12 +357,21 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       }
     }
     case NodeTypes.Parallel: {
-      const branches = node[1] as AstNode[]
-      return { type: 'Parallel', branches, env, k }
+      // Evaluate the single argument expression; a ConcurrentArgFrame catches
+      // the result and dispatches to executeParallelBranches.
+      const argExpr = node[1] as AstNode
+      const frame: ConcurrentArgFrame = { type: 'ConcurrentArg', mode: 'parallel', env }
+      return { type: 'Eval', node: argExpr, env, k: cons<Frame>(frame, k) }
     }
     case NodeTypes.Race: {
-      const branches = node[1] as AstNode[]
-      return { type: 'Race', branches, env, k }
+      const argExpr = node[1] as AstNode
+      const frame: ConcurrentArgFrame = { type: 'ConcurrentArg', mode: 'race', env }
+      return { type: 'Eval', node: argExpr, env, k: cons<Frame>(frame, k) }
+    }
+    case NodeTypes.Settled: {
+      const argExpr = node[1] as AstNode
+      const frame: ConcurrentArgFrame = { type: 'ConcurrentArg', mode: 'settled', env }
+      return { type: 'Eval', node: argExpr, env, k: cons<Frame>(frame, k) }
     }
     case NodeTypes.Perform: {
       const [effectExpr, payloadExpr] = node[1] as [AstNode, AstNode | undefined]
@@ -1415,6 +1437,28 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
     case 'ParallelResume':
       // Legacy frame type — no longer produced but may exist in old continuations
       throw new RuntimeError('ParallelResumeFrame is no longer supported. Snapshot format has changed.', undefined)
+    case 'ConcurrentArg': {
+      // The evaluated array of functions. Validate, then dispatch to concurrent execution.
+      if (!isPersistentVector(value)) {
+        throw new TypeError(`${frame.mode}: expected an array of functions, got ${typeof value}`, undefined)
+      }
+      const fns: unknown[] = []
+      let i = 0
+      for (const item of value) {
+        if (!isDvalaFunction(item as Any)) {
+          throw new TypeError(`${frame.mode}: branch at index ${i} is not a function`, undefined)
+        }
+        fns.push(item)
+        i++
+      }
+      if (fns.length === 0) {
+        throw new TypeError(`${frame.mode}: requires at least one branch`, undefined)
+      }
+      if (frame.mode === 'race') {
+        return { type: 'Race', branches: fns, env: frame.env, k }
+      }
+      return { type: 'Parallel', branches: fns, env: frame.env, k, mode: frame.mode }
+    }
     case 'ParallelBranchBarrier':
       // Branch completed — return BranchComplete step to exit the branch trampoline.
       // Do NOT flow into outerK; the parallel collector handles result aggregation.
@@ -2173,6 +2217,25 @@ function buildErrorPayload(error: DvalaError): Obj {
   // Stamp origin metadata (sourceCodeInfo) for internal tracking — preserved across re-throws
   stampErrorOrigin(payload, { sourceCodeInfo: error.sourceCodeInfo })
   return payload
+}
+
+// -- Settled mode helpers: wrap results as [:ok, value] or [:error, errorPayload] --
+
+function makeAtom(name: string): Atom {
+  const atom: Atom = { [ATOM_SYMBOL]: true, name }
+  Object.defineProperty(atom, Symbol.for('nodejs.util.inspect.custom'), {
+    value: () => `:${name}`,
+    enumerable: false,
+  })
+  return atom
+}
+
+function wrapSettledOk(value: unknown): Arr {
+  return PersistentVector.from([makeAtom('ok'), value])
+}
+
+function wrapSettledError(error: DvalaError): Arr {
+  return PersistentVector.from([makeAtom('error'), buildErrorPayload(error) as unknown])
 }
 
 /**
@@ -3210,15 +3273,16 @@ function throwSuspension(k: ContinuationStack, meta?: unknown, effectName?: stri
 /**
  * Run a single trampoline branch to completion with effect handler support.
  *
- * This is the core building block for `parallel` and `race`. Each branch
- * runs as an independent trampoline invocation through `runEffectLoop`,
+ * This is the core building block for `parallel`, `race`, and `settled`.
+ * Each branch is a function value called with no arguments. The branch runs
+ * as an independent trampoline invocation through `runEffectLoop`,
  * producing a `RunResult` that is either `completed`, `suspended`, or `error`.
  *
  * The branch receives the same `handlers` and the given `signal`, allowing
  * the caller to cancel branches via AbortController.
  */
 async function runBranch(
-  node: AstNode,
+  branchFn: unknown,
   env: ContextStack,
   handlers: Handlers | undefined,
   signal: AbortSignal,
@@ -3231,7 +3295,12 @@ async function runBranch(
   // a BranchComplete step instead of continuing into outerK.
   const barrierFrame: ParallelBranchBarrierFrame = { type: 'ParallelBranchBarrier', branchCtx }
   const barrierK: ContinuationStack = cons<Frame>(barrierFrame, outerK)
-  const initial: Step = { type: 'Eval', node, env, k: barrierK }
+  // Call the branch function with no arguments.
+  // dispatchFunction returns Step | Promise<Step>; cast to Step is safe because
+  // runEffectLoop's inner loop handles Promise<Step> via `step instanceof Promise`.
+  const initial = dispatchFunction(
+    branchFn as FunctionLike, PersistentVector.empty(), [], env, undefined, barrierK,
+  ) as Step
 
   return runEffectLoop(
     initial,
@@ -3261,12 +3330,13 @@ async function runBranch(
  *   but errors take priority)
  */
 async function executeParallelBranches(
-  branches: AstNode[],
+  branches: unknown[],
   env: ContextStack,
   k: ContinuationStack,
   handlers: Handlers | undefined,
   signal: AbortSignal | undefined,
   snapshotState?: SnapshotState,
+  mode: 'parallel' | 'settled' = 'parallel',
 ): Promise<Step> {
   // AbortController for this parallel group — aborted when any branch suspends,
   // which signals remaining effect handlers to auto-suspend via ctx.signal.
@@ -3285,7 +3355,7 @@ async function executeParallelBranches(
       branchCount: branches.length,
       branches,
       env,
-      mode: 'parallel',
+      mode,
     }
     const result = await runBranch(branch, env, handlers, effectSignal, k, branchCtx, snapshotState)
     if (result.type === 'suspended') {
@@ -3301,28 +3371,41 @@ async function executeParallelBranches(
   const suspendedBranches: { index: number; result: RunResult & { type: 'suspended' } }[] = []
   const errors: DvalaError[] = []
 
-  for (const settled of results) {
-    if (settled.status === 'rejected') {
+  for (let ri = 0; ri < results.length; ri++) {
+    const settledResult = results[ri]!
+    if (settledResult.status === 'rejected') {
       // branchPromises should never reject, but handle defensively
-      errors.push(new DvalaError(`${settled.reason}`, undefined))
+      if (mode === 'settled') {
+        // In settled mode, wrap rejected promises as [:error, payload].
+        // Use ri as branch index since Promise.allSettled preserves order.
+        const err = new DvalaError(`${settledResult.reason}`, undefined)
+        completedBranches.push({ index: ri, value: wrapSettledError(err) })
+      } else {
+        errors.push(new DvalaError(`${settledResult.reason}`, undefined))
+      }
     } else {
-      const { index, result } = settled.value
+      const { index, result } = settledResult.value
       switch (result.type) {
         case 'completed':
-          completedBranches.push({ index, value: result.value })
+          completedBranches.push({ index, value: mode === 'settled' ? wrapSettledOk(result.value) : result.value })
           break
         case 'suspended':
           suspendedBranches.push({ index, result })
           break
         case 'error':
-          errors.push(result.error)
+          if (mode === 'settled') {
+            // In settled mode, wrap errors as [:error, errorPayload] results
+            completedBranches.push({ index, value: wrapSettledError(result.error) })
+          } else {
+            errors.push(result.error)
+          }
           break
       }
     }
   }
 
-  // If any branch errored, throw the first error
-  if (errors.length > 0) {
+  // In parallel mode, throw on first error. Settled never throws.
+  if (mode !== 'settled' && errors.length > 0) {
     throw errors[0]!
   }
 
@@ -3362,7 +3445,7 @@ async function executeParallelBranches(
       env,
       completedBranches,
       suspendedBranches: siblingsSuspended,
-      mode: 'parallel',
+      mode,
     }
 
     // Rebuild the primary's continuation with the barrier replaced
@@ -3408,7 +3491,7 @@ async function executeParallelBranches(
  * - If all branches error, throw an aggregate error.
  */
 async function executeRaceBranches(
-  branches: AstNode[],
+  branches: unknown[],
   env: ContextStack,
   k: ContinuationStack,
   handlers: Handlers | undefined,
@@ -3551,16 +3634,18 @@ async function executeReRunParallel(
 
   // The resumed branch is now completed
   const allCompleted: { index: number; value: unknown }[] = [
-    { index: branchIndex, value: resumedBranchValue },
+    { index: branchIndex, value: mode === 'settled' ? wrapSettledOk(resumedBranchValue) : resumedBranchValue },
   ]
 
-  // Re-run all sibling branches from their original AST
+  // Re-run all sibling branches by calling stored function values
   const parallelAbort = new AbortController()
   const effectSignal = signal
     ? combineSignals(signal, parallelAbort.signal)
     : parallelAbort.signal
 
   const siblingPromises: Promise<{ index: number; result: RunResult }>[] = []
+  // Track branch indices in parallel with siblingPromises for rejected-promise fallback
+  const siblingIndices: number[] = []
   for (let i = 0; i < branchCount; i++) {
     if (i === branchIndex) continue // Skip the already-completed branch
 
@@ -3571,8 +3656,9 @@ async function executeReRunParallel(
       env,
       mode,
     }
+    siblingIndices.push(i)
     siblingPromises.push((async () => {
-      const result = await runBranch(branches[i]!, env, handlers, effectSignal, outerK, branchCtx, snapshotState)
+      const result = await runBranch(branches[i], env, handlers, effectSignal, outerK, branchCtx, snapshotState)
       if (result.type === 'suspended') {
         parallelAbort.abort()
       }
@@ -3580,20 +3666,26 @@ async function executeReRunParallel(
     })())
   }
 
-  const settled = await Promise.allSettled(siblingPromises)
+  const reRunSettled = await Promise.allSettled(siblingPromises)
 
   // Collect results — track snapshots for the primary suspended sibling
   // so the composed timeline includes branch-local checkpoints.
   const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
   const errors: DvalaError[] = []
 
-  for (const s of settled) {
+  for (let ri = 0; ri < reRunSettled.length; ri++) {
+    const s = reRunSettled[ri]!
     if (s.status === 'rejected') {
-      errors.push(new DvalaError(`${s.reason}`, undefined))
+      const err = new DvalaError(`${s.reason}`, undefined)
+      if (mode === 'settled') {
+        allCompleted.push({ index: siblingIndices[ri]!, value: wrapSettledError(err) })
+      } else {
+        errors.push(err)
+      }
     } else {
       const { index, result } = s.value
       if (result.type === 'completed') {
-        allCompleted.push({ index, value: result.value })
+        allCompleted.push({ index, value: mode === 'settled' ? wrapSettledOk(result.value) : result.value })
       } else if (result.type === 'suspended' && result._rawSuspension) {
         const raw = result._rawSuspension
         newSuspended.push({
@@ -3605,12 +3697,16 @@ async function executeReRunParallel(
           nextSnapshotIndex: raw.nextSnapshotIndex,
         })
       } else if (result.type === 'error') {
-        errors.push(result.error)
+        if (mode === 'settled') {
+          allCompleted.push({ index, value: wrapSettledError(result.error) })
+        } else {
+          errors.push(result.error)
+        }
       }
     }
   }
 
-  // Error handling: parallel throws on first error, race drops errors silently
+  // Error handling: parallel throws on first error, race drops errors silently, settled never throws
   if (mode === 'parallel' && errors.length > 0) {
     throw errors[0]!
   }
@@ -3624,7 +3720,9 @@ async function executeReRunParallel(
   }
 
   // If siblings suspended, compose a ResumeParallelFrame (upgrade Tier 1 → Tier 2)
-  if (newSuspended.length > 0 && (mode === 'parallel' || allCompleted.length === 0)) {
+  // Re-suspend if any siblings are still running. Parallel and settled wait for ALL
+  // branches; race only re-suspends if no branch has completed yet (first wins).
+  if (newSuspended.length > 0 && (mode !== 'race' || allCompleted.length === 0)) {
     const primary = newSuspended[0]!
     const newFrame: ResumeParallelFrame = {
       type: 'ResumeParallel',
@@ -3667,7 +3765,7 @@ async function executeReRunParallel(
 function buildParallelResult(
   completed: { index: number; value: unknown }[],
   branchCount: number,
-  mode: 'parallel' | 'race',
+  mode: 'parallel' | 'race' | 'settled',
   outerK: ContinuationStack,
 ): Step {
   if (mode === 'race') {
@@ -3700,12 +3798,12 @@ async function executeResumeParallel(
   snapshotState?: SnapshotState,
 ): Promise<Step> {
   const { resumedBranchValue, frame, k: outerK } = step
-  const { branchIndex, branchCount, completedBranches, suspendedBranches, mode } = frame
+  const { branchIndex, branchCount, branches, env, completedBranches, suspendedBranches, mode } = frame
 
   // The resumed branch is now completed
   const allCompleted: { index: number; value: unknown }[] = [
     ...completedBranches,
-    { index: branchIndex, value: resumedBranchValue },
+    { index: branchIndex, value: mode === 'settled' ? wrapSettledOk(resumedBranchValue) : resumedBranchValue },
   ]
 
   // If no suspended siblings, all branches are done
@@ -3725,8 +3823,8 @@ async function executeResumeParallel(
     const branchCtx: ParallelBranchContext = {
       branchIndex: sibling.index,
       branchCount,
-      branches: frame.branches,
-      env: frame.env,
+      branches,
+      env,
       mode,
     }
     const barrierFrame: ParallelBranchBarrierFrame = { type: 'ParallelBranchBarrier', branchCtx }
@@ -3770,19 +3868,26 @@ async function executeResumeParallel(
     return { index: sibling.index, result }
   })
 
-  const settled = await Promise.allSettled(siblingPromises)
+  const resumeSettled = await Promise.allSettled(siblingPromises)
 
   // Collect results — track snapshots for the primary suspended sibling
   const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
   const errors: DvalaError[] = []
 
-  for (const s of settled) {
+  for (let ri = 0; ri < resumeSettled.length; ri++) {
+    const s = resumeSettled[ri]!
     if (s.status === 'rejected') {
-      errors.push(new DvalaError(`${s.reason}`, undefined))
+      // Use suspendedBranches[ri].index to recover the branch index for rejected promises
+      const err = new DvalaError(`${s.reason}`, undefined)
+      if (mode === 'settled') {
+        allCompleted.push({ index: suspendedBranches[ri]!.index, value: wrapSettledError(err) })
+      } else {
+        errors.push(err)
+      }
     } else {
       const { index, result } = s.value
       if (result.type === 'completed') {
-        allCompleted.push({ index, value: result.value })
+        allCompleted.push({ index, value: mode === 'settled' ? wrapSettledOk(result.value) : result.value })
       } else if (result.type === 'suspended' && result._rawSuspension) {
         const raw = result._rawSuspension
         newSuspended.push({
@@ -3794,12 +3899,16 @@ async function executeResumeParallel(
           nextSnapshotIndex: raw.nextSnapshotIndex,
         })
       } else if (result.type === 'error') {
-        errors.push(result.error)
+        if (mode === 'settled') {
+          allCompleted.push({ index, value: wrapSettledError(result.error) })
+        } else {
+          errors.push(result.error)
+        }
       }
     }
   }
 
-  // Error handling: parallel throws on first error, race drops errors silently
+  // Error handling: parallel throws on first error, race drops errors silently, settled never throws
   if (mode === 'parallel' && errors.length > 0) {
     throw errors[0]!
   }
@@ -3809,14 +3918,16 @@ async function executeResumeParallel(
   }
 
   // If siblings re-suspended (and not a race with a winner), compose a new ResumeParallelFrame
-  if (newSuspended.length > 0 && (mode === 'parallel' || allCompleted.length === 0)) {
+  // Re-suspend if any siblings are still running. Parallel and settled wait for ALL
+  // branches; race only re-suspends if no branch has completed yet (first wins).
+  if (newSuspended.length > 0 && (mode !== 'race' || allCompleted.length === 0)) {
     const primary = newSuspended[0]!
     const newFrame: ResumeParallelFrame = {
       type: 'ResumeParallel',
       branchIndex: primary.index,
       branchCount,
-      branches: frame.branches,
-      env: frame.env,
+      branches,
+      env,
       completedBranches: allCompleted,
       suspendedBranches: newSuspended.slice(1).map(s => ({
         index: s.index,
@@ -5135,7 +5246,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'Perform':
         return dispatchPerform(step.effect, step.arg, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
       case 'Parallel':
-        return executeParallelBranches(step.branches, step.env, step.k, handlers, signal, snapshotState)
+        return executeParallelBranches(step.branches, step.env, step.k, handlers, signal, snapshotState, step.mode)
       case 'Race':
         return executeRaceBranches(step.branches, step.env, step.k, handlers, signal, snapshotState)
       case 'ParallelResume':

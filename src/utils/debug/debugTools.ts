@@ -1,6 +1,6 @@
 import { isFunctionType, isNodeType } from '../../constants/constants'
 import type { AstNode, DvalaFunction } from '../../parser/types'
-import { FUNCTION_SYMBOL } from '../symbols'
+import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '../symbols'
 
 function isDvalaFunction(func: unknown): func is DvalaFunction {
   if (func === null || typeof func !== 'object')
@@ -23,6 +23,9 @@ export function valueToString(value: unknown): string {
 
   if (isNode(value))
     return `${value[0]}-node`
+
+  if (value !== null && typeof value === 'object' && ATOM_SYMBOL in value)
+    return `:${(value as unknown as { name: string }).name}`
 
   if (value === null)
     return 'null'
