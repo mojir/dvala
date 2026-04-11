@@ -30,7 +30,12 @@ export function collHasKey(coll: unknown, key: string | number): boolean {
   return false
 }
 
-export function compare<T extends string | number>(a: T, b: T, sourceCodeInfo: SourceCodeInfo | undefined): number {
+export function compare(a: unknown, b: unknown, sourceCodeInfo: SourceCodeInfo | undefined): number {
+  // Atoms compare alphabetically by name
+  if (isAtom(a) && isAtom(b)) {
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+  }
+
   assertStringOrNumber(a, sourceCodeInfo)
   assertStringOrNumber(b, sourceCodeInfo)
 

@@ -3,7 +3,7 @@ import type { QualifiedMatcherFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { asAny, asEffect, isAtom, isEffect, isRegularExpression } from '../../typeGuards/dvala'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
-import { asStringOrNumber, assertStringOrNumber } from '../../typeGuards/string'
+import { asStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
 import { isPersistentVector } from '../../utils/persistent'
@@ -286,8 +286,6 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
   },
   'compare': {
     evaluate: ([a, b], sourceCodeInfo): number => {
-      assertStringOrNumber(a, sourceCodeInfo)
-      assertStringOrNumber(b, sourceCodeInfo)
       return compare(a, b, sourceCodeInfo)
     },
     arity: toFixedArity(2),
@@ -295,17 +293,18 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       category: 'misc',
       returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'string'] },
-        b: { type: ['number', 'string'] },
+        a: { type: ['number', 'string', 'atom'] },
+        b: { type: ['number', 'string', 'atom'] },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Compares two values. Returns `-1` if `a` < `b`, `1` if `a` > `b` and `0` if `a` and `b` have the same sort order.',
+      description: 'Compares two values. Returns `-1` if `a` < `b`, `1` if `a` > `b` and `0` if `a` and `b` have the same sort order. Works on numbers, strings, and atoms.',
       seeAlso: ['<', '>', '<=', '>=', 'sort', 'sequence.sortBy'],
       examples: [
         'compare(0, 1)',
         'compare(0, 0)',
         'compare(1, 0)',
         'compare("Albert", "Mojir")',
+        'compare(:apple, :banana)',
       ],
     },
   },
