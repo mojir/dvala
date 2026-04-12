@@ -16,7 +16,7 @@ import {
   StringType, BooleanType, NullType,
   Unknown, Never,
   atom, literal, fn, array, tuple, union,
-  typeToString,
+  typeToString, typeEquals,
 } from './types'
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
@@ -596,16 +596,85 @@ export function inferExpr(
 
     // --- Match ---
     case NodeTypes.Match: {
-      const [matchExpr, ...cases] = payload as [AstNode, ...[AstNode, AstNode][]]
-      inferExpr(matchExpr, ctx, env, typeMap)
+      // Payload: [matchExpr, [case1, case2, ...]]
+      // Each case: [pattern, body, guard | null]
+      const matchPayload = payload as [AstNode, [AstNode, AstNode, AstNode | null][]]
+      const matchExpr = matchPayload[0]
+      const cases = matchPayload[1]
+      const matchType = inferExpr(matchExpr, ctx, env, typeMap)
 
-      // Each branch produces a type; the result is their union
+      // Track remaining type for exhaustiveness
+      let remainingType: Type = expandType(matchType)
+
       const branchTypes: Type[] = []
-      for (const matchCase of cases) {
-        const [_pattern, body] = matchCase
-        const branchType = inferExpr(body, ctx, env, typeMap)
-        branchTypes.push(branchType)
+      for (const [pattern, body, guard] of cases) {
+        const caseEnv = env.child()
+        const patternType = pattern[0] as string
+
+        // Determine what type this pattern narrows to
+        let narrowedType: Type | null = null
+
+        switch (patternType) {
+          case 'literal': {
+            // case 0, case "hello", case :ok — narrows to the literal/atom type
+            const [litNode] = pattern[1] as [AstNode]
+            if (litNode[0] === NodeTypes.Num) narrowedType = literal(litNode[1] as number)
+            else if (litNode[0] === NodeTypes.Str) narrowedType = literal(litNode[1] as string)
+            else if (litNode[0] === NodeTypes.Atom) narrowedType = atom(litNode[1] as string)
+            else if (litNode[0] === NodeTypes.Reserved) {
+              if (litNode[1] === 'true') narrowedType = literal(true)
+              else if (litNode[1] === 'false') narrowedType = literal(false)
+              else if (litNode[1] === 'null') narrowedType = NullType
+            }
+            break
+          }
+          case 'symbol': {
+            // case n — binds a variable, optionally narrowed by guard
+            const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
+            const name = nameNode[1] as string
+
+            // Check guard for type narrowing: when isNumber(n) → narrow to Number
+            let bindType: Type = matchType
+            if (guard) {
+              const guardNarrow = extractGuardNarrowing(guard, name)
+              if (guardNarrow) {
+                narrowedType = guardNarrow
+                bindType = guardNarrow
+              }
+            }
+
+            caseEnv.bind(name, bindType)
+            break
+          }
+          case 'wildcard':
+            // _ — matches everything, no narrowing
+            break
+          case 'object': {
+            // case {name, age} — destructure and bind
+            const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+            for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+              const fieldVar = ctx.freshVar()
+              constrain(ctx, matchType, { tag: 'Record', fields: new Map([[fieldName, fieldVar]]), open: true })
+              bindPattern(fieldPattern, fieldVar, caseEnv, ctx)
+            }
+            break
+          }
+          default:
+            break
+        }
+
+        // Infer body type in the case scope
+        const bodyType = inferExpr(body, ctx, caseEnv, typeMap)
+        branchTypes.push(bodyType)
+
+        // Subtract the narrowed type from remaining for exhaustiveness
+        if (narrowedType) {
+          remainingType = subtractType(remainingType, narrowedType)
+        } else if (patternType === 'wildcard') {
+          remainingType = Never // wildcard catches everything
+        }
       }
+
       result = branchTypes.length > 0 ? union(...branchTypes) : Never
       break
     }
@@ -727,6 +796,58 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Inter': return t.members.some(m => containsVarsAboveLevel(m, level))
     default: return false
   }
+}
+
+// ---------------------------------------------------------------------------
+// Match narrowing helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract type narrowing from a guard expression.
+ * Recognizes patterns like `isNumber(n)` → returns NumberType.
+ * Uses the builtin type guard info from the type registry.
+ */
+function extractGuardNarrowing(guard: AstNode, boundName: string): Type | null {
+  // Guard must be a Call to a builtin: ["Call", [["Builtin", name, id], [["Sym", boundName, id]]], id]
+  if (guard[0] !== NodeTypes.Call) return null
+  const [calleeNode, argNodes] = guard[1] as [AstNode, AstNode[]]
+  if (calleeNode[0] !== NodeTypes.Builtin) return null
+  if (argNodes.length !== 1) return null
+
+  const argNode = argNodes[0]!
+  if (argNode[0] !== NodeTypes.Sym) return null
+  if (argNode[1] !== boundName) return null
+
+  // Look up type guard info for the builtin
+  const builtinName = calleeNode[1] as string
+  const info = getBuiltinType(builtinName)
+  if (info.guardType) {
+    return info.guardType
+  }
+
+  return null
+}
+
+/**
+ * Subtract one type from another: remainingType \ narrowedType.
+ * Used for exhaustiveness checking — each match clause subtracts
+ * its pattern type from the remaining unmatched type.
+ */
+function subtractType(from: Type, subtract: Type): Type {
+  // If subtracting from a union, remove matching members
+  if (from.tag === 'Union') {
+    const remaining = from.members.filter(m => !typeEquals(m, subtract))
+    if (remaining.length === 0) return Never
+    if (remaining.length === 1) return remaining[0]!
+    return { tag: 'Union', members: remaining }
+  }
+
+  // If subtracting the exact same type, result is Never
+  if (typeEquals(from, subtract)) return Never
+
+  // If subtracting a literal from a primitive, can't simplify further
+  // (would need full set-theoretic complement which is deferred)
+  return from
 }
 
 // ---------------------------------------------------------------------------

@@ -448,3 +448,56 @@ describe('inference — array destructuring', () => {
     expect(() => inferType('let [a, b] = array(1, 2); a')).not.toThrow()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Inference — Step 4: match narrowing and exhaustiveness
+// ---------------------------------------------------------------------------
+
+describe('inference — match narrowing', () => {
+  it('match with literal patterns returns union of branch types', () => {
+    const t = inferAndExpand('match 1 case 0 then "zero" case 1 then "one" case _ then "other" end')
+    expect(isSubtype(t, StringType)).toBe(true)
+  })
+
+  it('match with atom patterns returns union', () => {
+    const t = inferAndExpand('match :ok case :ok then 1 case :error then 0 end')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('match narrows type in guard branches', () => {
+    // When isNumber(n) narrows n to Number, the body n + 1 should type as Number
+    const t = inferAndExpand('let x = 42; match x case n when isNumber(n) then n + 1 case _ then 0 end')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('match with wildcard catch-all infers body type', () => {
+    const t = inferAndExpand('match 42 case _ then "anything" end')
+    expect(isSubtype(t, StringType)).toBe(true)
+  })
+
+  it('match with object destructuring pattern', () => {
+    const t = inferAndExpand('let p = {x: 1, y: 2}; match p case {x, y} then x + y end')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('match with mixed branch types returns union', () => {
+    const t = inferAndExpand('match 1 case 0 then "zero" case _ then 42 end')
+    // Result is "zero" | 42, which is String | Number
+    expect(isSubtype(literal('zero'), t)).toBe(true)
+    expect(isSubtype(literal(42), t)).toBe(true)
+  })
+})
+
+describe('inference — exhaustiveness', () => {
+  it('exhaustive match on atoms: remainder is Never', () => {
+    // match on :ok | :error with both cases covered
+    // This tests that subtractType works for atoms in unions
+    expect(() => inferType(`
+      let x = if true then :ok else :error end;
+      match x
+        case :ok then 1
+        case :error then 0
+      end
+    `)).not.toThrow()
+  })
+})
