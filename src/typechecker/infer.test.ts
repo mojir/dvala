@@ -6,7 +6,7 @@ import type { Type } from './types'
 import {
   NumberType, StringType, NullType,
   Unknown, Never,
-  atom, literal, fn, record,
+  atom, literal, fn, record, array, inter,
 } from './types'
 import {
   InferenceContext, TypeEnv,
@@ -104,6 +104,42 @@ describe('constrain', () => {
     const v = ctx.freshVar()
     constrain(ctx, record({ x: literal(42) }), record({ x: v }))
     expect(v.lowerBounds).toHaveLength(1)
+  })
+
+  it('intersection on left: overloaded function picks matching overload', () => {
+    const ctx = new InferenceContext()
+    const retVar = ctx.freshVar()
+    // Overloaded: (Number -> Number) & (Number[] -> Number[])
+    const overloaded = inter(
+      fn([NumberType], NumberType),
+      fn([array(NumberType)], array(NumberType)),
+    )
+    // Call with Number → should match first overload, retVar gets lower bound Number
+    constrain(ctx, overloaded, fn([literal(42)], retVar))
+    expect(retVar.lowerBounds).toContain(NumberType)
+  })
+
+  it('intersection on left: overloaded function picks array overload', () => {
+    const ctx = new InferenceContext()
+    const retVar = ctx.freshVar()
+    const overloaded = inter(
+      fn([NumberType], NumberType),
+      fn([array(NumberType)], array(NumberType)),
+    )
+    // Call with Number[] → should match second overload
+    constrain(ctx, overloaded, fn([array(literal(42))], retVar))
+    expect(retVar.lowerBounds.length).toBeGreaterThan(0)
+  })
+
+  it('intersection on left: no matching overload throws', () => {
+    const ctx = new InferenceContext()
+    const retVar = ctx.freshVar()
+    const overloaded = inter(
+      fn([NumberType], NumberType),
+      fn([array(NumberType)], array(NumberType)),
+    )
+    // Call with String → no overload matches
+    expect(() => constrain(ctx, overloaded, fn([StringType], retVar))).toThrow(TypeInferenceError)
   })
 })
 

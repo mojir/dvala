@@ -153,6 +153,30 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     return
   }
 
+  // --- Intersection on the left: any member satisfying rhs is enough ---
+  // This is how overloaded function types work:
+  //   (Number -> Number) & (Number[] -> Number[])  <:  (42 -> β)
+  // The first overload matches (42 <: Number), so β gets lower bound Number.
+  if (lhs.tag === 'Inter') {
+    const errors: TypeInferenceError[] = []
+    for (const m of lhs.members) {
+      try {
+        constrain(ctx, m, rhs)
+        return // at least one member worked — done
+      } catch (e) {
+        if (e instanceof TypeInferenceError) {
+          errors.push(e)
+        } else {
+          throw e
+        }
+      }
+    }
+    // No member worked — report the last error
+    throw errors[errors.length - 1] ?? new TypeInferenceError(
+      `No overload matches: ${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`,
+    )
+  }
+
   // --- Intersection on the right: lhs must be <: each member ---
   if (rhs.tag === 'Inter') {
     for (const m of rhs.members) constrain(ctx, lhs, m)

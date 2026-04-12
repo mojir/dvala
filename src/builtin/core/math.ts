@@ -150,7 +150,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => val + 1),
     arity: toFixedArity(1),
     docs: {
-      type: '(Number) -> Number',
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: 'number' },
       args: {
@@ -172,7 +172,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => val - 1),
     arity: toFixedArity(1),
     docs: {
-      type: '(Number) -> Number',
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -194,7 +194,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: reduceMathOp(0, (a, b) => a + b),
     arity: {},
     docs: {
-      type: '(...Number[]) -> Number',
+      type: '((...Number[]) -> Number) & ((...Number[][]) -> Number[]) & ((...Number[][][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -222,7 +222,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: reduceMathOp(1, (a, b) => a * b),
     arity: {},
     docs: {
-      type: '(...Number[]) -> Number',
+      type: '((...Number[]) -> Number) & ((...Number[][]) -> Number[]) & ((...Number[][][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -275,7 +275,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: {},
     docs: {
-      type: '(...Number[]) -> Number',
+      type: '((...Number[]) -> Number) & ((...Number[][]) -> Number[]) & ((...Number[][][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -328,7 +328,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: {},
     docs: {
-      type: '(...Number[]) -> Number',
+      type: '((...Number[]) -> Number) & ((...Number[][]) -> Number[]) & ((...Number[][][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -356,7 +356,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => Math.trunc(a / b)),
     arity: toFixedArity(2),
     docs: {
-      type: '(Number, Number) -> Number',
+      type: '((Number, Number) -> Number) & ((Number[], Number[]) -> Number[]) & ((Number[][], Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -386,7 +386,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => a - b * Math.floor(a / b)),
     arity: toFixedArity(2),
     docs: {
-      type: '(Number, Number) -> Number',
+      type: '((Number, Number) -> Number) & ((Number[], Number[]) -> Number[]) & ((Number[][], Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -414,7 +414,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => a % b),
     arity: toFixedArity(2),
     docs: {
-      type: '(Number, Number) -> Number',
+      type: '((Number, Number) -> Number) & ((Number[], Number[]) -> Number[]) & ((Number[][], Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -442,7 +442,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.sqrt(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '(Number) -> Number',
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -467,7 +467,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.cbrt(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '(Number) -> Number',
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -494,7 +494,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => a ** b),
     arity: toFixedArity(2),
     docs: {
-      type: '(Number, Number) -> Number',
+      type: '((Number, Number) -> Number) & ((Number[], Number[]) -> Number[]) & ((Number[][], Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -551,7 +551,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '(Number, Number?) -> Number',
+      type: '((Number, Number?) -> Number) & ((Number[], Number?) -> Number[]) & ((Number[][], Number?) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -584,7 +584,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.trunc(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '(Number) -> Number',
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['integer', 'vector', 'matrix'] },
       args: {
@@ -609,7 +609,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.floor(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '(Number) -> Number',
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['integer', 'vector', 'matrix'] },
       args: {
@@ -634,7 +634,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.ceil(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '(Number) -> Number',
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['integer', 'vector', 'matrix'] },
       args: {
@@ -670,7 +670,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '(...Number[]) -> Number',
+      type: '((...Number[]) -> Number) & ((Number[]) -> Number)',
       category: 'math',
       returns: { type: 'number' },
       args: {
@@ -709,7 +709,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '(...Number[]) -> Number',
+      type: '((...Number[]) -> Number) & ((Number[]) -> Number)',
       category: 'math',
       returns: { type: 'number' },
       args: {
@@ -737,7 +737,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.abs(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '(Number) -> Number',
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -759,7 +759,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.sign(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '(Number) -> Number',
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
