@@ -7,7 +7,7 @@ import type { Type } from './types'
 import {
   NumberType, StringType, NullType,
   Unknown, Never,
-  atom, literal, fn, record, array, inter,
+  atom, literal, fn, record, array, inter, neg,
 } from './types'
 import {
   InferenceContext, TypeEnv,
@@ -490,8 +490,6 @@ describe('inference — match narrowing', () => {
 
 describe('inference — exhaustiveness', () => {
   it('exhaustive match on atoms: remainder is Never', () => {
-    // match on :ok | :error with both cases covered
-    // This tests that subtractType works for atoms in unions
     expect(() => inferType(`
       let x = if true then :ok else :error end;
       match x
@@ -499,5 +497,114 @@ describe('inference — exhaustiveness', () => {
         case :error then 0
       end
     `)).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Inference — Step 5: atoms and tagged unions
+// ---------------------------------------------------------------------------
+
+describe('inference — atom types', () => {
+  it(':ok infers as atom singleton', () => {
+    const t = inferType(':ok')
+    expect(t).toEqual(atom('ok'))
+  })
+
+  it(':error infers as atom singleton', () => {
+    const t = inferType(':error')
+    expect(t).toEqual(atom('error'))
+  })
+
+  it('if/else with atoms infers union', () => {
+    const t = inferAndExpand('if true then :ok else :error end')
+    // Result should be :ok | :error
+    expect(isSubtype(atom('ok'), t)).toBe(true)
+    expect(isSubtype(atom('error'), t)).toBe(true)
+  })
+
+  it('atom match narrows correctly', () => {
+    const t = inferAndExpand(`
+      let status = if true then :ok else :error end;
+      match status
+        case :ok then "success"
+        case :error then "failure"
+      end
+    `)
+    expect(isSubtype(t, StringType)).toBe(true)
+  })
+})
+
+describe('inference — tagged unions', () => {
+  it('tagged record construction', () => {
+    const t = inferType('{tag: :ok, value: 42}')
+    expect(t.tag).toBe('Record')
+    if (t.tag === 'Record') {
+      expect(t.fields.get('tag')).toEqual(atom('ok'))
+      expect(t.fields.get('value')).toEqual(literal(42))
+      expect(t.open).toBe(false)
+    }
+  })
+
+  it('tagged union via if/else', () => {
+    const t = inferAndExpand(`
+      let result = if true then
+        {tag: :ok, value: 42}
+      else
+        {tag: :error, error: "failed"}
+      end;
+      result.tag
+    `)
+    // result.tag should be :ok | :error
+    expect(isSubtype(atom('ok'), t)).toBe(true)
+    expect(isSubtype(atom('error'), t)).toBe(true)
+  })
+
+  it('tagged union field access via destructuring', () => {
+    const t = inferAndExpand(`
+      let result = {tag: :ok, value: 42};
+      let {value} = result;
+      value
+    `)
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('match on tagged union with object pattern', () => {
+    const t = inferAndExpand(`
+      let result = {tag: :ok, value: 42};
+      match result
+        case {tag, value} then value
+      end
+    `)
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+})
+
+describe('inference — design doc examples', () => {
+  it('function that handles Number | String', () => {
+    // Design doc: f: (Number | String) -> Number
+    const t = inferType(`
+      (x) -> match x
+        case n when isNumber(n) then n + 1
+        case s when isString(s) then count(s)
+      end
+    `)
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      expect(t.params).toHaveLength(1)
+    }
+  })
+
+  it('Number & !0 type (non-zero numbers)', () => {
+    // 42 <: Number & !0
+    expect(isSubtype(literal(42), inter(NumberType, neg(literal(0))))).toBe(true)
+    // 0 </: Number & !0
+    expect(isSubtype(literal(0), inter(NumberType, neg(literal(0))))).toBe(false)
+  })
+
+  it('nullable type: T | Null', () => {
+    const t = inferAndExpand('if true then 42 else null end')
+    // Should be Number | Null
+    expect(isSubtype(literal(42), t)).toBe(true)
+    expect(isSubtype(NullType, t)).toBe(true)
   })
 })
