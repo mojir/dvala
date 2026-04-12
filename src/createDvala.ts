@@ -16,6 +16,7 @@ import { isDvalaBundle } from './bundler/interface'
 import type { Handlers, RunResult, SnapshotState } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
 import { toJS, validateFromJS } from './utils/interop'
+import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } from './typechecker/typecheck'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
@@ -62,6 +63,16 @@ export interface CreateDvalaOptions {
    * Default: `'.'`
    */
   fileResolverBaseDir?: string
+  /**
+   * Enable type checking. When true, source code is type-checked after parsing.
+   * Type errors are reported via `onTypeDiagnostic` but do NOT block evaluation.
+   */
+  typecheck?: boolean
+  /**
+   * Callback invoked with type diagnostics after type checking.
+   * Only called when `typecheck: true`.
+   */
+  onTypeDiagnostic?: (diagnostic: TypeDiagnostic) => void
 }
 
 /**
@@ -85,6 +96,8 @@ export interface DvalaRunner {
   runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RunResult>
   getUndefinedSymbols: (source: string, symbolsOptions?: { scope?: Record<string, unknown> }) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
+  /** Typecheck source code and return diagnostics + type map. */
+  typecheck: (source: string) => TypecheckResult
 }
 
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
@@ -102,6 +115,8 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const factoryFileResolver = options?.fileResolver
   const factoryFileResolverBaseDir = options?.fileResolverBaseDir
   const debug = options?.debug ?? false
+  const typecheckEnabled = options?.typecheck ?? false
+  const onTypeDiagnostic = options?.onTypeDiagnostic
   // Always use an internal AST cache to ensure deterministic node IDs
   // when the same source is run multiple times.
   const cache = new Cache(options?.cache ?? 100)
@@ -201,6 +216,14 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
       const ast = buildAst(source, runOptions?.filePath)
 
+      // Run typecheck pass if enabled (non-blocking — diagnostics only)
+      if (typecheckEnabled) {
+        const { diagnostics } = runTypecheck(ast)
+        if (onTypeDiagnostic) {
+          for (const d of diagnostics) onTypeDiagnostic(d)
+        }
+      }
+
       if (effectHandlers) {
         return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers) as never)
       }
@@ -276,5 +299,9 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       return new AutoCompleter(program, position, {})
     },
 
+    typecheck(source: string): TypecheckResult {
+      const ast = buildAst(source)
+      return runTypecheck(ast)
+    },
   }
 }
