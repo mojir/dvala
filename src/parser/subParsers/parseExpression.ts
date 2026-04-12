@@ -4,7 +4,7 @@ import { NodeTypes } from '../../constants/constants'
 import type { CstBuilder } from '../../cst/builder'
 import { ParseError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'
-import { isA_BinaryOperatorToken, isEffectNameToken, isLParenToken, isMacroQualifiedToken, isReservedSymbolToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
+import { isA_BinaryOperatorToken, isEffectNameToken, isLParenToken, isReservedSymbolToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
 import { isSpecialSymbolNode } from '../../typeGuards/astNode'
 import { binaryFunctionalOperatorPrecedence, createNamedNormalExpressionNode, exponentiationPrecedence, fromBinaryOperatorToNode, isAtExpressionEnd, withSourceCodeInfo } from '../helpers'
@@ -86,9 +86,6 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         }
         break
     }
-  } else if (isMacroQualifiedToken(token)) {
-    // macro@qualified.name — pass the qualified name to parseMacro
-    left = parseMacro(ctx)
   } else if (isReservedSymbolToken(token, 'do')) {
     left = parseDo(ctx)
   } else if (isReservedSymbolToken(token, 'quote')) {

@@ -48,8 +48,6 @@ export interface UserDefinedFunction extends GenericDvalaFunction {
 export interface MacroFunction extends GenericDvalaFunction {
   functionType: 'Macro'
   name: string | undefined
-  /** Dotted DNS-style identifier for host-level dispatch. Null for anonymous macros. */
-  qualifiedName: QualifiedName | null
   evaluatedfunction: EvaluatedFunction
   docString: string
 }

@@ -59,14 +59,6 @@ describe('macro system', () => {
   })
 
   describe('qualified name', () => {
-    it('should parse macro with qualified name', () => {
-      expect(() => run('macro@mylib.id (ast) -> ast')).not.toThrow()
-    })
-
-    it('should return qualified name via qualifiedName()', () => {
-      expect(run('let m = macro@mylib.id (ast) -> ast; qualifiedName(m)')).toBe('mylib.id')
-    })
-
     it('should return null for anonymous macro', () => {
       expect(run('let m = macro (ast) -> ast; qualifiedName(m)')).toBeNull()
     })
@@ -79,29 +71,6 @@ describe('macro system', () => {
       expect(run('qualifiedName(42)')).toBeNull()
       expect(run('qualifiedName("hello")')).toBeNull()
       expect(run('qualifiedName((x) -> x)')).toBeNull()
-    })
-
-    it('should still be a macro with qualified name', () => {
-      expect(run('isMacro(macro@mylib.id (ast) -> ast)')).toBe(true)
-      expect(run('typeOf(macro@mylib.id (ast) -> ast)')).toBe('macro')
-    })
-
-    it('should invoke correctly with qualified name', () => {
-      expect(run('let id = macro@mylib.id (ast) -> ast; id(1 + 2)')).toBe(3)
-    })
-
-    it('should emit @dvala.macro.expand for named macros', () => {
-      // Named macros emit the effect — a handler can intercept it.
-      // The handler returns an AST node that gets evaluated in the calling scope.
-      const result = run(`
-        let id = macro@mylib.id (ast) -> ast;
-        do
-          with handler @dvala.macro.expand(arg) -> resume(["Num", 99999, 0]) end;
-          id(42)
-        end
-      `)
-      // Handler returned AST for 99999, which gets evaluated → 99999
-      expect(result).toBe(99999)
     })
   })
 
@@ -139,22 +108,8 @@ describe('macro system', () => {
     })
   })
 
-  describe('anonymous macros and @dvala.macro.expand', () => {
-    it('should not emit @dvala.macro.expand for anonymous macros', () => {
-      // Anonymous macros bypass the effect system entirely.
-      // A handler for @dvala.macro.expand should NOT intercept them.
-      const result = run(`
-        let id = macro (ast) -> ast;
-        do
-          with handler @dvala.macro.expand(arg) -> resume(99999) end;
-          id(42)
-        end
-      `)
-      // Should be 42 (direct call), not 99999 (intercepted)
-      expect(result).toBe(42)
-    })
-
-    it('should work inside handler blocks without being intercepted', () => {
+  describe('macros inside handler blocks', () => {
+    it('should work inside handler blocks without interference', () => {
       // Anonymous macros inside effect handling blocks should expand normally
       const result = run(`
         let double = macro (ast) -> do

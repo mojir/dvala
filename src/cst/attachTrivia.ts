@@ -32,14 +32,12 @@ export function isTrivia(token: Token): boolean {
  * token[1], but a few strip their prefix during tokenization:
  *   - Atom: value "ok" → raw ":ok"
  *   - EffectName: value "my.eff" → raw "@my.eff"
- *   - MacroQualified: value "qualified.name" → raw "macro@qualified.name"
  *   - MacroPrefix: value "name" → raw "#name"
  */
 export function rawTokenText(token: Token): string {
   switch (token[0]) {
     case 'Atom': return `:${token[1]}`
     case 'EffectName': return `@${token[1]}`
-    case 'MacroQualified': return `macro@${token[1]}`
     case 'MacroPrefix': return `#${token[1]}`
     default: return token[1]
   }

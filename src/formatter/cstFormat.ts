@@ -1587,7 +1587,7 @@ function formatResume(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatMacro(node: UntypedCstNode): Doc {
-  // Children: macro (or macro@name), [(], params..., [)], ->, body
+  // Children: macro, [(], params..., [)], ->, body
   // Same structure as Function but with macro keyword
   return formatFromChildren(node)
 }

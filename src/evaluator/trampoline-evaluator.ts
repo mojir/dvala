@@ -429,8 +429,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: dvalaFunction, k }
     }
     case NodeTypes.Macro: {
-      const fn = node[1] as [BindingTarget[], AstNode[], string | null]
-      const qualifiedName = fn[2] ?? null
+      const fn = node[1] as [BindingTarget[], AstNode[]]
       const evaluatedFunc = evaluateFunction(fn, env)
       const min = evaluatedFunc[0].filter(arg => arg[0] !== bindingTargetTypes.rest && arg[1][1] === undefined).length
       const max = evaluatedFunc[0].some(arg => arg[0] === bindingTargetTypes.rest) ? undefined : evaluatedFunc[0].length
@@ -440,7 +439,6 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         sourceCodeInfo: env.resolve(node[2]),
         functionType: 'Macro',
         name: undefined,
-        qualifiedName,
         evaluatedfunction: evaluatedFunc,
         arity,
         docString: '',
@@ -1057,12 +1055,10 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       // Generalized matcher — works on any entity with a qualified name (effects, named macros)
       assertNumberOfParams({ min: 1, max: 1 }, params.size, fn.sourceCodeInfo ?? sourceCodeInfo)
       const entity = params.get(0)
-      // Extract qualified name from the entity
+      // Extract qualified name from the entity (only effects have qualified names)
       let qName: string | null = null
       if (isEffect(entity)) {
         qName = entity.name
-      } else if (isMacroFunction(entity)) {
-        qName = entity.qualifiedName
       }
       if (qName === null) {
         return { type: 'Value', value: false, k }
@@ -2958,25 +2954,6 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
     return standardHandler(arg, k, sourceCodeInfo)
   }
 
-  // dvala.macro.expand — default handler calls the macro function directly.
-  // The MacroEvalFrame on k?.head provides the calling scope for evaluating the result.
-  if (effect.name === 'dvala.macro.expand') {
-    // payload is a PM: { fn: MacroFunction, args: PV<PV<AstNode>> }
-    // (fromJS was applied at callMacro: fn passes through, args are PV-converted)
-    const payloadPM = arg as unknown as PersistentMap<Any>
-    const macroEvalFrame = k!.head as MacroEvalFrame
-    const macroFn_ = payloadPM.get('fn') as unknown as UserDefinedFunction
-    // args is a PV of PV-converted AST nodes — each element is already a PV
-    const argsAsPV = payloadPM.get('args') as unknown as Arr
-    return setupUserDefinedCall(
-      macroFn_,
-      argsAsPV,
-      macroEvalFrame.env,
-      sourceCodeInfo,
-      k,
-    )
-  }
-
   // dvala.checkpoint resolves to null when completely unhandled.
   if (effect.name === 'dvala.checkpoint') {
     return { type: 'Value', value: null, k }
@@ -3103,7 +3080,7 @@ function dispatchHostHandler(
         // Capture a post-effect snapshot so time travel can rewind to right after this effect.
         // Snapshot after (not before) so the effect result is baked in — re-execution from here
         // is pure and needs no effect-result replay.
-        if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint' && effectName !== 'dvala.macro.expand') {
+        if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint') {
           const continuation = serializeToObject(composeCheckpointContinuation(k))
           const snapshot = createSnapshot({
             continuation,
@@ -4602,9 +4579,8 @@ function applyFiniteCheck(frame: FiniteCheckFrame, value: Any, k: ContinuationSt
 // ---------------------------------------------------------------------------
 
 /**
- * Call a macro. Named macros (with a qualifiedName) emit @dvala.macro.expand
- * so the host can intercept expansion. Anonymous macros are called directly
- * with no effect overhead.
+ * Call a macro. Macros are always pure — they expand at compile time,
+ * called directly with no effect overhead.
  */
 function callMacro(
   macroFn: MacroFunction,
@@ -4637,31 +4613,15 @@ function callMacro(
     sourceCodeInfo,
   }
 
-  // Anonymous macros — call directly, no effect, no host visibility
-  if (!macroFn.qualifiedName) {
-    // Convert each AST node (plain array) to PV so macro bodies can use Dvala builtins
-    // like first(), get(), etc. on the received arguments.
-    return setupUserDefinedCall(
-      macroFn as unknown as UserDefinedFunction,
-      PersistentVector.from(argNodes.map(arg => fromJS(arg as unknown as Any))) as unknown as Arr,
-      env,
-      sourceCodeInfo,
-      cons<Frame>(macroEvalFrame, k),
-    )
-  }
-
-  // Named macros — emit @dvala.macro.expand so the host can intercept.
-  // The effect arg is a Dvala PM with fn (the macro) and args (PV of PV-converted AST nodes).
-  // We use fromJS so that Dvala handlers can use get(arg, "fn"), get(arg, "args") etc.
-  const payload = fromJS({ fn: macroFn, args: argNodes })
-
-  return {
-    type: 'Perform',
-    effect: getEffectRef('dvala.macro.expand'),
-    arg: payload,
-    k: cons<Frame>(macroEvalFrame, k),
+  // Convert each AST node (plain array) to PV so macro bodies can use Dvala builtins
+  // like first(), get(), etc. on the received arguments.
+  return setupUserDefinedCall(
+    macroFn as unknown as UserDefinedFunction,
+    PersistentVector.from(argNodes.map(arg => fromJS(arg as unknown as Any))) as unknown as Arr,
+    env,
     sourceCodeInfo,
-  }
+    cons<Frame>(macroEvalFrame, k),
+  )
 }
 
 /**

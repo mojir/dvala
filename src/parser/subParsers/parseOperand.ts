@@ -39,7 +39,6 @@ const validDvalaEffects: ReadonlySet<string> = new Set([
   'dvala.sleep',
   'dvala.error',
   'dvala.checkpoint',
-  'dvala.macro.expand',
   'dvala.host',
   'dvala.env',
   'dvala.args',
@@ -204,7 +203,6 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     | 'MultiLineComment' // Should have been removed
     | 'SingleLineComment' // Should have been removed
     | 'Whitespace' // Should have been removed
-    | 'MacroQualified' // Handled in parseExpression
     | 'MacroPrefix' // Handled above
   >
   switch (tokenType) {

@@ -38,7 +38,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a macro, otherwise `false`.',
-      seeAlso: ['isFunction', 'typeOf', 'qualifiedName', 'qualifiedMatcher'],
+      seeAlso: ['isFunction', 'typeOf'],
       examples: [
         'isMacro(macro (ast) -> ast)',
         'isMacro((x) -> x)',

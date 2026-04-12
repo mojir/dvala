@@ -149,9 +149,6 @@ describe('prettyPrint — functions', () => {
 
 describe('prettyPrint — macros', () => {
   it('simple macro', () => { expect(pp('macro (ast) -> ast')).toBe('macro (ast) -> ast') })
-  it('named macro', () => {
-    expect(pp('macro@my.lib (ast) -> ast')).toBe('macro@my.lib (ast) -> ast')
-  })
   it('multi-statement macro body', () => {
     const result = pp('macro (ast) -> do let x = ast; x end')
     expect(result).toContain('macro')
