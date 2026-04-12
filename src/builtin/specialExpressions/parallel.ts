@@ -16,6 +16,7 @@ const docs: CustomDocs = {
   description: 'Evaluates all branch functions concurrently and returns an array of results in order. '
     + 'Each branch runs as an independent trampoline invocation. If any branch errors, throws the first error (fail-fast). '
     + 'If any branch suspends, the entire `parallel` suspends with a composite blob. '
+    + 'Outer handlers do not reach branches by default. Use `with propagate handler;` to propagate handlers into branches. '
     + 'Only available in async mode (`run()`). Requires at least one branch.',
   examples: [
     { code: 'parallel([-> 1 + 2, -> 3 + 4])', noRun: true },

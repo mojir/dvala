@@ -581,6 +581,18 @@ describe('prettyPrint — handler: single clause on same line', () => {
     expect(result).toContain('@my.a(x) ->')
     expect(result).toContain('@my.b(y) -> resume(y)')
   })
+  it('shallow handler round-trips the shallow keyword', () => {
+    const result = pp('shallow handler @my.eff(x) -> resume(x) end')
+    expect(result).toBe('shallow handler @my.eff(x) -> resume(x) end')
+  })
+  it('shallow handler with transform preserves shallow', () => {
+    const result = pp('shallow handler @my.eff(x) -> resume(x) transform r -> r * 2 end')
+    expect(result).toMatch(/^shallow handler/)
+  })
+  it('shallow multi-clause handler preserves shallow', () => {
+    const result = pp('shallow handler @my.a(x) -> do let r = x; resume(r) end @my.b(y) -> resume(y) end')
+    expect(result).toMatch(/^shallow handler\n/)
+  })
 })
 
 describe('prettyPrint — with handler body indentation', () => {
@@ -591,6 +603,10 @@ describe('prettyPrint — with handler body indentation', () => {
     const result = pp('do with h; body end')
     // Must expand — `with` cannot be on the same line as surrounding do content
     expect(result).toContain('\n  with h;')
+  })
+  it('with propagate h; round-trips the propagate keyword', () => {
+    const result = pp('do with propagate h; body end')
+    expect(result).toContain('with propagate h;')
   })
 })
 

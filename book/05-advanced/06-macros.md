@@ -391,12 +391,11 @@ do
   with handler
     @dvala.macro.expand(arg) -> do
       perform(@dvala.io.print, `Expanding macro: ${qualifiedName(arg.fn)}`);
-      resume(["Num", 99, 0]);
+      resume(["Num", 99, 0]); // return the expansion result as AST
     end
   end;
   double(21);
 end;
-// Return the expansion result as AST
 
 ```
 

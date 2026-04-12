@@ -79,7 +79,7 @@ Key properties:
 * **Never throws** — all errors are wrapped as `[:error, errorPayload]`
 * **Success tagged** — successful results are wrapped as `[:ok, value]`
 * **All branches run** — like `parallel`, waits for every branch
-* **Essential for error handling** — this is the only Dvala-level way to observe branch errors without crashing, because outer `@dvala.error` handlers cannot catch errors from inside parallel branches (the BarrierFrame blocks effect propagation)
+* **Essential for error observation** — the primary way to observe branch errors without crashing. By default, outer handlers cannot catch errors from inside branches (the barrier blocks effect propagation). See [Handler Propagation](#handler-propagation) for how to change this
 
 ## Composable Branches
 
@@ -177,11 +177,136 @@ end)
 
 **In `settled`:** errors are never thrown. Each branch result is tagged as `[:ok, value]` or `[:error, errorPayload]`. The error payload is the same structured object you'd see in a `@dvala.error` handler: `{ type, message, data? }`.
 
-To handle errors per-branch inside `parallel` or `race`, wrap each branch in a `do...with handler` block.
+To handle errors per-branch inside `parallel` or `race`, you can either wrap each branch in a `do...with handler` block, or use `with propagate` to propagate a handler into all branches automatically. See [Handler Propagation](#handler-propagation) below.
+
+## Handler Propagation
+
+By default, handlers installed outside a `parallel`, `race`, or `settled` block do **not** reach inside branches. Effects from branches hit the barrier and are dispatched to host handlers instead. This is safe and correct — it prevents race conditions on stateful handlers.
+
+But sometimes you want a "safety net" handler that applies to all branches. Use `with propagate` to opt in:
+
+```dvala no-run
+// Without propagate: error leaks to host — parallel fails
+do with handler @dvala.error(e) -> resume(null) end;
+  parallel([-> 1 + "a", -> 42]);
+end
+// => error
+
+// With propagate: error caught inside branch — parallel succeeds
+do with propagate handler @dvala.error(e) -> resume(null) end;
+  parallel([-> 1 + "a", -> 42]);
+end
+// => [null, 42]
+```
+
+`with propagate` copies the handler into each branch at fork time. It is semantically equivalent to wrapping every branch manually:
+
+```dvala no-run
+// These are equivalent:
+do with propagate h;
+  parallel([-> a(), -> b()])
+end
+
+let safe = handler @dvala.error(e) -> resume(null) end;
+parallel([-> do with safe; a() end, -> do with safe; b() end])
+```
+
+### Abort Semantics Are Branch-Scoped
+
+When a propagated handler does not call `resume` (abort), the abort value replaces the **branch** result only — not the entire `parallel` expression:
+
+```dvala no-run
+do with propagate handler @dvala.error(e) -> "failed" end;
+  parallel([-> 1 + "a", -> 42]);
+end
+// => ["failed", 42]   — abort replaces branch, other branches unaffected
+```
+
+This differs from non-parallel code where abort replaces the entire `do with` block. Think of `with propagate` as "each branch gets its own copy of this handler" — the handler's scope is the branch.
+
+### Custom Effects
+
+`propagate` works with any effect, not just errors:
+
+```dvala no-run
+do with propagate handler @config(key) -> resume("default") end;
+  parallel([
+    -> perform(@config, "timeout"),
+    -> perform(@config, "retries"),
+  ]);
+end
+// => ["default", "default"]
+```
+
+### Shallow Handlers and Independent State
+
+Shallow state handlers propagate correctly. Each branch gets its own copy that evolves independently:
+
+```dvala no-run
+let state = (s) -> shallow handler
+  @get() -> do with state(s); resume(s) end
+  @set(v) -> do with state(v); resume(null) end
+end;
+
+do with propagate state(0);
+  parallel([
+    -> do perform(@set, 1); perform(@get) end,
+    -> do perform(@set, 2); perform(@get) end,
+  ]);
+end
+// => [1, 2]   — each branch has independent state
+```
+
+### Interaction with settled
+
+Without `propagate`, `settled` collects branch errors as `[:error, payload]` — this is its primary purpose. With `propagate`, a propagated error handler catches errors before `settled` sees them:
+
+```dvala no-run
+// Without propagate: settled sees the error
+do with handler @dvala.error(e) -> resume(null) end;
+  settled([-> 1 + "a"]);
+end
+// => [[:error, {...}]]
+
+// With propagate: handler catches error first — settled sees success
+do with propagate handler @dvala.error(e) -> resume(null) end;
+  settled([-> 1 + "a"]);
+end
+// => [[:ok, null]]
+```
+
+This is intentional — you explicitly chose both `propagate` and `settled`. If you want `settled` to collect errors, don't use `propagate` on the error handler.
+
+### Nested Parallel
+
+Propagation is transitive. A handler propagated into an outer branch is available for harvesting by an inner `parallel`:
+
+```dvala no-run
+do with propagate handler @dvala.error(e) -> resume("caught") end;
+  parallel([
+    -> parallel([-> 1 + "a"])
+  ]);
+end
+// => [["caught"]]
+```
+
+### Transform Clauses
+
+Transform clauses are **not** propagated into branches. The transform applies once at the original handler scope (outside the parallel), not per-branch:
+
+```dvala no-run
+do with propagate handler
+  @dvala.error(e) -> resume(null)
+  transform result -> result ++ [99]
+end;
+  parallel([-> 21]);
+end
+// => [21, 99]   — transform applied once to [21], not inside the branch
+```
 
 ## Branch Safety
 
-Branches are **independent** — they cannot access shared state or communicate with each other. The BarrierFrame prevents effects from crossing branch boundaries, which eliminates race conditions on stateful algebraic handlers. See the concurrency safety model in the design docs for the full analysis.
+Branches are **independent** — they cannot access shared state or communicate with each other. The barrier prevents effects from crossing branch boundaries by default, which eliminates race conditions on stateful algebraic handlers. Propagated handlers are copied into each branch — they don't share state across branches.
 
 ## Requirements
 
@@ -199,6 +324,36 @@ Branches are **independent** — they cannot access shared state or communicate 
 | Error handling | Fail fast (throws) | Errors ignored unless all fail | All captured as `[:error, ...]` |
 | Suspension | Suspends, resumes all branches | Suspends, first to complete wins | Suspends, resumes all branches |
 
+## Design: How Concurrency, Handlers, and Serialization Compose
+
+Dvala's concurrency model is not a separate subsystem bolted onto the effect system — it is a natural consequence of three design decisions that reinforce each other.
+
+### Effects as the only way out
+
+Every branch interaction with the outside world goes through `perform`. There are no raw I/O calls, no shared mutable state, no hidden channels. This means the runtime has **complete visibility** over every point where a branch blocks, communicates, or fails. The barrier frame can enforce isolation precisely because all side effects are mediated by the handler stack — there is nothing to "leak" around it.
+
+This is the same principle behind [Plotkin and Pretnar's algebraic effect handlers](https://homepages.inf.ed.ac.uk/gdp/publications/Effect_Handlers.pdf) (2009): effects are algebraic operations, and handlers give them meaning. The barrier simply defines a scope boundary for that meaning — handlers above the barrier provide one interpretation, handlers below provide another.
+
+### Immutability enables safe forking
+
+When `parallel` forks N branches, each branch receives a copy of the outer continuation stack. This is cheap because Dvala's continuation frames are **immutable persistent data structures** (PersistentList, PersistentVector, PersistentMap). "Copying" a continuation is O(1) — it's just a pointer to the same immutable structure. Each branch can evolve its continuation independently without invalidating the others.
+
+This is why `propagate` works correctly with multi-shot handlers and shallow state threading: the propagated handler frame is an immutable value shared by reference. When `resume` freshens the continuation environments (via `freshenContinuationEnvs`), each branch gets its own mutable binding layer on top of the shared immutable structure. No locking, no coordination, no races.
+
+### Serializable continuations compose with concurrency
+
+When a branch suspends, its continuation (everything from the perform site to the barrier) is captured as a JSON-serializable snapshot. The parallel orchestrator collects the state of all branches — completed branches store their values, suspended branches store their continuations — into a composite snapshot. On resume, the orchestrator reconstructs the parallel: completed branches use cached values, suspended branches are deserialized and resumed.
+
+This works because every value in a Dvala continuation is JSON-compatible by construction. There are no opaque host references, no native stack frames, no closures over mutable state. A continuation frame that was created by handler propagation (an `AlgebraicHandleFrame` above the barrier) serializes identically to any other handler frame — it is a standard frame with standard fields.
+
+The combination of these three properties — effect-mediated I/O, immutable continuations, and JSON-serializable state — means that a Dvala program can suspend inside a parallel branch, be serialized to a database, shipped across the network, and resumed in a different process, with all handler propagation intact. The host needs no special logic for this — the snapshot format is the same regardless of whether propagation was used.
+
+### The barrier as a scoping mechanism
+
+The barrier frame is often described as "blocking" effects, but a more accurate framing is that it **scopes** handler visibility. Without `propagate`, a handler's scope ends at the barrier — effects inside the branch are dispatched to host handlers as if the outer handler did not exist. With `propagate`, the handler's scope extends into the branch — effects inside the branch see the propagated handler first.
+
+This is analogous to lexical scoping in lambda calculus: a `let` binding is visible in its body but not outside it. The barrier is a scope boundary for the effect dimension, just as `end` is a scope boundary for the value dimension. `propagate` is the mechanism for explicitly widening that scope, similar to how closures capture bindings from enclosing scopes.
+
 ## Summary
 
-`parallel`, `race`, and `settled` bring structured concurrency to Dvala: concurrent work is lexically scoped, results are predictable, cancellation is automatic, and errors are controllable. Combined with the effect system and composable branch arrays, they let programs express concurrent I/O patterns without callbacks, promises, or colored functions.
+`parallel`, `race`, and `settled` bring structured concurrency to Dvala: concurrent work is lexically scoped, results are predictable, cancellation is automatic, and errors are controllable. Combined with the effect system, handler propagation, and composable branch arrays, they let programs express concurrent I/O patterns without callbacks, promises, or colored functions.

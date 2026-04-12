@@ -336,7 +336,7 @@ let move = (state, direction) -> do
       let newVisited = assoc(
         state.visited,
         newLocation,
-        inc(state.visited["newLocation"] ?? 0)
+        inc(state.visited[newLocation] ?? 0)
       );
       let newState = assoc(
         assoc(

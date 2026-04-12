@@ -276,18 +276,19 @@ function printNode(node: AstNode, ind: number, isRoot = false): string {
     case NodeTypes.Splice:
       return '<Splice>'
     case NodeTypes.Handler:
-      return printHandler(payload as [unknown[], unknown], ind)
+      return printHandler(payload as [unknown[], unknown, unknown], ind)
     case NodeTypes.Resume:
       return payload === 'ref' ? 'resume' : `resume(${printNode(payload as AstNode, ind)})`
     case NodeTypes.WithHandler: {
-      const [handlerExpr, bodyExprs] = payload as [unknown[], unknown[][]]
+      const [handlerExpr, bodyExprs, propagate] = payload as [unknown[], unknown[][], boolean]
       // `with h;` is always on its own line — a flat form would put semicolons
       // mid-line, violating the semicolons-last-on-line rule.
       // Body statements sit at the same indent as `with` itself (siblings in
       // the enclosing do block, not children of `with`).
       const handlerStr = printNode(handlerExpr as AstNode, ind)
       const bodyStrs = bodyExprs.map(b => printNode(b as AstNode, ind))
-      return `with ${handlerStr};\n${bodyStrs.map(s => `${indent(ind)}${s}`).join(';\n')}`
+      const propagatePrefix = propagate ? 'propagate ' : ''
+      return `with ${propagatePrefix}${handlerStr};\n${bodyStrs.map(s => `${indent(ind)}${s}`).join(';\n')}`
     }
     // Binding target types (from destructuring patterns, not evaluable code)
     case 'symbol':
@@ -715,11 +716,13 @@ function printHandlerBody(body: unknown[][], ind: number): string {
   return `do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
-function printHandler(payload: [unknown[], unknown], ind: number): string {
-  const [clauses, transform] = payload as [
+function printHandler(payload: [unknown[], unknown, unknown], ind: number): string {
+  const [clauses, transform, shallow] = payload as [
     { effectName: string; params: unknown[][]; body: unknown[][] }[],
     [unknown[], unknown[][]] | null,
+    boolean,
   ]
+  const keyword = shallow ? 'shallow handler' : 'handler'
 
   // Build per-clause strings at ind+1 (used for flat check and multi-clause form)
   const clauseStrs = clauses.map(clause => {
@@ -733,7 +736,7 @@ function printHandler(payload: [unknown[], unknown], ind: number): string {
   // Try flat single-line form: `handler @eff(p) -> body end`
   // Only when there's no transform and no clause body contains newlines.
   if (!transform && clauseStrs.every(c => !c.bodyStr.includes('\n'))) {
-    const flat = `handler ${clauseStrs.map(c => c.inline).join(' ')} end`
+    const flat = `${keyword} ${clauseStrs.map(c => c.inline).join(' ')} end`
     if (fits(flat, ind)) return flat
   }
 
@@ -746,7 +749,7 @@ function printHandler(payload: [unknown[], unknown], ind: number): string {
       ? `(${clause.params.map(p => printBindingTarget(p)).join(', ')})`
       : '()'
     const bodyStr = printHandlerBody(clause.body, ind)
-    const parts: string[] = [`handler @${clause.effectName}${paramsStr} -> ${bodyStr}`]
+    const parts: string[] = [`${keyword} @${clause.effectName}${paramsStr} -> ${bodyStr}`]
     if (transform) {
       const [param, transformBody] = transform
       const paramStr = printBindingTarget(param)
@@ -759,7 +762,7 @@ function printHandler(payload: [unknown[], unknown], ind: number): string {
   }
 
   // Multi-clause form: each clause indented under `handler`
-  const parts: string[] = ['handler']
+  const parts: string[] = [keyword]
   for (const { inline } of clauseStrs) {
     parts.push(`${indent(ind + 1)}${inline}`)
   }

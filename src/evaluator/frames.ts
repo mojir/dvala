@@ -423,6 +423,8 @@ export interface AlgebraicHandleFrame {
   handler: HandlerFunction
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
+  /** If true, this handler is harvested into parallel branches at fork time. */
+  propagate?: boolean
 }
 
 /**
@@ -480,6 +482,8 @@ export interface WithHandlerSetupFrame {
   bodyExprs: AstNode[]
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
+  /** If true, `with propagate` was used — override handler's propagate flag. */
+  propagate?: boolean
 }
 
 /**

@@ -17,6 +17,7 @@ const docs: CustomDocs = {
     + 'Each result is `[:ok, value]` if the branch succeeded or `[:error, errorPayload]` if it raised an error. '
     + 'Never throws — all errors are captured as results. If any branch suspends, '
     + 'the entire `settled` suspends with a composite blob. '
+    + 'Outer handlers do not reach branches by default. With `with propagate handler;`, a propagated error handler catches errors before `settled` sees them — use deliberately. '
     + 'Only available in async mode (`run()`). Requires at least one branch.',
   examples: [
     { code: 'settled([-> perform(@host.fetch, url1), -> perform(@host.fetch, url2)])', noRun: true },

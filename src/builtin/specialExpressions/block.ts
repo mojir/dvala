@@ -7,12 +7,13 @@ export type DoNode = [typeof NodeTypes.Block, AstNode[], number]
 
 const docs: CustomDocs = {
   category: 'special-expression',
-  customVariants: ['do body end', 'do with handler; body end'],
+  customVariants: ['do body end', 'do with handler; body end', 'do with propagate handler; body end'],
   details: [
     ['body', 'expressions', 'The expressions to evaluate.'],
   ],
   description: 'Evaluates `body`. Resulting value is the value of the last expression. '
-    + 'Use `with handler...end;` inside a `do` block to install effect handlers that intercept `perform` calls.',
+    + 'Use `with handler...end;` inside a `do` block to install effect handlers that intercept `perform` calls. '
+    + 'Use `with propagate handler;` to also propagate the handler into `parallel`, `race`, and `settled` branches.',
   examples: [
     `
 do

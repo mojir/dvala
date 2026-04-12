@@ -17,6 +17,7 @@ const docs: CustomDocs = {
     + 'its value becomes the result. Losing branches are cancelled via AbortSignal. '
     + 'Errored branches are silently dropped. If all branches error, throws an aggregate error. '
     + 'If no branch completes but some suspend, the race suspends. '
+    + 'Outer handlers do not reach branches by default. Use `with propagate handler;` to propagate handlers into branches. '
     + 'Only available in async mode (`run()`). Requires at least one branch.',
   examples: [
     { code: 'race([-> perform(@a.get), -> perform(@b.get)])', noRun: true },

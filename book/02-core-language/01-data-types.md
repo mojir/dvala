@@ -179,7 +179,7 @@ let defaults = { theme: "dark", lang: "en" };
 Regexp literals start with `#"`. No need to escape backslashes:
 
 ```dvala
-reMatch("abc123", regexp("[a-z]+(\\d+)", ""));
+reMatch("abc123", #"[a-z]+(\d+)");
 ```
 
 ## Type Predicates

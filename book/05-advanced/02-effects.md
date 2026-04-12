@@ -169,11 +169,11 @@ let h =
   handler
     @dvala.error(err) -> "caught"
   end;
-// error → handler aborts with "caught" // never reached
+// error → handler aborts with "caught"
 do
   with h;
   let x = 0 / 0;
-  x + 1;
+  x + 1; // never reached
 end;
 ```
 
@@ -431,28 +431,27 @@ Each effect handling step **installs a new handler** with the updated state. The
 
 ### Reading the shallow state pattern
 
-The pattern has a consistent shape in both clauses:
+The pattern has a consistent shape — a factory function returns a `shallow handler`, and each clause reinstalls the factory with updated state before resuming:
 
 ```dvala no-run
-@get() -> do with state(s); resume(s) end
-//                  ^same s      ^value to return for get
-
-@set(v) -> do with state(v); resume(null) end
-//                  ^new v       ^set returns null
+let state = (s) -> shallow handler
+  @get() -> do with state(s); resume(s) end
+  @set(v) -> do with state(v); resume(null) end
+end
 ```
 
-Each clause:
+Each clause does two things:
 1. **Installs a new handler** with the updated state — `do with state(...); ...`
-2. **Resumes the continuation** inside that scope — `resume(...)` is the last expression
+2. **Resumes the continuation** inside that new scope — `resume(...)` is the last expression
 
-The resumed continuation sees the fresh handler. Any subsequent `@get` or `@set` hits the new handler, not the old one.
+For `@get`, the new handler carries the same `s` — the state is unchanged, and `resume(s)` returns the current value. For `@set`, the new handler carries `v` — the state is updated, and `resume(null)` signals completion. The resumed continuation sees the fresh handler, so any subsequent `@get` or `@set` hits the new handler, not the old one.
 
 ### Named states
 
 The single-value pattern extends naturally to multiple named variables. Instead of threading a scalar through `state(s)`, thread a map through `states(store)` — one handler covers all variables at once:
 
 ```dvala
-let states = (store) -> handler
+let states = (store) -> shallow handler
   @get(name) -> do
     with states(store);
     resume(get(store, name));
@@ -482,7 +481,7 @@ The `perform(@set, ["x", 5])` syntax exposes the tuple plumbing. Two small macro
 let getState = macro(name) -> quote perform(@get, $^{name}) end;
 let setState = macro(name, v) -> quote perform(@set, [$^{name}, $^{v}]) end;
 
-let states = (store) -> handler
+let states = (store) -> shallow handler
   @get(name) -> do
     with states(store);
     resume(get(store, name));
@@ -525,7 +524,7 @@ Shallow handlers are useful anywhere the handler needs **different behaviour at 
 **Step-by-step iteration** — a `takeFirst(n)` handler that collects up to `n` yielded values and stops early:
 
 ```dvala
-let takeFirst = (n) -> handler
+let takeFirst = (n) -> shallow handler
   @yield(x) -> if n == 0 then
     []
   else
@@ -538,9 +537,9 @@ do
   perform(@yield, "a");
   perform(@yield, "b");
   perform(@yield, "c");
-  perform(@yield, "d");
-  [];
-end; // never reached
+  perform(@yield, "d"); // handler aborts here (n == 0)
+  []; // never reached
+end;
 ```
 
 Each `@yield` is handled by a fresh `takeFirst(n - 1)` instance. When `n` reaches `0`, the clause returns `[]` without calling `resume` — the rest of the body never runs (early termination). A deep handler can't implement this: reinstallation always uses the same `n`, with no way to count down.
@@ -754,6 +753,33 @@ let h =
   end;
 applyHandler(h, -> 0 / 0);
 ```
+
+---
+
+## Handler Propagation Across Parallel Branches
+
+By default, handlers installed outside a `parallel`, `race`, or `settled` block do **not** reach inside branches — effects from branches hit a barrier and are dispatched to host handlers instead. This is safe, but means you must wrap each branch individually if you want a shared handler.
+
+Use `with propagate` to opt in to handler propagation. This copies the handler into each branch at fork time:
+
+```dvala no-run
+// Error handler propagated into every branch
+do with propagate handler @dvala.error(e) -> resume(null) end;
+  parallel([-> 1 + "a", -> 42]);
+end
+// => [null, 42]
+```
+
+This is equivalent to wrapping each branch manually, but the runtime automates the insertion. The handler is copied — each branch gets its own independent instance.
+
+Key rules:
+
+* **Opt-in only** — without `propagate`, existing behavior is unchanged
+* **Abort is branch-scoped** — if the handler doesn't call `resume`, the abort value replaces that branch's result only, not the entire parallel expression
+* **Transform clauses are not propagated** — the transform applies at the original handler scope, not per-branch
+* **Shallow handlers work** — each branch's copy evolves independently through the state-threading pattern
+
+For full details and examples, see the [Concurrency chapter](05-concurrency.md#handler-propagation).
 
 ---
 

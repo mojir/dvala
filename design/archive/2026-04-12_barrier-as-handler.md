@@ -1,10 +1,11 @@
 # Handler Propagation Across Parallel Branches
 
-**Status:** Draft
+**Status:** Implemented
 **Created:** 2026-04-12
 **Revised:** 2026-04-12 — replaced "barrier as handler" with "handler insertion above barrier"
 **Revised:** 2026-04-12 — opt-in `propagate` keyword; resolved `settled` interaction; abort semantics documented
 **Revised:** 2026-04-12 — `propagate` composable at both creation-site and installation-site (`with propagate h`)
+**Revised:** 2026-04-12 — simplified to installation-site only (`with propagate h;`); no creation-site `propagate handler`
 
 ## Problem
 

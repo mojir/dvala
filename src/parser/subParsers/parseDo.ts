@@ -1,17 +1,18 @@
 import type { DoNode } from '../../builtin/specialExpressions/block'
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
-import { asReservedSymbolToken, assertReservedSymbolToken, isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
+import { asReservedSymbolToken, assertReservedSymbolToken, isOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import type { ParserContext } from '../ParserContext'
 import { withSourceCodeInfo } from '../helpers'
 
 /**
- * WithHandlerNode: ["WithHandler", [handlerExpr, bodyExprs], nodeId]
+ * WithHandlerNode: ["WithHandler", [handlerExpr, bodyExprs, propagate], nodeId]
  * - handlerExpr: expression evaluating to a HandlerFunction
  * - bodyExprs: remaining expressions in the block (handler is active for these)
+ * - propagate: if true, handler is harvested into parallel branches at fork time
  */
-export type WithHandlerNode = [typeof NodeTypes.WithHandler, [AstNode, AstNode[]], number]
+export type WithHandlerNode = [typeof NodeTypes.WithHandler, [AstNode, AstNode[], boolean], number]
 
 export function parseDo(ctx: ParserContext): DoNode {
   ctx.builder?.startNode('Block')
@@ -55,6 +56,13 @@ function parseWithHandler(ctx: ParserContext): WithHandlerNode {
   const token = asReservedSymbolToken(ctx.tryPeek(), 'with')
   ctx.advance() // consume 'with'
 
+  // Check for `with propagate <expr>;` — propagate is a contextual keyword here.
+  // A variable literally named `propagate` must be wrapped in parens: `with (propagate);`.
+  const propagate = isSymbolToken(ctx.tryPeek(), 'propagate')
+  if (propagate) {
+    ctx.advance() // consume 'propagate'
+  }
+
   const handlerExpr = ctx.parseExpression()
 
   if (!isOperatorToken(ctx.tryPeek(), ';')) {
@@ -80,7 +88,7 @@ function parseWithHandler(ctx: ParserContext): WithHandlerNode {
   }
 
   const node = withSourceCodeInfo(
-    [NodeTypes.WithHandler, [handlerExpr, bodyExprs], 0],
+    [NodeTypes.WithHandler, [handlerExpr, bodyExprs, propagate], 0],
     token[2],
     ctx,
   ) as WithHandlerNode

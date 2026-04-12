@@ -158,23 +158,23 @@ filter("hello world", -> $ != " ");
 Regexp literals use `#"..."` syntax — no backslash doubling needed:
 
 ```dvala
-reMatch("abc123", regexp("\\d+", ""));
+reMatch("abc123", #"\d+");
 ```
 
 With capture groups, `reMatch` returns an array: the full match followed by each group:
 
 ```dvala
-reMatch("2026-03-31", regexp("(\\d{4})-(\\d{2})-(\\d{2})", ""));
+reMatch("2026-03-31", #"(\d{4})-(\d{2})-(\d{2})");
 ```
 
 `reMatch` returns `null` when there is no match:
 
 ```dvala
-reMatch("no digits here", regexp("\\d+", ""));
+reMatch("no digits here", #"\d+");
 ```
 
 Use `replace` with a regex for pattern-based substitution:
 
 ```dvala
-replace("phone: 123-456-7890", regexp("\\d{3}-\\d{3}-\\d{4}", ""), "[REDACTED]");
+replace("phone: 123-456-7890", #"\d{3}-\d{3}-\d{4}", "[REDACTED]");
 ```

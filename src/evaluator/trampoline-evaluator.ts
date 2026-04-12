@@ -465,15 +465,17 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: handlerFunction, k }
     }
     case NodeTypes.WithHandler: {
-      // `with h; body` — evaluate handler expression, then install and evaluate body.
+      // `with h; body` or `with propagate h; body` — evaluate handler expression,
+      // then install and evaluate body.
       // NOT a desugaring to h(-> body) — no function boundary, preserves recur.
-      const [handlerExpr, bodyExprs] = node[1] as [AstNode, AstNode[]]
+      const [handlerExpr, bodyExprs, propagate] = node[1] as [AstNode, AstNode[], boolean]
       const sourceCodeInfo = env.resolve(node[2])
       const setupFrame: WithHandlerSetupFrame = {
         type: 'WithHandlerSetup',
         bodyExprs,
         env,
         sourceCodeInfo,
+        propagate: propagate || undefined,
       }
       return { type: 'Eval', node: handlerExpr, env, k: cons(setupFrame, k) }
     }
@@ -2430,6 +2432,7 @@ function applyWithHandlerSetup(frame: WithHandlerSetupFrame, value: Any, k: Cont
     handler: value,
     env: value.closureEnv as ContextStack,
     sourceCodeInfo: frame.sourceCodeInfo,
+    propagate: frame.propagate,
   }
 
   const { bodyExprs, env } = frame
@@ -3271,6 +3274,49 @@ function throwSuspension(k: ContinuationStack, meta?: unknown, effectName?: stri
 }
 
 /**
+ * Harvest `AlgebraicHandleFrame` frames with `propagate: true` from the outer
+ * continuation stack. These handlers are inserted above the barrier in each
+ * parallel branch so that effects from branches can reach them.
+ *
+ * Walks outerK until it hits a barrier frame (ParallelBranchBarrier, ReRunParallel,
+ * ResumeParallel) — don't harvest across nested parallel boundaries. Handlers
+ * already harvested by a parent parallel are in the branch's k between the branch
+ * frames and the parent barrier, so transitive propagation happens naturally.
+ *
+ * Transform clauses are stripped from harvested handlers to prevent double-application:
+ * the transform belongs to the handler's own `do with` block scope, not the branch.
+ */
+function harvestPropagateHandlers(outerK: ContinuationStack): AlgebraicHandleFrame[] {
+  const handlers: AlgebraicHandleFrame[] = []
+  let node = outerK
+  while (node !== null) {
+    const frame = node.head
+    // Stop at next barrier — don't harvest across nested parallel boundaries
+    if (frame.type === 'ParallelBranchBarrier'
+      || frame.type === 'ReRunParallel'
+      || frame.type === 'ResumeParallel') break
+    if (frame.type === 'AlgebraicHandle' && frame.propagate) {
+      // Strip the transform clause from harvested handlers.
+      // The transform belongs to the handler's own scope (what value the `do with`
+      // block produces). If kept, the transform would apply twice: once inside the
+      // branch (harvested handler) and again outside (original handler).
+      const harvestedHandler: HandlerFunction = frame.handler.transform
+        ? { ...frame.handler, transform: null }
+        : frame.handler
+      handlers.push({
+        type: 'AlgebraicHandle',
+        handler: harvestedHandler,
+        env: frame.env,
+        sourceCodeInfo: frame.sourceCodeInfo,
+        propagate: true, // Preserve flag so nested parallel can harvest transitively
+      })
+    }
+    node = node.tail
+  }
+  return handlers
+}
+
+/**
  * Run a single trampoline branch to completion with effect handler support.
  *
  * This is the core building block for `parallel`, `race`, and `settled`.
@@ -3294,12 +3340,23 @@ async function runBranch(
   // When the branch completes and its value reaches this frame, it returns
   // a BranchComplete step instead of continuing into outerK.
   const barrierFrame: ParallelBranchBarrierFrame = { type: 'ParallelBranchBarrier', branchCtx }
-  const barrierK: ContinuationStack = cons<Frame>(barrierFrame, outerK)
+
+  // Harvest outer handlers marked `propagate` and insert them above the barrier.
+  // This lets effects from branches reach handlers installed outside the parallel block.
+  // Walk outerK up to the next barrier — don't harvest across nested parallel boundaries.
+  let branchTailK: ContinuationStack = cons<Frame>(barrierFrame, outerK)
+  const propagatedHandlers = harvestPropagateHandlers(outerK)
+  // Insert in reverse order so innermost handler ends up on top (preserves shadowing).
+  // harvestPropagateHandlers returns innermost-first; cons prepends, so we reverse.
+  for (let i = propagatedHandlers.length - 1; i >= 0; i--) {
+    branchTailK = cons<Frame>(propagatedHandlers[i]!, branchTailK)
+  }
+
   // Call the branch function with no arguments.
   // dispatchFunction returns Step | Promise<Step>; cast to Step is safe because
   // runEffectLoop's inner loop handles Promise<Step> via `step instanceof Promise`.
   const initial = dispatchFunction(
-    branchFn as FunctionLike, PersistentVector.empty(), [], env, undefined, barrierK,
+    branchFn as FunctionLike, PersistentVector.empty(), [], env, undefined, branchTailK,
   ) as Step
 
   return runEffectLoop(
