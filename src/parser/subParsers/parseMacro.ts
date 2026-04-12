@@ -2,23 +2,20 @@ import type { LambdaNode } from '../../builtin/specialExpressions/functions'
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
-import { assertOperatorToken, isMacroQualifiedToken, isReservedSymbolToken } from '../../tokenizer/token'
+import { assertOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseDo } from './parseDo'
 import { parseFunctionArguments } from './parseFunction'
 
-// Payload: [params, body, qualifiedName?]
-export type MacroPayload = [LambdaNode[1][0], LambdaNode[1][1], string | null]
+// Payload: [params, body] — same shape as LambdaNode payload
+export type MacroPayload = LambdaNode[1]
 export type MacroNode = [typeof NodeTypes.Macro, MacroPayload, number]
 
 export function parseMacro(ctx: ParserContext): MacroNode {
   ctx.builder?.startNode('Macro')
   const token = ctx.peek()
-  ctx.advance() // skip 'macro' or 'macro@qualified.name' token
-
-  // Qualified name comes from the MacroQualified token (macro@foo.bar)
-  const qualifiedName: string | null = isMacroQualifiedToken(token) ? token[1] : null
+  ctx.advance() // skip 'macro' token
 
   let functionArguments: BindingTarget[]
   try {
@@ -38,7 +35,7 @@ export function parseMacro(ctx: ParserContext): MacroNode {
     bodyNodes = [ctx.parseExpression()]
   }
 
-  const node = withSourceCodeInfo([NodeTypes.Macro, [functionArguments, bodyNodes, qualifiedName], 0], token[2], ctx) as MacroNode
+  const node = withSourceCodeInfo([NodeTypes.Macro, [functionArguments, bodyNodes], 0], token[2], ctx) as MacroNode
   ctx.setNodeEnd(node[2])
   ctx.builder?.endNode()
   return node

@@ -47,7 +47,6 @@ function getTokenColor(token: Token): string | null {
       return colors.effect
     case 'Atom':
       return colors.number
-    case 'MacroQualified':
     case 'MacroPrefix':
       return colors.keyword
     case 'Symbol': {
@@ -118,7 +117,7 @@ export function tokenizeToHtml(code: string): string {
       // QuoteSplice tokens ($^{, $^^{, etc.) are rendered as punctuation
       if (token[0] === 'QuoteSplice')
         return `<span style="color:${colors.punctuation}">${escapeHtml(token[1])}</span>`
-      const prefix = token[0] === 'Atom' ? ':' : token[0] === 'EffectName' ? '@' : token[0] === 'MacroQualified' ? 'macro@' : token[0] === 'MacroPrefix' ? '#' : ''
+      const prefix = token[0] === 'Atom' ? ':' : token[0] === 'EffectName' ? '@' : token[0] === 'MacroPrefix' ? '#' : ''
       const escaped = escapeHtml(token[1])
       const color = getTokenColor(token)
       if (!color)

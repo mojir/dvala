@@ -353,10 +353,6 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       if (isEffect(first)) {
         return first.name
       }
-      // Macros may have an optional qualified name
-      if (isMacroFunction(first)) {
-        return first.qualifiedName
-      }
       // Everything else has no qualified name
       return null
     },
@@ -365,15 +361,13 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       category: 'meta',
       returns: { type: ['string', 'null'] },
       args: {
-        entity: { type: 'any', description: 'An effect reference, macro, or any other value.' },
+        entity: { type: 'any', description: 'An effect reference or any other value.' },
       },
       variants: [{ argumentNames: ['entity'] }],
-      description: 'Returns the qualified name (dotted DNS-style identifier) of an entity, or null if it has none. Works on effect references and named macros.',
-      seeAlso: ['effectName', 'qualifiedMatcher', 'isMacro', 'isEffect'],
+      description: 'Returns the qualified name (dotted DNS-style identifier) of an entity, or null if it has none. Works on effect references.',
+      seeAlso: ['effectName', 'qualifiedMatcher', 'isEffect'],
       examples: [
         'qualifiedName(@dvala.io.print)',
-        'qualifiedName(macro@my.lib (ast) -> ast)',
-        'qualifiedName(macro (ast) -> ast)',
         'qualifiedName(42)',
       ],
     },
@@ -412,13 +406,12 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         pattern: { type: ['string', 'regexp'], description: 'A wildcard pattern or regexp to match against qualified names.' },
       },
       variants: [{ argumentNames: ['pattern'] }],
-      description: 'Returns a predicate function that matches any entity with a qualified name (effects, named macros). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
-      seeAlso: ['qualifiedName', 'effectName', 'isEffect', 'isMacro'],
+      description: 'Returns a predicate function that matches any entity with a qualified name (effect references). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
+      seeAlso: ['qualifiedName', 'effectName', 'isEffect'],
       examples: [
         'qualifiedMatcher("dvala.*")(@dvala.error)',
         'qualifiedMatcher("dvala.*")(@custom.foo)',
-        'qualifiedMatcher("*")(macro@my.lib (ast) -> ast)',
-        'qualifiedMatcher("my.*")(macro@my.lib (ast) -> ast)',
+        'qualifiedMatcher("*")(@dvala.io.print)',
       ],
     },
   },

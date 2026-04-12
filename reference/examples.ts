@@ -748,20 +748,17 @@ perform(@dvala.io.print, 21 |> double |> negate);   // -42`,
   {
     id: 'macros-advanced',
     name: 'Macros — Advanced',
-    description: 'Named macros, macroexpand for debugging, hygiene (auto-gensym), and the ast module for programmatic inspection.',
+    description: 'macroexpand for debugging, hygiene (auto-gensym), and the ast module for programmatic inspection.',
     category: 'Macros',
     code: dvala`
 let { prettyPrint } = import("ast");
 
-// --- Named macros with qualified names ---
-// macro@name attaches a qualified name for host-level dispatch
-let double = macro@mylib.double (ast) -> quote $^{ast} + $^{ast} end;
+// --- macroexpand — inspect without evaluating ---
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 
 perform(@dvala.io.print, "Type: " ++ typeOf(double));
-perform(@dvala.io.print, "Name: " ++ qualifiedName(double));
 perform(@dvala.io.print, "Is macro: " ++ str(isMacro(double)));
 
-// --- macroexpand — inspect without evaluating ---
 let expanded = macroexpand(double, quote x + 1 end);
 perform(@dvala.io.print, "Expanded AST: " ++ prettyPrint(expanded));
 
@@ -774,12 +771,7 @@ end end;
 let result = 999;                    // caller's "result"
 let doubled = withTemp(result + 1);  // macro's "result" is gensymed
 perform(@dvala.io.print, "doubled: " ++ str(doubled));   // 2000
-perform(@dvala.io.print, "result: " ++ str(result));     // 999 (not clobbered)
-
-// --- Named macros emit @dvala.macro.expand ---
-// Host handlers can intercept expansion of named macros
-perform(@dvala.io.print, "double is named: " ++ str(qualifiedName(double) != null));
-perform(@dvala.io.print, "anonymous has no name: " ++ str(qualifiedName(withTemp) == null))`,
+perform(@dvala.io.print, "result: " ++ str(result));     // 999 (not clobbered)`,
   },
   {
     id: 'macro-inception',

@@ -238,7 +238,7 @@ function printNode(node: AstNode, ind: number, isRoot = false): string {
     case NodeTypes.Function:
       return printFunction(payload as [unknown[][], unknown[][]], ind)
     case NodeTypes.Macro:
-      return printMacro(payload as [unknown[][], unknown[][], string | null], ind)
+      return printMacro(payload as [unknown[][], unknown[][]], ind)
     case NodeTypes.Perform:
       return printPerform(payload as [unknown[], unknown[] | undefined], ind)
     case NodeTypes.Array:
@@ -570,23 +570,22 @@ function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: numbe
   return `(${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
-function printMacro(payload: [unknown[][], unknown[][], string | null], ind: number): string {
-  const [params, body, qualifiedName] = payload
+function printMacro(payload: [unknown[][], unknown[][]], ind: number): string {
+  const [params, body] = payload
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
-  const namePrefix = qualifiedName ? `macro@${qualifiedName}` : 'macro'
 
   if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler && !hasNodeLevelComments((body[0] as AstNode)[2])) {
     const bodyStr = printNode(body[0] as AstNode, ind)
     if (allSingleLine(bodyStr)) {
-      const flat = `${namePrefix} (${paramStr}) -> ${bodyStr}`
+      const flat = `macro (${paramStr}) -> ${bodyStr}`
       if (fits(flat, ind)) return flat
     }
-    return `${namePrefix} (${paramStr}) ->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
+    return `macro (${paramStr}) ->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
   }
 
   // Multi-statement body (or single WithHandler): always expand (no mid-line semicolons)
   const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-  return `${namePrefix} (${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
+  return `macro (${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
 function printPerform(payload: [unknown[], unknown[] | undefined], ind: number): string {

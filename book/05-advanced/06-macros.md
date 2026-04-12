@@ -363,66 +363,16 @@ Without hygiene this would return 2 (param `n` shadows caller's `n`). With hygie
 
 ## Qualified Names
 
-Macros can have a **qualified name** — a dotted DNS-style identifier for host-level dispatch:
+Effect references carry a **qualified name** — a dotted DNS-style identifier that identifies the effect. Macros are always anonymous and have no qualified name.
 
 ```dvala
-let m = macro@mylib.double(ast) -> quote $^{ast} + $^{ast} end;
-qualifiedName(m);
+qualifiedName(@dvala.io.print);
 
 ```
 
 ```dvala
-// Anonymous macros have no qualified name
+// Macros always return null for qualifiedName
 qualifiedName(macro(ast) -> ast);
-
-```
-
-The `@` must be attached to `macro` with no space — `macro@name`, not `macro @name`.
-
-### Qualified Names and Effects
-
-Qualified names connect macros to the effect system. When a **named** macro is called, the evaluator emits `@dvala.macro.expand` — an effect that host handlers can intercept:
-
-```dvala
-let double = macro@mylib.double(ast) -> quote $^{ast} + $^{ast} end;
-
-// Named macro emits the effect — handler can intercept
-do
-  with handler
-    @dvala.macro.expand(arg) -> do
-      perform(@dvala.io.print, `Expanding macro: ${qualifiedName(arg.fn)}`);
-      resume(["Num", 99, 0]);
-    end
-  end;
-  double(21);
-end;
-// Return the expansion result as AST
-
-```
-
-**Anonymous** macros (without `macro@name`) skip the effect entirely — they're direct calls with no host visibility:
-
-```dvala
-let double = macro(ast) -> quote $^{ast} + $^{ast} end;
-
-// Anonymous — handler is NOT called
-do
-  with handler
-    @dvala.macro.expand(arg) -> resume(["Num", 99, 0])
-  end;
-  double(21);
-end;
-
-```
-
-This gives you a spectrum:
-- **Anonymous macros** — fast, private, no overhead
-- **Named macros** — observable, interceptable, good for libraries
-
-The `qualifiedName` function works on both macros and effects — they share the same namespace:
-
-```dvala
-[qualifiedName(@dvala.io.print), qualifiedName(macro@my.lib(x) -> x)];
 
 ```
 
@@ -601,16 +551,13 @@ let bad = macro (ast) -> quote let x = $^{ast} end;
 
 | Concept | Description |
 |---------|-------------|
-| `macro (params) -> body` | Define an anonymous macro |
-| `macro@name (params) -> body` | Define a named macro with qualified name |
+| `macro (params) -> body` | Define a macro |
 | `quote code end` | Quote block — produces AST data |
 | `$^{expr}` | Splice — insert evaluated AST into quote block |
 | `$^^{expr}` | Deferred splice — resolved in inner expansion |
 | `macroexpand(m, ...args)` | Expand without evaluating |
 | `prettyPrint(ast)` | AST to readable source |
-| `qualifiedName(m)` | Get the qualified name (or null) |
 | Hygiene | Quote block bindings auto-gensymed |
-| `@dvala.macro.expand` | Effect emitted by named macros |
 | `a \|> myMacro` | Pipe into macro (desugared at parse time) |
 | `#myMacro expr` | Prefix macro call (macro-only, chains: `#a #b x`) |
 | `decorate(ast, transform)` | Decorator helper — extracts value, calls transform, rewraps let |
