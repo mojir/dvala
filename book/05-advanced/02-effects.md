@@ -401,7 +401,7 @@ Dvala supports a second mode: **shallow handlers** (`shallow handler ... end`). 
 This sounds like a limitation, but it's exactly the feature we need: if the handler doesn't reinstall itself, we can install a *new* one (with updated state) before resuming.
 
 ```dvala
-let state = (s) -> handler
+let state = (s) -> shallow handler
   @get() -> do
     with state(s);
     resume(s);
