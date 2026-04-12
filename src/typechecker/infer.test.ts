@@ -393,3 +393,58 @@ describe('inference — builtin types', () => {
     expect(isSubtype(t, NumberType)).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Inference — Step 3: records and collections
+// ---------------------------------------------------------------------------
+
+describe('inference — dot access (property access)', () => {
+  it('{a: 1}.a infers Number', () => {
+    const t = inferAndExpand('{a: 1}.a')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('{name: "Alice"}.name infers String', () => {
+    const t = inferAndExpand('{name: "Alice"}.name')
+    expect(isSubtype(t, StringType)).toBe(true)
+  })
+
+  it('let p = {x: 1, y: 2}; p.x infers Number', () => {
+    const t = inferAndExpand('let p = {x: 1, y: 2}; p.x')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('function parameter dot access: (p) -> p.name', () => {
+    // The function should infer that p has a .name field
+    const t = inferType('(p) -> p.name')
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      // The param should be constrained with an open record
+      expect(t.params[0]!.tag).toBe('Var')
+    }
+  })
+
+  it('chained dot access: {a: {b: 1}}.a.b infers Number', () => {
+    const t = inferAndExpand('{a: {b: 1}}.a.b')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+})
+
+describe('inference — object destructuring', () => {
+  it('let {name} = {name: "Alice"}; name infers String', () => {
+    const t = inferAndExpand('let {name} = {name: "Alice"}; name')
+    expect(isSubtype(t, StringType)).toBe(true)
+  })
+
+  it('let {x, y} = {x: 1, y: 2}; x + y infers Number', () => {
+    const t = inferAndExpand('let {x, y} = {x: 1, y: 2}; x + y')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+})
+
+describe('inference — array destructuring', () => {
+  it('let [a, b] = [1, 2]; a infers from tuple', () => {
+    // [1, 2] is inferred as an array, and a gets the element type
+    expect(() => inferType('let [a, b] = array(1, 2); a')).not.toThrow()
+  })
+})

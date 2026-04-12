@@ -306,6 +306,40 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Regex: always compatible
   if (lhs.tag === 'Regex' && rhs.tag === 'Regex') return
 
+  // --- Callable non-function types ---
+  // In Dvala, records/arrays/strings can be called as functions.
+  // x.name desugars to x("name"), so Record <: Function([String], retVar)
+  // means field access.
+
+  // Record called with string literal → field access
+  if (lhs.tag === 'Record' && rhs.tag === 'Function' && rhs.params.length === 1) {
+    const paramType = rhs.params[0]!
+    if (paramType.tag === 'Literal' && typeof paramType.value === 'string') {
+      const fieldName = paramType.value
+      const fieldType = lhs.fields.get(fieldName)
+      if (fieldType) {
+        constrain(ctx, fieldType, rhs.ret)
+        return
+      }
+      if (lhs.open) return // open record — can't prove the field doesn't exist
+      throw new TypeInferenceError(`Field '${fieldName}' not found in ${typeToString(lhs)}`)
+    }
+  }
+
+  // Array called with number → element access
+  if (lhs.tag === 'Array' && rhs.tag === 'Function' && rhs.params.length === 1) {
+    constrain(ctx, lhs.element, rhs.ret)
+    return
+  }
+
+  // Tuple called with number → element access (conservative: union of elements)
+  if (lhs.tag === 'Tuple' && rhs.tag === 'Function' && rhs.params.length === 1) {
+    for (const elem of lhs.elements) {
+      constrain(ctx, elem, rhs.ret)
+    }
+    return
+  }
+
   // Incompatible types
   throw new TypeInferenceError(`${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`)
 }
@@ -439,7 +473,7 @@ export function inferExpr(
       const valueType = inferExpr(valueNode, ctx, env, typeMap)
       ctx.leaveLevel()
       // Bind the variable in the environment
-      bindPattern(binding, valueType, env)
+      bindPattern(binding, valueType, env, ctx)
       result = valueType
       break
     }
@@ -455,7 +489,7 @@ export function inferExpr(
         paramTypes.push(paramVar)
         // Bind each parameter name in the function scope
         // Params are binding targets like ["symbol", [nameNode, default], id]
-        bindPattern(param, paramVar, funcEnv)
+        bindPattern(param, paramVar, funcEnv, ctx)
       }
 
       // Infer the body — last expression is the return type
@@ -478,6 +512,8 @@ export function inferExpr(
       const retVar = ctx.freshVar()
 
       // Constrain: callee <: (argTypes...) -> retVar
+      // If the callee is a record and arg is a string, constrain() handles
+      // this as property access (see Record <: Function case in constrain).
       constrain(ctx, calleeType, fn(argTypes, retVar))
 
       result = retVar
@@ -704,7 +740,7 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
  *                      ["array", [elements, default], id]
  *                      ["rest", [name, default], id]
  */
-function bindPattern(pattern: AstNode, type: Type, env: TypeEnv): void {
+function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: InferenceContext): void {
   const patternType = pattern[0] as string
   switch (patternType) {
     case 'symbol': {
@@ -714,9 +750,58 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv): void {
       env.bind(name, type)
       break
     }
+    case 'object': {
+      // ["object", [{name: bindingTarget, ...}, default], id]
+      // Constrain the value type as an open record with the destructured fields
+      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+        if (ctx) {
+          // Create a fresh variable for the field type and constrain
+          const fieldVar = ctx.freshVar()
+          constrain(ctx, type, { tag: 'Record', fields: new Map([[fieldName, fieldVar]]), open: true })
+          bindPattern(fieldPattern, fieldVar, env, ctx)
+        } else {
+          // Without context, bind as Unknown
+          bindPattern(fieldPattern, Unknown, env)
+        }
+      }
+      break
+    }
+    case 'array': {
+      // ["array", [[bindingTarget, ...], default], id]
+      const [elements] = pattern[1] as [AstNode[], AstNode | undefined]
+      for (let i = 0; i < elements.length; i++) {
+        const elem = elements[i]!
+        if ((elem[0] as string) === 'rest') {
+          // Rest element: ...rest gets the array type
+          const [restName] = elem[1] as [string, AstNode | undefined]
+          if (restName && restName !== 'rest') {
+            env.bind(restName, type) // conservative: bind rest to the full type
+          }
+        } else if (ctx) {
+          // Each element gets a fresh variable constrained by the array element type
+          const elemVar = ctx.freshVar()
+          if (type.tag === 'Tuple' && i < type.elements.length) {
+            constrain(ctx, type.elements[i]!, elemVar)
+          } else if (type.tag === 'Array') {
+            constrain(ctx, type.element, elemVar)
+          }
+          bindPattern(elem, elemVar, env, ctx)
+        } else {
+          bindPattern(elem, Unknown, env)
+        }
+      }
+      break
+    }
+    case 'rest': {
+      // ["rest", [name, default], id]
+      const [restName] = pattern[1] as [string, AstNode | undefined]
+      if (restName) {
+        env.bind(restName, type)
+      }
+      break
+    }
     default:
-      // For now, skip complex patterns (array/object destructuring)
-      // They will be handled in Step 3
       break
   }
 }
