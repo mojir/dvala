@@ -10,6 +10,7 @@ import { parseSymbol } from './parseSymbol'
 import { parseString } from './parseString'
 import { parseNumber } from './parseNumber'
 import { parseTemplateString } from './parseTemplateString'
+import { collectTypeAnnotation, isTypeAnnotationColon } from './parseTypeAnnotationTokens'
 import type { TokenDebugInfo } from '../../tokenizer/token'
 
 /**
@@ -101,6 +102,16 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
   // Symbol
   if (isSymbolToken(firstToken)) {
     const symbol = toUserDefinedSymbol(parseSymbol(ctx), firstToken[2], ctx)
+
+    // Type annotation: x: Type — stored in side-table, not in the binding target
+    if (isTypeAnnotationColon(ctx)) {
+      ctx.advance() // consume ':'
+      const annotation = collectTypeAnnotation(ctx)
+      if (!annotation) {
+        throw new ParseError('Expected type after ":"', ctx.peekSourceCodeInfo())
+      }
+      ctx.typeAnnotations.set(symbol[2], annotation)
+    }
 
     const defaultValue = parseOptionalDefaulValue(ctx)
     if (requireDefaultValue && !defaultValue) {
@@ -286,3 +297,4 @@ function isLiteralToken(token: Token | undefined): boolean {
     || isReservedSymbolToken(token, 'false')
     || isReservedSymbolToken(token, 'null')
 }
+

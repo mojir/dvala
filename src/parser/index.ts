@@ -63,7 +63,7 @@ export function parseToCst(fullTokenStream: TokenStream): ParseToCstResult {
 // AST parsing
 // ---------------------------------------------------------------------------
 
-function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { nodes: AstNode[]; sourceMap: SourceMap | undefined } {
+function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { nodes: AstNode[]; sourceMap: SourceMap | undefined; typeAnnotations?: Map<number, string> } {
   tokenStream.tokens.forEach(token => {
     if (token[0] === 'Error') {
       throw new ParseError(token[3], debugInfoToSourceCodeInfo(token[2], tokenStream.source, tokenStream.filePath))
@@ -87,7 +87,8 @@ function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { n
     }
   }
 
-  return { nodes, sourceMap: ctx.sourceMap }
+  const typeAnnotations = ctx.typeAnnotations.size > 0 ? ctx.typeAnnotations : undefined
+  return { nodes, sourceMap: ctx.sourceMap, typeAnnotations }
 }
 
 export function parse(tokenStream: TokenStream, allocateId?: () => number): AstNode[] {
@@ -95,8 +96,8 @@ export function parse(tokenStream: TokenStream, allocateId?: () => number): AstN
 }
 
 export function parseToAst(tokenStream: TokenStream, allocateId?: () => number): Ast {
-  const { nodes, sourceMap } = parseInternal(tokenStream, allocateId)
-  return { body: nodes, sourceMap }
+  const { nodes, sourceMap, typeAnnotations } = parseInternal(tokenStream, allocateId)
+  return { body: nodes, sourceMap, typeAnnotations }
 }
 
 /** Result of a recoverable parse — contains successfully parsed nodes and any errors encountered. */

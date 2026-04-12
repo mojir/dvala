@@ -280,4 +280,6 @@ type AstBody = AstNode[]
 export interface Ast {
   body: AstBody // body
   sourceMap?: SourceMap // present when debug mode is on
+  /** Type annotations from source code, keyed by nodeId. Erased before evaluation. */
+  typeAnnotations?: Map<number, string>
 }

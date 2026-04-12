@@ -128,8 +128,8 @@ describe('specialExpressions', () => {
       expect(dvala.run('let a = 10; do let a = 20; end; a')).toBe(10)
       expect(() => dvala.run('let true = false;')).toThrow(DvalaError)
       expect(() => dvala.run('let 1 = 10;')).toThrow(DvalaError)
-      expect(() => dvala.run('let x:x = 10;')).toThrow(DvalaError)
-      expect(() => dvala.run('let x: = 10;')).toThrow(DvalaError)
+      expect(dvala.run('let x:x = 10; x')).toBe(10) // x: x is a valid type annotation
+      expect(() => dvala.run('let x: = 10;')).toThrow(DvalaError) // empty type annotation
       expect(() => dvala.run('let null = 10;')).toThrow(DvalaError)
       expect(() => dvala.run('let false = 10;')).toThrow(DvalaError)
       expect(() => dvala.run('let true = 10;')).toThrow(DvalaError)

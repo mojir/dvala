@@ -3,7 +3,7 @@ import { parseTypeAnnotation, parseFunctionTypeAnnotation, TypeParseError } from
 import {
   NumberType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType,
-  atom, literal, fn, array, tuple, neg,
+  atom, literal, fn, array, tuple, neg, union,
   typeEquals,
 } from './types'
 import { isSubtype } from './subtype'
@@ -39,6 +39,35 @@ describe('parseType — primitives', () => {
 
   it('Never', () => {
     expect(parseTypeAnnotation('Never')).toBe(Never)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Nullable types (T?)
+// ---------------------------------------------------------------------------
+
+describe('parseType — nullable', () => {
+  it('Number? = Number | Null', () => {
+    const t = parseTypeAnnotation('Number?')
+    expect(isSubtype(NumberType, t)).toBe(true)
+    expect(isSubtype(NullType, t)).toBe(true)
+  })
+
+  it('String? = String | Null', () => {
+    const t = parseTypeAnnotation('String?')
+    expect(isSubtype(StringType, t)).toBe(true)
+    expect(isSubtype(NullType, t)).toBe(true)
+  })
+
+  it('Number?[] = array of nullable numbers', () => {
+    const t = parseTypeAnnotation('Number?[]')
+    expect(typeEquals(t, array(union(NumberType, NullType)))).toBe(true)
+  })
+
+  it(':ok? = :ok | Null', () => {
+    const t = parseTypeAnnotation(':ok?')
+    expect(isSubtype(atom('ok'), t)).toBe(true)
+    expect(isSubtype(NullType, t)).toBe(true)
   })
 })
 

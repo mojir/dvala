@@ -165,9 +165,20 @@ class TypeParser {
 
   private parsePostfix(): Type {
     let t = this.parsePrimary()
-    // Postfix [] for array types: T[], T[][]
-    while (this.tryConsume('[]')) {
-      t = array(t)
+    // Postfix operators: [] for arrays, ? for nullable — can chain in any order
+    // Number[]  → array of numbers
+    // Number?   → Number | Null
+    // Number?[] → (Number | Null)[]
+    // Number[]? → Number[] | Null
+    for (;;) {
+      if (this.tryConsume('[]')) {
+        t = array(t)
+      } else if (this.peek() === '?' && this.peekAt(1) !== '.') {
+        this.advance()
+        t = union(t, NullType)
+      } else {
+        break
+      }
     }
     return t
   }

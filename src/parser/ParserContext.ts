@@ -20,6 +20,10 @@ export class ParserContext {
   /** Allocates a unique node ID — provided by the caller to scope uniqueness per instance. */
   readonly allocateId: () => number
 
+  // -- Type annotation side-table --
+  /** Type annotations collected during parsing, keyed by nodeId. */
+  readonly typeAnnotations = new Map<number, string>()
+
   // -- CST mode fields --
   /** When present, the parser operates in CST mode on the full token stream. */
   readonly builder: CstBuilder | undefined

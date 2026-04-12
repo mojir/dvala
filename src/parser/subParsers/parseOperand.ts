@@ -6,7 +6,7 @@ import type { AstNode, BuiltinSymbolNode, NormalExpressionNodeExpression, Specia
 import { isBinaryOperator } from '../../tokenizer/operators'
 import { isNumberReservedSymbol } from '../../tokenizer/reservedNames'
 import type { StringToken, TemplateStringToken, TokenDebugInfo, TokenType } from '../../tokenizer/token'
-import { isLBraceToken, isLBracketToken, isLParenToken, isOperatorToken, isRBracketToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
+import { isLBraceToken, isLBracketToken, isLParenToken, isOperatorToken, isRBracketToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseRegexpShorthand } from './parseRegexpShorthand'
@@ -272,7 +272,25 @@ function looksLikeLambda(ctx: ParserContext): boolean {
       else if (isRParenToken(t)) depth--
       offset++
     }
-    return isOperatorToken(ctx.peekAhead(offset), '->')
+    // Check for `->` directly after `)`, or `: ReturnType ->` pattern
+    if (isOperatorToken(ctx.peekAhead(offset), '->')) return true
+    // Return type annotation: (...): Type ->
+    if (isOperatorToken(ctx.peekAhead(offset), ':')) {
+      // Skip past the type annotation to find `->`
+      offset++ // skip ':'
+      let typeDepth = 0
+      while (ctx.peekAhead(offset)) {
+        const t = ctx.peekAhead(offset)!
+        if (typeDepth === 0 && isOperatorToken(t, '->')) return true
+        if (isLParenToken(t) || isLBracketToken(t)) typeDepth++
+        else if (isRParenToken(t) || isRBracketToken(t)) typeDepth--
+        // Stop if we hit something that can't be part of a type annotation
+        if (typeDepth === 0 && (isOperatorToken(t, '=') || isOperatorToken(t, ';')
+          || isReservedSymbolToken(t, 'end') || isReservedSymbolToken(t, 'do'))) break
+        offset++
+      }
+    }
+    return false
   }
 
   return false
