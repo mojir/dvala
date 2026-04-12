@@ -10,6 +10,9 @@ import type { Handlers } from '../../src/evaluator/effectTypes'
 import { WorkspaceIndex } from '../../src/languageService/WorkspaceIndex'
 import type { SymbolDef } from '../../src/languageService/types'
 import { formatSource } from '../../src/tooling'
+import type { TypecheckResult } from '../../src/typechecker/typecheck'
+import { typeToString, expandType, simplify } from '../../src/typechecker'
+import type { SourceMapPosition } from '../../src/parser/types'
 
 // Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
 const DVALA_WORD_PATTERN = /[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*/
@@ -160,6 +163,9 @@ let outputChannel: vscode.OutputChannel | undefined
 let statusBarItem: vscode.StatusBarItem | undefined
 let diagnosticCollection: vscode.DiagnosticCollection | undefined
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+// Type system: cached typecheck result per document URI
+const typecheckCache = new Map<string, TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> }>()
 
 function getDiagnosticCollection(): vscode.DiagnosticCollection {
   if (!diagnosticCollection) {
@@ -479,13 +485,61 @@ export function activate(context: vscode.ExtensionContext): void {
       const word = range ? document.getText(range) : undefined
       const ref = word ? (allReference[word] ?? referenceByTitle[word]) : undefined
 
-      if (!diagnostics?.length && !ref) return undefined
+      // Look up inferred type from the type cache
+      const cached = typecheckCache.get(document.uri.toString())
+      let inferredTypeStr: string | undefined
+      if (cached) {
+        // Find the best matching node at this position by checking the type map
+        // against source map positions. The typecheck result stores a full type map.
+        const line = position.line  // 0-based
+        const col = position.character  // 0-based
+        let bestType: import('../../src/typechecker/types').Type | undefined
+        let bestSize = Infinity
+
+        for (const [nodeId, type] of cached.typeMap) {
+          // Skip Unknown types — not useful for hover
+          if (type.tag === 'Unknown') continue
+
+          // Look up the source position for this node
+          const sourcePos = cached.sourceMap?.get(nodeId)
+          if (!sourcePos) continue
+
+          const [startLine, startCol] = sourcePos.start
+          const [endLine, endCol] = sourcePos.end
+
+          // Check if cursor is within this node's range
+          if (line >= startLine && line <= endLine) {
+            const inRange = (line > startLine || col >= startCol)
+              && (line < endLine || col <= endCol)
+            if (inRange) {
+              // Pick the smallest (most specific) node
+              const size = (endLine - startLine) * 1000 + (endCol - startCol)
+              if (size < bestSize) {
+                bestSize = size
+                bestType = type
+              }
+            }
+          }
+        }
+
+        if (bestType) {
+          const expanded = simplify(expandType(bestType))
+          inferredTypeStr = typeToString(expanded)
+        }
+      }
+
+      if (!diagnostics?.length && !ref && !inferredTypeStr) return undefined
 
       const md = new vscode.MarkdownString()
 
       if (diagnostics?.length) {
         md.appendMarkdown(`$(error) **Dvala Error**\n\n`)
-        if (ref) md.appendMarkdown('---\n\n')
+        if (ref || inferredTypeStr) md.appendMarkdown('---\n\n')
+      }
+
+      if (inferredTypeStr) {
+        md.appendCodeblock(inferredTypeStr, 'dvala')
+        if (ref) md.appendMarkdown('\n---\n\n')
       }
 
       if (ref) md.appendMarkdown(buildHoverMarkdown(word!, ref).value)
@@ -602,6 +656,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const workspaceIndex = new WorkspaceIndex()
   const lsDiagnostics = vscode.languages.createDiagnosticCollection('dvala-ls')
+  const typeDiagnostics = vscode.languages.createDiagnosticCollection('dvala-types')
+  // Shared dvala instance for type checking (not evaluation — no effect handlers needed)
+  const typecheckDvala = createDvala({ modules: allBuiltinModules, debug: true })
   /** Update the workspace index for a document and refresh diagnostics. */
   function indexDocument(document: vscode.TextDocument): void {
     if (document.languageId !== 'dvala') return
@@ -636,6 +693,40 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     lsDiagnostics.set(document.uri, diagnostics)
+
+    // Run type checker (non-blocking — parse errors don't prevent type checking)
+    if (parseErrors.length === 0) {
+      try {
+        const result = typecheckDvala.typecheck(document.getText())
+        // Cache the result for hover (with source map for position lookups)
+        typecheckCache.set(document.uri.toString(), result)
+
+        const typeDiags: vscode.Diagnostic[] = []
+        for (const diag of result.diagnostics) {
+          if (diag.sourceCodeInfo) {
+            const line = Math.max(0, diag.sourceCodeInfo.position.line - 1)
+            const col = Math.max(0, diag.sourceCodeInfo.position.column - 1)
+            const range = new vscode.Range(line, col, line, col + 1)
+            const vdiag = new vscode.Diagnostic(
+              range,
+              diag.message,
+              diag.severity === 'error' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Information,
+            )
+            vdiag.source = 'dvala-types'
+            typeDiags.push(vdiag)
+          }
+        }
+        typeDiagnostics.set(document.uri, typeDiags)
+      } catch {
+        // Type checking failed — clear diagnostics, don't crash the extension
+        typeDiagnostics.set(document.uri, [])
+        typecheckCache.delete(document.uri.toString())
+      }
+    } else {
+      // Parse errors — clear type diagnostics
+      typeDiagnostics.set(document.uri, [])
+      typecheckCache.delete(document.uri.toString())
+    }
   }
 
   // Index all open dvala documents on activation
@@ -789,7 +880,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     runFile, runBlock, runSelection, completionProvider, signatureHelpProvider, hoverProvider, definitionProvider, goToSource,
-    referenceProvider, renameProvider, documentSymbolProvider, workspaceSymbolProvider, lsDiagnostics, onDidChange, onDidOpen, onDidClose,
+    referenceProvider, renameProvider, documentSymbolProvider, workspaceSymbolProvider, lsDiagnostics, typeDiagnostics, onDidChange, onDidOpen, onDidClose,
     formattingProvider,
   )
 }

@@ -10,7 +10,7 @@
  */
 
 import type { Type } from './types'
-import type { AstNode, Ast, SourceMap } from '../parser/types'
+import type { AstNode, Ast, SourceMap, SourceMapPosition } from '../parser/types'
 import { resolveSourceCodeInfo } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
@@ -34,6 +34,8 @@ export interface TypecheckResult {
   diagnostics: TypeDiagnostic[]
   /** Side-table mapping nodeId → inferred Type. Used by IDE features. */
   typeMap: Map<number, Type>
+  /** Source map for mapping nodeIds to source positions. Used by IDE hover. */
+  sourceMap?: Map<number, SourceMapPosition>
 }
 
 // ---------------------------------------------------------------------------
@@ -86,7 +88,7 @@ export function typecheck(ast: Ast): TypecheckResult {
     }
   }
 
-  return { diagnostics, typeMap }
+  return { diagnostics, typeMap, sourceMap: ast.sourceMap?.positions }
 }
 
 /**
