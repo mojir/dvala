@@ -1,0 +1,603 @@
+import { describe, expect, it } from 'vitest'
+import {
+  NumberType, StringType, BooleanType, NullType,
+  Unknown, Never, RegexType,
+  atom, literal, fn, tuple, record, array, union, inter, neg,
+  typeToString, typeEquals,
+} from './types'
+import { isSubtype } from './subtype'
+import { simplify } from './simplify'
+
+// ---------------------------------------------------------------------------
+// Type constructors
+// ---------------------------------------------------------------------------
+
+describe('type constructors', () => {
+  it('union flattens nested unions', () => {
+    const t = union(NumberType, union(StringType, BooleanType))
+    expect(t.tag).toBe('Union')
+    if (t.tag === 'Union') expect(t.members).toHaveLength(3)
+  })
+
+  it('union removes Never', () => {
+    expect(union(NumberType, Never)).toBe(NumberType)
+  })
+
+  it('union with Unknown is Unknown', () => {
+    expect(union(NumberType, Unknown)).toBe(Unknown)
+  })
+
+  it('union deduplicates', () => {
+    const t = union(NumberType, NumberType, StringType)
+    expect(t.tag).toBe('Union')
+    if (t.tag === 'Union') expect(t.members).toHaveLength(2)
+  })
+
+  it('union of single type returns the type', () => {
+    expect(union(NumberType)).toBe(NumberType)
+  })
+
+  it('union of zero types is Never', () => {
+    expect(union()).toBe(Never)
+  })
+
+  it('intersection flattens nested intersections', () => {
+    const t = inter(NumberType, inter(StringType, BooleanType))
+    expect(t.tag).toBe('Inter')
+    if (t.tag === 'Inter') expect(t.members).toHaveLength(3)
+  })
+
+  it('intersection removes Unknown', () => {
+    expect(inter(NumberType, Unknown)).toBe(NumberType)
+  })
+
+  it('intersection with Never is Never', () => {
+    expect(inter(NumberType, Never)).toBe(Never)
+  })
+
+  it('neg double negation', () => {
+    expect(neg(neg(NumberType))).toBe(NumberType)
+  })
+
+  it('neg Never is Unknown', () => {
+    expect(neg(Never)).toBe(Unknown)
+  })
+
+  it('neg Unknown is Never', () => {
+    expect(neg(Unknown)).toBe(Never)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// typeToString
+// ---------------------------------------------------------------------------
+
+describe('typeToString', () => {
+  it('primitives', () => {
+    expect(typeToString(NumberType)).toBe('Number')
+    expect(typeToString(StringType)).toBe('String')
+    expect(typeToString(BooleanType)).toBe('Boolean')
+    expect(typeToString(NullType)).toBe('Null')
+  })
+
+  it('atoms', () => {
+    expect(typeToString(atom('ok'))).toBe(':ok')
+  })
+
+  it('literals', () => {
+    expect(typeToString(literal(42))).toBe('42')
+    expect(typeToString(literal('hello'))).toBe('"hello"')
+    expect(typeToString(literal(true))).toBe('true')
+  })
+
+  it('function types', () => {
+    expect(typeToString(fn([NumberType, NumberType], NumberType))).toBe('(Number, Number) -> Number')
+  })
+
+  it('tuple types', () => {
+    expect(typeToString(tuple([StringType, NumberType]))).toBe('[String, Number]')
+  })
+
+  it('record types', () => {
+    expect(typeToString(record({ name: StringType, age: NumberType }))).toBe('{name: String, age: Number}')
+    expect(typeToString(record({ name: StringType }, true))).toBe('{name: String, ...}')
+  })
+
+  it('array types', () => {
+    expect(typeToString(array(NumberType))).toBe('Number[]')
+  })
+
+  it('union types', () => {
+    expect(typeToString(union(NumberType, StringType))).toBe('Number | String')
+  })
+
+  it('negation types', () => {
+    expect(typeToString(neg(NullType))).toBe('!Null')
+  })
+
+  it('bounds', () => {
+    expect(typeToString(Unknown)).toBe('Unknown')
+    expect(typeToString(Never)).toBe('Never')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// typeEquals
+// ---------------------------------------------------------------------------
+
+describe('typeEquals', () => {
+  it('same primitives are equal', () => {
+    expect(typeEquals(NumberType, NumberType)).toBe(true)
+  })
+
+  it('different primitives are not equal', () => {
+    expect(typeEquals(NumberType, StringType)).toBe(false)
+  })
+
+  it('same atoms are equal', () => {
+    expect(typeEquals(atom('ok'), atom('ok'))).toBe(true)
+  })
+
+  it('different atoms are not equal', () => {
+    expect(typeEquals(atom('ok'), atom('error'))).toBe(false)
+  })
+
+  it('same literals are equal', () => {
+    expect(typeEquals(literal(42), literal(42))).toBe(true)
+  })
+
+  it('records with same fields are equal', () => {
+    const r1 = record({ name: StringType, age: NumberType })
+    const r2 = record({ name: StringType, age: NumberType })
+    expect(typeEquals(r1, r2)).toBe(true)
+  })
+
+  it('records with different open/closed are not equal', () => {
+    expect(typeEquals(record({ x: NumberType }), record({ x: NumberType }, true))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — primitives
+// ---------------------------------------------------------------------------
+
+describe('subtyping — primitives', () => {
+  it('Number <: Number', () => {
+    expect(isSubtype(NumberType, NumberType)).toBe(true)
+  })
+
+  it('Number </: String', () => {
+    expect(isSubtype(NumberType, StringType)).toBe(false)
+  })
+
+  it('String </: Number', () => {
+    expect(isSubtype(StringType, NumberType)).toBe(false)
+  })
+
+  it('all four primitives are self-subtypes', () => {
+    for (const t of [NumberType, StringType, BooleanType, NullType]) {
+      expect(isSubtype(t, t)).toBe(true)
+    }
+  })
+
+  it('no primitive is subtype of another', () => {
+    const prims = [NumberType, StringType, BooleanType, NullType]
+    for (const a of prims) {
+      for (const b of prims) {
+        if (a !== b) expect(isSubtype(a, b)).toBe(false)
+      }
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — bounds (Never, Unknown)
+// ---------------------------------------------------------------------------
+
+describe('subtyping — bounds', () => {
+  it('Never <: T for all T', () => {
+    expect(isSubtype(Never, NumberType)).toBe(true)
+    expect(isSubtype(Never, StringType)).toBe(true)
+    expect(isSubtype(Never, Unknown)).toBe(true)
+    expect(isSubtype(Never, Never)).toBe(true)
+    expect(isSubtype(Never, union(NumberType, StringType))).toBe(true)
+  })
+
+  it('T <: Unknown for all T', () => {
+    expect(isSubtype(NumberType, Unknown)).toBe(true)
+    expect(isSubtype(StringType, Unknown)).toBe(true)
+    expect(isSubtype(Never, Unknown)).toBe(true)
+    expect(isSubtype(Unknown, Unknown)).toBe(true)
+  })
+
+  it('Unknown </: T (except Unknown)', () => {
+    expect(isSubtype(Unknown, NumberType)).toBe(false)
+    expect(isSubtype(Unknown, Never)).toBe(false)
+  })
+
+  it('T </: Never (except Never)', () => {
+    expect(isSubtype(NumberType, Never)).toBe(false)
+    expect(isSubtype(Unknown, Never)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — literals
+// ---------------------------------------------------------------------------
+
+describe('subtyping — literals', () => {
+  it('42 <: Number', () => {
+    expect(isSubtype(literal(42), NumberType)).toBe(true)
+  })
+
+  it('"hello" <: String', () => {
+    expect(isSubtype(literal('hello'), StringType)).toBe(true)
+  })
+
+  it('true <: Boolean', () => {
+    expect(isSubtype(literal(true), BooleanType)).toBe(true)
+  })
+
+  it('42 </: String', () => {
+    expect(isSubtype(literal(42), StringType)).toBe(false)
+  })
+
+  it('"hello" </: Number', () => {
+    expect(isSubtype(literal('hello'), NumberType)).toBe(false)
+  })
+
+  it('42 <: 42', () => {
+    expect(isSubtype(literal(42), literal(42))).toBe(true)
+  })
+
+  it('42 </: 43', () => {
+    expect(isSubtype(literal(42), literal(43))).toBe(false)
+  })
+
+  it('Number </: 42 (a primitive is not a subtype of a literal)', () => {
+    expect(isSubtype(NumberType, literal(42))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — atoms
+// ---------------------------------------------------------------------------
+
+describe('subtyping — atoms', () => {
+  it(':ok <: :ok', () => {
+    expect(isSubtype(atom('ok'), atom('ok'))).toBe(true)
+  })
+
+  it(':ok </: :error', () => {
+    expect(isSubtype(atom('ok'), atom('error'))).toBe(false)
+  })
+
+  it(':ok </: String (atoms are not primitives)', () => {
+    expect(isSubtype(atom('ok'), StringType)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — unions
+// ---------------------------------------------------------------------------
+
+describe('subtyping — unions', () => {
+  it('Number <: Number | String', () => {
+    expect(isSubtype(NumberType, union(NumberType, StringType))).toBe(true)
+  })
+
+  it('String <: Number | String', () => {
+    expect(isSubtype(StringType, union(NumberType, StringType))).toBe(true)
+  })
+
+  it('Number | String </: Number', () => {
+    expect(isSubtype(union(NumberType, StringType), NumberType)).toBe(false)
+  })
+
+  it('Number | String <: Number | String | Boolean', () => {
+    expect(isSubtype(
+      union(NumberType, StringType),
+      union(NumberType, StringType, BooleanType),
+    )).toBe(true)
+  })
+
+  it('42 <: Number | String', () => {
+    expect(isSubtype(literal(42), union(NumberType, StringType))).toBe(true)
+  })
+
+  it(':ok | :error <: :ok | :error | :pending', () => {
+    expect(isSubtype(
+      union(atom('ok'), atom('error')),
+      union(atom('ok'), atom('error'), atom('pending')),
+    )).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — intersections
+// ---------------------------------------------------------------------------
+
+describe('subtyping — intersections', () => {
+  it('T <: T1 and T <: T2 implies T <: T1 & T2', () => {
+    // Never <: Number & String (because Never <: everything)
+    expect(isSubtype(Never, inter(NumberType, StringType))).toBe(true)
+  })
+
+  it('{name: String, age: Number} <: {name: String} & {age: Number}', () => {
+    const full = record({ name: StringType, age: NumberType })
+    const nameOnly = record({ name: StringType }, true)
+    const ageOnly = record({ age: NumberType }, true)
+    expect(isSubtype(full, inter(nameOnly, ageOnly))).toBe(true)
+  })
+
+  it('Number & String is empty (disjoint intersection)', () => {
+    // Number & String <: Never (because Number and String are disjoint)
+    expect(isSubtype(inter(NumberType, StringType), Never)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — negation
+// ---------------------------------------------------------------------------
+
+describe('subtyping — negation', () => {
+  it('Number <: !String (disjoint types)', () => {
+    expect(isSubtype(NumberType, neg(StringType))).toBe(true)
+  })
+
+  it('Number </: !Number', () => {
+    expect(isSubtype(NumberType, neg(NumberType))).toBe(false)
+  })
+
+  it(':ok <: !String (atoms are not strings)', () => {
+    expect(isSubtype(atom('ok'), neg(StringType))).toBe(true)
+  })
+
+  it(':ok <: !:error (different atoms are disjoint)', () => {
+    expect(isSubtype(atom('ok'), neg(atom('error')))).toBe(true)
+  })
+
+  it(':ok </: !:ok', () => {
+    expect(isSubtype(atom('ok'), neg(atom('ok')))).toBe(false)
+  })
+
+  it('!String <: !String (reflexive)', () => {
+    expect(isSubtype(neg(StringType), neg(StringType))).toBe(true)
+  })
+
+  it('!Number <: !42 (contravariant: 42 <: Number implies !Number <: !42)', () => {
+    expect(isSubtype(neg(NumberType), neg(literal(42)))).toBe(true)
+  })
+
+  it('42 <: Number & !0', () => {
+    expect(isSubtype(literal(42), inter(NumberType, neg(literal(0))))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — functions
+// ---------------------------------------------------------------------------
+
+describe('subtyping — functions', () => {
+  it('(Number) -> String <: (Number) -> String', () => {
+    expect(isSubtype(fn([NumberType], StringType), fn([NumberType], StringType))).toBe(true)
+  })
+
+  it('covariant return: (Number) -> 42 <: (Number) -> Number', () => {
+    expect(isSubtype(fn([NumberType], literal(42)), fn([NumberType], NumberType))).toBe(true)
+  })
+
+  it('contravariant params: (Number|String) -> Number <: (Number) -> Number', () => {
+    expect(isSubtype(
+      fn([union(NumberType, StringType)], NumberType),
+      fn([NumberType], NumberType),
+    )).toBe(true)
+  })
+
+  it('wrong variance: (Number) -> Number </: (Number|String) -> Number', () => {
+    expect(isSubtype(
+      fn([NumberType], NumberType),
+      fn([union(NumberType, StringType)], NumberType),
+    )).toBe(false)
+  })
+
+  it('arity mismatch: (Number) -> Number </: (Number, String) -> Number', () => {
+    expect(isSubtype(
+      fn([NumberType], NumberType),
+      fn([NumberType, StringType], NumberType),
+    )).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — tuples
+// ---------------------------------------------------------------------------
+
+describe('subtyping — tuples', () => {
+  it('[Number, String] <: [Number, String]', () => {
+    expect(isSubtype(tuple([NumberType, StringType]), tuple([NumberType, StringType]))).toBe(true)
+  })
+
+  it('[42, "hi"] <: [Number, String]', () => {
+    expect(isSubtype(tuple([literal(42), literal('hi')]), tuple([NumberType, StringType]))).toBe(true)
+  })
+
+  it('[Number, String] </: [String, Number]', () => {
+    expect(isSubtype(tuple([NumberType, StringType]), tuple([StringType, NumberType]))).toBe(false)
+  })
+
+  it('length mismatch: [Number] </: [Number, String]', () => {
+    expect(isSubtype(tuple([NumberType]), tuple([NumberType, StringType]))).toBe(false)
+  })
+
+  it('[Number, String] <: (Number | String)[] (tuple <: array)', () => {
+    expect(isSubtype(
+      tuple([NumberType, StringType]),
+      array(union(NumberType, StringType)),
+    )).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — arrays
+// ---------------------------------------------------------------------------
+
+describe('subtyping — arrays', () => {
+  it('Number[] <: Number[]', () => {
+    expect(isSubtype(array(NumberType), array(NumberType))).toBe(true)
+  })
+
+  it('42[] <: Number[] (covariant)', () => {
+    expect(isSubtype(array(literal(42)), array(NumberType))).toBe(true)
+  })
+
+  it('Number[] </: String[]', () => {
+    expect(isSubtype(array(NumberType), array(StringType))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — records
+// ---------------------------------------------------------------------------
+
+describe('subtyping — records', () => {
+  it('{name: String, age: Number} <: {name: String} (width subtyping with open target)', () => {
+    expect(isSubtype(
+      record({ name: StringType, age: NumberType }),
+      record({ name: StringType }, true),
+    )).toBe(true)
+  })
+
+  it('{name: "Alice"} <: {name: String} (depth subtyping with open target)', () => {
+    expect(isSubtype(
+      record({ name: literal('Alice') }),
+      record({ name: StringType }, true),
+    )).toBe(true)
+  })
+
+  it('{name: String} </: {name: String, age: Number} (missing field)', () => {
+    expect(isSubtype(
+      record({ name: StringType }),
+      record({ name: StringType, age: NumberType }),
+    )).toBe(false)
+  })
+
+  it('closed record with extra fields </: closed record', () => {
+    expect(isSubtype(
+      record({ name: StringType, age: NumberType }),
+      record({ name: StringType }),
+    )).toBe(false)
+  })
+
+  it('closed record <: open record with same fields', () => {
+    expect(isSubtype(
+      record({ name: StringType }),
+      record({ name: StringType }, true),
+    )).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — regex
+// ---------------------------------------------------------------------------
+
+describe('subtyping — regex', () => {
+  it('Regex <: Regex', () => {
+    expect(isSubtype(RegexType, RegexType)).toBe(true)
+  })
+
+  it('Regex </: String', () => {
+    expect(isSubtype(RegexType, StringType)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Simplification
+// ---------------------------------------------------------------------------
+
+describe('simplify', () => {
+  it('Number | 42 → Number (absorb literal into primitive)', () => {
+    const t = simplify(union(NumberType, literal(42)))
+    expect(typeEquals(t, NumberType)).toBe(true)
+  })
+
+  it('42 | Number → Number (order independent)', () => {
+    const t = simplify(union(literal(42), NumberType))
+    expect(typeEquals(t, NumberType)).toBe(true)
+  })
+
+  it('Number | Never → Number', () => {
+    const t = simplify(union(NumberType, Never))
+    expect(typeEquals(t, NumberType)).toBe(true)
+  })
+
+  it('Number & Unknown → Number', () => {
+    const t = simplify(inter(NumberType, Unknown))
+    expect(typeEquals(t, NumberType)).toBe(true)
+  })
+
+  it('Number & String → Never (disjoint primitives)', () => {
+    const t = simplify(inter(NumberType, StringType))
+    expect(typeEquals(t, Never)).toBe(true)
+  })
+
+  it('Number & !String → Number (trivial negation collapse)', () => {
+    const t = simplify(inter(NumberType, neg(StringType)))
+    expect(typeEquals(t, NumberType)).toBe(true)
+  })
+
+  it('!!Number → Number (double negation)', () => {
+    const t = simplify(neg(neg(NumberType)))
+    expect(typeEquals(t, NumberType)).toBe(true)
+  })
+
+  it('Number | Number → Number (dedup)', () => {
+    const t = simplify(union(NumberType, NumberType))
+    expect(typeEquals(t, NumberType)).toBe(true)
+  })
+
+  it('simplifies nested function types', () => {
+    const t = simplify(fn([union(NumberType, Never)], inter(StringType, Unknown)))
+    expect(typeEquals(t, fn([NumberType], StringType))).toBe(true)
+  })
+
+  it('Number & 42 → 42 (narrow supertype in intersection)', () => {
+    const t = simplify(inter(NumberType, literal(42)))
+    expect(typeEquals(t, literal(42))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Design doc examples
+// ---------------------------------------------------------------------------
+
+describe('design doc examples', () => {
+  it('inferred type of match function', () => {
+    // f: (Number | String) -> Number
+    const fType = fn([union(NumberType, StringType)], NumberType)
+    expect(isSubtype(fType, fn([NumberType], NumberType))).toBe(true)
+    expect(isSubtype(fType, fn([StringType], NumberType))).toBe(true)
+  })
+
+  it('tagged union: Result<Number, String>', () => {
+    const ok = record({ tag: atom('ok'), value: NumberType })
+    const err = record({ tag: atom('error'), error: StringType })
+    const result = union(ok, err)
+    expect(isSubtype(ok, result)).toBe(true)
+    expect(isSubtype(err, result)).toBe(true)
+  })
+
+  it('Number & !0 represents non-zero numbers', () => {
+    // 42 <: Number & !0
+    expect(isSubtype(literal(42), inter(NumberType, neg(literal(0))))).toBe(true)
+    // 0 </: Number & !0
+    expect(isSubtype(literal(0), inter(NumberType, neg(literal(0))))).toBe(false)
+  })
+
+  it('effect sets as subtyping: fewer effects is subtype', () => {
+    // Model effects as atom unions: @{log} <: @{log, fetch}
+    const logOnly = atom('log')
+    const logAndFetch = union(atom('log'), atom('fetch'))
+    expect(isSubtype(logOnly, logAndFetch)).toBe(true)
+  })
+})

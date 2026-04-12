@@ -1,0 +1,377 @@
+/**
+ * Subtyping checker for Dvala's set-theoretic type system.
+ *
+ * Subtyping is semantic: S <: T iff the set of values denoted by S
+ * is a subset of the set denoted by T.
+ *
+ * Key rules:
+ * - Never <: T for all T (empty set is subset of everything)
+ * - T <: Unknown for all T (everything is subset of universal set)
+ * - Primitive <: Primitive iff same name
+ * - Literal <: Primitive iff the literal's type matches
+ * - Function: contravariant params, covariant return
+ * - Record: width subtyping (more fields <: fewer fields) + depth subtyping
+ * - Union: S1|S2 <: T iff S1 <: T and S2 <: T
+ * - Intersection: S <: T1&T2 iff S <: T1 and S <: T2
+ * - Negation: S <: !T iff S & T = Never (S and T are disjoint)
+ */
+
+import type { Type, PrimitiveName } from './types'
+import { typeEquals } from './types'
+
+// ---------------------------------------------------------------------------
+// Main entry point
+// ---------------------------------------------------------------------------
+
+/**
+ * Check whether S is a subtype of T (S <: T).
+ * Uses a visited set for cycle detection (recursive types).
+ */
+export function isSubtype(s: Type, t: Type): boolean {
+  return check(s, t, new Set())
+}
+
+// ---------------------------------------------------------------------------
+// Core subtyping algorithm
+// ---------------------------------------------------------------------------
+
+function check(s: Type, t: Type, visited: Set<string>): boolean {
+  // Identical types (by reference or structural equality)
+  if (s === t || typeEquals(s, t)) return true
+
+  // Bottom: Never <: T for all T
+  if (s.tag === 'Never') return true
+
+  // Top: T <: Unknown for all T
+  if (t.tag === 'Unknown') return true
+
+  // Unknown is only a subtype of Unknown (handled by equality above)
+  if (s.tag === 'Unknown') return false
+
+  // Never is only a supertype of Never — unless s is provably empty
+  if (t.tag === 'Never') {
+    if (s.tag === 'Inter' && isEmptyIntersection(s.members)) return true
+    return false
+  }
+
+  // Cycle guard for recursive types
+  const key = cacheKey(s, t)
+  if (visited.has(key)) return true // coinductive: assume true for cycles
+  visited.add(key)
+
+  // --- Union on the left: S1|S2 <: T iff every member <: T ---
+  if (s.tag === 'Union') {
+    return s.members.every(m => check(m, t, visited))
+  }
+
+  // --- Union on the right: S <: T1|T2 iff S <: some Ti ---
+  if (t.tag === 'Union') {
+    // First try: is S a subtype of any single member?
+    if (t.members.some(m => check(s, m, visited))) return true
+    // For primitives and literals, the above is sufficient.
+    // For more complex cases (e.g. intersections distributing over unions),
+    // a full emptiness check would be needed — deferred to when BDDs are added.
+    return false
+  }
+
+  // --- Intersection on the right: S <: T1&T2 iff S <: T1 and S <: T2 ---
+  if (t.tag === 'Inter') {
+    return t.members.every(m => check(s, m, visited))
+  }
+
+  // --- Intersection on the left: S1&S2 <: T iff some Si <: T ---
+  if (s.tag === 'Inter') {
+    // If any member is already a subtype of T, the intersection is too
+    if (s.members.some(m => check(m, t, visited))) return true
+    // Special case: intersection of disjoint primitives is Never
+    if (isEmptyIntersection(s.members)) return true
+    return false
+  }
+
+  // --- Both negated: !S <: !T iff T <: S (contravariant) ---
+  if (s.tag === 'Neg' && t.tag === 'Neg') {
+    return check(t.inner, s.inner, visited)
+  }
+
+  // --- Negation on the right: S <: !T iff S and T are disjoint ---
+  if (t.tag === 'Neg') {
+    return areDisjoint(s, t.inner, visited)
+  }
+
+  // --- Negation on the left: !S <: T ---
+  if (s.tag === 'Neg') {
+    // !S <: T is hard in general (requires complement reasoning).
+    return false
+  }
+
+  // --- Alias: transparent, compare expanded form ---
+  if (s.tag === 'Alias') return check(s.expanded, t, visited)
+  if (t.tag === 'Alias') return check(s, t.expanded, visited)
+
+  // --- Recursive types: unfold one step ---
+  if (s.tag === 'Recursive') return check(unfoldRecursive(s), t, visited)
+  if (t.tag === 'Recursive') return check(s, unfoldRecursive(t), visited)
+
+  // --- Type variables: check bounds (Step 2 will extend this) ---
+  if (s.tag === 'Var' || t.tag === 'Var') return false
+
+  // --- Same-tag structural checks ---
+  return checkStructural(s, t, visited)
+}
+
+// ---------------------------------------------------------------------------
+// Structural subtyping (same-tag comparisons)
+// ---------------------------------------------------------------------------
+
+function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
+  // Primitive <: Primitive
+  if (s.tag === 'Primitive' && t.tag === 'Primitive') {
+    return s.name === t.name
+  }
+
+  // Atom <: Atom (singletons — only equal atoms are subtypes)
+  if (s.tag === 'Atom' && t.tag === 'Atom') {
+    return s.name === t.name
+  }
+
+  // Literal <: Literal
+  if (s.tag === 'Literal' && t.tag === 'Literal') {
+    return s.value === t.value
+  }
+
+  // Literal <: Primitive (42 <: Number, "hi" <: String, true <: Boolean)
+  if (s.tag === 'Literal' && t.tag === 'Primitive') {
+    return literalMatchesPrimitive(s.value, t.name)
+  }
+
+  // Atom <: Primitive — atoms are NOT subtypes of any primitive
+  // (they're their own kind, like symbols in Ruby/Elixir)
+
+  // Function: contravariant params, covariant return
+  if (s.tag === 'Function' && t.tag === 'Function') {
+    // Must have compatible arity
+    if (s.params.length !== t.params.length) return false
+    // Params: contravariant (T's params <: S's params)
+    const paramsOk = s.params.every((sp, i) => check(t.params[i]!, sp, visited))
+    // Return: covariant (S's return <: T's return)
+    const retOk = check(s.ret, t.ret, visited)
+    return paramsOk && retOk
+  }
+
+  // Tuple: element-wise covariant, same length
+  if (s.tag === 'Tuple' && t.tag === 'Tuple') {
+    if (s.elements.length !== t.elements.length) return false
+    return s.elements.every((se, i) => check(se, t.elements[i]!, visited))
+  }
+
+  // Tuple <: Array: all tuple elements <: array element type
+  if (s.tag === 'Tuple' && t.tag === 'Array') {
+    return s.elements.every(e => check(e, t.element, visited))
+  }
+
+  // Array <: Array: covariant element type
+  if (s.tag === 'Array' && t.tag === 'Array') {
+    return check(s.element, t.element, visited)
+  }
+
+  // Record: width + depth subtyping
+  // {name: String, age: Number} <: {name: String} (more fields is subtype)
+  if (s.tag === 'Record' && t.tag === 'Record') {
+    // Every field in T must exist in S with a subtype value
+    for (const [key, tType] of t.fields) {
+      const sType = s.fields.get(key)
+      if (!sType) {
+        // Missing field in S. If S is open, the field might exist → not provably subtype.
+        // If S is closed, the field definitely doesn't exist → not a subtype.
+        return false
+      }
+      if (!check(sType, tType, visited)) return false
+    }
+    // If T is closed, S must not have extra fields (unless S is also closed with same fields)
+    if (!t.open && s.fields.size > t.fields.size) return false
+    return true
+  }
+
+  // Regex: all regex values form one type
+  if (s.tag === 'Regex' && t.tag === 'Regex') return true
+
+  // No match — not a subtype
+  return false
+}
+
+// ---------------------------------------------------------------------------
+// Disjointness check — S and T have no values in common
+// ---------------------------------------------------------------------------
+
+/**
+ * Check if two types are disjoint (their intersection is empty).
+ * Used for negation subtyping: S <: !T iff S and T are disjoint.
+ */
+function areDisjoint(s: Type, t: Type, visited: Set<string>): boolean {
+  // Never is disjoint with everything
+  if (s.tag === 'Never' || t.tag === 'Never') return true
+
+  // Unknown is never disjoint with a non-Never type
+  if (s.tag === 'Unknown' || t.tag === 'Unknown') return false
+
+  // Different primitive types are disjoint
+  if (s.tag === 'Primitive' && t.tag === 'Primitive') {
+    return s.name !== t.name
+  }
+
+  // Primitive and Atom are disjoint (atoms are not primitives)
+  if ((s.tag === 'Primitive' && t.tag === 'Atom') || (s.tag === 'Atom' && t.tag === 'Primitive')) {
+    return true
+  }
+
+  // Primitive and Regex are disjoint
+  if ((s.tag === 'Primitive' && t.tag === 'Regex') || (s.tag === 'Regex' && t.tag === 'Primitive')) {
+    return true
+  }
+
+  // Different atoms are disjoint
+  if (s.tag === 'Atom' && t.tag === 'Atom') {
+    return s.name !== t.name
+  }
+
+  // Literal and different primitive are disjoint
+  if (s.tag === 'Literal' && t.tag === 'Primitive') {
+    return !literalMatchesPrimitive(s.value, t.name)
+  }
+  if (s.tag === 'Primitive' && t.tag === 'Literal') {
+    return !literalMatchesPrimitive(t.value, s.name)
+  }
+
+  // Different literals are disjoint
+  if (s.tag === 'Literal' && t.tag === 'Literal') {
+    return s.value !== t.value
+  }
+
+  // Literal and Atom are always disjoint
+  if ((s.tag === 'Literal' && t.tag === 'Atom') || (s.tag === 'Atom' && t.tag === 'Literal')) {
+    return true
+  }
+
+  // Function and non-function are disjoint
+  if (s.tag === 'Function' && t.tag !== 'Function' && isGroundType(t)) return true
+  if (t.tag === 'Function' && s.tag !== 'Function' && isGroundType(s)) return true
+
+  // Union: disjoint with T iff every member is disjoint with T
+  if (s.tag === 'Union') return s.members.every(m => areDisjoint(m, t, visited))
+  if (t.tag === 'Union') return t.members.every(m => areDisjoint(s, m, visited))
+
+  // Intersection: disjoint with T if any member is disjoint with T
+  // (conservative — may miss some cases)
+  if (s.tag === 'Inter') return s.members.some(m => areDisjoint(m, t, visited))
+  if (t.tag === 'Inter') return t.members.some(m => areDisjoint(s, m, visited))
+
+  // Default: not provably disjoint
+  return false
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Check if a literal value matches a primitive type name. */
+function literalMatchesPrimitive(value: string | number | boolean, name: PrimitiveName): boolean {
+  switch (name) {
+    case 'Number': return typeof value === 'number'
+    case 'String': return typeof value === 'string'
+    case 'Boolean': return typeof value === 'boolean'
+    case 'Null': return false // null is not a literal
+  }
+}
+
+/** A ground type has no type variables, unions, intersections, or negations. */
+function isGroundType(t: Type): boolean {
+  return t.tag === 'Primitive' || t.tag === 'Atom' || t.tag === 'Literal'
+    || t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array'
+    || t.tag === 'Regex' || t.tag === 'Function'
+}
+
+/** Check if an intersection of types is empty (contains disjoint base types). */
+function isEmptyIntersection(members: Type[]): boolean {
+  // If two different primitives are intersected, the result is Never
+  const primitives = members.filter(m => m.tag === 'Primitive') as { tag: 'Primitive'; name: PrimitiveName }[]
+  if (primitives.length >= 2) {
+    const names = new Set(primitives.map(p => p.name))
+    if (names.size > 1) return true
+  }
+  // A primitive intersected with a non-matching literal is empty
+  for (const prim of primitives) {
+    for (const m of members) {
+      if (m.tag === 'Literal' && !literalMatchesPrimitive(m.value, prim.name)) return true
+      if (m.tag === 'Atom') return true // atoms are disjoint with all primitives
+    }
+  }
+  return false
+}
+
+/** Unfold a recursive type by substituting the body's self-reference. */
+function unfoldRecursive(rec: Type & { tag: 'Recursive' }): Type {
+  return substituteVar(rec.body, rec.id, rec)
+}
+
+/** Substitute all occurrences of Var with the given id. */
+function substituteVar(t: Type, varId: number, replacement: Type): Type {
+  switch (t.tag) {
+    case 'Var': return t.id === varId ? replacement : t
+    case 'Union': return { tag: 'Union', members: t.members.map(m => substituteVar(m, varId, replacement)) }
+    case 'Inter': return { tag: 'Inter', members: t.members.map(m => substituteVar(m, varId, replacement)) }
+    case 'Neg': return { tag: 'Neg', inner: substituteVar(t.inner, varId, replacement) }
+    case 'Function': return {
+      tag: 'Function',
+      params: t.params.map(p => substituteVar(p, varId, replacement)),
+      ret: substituteVar(t.ret, varId, replacement),
+    }
+    case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(e => substituteVar(e, varId, replacement)) }
+    case 'Array': return { tag: 'Array', element: substituteVar(t.element, varId, replacement) }
+    case 'Record': {
+      const fields = new Map<string, Type>()
+      for (const [k, v] of t.fields) {
+        fields.set(k, substituteVar(v, varId, replacement))
+      }
+      return { tag: 'Record', fields, open: t.open }
+    }
+    case 'Alias': return {
+      tag: 'Alias',
+      name: t.name,
+      args: t.args.map(a => substituteVar(a, varId, replacement)),
+      expanded: substituteVar(t.expanded, varId, replacement),
+    }
+    case 'Recursive': {
+      // Don't substitute into recursive types that shadow the same variable
+      if (t.id === varId) return t
+      return { tag: 'Recursive', id: t.id, body: substituteVar(t.body, varId, replacement) }
+    }
+    default: return t // Primitive, Atom, Literal, Regex, Unknown, Never
+  }
+}
+
+/** Generate a cache key for a pair of types (for cycle detection). */
+function cacheKey(s: Type, t: Type): string {
+  return `${typeId(s)}<:${typeId(t)}`
+}
+
+/** Quick identifier for a type (for cache keys). */
+function typeId(t: Type): string {
+  switch (t.tag) {
+    case 'Primitive': return `P:${t.name}`
+    case 'Atom': return `A:${t.name}`
+    case 'Literal': return `L:${t.value}`
+    case 'Function': return `F:${t.params.length}`
+    case 'Tuple': return `T:${t.elements.length}`
+    case 'Record': return `R:${t.fields.size}:${t.open}`
+    case 'Array': return 'Ar'
+    case 'Regex': return 'Rx'
+    case 'Union': return `U:${t.members.length}`
+    case 'Inter': return `I:${t.members.length}`
+    case 'Neg': return `N:${typeId(t.inner)}`
+    case 'Unknown': return '?'
+    case 'Never': return '!'
+    case 'Var': return `V:${t.id}`
+    case 'Alias': return `Al:${t.name}`
+    case 'Recursive': return `Rec:${t.id}`
+  }
+}
