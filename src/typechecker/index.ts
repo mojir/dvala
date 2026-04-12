@@ -1,10 +1,8 @@
 /**
  * Dvala Type System — Set-Theoretic with Algebraic Subtyping
  *
- * Step 1: Core type algebra
- * - Type representation
- * - Subtyping checker
- * - Simplification
+ * Step 1: Core type algebra (types, subtyping, simplification)
+ * Step 2: Simple-sub inference engine (constraint generation, solving)
  */
 
 export {
@@ -37,3 +35,11 @@ export {
 
 export { isSubtype } from './subtype'
 export { simplify } from './simplify'
+export {
+  InferenceContext,
+  TypeEnv,
+  inferExpr,
+  constrain,
+  expandType,
+  TypeInferenceError,
+} from './infer'
