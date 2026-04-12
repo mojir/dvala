@@ -22,6 +22,7 @@ import {
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType } from './builtinTypes'
+import { getEffectReturnType, getEffectArgType } from './effectTypes'
 
 // ---------------------------------------------------------------------------
 // Type variable representation
@@ -589,13 +590,26 @@ export function inferExpr(
     // --- Perform (effect invocation) ---
     case NodeTypes.Perform: {
       // perform(@eff, arg) — adds the effect to the current effect set
-      const [effectExpr] = payload as [AstNode, AstNode | undefined]
+      // and returns the declared return type (or Unknown if not declared)
+      const [effectExpr, argExpr] = payload as [AstNode, AstNode | undefined]
       if (effectExpr[0] === NodeTypes.Effect) {
         const effectName = effectExpr[1] as string
         ctx.addEffect(effectName)
+
+        // If there's an arg, constrain it against the declared arg type
+        if (argExpr) {
+          const argType = inferExpr(argExpr, ctx, env, typeMap)
+          const declaredArgType = getEffectArgType(effectName)
+          if (declaredArgType.tag !== 'Unknown') {
+            constrain(ctx, argType, declaredArgType)
+          }
+        }
+
+        // Return the declared return type
+        result = getEffectReturnType(effectName)
+      } else {
+        result = Unknown
       }
-      // Return type is Unknown for Phase A (typed return comes in Phase C)
-      result = Unknown
       break
     }
 
@@ -731,10 +745,28 @@ export function inferExpr(
       result = Unknown // Module types are future work
       break
 
-    // --- Handler (value — handler...end creates a handler value) ---
-    case NodeTypes.Handler:
-      result = Unknown // Handler value typing is Phase C
+    // --- Handler (handler...end creates a handler value) ---
+    case NodeTypes.Handler: {
+      // Payload: [[clauses], transform, shallow]
+      // Each clause: {effectName, params, body}
+      // Type the handler clauses to verify internal consistency.
+      const [clauses] = payload as [{ effectName: string; params: AstNode[]; body: AstNode[] }[], unknown, unknown]
+      for (const clause of clauses) {
+        const clauseEnv = env.child()
+        // Bind the clause parameter with the effect's declared arg type
+        const declaredArgType = getEffectArgType(clause.effectName)
+        for (const param of clause.params) {
+          bindPattern(param, declaredArgType, clauseEnv, ctx)
+        }
+        // Infer the clause body (where resume may be used)
+        for (const bodyNode of clause.body) {
+          inferExpr(bodyNode, ctx, clauseEnv, typeMap)
+        }
+      }
+      // Handler values are opaque for now — full handler type is future work
+      result = Unknown
       break
+    }
 
     // --- WithHandler (do with handler; body end) ---
     case NodeTypes.WithHandler: {
@@ -760,9 +792,17 @@ export function inferExpr(
     }
 
     // --- Resume ---
-    case NodeTypes.Resume:
-      result = Unknown // Resume typing is Phase C
+    case NodeTypes.Resume: {
+      // resume(value) — the value type should match what perform() returns.
+      // For now, type the argument and return Unknown (the answer type).
+      // Full resume typing (answer type propagation) is future work.
+      const resumeArg = payload as AstNode | undefined
+      if (resumeArg) {
+        inferExpr(resumeArg, ctx, env, typeMap)
+      }
+      result = Unknown
       break
+    }
 
     // --- Macro, MacroCall ---
     case NodeTypes.Macro:

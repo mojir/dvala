@@ -18,6 +18,7 @@ import {
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
 import { initBuiltinTypes } from './builtinTypes'
+import { declareEffect } from './effectTypes'
 
 // Initialize builtin type cache once before all tests
 beforeAll(() => {
@@ -681,5 +682,53 @@ describe('inference — effect sets', () => {
     const fewer = fn([NumberType], NumberType, effectSet(['log']))
     const more = fn([NumberType], NumberType, effectSet(['log', 'fetch']))
     expect(isSubtype(more, fewer)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Inference — Step 7: handler typing (Phase C)
+// ---------------------------------------------------------------------------
+
+describe('inference — effect declarations and handler typing', () => {
+  it('perform returns declared return type', () => {
+    // Declare an effect and verify perform uses the declared return type
+    declareEffect('test.getNumber', StringType, NumberType)
+    const t = inferAndExpand('perform(@test.getNumber, "key")')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('perform with undeclared effect returns Unknown', () => {
+    const t = inferType('perform(@undeclared.eff, 42)')
+    expect(t).toBe(Unknown)
+  })
+
+  it('handler clause infers without errors', () => {
+    // Just verify handler clauses are walked without throwing
+    expect(() => inferType(`
+      handler
+        @my.eff(x) -> resume(x)
+      end
+    `)).not.toThrow()
+  })
+
+  it('with-handler subtracts effects and infers body type', () => {
+    const t = inferAndExpand(`
+      (x) -> do
+        with handler @log(msg) -> resume(null) end;
+        perform(@log, "hello");
+        x + 1
+      end
+    `)
+    // Body returns Number, handler subtracts @log
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      expect(t.effects.effects.has('log')).toBe(false)
+    }
+  })
+
+  it('effect arg type is checked when declared', () => {
+    declareEffect('test.typed', NumberType, StringType)
+    // perform(@test.typed, "wrong") should fail — arg is String but declared as Number
+    expect(() => inferType('perform(@test.typed, "wrong")')).toThrow()
   })
 })

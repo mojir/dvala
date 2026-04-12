@@ -55,3 +55,11 @@ export {
   isTypeGuard,
   type BuiltinTypeInfo,
 } from './builtinTypes'
+export {
+  declareEffect,
+  getEffectDeclaration,
+  getEffectReturnType,
+  getEffectArgType,
+  initBuiltinEffects,
+  type EffectDeclaration,
+} from './effectTypes'
