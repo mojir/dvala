@@ -132,6 +132,9 @@ export interface FunctionDocs {
   seeAlso?: string[]
   hideOperatorForm?: true
   tags?: string[]
+  /** Type annotation in Dvala syntax, parsed by the typechecker.
+   * e.g. "(Number, Number) -> Number" or "(x: Unknown) -> x is Number" */
+  type?: string
 }
 
 export interface CustomDocs {

@@ -16,6 +16,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Number, Number) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
@@ -38,6 +39,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Number, Number) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
@@ -61,6 +63,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Number, Number) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
@@ -87,6 +90,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
+      type: '(...Number[]) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: {
@@ -117,6 +121,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
+      type: '(...Number[]) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: {
@@ -147,6 +152,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
+      type: '(...Number[]) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: {

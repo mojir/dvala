@@ -15,6 +15,7 @@ export const functionalNormalExpression: BuiltinNormalExpressions = {
     evaluate: (): never => { throw new Error('|> is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
+      type: '(A, (A) -> B) -> B',
       category: 'functional',
       returns: { type: 'any' },
       args: {
@@ -40,6 +41,7 @@ export const functionalNormalExpression: BuiltinNormalExpressions = {
     evaluate: (): never => { throw new Error('apply is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
+      type: '(Function, Unknown[]) -> Unknown',
       category: 'functional',
       returns: { type: 'any' },
       args: {
@@ -71,6 +73,7 @@ apply(
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(A) -> A',
       category: 'functional',
       returns: { type: 'any' },
       args: { x: { type: 'any' } },
@@ -94,6 +97,7 @@ apply(
     },
     arity: {},
     docs: {
+      type: '(...Function[]) -> Function',
       category: 'functional',
       returns: { type: 'function' },
       args: {
@@ -131,6 +135,7 @@ comp("foo", "bar")(x)`,
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(A) -> (...Unknown[]) -> A',
       category: 'functional',
       returns: { type: 'function' },
       args: { x: { type: 'any' } },

@@ -50,6 +50,7 @@ export const collectionNormalExpression: BuiltinNormalExpressions = {
     evaluate: () => { throw new Error('filter is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[] | {...}, (Unknown) -> Boolean) -> Unknown[] | {...}',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -84,6 +85,7 @@ filter(
     evaluate: () => { throw new Error('map is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
+      type: '(Unknown[] | {...}, (Unknown) -> Unknown) -> Unknown[] | {...}',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -110,6 +112,7 @@ filter(
     evaluate: () => { throw new Error('reduce is implemented in Dvala') },
     arity: toFixedArity(3),
     docs: {
+      type: '(Unknown[] | {...}, (A, Unknown) -> A, A) -> A',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -146,6 +149,7 @@ reduce(
     },
     arity: { min: 2, max: 3 },
     docs: {
+      type: '(String | Unknown[] | {...} | Null, String | Number, Unknown?) -> Unknown',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -227,6 +231,7 @@ get(
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Unknown[] | {...} | Null) -> Number',
       category: 'collection',
       returns: { type: 'number' },
       args: {
@@ -269,6 +274,7 @@ get(
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(String | Unknown[] | {...} | Null, Unknown) -> Boolean',
       category: 'collection',
       returns: { type: 'boolean' },
       args: {
@@ -319,6 +325,7 @@ contains(
     },
     arity: toFixedArity(3),
     docs: {
+      type: '(String | Unknown[] | {...}, String | Number, Unknown) -> String | Unknown[] | {...}',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -403,6 +410,7 @@ assoc(
     },
     arity: { min: 1 },
     docs: {
+      type: '(...(String | Unknown[] | {...})[]) -> String | Unknown[] | {...}',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
