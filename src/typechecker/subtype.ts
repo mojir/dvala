@@ -17,7 +17,7 @@
  */
 
 import type { Type, PrimitiveName } from './types'
-import { typeEquals } from './types'
+import { typeEquals, isEffectSubset } from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -147,7 +147,7 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
   // Atom <: Primitive — atoms are NOT subtypes of any primitive
   // (they're their own kind, like symbols in Ruby/Elixir)
 
-  // Function: contravariant params, covariant return
+  // Function: contravariant params, covariant return, covariant effects
   if (s.tag === 'Function' && t.tag === 'Function') {
     // Must have compatible arity
     if (s.params.length !== t.params.length) return false
@@ -155,7 +155,9 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
     const paramsOk = s.params.every((sp, i) => check(t.params[i]!, sp, visited))
     // Return: covariant (S's return <: T's return)
     const retOk = check(s.ret, t.ret, visited)
-    return paramsOk && retOk
+    // Effects: covariant (fewer effects is subtype — S's effects ⊆ T's effects)
+    const effectsOk = isEffectSubset(s.effects, t.effects)
+    return paramsOk && retOk && effectsOk
   }
 
   // Tuple: element-wise covariant, same length
@@ -324,6 +326,7 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
       tag: 'Function',
       params: t.params.map(p => substituteVar(p, varId, replacement)),
       ret: substituteVar(t.ret, varId, replacement),
+      effects: t.effects,
     }
     case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(e => substituteVar(e, varId, replacement)) }
     case 'Array': return { tag: 'Array', element: substituteVar(t.element, varId, replacement) }

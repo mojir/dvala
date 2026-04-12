@@ -16,12 +16,26 @@
 
 export type PrimitiveName = 'Number' | 'String' | 'Boolean' | 'Null'
 
+/**
+ * Effect set: a set of effect names, optionally open (polymorphic).
+ * open=true: "these effects plus possibly more" (@{log, e...})
+ * open=false: "exactly these effects" (@{log, fetch})
+ * Empty closed set = pure function.
+ */
+export interface EffectSet {
+  effects: Set<string>
+  open: boolean
+}
+
+/** The empty (pure) effect set. */
+export const PureEffects: EffectSet = { effects: new Set(), open: false }
+
 export type Type =
   // Base types (sets of runtime values)
   | { tag: 'Primitive'; name: PrimitiveName }
   | { tag: 'Atom'; name: string } // Singleton: {:ok}
   | { tag: 'Literal'; value: string | number | boolean } // Singleton: {42}
-  | { tag: 'Function'; params: Type[]; ret: Type }
+  | { tag: 'Function'; params: Type[]; ret: Type; effects: EffectSet }
   | { tag: 'Tuple'; elements: Type[] }
   | { tag: 'Record'; fields: Map<string, Type>; open: boolean }
   | { tag: 'Array'; element: Type }
@@ -70,8 +84,8 @@ export function literal(value: string | number | boolean): Type {
 }
 
 // Composite types
-export function fn(params: Type[], ret: Type): Type {
-  return { tag: 'Function', params, ret }
+export function fn(params: Type[], ret: Type, effects: EffectSet = PureEffects): Type {
+  return { tag: 'Function', params, ret, effects }
 }
 
 export function tuple(elements: Type[]): Type {
@@ -158,7 +172,10 @@ export function typeToString(t: Type): string {
       return typeof t.value === 'string' ? `"${t.value}"` : String(t.value)
     case 'Function': {
       const params = t.params.map(typeToString).join(', ')
-      return `(${params}) -> ${typeToString(t.ret)}`
+      const effectStr = effectSetToString(t.effects)
+      return effectStr
+        ? `(${params}) -> ${effectStr} ${typeToString(t.ret)}`
+        : `(${params}) -> ${typeToString(t.ret)}`
     }
     case 'Tuple': return `[${t.elements.map(typeToString).join(', ')}]`
     case 'Record': {
@@ -182,6 +199,15 @@ export function typeToString(t: Type): string {
   }
 }
 
+/** Display an effect set. Returns empty string for pure (empty closed) sets. */
+export function effectSetToString(e: EffectSet): string {
+  if (e.effects.size === 0 && !e.open) return ''
+  const names = [...e.effects].sort().join(', ')
+  return e.open
+    ? `@{${names}, ...}`
+    : `@{${names}}`
+}
+
 // ---------------------------------------------------------------------------
 // Structural equality — used for deduplication
 // ---------------------------------------------------------------------------
@@ -197,6 +223,7 @@ export function typeEquals(a: Type, b: Type): boolean {
       return a.params.length === bf.params.length
         && a.params.every((p, i) => typeEquals(p, bf.params[i]!))
         && typeEquals(a.ret, bf.ret)
+        && effectSetEquals(a.effects, bf.effects)
     }
     case 'Tuple': {
       const bt = b as typeof a
@@ -236,6 +263,50 @@ export function typeEquals(a: Type, b: Type): boolean {
       return a.id === brec.id && typeEquals(a.body, brec.body)
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Effect set helpers
+// ---------------------------------------------------------------------------
+
+/** Check if two effect sets are equal. */
+export function effectSetEquals(a: EffectSet, b: EffectSet): boolean {
+  if (a.open !== b.open) return false
+  if (a.effects.size !== b.effects.size) return false
+  for (const e of a.effects) {
+    if (!b.effects.has(e)) return false
+  }
+  return true
+}
+
+/** Create an effect set from named effects. */
+export function effectSet(effects: string[], open = false): EffectSet {
+  return { effects: new Set(effects), open }
+}
+
+/** Merge two effect sets (union of effects). */
+export function mergeEffects(a: EffectSet, b: EffectSet): EffectSet {
+  const merged = new Set([...a.effects, ...b.effects])
+  return { effects: merged, open: a.open || b.open }
+}
+
+/** Subtract handled effects from an effect set. */
+export function subtractEffects(from: EffectSet, handled: Set<string>): EffectSet {
+  const remaining = new Set([...from.effects].filter(e => !handled.has(e)))
+  return { effects: remaining, open: from.open }
+}
+
+/** Check if an effect set is a subset of another (fewer effects = subtype). */
+export function isEffectSubset(sub: EffectSet, sup: EffectSet): boolean {
+  // If sup is open, any sub is a subset (sup accepts more)
+  if (sup.open) return true
+  // If sub is open but sup is closed, sub might have more effects
+  if (sub.open) return false
+  // Both closed: every effect in sub must be in sup
+  for (const e of sub.effects) {
+    if (!sup.effects.has(e)) return false
+  }
+  return true
 }
 
 // ---------------------------------------------------------------------------

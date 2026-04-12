@@ -33,6 +33,7 @@ export function simplify(t: Type): Type {
       tag: 'Function',
       params: t.params.map(simplify),
       ret: simplify(t.ret),
+      effects: t.effects,
     }
     case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(simplify) }
     case 'Array': return { tag: 'Array', element: simplify(t.element) }

@@ -8,6 +8,7 @@ import {
   NumberType, StringType, NullType,
   Unknown, Never,
   atom, literal, fn, record, array, inter, neg,
+  effectSet,
 } from './types'
 import {
   InferenceContext, TypeEnv,
@@ -606,5 +607,79 @@ describe('inference — design doc examples', () => {
     // Should be Number | Null
     expect(isSubtype(literal(42), t)).toBe(true)
     expect(isSubtype(NullType, t)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Inference — Step 6: effect sets
+// ---------------------------------------------------------------------------
+
+describe('inference — effect sets', () => {
+  it('pure function has empty effect set', () => {
+    const t = inferType('(x) -> x + 1')
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      expect(t.effects.effects.size).toBe(0)
+      expect(t.effects.open).toBe(false)
+    }
+  })
+
+  it('function with perform has effect in its set', () => {
+    const t = inferType('(x) -> perform(@my.eff, x)')
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      expect(t.effects.effects.has('my.eff')).toBe(true)
+    }
+  })
+
+  it('function with multiple performs accumulates effects', () => {
+    const t = inferType('(x) -> do perform(@log, x); perform(@fetch, x) end')
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      expect(t.effects.effects.has('log')).toBe(true)
+      expect(t.effects.effects.has('fetch')).toBe(true)
+      expect(t.effects.effects.size).toBe(2)
+    }
+  })
+
+  it('handler subtracts handled effects', () => {
+    const t = inferType(`
+      (x) -> do
+        with handler @log(msg) -> resume(null) end;
+        perform(@log, "hello");
+        perform(@fetch, x)
+      end
+    `)
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      // @log is handled, only @fetch should remain
+      expect(t.effects.effects.has('log')).toBe(false)
+      expect(t.effects.effects.has('fetch')).toBe(true)
+    }
+  })
+
+  it('pure function is subtype of effectful function', () => {
+    // (Number) -> Number  <:  (Number) -> @{log} Number
+    const pure = fn([NumberType], NumberType)
+    const effectful = fn([NumberType], NumberType, effectSet(['log']))
+    expect(isSubtype(pure, effectful)).toBe(true)
+  })
+
+  it('effectful function is NOT subtype of pure function', () => {
+    const pure = fn([NumberType], NumberType)
+    const effectful = fn([NumberType], NumberType, effectSet(['log']))
+    expect(isSubtype(effectful, pure)).toBe(false)
+  })
+
+  it('fewer effects is subtype of more effects', () => {
+    const fewer = fn([NumberType], NumberType, effectSet(['log']))
+    const more = fn([NumberType], NumberType, effectSet(['log', 'fetch']))
+    expect(isSubtype(fewer, more)).toBe(true)
+  })
+
+  it('more effects is NOT subtype of fewer effects', () => {
+    const fewer = fn([NumberType], NumberType, effectSet(['log']))
+    const more = fn([NumberType], NumberType, effectSet(['log', 'fetch']))
+    expect(isSubtype(more, fewer)).toBe(false)
   })
 })

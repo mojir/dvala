@@ -11,12 +11,13 @@
  * - inferExpr(node, ctx, env): infers a type for an AST node
  */
 
-import type { Type } from './types'
+import type { Type, EffectSet } from './types'
 import {
   StringType, BooleanType, NullType,
-  Unknown, Never,
+  Unknown, Never, PureEffects,
   atom, literal, fn, array, tuple, union,
   typeToString, typeEquals,
+  subtractEffects,
 } from './types'
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
@@ -53,8 +54,30 @@ export class InferenceContext {
   private _level = 0
   /** Cycle guard: tracks (lhs, rhs) pairs already processed by constrain. */
   private constraintCache = new Set<string>()
+  /** Stack of effect sets — each function body pushes a new set. */
+  private effectStack: EffectSet[] = [{ effects: new Set(), open: false }]
 
   get level(): number { return this._level }
+
+  /** Get the current (innermost) effect set being built. */
+  get currentEffects(): EffectSet { return this.effectStack[this.effectStack.length - 1]! }
+
+  /** Push a fresh effect set (entering a function body). */
+  pushEffects(): void { this.effectStack.push({ effects: new Set(), open: false }) }
+
+  /** Pop and return the effect set (leaving a function body). */
+  popEffects(): EffectSet { return this.effectStack.pop() ?? PureEffects }
+
+  /** Record an effect in the current effect set. */
+  addEffect(name: string): void { this.currentEffects.effects.add(name) }
+
+  /** Remove handled effects from the current set. */
+  handleEffects(handled: Set<string>): void {
+    const current = this.currentEffects
+    const remaining = subtractEffects(current, handled)
+    current.effects.clear()
+    for (const e of remaining.effects) current.effects.add(e)
+  }
 
   /** Allocate a fresh type variable at the current level. */
   freshVar(): TypeVar {
@@ -487,10 +510,11 @@ export function inferExpr(
       for (const param of params) {
         const paramVar = ctx.freshVar()
         paramTypes.push(paramVar)
-        // Bind each parameter name in the function scope
-        // Params are binding targets like ["symbol", [nameNode, default], id]
         bindPattern(param, paramVar, funcEnv, ctx)
       }
+
+      // Push a fresh effect set to capture the body's effects
+      ctx.pushEffects()
 
       // Infer the body — last expression is the return type
       let retType: Type = NullType
@@ -498,7 +522,10 @@ export function inferExpr(
         retType = inferExpr(bodyNode, ctx, funcEnv, typeMap)
       }
 
-      result = fn(paramTypes, retType)
+      // Pop the captured effects — they become the function's effect set
+      const bodyEffects = ctx.popEffects()
+
+      result = fn(paramTypes, retType, bodyEffects)
       break
     }
 
@@ -560,10 +587,17 @@ export function inferExpr(
     }
 
     // --- Perform (effect invocation) ---
-    case NodeTypes.Perform:
-      // Phase A: perform returns Unknown (effect typing comes in Phase B)
+    case NodeTypes.Perform: {
+      // perform(@eff, arg) — adds the effect to the current effect set
+      const [effectExpr] = payload as [AstNode, AstNode | undefined]
+      if (effectExpr[0] === NodeTypes.Effect) {
+        const effectName = effectExpr[1] as string
+        ctx.addEffect(effectName)
+      }
+      // Return type is Unknown for Phase A (typed return comes in Phase C)
       result = Unknown
       break
+    }
 
     // --- Effect reference ---
     case NodeTypes.Effect:
@@ -697,11 +731,37 @@ export function inferExpr(
       result = Unknown // Module types are future work
       break
 
-    // --- Handler, WithHandler, Resume ---
+    // --- Handler (value — handler...end creates a handler value) ---
     case NodeTypes.Handler:
-    case NodeTypes.WithHandler:
+      result = Unknown // Handler value typing is Phase C
+      break
+
+    // --- WithHandler (do with handler; body end) ---
+    case NodeTypes.WithHandler: {
+      // Payload: [handlerExpr, bodyExprs]
+      const [handlerExpr, bodyExprs] = payload as [AstNode, AstNode[]]
+
+      // Extract handled effect names from the handler expression
+      const handledEffects = extractHandledEffects(handlerExpr)
+
+      // Infer the body — effects from the body are accumulated in the current set
+      let bodyType: Type = NullType
+      for (const bodyNode of bodyExprs) {
+        bodyType = inferExpr(bodyNode, ctx, env, typeMap)
+      }
+
+      // Subtract handled effects from the current effect set
+      if (handledEffects.size > 0) {
+        ctx.handleEffects(handledEffects)
+      }
+
+      result = bodyType
+      break
+    }
+
+    // --- Resume ---
     case NodeTypes.Resume:
-      result = Unknown // Handler typing is Phase C
+      result = Unknown // Resume typing is Phase C
       break
 
     // --- Macro, MacroCall ---
@@ -796,6 +856,27 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Inter': return t.members.some(m => containsVarsAboveLevel(m, level))
     default: return false
   }
+}
+
+// ---------------------------------------------------------------------------
+// Effect helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract handled effect names from a handler AST node.
+ * Handler node: ["Handler", [[{effectName, params, body}, ...], transform, shallow], id]
+ */
+function extractHandledEffects(handlerExpr: AstNode): Set<string> {
+  const handled = new Set<string>()
+  if (handlerExpr[0] !== NodeTypes.Handler) return handled
+
+  const [clauses] = handlerExpr[1] as [{ effectName: string }[], unknown, unknown]
+  for (const clause of clauses) {
+    if (clause.effectName) {
+      handled.add(clause.effectName)
+    }
+  }
+  return handled
 }
 
 // ---------------------------------------------------------------------------
