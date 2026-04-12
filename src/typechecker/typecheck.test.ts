@@ -124,3 +124,37 @@ describe('typecheck — type map', () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// Type annotation constraints
+// ---------------------------------------------------------------------------
+
+describe('typecheck — type annotations', () => {
+  const dvala = createDvala()
+
+  it('valid annotation: let x: Number = 42 (no diagnostics)', () => {
+    const result = dvala.typecheck('let x: Number = 42; x')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('invalid annotation: let x: String = 42 (type mismatch)', () => {
+    const result = dvala.typecheck('let x: String = 42; x')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toContain('not a subtype of String')
+  })
+
+  it('function param annotation: (a: Number) -> a + 1', () => {
+    const result = dvala.typecheck('let f = (a: Number) -> a + 1; f(42)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('nullable annotation with union syntax: let x: Number | Null = null', () => {
+    const result = dvala.typecheck('let x: Number | Null = null; x')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('nullable annotation rejects non-matching type', () => {
+    const result = dvala.typecheck('let x: Number | Null = "hello"; x')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+})

@@ -22,6 +22,7 @@ import {
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType } from './builtinTypes'
+import { parseTypeAnnotation } from './parseType'
 import { getEffectReturnType, getEffectArgType } from './effectTypes'
 
 // ---------------------------------------------------------------------------
@@ -55,6 +56,8 @@ export class InferenceContext {
   private _level = 0
   /** Cycle guard: tracks (lhs, rhs) pairs already processed by constrain. */
   private constraintCache = new Set<string>()
+  /** Type annotations from the parser side-table. Keyed by binding target nodeId. */
+  typeAnnotations = new Map<number, string>()
   /** Stack of effect sets — each function body pushes a new set. */
   private effectStack: EffectSet[] = [{ effects: new Set(), open: false }]
 
@@ -496,6 +499,15 @@ export function inferExpr(
       ctx.enterLevel()
       const valueType = inferExpr(valueNode, ctx, env, typeMap)
       ctx.leaveLevel()
+
+      // Check type annotation constraint: let x: T = expr → constrain expr <: T
+      const bindingNodeId = binding[2]
+      const annotation = ctx.typeAnnotations.get(bindingNodeId)
+      if (annotation) {
+        const declaredType = parseTypeAnnotation(annotation)
+        constrain(ctx, valueType, declaredType)
+      }
+
       // Bind the variable in the environment
       bindPattern(binding, valueType, env, ctx)
       result = valueType
@@ -512,6 +524,12 @@ export function inferExpr(
         const paramVar = ctx.freshVar()
         paramTypes.push(paramVar)
         bindPattern(param, paramVar, funcEnv, ctx)
+        // Apply param type annotation: (a: Number) -> ... constrains paramVar <: Number
+        const paramAnnotation = ctx.typeAnnotations.get(param[2])
+        if (paramAnnotation) {
+          const declaredType = parseTypeAnnotation(paramAnnotation)
+          constrain(ctx, paramVar, declaredType)
+        }
       }
 
       // Push a fresh effect set to capture the body's effects

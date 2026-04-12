@@ -104,13 +104,13 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     const symbol = toUserDefinedSymbol(parseSymbol(ctx), firstToken[2], ctx)
 
     // Type annotation: x: Type — stored in side-table, not in the binding target
+    let typeAnnotation: string | undefined
     if (isTypeAnnotationColon(ctx)) {
       ctx.advance() // consume ':'
-      const annotation = collectTypeAnnotation(ctx)
-      if (!annotation) {
+      typeAnnotation = collectTypeAnnotation(ctx)
+      if (!typeAnnotation) {
         throw new ParseError('Expected type after ":"', ctx.peekSourceCodeInfo())
       }
-      ctx.typeAnnotations.set(symbol[2], annotation)
     }
 
     const defaultValue = parseOptionalDefaulValue(ctx)
@@ -120,6 +120,12 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
 
     const target = withSourceCodeInfo([bindingTargetTypes.symbol, [symbol, defaultValue], 0], firstToken[2], ctx)
     ctx.setNodeEnd(target[2])
+
+    // Store annotation keyed by the binding target's allocated nodeId
+    if (typeAnnotation) {
+      ctx.typeAnnotations.set(target[2], typeAnnotation)
+    }
+
     return target
   }
 

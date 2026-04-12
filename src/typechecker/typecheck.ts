@@ -67,6 +67,10 @@ export function typecheck(ast: Ast): TypecheckResult {
   initTypeSystem()
 
   const ctx = new InferenceContext()
+  // Pass type annotations from the parser to the inference engine
+  if (ast.typeAnnotations) {
+    ctx.typeAnnotations = ast.typeAnnotations
+  }
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()
   const diagnostics: TypeDiagnostic[] = []
