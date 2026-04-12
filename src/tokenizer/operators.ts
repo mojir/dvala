@@ -42,7 +42,8 @@ const otherOperators = [
   ':', // property assignment
   '->', // lambda
   '...', // rest
-  '.', // property accessor
+  '?.', // safe property accessor (returns null for missing key)
+  '.', // property accessor (strict — throws on missing key)
   ',', // item separator
   '=', // assignment
   ':', // property assignment

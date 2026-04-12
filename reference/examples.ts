@@ -185,14 +185,14 @@ let showTodos = (user) -> do
   perform(@dvala.io.print, "\\nCompleted (" ++ str(count(done)) ++ "/" ++ str(count(todos)) ++ "):");
   for (t in done take 5) -> perform(@dvala.io.print, "  ✓ " ++ t.title);
   if count(done) > 5 then
-    perform(@dvala.io.print, "  ... and " ++ str(count(done) - 5) ++ " more");
-  end;
+    perform(@dvala.io.print, "  ... and " ++ str(count(done) - 5) ++ " more")
+  else null end;
 
   perform(@dvala.io.print, "\\nPending (" ++ str(count(pending)) ++ "):");
   for (t in pending take 5) -> perform(@dvala.io.print, "  ○ " ++ t.title);
   if count(pending) > 5 then
-    perform(@dvala.io.print, "  ... and " ++ str(count(pending) - 5) ++ " more");
-  end
+    perform(@dvala.io.print, "  ... and " ++ str(count(pending) - 5) ++ " more")
+  else null end
 end;
 
 // Main interaction loop
@@ -208,8 +208,8 @@ let main = () -> do
         let user = lookupUser(input);
         if user then
           let show = perform(@dvala.io.read, "Show todos for " ++ user.name ++ "? (yes/no)");
-          if show == "yes" then showTodos(user) end;
-        end;
+          if show == "yes" then showTodos(user) else null end;
+        else null end;
         perform(@dvala.io.print, "");
         recur(true)
       end
@@ -1267,7 +1267,7 @@ let s11 = [do let t = 10; t + 1 end, do let v1 = 1; let v2 = 2; v1 + v2 end];
 let s12 = [
   if true then "yes" else "no" end,
   if false then 1 else if false then 2 else 3 end,
-  if false then "x" end,
+  if false then "x" else null end,
 ];
 
 // --- 13: Functions - all forms ---

@@ -4,14 +4,14 @@ Since everything in Dvala is an expression, all control flow constructs return v
 
 ## If / Then / Else
 
-The basic conditional. Without `else`, the expression returns `null` when the condition is false — there is no "void" or "undefined", just `null`:
+The basic conditional. `if` always requires an `else` clause — there is no "void" or "undefined", just `null`. Use `else null` when you only care about one branch:
 
 ```dvala
 if 10 > 5 then "big" else "small" end;
 ```
 
 ```dvala
-if false then "nope" end;
+if false then "nope" else null end;
 ```
 
 ## If / Else If (Multi-branch)

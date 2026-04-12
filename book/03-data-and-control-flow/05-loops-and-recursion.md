@@ -8,7 +8,6 @@ Dvala provides `for` comprehensions for building arrays and `loop`/`recur` for t
 
 ```dvala
 for(x in [1, 2, 3, 4]) -> x * 2;
-
 ```
 
 ## Filtering with when
@@ -17,7 +16,6 @@ Use `when` to skip elements that don't match a condition:
 
 ```dvala
 for(x in range(10) when isOdd(x)) -> x * x;
-
 ```
 
 ## Early Exit with while
@@ -26,7 +24,6 @@ for(x in range(10) when isOdd(x)) -> x * x;
 
 ```dvala
 for(x in range(100) while x < 5) -> x * 10;
-
 ```
 
 ## Local Bindings with let
@@ -35,7 +32,6 @@ Bind intermediate values inside the comprehension:
 
 ```dvala
 for(x in [1, 2, 3] let sq = x * x) -> sq + 1;
-
 ```
 
 ## Multiple Iterators
@@ -44,7 +40,6 @@ Multiple bindings produce a cartesian product:
 
 ```dvala
 for(i in [1, 2], j in [10, 20]) -> i + j;
-
 ```
 
 ## Complex Comprehension
@@ -53,7 +48,6 @@ Combine `let`, `when`, and `while` for powerful queries:
 
 ```dvala
 for(i in range(10) let sq = i ^ 2 when sq % 3 == 0 while sq < 50) -> sq;
-
 ```
 
 ## Loop / Recur
@@ -62,7 +56,6 @@ for(i in range(10) let sq = i ^ 2 when sq % 3 == 0 while sq < 50) -> sq;
 
 ```dvala
 loop(n = 5, acc = 1) -> if n <= 1 then acc else recur(n - 1, acc * n) end;
-
 ```
 
 ## Self Recursion
@@ -83,7 +76,6 @@ Dvala has no standalone `while` keyword. To loop while a condition holds, use `l
 ```dvala
 // Keep halving until value drops below 1
 loop(x = 100) -> if x < 1 then x else recur(x / 2) end;
-
 ```
 
 The `while` keyword that appears in `for` comprehensions is for **early exit from a `for`**, not a general loop construct.
@@ -94,5 +86,4 @@ The `while` keyword that appears in `for` comprehensions is for **early exit fro
 
 ```dvala
 for(x in [1, 2, 3]) -> perform(@dvala.io.print, x);
-
 ```

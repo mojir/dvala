@@ -10,6 +10,8 @@
         for(obj in otherColls) -> do
           if not(isObject(obj)) then
             perform(@dvala.error, { message: "Expected object" })
+          else
+            null
           end;
           let objKeys = keys(obj) |> sort;
           if not(objKeys == expectedKeys) then
@@ -24,6 +26,8 @@
                 ),
               }
             )
+          else
+            null
           end;
         end;
         reduce(
@@ -40,6 +44,8 @@
         for(s in otherColls) -> do
           if not(isString(s)) then
             perform(@dvala.error, { message: "Expected string" })
+          else
+            null
           end;
         end;
         let len =
@@ -54,6 +60,8 @@
           (acc, ch) -> do
             if not(isString(ch)) then
               perform(@dvala.error, { message: "Expected string" })
+            else
+              null
             end;
             ++(acc, ch);
           end,
@@ -65,6 +73,8 @@
         for(x in otherColls) -> do
           if not(isArray(x)) then
             perform(@dvala.error, { message: "Expected array" })
+          else
+            null
           end;
         end;
         let len =

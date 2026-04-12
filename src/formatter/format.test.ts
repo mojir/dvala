@@ -200,10 +200,12 @@ describe('formatter — control flow', () => {
     'if x > 0 then 1 else -1 end;',
   ))
 
-  it('if without else', () => check(
-    'if done then perform(@dvala.io.print,"done") end',
-    'if done then perform(@dvala.io.print, "done") end;',
-  ))
+  it('if without else is a parse error — format returns source unchanged', () => {
+    // The formatter intentionally swallows parse errors and returns the original source
+    // so that format-on-save never destroys partially-written code.
+    const src = 'if done then perform(@dvala.io.print,"done") end'
+    expect(format(src)).toBe(src)
+  })
 })
 
 // ---------------------------------------------------------------------------

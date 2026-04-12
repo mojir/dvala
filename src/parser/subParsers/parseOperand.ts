@@ -53,8 +53,9 @@ export function parseOperand(ctx: ParserContext): AstNode {
   let operand: AstNode = parseOperandPart(ctx)
   let token = ctx.tryPeek()
 
-  while (isOperatorToken(token, '.') || isLBracketToken(token) || isLParenToken(token)) {
-    if (token[1] === '.') {
+  while (isOperatorToken(token, '.') || isOperatorToken(token, '?.') || isLBracketToken(token) || isLParenToken(token)) {
+    if (token[1] === '.' || token[1] === '?.') {
+      const safe = token[1] === '?.'
       ctx.builder?.startNodeAt(checkpoint!, 'PropertyAccess')
       ctx.advance()
       const symbolToken = ctx.tryPeek()
@@ -62,7 +63,13 @@ export function parseOperand(ctx: ParserContext): AstNode {
         throw new ParseError('Expected symbol', ctx.peekSourceCodeInfo())
       }
       const stringNode: StringNode = withSourceCodeInfo([NodeTypes.Str, symbolToken[1], 0], symbolToken[2], ctx) as StringNode
-      operand = createAccessorNode(ctx, operand, stringNode, token[2])
+      if (safe) {
+        // `a?.b` → get(a, "b") — returns null for missing key
+        operand = createAccessorNode(ctx, operand, stringNode, token[2])
+      } else {
+        // `a.b` → a("b") — strict, throws KeyError for missing key
+        operand = createStrictAccessorNode(ctx, operand, stringNode, token[2])
+      }
       ctx.advance()
       ctx.builder?.endNode()
       token = ctx.tryPeek()
@@ -275,6 +282,17 @@ function looksLikeLambda(ctx: ParserContext): boolean {
 
 function createAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {
   const node = withSourceCodeInfo([NodeTypes.Call, [withSourceCodeInfo([NodeTypes.Builtin, 'get', 0], debugInfo, ctx), [left, right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+  ctx.setNodeEnd(node[2])
+  return node
+}
+
+/**
+ * Creates a strict property access node: `obj("key")` — a function call
+ * where the object is called as a function with the key as argument.
+ * Throws KeyError for missing keys (unlike get which returns null).
+ */
+function createStrictAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {
+  const node = withSourceCodeInfo([NodeTypes.Call, [left, [right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
   ctx.setNodeEnd(node[2])
   return node
 }

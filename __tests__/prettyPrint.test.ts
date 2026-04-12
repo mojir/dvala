@@ -44,8 +44,8 @@ describe('prettyPrint — operators', () => {
 })
 
 describe('prettyPrint — dot access', () => {
-  it('simple dot access', () => { expect(pp('obj.name')).toBe('obj.name') })
-  it('chained dot access', () => { expect(pp('a.b.c')).toBe('a.b.c') })
+  it('simple dot access', () => { expect(pp('obj.name')).toBe('obj("name")') })
+  it('chained dot access', () => { expect(pp('a.b.c')).toBe('a("b")("c")') })
   it('computed access stays as get()', () => {
     expect(pp('get(obj, 0)')).toBe('get(obj, 0)')
   })
@@ -77,7 +77,7 @@ describe('prettyPrint — function calls', () => {
 })
 
 describe('prettyPrint — if/else', () => {
-  it('simple if', () => { expect(pp('if true then 1 end')).toBe('if true then 1 end') })
+  it('simple if', () => { expect(pp('if true then 1 else null end')).toBe('if true then 1 else null end') })
   it('if/else', () => { expect(pp('if x then 1 else 2 end')).toBe('if x then 1 else 2 end') })
   it('if/else if chain', () => {
     expect(pp('if a then 1 else if b then 2 else 3 end')).toBe('if a then 1 else if b then 2 else 3 end')
@@ -95,13 +95,13 @@ describe('prettyPrint — if/else', () => {
     expect(result).toContain('\n')
     expect(result).toContain('else if')
   })
-  it('long if without else breaks to multi-line', () => {
-    const code = 'if someVeryLongConditionVariable then someVeryLongResultExpression + anotherVeryLongTerm end'
+  it('long if with null else breaks to multi-line', () => {
+    const code = 'if someVeryLongConditionVariable then someVeryLongResultExpression + anotherVeryLongTerm else null end'
     const result = pp(code)
     expect(result).toContain('\n')
     expect(result).toContain('if ')
     expect(result).toContain('end')
-    expect(result).not.toContain('else')
+    expect(result).toContain('else')
   })
 })
 

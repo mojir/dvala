@@ -16,6 +16,8 @@ let editDraft = (previous, feedback, attempt) -> do
   if feedback != "" then
     perform(@dvala.io.print, "Approver feedback: \"" ++ feedback ++ "\"");
     perform(@dvala.io.print, "Previous version:\n" ++ previous ++ "\n")
+  else
+    null
   end;
 
   perform(@dvala.io.read, "Your draft:\n");

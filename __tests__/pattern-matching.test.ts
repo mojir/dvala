@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
+import { MatchError } from '../src/errors'
 import { getUndefinedSymbols } from '../src/tooling'
 
 describe('pattern matching (match)', () => {
@@ -10,13 +11,13 @@ describe('pattern matching (match)', () => {
       it('should match number literals', () => {
         expect(l.run('match 1 case 1 then "one" case 2 then "two" end')).toBe('one')
         expect(l.run('match 2 case 1 then "one" case 2 then "two" end')).toBe('two')
-        expect(l.run('match 3 case 1 then "one" case 2 then "two" end')).toBeNull()
+        expect(() => l.run('match 3 case 1 then "one" case 2 then "two" end')).toThrow(MatchError)
       })
 
       it('should match string literals', () => {
         expect(l.run('match "hello" case "hello" then 1 case "world" then 2 end')).toBe(1)
         expect(l.run('match "world" case "hello" then 1 case "world" then 2 end')).toBe(2)
-        expect(l.run('match "other" case "hello" then 1 case "world" then 2 end')).toBeNull()
+        expect(() => l.run('match "other" case "hello" then 1 case "world" then 2 end')).toThrow(MatchError)
       })
 
       it('should match boolean literals', () => {
@@ -207,8 +208,8 @@ match [1, 2]
 end`)).toBe('two: 1, 2')
       })
 
-      it('should return null when no pattern matches', () => {
-        expect(l.run('match [1, 2, 3] case 1 then "one" case "hello" then "greeting" end')).toBeNull()
+      it('should throw MatchError when no pattern matches', () => {
+        expect(() => l.run('match [1, 2, 3] case 1 then "one" case "hello" then "greeting" end')).toThrow(MatchError)
       })
     })
 

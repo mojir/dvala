@@ -9,13 +9,13 @@ describe('determinant.', () => {
 let determinant = matrix -> do
   // Check if input is an array
   if not(isArray(matrix)) then
-    perform(@dvala.error, "Input must be an array");
-  end;
+    perform(@dvala.error, "Input must be an array")
+  else null end;
 
   // Check if matrix is empty
   if isEmpty(matrix) then
-    perform(@dvala.error, "Matrix cannot be empty");
-  end;
+    perform(@dvala.error, "Matrix cannot be empty")
+  else null end;
 
   let rows = count(matrix);
   
@@ -24,15 +24,15 @@ let determinant = matrix -> do
   
   // Check if first row is an array
   if not(isArray(firstRow)) then
-    perform(@dvala.error, "Input must be a 2D array");
-  end;
+    perform(@dvala.error, "Input must be a 2D array")
+  else null end;
   
   let cols = count(firstRow);
   
   // Ensure matrix is square
   if rows != cols then
-    perform(@dvala.error, "Matrix must be square");
-  end;
+    perform(@dvala.error, "Matrix must be square")
+  else null end;
   
   // Base case: 1x1 matrix
   if rows == 1 then

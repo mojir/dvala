@@ -100,7 +100,7 @@ Use rest parameters (`...args`) if you need to accept a variable number of argum
 `comp` composes functions **right-to-left** — the rightmost function runs first:
 
 ```dvala
-str(comp, inc)(41);
+comp(str, inc)(41);
 ```
 
 `inc` runs first (41 → 42), then `str` converts to string. For **left-to-right** composition, use the pipe operator `|>` instead — it reads in the same order as the transformations happen:

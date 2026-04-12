@@ -79,7 +79,6 @@ else
   recur(y, x % y)
 end;
 gcd(48, 18);
-
 ```
 
 ## for Returns an Array
@@ -89,7 +88,6 @@ Comprehensions are expressions that produce arrays:
 ```dvala
 let squares = for(x in range(6)) -> x * x;
 squares;
-
 ```
 
 ## Effects Return Values
@@ -131,7 +129,6 @@ else
   "positive"
 end;
 classify([-3, 0, 5, -1, 7]);
-
 ```
 
 ## Summary

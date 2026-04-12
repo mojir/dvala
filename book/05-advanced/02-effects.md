@@ -500,7 +500,6 @@ do
   setState("y", 20);
   [getState("x"), getState("y")];
 end;
-
 ```
 
 `setState("x", 5)` and `getState("x")` expand at compile time — no runtime overhead. The `states` handler itself is unchanged.

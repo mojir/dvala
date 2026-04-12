@@ -160,11 +160,11 @@ Objects are key-value maps. Keys are strings:
 { name: "Alice", age: 30 };
 ```
 
-Accessing properties with `.` or `[]` is null-safe — missing keys return `null`, and accessing properties on `null` propagates `null` instead of erroring:
+Accessing properties with `.` throws a `KeyError` if the key is missing. Use `?.` for safe access — missing keys return `null`, and accessing properties on `null` propagates `null` instead of erroring:
 
 ```dvala
 let user = { name: "Alice" };
-[user.name, user.age, user.address.city];
+[user.name, user?.age, user?.address?.city];
 ```
 
 Spread works in objects too:

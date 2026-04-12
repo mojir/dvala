@@ -36,12 +36,13 @@ match :ok
 end;
 ```
 
-If no pattern matches, `match` returns `null`:
+If no pattern matches, `match` throws a `MatchError`. Use a wildcard `_` catch-all to handle unmatched cases:
 
 ```dvala
 match 42
   case 1 then "one"
   case 2 then "two"
+  case _ then null
 end;
 ```
 

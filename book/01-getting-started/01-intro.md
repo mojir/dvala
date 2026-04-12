@@ -73,7 +73,6 @@ let unless =
   macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end;
 
 unless(false, "this runs!");
-
 ```
 
 Macro bindings are automatically gensymed — no accidental name collisions with the caller's scope. See the [Macros](#macros) chapter for the full story.

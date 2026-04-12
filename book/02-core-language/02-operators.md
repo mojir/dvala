@@ -76,7 +76,7 @@ let arr = [10, 20, 30];
 get(arr, 1);
 ```
 
-Both `.` and `[]` are **null-safe by default**. Accessing a property on `null` returns `null` instead of throwing an error. This chains naturally — no special `?.` operator needed:
+`.` access is **strict** — it throws a `KeyError` if the key is missing. Use `?.` for safe access: it returns `null` for missing keys and propagates `null` through chains instead of erroring:
 
 ```dvala
 let obj = { a: { b: 42 } };
@@ -85,19 +85,19 @@ obj.a.b;
 
 ```dvala
 let obj = { a: null };
-obj.a.b;
+obj.a?.b;
 ```
 
 ```dvala
 let obj = null;
-obj.x.y.z;
+obj?.x?.y?.z;
 ```
 
-Missing keys also return `null`:
+Safe access returns `null` for missing keys:
 
 ```dvala
 let obj = { a: 1 };
-obj.missing;
+obj?.missing;
 ```
 
 ```dvala

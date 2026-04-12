@@ -22,8 +22,8 @@ else
   "FALSE"
 end`,
     'if false then "TRUE" else "FALSE" end',
-    'if true then "TRUE" end',
-    'if false then "TRUE" end',
+    'if true then "TRUE" else null end',
+    'if false then "TRUE" else null end',
   ],
 }
 

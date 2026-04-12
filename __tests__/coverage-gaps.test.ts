@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '../src/allModules'
 import { createDvala } from '../src/createDvala'
+import { MatchError } from '../src/errors'
 import { createContextStack } from '../src/evaluator/ContextStack'
 import { evaluateAsync, evaluateNode } from '../src/evaluator/trampoline-evaluator'
 import { extractCheckpointSnapshots } from '../src/evaluator/suspension'
@@ -236,12 +237,12 @@ describe('match edge cases', () => {
 // ---------------------------------------------------------------------------
 
 describe('if/else if edge cases', () => {
-  it('should return null when no branch matches and no else', () => {
-    expect(dvala.run('if false then 1 end')).toBe(null)
+  it('should throw ParseError when no else clause is present', () => {
+    expect(() => dvala.run('if false then 1 end')).toThrow('`if` without `else` is not allowed')
   })
 
-  it('should return null when all conditions false', () => {
-    expect(dvala.run('if false then 1 else if false then 2 end')).toBe(null)
+  it('should throw ParseError when else if chain has no final else', () => {
+    expect(() => dvala.run('if false then 1 else if false then 2 end')).toThrow('`if` without `else` is not allowed')
   })
 })
 
@@ -714,7 +715,7 @@ describe('importMerge — module source with dvala-only functions', () => {
 describe('if/else if — body evaluation', () => {
   it('should evaluate if body when condition is true', () => {
     expect(dvala.run(`
-      if true then 42 end
+      if true then 42 else null end
     `)).toBe(42)
   })
 
@@ -743,12 +744,12 @@ describe('applyMatch — match with guards', () => {
     `)).toBe('medium')
   })
 
-  it('should return null when no pattern matches', () => {
-    expect(dvala.run(`
+  it('should throw MatchError when no pattern matches', () => {
+    expect(() => dvala.run(`
       match 42
         case "hello" then 1
       end
-    `)).toBeNull()
+    `)).toThrow(MatchError)
   })
 })
 

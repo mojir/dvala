@@ -5,7 +5,6 @@ Macros receive **unevaluated code** (AST) and return **transformed code**. `quot
 ```dvala
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 double(21);
-
 ```
 
 ```dvala
@@ -13,7 +12,6 @@ let unless =
   macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end;
 
 unless(false, "this runs!");
-
 ```
 
 ## Hygienic by Default
@@ -25,7 +23,6 @@ let withTemp = macro(ast) -> quote do let tmp = $^{ast}; tmp * 2; end; end;
 
 let tmp = 999;
 [withTemp(5), tmp];
-
 ```
 
 The macro's `tmp` doesn't clobber the caller's `tmp`.
@@ -38,7 +35,6 @@ Because `|>` is desugared at parse time, macros work with pipes:
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 let negate = macro(ast) -> quote - $^{ast} end;
 21 |> double |> negate;
-
 ```
 
 ## Inspect Expansions
@@ -47,5 +43,4 @@ let negate = macro(ast) -> quote - $^{ast} end;
 let { prettyPrint } = import("ast");
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 prettyPrint(macroexpand(double, quote 21 end));
-
 ```

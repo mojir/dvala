@@ -36,7 +36,7 @@ import {
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '../constants/constants'
-import { ArithmeticError, AssertionError, DvalaError, MacroError, ReferenceError, RuntimeError, TypeError, UserError } from '../errors'
+import { ArithmeticError, AssertionError, DvalaError, KeyError, MacroError, MatchError, ReferenceError, RuntimeError, TypeError, UserError } from '../errors'
 import { reconstructCallStack } from './callStack'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
@@ -161,6 +161,8 @@ function evaluateObjectAsFunction(fn: Obj, params: Arr, sourceCodeInfo?: SourceC
     throw new TypeError('Object as function requires one string parameter.', sourceCodeInfo)
   const key = params.get(0)
   assertString(key, sourceCodeInfo)
+  if (!fn.has(key))
+    throw new KeyError(`Key '${key}' not found in object`, sourceCodeInfo)
   return toAny(fn.get(key))
 }
 
@@ -169,6 +171,8 @@ function evaluateArrayAsFunction(fn: Arr, params: Arr, sourceCodeInfo?: SourceCo
     throw new TypeError('Array as function requires one non negative integer parameter.', sourceCodeInfo)
   const index = params.get(0)
   assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
+  if (index < 0 || index >= fn.size)
+    throw new KeyError(`Index ${index} out of bounds for array of size ${fn.size}`, sourceCodeInfo)
   return toAny(fn.get(index))
 }
 
@@ -176,10 +180,16 @@ function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: Sour
   if (params.size !== 1)
     throw new TypeError('String as function requires one Obj parameter.', sourceCodeInfo)
   const param = toAny(params.get(0))
-  if (isObj(param))
-    return toAny((param).get(fn))
-  if (isNumber(param, { integer: true }))
+  if (isObj(param)) {
+    if (!param.has(fn))
+      throw new KeyError(`Key '${fn}' not found in object`, sourceCodeInfo)
+    return toAny(param.get(fn))
+  }
+  if (isNumber(param, { integer: true })) {
+    if (param < 0 || param >= fn.length)
+      throw new KeyError(`Index ${param} out of bounds for string of length ${fn.length}`, sourceCodeInfo)
     return toAny(fn[param])
+  }
   throw new TypeError(
     `string as function expects Obj or integer parameter, got ${valueToString(param)}`,
     sourceCodeInfo,
@@ -192,6 +202,9 @@ function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: Sour
     throw new TypeError('Number as function requires one Arr parameter.', sourceCodeInfo)
   const param = params.get(0)
   assertSeq(param, sourceCodeInfo)
+  const size = typeof param === 'string' ? param.length : param.size
+  if (fn < 0 || fn >= size)
+    throw new KeyError(`Index ${fn} out of bounds for sequence of size ${size}`, sourceCodeInfo)
   return toAny(typeof param === 'string' ? param[fn] : param.get(fn))
 }
 
@@ -1610,8 +1623,8 @@ function processMatchCase(frame: MatchFrame, k: ContinuationStack): Step {
   const { matchValue, cases, index, env, sourceCodeInfo } = frame
 
   if (index >= cases.length) {
-    // No more cases — match failed
-    return { type: 'Value', value: null, k }
+    // No more cases — non-exhaustive match is an error
+    throw new MatchError(`Non-exhaustive match — no case matched ${valueToString(matchValue)}`, sourceCodeInfo)
   }
 
   const [pattern] = cases[index]!
