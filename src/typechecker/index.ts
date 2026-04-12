@@ -43,3 +43,9 @@ export {
   expandType,
   TypeInferenceError,
 } from './infer'
+export {
+  parseTypeAnnotation,
+  parseFunctionTypeAnnotation,
+  type ParsedFunctionType,
+  TypeParseError,
+} from './parseType'
