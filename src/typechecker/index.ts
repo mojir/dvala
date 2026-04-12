@@ -49,3 +49,9 @@ export {
   type ParsedFunctionType,
   TypeParseError,
 } from './parseType'
+export {
+  initBuiltinTypes,
+  getBuiltinType,
+  isTypeGuard,
+  type BuiltinTypeInfo,
+} from './builtinTypes'

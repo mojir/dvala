@@ -39,6 +39,7 @@ All decisions made during design review 2026-04-12.
 | 18 | Array vs tuple syntax | `T[]` for arrays, `[T, U]` for tuples | Postfix `[]` is visually distinct from tuple brackets. No ambiguity: `[String]` is a 1-tuple, `String[]` is an array. Nests naturally: `String[][]`, `[String, Number][]`. |
 | 19 | Type parameter variance | Inferred from definition body | Compiler walks the body and records whether each parameter appears in positive (covariant), negative (contravariant), or both (invariant) positions. No annotations needed. Matches inference-first philosophy. |
 | 20 | Type guard predicates | `(x: T) -> x is U` syntax | Functions that narrow their argument's type in the caller's true branch. Same syntax in builtin type signatures and user annotations. Required for `isNumber`, `isString`, etc. |
+| 22 | Type variable syntax | Single uppercase letter only: `A`, `B`, `T`, `K`, `V` | Multi-character uppercase names (`Number`, `String`) are always primitives or aliases. No ambiguity. 26 variables is more than enough. Same convention as Haskell/Java/Go. |
 | 21 | Builtin type signatures | `type` field in docs using Dvala annotation syntax | Each builtin declares its type as a string: `"(Number, Number) -> Number"`. Parsed once at startup. Overloads use intersection of function types: `((Number) -> Number) & ((Number[]) -> Number[])` — intersection means "handles both", which is the correct set-theoretic representation (union would mean "is one or the other, caller doesn't know which"). |
 
 ---

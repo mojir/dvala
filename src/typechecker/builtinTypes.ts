@@ -1,0 +1,84 @@
+/**
+ * Builtin type registry — parses type annotation strings from builtin docs
+ * into Type values, cached for lookup during inference.
+ */
+
+import type { Type } from './types'
+import { Unknown } from './types'
+import { parseFunctionTypeAnnotation } from './parseType'
+import type { ParsedFunctionType } from './parseType'
+import type { BuiltinNormalExpressions } from '../builtin/interface'
+
+// ---------------------------------------------------------------------------
+// Parsed builtin type cache
+// ---------------------------------------------------------------------------
+
+export interface BuiltinTypeInfo {
+  /** The parsed function type. */
+  type: Type
+  /** If the function is a type guard, the parameter name being narrowed. */
+  guardParam?: string
+  /** If the function is a type guard, the type it narrows to. */
+  guardType?: Type
+}
+
+/** Map from builtin name to its parsed type info. */
+const builtinTypeCache = new Map<string, BuiltinTypeInfo>()
+
+/** Whether the cache has been initialized. */
+let initialized = false
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialize the builtin type cache from the builtin normal expressions.
+ * Call once at startup before inference begins.
+ */
+export function initBuiltinTypes(normalExpressions: BuiltinNormalExpressions): void {
+  if (initialized) return
+  initialized = true
+
+  for (const [name, expr] of Object.entries(normalExpressions)) {
+    const typeStr = expr.docs?.type
+    if (!typeStr) continue
+
+    try {
+      const parsed: ParsedFunctionType = parseFunctionTypeAnnotation(typeStr)
+      builtinTypeCache.set(name, {
+        type: parsed.type,
+        guardParam: parsed.guardParam,
+        guardType: parsed.guardType,
+      })
+    } catch (e) {
+      // Log parse errors during development but don't crash
+      // eslint-disable-next-line no-console
+      console.warn(`Failed to parse type for builtin '${name}': ${typeStr}`, e)
+    }
+  }
+}
+
+/**
+ * Look up the type of a builtin by name.
+ * Returns Unknown if the builtin has no type annotation or wasn't parsed.
+ */
+export function getBuiltinType(name: string): BuiltinTypeInfo {
+  return builtinTypeCache.get(name) ?? { type: Unknown }
+}
+
+/**
+ * Check if a builtin is a type guard (e.g. isNumber narrows to Number).
+ */
+export function isTypeGuard(name: string): boolean {
+  const info = builtinTypeCache.get(name)
+  return info?.guardParam !== undefined
+}
+
+/**
+ * Reset the cache (for testing).
+ */
+export function resetBuiltinTypeCache(): void {
+  builtinTypeCache.clear()
+  initialized = false
+}

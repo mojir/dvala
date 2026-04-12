@@ -20,6 +20,7 @@ import {
 } from './types'
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
+import { getBuiltinType } from './builtinTypes'
 
 // ---------------------------------------------------------------------------
 // Type variable representation
@@ -174,6 +175,28 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     // No member worked — report the last error
     throw errors[errors.length - 1] ?? new TypeInferenceError(
       `No overload matches: ${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`,
+    )
+  }
+
+  // --- Union on the right: lhs must be <: at least one member ---
+  // Try each member; if one succeeds, we're done.
+  if (rhs.tag === 'Union') {
+    // For concrete types, try to find a matching member
+    const errors: TypeInferenceError[] = []
+    for (const m of rhs.members) {
+      try {
+        constrain(ctx, lhs, m)
+        return
+      } catch (e) {
+        if (e instanceof TypeInferenceError) {
+          errors.push(e)
+        } else {
+          throw e
+        }
+      }
+    }
+    throw errors[errors.length - 1] ?? new TypeInferenceError(
+      `${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`,
     )
   }
 
@@ -363,10 +386,13 @@ export function inferExpr(
       break
     }
 
-    // --- Builtin reference (always typed as Unknown for now) ---
-    case NodeTypes.Builtin:
-      result = Unknown
+    // --- Builtin reference — look up type from parsed docs ---
+    case NodeTypes.Builtin: {
+      const builtinName = payload as string
+      const info = getBuiltinType(builtinName)
+      result = info.type
       break
+    }
 
     // --- Boolean literals (encoded as Reserved symbols) ---
     case NodeTypes.Reserved: {

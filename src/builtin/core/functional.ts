@@ -97,7 +97,7 @@ apply(
     },
     arity: {},
     docs: {
-      type: '(...Function[]) -> Function',
+      type: '((Unknown) -> Unknown, (Unknown) -> Unknown) -> (Unknown) -> Unknown',
       category: 'functional',
       returns: { type: 'function' },
       args: {

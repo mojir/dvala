@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { parse } from '../parser'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
+import { builtin } from '../builtin'
 import type { Type } from './types'
 import {
   NumberType, StringType, NullType,
@@ -15,6 +16,12 @@ import {
 } from './infer'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
+import { initBuiltinTypes } from './builtinTypes'
+
+// Initialize builtin type cache once before all tests
+beforeAll(() => {
+  initBuiltinTypes(builtin.normalExpressions)
+})
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -332,5 +339,57 @@ describe('expandType', () => {
     const ctx = new InferenceContext()
     const v = ctx.freshVar()
     expect(expandType(v, 'negative')).toBe(Unknown)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Inference — builtin function types
+// ---------------------------------------------------------------------------
+
+describe('inference — builtin types', () => {
+  it('+(1, 2) infers Number', () => {
+    const t = inferAndExpand('1 + 2')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('1 + 2 + 3 infers Number', () => {
+    const t = inferAndExpand('1 + 2 + 3')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('count("hello") infers Number', () => {
+    const t = inferAndExpand('count("hello")')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('str(42) infers String', () => {
+    const t = inferAndExpand('str(42)')
+    expect(isSubtype(t, StringType)).toBe(true)
+  })
+
+  it('inc(1) infers Number (scalar overload)', () => {
+    const t = inferAndExpand('inc(1)')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('not(true) infers Boolean', () => {
+    const t = inferAndExpand('not(true)')
+    // not returns Boolean
+    expect(t.tag === 'Primitive' || t.tag === 'Literal').toBe(true)
+  })
+
+  it('1 == 2 infers Boolean', () => {
+    const t = inferAndExpand('1 == 2')
+    expect(t.tag === 'Primitive' || t.tag === 'Literal').toBe(true)
+  })
+
+  it('let x = 1 + 2; x infers Number', () => {
+    const t = inferAndExpand('let x = 1 + 2; x')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('let f = (a, b) -> a + b; f(1, 2) infers Number', () => {
+    const t = inferAndExpand('let f = (a, b) -> a + b; f(1, 2)')
+    expect(isSubtype(t, NumberType)).toBe(true)
   })
 })

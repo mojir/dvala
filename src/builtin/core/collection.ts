@@ -410,7 +410,7 @@ assoc(
     },
     arity: { min: 1 },
     docs: {
-      type: '(...(String | Unknown[] | {...})[]) -> String | Unknown[] | {...}',
+      type: '((String, String) -> String) & ((Unknown[], Unknown[]) -> Unknown[])',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
