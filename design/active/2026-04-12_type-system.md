@@ -782,6 +782,22 @@ Not needed for language viability.
 
 Extensions that fit naturally into the set-theoretic foundation. None require changes to the core type algebra or inference algorithm — they're additive.
 
+### Broadcasting types (scalar/vector/matrix mixing)
+
+Currently `inc` has type `((Number) -> Number) & ((Number[]) -> Number[])` — but `inc([1,2])` works at runtime even though `[1,2]` is not `Number`. Dvala broadcasts scalars element-wise. The type system needs a way to express "same shape in, same shape out" or "broadcastable" — possibly via a `Broadcastable<T>` type constructor or shape-polymorphic types.
+
+### Object type variables
+
+Collection functions like `filter`, `map`, `reduce` work on objects too: `filter({a: 1, b: 2}, isOdd)`. Currently typed with array-only generics `(A[], (A) -> Boolean) -> A[]`. Need object variants: `({...}, (Unknown) -> Boolean) -> {...}` with structural subtyping.
+
+### Meta-function typing
+
+`arity(fn)`, `doc(fn)`, `withDoc(fn, str)` take function values as arguments. The typechecker needs to accept any function type as an argument to these builtins — requires a `Function` supertype or similar.
+
+### Match pattern destructuring bindings
+
+`case [x, y]` and `case {name, age}` in match expressions should bind `x`, `y`, `name`, `age` as typed variables in the body. Currently only `case n when isNumber(n)` (guard-based) narrowing works.
+
 ### Template string types
 
 Types describing string shape: `` `Hello ${String}` ``. A new type constructor:
