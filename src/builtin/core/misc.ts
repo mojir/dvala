@@ -342,7 +342,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     evaluate: (): never => { throw new Error('macroexpand is handled by the evaluator') },
     arity: { min: 1 },
     docs: {
-      type: '(Macro, ...Unknown[]) -> Unknown',
+      type: '(Unknown, Unknown) -> Unknown',
       category: 'meta',
       returns: { type: 'any' },
       args: {
@@ -353,7 +353,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       hideOperatorForm: true,
       description: 'Calls a macro\'s body with the given AST arguments and returns the expanded AST as data, without evaluating it. Use quote...end blocks to construct the AST arguments.',
       examples: [
-        { code: 'let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end)', noCheck: true },
+        'let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end)',
         { code: 'let { prettyPrint } = import("ast"); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint', noCheck: true },
       ],
     },
@@ -412,7 +412,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
-      type: '(String | RegExp) -> Function',
+      type: '(String | Regex) -> (Unknown) -> Boolean',
       category: 'meta',
       returns: { type: 'function' },
       args: {
@@ -422,9 +422,9 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       description: 'Returns a predicate function that matches any entity with a qualified name (effect references). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
       seeAlso: ['qualifiedName', 'effectName', 'isEffect'],
       examples: [
-        { code: 'qualifiedMatcher("dvala.*")(@dvala.error)', noCheck: true },
-        { code: 'qualifiedMatcher("dvala.*")(@custom.foo)', noCheck: true },
-        { code: 'qualifiedMatcher("*")(@dvala.io.print)', noCheck: true },
+        'qualifiedMatcher("dvala.*")(@dvala.error)',
+        'qualifiedMatcher("dvala.*")(@custom.foo)',
+        'qualifiedMatcher("*")(@dvala.io.print)',
       ],
     },
   },

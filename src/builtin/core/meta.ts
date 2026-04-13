@@ -42,6 +42,7 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(1),
       docs: {
+        type: '(Unknown) -> String',
         category: 'meta',
         returns: { type: 'string' },
         args: { value: { type: ['function', 'effect'] } },
@@ -49,9 +50,9 @@ export function getMetaNormalExpression(
         description: 'Returns documentation string of the `value`. Works on functions and effects.',
         seeAlso: ['arity', 'withDoc'],
         examples: [
-          { code: 'doc(+)', noCheck: true },
-          { code: 'doc(@dvala.io.print)', noCheck: true },
-          { code: 'let add = (x, y) -> x + y withDoc "Adds two numbers.";\ndoc(add)', noCheck: true },
+          'doc(+)',
+          'doc(@dvala.io.print)',
+          'let add = (x, y) -> x + y withDoc "Adds two numbers.";\ndoc(add)',
         ],
       },
     },
@@ -70,6 +71,7 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(2),
       docs: {
+        type: '(Unknown, String) -> Unknown',
         category: 'meta',
         returns: { type: 'function' },
         args: {
@@ -80,8 +82,8 @@ export function getMetaNormalExpression(
         description: 'Returns a new function with the documentation string `b` attached. The original function is not modified.',
         seeAlso: ['doc'],
         examples: [
-          { code: '((x, y) -> x + y) withDoc "Adds two numbers."', noCheck: true },
-          { code: 'let add = (x, y) -> x + y;\nadd withDoc "Adds x and y."', noCheck: true },
+          '((x, y) -> x + y) withDoc "Adds two numbers."',
+          'let add = (x, y) -> x + y;\nadd withDoc "Adds x and y."',
         ],
       },
     },
@@ -114,6 +116,7 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(1),
       docs: {
+        type: '(Unknown) -> {min: Number, max: Number}',
         category: 'meta',
         returns: { type: 'object' },
         args: { value: { type: ['function', 'effect'] } },
@@ -121,20 +124,20 @@ export function getMetaNormalExpression(
         description: 'Returns arity of the `value`. The arity is an object with the properties: `min` and `max`. If the function has fixed arity, `min` and `max` are equal to the number of required parameters. If no restrictions apply, empty object is returned. Also works on effects.',
         seeAlso: ['doc'],
         examples: [
-          { code: 'arity(+)', noCheck: true },
-          { code: 'arity(map)', noCheck: true },
+          'arity(+)',
+          'arity(map)',
           { code: 'arity(@dvala.random.int)', noCheck: true },
-          { code: `
+          `
 let add = (x, y = 0) -> do
   x + y;
 end;
 
-arity(add)`, noCheck: true },
-          { code: `
+arity(add)`,
+          `
 let foo = (k, ...x) -> do
   k + x;
 end;
-  arity(foo)`, noCheck: true },
+  arity(foo)`,
         ],
       },
     },
