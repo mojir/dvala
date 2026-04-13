@@ -857,6 +857,38 @@ describe('inference — effect declarations and handler typing', () => {
       expect(t.effects.effects.has('test.extraCall')).toBe(true)
     }
   })
+
+  it('callable dynamic handler choice subtracts only guaranteed handled effects', () => {
+    declareEffect('test.callCommon', StringType, NullType)
+    declareEffect('test.callExtra', StringType, NullType)
+
+    const t = inferAndExpand(`
+      let useExtra = true;
+      let h =
+        if useExtra then
+          handler
+            @test.callCommon(msg) -> resume(null)
+            @test.callExtra(msg) -> resume(null)
+          end
+        else
+          handler
+            @test.callCommon(msg) -> resume(null)
+          end
+        end;
+
+      () -> h(-> do
+        perform(@test.callCommon, "hello");
+        perform(@test.callExtra, "world");
+        1
+      end)
+    `)
+
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      expect(t.effects.effects.has('test.callCommon')).toBe(false)
+      expect(t.effects.effects.has('test.callExtra')).toBe(true)
+    }
+  })
 })
 
 describe('typecheck — imported handler parity', () => {
