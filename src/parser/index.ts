@@ -63,7 +63,7 @@ export function parseToCst(fullTokenStream: TokenStream): ParseToCstResult {
 // AST parsing
 // ---------------------------------------------------------------------------
 
-function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { nodes: AstNode[]; sourceMap: SourceMap | undefined; typeAnnotations?: Map<number, string>; effectDeclarations?: Map<string, { argType: string; retType: string }> } {
+function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { nodes: AstNode[]; sourceMap: SourceMap | undefined; typeAnnotations?: Map<number, string>; effectDeclarations?: Map<string, { argType: string; retType: string }>; typeAliases?: Map<string, { params: string[]; body: string }> } {
   tokenStream.tokens.forEach(token => {
     if (token[0] === 'Error') {
       throw new ParseError(token[3], debugInfoToSourceCodeInfo(token[2], tokenStream.source, tokenStream.filePath))
@@ -89,7 +89,8 @@ function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { n
 
   const typeAnnotations = ctx.typeAnnotations.size > 0 ? ctx.typeAnnotations : undefined
   const effectDeclarations = ctx.effectDeclarations.size > 0 ? ctx.effectDeclarations : undefined
-  return { nodes, sourceMap: ctx.sourceMap, typeAnnotations, effectDeclarations }
+  const typeAliases = ctx.typeAliases.size > 0 ? ctx.typeAliases : undefined
+  return { nodes, sourceMap: ctx.sourceMap, typeAnnotations, effectDeclarations, typeAliases }
 }
 
 export function parse(tokenStream: TokenStream, allocateId?: () => number): AstNode[] {
@@ -97,8 +98,8 @@ export function parse(tokenStream: TokenStream, allocateId?: () => number): AstN
 }
 
 export function parseToAst(tokenStream: TokenStream, allocateId?: () => number): Ast {
-  const { nodes, sourceMap, typeAnnotations, effectDeclarations } = parseInternal(tokenStream, allocateId)
-  return { body: nodes, sourceMap, typeAnnotations, effectDeclarations }
+  const { nodes, sourceMap, typeAnnotations, effectDeclarations, typeAliases } = parseInternal(tokenStream, allocateId)
+  return { body: nodes, sourceMap, typeAnnotations, effectDeclarations, typeAliases }
 }
 
 /** Result of a recoverable parse — contains successfully parsed nodes and any errors encountered. */

@@ -158,3 +158,37 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Type aliases
+// ---------------------------------------------------------------------------
+
+describe('typecheck — type aliases', () => {
+  const dvala = createDvala()
+
+  it('simple type alias: type Num = Number', () => {
+    const result = dvala.typecheck('type Num = Number; let x: Num = 42; x')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('type alias mismatch: type Num = Number; let x: Num = "hello"', () => {
+    const result = dvala.typecheck('type Num = Number; let x: Num = "hello"; x')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('union type alias: type StringOrNum = String | Number', () => {
+    const result = dvala.typecheck('type StringOrNum = String | Number; let x: StringOrNum = 42; x')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('type alias used in function param', () => {
+    const result = dvala.typecheck('type Id = Number; let f = (x: Id) -> x + 1; f(42)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('type does not interfere with variable named type', () => {
+    // 'type' is not a reserved word — can be used as a variable when not followed by uppercase
+    const result = dvala.typecheck('let type = 42; type + 1')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})

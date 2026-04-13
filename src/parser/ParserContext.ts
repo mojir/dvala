@@ -25,6 +25,8 @@ export class ParserContext {
   readonly typeAnnotations = new Map<number, string>()
   /** Effect declarations: effect @name(ArgType) -> RetType */
   readonly effectDeclarations = new Map<string, { argType: string; retType: string }>()
+  /** Type alias declarations: type Name<Params> = TypeExpr */
+  readonly typeAliases = new Map<string, { params: string[]; body: string }>()
 
   // -- CST mode fields --
   /** When present, the parser operates in CST mode on the full token stream. */

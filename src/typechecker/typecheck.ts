@@ -16,7 +16,7 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
 import { initBuiltinTypes, registerModuleType } from './builtinTypes'
 import { declareEffect, initBuiltinEffects, resetUserEffects } from './effectTypes'
-import { parseTypeAnnotation } from './parseType'
+import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases } from './parseType'
 import { allBuiltinModules } from '../allModules'
 import { builtin } from '../builtin'
 
@@ -73,11 +73,18 @@ export function typecheck(ast: Ast): TypecheckResult {
   initTypeSystem()
 
   const ctx = new InferenceContext()
-  // Clear user-declared effects from previous typecheck passes (builtin effects preserved)
+  // Clear per-document state from previous typecheck passes
   resetUserEffects()
+  resetTypeAliases()
   // Pass type annotations from the parser to the inference engine
   if (ast.typeAnnotations) {
     ctx.typeAnnotations = ast.typeAnnotations
+  }
+  // Register type aliases before inference so annotations can reference them
+  if (ast.typeAliases) {
+    for (const [name, { params, body }] of ast.typeAliases) {
+      registerTypeAlias(name, params, body)
+    }
   }
   // Register effect declarations before inference so perform() can type-check
   if (ast.effectDeclarations) {

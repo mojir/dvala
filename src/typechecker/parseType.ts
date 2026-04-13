@@ -30,6 +30,23 @@ import {
 } from './types'
 
 // ---------------------------------------------------------------------------
+// Type alias registry
+// ---------------------------------------------------------------------------
+
+/** Registered type aliases: name → { params, body string } */
+const typeAliasRegistry = new Map<string, { params: string[]; body: string }>()
+
+/** Register a type alias. Called by typecheck.ts from parsed AST. */
+export function registerTypeAlias(name: string, params: string[], body: string): void {
+  typeAliasRegistry.set(name, { params, body })
+}
+
+/** Reset user-registered type aliases (called between typecheck passes). */
+export function resetTypeAliases(): void {
+  typeAliasRegistry.clear()
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -511,7 +528,15 @@ class TypeParser {
       this.typeVarMap.set(name, v)
       return v
     }
-    // Multi-char names could be type aliases — Unknown for now
+    // Multi-char uppercase names: check type alias registry
+    const alias = typeAliasRegistry.get(name)
+    if (alias) {
+      // TODO: handle generic aliases with type arguments (Name<T>)
+      // For now, parse the body as a type expression
+      const parser = new TypeParser(alias.body)
+      return parser.parseType()
+    }
+    // Unknown named type
     return Unknown
   }
 

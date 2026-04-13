@@ -14,6 +14,7 @@ import type { AstNode, SymbolNode } from '../types'
 import { parseDo } from './parseDo'
 import { parseEffectDeclaration } from './parseEffectDeclaration'
 import { parseForOrDoseq } from './parseForOrDoseq'
+import { parseTypeDeclaration } from './parseTypeDeclaration'
 import { parseHandler } from './parseHandler'
 import { parseIf } from './parseIf'
 import { parseLet } from './parseLet'
@@ -91,6 +92,13 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         // Contextual: only when followed by @effectName (otherwise it's `effect(name)` call)
         if (isEffectNameToken(ctx.peekAhead(1))) {
           left = parseEffectDeclaration(ctx)
+        }
+        break
+      case 'type':
+        // Type alias declaration: type Name = TypeExpr or type Name<A, B> = TypeExpr
+        // Contextual: only when followed by an uppercase symbol (otherwise it's a variable)
+        if (isSymbolToken(ctx.peekAhead(1)) && /^[A-Z]/.test(ctx.peekAhead(1)![1])) {
+          left = parseTypeDeclaration(ctx)
         }
         break
     }

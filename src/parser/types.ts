@@ -283,6 +283,12 @@ export interface EffectDeclarationInfo {
   retType: string
 }
 
+/** Parsed type alias: type Name<Params> = Body */
+export interface TypeAliasInfo {
+  params: string[]
+  body: string
+}
+
 export interface Ast {
   body: AstBody // body
   sourceMap?: SourceMap // present when debug mode is on
@@ -290,4 +296,6 @@ export interface Ast {
   typeAnnotations?: Map<number, string>
   /** Effect declarations from source code. Erased before evaluation. */
   effectDeclarations?: Map<string, EffectDeclarationInfo>
+  /** Type alias declarations from source code. Erased before evaluation. */
+  typeAliases?: Map<string, TypeAliasInfo>
 }
