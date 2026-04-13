@@ -58,6 +58,8 @@ export class InferenceContext {
   private constraintCache = new Set<string>()
   /** Type annotations from the parser side-table. Keyed by binding target nodeId. */
   typeAnnotations = new Map<number, string>()
+  /** Resolves file imports for cross-file type checking. */
+  resolveFileType?: (importPath: string) => Type
   /** Stack of effect sets — each function body pushes a new set. */
   private effectStack: EffectSet[] = [{ effects: new Set(), open: false }]
 
@@ -809,9 +811,14 @@ export function inferExpr(
 
     // --- Import ---
     case NodeTypes.Import: {
-      // import("math") → record of module exports with their declared types
       const moduleName = payload as string
-      result = freshenAnnotationVars(ctx, getModuleType(moduleName))
+      // File import (relative path) — resolve and typecheck the imported file
+      if (moduleName.startsWith('.') && ctx.resolveFileType) {
+        result = ctx.resolveFileType(moduleName)
+      } else {
+        // Module import — record of module exports with their declared types
+        result = freshenAnnotationVars(ctx, getModuleType(moduleName))
+      }
       break
     }
 

@@ -658,7 +658,18 @@ export function activate(context: vscode.ExtensionContext): void {
   const lsDiagnostics = vscode.languages.createDiagnosticCollection('dvala-ls')
   const typeDiagnostics = vscode.languages.createDiagnosticCollection('dvala-types')
   // Shared dvala instance for type checking (not evaluation — no effect handlers needed)
-  const typecheckDvala = createDvala({ modules: allBuiltinModules, debug: true })
+  // Includes a file resolver so import("./lib/math") can be typechecked
+  const typecheckDvala = createDvala({
+    modules: allBuiltinModules,
+    debug: true,
+    fileResolver: (importPath, fromDir) => {
+      const resolved = path.resolve(fromDir, importPath)
+      for (const candidate of [resolved, `${resolved}.dvala`]) {
+        try { return fs.readFileSync(candidate, 'utf-8') } catch { /* try next */ }
+      }
+      throw new Error(`File not found: ${importPath}`)
+    },
+  })
   /** Update the workspace index for a document and refresh diagnostics. */
   function indexDocument(document: vscode.TextDocument): void {
     if (document.languageId !== 'dvala') return
@@ -697,7 +708,9 @@ export function activate(context: vscode.ExtensionContext): void {
     // Run type checker (non-blocking — parse errors don't prevent type checking)
     if (parseErrors.length === 0) {
       try {
-        const result = typecheckDvala.typecheck(document.getText())
+        const result = typecheckDvala.typecheck(document.getText(), {
+          fileResolverBaseDir: path.dirname(document.uri.fsPath),
+        })
         // Cache the result for hover (with source map for position lookups)
         typecheckCache.set(document.uri.toString(), result)
 

@@ -10,8 +10,12 @@
  */
 
 import type { Type } from './types'
+import { Unknown } from './types'
 import type { AstNode, Ast, SourceMap, SourceMapPosition } from '../parser/types'
 import { resolveSourceCodeInfo } from '../parser/types'
+import { parseToAst } from '../parser'
+import { tokenize } from '../tokenizer/tokenize'
+import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
 import { initBuiltinTypes, registerModuleType } from './builtinTypes'
@@ -39,6 +43,17 @@ export interface TypecheckResult {
   /** Source map for mapping nodeIds to source positions. Used by IDE hover. */
   sourceMap?: Map<number, SourceMapPosition>
 }
+
+export interface TypecheckOptions {
+  /** Resolves file imports. Returns the source code of the file.
+   * Should throw if the file is not found. */
+  fileResolver?: (importPath: string, fromDir: string) => string
+  /** Base directory for resolving relative imports. */
+  fileResolverBaseDir?: string
+}
+
+/** Cache of typechecked file imports: filePath → exported type */
+const fileTypeCache = new Map<string, Type>()
 
 // ---------------------------------------------------------------------------
 // Initialization
@@ -69,10 +84,45 @@ export function initTypeSystem(): void {
  * so the type map is populated even when errors are found.
  * This enables IDE features (hover, completions) on partially-typed code.
  */
-export function typecheck(ast: Ast): TypecheckResult {
+export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult {
   initTypeSystem()
 
   const ctx = new InferenceContext()
+  // Wire file import resolution if a file resolver is provided
+  if (options?.fileResolver) {
+    const resolver = options.fileResolver
+    const baseDir = options.fileResolverBaseDir ?? '.'
+    ctx.resolveFileType = (importPath: string): Type => {
+      // Check cache first
+      const cacheKey = `${baseDir}:${importPath}`
+      const cached = fileTypeCache.get(cacheKey)
+      if (cached) return cached
+
+      // Resolve and typecheck the imported file
+      try {
+        const source = resolver(importPath, baseDir)
+        const ts = tokenize(source, true, undefined)
+        const min = minifyTokenStream(ts, { removeWhiteSpace: true })
+        const importedAst = parseToAst(min)
+        const importCtx = new InferenceContext()
+        const importEnv = new TypeEnv()
+        const importTypeMap = new Map<number, Type>()
+
+        let resultType: Type = Unknown
+        for (const node of importedAst.body) {
+          resultType = inferExpr(node, importCtx, importEnv, importTypeMap)
+        }
+
+        // Cache and return
+        fileTypeCache.set(cacheKey, resultType)
+        return resultType
+      } catch {
+        // File typecheck failed — return Unknown, don't crash
+        fileTypeCache.set(cacheKey, Unknown)
+        return Unknown
+      }
+    }
+  }
   // Clear per-document state from previous typecheck passes
   resetUserEffects()
   resetTypeAliases()
