@@ -188,6 +188,7 @@ If no arguments are provided \`null\` is returned.`,
     evaluate: () => { throw new Error('mergeWith is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
+      type: '(({...}, {...}, (Unknown, Unknown) -> Unknown) -> {...}) & (({...}, {...}, {...}, (Unknown, Unknown) -> Unknown) -> {...}) & (({...}, {...}, {...}, {...}, (Unknown, Unknown) -> Unknown) -> {...})',
       category: 'object',
       returns: { type: 'object' },
       args: {
