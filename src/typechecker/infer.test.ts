@@ -3,6 +3,7 @@ import { parse } from '../parser'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { builtin } from '../builtin'
+import { createDvala } from '../createDvala'
 import type { Type } from './types'
 import {
   NumberType, StringType, NullType,
@@ -27,6 +28,11 @@ beforeAll(() => {
   for (const mod of allBuiltinModules) {
     registerModuleType(mod.name, mod.functions)
   }
+  // Declare test effects used in effect set and handler tests
+  declareEffect('my.eff', Unknown, Unknown)
+  declareEffect('log', Unknown, Unknown)
+  declareEffect('fetch', Unknown, Unknown)
+  declareEffect('other.eff', Unknown, Unknown)
 })
 
 // ---------------------------------------------------------------------------
@@ -718,9 +724,8 @@ describe('inference — effect declarations and handler typing', () => {
     expect(isSubtype(t, NumberType)).toBe(true)
   })
 
-  it('perform with undeclared effect returns Unknown', () => {
-    const t = inferType('perform(@undeclared.eff, 42)')
-    expect(t).toBe(Unknown)
+  it('perform with undeclared effect throws', () => {
+    expect(() => inferType('perform(@undeclared.eff, 42)')).toThrow('Undeclared effect')
   })
 
   it('handler clause infers without errors', () => {
@@ -751,5 +756,40 @@ describe('inference — effect declarations and handler typing', () => {
     declareEffect('test.typed', NumberType, StringType)
     // perform(@test.typed, "wrong") should fail — arg is String but declared as Number
     expect(() => inferType('perform(@test.typed, "wrong")')).toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Effect declaration syntax: effect @name(T) -> U
+// ---------------------------------------------------------------------------
+
+describe('typecheck — effect declarations in source', () => {
+  const dvala = createDvala()
+
+  it('effect declaration + perform: no errors', () => {
+    const result = dvala.typecheck(`
+      effect @my.log(String) -> Null;
+      perform(@my.log, "hello")
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('effect declaration with wrong arg type: error', () => {
+    const result = dvala.typecheck(`
+      effect @my.log(String) -> Null;
+      perform(@my.log, 42)
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('perform without declaration: error', () => {
+    const result = dvala.typecheck('perform(@no.such.eff, 42)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toContain('Undeclared effect')
+  })
+
+  it('builtin effects are pre-declared (no error)', () => {
+    const result = dvala.typecheck('perform(@dvala.error, "oops")')
+    expect(result.diagnostics).toHaveLength(0)
   })
 })

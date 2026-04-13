@@ -12,6 +12,7 @@ import { getPrecedence } from '../getPrecedence'
 import { ParserContext } from '../ParserContext'
 import type { AstNode, SymbolNode } from '../types'
 import { parseDo } from './parseDo'
+import { parseEffectDeclaration } from './parseEffectDeclaration'
 import { parseForOrDoseq } from './parseForOrDoseq'
 import { parseHandler } from './parseHandler'
 import { parseIf } from './parseIf'
@@ -83,6 +84,13 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         // When used as a variable binding, the normal symbol path handles it.
         if (isResumeStart(ctx)) {
           left = parseResume(ctx)
+        }
+        break
+      case 'effect':
+        // Effect declaration: effect @name(ArgType) -> RetType
+        // Contextual: only when followed by @effectName (otherwise it's `effect(name)` call)
+        if (isEffectNameToken(ctx.peekAhead(1))) {
+          left = parseEffectDeclaration(ctx)
         }
         break
     }

@@ -23,6 +23,8 @@ export class ParserContext {
   // -- Type annotation side-table --
   /** Type annotations collected during parsing, keyed by nodeId. */
   readonly typeAnnotations = new Map<number, string>()
+  /** Effect declarations: effect @name(ArgType) -> RetType */
+  readonly effectDeclarations = new Map<string, { argType: string; retType: string }>()
 
   // -- CST mode fields --
   /** When present, the parser operates in CST mode on the full token stream. */

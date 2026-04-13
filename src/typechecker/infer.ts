@@ -23,7 +23,7 @@ import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { parseTypeAnnotation } from './parseType'
-import { getEffectReturnType, getEffectArgType } from './effectTypes'
+import { getEffectDeclaration } from './effectTypes'
 
 // ---------------------------------------------------------------------------
 // Type variable representation
@@ -608,23 +608,28 @@ export function inferExpr(
     // --- Perform (effect invocation) ---
     case NodeTypes.Perform: {
       // perform(@eff, arg) — adds the effect to the current effect set
-      // and returns the declared return type (or Unknown if not declared)
+      // and returns the declared return type. Undeclared effects are errors.
       const [effectExpr, argExpr] = payload as [AstNode, AstNode | undefined]
       if (effectExpr[0] === NodeTypes.Effect) {
         const effectName = effectExpr[1] as string
         ctx.addEffect(effectName)
 
+        // Check that the effect is declared
+        const decl = getEffectDeclaration(effectName)
+        if (!decl) {
+          throw new TypeInferenceError(`Undeclared effect @${effectName} — add 'effect @${effectName}(ArgType) -> RetType' before use`)
+        }
+
         // If there's an arg, constrain it against the declared arg type
         if (argExpr) {
           const argType = inferExpr(argExpr, ctx, env, typeMap)
-          const declaredArgType = getEffectArgType(effectName)
-          if (declaredArgType.tag !== 'Unknown') {
-            constrain(ctx, argType, declaredArgType)
+          if (decl.argType.tag !== 'Unknown') {
+            constrain(ctx, argType, decl.argType)
           }
         }
 
         // Return the declared return type
-        result = getEffectReturnType(effectName)
+        result = decl.retType
       } else {
         result = Unknown
       }
@@ -775,7 +780,7 @@ export function inferExpr(
       for (const clause of clauses) {
         const clauseEnv = env.child()
         // Bind the clause parameter with the effect's declared arg type
-        const declaredArgType = getEffectArgType(clause.effectName)
+        const declaredArgType = getEffectDeclaration(clause.effectName)?.argType ?? Unknown
         for (const param of clause.params) {
           bindPattern(param, declaredArgType, clauseEnv, ctx)
         }

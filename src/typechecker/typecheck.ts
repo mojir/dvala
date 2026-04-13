@@ -15,7 +15,8 @@ import { resolveSourceCodeInfo } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
 import { initBuiltinTypes, registerModuleType } from './builtinTypes'
-import { initBuiltinEffects } from './effectTypes'
+import { declareEffect, initBuiltinEffects } from './effectTypes'
+import { parseTypeAnnotation } from './parseType'
 import { allBuiltinModules } from '../allModules'
 import { builtin } from '../builtin'
 
@@ -75,6 +76,12 @@ export function typecheck(ast: Ast): TypecheckResult {
   // Pass type annotations from the parser to the inference engine
   if (ast.typeAnnotations) {
     ctx.typeAnnotations = ast.typeAnnotations
+  }
+  // Register effect declarations before inference so perform() can type-check
+  if (ast.effectDeclarations) {
+    for (const [name, { argType, retType }] of ast.effectDeclarations) {
+      declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
+    }
   }
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()

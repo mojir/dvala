@@ -277,9 +277,17 @@ export function resolveSourceCodeInfo(nodeId: number, sourceMap: SourceMap | und
 }
 
 type AstBody = AstNode[]
+/** Parsed effect declaration: effect @name(ArgType) -> RetType */
+export interface EffectDeclarationInfo {
+  argType: string
+  retType: string
+}
+
 export interface Ast {
   body: AstBody // body
   sourceMap?: SourceMap // present when debug mode is on
   /** Type annotations from source code, keyed by nodeId. Erased before evaluation. */
   typeAnnotations?: Map<number, string>
+  /** Effect declarations from source code. Erased before evaluation. */
+  effectDeclarations?: Map<string, EffectDeclarationInfo>
 }
