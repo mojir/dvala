@@ -14,7 +14,7 @@
 import type { Type, EffectSet } from './types'
 import {
   StringType, BooleanType, NullType,
-  Unknown, Never, PureEffects,
+  Unknown, Never, PureEffects, AnyFunction,
   atom, literal, fn, array, tuple, union,
   typeToString, typeEquals,
   subtractEffects,
@@ -299,6 +299,13 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     throw new TypeInferenceError(`${typeToString(lhs)} is not a function`)
   }
 
+  // AnyFunction called as a concrete function — accept the call, result is Unknown.
+  // This arises when a macro (typed AnyFunction) is called: constrain(AnyFunction, fn(args, retVar)).
+  if (lhs.tag === 'AnyFunction' && rhs.tag === 'Function') {
+    constrain(ctx, Unknown, rhs.ret)
+    return
+  }
+
   // Function: contravariant params, covariant return
   if (lhs.tag === 'Function' && rhs.tag === 'Function') {
     if (lhs.params.length !== rhs.params.length) {
@@ -527,9 +534,21 @@ export function inferExpr(
     // --- Let binding ---
     case NodeTypes.Let: {
       const [binding, valueNode] = payload as [AstNode, AstNode]
-      // Infer the value's type at a higher level for generalization
+      // Infer the value's type at a higher level for generalization.
+      // Wrap in try/catch so that a type error in the value still binds the
+      // variable as Unknown — this prevents cascading "undefined variable"
+      // errors downstream (especially important for file imports).
+      let valueType: Type
       ctx.enterLevel()
-      const valueType = inferExpr(valueNode, ctx, env, typeMap)
+      try {
+        valueType = inferExpr(valueNode, ctx, env, typeMap)
+      } catch (e) {
+        if (e instanceof TypeInferenceError) {
+          valueType = Unknown
+        } else {
+          throw e
+        }
+      }
       ctx.leaveLevel()
 
       // Check type annotation constraint: let x: T = expr → constrain expr <: T
@@ -541,7 +560,8 @@ export function inferExpr(
       }
 
       // Bind the variable in the environment
-      bindPattern(binding, valueType, env, ctx)
+      bindPattern(binding, valueType, env, ctx, typeMap)
+      recordConcretePatternTypes(binding, valueType, typeMap)
       result = valueType
       break
     }
@@ -555,7 +575,7 @@ export function inferExpr(
       for (const param of params) {
         const paramVar = ctx.freshVar()
         paramTypes.push(paramVar)
-        bindPattern(param, paramVar, funcEnv, ctx)
+        bindPattern(param, paramVar, funcEnv, ctx, typeMap)
         // Apply param type annotation: (a: Number) -> ... constrains paramVar <: Number
         const paramAnnotation = ctx.typeAnnotations.get(param[2])
         if (paramAnnotation) {
@@ -747,6 +767,11 @@ export function inferExpr(
             }
 
             caseEnv.bind(name, bindType)
+            // Record the binding's type for hover
+            const nameNodeId = nameNode[2]
+            if (nameNodeId > 0) {
+              typeMap.set(nameNodeId, bindType)
+            }
             break
           }
           case 'wildcard':
@@ -758,7 +783,7 @@ export function inferExpr(
             for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
               const fieldVar = ctx.freshVar()
               constrain(ctx, matchType, { tag: 'Record', fields: new Map([[fieldName, fieldVar]]), open: true })
-              bindPattern(fieldPattern, fieldVar, caseEnv, ctx)
+              bindPattern(fieldPattern, fieldVar, caseEnv, ctx, typeMap)
             }
             break
           }
@@ -833,7 +858,7 @@ export function inferExpr(
         // Bind the clause parameter with the effect's declared arg type
         const declaredArgType = getEffectDeclaration(clause.effectName)?.argType ?? Unknown
         for (const param of clause.params) {
-          bindPattern(param, declaredArgType, clauseEnv, ctx)
+          bindPattern(param, declaredArgType, clauseEnv, ctx, typeMap)
         }
         // Infer the clause body (where resume may be used)
         for (const bodyNode of clause.body) {
@@ -883,8 +908,10 @@ export function inferExpr(
 
     // --- Macro, MacroCall ---
     case NodeTypes.Macro:
+      result = AnyFunction // Macros are callable — type as AnyFunction so callers can invoke them
+      break
     case NodeTypes.MacroCall:
-      result = Unknown // Macros produce AST data
+      result = Unknown // Macro calls expand at compile time — result type unknown
       break
 
     // --- Recur ---
@@ -1176,7 +1203,7 @@ function subtractType(from: Type, subtract: Type): Type {
  *                      ["array", [elements, default], id]
  *                      ["rest", [name, default], id]
  */
-function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: InferenceContext): void {
+function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: InferenceContext, typeMap?: Map<number, Type>): void {
   const patternType = pattern[0] as string
   switch (patternType) {
     case 'symbol': {
@@ -1184,6 +1211,11 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
       const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
       const name = nameNode[1] as string
       env.bind(name, type)
+      // Record the individual binding's type so hover shows it (not the parent)
+      const nameNodeId = nameNode[2]
+      if (typeMap && nameNodeId > 0) {
+        typeMap.set(nameNodeId, type)
+      }
       break
     }
     case 'object': {
@@ -1195,10 +1227,10 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
           // Create a fresh variable for the field type and constrain
           const fieldVar = ctx.freshVar()
           constrain(ctx, type, { tag: 'Record', fields: new Map([[fieldName, fieldVar]]), open: true })
-          bindPattern(fieldPattern, fieldVar, env, ctx)
+          bindPattern(fieldPattern, fieldVar, env, ctx, typeMap)
         } else {
           // Without context, bind as Unknown
-          bindPattern(fieldPattern, Unknown, env)
+          bindPattern(fieldPattern, Unknown, env, undefined, typeMap)
         }
       }
       break
@@ -1223,9 +1255,9 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
           } else if (type.tag === 'Array') {
             constrain(ctx, type.element, elemVar)
           }
-          bindPattern(elem, elemVar, env, ctx)
+          bindPattern(elem, elemVar, env, ctx, typeMap)
         } else {
-          bindPattern(elem, Unknown, env)
+          bindPattern(elem, Unknown, env, undefined, typeMap)
         }
       }
       break
@@ -1238,6 +1270,55 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
       }
       break
     }
+    default:
+      break
+  }
+}
+
+/**
+ * For hover, prefer concrete destructured field/element types when they can be
+ * recovered from the bound value's expanded shape.
+ */
+function recordConcretePatternTypes(pattern: AstNode, type: Type, typeMap: Map<number, Type>): void {
+  const concreteType = expandType(type)
+  const patternType = pattern[0] as string
+
+  switch (patternType) {
+    case 'symbol': {
+      const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
+      const nameNodeId = nameNode[2]
+      if (nameNodeId > 0 && concreteType.tag !== 'Never' && concreteType.tag !== 'Unknown') {
+        typeMap.set(nameNodeId, concreteType)
+      }
+      break
+    }
+
+    case 'object': {
+      if (concreteType.tag !== 'Record') return
+      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+        const fieldType = concreteType.fields.get(fieldName)
+        if (fieldType) {
+          recordConcretePatternTypes(fieldPattern, fieldType, typeMap)
+        }
+      }
+      break
+    }
+
+    case 'array': {
+      const [elements] = pattern[1] as [AstNode[], AstNode | undefined]
+      for (let i = 0; i < elements.length; i++) {
+        const elem = elements[i]
+        if (!elem || (elem[0] as string) === 'rest') continue
+        if (concreteType.tag === 'Tuple' && i < concreteType.elements.length) {
+          recordConcretePatternTypes(elem, concreteType.elements[i]!, typeMap)
+        } else if (concreteType.tag === 'Array') {
+          recordConcretePatternTypes(elem, concreteType.element, typeMap)
+        }
+      }
+      break
+    }
+
     default:
       break
   }

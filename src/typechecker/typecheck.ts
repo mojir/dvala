@@ -23,6 +23,7 @@ import { declareEffect, initBuiltinEffects, resetUserEffects } from './effectTyp
 import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases } from './parseType'
 import { allBuiltinModules } from '../allModules'
 import { builtin } from '../builtin'
+import { expandMacros } from '../ast/expandMacros'
 
 // ---------------------------------------------------------------------------
 // Diagnostic types
@@ -87,41 +88,62 @@ export function initTypeSystem(): void {
 export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult {
   initTypeSystem()
 
+  // Expand macros before type inference so macro calls get concrete types
+  const resolver = options?.fileResolver
+  const baseDir = options?.fileResolverBaseDir ?? '.'
+  const expandedAst = expandMacros(ast, resolver ? { fileResolver: resolver, fileResolverBaseDir: baseDir } : undefined)
+
   const ctx = new InferenceContext()
   // Wire file import resolution if a file resolver is provided
-  if (options?.fileResolver) {
-    const resolver = options.fileResolver
-    const baseDir = options.fileResolverBaseDir ?? '.'
-    ctx.resolveFileType = (importPath: string): Type => {
-      // Check cache first
-      const cacheKey = `${baseDir}:${importPath}`
+  if (resolver) {
+    // Build a resolveFileType closure for a given base directory.
+    // Used both for the top-level context and recursively for nested imports
+    // so that transitive file imports (e.g. constants.dvala → macros.dvala) are resolved.
+    const makeResolveFileType = (fromDir: string) => (importPath: string): Type => {
+      const cacheKey = `${fromDir}:${importPath}`
       const cached = fileTypeCache.get(cacheKey)
       if (cached) return cached
 
-      // Resolve and typecheck the imported file
       try {
-        const source = resolver(importPath, baseDir)
+        const source = resolver(importPath, fromDir)
         const ts = tokenize(source, true, undefined)
         const min = minifyTokenStream(ts, { removeWhiteSpace: true })
-        const importedAst = parseToAst(min)
+        const rawAst = parseToAst(min)
+        // Expand macros before type inference so macro calls get concrete types.
+        // Pass the file resolver so cross-file macros (e.g. import("./macros")) are discovered.
+        const nestedDir = resolveImportedFileDir(fromDir, importPath)
+        const importedAst = expandMacros(rawAst, { fileResolver: resolver, fileResolverBaseDir: nestedDir })
         const importCtx = new InferenceContext()
+        importCtx.resolveFileType = makeResolveFileType(nestedDir)
         const importEnv = new TypeEnv()
         const importTypeMap = new Map<number, Type>()
 
+        // Infer each node with per-node error recovery, same as top-level typecheck.
+        // Without this, a single TypeInferenceError in the imported file would cause
+        // the entire import to resolve as Unknown.
         let resultType: Type = Unknown
         for (const node of importedAst.body) {
-          resultType = inferExpr(node, importCtx, importEnv, importTypeMap)
+          try {
+            resultType = inferExpr(node, importCtx, importEnv, importTypeMap)
+          } catch (e) {
+            if (e instanceof TypeInferenceError) {
+              // Type error in imported file — skip this node, continue with rest
+              resultType = Unknown
+            } else {
+              throw e
+            }
+          }
         }
 
-        // Cache and return
         fileTypeCache.set(cacheKey, resultType)
         return resultType
       } catch {
-        // File typecheck failed — return Unknown, don't crash
+        // File resolution or parsing failed — return Unknown, don't crash
         fileTypeCache.set(cacheKey, Unknown)
         return Unknown
       }
     }
+    ctx.resolveFileType = makeResolveFileType(baseDir)
   }
   // Clear per-document state from previous typecheck passes
   resetUserEffects()
@@ -146,7 +168,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   const typeMap = new Map<number, Type>()
   const diagnostics: TypeDiagnostic[] = []
 
-  for (const node of ast.body) {
+  for (const node of expandedAst.body) {
     try {
       inferExpr(node, ctx, env, typeMap)
     } catch (e) {
@@ -208,4 +230,81 @@ function resolveNodeSourceInfo(node: AstNode, sourceMap?: SourceMap): SourceCode
   const nodeId = node[2]
   if (!sourceMap || nodeId <= 0) return undefined
   return resolveSourceCodeInfo(nodeId, sourceMap) ?? undefined
+}
+
+function resolveImportedFileDir(fromDir: string, importPath: string): string {
+  const normalizedFromDir = normalizePath(fromDir)
+  const normalizedImportPath = normalizePath(importPath)
+
+  if (isAbsolutePath(normalizedImportPath)) {
+    return dirnamePath(normalizedImportPath)
+  }
+
+  return dirnamePath(joinPath(normalizedFromDir, normalizedImportPath))
+}
+
+function normalizePath(pathLike: string): string {
+  return pathLike.replaceAll('\\', '/')
+}
+
+function isAbsolutePath(pathLike: string): boolean {
+  return pathLike.startsWith('/') || /^[A-Za-z]:\//.test(pathLike)
+}
+
+function dirnamePath(pathLike: string): string {
+  const normalized = normalizePath(pathLike)
+  const root = getPathRoot(normalized)
+  const segments = splitPathSegments(normalized)
+
+  if (segments.length === 0) {
+    return root || '.'
+  }
+
+  const parentSegments = segments.slice(0, -1)
+  return buildPath(root, parentSegments)
+}
+
+function joinPath(baseDir: string, importPath: string): string {
+  const root = getPathRoot(baseDir)
+  const combinedSegments = [...splitPathSegments(baseDir), ...splitPathSegments(importPath)]
+  const resolvedSegments: string[] = []
+
+  for (const segment of combinedSegments) {
+    if (segment === '.' || segment === '') continue
+    if (segment === '..') {
+      if (resolvedSegments.length > 0 && resolvedSegments[resolvedSegments.length - 1] !== '..') {
+        resolvedSegments.pop()
+      } else if (!root) {
+        resolvedSegments.push('..')
+      }
+      continue
+    }
+    resolvedSegments.push(segment)
+  }
+
+  return buildPath(root, resolvedSegments)
+}
+
+function getPathRoot(pathLike: string): string {
+  if (pathLike.startsWith('/')) return '/'
+  const driveMatch = pathLike.match(/^[A-Za-z]:/)
+  return driveMatch?.[0] ?? ''
+}
+
+function splitPathSegments(pathLike: string): string[] {
+  const normalized = normalizePath(pathLike)
+  const root = getPathRoot(normalized)
+  const withoutRoot = root === '/'
+    ? normalized.slice(1)
+    : root
+      ? normalized.slice(root.length).replace(/^\//, '')
+      : normalized
+  return withoutRoot.split('/').filter(Boolean)
+}
+
+function buildPath(root: string, segments: string[]): string {
+  const joined = segments.join('/')
+  if (root === '/') return joined ? `/${joined}` : '/'
+  if (root) return joined ? `${root}/${joined}` : `${root}/`
+  return joined || '.'
 }
