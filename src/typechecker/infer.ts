@@ -96,6 +96,14 @@ export class InferenceContext {
   /** Record an effect in the current effect set. */
   addEffect(name: string): void { this.currentEffects.effects.add(name) }
 
+  /** Merge an inferred effect set into the current effect context. */
+  addEffects(effects: EffectSet): void {
+    for (const effectName of effects.effects) {
+      this.currentEffects.effects.add(effectName)
+    }
+    this.currentEffects.open = this.currentEffects.open || effects.open
+  }
+
   /** Remove handled effects from the current set. */
   handleEffects(handled: Set<string>): void {
     const current = this.currentEffects
@@ -639,6 +647,32 @@ export function inferExpr(
       const [calleeNode, argNodes] = payload as [AstNode, AstNode[]]
       const calleeType = inferExpr(calleeNode, ctx, env, typeMap)
       const argTypes = argNodes.map(arg => inferExpr(arg, ctx, env, typeMap))
+
+      const handlerAlternatives = getHandlerAlternatives(calleeType)
+      const thunkAlternatives = argTypes.length === 1
+        ? getFunctionAlternatives(argTypes[0]!)
+        : []
+
+      if (handlerAlternatives.length > 0 && thunkAlternatives.length > 0
+        && thunkAlternatives.every(thunk => thunk.params.length === 0)) {
+        const requiredBodyType = handlerAlternatives.length === 1
+          ? handlerAlternatives[0]!.body
+          : inter(...handlerAlternatives.map(handler => handler.body))
+
+        constrain(ctx, argTypes[0]!, fn([], requiredBodyType))
+
+        const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
+        const residualEffects = subtractEffects(
+          unionEffectSets(thunkAlternatives.map(thunk => thunk.effects)),
+          new Set(guaranteedHandled.keys()),
+        )
+        ctx.addEffects(residualEffects)
+
+        result = handlerAlternatives.length === 1
+          ? handlerAlternatives[0]!.output
+          : union(...handlerAlternatives.map(handler => handler.output))
+        break
+      }
 
       // Create a fresh variable for the return type
       const retVar = ctx.freshVar()
@@ -1256,15 +1290,28 @@ function getHandlerAlternatives(type: Type): Extract<Type, { tag: 'Handler' }>[]
   return []
 }
 
+function getFunctionAlternatives(type: Type): Extract<Type, { tag: 'Function' }>[] {
+  const resolved = resolveCallableCarrier(type)
+  if (resolved.tag === 'Function') return [resolved]
+  if (resolved.tag === 'Union' && resolved.members.every(member => member.tag === 'Function')) {
+    return resolved.members
+  }
+  return []
+}
+
 function resolveHandlerCarrier(type: Type, visited = new Set<number>()): Type {
+  return resolveCallableCarrier(type, visited)
+}
+
+function resolveCallableCarrier(type: Type, visited = new Set<number>()): Type {
   if (type.tag === 'Var') {
     if (visited.has(type.id)) return type
     visited.add(type.id)
     if (type.lowerBounds.length === 0) return type
-    const resolvedBounds = type.lowerBounds.map(bound => resolveHandlerCarrier(bound, visited))
+    const resolvedBounds = type.lowerBounds.map(bound => resolveCallableCarrier(bound, visited))
     return resolvedBounds.length === 1 ? resolvedBounds[0]! : union(...resolvedBounds)
   }
-  if (type.tag === 'Alias') return resolveHandlerCarrier(type.expanded, visited)
+  if (type.tag === 'Alias') return resolveCallableCarrier(type.expanded, visited)
   return type
 }
 
@@ -1287,6 +1334,19 @@ function intersectHandledSignatures(
     }
   }
   return intersection
+}
+
+function unionEffectSets(effectSets: EffectSet[]): EffectSet {
+  if (effectSets.length === 0) return PureEffects
+
+  const effects = new Set<string>()
+  let open = false
+  for (const effectSet of effectSets) {
+    for (const effectName of effectSet.effects) effects.add(effectName)
+    open = open || effectSet.open
+  }
+
+  return { effects, open }
 }
 
 // ---------------------------------------------------------------------------

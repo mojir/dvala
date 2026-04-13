@@ -832,6 +832,31 @@ describe('inference — effect declarations and handler typing', () => {
       expect(t.effects.effects.has('test.extra')).toBe(true)
     }
   })
+
+  it('callable handlers subtract handled effects from thunk bodies', () => {
+    declareEffect('test.call', StringType, NullType)
+    declareEffect('test.extraCall', StringType, NullType)
+
+    const t = inferAndExpand(`
+      let h =
+        handler
+          @test.call(msg) -> resume(null)
+        end;
+
+      () -> h(-> do
+        perform(@test.call, "hello");
+        perform(@test.extraCall, "world");
+        1
+      end)
+    `)
+
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      expect(typeToString(t.ret)).toBe('1')
+      expect(t.effects.effects.has('test.call')).toBe(false)
+      expect(t.effects.effects.has('test.extraCall')).toBe(true)
+    }
+  })
 })
 
 describe('typecheck — imported handler parity', () => {
@@ -887,6 +912,38 @@ describe('typecheck — imported handler parity', () => {
       end;
 
       resultFn
+    `, { fileResolverBaseDir: '.' })
+
+    expect(local.diagnostics).toHaveLength(0)
+    expect(imported.diagnostics).toHaveLength(0)
+  })
+
+  it('imported callable handlers infer the same as local handlers', () => {
+    const local = dvala.typecheck(`
+      effect @test.log(String) -> Null;
+      let h =
+        handler
+          @test.log(msg) -> resume(null)
+        end;
+
+      let result: Number = h(-> do
+        perform(@test.log, "hello");
+        1
+      end);
+
+      result
+    `, { fileResolverBaseDir: '.' })
+
+    const imported = dvala.typecheck(`
+      effect @test.log(String) -> Null;
+      let { h } = import("./handlers");
+
+      let result: Number = h(-> do
+        perform(@test.log, "hello");
+        1
+      end);
+
+      result
     `, { fileResolverBaseDir: '.' })
 
     expect(local.diagnostics).toHaveLength(0)
