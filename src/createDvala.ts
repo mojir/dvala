@@ -64,8 +64,9 @@ export interface CreateDvalaOptions {
    */
   fileResolverBaseDir?: string
   /**
-   * Enable type checking. When true, source code is type-checked after parsing.
+   * Enable type checking (default: true). Source code is type-checked after parsing.
    * Type errors are reported via `onTypeDiagnostic` but do NOT block evaluation.
+   * Set to `false` to skip type checking for performance.
    */
   typecheck?: boolean
   /**
@@ -115,7 +116,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const factoryFileResolver = options?.fileResolver
   const factoryFileResolverBaseDir = options?.fileResolverBaseDir
   const debug = options?.debug ?? false
-  const typecheckEnabled = options?.typecheck ?? false
+  const typecheckEnabled = options?.typecheck ?? true
   const onTypeDiagnostic = options?.onTypeDiagnostic
   // Always use an internal AST cache to ensure deterministic node IDs
   // when the same source is run multiple times.

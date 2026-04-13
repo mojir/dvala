@@ -76,6 +76,7 @@ interface RunConfig {
   context: Record<string, unknown>
   printResult: boolean
   pure: boolean
+  noCheck: boolean
 }
 
 type TestReporter = 'default' | 'verbose' | 'tap' | 'junit' | 'html'
@@ -174,8 +175,21 @@ function createFileResolver(): (importPath: string, fromDir: string) => string {
   }
 }
 
-function makeDvala(context: Record<string, unknown>, pure: boolean) {
-  const runner = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules], fileResolver: createFileResolver(), fileResolverBaseDir: process.cwd() })
+function makeDvala(context: Record<string, unknown>, pure: boolean, noCheck = false) {
+  const runner = createDvala({
+    debug: true,
+    modules: [...allBuiltinModules, ...cliModules],
+    fileResolver: createFileResolver(),
+    fileResolverBaseDir: process.cwd(),
+    typecheck: !noCheck,
+    onTypeDiagnostic: d => {
+      // Print type diagnostics as warnings to stderr
+      const loc = d.sourceCodeInfo
+        ? ` at ${d.sourceCodeInfo.position.line}:${d.sourceCodeInfo.position.column}`
+        : ''
+      process.stderr.write(`\x1b[33m[type ${d.severity}]${loc}: ${d.message}\x1b[0m\n`)
+    },
+  })
   return {
     run: (program: string | DvalaBundle) => runner.run(program, pure
       ? { scope: context, pure: true }
@@ -197,7 +211,7 @@ function loadFileIntoContext(filename: string, context: Record<string, unknown>)
 
 switch (config.subcommand) {
   case 'run': {
-    const dvala = makeDvala(config.context, config.pure)
+    const dvala = makeDvala(config.context, config.pure, config.noCheck)
     try {
       const result = dvala.run(config.program)
       if (config.printResult) {
@@ -982,10 +996,11 @@ function parsePrintOptions(args: string[], startIndex: number): { options: Print
   return { options, nextIndex: i }
 }
 
-function parseRunOptions(args: string[], startIndex: number): { context: Record<string, unknown>; printResult: boolean; pure: boolean; file: Maybe<string>; positional: Maybe<string>; nextIndex: number } {
+function parseRunOptions(args: string[], startIndex: number): { context: Record<string, unknown>; printResult: boolean; pure: boolean; noCheck: boolean; file: Maybe<string>; positional: Maybe<string>; nextIndex: number } {
   let context: Record<string, unknown> = {}
   let printResult = true
   let pure = false
+  let noCheck = false
   let file: Maybe<string> = null
   let positional: Maybe<string> = null
   let i = startIndex
@@ -1031,12 +1046,16 @@ function parseRunOptions(args: string[], startIndex: number): { context: Record<
         pure = true
         i += parsed.count
         break
+      case '--no-check':
+        noCheck = true
+        i += parsed.count
+        break
       default:
         printErrorMessage(`Unknown option "${parsed.option}"`)
         process.exit(1)
     }
   }
-  return { context, printResult, pure, file, positional, nextIndex: i }
+  return { context, printResult, pure, noCheck, file, positional, nextIndex: i }
 }
 
 function processArguments(args: string[]): Config {
@@ -1056,7 +1075,7 @@ function processArguments(args: string[]): Config {
 
   switch (first) {
     case 'run': {
-      const { positional, file, context, printResult, pure } = parseRunOptions(args, 1)
+      const { positional, file, context, printResult, pure, noCheck } = parseRunOptions(args, 1)
       if (positional && file) {
         printErrorMessage('Cannot use both inline code and -f <file>')
         process.exit(1)
@@ -1069,7 +1088,7 @@ function processArguments(args: string[]): Config {
       } else {
         program = resolveEntryCode('run')
       }
-      return { subcommand: 'run', program, context, printResult, pure }
+      return { subcommand: 'run', program, context, printResult, pure, noCheck }
     }
     case 'build': {
       let directory: Maybe<string> = null

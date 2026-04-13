@@ -1039,7 +1039,8 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
       // ["array", [[bindingTarget, ...], default], id]
       const [elements] = pattern[1] as [AstNode[], AstNode | undefined]
       for (let i = 0; i < elements.length; i++) {
-        const elem = elements[i]!
+        const elem = elements[i]
+        if (!elem) continue // null = skipped position (e.g., let [, , third] = arr)
         if ((elem[0] as string) === 'rest') {
           // Rest element: ...rest gets the array type
           const [restName] = elem[1] as [string, AstNode | undefined]
