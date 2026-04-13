@@ -2,6 +2,7 @@ import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
   'test': {
+    type: '(String, (() -> Unknown)) -> Null',
     category: 'test',
     description: 'Registers a test case with a name and a function body. The test is collected by the test runner and executed in isolation.',
     returns: {
@@ -29,6 +30,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'describe': {
+    type: '(String, (() -> Unknown)) -> Null',
     category: 'test',
     description: 'Groups related tests under a descriptive label. Can be nested. The body function is executed immediately to collect the tests within.',
     returns: {
@@ -56,6 +58,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'skip': {
+    type: '(Unknown) -> Null',
     category: 'test',
     description: 'A macro that marks its argument as skipped. Works with both `test` and `describe` — any tests registered inside the expression are reported but not executed. Use with the `#` prefix: `#skip test(...)` or `#skip describe(...)`.',
     returns: {

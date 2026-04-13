@@ -17,12 +17,16 @@ import {
 } from './infer'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
-import { initBuiltinTypes } from './builtinTypes'
+import { initBuiltinTypes, registerModuleType } from './builtinTypes'
 import { declareEffect } from './effectTypes'
+import { allBuiltinModules } from '../allModules'
 
 // Initialize builtin type cache once before all tests
 beforeAll(() => {
   initBuiltinTypes(builtin.normalExpressions)
+  for (const mod of allBuiltinModules) {
+    registerModuleType(mod.name, mod.functions)
+  }
 })
 
 // ---------------------------------------------------------------------------
@@ -682,6 +686,23 @@ describe('inference — effect sets', () => {
     const fewer = fn([NumberType], NumberType, effectSet(['log']))
     const more = fn([NumberType], NumberType, effectSet(['log', 'fetch']))
     expect(isSubtype(more, fewer)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Inference — imports
+// ---------------------------------------------------------------------------
+
+describe('inference — imports', () => {
+  it('import("math").sin is typed as a function', () => {
+    const t = inferType('let m = import("math"); m.sin')
+    // sin should be a function type, not Unknown
+    expect(t.tag).not.toBe('Unknown')
+  })
+
+  it('destructured import: let { sin } = import("math"); sin(0) works', () => {
+    const t = inferAndExpand('let { sin } = import("math"); sin(0)')
+    expect(isSubtype(t, NumberType)).toBe(true)
   })
 })
 

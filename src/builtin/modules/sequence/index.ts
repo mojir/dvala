@@ -17,6 +17,7 @@ const sequenceUtilsFunctions: BuiltinNormalExpressions = {
     evaluate: () => { throw new Error('mapcat is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown -> Unknown[])) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'collection' },
       args: {
@@ -49,6 +50,7 @@ mapcat(
     evaluate: () => { throw new Error('position: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '((Unknown[] | Null), (Unknown -> Boolean)) -> (Number | Null)',
       category: 'sequence',
       returns: { type: ['number', 'null'] },
       args: {
@@ -113,6 +115,7 @@ su.position(
     },
     arity: toFixedArity(2),
     docs: {
+      type: '((Unknown[] | Null), Unknown) -> (Number | Null)',
       category: 'sequence',
       returns: { type: ['number', 'null'] },
       args: {
@@ -169,6 +172,7 @@ su.position(
     },
     arity: { min: 3 },
     docs: {
+      type: '(Unknown[], Number, Number, ...Unknown) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -194,6 +198,7 @@ su.position(
     evaluate: () => { throw new Error('sortBy: Dvala implementation should be used instead') },
     arity: { min: 2, max: 3 },
     docs: {
+      type: '(Unknown[], (Unknown -> Unknown)) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'any', rest: true },
       args: {
@@ -235,6 +240,7 @@ su.position(
     },
     arity: { min: 2 },
     docs: {
+      type: '(Unknown[], ...Unknown) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -280,6 +286,7 @@ l`,
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(Unknown[]) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: { seq: { type: 'sequence' } },
@@ -299,6 +306,7 @@ l`,
     evaluate: () => { throw new Error('remove: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown -> Boolean)) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -340,6 +348,7 @@ l`,
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], Number) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -383,6 +392,7 @@ l`,
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], Number) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -407,6 +417,7 @@ l`,
     evaluate: () => { throw new Error('splitWith: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown -> Boolean)) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -442,6 +453,7 @@ l`,
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(Unknown[]) -> {String: Number}',
       category: 'sequence',
       returns: { type: 'object' },
       args: { seq: { type: 'sequence' } },
@@ -459,6 +471,7 @@ l`,
     evaluate: () => { throw new Error('groupBy: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown -> String)) -> {String: Unknown[]}',
       category: 'sequence',
       returns: { type: 'object' },
       args: {
@@ -491,6 +504,7 @@ l`,
     },
     arity: { min: 2, max: 4 },
     docs: {
+      type: '(Unknown[], Number) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -539,6 +553,7 @@ l`,
     },
     arity: { min: 2, max: 3 },
     docs: {
+      type: '(Unknown[], Number) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -567,6 +582,7 @@ l`,
     evaluate: () => { throw new Error('partitionBy: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown -> Unknown)) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -600,6 +616,7 @@ l`,
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], Unknown) -> Boolean',
       category: 'sequence',
       returns: { type: 'boolean' },
       args: {
@@ -635,6 +652,7 @@ l`,
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], Unknown) -> Boolean',
       category: 'sequence',
       returns: { type: 'boolean' },
       args: {
@@ -688,6 +706,7 @@ l`,
     },
     arity: { min: 1 },
     docs: {
+      type: '(...Unknown[]) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -735,6 +754,7 @@ l`,
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], Unknown) -> Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {

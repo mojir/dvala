@@ -75,10 +75,49 @@ export function isTypeGuard(name: string): boolean {
   return info?.guardParam !== undefined
 }
 
+// ---------------------------------------------------------------------------
+// Module type registry
+// ---------------------------------------------------------------------------
+
+/** Map from module name to its export record type. */
+const moduleTypeCache = new Map<string, Type>()
+
+/**
+ * Register a module's exports as a record type.
+ * Called during initialization for each registered module.
+ */
+export function registerModuleType(moduleName: string, functions: BuiltinNormalExpressions): void {
+  const fields = new Map<string, Type>()
+  for (const [name, expr] of Object.entries(functions)) {
+    const typeStr = expr.docs?.type
+    if (typeStr) {
+      try {
+        const parsed = parseFunctionTypeAnnotation(typeStr)
+        fields.set(name, parsed.type)
+      } catch {
+        fields.set(name, Unknown)
+      }
+    } else {
+      fields.set(name, Unknown)
+    }
+  }
+  // Module type is a closed record of its exports
+  moduleTypeCache.set(moduleName, { tag: 'Record', fields, open: false })
+}
+
+/**
+ * Look up a module's type (record of exports).
+ * Returns Unknown if the module is not registered.
+ */
+export function getModuleType(moduleName: string): Type {
+  return moduleTypeCache.get(moduleName) ?? Unknown
+}
+
 /**
  * Reset the cache (for testing).
  */
 export function resetBuiltinTypeCache(): void {
   builtinTypeCache.clear()
+  moduleTypeCache.clear()
   initialized = false
 }

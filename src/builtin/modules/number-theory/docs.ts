@@ -2,6 +2,7 @@ import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
   'abundantSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the abundant numbers up to a specified length.',
     returns: {
@@ -28,6 +29,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.abundantNth', 'numberTheory.abundantTakeWhile', 'numberTheory.isAbundant', 'numberTheory.deficientSeq', 'numberTheory.perfectSeq'],
   },
   'abundantTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the abundant numbers while a condition is met.',
     returns: {
@@ -53,6 +55,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.abundantSeq', 'numberTheory.abundantNth', 'numberTheory.isAbundant'],
   },
   'abundantNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the abundant numbers.',
     returns: {
@@ -78,6 +81,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.abundantSeq', 'numberTheory.abundantTakeWhile', 'numberTheory.isAbundant'],
   },
   'isAbundant': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is abundant.',
     returns: {
@@ -103,6 +107,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.abundantSeq', 'numberTheory.abundantNth', 'numberTheory.isDeficient', 'numberTheory.isPerfect', 'numberTheory.sigma', 'numberTheory.divisors', 'numberTheory.abundantTakeWhile'],
   },
   'arithmeticSeq': {
+    type: '(Number, Number, Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the arithmetic sequence for a given `start`, `step`, and `length`.',
     returns: {
@@ -141,6 +146,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.arithmeticNth', 'numberTheory.arithmeticTakeWhile', 'numberTheory.isArithmetic', 'numberTheory.geometricSeq'],
   },
   'arithmeticTakeWhile': {
+    type: '(Number, Number, (Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the arithmetic sequence while a condition is met.',
     returns: {
@@ -176,6 +182,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.arithmeticSeq', 'numberTheory.arithmeticNth', 'numberTheory.isArithmetic'],
   },
   'arithmeticNth': {
+    type: '(Number, Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the arithmetic sequence.',
     returns: {
@@ -213,6 +220,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.arithmeticSeq', 'numberTheory.arithmeticTakeWhile', 'numberTheory.isArithmetic'],
   },
   'isArithmetic': {
+    type: '(Number, Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is part of the arithmetic sequence.',
     returns: {
@@ -250,6 +258,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.arithmeticSeq', 'numberTheory.arithmeticNth', 'numberTheory.isGeometric', 'numberTheory.arithmeticTakeWhile'],
   },
   'bellSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Bell sequence up to a specified length.',
     returns: {
@@ -280,6 +289,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.bellNth', 'numberTheory.bellTakeWhile', 'numberTheory.isBell', 'numberTheory.catalanSeq', 'numberTheory.stirlingSecond', 'numberTheory.stirlingFirst'],
   },
   'bellTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Bell sequence while a condition is met.',
     returns: {
@@ -305,6 +315,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.bellSeq', 'numberTheory.bellNth', 'numberTheory.isBell'],
   },
   'bellNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Bell sequence.',
     returns: {
@@ -330,6 +341,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.bellSeq', 'numberTheory.bellTakeWhile', 'numberTheory.isBell'],
   },
   'isBell': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Bell sequence.',
     returns: {
@@ -356,6 +368,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.bellSeq', 'numberTheory.bellNth', 'numberTheory.isCatalan', 'numberTheory.bellTakeWhile'],
   },
   'bernoulliSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Bernoulli sequence up to a specified length.',
     returns: {
@@ -382,6 +395,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.bernoulliNth', 'numberTheory.bernoulliTakeWhile'],
   },
   'bernoulliTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Bernoulli sequence while a condition is met.',
     returns: {
@@ -407,6 +421,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.bernoulliSeq', 'numberTheory.bernoulliNth'],
   },
   'bernoulliNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Bernoulli sequence.',
     returns: {
@@ -433,6 +448,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.bernoulliSeq', 'numberTheory.bernoulliTakeWhile'],
   },
   'catalanSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Catalan sequence up to a specified length.',
     returns: {
@@ -463,6 +479,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.catalanNth', 'numberTheory.catalanTakeWhile', 'numberTheory.isCatalan', 'numberTheory.bellSeq'],
   },
   'catalanTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Catalan sequence while a condition is met.',
     returns: {
@@ -488,6 +505,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.catalanSeq', 'numberTheory.catalanNth', 'numberTheory.isCatalan'],
   },
   'catalanNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Catalan sequence.',
     returns: {
@@ -513,6 +531,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.catalanSeq', 'numberTheory.catalanTakeWhile', 'numberTheory.isCatalan'],
   },
   'isCatalan': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is in the Catalan sequence.',
     returns: {
@@ -538,6 +557,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.catalanSeq', 'numberTheory.catalanNth', 'numberTheory.isBell', 'numberTheory.catalanTakeWhile'],
   },
   'collatzSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the collatz sequence starting from a given integer.',
     returns: {
@@ -564,6 +584,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.jugglerSeq'],
   },
   'compositeSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the composite sequence up to a specified length.',
     returns: {
@@ -591,6 +612,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.compositeNth', 'numberTheory.compositeTakeWhile', 'numberTheory.isComposite', 'numberTheory.primeSeq'],
   },
   'compositeTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the composite sequence while a condition is met.',
     returns: {
@@ -616,6 +638,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.compositeSeq', 'numberTheory.compositeNth', 'numberTheory.isComposite'],
   },
   'compositeNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the composite sequence.',
     returns: {
@@ -642,6 +665,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.compositeSeq', 'numberTheory.compositeTakeWhile', 'numberTheory.isComposite'],
   },
   'isComposite': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is composite.',
     returns: {
@@ -668,6 +692,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.compositeSeq', 'numberTheory.compositeNth', 'numberTheory.isPrime', 'numberTheory.primeFactors', 'numberTheory.compositeTakeWhile'],
   },
   'deficientSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the deficient numbers up to a specified length.',
     returns: {
@@ -694,6 +719,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.deficientNth', 'numberTheory.deficientTakeWhile', 'numberTheory.isDeficient', 'numberTheory.abundantSeq', 'numberTheory.perfectSeq'],
   },
   'deficientTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the deficient numbers while a condition is met.',
     returns: {
@@ -719,6 +745,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.deficientSeq', 'numberTheory.deficientNth', 'numberTheory.isDeficient'],
   },
   'deficientNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the deficient numbers.',
     returns: {
@@ -744,6 +771,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.deficientSeq', 'numberTheory.deficientTakeWhile', 'numberTheory.isDeficient'],
   },
   'isDeficient': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is deficient.',
     returns: {
@@ -769,6 +797,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.deficientSeq', 'numberTheory.deficientNth', 'numberTheory.isAbundant', 'numberTheory.isPerfect', 'numberTheory.sigma', 'numberTheory.divisors', 'numberTheory.deficientTakeWhile'],
   },
   'factorialSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the factorial sequence up to a specified length.',
     returns: {
@@ -802,6 +831,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.factorialNth', 'numberTheory.factorialTakeWhile', 'numberTheory.isFactorial', 'numberTheory.factorial'],
   },
   'factorialTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the factorial sequence while a condition is met.',
     returns: {
@@ -827,6 +857,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.factorialSeq', 'numberTheory.factorialNth', 'numberTheory.isFactorial'],
   },
   'factorialNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the factorial sequence.',
     returns: {
@@ -856,6 +887,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.factorialSeq', 'numberTheory.factorialTakeWhile', 'numberTheory.isFactorial', 'numberTheory.factorial'],
   },
   'isFactorial': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the factorial sequence.',
     returns: {
@@ -889,6 +921,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.factorialSeq', 'numberTheory.factorialNth', 'numberTheory.factorial', 'numberTheory.factorialTakeWhile'],
   },
   'fibonacciSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the fibonacci sequence up to a specified length.',
     returns: {
@@ -919,6 +952,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.fibonacciNth', 'numberTheory.fibonacciTakeWhile', 'numberTheory.isFibonacci', 'numberTheory.lucasSeq', 'numberTheory.tribonacciSeq', 'numberTheory.pellSeq', 'numberTheory.padovanSeq'],
   },
   'fibonacciTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the fibonacci sequence while a condition is met.',
     returns: {
@@ -944,6 +978,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.fibonacciSeq', 'numberTheory.fibonacciNth', 'numberTheory.isFibonacci'],
   },
   'fibonacciNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the fibonacci sequence.',
     returns: {
@@ -969,6 +1004,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.fibonacciSeq', 'numberTheory.fibonacciTakeWhile', 'numberTheory.isFibonacci'],
   },
   'isFibonacci': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is in the fibonacci sequence.',
     returns: {
@@ -1002,6 +1038,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.fibonacciSeq', 'numberTheory.fibonacciNth', 'numberTheory.isLucas', 'numberTheory.fibonacciTakeWhile', 'numberTheory.isTribonacci', 'numberTheory.isPadovan', 'numberTheory.isPell'],
   },
   'geometricSeq': {
+    type: '(Number, Number, Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the geometric sequence for a given `start`, `ratio`, and `length`.',
     returns: {
@@ -1040,6 +1077,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.geometricNth', 'numberTheory.geometricTakeWhile', 'numberTheory.isGeometric', 'numberTheory.arithmeticSeq'],
   },
   'geometricTakeWhile': {
+    type: '(Number, Number, (Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the geometric sequence while a condition is met.',
     returns: {
@@ -1075,6 +1113,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.geometricSeq', 'numberTheory.geometricNth', 'numberTheory.isGeometric'],
   },
   'geometricNth': {
+    type: '(Number, Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the geometric sequence.',
     returns: {
@@ -1112,6 +1151,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.geometricSeq', 'numberTheory.geometricTakeWhile', 'numberTheory.isGeometric'],
   },
   'isGeometric': {
+    type: '(Number, Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the geometric sequence.',
     returns: {
@@ -1150,6 +1190,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.geometricSeq', 'numberTheory.geometricNth', 'numberTheory.isArithmetic', 'numberTheory.geometricTakeWhile'],
   },
   'golombSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Golomb sequence up to a specified length.',
     returns: {
@@ -1176,6 +1217,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.golombNth', 'numberTheory.golombTakeWhile', 'numberTheory.isGolomb', 'numberTheory.recamanSeq'],
   },
   'golombTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Golomb sequence while a condition is met.',
     returns: {
@@ -1201,6 +1243,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.golombSeq', 'numberTheory.golombNth', 'numberTheory.isGolomb'],
   },
   'golombNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Golomb sequence.',
     returns: {
@@ -1226,6 +1269,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.golombSeq', 'numberTheory.golombTakeWhile', 'numberTheory.isGolomb'],
   },
   'isGolomb': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Golomb sequence.',
     returns: {
@@ -1253,6 +1297,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.golombSeq', 'numberTheory.golombNth', 'numberTheory.golombTakeWhile'],
   },
   'happySeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the happy sequence up to a specified length.',
     returns: {
@@ -1280,6 +1325,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.happyNth', 'numberTheory.happyTakeWhile', 'numberTheory.isHappy', 'numberTheory.luckySeq'],
   },
   'happyTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the happy sequence while a condition is met.',
     returns: {
@@ -1305,6 +1351,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.happySeq', 'numberTheory.happyNth', 'numberTheory.isHappy'],
   },
   'happyNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the happy sequence.',
     returns: {
@@ -1331,6 +1378,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.happySeq', 'numberTheory.happyTakeWhile', 'numberTheory.isHappy'],
   },
   'isHappy': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is a happy number.',
     returns: {
@@ -1357,6 +1405,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.happySeq', 'numberTheory.happyNth', 'numberTheory.happyTakeWhile'],
   },
   'jugglerSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Juggler sequence starting from a given integer.',
     returns: {
@@ -1383,6 +1432,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.collatzSeq'],
   },
   'lookAndSaySeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Look-and-Say sequence up to a specified length.',
     returns: {
@@ -1408,6 +1458,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.lookAndSayNth', 'numberTheory.lookAndSayTakeWhile', 'numberTheory.isLookAndSay'],
   },
   'lookAndSayTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Look-and-Say sequence while a condition is met.',
     returns: {
@@ -1434,6 +1485,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.lookAndSaySeq', 'numberTheory.lookAndSayNth', 'numberTheory.isLookAndSay'],
   },
   'lookAndSayNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Look-and-Say sequence.',
     returns: {
@@ -1458,6 +1510,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.lookAndSaySeq', 'numberTheory.lookAndSayTakeWhile', 'numberTheory.isLookAndSay'],
   },
   'isLookAndSay': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a string is a valid Look-and-Say term.',
     returns: {
@@ -1483,6 +1536,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.lookAndSaySeq', 'numberTheory.lookAndSayNth', 'numberTheory.lookAndSayTakeWhile'],
   },
   'lucasSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the lucas sequence up to a specified length.',
     returns: {
@@ -1513,6 +1567,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.lucasNth', 'numberTheory.lucasTakeWhile', 'numberTheory.isLucas', 'numberTheory.fibonacciSeq'],
   },
   'lucasTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the lucas sequence while a condition is met.',
     returns: {
@@ -1538,6 +1593,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.lucasSeq', 'numberTheory.lucasNth', 'numberTheory.isLucas'],
   },
   'lucasNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the lucas sequence.',
     returns: {
@@ -1564,6 +1620,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.lucasSeq', 'numberTheory.lucasTakeWhile', 'numberTheory.isLucas'],
   },
   'isLucas': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is in the lucas sequence.',
     returns: {
@@ -1590,6 +1647,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.lucasSeq', 'numberTheory.lucasNth', 'numberTheory.isFibonacci', 'numberTheory.lucasTakeWhile'],
   },
   'luckySeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the lucky sequence up to a specified length.',
     returns: {
@@ -1617,6 +1675,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.luckyNth', 'numberTheory.luckyTakeWhile', 'numberTheory.isLucky', 'numberTheory.happySeq', 'numberTheory.primeSeq'],
   },
   'luckyTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the lucky sequence while a condition is met.',
     returns: {
@@ -1642,6 +1701,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.luckySeq', 'numberTheory.luckyNth', 'numberTheory.isLucky'],
   },
   'luckyNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the lucky sequence.',
     returns: {
@@ -1668,6 +1728,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.luckySeq', 'numberTheory.luckyTakeWhile', 'numberTheory.isLucky'],
   },
   'isLucky': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is a lucky number.',
     returns: {
@@ -1694,6 +1755,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.luckySeq', 'numberTheory.luckyNth', 'numberTheory.isPrime', 'numberTheory.luckyTakeWhile'],
   },
   'mersenneSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Mersenne sequence up to a specified length.',
     returns: {
@@ -1724,6 +1786,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.mersenneNth', 'numberTheory.mersenneTakeWhile', 'numberTheory.isMersenne', 'numberTheory.primeSeq'],
   },
   'mersenneTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Mersenne sequence while a condition is met.',
     returns: {
@@ -1749,6 +1812,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.mersenneSeq', 'numberTheory.mersenneNth', 'numberTheory.isMersenne'],
   },
   'mersenneNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Mersenne sequence.',
     returns: {
@@ -1774,6 +1838,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.mersenneSeq', 'numberTheory.mersenneTakeWhile', 'numberTheory.isMersenne'],
   },
   'isMersenne': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Mersenne sequence.',
     returns: {
@@ -1800,6 +1865,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.mersenneSeq', 'numberTheory.mersenneNth', 'numberTheory.isPrime', 'numberTheory.mersenneTakeWhile'],
   },
   'padovanSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Padovan sequence up to a specified length.',
     returns: {
@@ -1827,6 +1893,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.padovanNth', 'numberTheory.padovanTakeWhile', 'numberTheory.isPadovan', 'numberTheory.fibonacciSeq'],
   },
   'padovanTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Padovan sequence while a condition is met.',
     returns: {
@@ -1852,6 +1919,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.padovanSeq', 'numberTheory.padovanNth', 'numberTheory.isPadovan'],
   },
   'padovanNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Padovan sequence.',
     returns: {
@@ -1878,6 +1946,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.padovanSeq', 'numberTheory.padovanTakeWhile', 'numberTheory.isPadovan'],
   },
   'isPadovan': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Padovan sequence.',
     returns: {
@@ -1904,6 +1973,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.padovanSeq', 'numberTheory.padovanNth', 'numberTheory.isFibonacci', 'numberTheory.padovanTakeWhile'],
   },
   'partitionSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the partition numbers up to a specified length. If no length is provided, it defaults to 299 (the maximum length of the pre-calculated partition numbers).',
     returns: {
@@ -1934,6 +2004,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.partitionNth', 'numberTheory.partitionTakeWhile', 'numberTheory.isPartition', 'numberTheory.partitions', 'numberTheory.countPartitions'],
   },
   'partitionTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the partition numbers while a condition is met.',
     returns: {
@@ -1959,6 +2030,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.partitionSeq', 'numberTheory.partitionNth', 'numberTheory.isPartition'],
   },
   'partitionNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the partition numbers.',
     returns: {
@@ -1984,6 +2056,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.partitionSeq', 'numberTheory.partitionTakeWhile', 'numberTheory.isPartition'],
   },
   'isPartition': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the partition numbers.',
     returns: {
@@ -2013,6 +2086,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.partitionSeq', 'numberTheory.partitionNth', 'numberTheory.partitions', 'numberTheory.partitionTakeWhile'],
   },
   'pellSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Pell sequence up to a specified length.',
     returns: {
@@ -2043,6 +2117,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.pellNth', 'numberTheory.pellTakeWhile', 'numberTheory.isPell', 'numberTheory.fibonacciSeq'],
   },
   'pellTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Pell sequence while a condition is met.',
     returns: {
@@ -2068,6 +2143,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.pellSeq', 'numberTheory.pellNth', 'numberTheory.isPell'],
   },
   'pellNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Pell sequence.',
     returns: {
@@ -2094,6 +2170,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.pellSeq', 'numberTheory.pellTakeWhile', 'numberTheory.isPell'],
   },
   'isPell': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is a Pell number.',
     returns: {
@@ -2120,6 +2197,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.pellSeq', 'numberTheory.pellNth', 'numberTheory.isFibonacci', 'numberTheory.pellTakeWhile'],
   },
   'perfectSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect numbers up to a specified length.',
     returns: {
@@ -2150,6 +2228,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectNth', 'numberTheory.perfectTakeWhile', 'numberTheory.isPerfect', 'numberTheory.abundantSeq', 'numberTheory.deficientSeq', 'numberTheory.isAmicable'],
   },
   'perfectTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect numbers while a condition is met.',
     returns: {
@@ -2175,6 +2254,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectSeq', 'numberTheory.perfectNth', 'numberTheory.isPerfect'],
   },
   'perfectNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the perfect numbers.',
     returns: {
@@ -2200,6 +2280,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectSeq', 'numberTheory.perfectTakeWhile', 'numberTheory.isPerfect'],
   },
   'isPerfect': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the perfect numbers.',
     returns: {
@@ -2233,6 +2314,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectSeq', 'numberTheory.perfectNth', 'numberTheory.isAbundant', 'numberTheory.isDeficient', 'numberTheory.sigma', 'numberTheory.perfectTakeWhile', 'numberTheory.isAmicable', 'numberTheory.properDivisors'],
   },
   'perfectSquareSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect square numbers up to a specified length.',
     returns: {
@@ -2259,6 +2341,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectSquareNth', 'numberTheory.perfectSquareTakeWhile', 'numberTheory.isPerfectSquare', 'numberTheory.perfectCubeSeq', 'numberTheory.perfectPowerSeq', 'numberTheory.polygonalSeq'],
   },
   'perfectSquareTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect square numbers while a condition is met.',
     returns: {
@@ -2284,6 +2367,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectSquareSeq', 'numberTheory.perfectSquareNth', 'numberTheory.isPerfectSquare'],
   },
   'perfectSquareNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the perfect square numbers.',
     returns: {
@@ -2309,6 +2393,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectSquareSeq', 'numberTheory.perfectSquareTakeWhile', 'numberTheory.isPerfectSquare'],
   },
   'isPerfectSquare': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is a perfect square.',
     returns: {
@@ -2334,6 +2419,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectSquareSeq', 'numberTheory.perfectSquareNth', 'numberTheory.isPerfectCube', 'numberTheory.isPerfectPower', 'numberTheory.perfectSquareTakeWhile', 'numberTheory.perfectPower', 'numberTheory.isPolygonal'],
   },
   'perfectCubeSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect cube numbers up to a specified length.',
     returns: {
@@ -2360,6 +2446,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectCubeNth', 'numberTheory.perfectCubeTakeWhile', 'numberTheory.isPerfectCube', 'numberTheory.perfectSquareSeq', 'numberTheory.perfectPowerSeq'],
   },
   'perfectCubeTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect cube numbers while a condition is met.',
     returns: {
@@ -2385,6 +2472,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectCubeSeq', 'numberTheory.perfectCubeNth', 'numberTheory.isPerfectCube'],
   },
   'perfectCubeNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the perfect cube numbers.',
     returns: {
@@ -2410,6 +2498,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectCubeSeq', 'numberTheory.perfectCubeTakeWhile', 'numberTheory.isPerfectCube'],
   },
   'isPerfectCube': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the perfect cube numbers.',
     returns: {
@@ -2436,6 +2525,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectCubeSeq', 'numberTheory.perfectCubeNth', 'numberTheory.isPerfectSquare', 'numberTheory.isPerfectPower', 'numberTheory.perfectCubeTakeWhile', 'numberTheory.perfectPower'],
   },
   'perfectPowerSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect power numbers up to a specified length.',
     returns: {
@@ -2462,6 +2552,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectPowerNth', 'numberTheory.perfectPowerTakeWhile', 'numberTheory.isPerfectPower', 'numberTheory.perfectPower', 'numberTheory.perfectSquareSeq', 'numberTheory.perfectCubeSeq'],
   },
   'perfectPowerTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect power numbers while a condition is met.',
     returns: {
@@ -2487,6 +2578,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectPowerSeq', 'numberTheory.perfectPowerNth', 'numberTheory.isPerfectPower'],
   },
   'perfectPowerNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the perfect power numbers.',
     returns: {
@@ -2512,6 +2604,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectPowerSeq', 'numberTheory.perfectPowerTakeWhile', 'numberTheory.isPerfectPower'],
   },
   'isPerfectPower': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the perfect power numbers.',
     returns: {
@@ -2539,6 +2632,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.perfectPowerSeq', 'numberTheory.perfectPowerNth', 'numberTheory.perfectPower', 'numberTheory.isPerfectSquare', 'numberTheory.isPerfectCube', 'numberTheory.perfectPowerTakeWhile'],
   },
   'polygonalSeq': {
+    type: '(Number, Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the polygonal sequence for a given number of sides and length.',
     returns: {
@@ -2579,6 +2673,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.polygonalNth', 'numberTheory.polygonalTakeWhile', 'numberTheory.isPolygonal', 'numberTheory.perfectSquareSeq'],
   },
   'polygonalTakeWhile': {
+    type: '(Number, (Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the polygonal sequence while a condition is met.',
     returns: {
@@ -2615,6 +2710,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.polygonalSeq', 'numberTheory.polygonalNth', 'numberTheory.isPolygonal'],
   },
   'polygonalNth': {
+    type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the polygonal sequence.',
     returns: {
@@ -2652,6 +2748,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.polygonalSeq', 'numberTheory.polygonalTakeWhile', 'numberTheory.isPolygonal'],
   },
   'isPolygonal': {
+    type: '(Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the polygonal sequence.',
     returns: {
@@ -2691,6 +2788,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.polygonalSeq', 'numberTheory.polygonalNth', 'numberTheory.isPerfectSquare', 'numberTheory.polygonalTakeWhile'],
   },
   'primeSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the prime sequence up to a specified length.',
     returns: {
@@ -2718,6 +2816,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.primeNth', 'numberTheory.primeTakeWhile', 'numberTheory.isPrime', 'numberTheory.compositeSeq', 'numberTheory.mersenneSeq', 'numberTheory.luckySeq'],
   },
   'primeTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the prime sequence while a condition is met.',
     returns: {
@@ -2743,6 +2842,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.primeSeq', 'numberTheory.primeNth', 'numberTheory.isPrime'],
   },
   'primeNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the prime sequence.',
     returns: {
@@ -2769,6 +2869,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.primeSeq', 'numberTheory.primeTakeWhile', 'numberTheory.isPrime'],
   },
   'isPrime': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is prime.',
     returns: {
@@ -2798,6 +2899,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.primeSeq', 'numberTheory.primeNth', 'numberTheory.isComposite', 'numberTheory.primeFactors', 'numberTheory.isMersenne', 'numberTheory.primeTakeWhile', 'numberTheory.isLucky'],
   },
   'recamanSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Recaman sequence up to a specified length.',
     returns: {
@@ -2825,6 +2927,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.recamanNth', 'numberTheory.recamanTakeWhile', 'numberTheory.isRecaman', 'numberTheory.golombSeq'],
   },
   'recamanTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Recaman sequence while a condition is met.',
     returns: {
@@ -2850,6 +2953,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.recamanSeq', 'numberTheory.recamanNth', 'numberTheory.isRecaman'],
   },
   'recamanNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Recaman sequence.',
     returns: {
@@ -2876,6 +2980,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.recamanSeq', 'numberTheory.recamanTakeWhile', 'numberTheory.isRecaman'],
   },
   'isRecaman': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Recaman sequence.',
     returns: {
@@ -2902,6 +3007,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.recamanSeq', 'numberTheory.recamanNth', 'numberTheory.recamanTakeWhile'],
   },
   'sylvesterSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Sylvester sequence up to a specified length.',
     returns: {
@@ -2932,6 +3038,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.sylvesterNth', 'numberTheory.sylvesterTakeWhile', 'numberTheory.isSylvester'],
   },
   'sylvesterTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Sylvester sequence while a condition is met.',
     returns: {
@@ -2957,6 +3064,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.sylvesterSeq', 'numberTheory.sylvesterNth', 'numberTheory.isSylvester'],
   },
   'sylvesterNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Sylvester sequence.',
     returns: {
@@ -2982,6 +3090,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.sylvesterSeq', 'numberTheory.sylvesterTakeWhile', 'numberTheory.isSylvester'],
   },
   'isSylvester': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Sylvester sequence.',
     returns: {
@@ -3008,6 +3117,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.sylvesterSeq', 'numberTheory.sylvesterNth', 'numberTheory.sylvesterTakeWhile'],
   },
   'thueMorseSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Thue-Morse sequence up to a specified length.',
     returns: {
@@ -3035,6 +3145,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.thueMorseNth', 'numberTheory.thueMorseTakeWhile', 'numberTheory.isThueMorse'],
   },
   'thueMorseTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Thue-Morse sequence while a condition is met.',
     returns: {
@@ -3060,6 +3171,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.thueMorseSeq', 'numberTheory.thueMorseNth', 'numberTheory.isThueMorse'],
   },
   'thueMorseNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Thue-Morse sequence.',
     returns: {
@@ -3086,6 +3198,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.thueMorseSeq', 'numberTheory.thueMorseTakeWhile', 'numberTheory.isThueMorse'],
   },
   'isThueMorse': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is part of the Thue-Morse sequence.',
     returns: {
@@ -3111,6 +3224,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.thueMorseSeq', 'numberTheory.thueMorseNth', 'numberTheory.thueMorseTakeWhile'],
   },
   'tribonacciSeq': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the tribonacci sequence up to a specified length.',
     returns: {
@@ -3138,6 +3252,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.tribonacciNth', 'numberTheory.tribonacciTakeWhile', 'numberTheory.isTribonacci', 'numberTheory.fibonacciSeq'],
   },
   'tribonacciTakeWhile': {
+    type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the tribonacci sequence while a condition is met.',
     returns: {
@@ -3163,6 +3278,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.tribonacciSeq', 'numberTheory.tribonacciNth', 'numberTheory.isTribonacci'],
   },
   'tribonacciNth': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the tribonacci sequence.',
     returns: {
@@ -3189,6 +3305,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.tribonacciSeq', 'numberTheory.tribonacciTakeWhile', 'numberTheory.isTribonacci'],
   },
   'isTribonacci': {
+    type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is in the tribonacci sequence.',
     returns: {
@@ -3223,6 +3340,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.tribonacciSeq', 'numberTheory.tribonacciNth', 'numberTheory.isFibonacci', 'numberTheory.tribonacciTakeWhile'],
   },
   'countCombinations': {
+    type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the number of combinations of n items taken k at a time.',
     returns: {
@@ -3251,6 +3369,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.combinations', 'numberTheory.countPermutations', 'numberTheory.factorial', 'numberTheory.multinomial', 'numberTheory.stirlingSecond', 'numberTheory.countPartitions', 'numberTheory.countPowerSet'],
   },
   'combinations': {
+    type: '(Unknown[], Number) -> Unknown[][]',
     category: 'numberTheory',
     description: 'Generates all possible combinations of a specified size from a collection.',
     returns: {
@@ -3292,6 +3411,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.countCombinations', 'numberTheory.permutations', 'numberTheory.powerSet', 'numberTheory.cartesianProduct', 'numberTheory.partitions'],
   },
   'countDerangements': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the number of derangements (permutations where no element appears in its original position) of n items.',
     returns: {
@@ -3317,6 +3437,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.derangements', 'numberTheory.countPermutations', 'numberTheory.factorial'],
   },
   'derangements': {
+    type: '(Unknown[]) -> Unknown[][]',
     category: 'numberTheory',
     description: 'Generates all derangements (permutations where no element appears in its original position) of a set.',
     returns: {
@@ -3344,6 +3465,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.countDerangements', 'numberTheory.permutations'],
   },
   'divisors': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Returns the divisors of a number.',
     returns: {
@@ -3371,6 +3493,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.countDivisors', 'numberTheory.properDivisors', 'numberTheory.sigma', 'numberTheory.primeFactors', 'numberTheory.isDivisibleBy', 'numberTheory.lcm', 'numberTheory.isAbundant', 'numberTheory.isDeficient', 'numberTheory.countProperDivisors'],
   },
   'countDivisors': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of divisors of a number.',
     returns: {
@@ -3397,6 +3520,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.divisors', 'numberTheory.countProperDivisors', 'numberTheory.sigma'],
   },
   'properDivisors': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Returns the proper divisors of a number.',
     returns: {
@@ -3424,6 +3548,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.countProperDivisors', 'numberTheory.divisors', 'numberTheory.isAmicable', 'numberTheory.isPerfect'],
   },
   'countProperDivisors': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of proper divisors of a number.',
     returns: {
@@ -3450,6 +3575,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.properDivisors', 'numberTheory.countDivisors', 'numberTheory.divisors'],
   },
   'factorial': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the factorial of a number.',
     returns: {
@@ -3477,6 +3603,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.factorialSeq', 'numberTheory.factorialNth', 'numberTheory.isFactorial', 'numberTheory.countCombinations', 'numberTheory.countPermutations', 'numberTheory.multinomial', 'numberTheory.countDerangements'],
   },
   'partitions': {
+    type: '(Number) -> Number[][]',
     category: 'numberTheory',
     description: 'Generates all partitions of a number.',
     returns: {
@@ -3503,6 +3630,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.countPartitions', 'numberTheory.partitionSeq', 'numberTheory.combinations', 'numberTheory.isPartition'],
   },
   'countPartitions': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of partitions of a number.',
     returns: {
@@ -3529,6 +3657,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.partitions', 'numberTheory.partitionSeq', 'numberTheory.countCombinations'],
   },
   'permutations': {
+    type: '(Unknown[]) -> Unknown[][]',
     category: 'numberTheory',
     description: 'Generates all permutations of a collection.',
     returns: {
@@ -3560,6 +3689,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.countPermutations', 'numberTheory.combinations', 'numberTheory.derangements', 'numberTheory.cartesianProduct'],
   },
   'countPermutations': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of permutations of n items taken k at a time.',
     returns: {
@@ -3591,6 +3721,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.permutations', 'numberTheory.countCombinations', 'numberTheory.factorial', 'numberTheory.multinomial', 'numberTheory.stirlingFirst', 'numberTheory.countDerangements'],
   },
   'powerSet': {
+    type: '(Unknown[]) -> Unknown[][]',
     category: 'numberTheory',
     description: 'Generates the power set of a collection.',
     returns: {
@@ -3620,6 +3751,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.countPowerSet', 'numberTheory.combinations', 'numberTheory.cartesianProduct'],
   },
   'countPowerSet': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of subsets of a set.',
     returns: {
@@ -3646,6 +3778,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.powerSet', 'numberTheory.countCombinations'],
   },
   'primeFactors': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Returns the prime factors of a number.',
     returns: {
@@ -3673,6 +3806,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.countPrimeFactors', 'numberTheory.distinctPrimeFactors', 'numberTheory.isPrime', 'numberTheory.divisors', 'numberTheory.eulerTotient', 'numberTheory.mobius', 'numberTheory.isComposite', 'numberTheory.countDistinctPrimeFactors'],
   },
   'countPrimeFactors': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of prime factors of a number.',
     returns: {
@@ -3699,6 +3833,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.primeFactors', 'numberTheory.distinctPrimeFactors', 'numberTheory.countDistinctPrimeFactors'],
   },
   'distinctPrimeFactors': {
+    type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Returns the distinct prime factors of a number.',
     returns: {
@@ -3726,6 +3861,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.primeFactors', 'numberTheory.countDistinctPrimeFactors', 'numberTheory.countPrimeFactors'],
   },
   'countDistinctPrimeFactors': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of distinct prime factors of a number.',
     returns: {
@@ -3752,6 +3888,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.distinctPrimeFactors', 'numberTheory.primeFactors', 'numberTheory.countPrimeFactors'],
   },
   'isCoprime': {
+    type: '(Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if two numbers are coprime (i.e., their GCD is 1).',
     returns: {
@@ -3788,6 +3925,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.gcd', 'numberTheory.eulerTotient', 'numberTheory.isDivisibleBy', 'numberTheory.lcm', 'numberTheory.carmichaelLambda'],
   },
   'isDivisibleBy': {
+    type: '(Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is divisible by another number.',
     returns: {
@@ -3820,6 +3958,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.divisors', 'numberTheory.gcd', 'numberTheory.isCoprime'],
   },
   'gcd': {
+    type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the greatest common divisor (GCD) of two numbers.',
     returns: {
@@ -3851,6 +3990,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.lcm', 'numberTheory.extendedGcd', 'numberTheory.isCoprime', 'numberTheory.isDivisibleBy'],
   },
   'lcm': {
+    type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the least common multiple (LCM) of two numbers.',
     returns: {
@@ -3881,6 +4021,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.gcd', 'numberTheory.divisors', 'numberTheory.isCoprime'],
   },
   'multinomial': {
+    type: '(...Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the multinomial coefficient from of a list of numbers representing the sizes of each group.',
     returns: {
@@ -3908,6 +4049,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'isAmicable': {
+    type: '(Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if two numbers are amicable (i.e., the sum of the proper divisors of each number equals the other number).',
     returns: {
@@ -3939,6 +4081,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.properDivisors', 'numberTheory.isPerfect', 'numberTheory.sigma', 'numberTheory.perfectSeq'],
   },
   'eulerTotient': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the Euler\'s totient function (φ(n)) of a number, which counts the integers up to n that are coprime to n.',
     returns: {
@@ -3966,6 +4109,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.isCoprime', 'numberTheory.carmichaelLambda', 'numberTheory.mobius', 'numberTheory.primeFactors', 'numberTheory.mertens'],
   },
   'mobius': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the Möbius function (μ(n)) of a number, which is used in number theory.',
     returns: {
@@ -3996,6 +4140,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.mertens', 'numberTheory.eulerTotient', 'numberTheory.primeFactors'],
   },
   'mertens': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the Mertens function (M(n)) of a number, which is the sum of the Möbius function up to n.',
     returns: {
@@ -4026,6 +4171,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.mobius', 'numberTheory.eulerTotient'],
   },
   'sigma': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the sum of divisors function (σ(n)) of a number, which is the sum of all positive divisors of n.',
     returns: {
@@ -4056,6 +4202,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.divisors', 'numberTheory.isPerfect', 'numberTheory.isAbundant', 'numberTheory.isDeficient', 'numberTheory.isAmicable', 'numberTheory.countDivisors'],
   },
   'carmichaelLambda': {
+    type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the Carmichael function (λ(n)) of a number, which is the smallest positive integer m such that a^m ≡ 1 (mod n) for all integers a coprime to n.',
     returns: {
@@ -4086,6 +4233,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.eulerTotient', 'numberTheory.modExp', 'numberTheory.isCoprime'],
   },
   'cartesianProduct': {
+    type: '(...Unknown[]) -> Unknown[][]',
     category: 'numberTheory',
     description: 'Calculates the Cartesian product of two or more sets.',
     returns: {
@@ -4120,6 +4268,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.combinations', 'numberTheory.powerSet', 'numberTheory.permutations'],
   },
   'perfectPower': {
+    type: '(Number) -> (Number[] | Null)',
     category: 'numberTheory',
     description: 'Returns a tuple of the base and exponent if the number is a perfect power, otherwise returns null.',
     returns: {
@@ -4150,6 +4299,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.isPerfectPower', 'numberTheory.perfectPowerSeq', 'numberTheory.isPerfectSquare', 'numberTheory.isPerfectCube'],
   },
   'modExp': {
+    type: '(Number, Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the modular exponentiation of a base raised to an exponent modulo a modulus.',
     returns: {
@@ -4184,6 +4334,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.modInv', 'numberTheory.carmichaelLambda', 'numberTheory.chineseRemainder'],
   },
   'modInv': {
+    type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the modular multiplicative inverse of a number modulo another number.',
     returns: {
@@ -4214,6 +4365,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.modExp', 'numberTheory.extendedGcd', 'numberTheory.chineseRemainder'],
   },
   'extendedGcd': {
+    type: '(Number, Number) -> Number[]',
     category: 'numberTheory',
     description: 'Calculates the extended greatest common divisor (GCD) of two numbers, returning the GCD and the coefficients of Bézout\'s identity.',
     returns: {
@@ -4245,6 +4397,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.gcd', 'numberTheory.modInv', 'numberTheory.chineseRemainder'],
   },
   'chineseRemainder': {
+    type: '(Number[], Number[]) -> Number',
     category: 'numberTheory',
     description: 'Solves a system of simultaneous congruences using the Chinese Remainder Theorem.',
     returns: {
@@ -4285,6 +4438,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.modExp', 'numberTheory.modInv', 'numberTheory.extendedGcd'],
   },
   'stirlingFirst': {
+    type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the Stirling numbers of the first kind, which count the number of permutations of n elements with k cycles.',
     returns: {
@@ -4318,6 +4472,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.stirlingSecond', 'numberTheory.bellSeq', 'numberTheory.countPermutations'],
   },
   'stirlingSecond': {
+    type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the Stirling numbers of the second kind, which count the number of ways to partition n elements into k non-empty subsets.',
     returns: {

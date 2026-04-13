@@ -14,8 +14,9 @@ import type { AstNode, Ast, SourceMap, SourceMapPosition } from '../parser/types
 import { resolveSourceCodeInfo } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
-import { initBuiltinTypes } from './builtinTypes'
+import { initBuiltinTypes, registerModuleType } from './builtinTypes'
 import { initBuiltinEffects } from './effectTypes'
+import { allBuiltinModules } from '../allModules'
 import { builtin } from '../builtin'
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,10 @@ export function initTypeSystem(): void {
   initialized = true
   initBuiltinTypes(builtin.normalExpressions)
   initBuiltinEffects()
+  // Register module export types so import("math") etc. are typed
+  for (const mod of allBuiltinModules) {
+    registerModuleType(mod.name, mod.functions)
+  }
 }
 
 // ---------------------------------------------------------------------------

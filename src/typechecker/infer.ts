@@ -21,7 +21,7 @@ import {
 } from './types'
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
-import { getBuiltinType } from './builtinTypes'
+import { getBuiltinType, getModuleType } from './builtinTypes'
 import { parseTypeAnnotation } from './parseType'
 import { getEffectReturnType, getEffectArgType } from './effectTypes'
 
@@ -759,9 +759,12 @@ export function inferExpr(
       break
 
     // --- Import ---
-    case NodeTypes.Import:
-      result = Unknown // Module types are future work
+    case NodeTypes.Import: {
+      // import("math") → record of module exports with their declared types
+      const moduleName = payload as string
+      result = getModuleType(moduleName)
       break
+    }
 
     // --- Handler (handler...end creates a handler value) ---
     case NodeTypes.Handler: {

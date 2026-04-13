@@ -4,6 +4,7 @@ import handlerModuleSource from './effectHandler.dvala'
 
 const handlerDocs: Record<string, FunctionDocs> = {
   'retry': {
+    type: '(Number, (() -> Unknown)) -> Unknown',
     category: 'effectHandler',
     returns: { type: 'any' },
     args: {
@@ -17,6 +18,7 @@ const handlerDocs: Record<string, FunctionDocs> = {
     ],
   },
   'fallback': {
+    type: '(Unknown) -> (((() -> Unknown)) -> Unknown)',
     category: 'effectHandler',
     returns: { type: 'function' },
     args: { value: { type: 'any' } },
@@ -31,6 +33,7 @@ const handlerDocs: Record<string, FunctionDocs> = {
 
 const chooseDocs: Record<string, FunctionDocs> = {
   'chooseAll': {
+    type: '((() -> Unknown)) -> Unknown[]',
     category: 'effectHandler',
     returns: { type: 'array' },
     args: { bodyFn: { type: 'function' } },
@@ -42,6 +45,7 @@ const chooseDocs: Record<string, FunctionDocs> = {
     ],
   },
   'chooseFirst': {
+    type: '((() -> Unknown)) -> Unknown',
     category: 'effectHandler',
     returns: { type: 'any' },
     args: { bodyFn: { type: 'function' } },
@@ -52,6 +56,7 @@ const chooseDocs: Record<string, FunctionDocs> = {
     ],
   },
   'chooseRandom': {
+    type: '((() -> Unknown)) -> Unknown',
     category: 'effectHandler',
     returns: { type: 'any' },
     args: { bodyFn: { type: 'function' } },
@@ -62,6 +67,7 @@ const chooseDocs: Record<string, FunctionDocs> = {
     ],
   },
   'chooseTake': {
+    type: '(Number, (() -> Unknown)) -> Unknown[]',
     category: 'effectHandler',
     returns: { type: 'array' },
     args: {

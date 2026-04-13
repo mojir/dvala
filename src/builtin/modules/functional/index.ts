@@ -35,6 +35,7 @@ const functionalUtilsNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
+      type: '(...((...Unknown) -> Unknown)) -> ((...Unknown) -> Unknown[])',
       category: 'functional',
       returns: { type: 'function' },
       args: {
@@ -86,6 +87,7 @@ juxt(+, *, min, max) apply range(1, 11)`,
     },
     arity: toFixedArity(1),
     docs: {
+      type: '((...Unknown) -> Unknown) -> ((...Unknown) -> Boolean)',
       category: 'functional',
       returns: { type: 'function' },
       args: { fun: { type: 'function' } },
@@ -113,6 +115,7 @@ juxt(+, *, min, max) apply range(1, 11)`,
     },
     arity: { min: 1 },
     docs: {
+      type: '(...(Unknown -> Boolean)) -> (Unknown -> Boolean)',
       category: 'functional',
       returns: { type: 'function' },
       args: {
@@ -155,6 +158,7 @@ everyPred(isString, -> count($) > 3)(
     },
     arity: { min: 1 },
     docs: {
+      type: '(...(Unknown -> Boolean)) -> (Unknown -> Boolean)',
       category: 'functional',
       returns: { type: 'function' },
       args: {
@@ -196,6 +200,7 @@ everyPred(isString, -> count($) > 3)(
     },
     arity: { min: 2 },
     docs: {
+      type: '((...Unknown) -> Unknown, ...Unknown) -> ((...Unknown) -> Unknown)',
       category: 'functional',
       returns: { type: 'function' },
       args: {
