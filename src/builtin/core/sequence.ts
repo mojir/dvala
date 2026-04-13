@@ -395,7 +395,7 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
     evaluate: () => { throw new Error('some is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
-      type: '(String | Unknown[] | Null, (Unknown) -> Boolean) -> Unknown',
+      type: '(A[], (A) -> Boolean) -> A',
       category: 'sequence',
       returns: { type: 'any' },
       args: {
@@ -413,21 +413,21 @@ some(
   ["Albert", "Mojir", 160, [1, 2]],
   isString
 )`,
-        { code: `
+        `
 some(
   [5, 10, 15, 20],
   -> $ > 10
-)`, noCheck: true },
-        { code: `
+)`,
+        `
 some(
   [1, 2, 3, 4],
   -> $ > 10
-)`, noCheck: true },
-        { code: `
+)`,
+        `
 some(
   [],
   -> $ > 10
-)`, noCheck: true },
+)`,
         { code: `
 some(
   null,
@@ -440,7 +440,7 @@ some(
     evaluate: () => { throw new Error('sort is implemented in Dvala') },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '((Unknown[]) -> Unknown[]) & ((Unknown[], (Unknown, Unknown) -> Number) -> Unknown[])',
+      type: '((A[]) -> A[]) & ((A[], (A, A) -> Number) -> A[])',
       category: 'sequence',
       returns: { type: 'any', rest: true },
       args: {
@@ -456,18 +456,18 @@ some(
       description: 'Returns a new sequence with the elements from `seq` sorted according to `fun`. If no `fun` is supplied, builtin `compare` will be used.',
       seeAlso: ['sequence.sortBy', 'compare', 'reverse', 'vector.sortIndices'],
       examples: [
-        { code: '[3, 1, 2] sort (a, b) -> b - a', noCheck: true },
+        '[3, 1, 2] sort (a, b) -> b - a',
         'sort([3, 1, 2])',
-        { code: `
+        `
 sort(
   [3, 1, 2],
   (a, b) -> if a < b then -1 else if a > b then 1 else -1 end
-)`, noCheck: true },
-        { code: `
+)`,
+        `
 sort(
   [3, 1, 2],
   (a, b) -> if a > b then -1 else if a < b then 1 else -1 end
-)`, noCheck: true },
+)`,
       ],
     },
   },
@@ -606,7 +606,7 @@ sort(
     evaluate: () => { throw new Error('takeWhile is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
-      type: '(String | Unknown[], (Unknown) -> Boolean) -> String | Unknown[]',
+      type: '(A[], (A) -> Boolean) -> A[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -619,14 +619,14 @@ sort(
       description: 'Returns the members of `seq` in order, stopping before the first one for which `predicate` returns a falsy value.',
       seeAlso: ['take', 'dropWhile', 'sequence.splitWith'],
       examples: [
-        { code: `takeWhile(
+        `takeWhile(
   [1, 2, 3, 2, 1],
   -> $ < 3
-)`, noCheck: true },
-        { code: `takeWhile(
+)`,
+        `takeWhile(
   [1, 2, 3, 2, 1],
   -> $ > 3
-)`, noCheck: true },
+)`,
       ],
     },
   },
@@ -634,7 +634,7 @@ sort(
     evaluate: () => { throw new Error('dropWhile is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
-      type: '(String | Unknown[], (Unknown) -> Boolean) -> String | Unknown[]',
+      type: '(A[], (A) -> Boolean) -> A[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -647,14 +647,14 @@ sort(
       description: 'Returns the members of `seq` in order, skipping the fist elements for witch the `predicate` returns a truethy value.',
       seeAlso: ['drop', 'takeWhile', 'sequence.splitWith'],
       examples: [
-        { code: `dropWhile(
+        `dropWhile(
   [1, 2, 3, 2, 1],
   -> $ < 3
-)`, noCheck: true },
-        { code: `dropWhile(
+)`,
+        `dropWhile(
   [1, 2, 3, 2, 1],
   -> $ > 3
-)`, noCheck: true },
+)`,
       ],
     },
   },

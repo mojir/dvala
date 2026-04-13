@@ -74,6 +74,9 @@ export function parseFunctionTypeAnnotation(input: string): ParsedFunctionType {
 class TypeParser {
   private input: string
   pos: number
+  /** Maps type variable names (A, B, T, etc.) to shared Var nodes within this annotation. */
+  private typeVarMap = new Map<string, Type>()
+  private nextVarId = 0
 
   constructor(input: string) {
     this.input = input
@@ -499,14 +502,16 @@ class TypeParser {
   // --- Type variable / named type ---
 
   private makeTypeRef(name: string): Type {
-    // Single uppercase letter or common type variable names → type variable
-    // We use a simple heuristic: single uppercase letters are type variables
+    // Single uppercase letter = type variable (A, B, T, K, V, etc.)
+    // Same letter within one annotation → same variable (shared identity)
     if (name.length === 1 && name >= 'A' && name <= 'Z') {
-      // Type variables in annotations are represented as special types.
-      // For now, treat them as Unknown (will be handled properly when generics land).
-      return Unknown
+      const existing = this.typeVarMap.get(name)
+      if (existing) return existing
+      const v: Type = { tag: 'Var', id: this.nextVarId++, level: 0, lowerBounds: [], upperBounds: [] }
+      this.typeVarMap.set(name, v)
+      return v
     }
-    // Multi-char names could be type aliases — also Unknown for now
+    // Multi-char names could be type aliases — Unknown for now
     return Unknown
   }
 

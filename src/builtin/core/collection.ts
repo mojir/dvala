@@ -50,7 +50,7 @@ export const collectionNormalExpression: BuiltinNormalExpressions = {
     evaluate: () => { throw new Error('filter is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
-      type: '(Unknown[] | {...}, (Unknown) -> Boolean) -> Unknown[] | {...}',
+      type: '(A[], (A) -> Boolean) -> A[]',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -68,11 +68,11 @@ filter(
   ["Albert", "Mojir", 160, [1, 2]],
   isString
 )`,
-        { code: `
+        `
 filter(
   [5, 10, 15, 20],
   -> $ > 10
-)`, noCheck: true },
+)`,
         { code: `
 filter(
   { a: 1, b: 2 },
@@ -85,7 +85,7 @@ filter(
     evaluate: () => { throw new Error('map is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
-      type: '((Unknown[] | {...}, (Unknown) -> Unknown) -> Unknown[] | {...}) & ((Unknown[] | {...}, Unknown[] | {...}, (Unknown, Unknown) -> Unknown) -> Unknown[] | {...})',
+      type: '((A[], (A) -> B) -> B[]) & ((A[], A[], (A, A) -> B) -> B[])',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -98,11 +98,11 @@ filter(
       description: 'Creates a new collection populated with the results of calling `fun` on every element in `colls`.',
       seeAlso: ['collection.mapi', 'filter', 'reduce', 'sequence.mapcat', 'grid.cellMap', 'grid.cellMapi'],
       examples: [
-        { code: '[1, 2, 3] map -', noCheck: true },
-        { code: '[1, 2, 3] map -> -($)', noCheck: true },
+        '[1, 2, 3] map -',
+        '[1, 2, 3] map -> -($)',
         'map(["Albert", "Mojir", 42], str)',
-        { code: 'map([1, 2, 3], inc)', noCheck: true },
-        { code: 'map([1, 2, 3], [1, 10, 100], *)', noCheck: true },
+        'map([1, 2, 3], inc)',
+        'map([1, 2, 3], [1, 10, 100], *)',
         { code: 'map({ a: 1, b: 2 }, inc)', noCheck: true },
         { code: 'map({ a: 1, b: 2 }, { a: 10, b: 20 }, +)', noCheck: true },
       ],
@@ -112,7 +112,7 @@ filter(
     evaluate: () => { throw new Error('reduce is implemented in Dvala') },
     arity: toFixedArity(3),
     docs: {
-      type: '(Unknown[] | {...}, (A, Unknown) -> A, A) -> A',
+      type: '(A[], (B, A) -> B, B) -> B',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -124,14 +124,14 @@ filter(
       description: 'Runs `fun` function on each element of the `coll`, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value.',
       seeAlso: ['collection.reduceRight', 'collection.reducei', 'collection.reductions', 'map', 'grid.cellReduce', 'grid.cellReducei'],
       examples: [
-        { code: 'reduce([1, 2, 3], +, 0)', noCheck: true },
-        { code: 'reduce([], +, 0)', noCheck: true },
+        'reduce([1, 2, 3], +, 0)',
+        'reduce([], +, 0)',
         { code: 'reduce({ a: 1, b: 2 }, +, 0)', noCheck: true },
-        { code: `
+        `
 reduce(
   [1, 2, 3, 4, 5, 6, 7, 8, 9],
   (result, value) -> result + (if isEven(value) then value else 0 end),
-  0)`, noCheck: true },
+  0)`,
       ],
     },
   },

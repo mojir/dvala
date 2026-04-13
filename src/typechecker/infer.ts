@@ -458,7 +458,10 @@ export function inferExpr(
     case NodeTypes.Builtin: {
       const builtinName = payload as string
       const info = getBuiltinType(builtinName)
-      result = info.type
+      // Freshen type variables from the annotation so each use gets fresh copies.
+      // Without this, type vars from polymorphic signatures (A[], (A)->B) -> B[]
+      // would accumulate bounds across all call sites.
+      result = freshenAnnotationVars(ctx, info.type)
       break
     }
 
@@ -774,7 +777,7 @@ export function inferExpr(
     case NodeTypes.Import: {
       // import("math") → record of module exports with their declared types
       const moduleName = payload as string
-      result = getModuleType(moduleName)
+      result = freshenAnnotationVars(ctx, getModuleType(moduleName))
       break
     }
 
@@ -858,6 +861,64 @@ export function inferExpr(
   }
 
   return result
+}
+
+// ---------------------------------------------------------------------------
+// Freshen annotation type variables
+// ---------------------------------------------------------------------------
+
+/**
+ * Create fresh copies of all type variables in a parsed annotation type.
+ * Each call to a polymorphic builtin like filter(A[], (A)->Boolean) -> A[]
+ * needs its own set of type variables so constraints from one call don't
+ * leak into another.
+ */
+function freshenAnnotationVars(ctx: InferenceContext, t: Type): Type {
+  if (!containsVars(t)) return t
+  return freshenAllVars(ctx, t, new Map())
+}
+
+function containsVars(t: Type): boolean {
+  switch (t.tag) {
+    case 'Var': return true
+    case 'Function': return t.params.some(containsVars) || containsVars(t.ret)
+    case 'Record': return [...t.fields.values()].some(containsVars)
+    case 'Array': return containsVars(t.element)
+    case 'Tuple': return t.elements.some(containsVars)
+    case 'Union':
+    case 'Inter': return t.members.some(containsVars)
+    case 'Neg': return containsVars(t.inner)
+    default: return false
+  }
+}
+
+function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<number, TypeVar>): Type {
+  switch (t.tag) {
+    case 'Var': {
+      const existing = mapping.get(t.id)
+      if (existing) return existing
+      const fresh = ctx.freshVar()
+      mapping.set(t.id, fresh)
+      return fresh
+    }
+    case 'Function':
+      return fn(
+        t.params.map(p => freshenAllVars(ctx, p, mapping)),
+        freshenAllVars(ctx, t.ret, mapping),
+        t.effects,
+      )
+    case 'Record': {
+      const fields = new Map<string, Type>()
+      for (const [k, v] of t.fields) fields.set(k, freshenAllVars(ctx, v, mapping))
+      return { tag: 'Record', fields, open: t.open }
+    }
+    case 'Array': return array(freshenAllVars(ctx, t.element, mapping))
+    case 'Tuple': return tuple(t.elements.map(e => freshenAllVars(ctx, e, mapping)))
+    case 'Union': return union(...t.members.map(m => freshenAllVars(ctx, m, mapping)))
+    case 'Inter': return { tag: 'Inter', members: t.members.map(m => freshenAllVars(ctx, m, mapping)) }
+    case 'Neg': return { tag: 'Neg', inner: freshenAllVars(ctx, t.inner, mapping) }
+    default: return t
+  }
 }
 
 // ---------------------------------------------------------------------------
