@@ -15,7 +15,7 @@ import type { Type, EffectSet } from './types'
 import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
-  atom, literal, fn, array, tuple, union, handlerType,
+  atom, literal, fn, array, tuple, union, inter, handlerType,
   typeToString, typeEquals,
   subtractEffects,
 } from './types'
@@ -934,16 +934,25 @@ export function inferExpr(
     case NodeTypes.WithHandler: {
       const [handlerExpr, bodyExprs] = payload as [AstNode, AstNode[]]
       const inferredHandlerType = inferExpr(handlerExpr, ctx, env, typeMap)
+      const handlerAlternatives = getHandlerAlternatives(inferredHandlerType)
 
       let bodyType: Type = NullType
       for (const bodyNode of bodyExprs) {
         bodyType = inferExpr(bodyNode, ctx, env, typeMap)
       }
 
-      if (inferredHandlerType.tag === 'Handler') {
-        constrain(ctx, bodyType, inferredHandlerType.body)
-        ctx.handleEffects(new Set(inferredHandlerType.handled.keys()))
-        result = inferredHandlerType.output
+      if (handlerAlternatives.length > 0) {
+        const requiredBodyType = handlerAlternatives.length === 1
+          ? handlerAlternatives[0]!.body
+          : inter(...handlerAlternatives.map(handler => handler.body))
+        constrain(ctx, bodyType, requiredBodyType)
+
+        const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
+        ctx.handleEffects(new Set(guaranteedHandled.keys()))
+
+        result = handlerAlternatives.length === 1
+          ? handlerAlternatives[0]!.output
+          : union(...handlerAlternatives.map(handler => handler.output))
       } else {
         result = bodyType
       }
@@ -1237,6 +1246,48 @@ function restoreVarBounds(snapshot: VarBoundSnapshot[]): void {
 // ---------------------------------------------------------------------------
 // Effect helpers
 // ---------------------------------------------------------------------------
+
+function getHandlerAlternatives(type: Type): Extract<Type, { tag: 'Handler' }>[] {
+  const resolved = resolveHandlerCarrier(type)
+  if (resolved.tag === 'Handler') return [resolved]
+  if (resolved.tag === 'Union' && resolved.members.every(member => member.tag === 'Handler')) {
+    return resolved.members
+  }
+  return []
+}
+
+function resolveHandlerCarrier(type: Type, visited = new Set<number>()): Type {
+  if (type.tag === 'Var') {
+    if (visited.has(type.id)) return type
+    visited.add(type.id)
+    if (type.lowerBounds.length === 0) return type
+    const resolvedBounds = type.lowerBounds.map(bound => resolveHandlerCarrier(bound, visited))
+    return resolvedBounds.length === 1 ? resolvedBounds[0]! : union(...resolvedBounds)
+  }
+  if (type.tag === 'Alias') return resolveHandlerCarrier(type.expanded, visited)
+  return type
+}
+
+function intersectHandledSignatures(
+  handlers: Extract<Type, { tag: 'Handler' }>[],
+): Map<string, { argType: Type; retType: Type }> {
+  if (handlers.length === 0) return new Map()
+
+  const intersection = new Map<string, { argType: Type; retType: Type }>()
+  const [first, ...rest] = handlers
+  for (const [name, sig] of first!.handled) {
+    const shared = rest.every(handler => {
+      const other = handler.handled.get(name)
+      return other
+        && typeEquals(sig.argType, other.argType)
+        && typeEquals(sig.retType, other.retType)
+    })
+    if (shared) {
+      intersection.set(name, sig)
+    }
+  }
+  return intersection
+}
 
 // ---------------------------------------------------------------------------
 // Match narrowing helpers

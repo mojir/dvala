@@ -799,6 +799,99 @@ describe('inference — effect declarations and handler typing', () => {
 
     expect(typeToString(t)).toBe('{ok: true, value: Number}')
   })
+
+  it('dynamic handler choice subtracts only guaranteed handled effects', () => {
+    declareEffect('test.common', StringType, NullType)
+    declareEffect('test.extra', StringType, NullType)
+
+    const t = inferAndExpand(`
+      let useExtra = true;
+      let h =
+        if useExtra then
+          handler
+            @test.common(msg) -> resume(null)
+            @test.extra(msg) -> resume(null)
+          end
+        else
+          handler
+            @test.common(msg) -> resume(null)
+          end
+        end;
+
+      () -> do
+        with h;
+        perform(@test.common, "hello");
+        perform(@test.extra, "world");
+        1
+      end
+    `)
+
+    expect(t.tag).toBe('Function')
+    if (t.tag === 'Function') {
+      expect(t.effects.effects.has('test.common')).toBe(false)
+      expect(t.effects.effects.has('test.extra')).toBe(true)
+    }
+  })
+})
+
+describe('typecheck — imported handler parity', () => {
+  const files = new Map<string, string>([
+    ['./handlers.dvala', `
+      let h =
+        handler
+          @test.log(msg) -> resume(null)
+        end;
+
+      { h };
+    `],
+  ])
+
+  const dvala = createDvala({
+    debug: true,
+    fileResolver: (importPath: string) => {
+      const normalized = importPath.endsWith('.dvala') ? importPath : `${importPath}.dvala`
+      const source = files.get(normalized) ?? files.get(importPath)
+      if (!source) throw new Error(`File not found: ${importPath}`)
+      return source
+    },
+  })
+
+  it('imported handlers infer the same as local handlers', () => {
+    const local = dvala.typecheck(`
+      effect @test.log(String) -> Null;
+      type PureNumberFn = ((Number) -> Number);
+
+      let h =
+        handler
+          @test.log(msg) -> resume(null)
+        end;
+
+      let resultFn: PureNumberFn = (x) -> do
+        with h;
+        perform(@test.log, "hello");
+        x + 1
+      end;
+
+      resultFn
+    `, { fileResolverBaseDir: '.' })
+
+    const imported = dvala.typecheck(`
+      effect @test.log(String) -> Null;
+      type PureNumberFn = ((Number) -> Number);
+      let { h } = import("./handlers");
+
+      let resultFn: PureNumberFn = (x) -> do
+        with h;
+        perform(@test.log, "hello");
+        x + 1
+      end;
+
+      resultFn
+    `, { fileResolverBaseDir: '.' })
+
+    expect(local.diagnostics).toHaveLength(0)
+    expect(imported.diagnostics).toHaveLength(0)
+  })
 })
 
 // ---------------------------------------------------------------------------
