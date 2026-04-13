@@ -710,6 +710,8 @@ export function activate(context: vscode.ExtensionContext): void {
             const vdiag = new vscode.Diagnostic(
               range,
               diag.message,
+              // Type errors are intentionally shown as warnings (not errors) because
+              // they're non-blocking — the code still runs. Same philosophy as TypeScript.
               diag.severity === 'error' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Information,
             )
             vdiag.source = 'dvala-types'

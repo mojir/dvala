@@ -104,6 +104,19 @@ export class InferenceContext {
   /** Reset the constraint cache (for fresh inference passes). */
   resetCache(): void { this.constraintCache.clear() }
 
+  /** Snapshot the constraint cache size (for overload rollback). */
+  snapshotCacheSize(): number { return this.constraintCache.size }
+
+  /** Roll back the constraint cache to a previous size by removing recent entries. */
+  restoreCacheSize(size: number): void {
+    if (this.constraintCache.size > size) {
+      // Set maintains insertion order — remove entries added after the snapshot
+      const entries = [...this.constraintCache]
+      this.constraintCache.clear()
+      for (let i = 0; i < size; i++) this.constraintCache.add(entries[i]!)
+    }
+  }
+
   /**
    * Check if a constraint pair has been seen before (cycle guard).
    * Returns true if the pair was already in the cache.
@@ -191,16 +204,17 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   if (lhs.tag === 'Inter') {
     const errors: TypeInferenceError[] = []
     for (const m of lhs.members) {
-      // Snapshot bounds of all variables in rhs (they might get modified)
-      const snapshot = snapshotVarBounds(rhs)
+      // Snapshot bounds + cache so a failed overload doesn't leak side effects
+      const boundsSnapshot = snapshotVarBounds(rhs)
+      const cacheSnapshot = ctx.snapshotCacheSize()
       try {
         constrain(ctx, m, rhs)
         return // at least one member worked — done
       } catch (e) {
         if (e instanceof TypeInferenceError) {
           errors.push(e)
-          // Roll back variable bounds from the failed attempt
-          restoreVarBounds(snapshot)
+          restoreVarBounds(boundsSnapshot)
+          ctx.restoreCacheSize(cacheSnapshot)
         } else {
           throw e
         }
@@ -756,6 +770,20 @@ export function inferExpr(
         }
       }
 
+      // Exhaustiveness check: if remainder is not Never after all literal/atom
+      // patterns, the match may not cover all cases. Only fires when the match
+      // value is a union of literals/atoms (where exhaustiveness is meaningful).
+      if (remainingType.tag !== 'Never'
+        && remainingType.tag !== 'Unknown'
+        && remainingType.tag !== 'Var'
+        && (remainingType.tag === 'Atom' || remainingType.tag === 'Literal'
+          || (remainingType.tag === 'Union' && remainingType.members.every(
+            m => m.tag === 'Atom' || m.tag === 'Literal')))) {
+        throw new TypeInferenceError(
+          `Non-exhaustive match — unhandled: ${typeToString(remainingType)}`,
+        )
+      }
+
       result = branchTypes.length > 0 ? union(...branchTypes) : Never
       break
     }
@@ -957,6 +985,7 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<number, TypeV
       return fn(
         t.params.map(p => freshenInner(ctx, p, mapping)),
         freshenInner(ctx, t.ret, mapping),
+        t.effects,
       )
     case 'Record': {
       const fields = new Map<string, Type>()
@@ -973,6 +1002,8 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<number, TypeV
       return union(...t.members.map(m => freshenInner(ctx, m, mapping)))
     case 'Inter':
       return { tag: 'Inter', members: t.members.map(m => freshenInner(ctx, m, mapping)) }
+    case 'Neg':
+      return { tag: 'Neg', inner: freshenInner(ctx, t.inner, mapping) }
     default:
       return t
   }
@@ -988,6 +1019,7 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Tuple': return t.elements.some(e => containsVarsAboveLevel(e, level))
     case 'Union':
     case 'Inter': return t.members.some(m => containsVarsAboveLevel(m, level))
+    case 'Neg': return containsVarsAboveLevel(t.inner, level)
     default: return false
   }
 }
@@ -1226,6 +1258,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
       return fn(
         t.params.map(p => expandType(p, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))),
         expandType(t.ret, polarity, new Set(visited)),
+        t.effects,
       )
     case 'Record': {
       const fields = new Map<string, Type>()

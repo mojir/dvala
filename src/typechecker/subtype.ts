@@ -357,19 +357,21 @@ function cacheKey(s: Type, t: Type): string {
   return `${typeId(s)}<:${typeId(t)}`
 }
 
-/** Quick identifier for a type (for cache keys). */
+/** Structural identifier for a type (for cache keys).
+ * Must be unique enough that distinct types don't collide — otherwise
+ * the cycle-detection cache returns false positives. */
 function typeId(t: Type): string {
   switch (t.tag) {
     case 'Primitive': return `P:${t.name}`
     case 'Atom': return `A:${t.name}`
     case 'Literal': return `L:${t.value}`
-    case 'Function': return `F:${t.params.length}`
-    case 'Tuple': return `T:${t.elements.length}`
-    case 'Record': return `R:${t.fields.size}:${t.open}`
-    case 'Array': return 'Ar'
+    case 'Function': return `F(${t.params.map(typeId).join(',')})${typeId(t.ret)}`
+    case 'Tuple': return `T[${t.elements.map(typeId).join(',')}]`
+    case 'Record': return `R{${[...t.fields.entries()].map(([k, v]) => `${k}:${typeId(v)}`).join(',')}${t.open ? ',..' : ''}}`
+    case 'Array': return `Ar[${typeId(t.element)}]`
     case 'Regex': return 'Rx'
-    case 'Union': return `U:${t.members.length}`
-    case 'Inter': return `I:${t.members.length}`
+    case 'Union': return `U(${t.members.map(typeId).join('|')})`
+    case 'Inter': return `I(${t.members.map(typeId).join('&')})`
     case 'Neg': return `N:${typeId(t.inner)}`
     case 'Unknown': return '?'
     case 'Never': return '!'

@@ -27,8 +27,8 @@ export interface EffectSet {
   open: boolean
 }
 
-/** The empty (pure) effect set. */
-export const PureEffects: EffectSet = { effects: new Set(), open: false }
+/** The empty (pure) effect set. Frozen to prevent accidental mutation. */
+export const PureEffects: EffectSet = Object.freeze({ effects: Object.freeze(new Set<string>()), open: false })
 
 export type Type =
   // Base types (sets of runtime values)

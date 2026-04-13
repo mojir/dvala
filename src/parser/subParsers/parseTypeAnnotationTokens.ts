@@ -43,9 +43,11 @@ export function collectTypeAnnotation(ctx: ParserContext): string {
   return parts.join(' ').trim()
 }
 
-/** Check if the current token is `:` indicating a type annotation (not destructuring). */
+/**
+ * Check if the current token is `:` indicating a type annotation.
+ * Only valid in the symbol binding case (not inside object patterns,
+ * where `:` means nested destructuring — that's handled separately).
+ */
 export function isTypeAnnotationColon(ctx: ParserContext): boolean {
-  const token = ctx.tryPeek()
-  if (!isOperatorToken(token, ':')) return false
-  return true
+  return isOperatorToken(ctx.tryPeek(), ':')
 }
