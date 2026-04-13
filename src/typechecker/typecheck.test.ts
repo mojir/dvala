@@ -153,6 +153,16 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('nullable annotation with ? syntax: let x: Number? = null', () => {
+    const result = dvala.typecheck('let x: Number? = null; x')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('nullable ? rejects non-matching type', () => {
+    const result = dvala.typecheck('let x: Number? = "hello"; x')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
   it('nullable annotation rejects non-matching type', () => {
     const result = dvala.typecheck('let x: Number | Null = "hello"; x')
     expect(result.diagnostics.length).toBeGreaterThan(0)

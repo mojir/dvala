@@ -44,6 +44,7 @@ const otherOperators = [
   '...', // rest
   '?.', // safe property accessor (returns null for missing key)
   '.', // property accessor (strict — throws on missing key)
+  '?', // nullable type suffix (Number? = Number | Null)
   ',', // item separator
   '=', // assignment
   ':', // property assignment
