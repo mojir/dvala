@@ -13,6 +13,7 @@ import type { ParserContext } from '../ParserContext'
 export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArrow?: boolean; stopAtRParen?: boolean }): string {
   const parts: string[] = []
   let depth = 0 // track balanced parens/brackets/braces
+  let angleDepth = 0 // track Handler<...> and future generic type args
   const stopAtArrow = options?.stopAtArrow ?? false
   const stopAtRParen = options?.stopAtRParen ?? true
 
@@ -21,7 +22,7 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
     if (!token) break
 
     // Stop at delimiters (only at top level — not inside balanced groups)
-    if (depth === 0) {
+    if (depth === 0 && angleDepth === 0) {
       if (isOperatorToken(token, '=')) break
       if (isOperatorToken(token, ',')) break
       if (stopAtArrow && isOperatorToken(token, '->')) break
@@ -33,6 +34,8 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
     // Track nesting
     if (token[0] === 'LParen' || token[0] === 'LBracket' || token[0] === 'LBrace') depth++
     if (token[0] === 'RParen' || token[0] === 'RBracket' || token[0] === 'RBrace') depth--
+    if (isOperatorToken(token, '<')) angleDepth++
+    if (isOperatorToken(token, '>') && angleDepth > 0) angleDepth--
 
     // Reconstruct the token text
     if (token[0] === 'Atom') parts.push(`:${token[1]}`)

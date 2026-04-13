@@ -27,8 +27,9 @@ import type { Type } from './types'
 import {
   NumberType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, AnyFunction,
-  atom, literal, fn, array, tuple, union, inter, neg, effectSet,
+  atom, literal, fn, array, tuple, union, inter, neg, effectSet, handlerType,
 } from './types'
+import { getEffectDeclaration } from './effectTypes'
 
 // ---------------------------------------------------------------------------
 // Type alias registry
@@ -252,6 +253,7 @@ class TypeParser {
       case 'Null': return NullType
       case 'Regex': return RegexType
       case 'Function': return AnyFunction
+      case 'Handler': return this.parseHandlerType()
       case 'Unknown': return Unknown
       case 'Never': return Never
       case 'true': return literal(true)
@@ -394,6 +396,42 @@ class TypeParser {
     }
     const value = Number(this.input.slice(start, this.pos))
     return literal(value)
+  }
+
+  private parseHandlerType(): Type {
+    this.consume('<')
+    const bodyType = this.parseType()
+
+    this.skipWhitespace()
+    this.consume(',')
+    const outputType = this.parseType()
+
+    this.skipWhitespace()
+    this.consume(',')
+    const handledEffects = this.tryParseEffectSet()
+    if (!handledEffects) {
+      throw this.error('Expected effect set in Handler type')
+    }
+    if (handledEffects.open) {
+      throw this.error('Open effect sets are not supported in Handler types')
+    }
+
+    this.skipWhitespace()
+    this.consume('>')
+
+    const handled = new Map<string, { argType: Type; retType: Type }>()
+    for (const effectName of handledEffects.effects) {
+      const declaration = getEffectDeclaration(effectName)
+      if (!declaration) {
+        throw this.error(`Unknown effect '${effectName}' in Handler type`)
+      }
+      handled.set(effectName, {
+        argType: declaration.argType,
+        retType: declaration.retType,
+      })
+    }
+
+    return handlerType(bodyType, outputType, handled)
   }
 
   private tryParseEffectSet(): ReturnType<typeof effectSet> | null {

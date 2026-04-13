@@ -1,12 +1,17 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { parseTypeAnnotation, parseFunctionTypeAnnotation, TypeParseError } from './parseType'
 import {
   NumberType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType,
-  atom, literal, fn, array, tuple, neg, union, effectSet,
+  atom, literal, fn, array, tuple, neg, union, effectSet, handlerType,
   typeEquals,
 } from './types'
+import { declareEffect, resetEffectRegistry } from './effectTypes'
 import { isSubtype } from './subtype'
+
+afterEach(() => {
+  resetEffectRegistry()
+})
 
 // ---------------------------------------------------------------------------
 // Primitive types
@@ -245,6 +250,15 @@ describe('parseType — functions', () => {
   it('(String) -> @ { http . get } Number', () => {
     const t = parseTypeAnnotation('(String) -> @ { http . get } Number')
     expect(typeEquals(t, fn([StringType], NumberType, effectSet(['http.get'])))).toBe(true)
+  })
+
+  it('Handler<Number, Number, @{test.log}>', () => {
+    declareEffect('test.log', StringType, NullType)
+
+    const t = parseTypeAnnotation('Handler<Number, Number, @{test.log}>')
+    expect(typeEquals(t, handlerType(NumberType, NumberType, new Map([
+      ['test.log', { argType: StringType, retType: NullType }],
+    ])))).toBe(true)
   })
 
   it('union of function types (overloads)', () => {

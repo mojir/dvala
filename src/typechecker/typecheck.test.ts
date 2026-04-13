@@ -172,6 +172,37 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 
+  it('handler annotation accepts matching handled effects', () => {
+    const result = dvala.typecheck(`
+      effect @test.log(String) -> Null;
+      let h: Handler<Number, Number, @{test.log}> =
+        handler
+          @test.log(msg) -> resume(null)
+        end;
+
+      let result: Number = h(-> do
+        perform(@test.log, "hello");
+        1
+      end);
+
+      result
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('handler annotation rejects missing handled effects', () => {
+    const result = dvala.typecheck(`
+      effect @test.log(String) -> Null;
+      let h: Handler<Number, Number, @{}> =
+        handler
+          @test.log(msg) -> resume(null)
+        end;
+
+      h
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
   it('nullable annotation with union syntax: let x: Number | Null = null', () => {
     const result = dvala.typecheck('let x: Number | Null = null; x')
     expect(result.diagnostics).toHaveLength(0)
