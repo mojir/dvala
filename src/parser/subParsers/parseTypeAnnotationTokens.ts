@@ -10,9 +10,11 @@
 import { isOperatorToken, isRParenToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { ParserContext } from '../ParserContext'
 
-export function collectTypeAnnotation(ctx: ParserContext): string {
+export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArrow?: boolean; stopAtRParen?: boolean }): string {
   const parts: string[] = []
   let depth = 0 // track balanced parens/brackets/braces
+  const stopAtArrow = options?.stopAtArrow ?? false
+  const stopAtRParen = options?.stopAtRParen ?? true
 
   while (!ctx.isAtEnd()) {
     const token = ctx.tryPeek()
@@ -22,9 +24,9 @@ export function collectTypeAnnotation(ctx: ParserContext): string {
     if (depth === 0) {
       if (isOperatorToken(token, '=')) break
       if (isOperatorToken(token, ',')) break
-      if (isOperatorToken(token, '->')) break
+      if (stopAtArrow && isOperatorToken(token, '->')) break
       if (isOperatorToken(token, ';')) break
-      if (isRParenToken(token)) break
+      if (stopAtRParen && isRParenToken(token)) break
       if (isReservedSymbolToken(token, 'end')) break
     }
 

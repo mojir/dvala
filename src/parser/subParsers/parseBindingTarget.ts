@@ -34,9 +34,10 @@ export interface ParseBindingTargetOptions {
   requireDefaultValue?: true
   noRest?: true
   allowLiteralPatterns?: true
+  stopTypeAnnotationAtRParen?: true
 }
 
-export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, noRest, allowLiteralPatterns }: ParseBindingTargetOptions = {}): BindingTarget {
+export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, noRest, allowLiteralPatterns, stopTypeAnnotationAtRParen }: ParseBindingTargetOptions = {}): BindingTarget {
   const firstToken = ctx.tryPeek()
 
   // Wildcard _ (only in pattern matching context)
@@ -107,7 +108,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     let typeAnnotation: string | undefined
     if (isTypeAnnotationColon(ctx)) {
       ctx.advance() // consume ':'
-      typeAnnotation = collectTypeAnnotation(ctx)
+      typeAnnotation = collectTypeAnnotation(ctx, { stopAtRParen: stopTypeAnnotationAtRParen ?? false })
       if (!typeAnnotation) {
         throw new ParseError('Expected type after ":"', ctx.peekSourceCodeInfo())
       }

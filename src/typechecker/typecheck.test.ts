@@ -148,6 +148,30 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('function effect annotation accepts matching inferred effects', () => {
+    const result = dvala.typecheck(`
+      effect @test.log(Number) -> Null;
+      let f: (Number) -> @{test.log} Number = (x) -> do
+        perform(@test.log, x);
+        x
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('function effect annotation rejects extra inferred effects', () => {
+    const result = dvala.typecheck(`
+      effect @test.log(Number) -> Null;
+      let f: (Number) -> Number = (x) -> do
+        perform(@test.log, x);
+        x
+      end;
+      f
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
   it('nullable annotation with union syntax: let x: Number | Null = null', () => {
     const result = dvala.typecheck('let x: Number | Null = null; x')
     expect(result.diagnostics).toHaveLength(0)

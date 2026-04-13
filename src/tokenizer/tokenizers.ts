@@ -569,7 +569,7 @@ export const tokenizers = [
   tokenizeAtom,
   tokenizeBasePrefixedNumber,
   tokenizeNumber,
-  tokenizeOperator,
   tokenizeEffectName,
+  tokenizeOperator,
   tokenizeSymbol,
 ] as const satisfies Tokenizer<Token>[]

@@ -17,16 +17,17 @@
  *              | ":" identifier                    // atom type
  *              | number | string | "true" | "false" // literal types
  *              | uppercase-identifier               // type variable (A, B, T, etc.)
- *   FuncOrParen= ParamList [":" Type] "->" Type    // function type
+ *   FuncOrParen= ParamList [":" Type] "->" [EffectSet] Type    // function type
  *              | ParamList "->" identifier "is" Type // type guard
  *              | Type                               // parenthesized type
+ *   EffectSet  = "@{" [effectName ("," effectName)*] ["," "..."] "}"
  */
 
 import type { Type } from './types'
 import {
   NumberType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, AnyFunction,
-  atom, literal, fn, array, tuple, union, inter, neg,
+  atom, literal, fn, array, tuple, union, inter, neg, effectSet,
 } from './types'
 
 // ---------------------------------------------------------------------------
@@ -137,8 +138,9 @@ class TypeParser {
             }
           }
           // Regular return type
+          const effects = this.tryParseEffectSet() ?? undefined
           const retType = this.parseType()
-          const funcType = fn(paramsResult.types, returnTypeAnnotation ?? retType)
+          const funcType = fn(paramsResult.types, returnTypeAnnotation ?? retType, effects)
           return { type: funcType }
         }
       }
@@ -272,8 +274,9 @@ class TypeParser {
       this.skipWhitespace()
       if (this.tryConsume('->')) {
         this.skipWhitespace()
+        const effects = this.tryParseEffectSet() ?? undefined
         const retType = this.parseType()
-        return fn([], retType)
+        return fn([], retType, effects)
       }
       throw this.error('Expected "->" after "()"')
     }
@@ -286,8 +289,9 @@ class TypeParser {
       this.skipWhitespace()
       if (this.tryConsume('->')) {
         this.skipWhitespace()
+        const effects = this.tryParseEffectSet() ?? undefined
         const retType = this.parseType()
-        return fn(paramsResult.types, retType)
+        return fn(paramsResult.types, retType, effects)
       }
       // Not a function — if we parsed a single type, return it as parenthesized
       if (paramsResult.types.length === 1 && !paramsResult.hasNames) {
@@ -390,6 +394,51 @@ class TypeParser {
     }
     const value = Number(this.input.slice(start, this.pos))
     return literal(value)
+  }
+
+  private tryParseEffectSet(): ReturnType<typeof effectSet> | null {
+    const saved = this.pos
+    this.skipWhitespace()
+    if (!this.tryConsume('@')) return null
+
+    this.skipWhitespace()
+    if (!this.tryConsume('{')) {
+      this.pos = saved
+      return null
+    }
+
+    this.skipWhitespace()
+    const effects: string[] = []
+    let open = false
+
+    while (!this.isAtEnd()) {
+      if (this.tryConsume('...')) {
+        open = true
+        this.skipWhitespace()
+        break
+      }
+
+      if (this.peek() === '}') break
+
+      const effectName = this.readEffectIdentifier()
+      if (!effectName) {
+        this.pos = saved
+        return null
+      }
+      effects.push(effectName)
+      this.skipWhitespace()
+
+      if (!this.tryConsume(',')) break
+      this.skipWhitespace()
+    }
+
+    if (!this.tryConsume('}')) {
+      this.pos = saved
+      return null
+    }
+
+    this.skipWhitespace()
+    return effectSet(effects, open)
   }
 
   // --- Function parameter parsing ---
@@ -582,9 +631,46 @@ class TypeParser {
     return this.pos > start ? this.input.slice(start, this.pos) : null
   }
 
+  private readEffectIdentifier(): string | null {
+    this.skipWhitespace()
+
+    let name = ''
+    let sawSegment = false
+
+    while (!this.isAtEnd()) {
+      this.skipWhitespace()
+
+      const start = this.pos
+      while (this.pos < this.input.length && this.isEffectSegmentChar(this.input[this.pos]!)) {
+        this.pos++
+      }
+
+      if (this.pos === start) {
+        break
+      }
+
+      name += this.input.slice(start, this.pos)
+      sawSegment = true
+
+      this.skipWhitespace()
+      if (this.peek() !== '.') {
+        break
+      }
+
+      name += '.'
+      this.advance()
+    }
+
+    return sawSegment ? name : null
+  }
+
   private isIdentChar(c: string): boolean {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
       || (c >= '0' && c <= '9') || c === '_'
+  }
+
+  private isEffectSegmentChar(c: string): boolean {
+    return this.isIdentChar(c) || c === '*'
   }
 
   private isDigit(c: string): boolean {

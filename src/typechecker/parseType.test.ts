@@ -3,7 +3,7 @@ import { parseTypeAnnotation, parseFunctionTypeAnnotation, TypeParseError } from
 import {
   NumberType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType,
-  atom, literal, fn, array, tuple, neg, union,
+  atom, literal, fn, array, tuple, neg, union, effectSet,
   typeEquals,
 } from './types'
 import { isSubtype } from './subtype'
@@ -230,6 +230,21 @@ describe('parseType — functions', () => {
   it('nested function: (Number) -> (String) -> Boolean', () => {
     const t = parseTypeAnnotation('(Number) -> (String) -> Boolean')
     expect(typeEquals(t, fn([NumberType], fn([StringType], BooleanType)))).toBe(true)
+  })
+
+  it('(String) -> @{http.get} Number', () => {
+    const t = parseTypeAnnotation('(String) -> @{http.get} Number')
+    expect(typeEquals(t, fn([StringType], NumberType, effectSet(['http.get'])))).toBe(true)
+  })
+
+  it('() -> @{log, ...} Null', () => {
+    const t = parseTypeAnnotation('() -> @{log, ...} Null')
+    expect(typeEquals(t, fn([], NullType, effectSet(['log'], true)))).toBe(true)
+  })
+
+  it('(String) -> @ { http . get } Number', () => {
+    const t = parseTypeAnnotation('(String) -> @ { http . get } Number')
+    expect(typeEquals(t, fn([StringType], NumberType, effectSet(['http.get'])))).toBe(true)
   })
 
   it('union of function types (overloads)', () => {

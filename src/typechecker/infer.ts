@@ -24,6 +24,7 @@ import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { parseTypeAnnotation } from './parseType'
 import { getEffectDeclaration } from './effectTypes'
+import { isSubtype } from './subtype'
 
 interface ResumeContext {
   argType: Type
@@ -599,6 +600,10 @@ export function inferExpr(
       if (annotation) {
         const declaredType = parseTypeAnnotation(annotation)
         constrain(ctx, valueType, declaredType)
+        const expandedValueType = expandType(valueType)
+        if (!isSubtype(expandedValueType, declaredType)) {
+          throw new TypeInferenceError(`${typeToString(expandedValueType)} is not a subtype of ${typeToString(declaredType)}`)
+        }
       }
 
       // Bind the variable in the environment

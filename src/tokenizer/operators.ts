@@ -39,6 +39,7 @@ const binaryOperators = [
 ] as const
 
 const otherOperators = [
+  '@', // effect-set type annotation prefix
   ':', // property assignment
   '->', // lambda
   '...', // rest

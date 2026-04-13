@@ -155,6 +155,7 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case '?':
     case ';':
     case ':':
+    case '@':
     case '=':
     case ',':
     case '->':

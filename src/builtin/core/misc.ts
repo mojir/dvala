@@ -494,8 +494,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       description: 'Raises an error by performing `@dvala.error` with a structured payload `{ type: "UserError", message, data }`. Convenience wrapper — use `perform(@dvala.error, ...)` directly for custom error types or additional fields.',
       seeAlso: ['perform'],
       examples: [
-        'do with handler @dvala.error(err) -> resume(err.message) end; raise("oops") end',
-        'do with handler @dvala.error(err) -> resume(err.data.field) end; raise("bad input", { field: "email" }) end',
+        'do with handler @dvala.error(err) -> resume("caught") end; raise("oops") end',
+        'do with handler @dvala.error(err) -> resume(null) end; raise("bad input", { field: "email" }) end',
       ],
     },
   },

@@ -25,7 +25,7 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
   let returnTypeAnnotation: string | undefined
   if (isOperatorToken(ctx.peek(), ':')) {
     ctx.advance() // consume ':'
-    returnTypeAnnotation = collectTypeAnnotation(ctx)
+    returnTypeAnnotation = collectTypeAnnotation(ctx, { stopAtArrow: true, stopAtRParen: false })
   }
 
   if (!isOperatorToken(ctx.peek(), '->')) {
@@ -77,7 +77,7 @@ export function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
     if (rest) {
       throw new ParseError('Rest argument must be last', ctx.peekSourceCodeInfo())
     }
-    const bindingTarget = parseBindingTarget(ctx)
+    const bindingTarget = parseBindingTarget(ctx, { stopTypeAnnotationAtRParen: true })
     if (bindingTarget[1][1] !== undefined) {
       defaults = true
     }
