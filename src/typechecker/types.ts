@@ -36,6 +36,7 @@ export type Type =
   | { tag: 'Atom'; name: string } // Singleton: {:ok}
   | { tag: 'Literal'; value: string | number | boolean } // Singleton: {42}
   | { tag: 'Function'; params: Type[]; ret: Type; effects: EffectSet }
+  | { tag: 'AnyFunction' } // Supertype of all function types (any arity)
   | { tag: 'Tuple'; elements: Type[] }
   | { tag: 'Record'; fields: Map<string, Type>; open: boolean }
   | { tag: 'Array'; element: Type }
@@ -73,6 +74,9 @@ export const Never: Type = { tag: 'Never' }
 
 // Regex
 export const RegexType: Type = { tag: 'Regex' }
+
+// AnyFunction — supertype of all function types regardless of arity
+export const AnyFunction: Type = { tag: 'AnyFunction' }
 
 // Singletons
 export function atom(name: string): Type {
@@ -186,6 +190,7 @@ export function typeToString(t: Type): string {
     }
     case 'Array': return `${typeToString(t.element)}[]`
     case 'Regex': return 'Regex'
+    case 'AnyFunction': return 'Function'
     case 'Union': return t.members.map(m => typeToString(m)).join(' | ')
     case 'Inter': return t.members.map(m => typeToString(m)).join(' & ')
     case 'Neg': return `!${typeToString(t.inner)}`
@@ -242,6 +247,7 @@ export function typeEquals(a: Type, b: Type): boolean {
     }
     case 'Array': return typeEquals(a.element, (b as typeof a).element)
     case 'Regex': return true
+    case 'AnyFunction': return true
     case 'Union':
     case 'Inter': {
       const bm = (b as typeof a).members

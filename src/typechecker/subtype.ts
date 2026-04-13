@@ -147,6 +147,14 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
   // Atom <: Primitive — atoms are NOT subtypes of any primitive
   // (they're their own kind, like symbols in Ruby/Elixir)
 
+  // AnyFunction: supertype of all function types
+  if (s.tag === 'Function' && t.tag === 'AnyFunction') return true
+  if (s.tag === 'AnyFunction' && t.tag === 'AnyFunction') return true
+  // Inter of functions <: AnyFunction
+  if (s.tag === 'Inter' && t.tag === 'AnyFunction') {
+    if (s.members.some(m => m.tag === 'Function')) return true
+  }
+
   // Function: contravariant params, covariant return, covariant effects
   if (s.tag === 'Function' && t.tag === 'Function') {
     // Must have compatible arity
@@ -255,8 +263,10 @@ function areDisjoint(s: Type, t: Type, visited: Set<string>): boolean {
   }
 
   // Function and non-function are disjoint
-  if (s.tag === 'Function' && t.tag !== 'Function' && isGroundType(t)) return true
-  if (t.tag === 'Function' && s.tag !== 'Function' && isGroundType(s)) return true
+  if (s.tag === 'Function' && t.tag !== 'Function' && t.tag !== 'AnyFunction' && isGroundType(t)) return true
+  if (t.tag === 'Function' && s.tag !== 'Function' && s.tag !== 'AnyFunction' && isGroundType(s)) return true
+  if (s.tag === 'AnyFunction' && isGroundType(t) && t.tag !== 'Function') return true
+  if (t.tag === 'AnyFunction' && isGroundType(s) && s.tag !== 'Function') return true
 
   // Union: disjoint with T iff every member is disjoint with T
   if (s.tag === 'Union') return s.members.every(m => areDisjoint(m, t, visited))
@@ -289,7 +299,7 @@ function literalMatchesPrimitive(value: string | number | boolean, name: Primiti
 function isGroundType(t: Type): boolean {
   return t.tag === 'Primitive' || t.tag === 'Atom' || t.tag === 'Literal'
     || t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array'
-    || t.tag === 'Regex' || t.tag === 'Function'
+    || t.tag === 'Regex' || t.tag === 'Function' || t.tag === 'AnyFunction'
 }
 
 /** Check if an intersection of types is empty (contains disjoint base types). */
@@ -370,6 +380,7 @@ function typeId(t: Type): string {
     case 'Record': return `R{${[...t.fields.entries()].map(([k, v]) => `${k}:${typeId(v)}`).join(',')}${t.open ? ',..' : ''}}`
     case 'Array': return `Ar[${typeId(t.element)}]`
     case 'Regex': return 'Rx'
+    case 'AnyFunction': return 'AF'
     case 'Union': return `U(${t.members.map(typeId).join('|')})`
     case 'Inter': return `I(${t.members.map(typeId).join('&')})`
     case 'Neg': return `N:${typeId(t.inner)}`

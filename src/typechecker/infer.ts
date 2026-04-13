@@ -291,6 +291,12 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     return
   }
 
+  // AnyFunction: any function type <: AnyFunction (any arity)
+  if (rhs.tag === 'AnyFunction') {
+    if (lhs.tag === 'Function' || lhs.tag === 'AnyFunction') return
+    throw new TypeInferenceError(`${typeToString(lhs)} is not a function`)
+  }
+
   // Function: contravariant params, covariant return
   if (lhs.tag === 'Function' && rhs.tag === 'Function') {
     if (lhs.params.length !== rhs.params.length) {

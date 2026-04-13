@@ -25,7 +25,7 @@
 import type { Type } from './types'
 import {
   NumberType, StringType, BooleanType, NullType,
-  Unknown, Never, RegexType,
+  Unknown, Never, RegexType, AnyFunction,
   atom, literal, fn, array, tuple, union, inter, neg,
 } from './types'
 
@@ -249,6 +249,7 @@ class TypeParser {
       case 'Boolean': return BooleanType
       case 'Null': return NullType
       case 'Regex': return RegexType
+      case 'Function': return AnyFunction
       case 'Unknown': return Unknown
       case 'Never': return Never
       case 'true': return literal(true)
