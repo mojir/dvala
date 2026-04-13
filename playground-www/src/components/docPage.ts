@@ -1,3 +1,5 @@
+import type { ExampleEntry } from '../../../src/builtin/interface'
+
 /**
  * Renders a single reference doc page for /ref/<linkName>.
  * Looks up the reference in window.referenceData.api or window.referenceData.modules.
@@ -210,7 +212,7 @@ function renderCustomVariants(ref: Reference): string {
   ).join('\n')
 }
 
-function renderExample(entry: string | { code: string; noRun: true } | { code: string; throws: true }): string {
+function renderExample(entry: ExampleEntry): string {
   const code = typeof entry === 'string' ? entry : entry.code
   const noRun = typeof entry !== 'string' && 'noRun' in entry && entry.noRun
   return renderCodeBlock({ code, noRun })

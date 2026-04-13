@@ -658,10 +658,10 @@ export function inferExpr(
 
     // --- Nullish coalescing ---
     case NodeTypes.Qq: {
-      const [left, right] = payload as [AstNode, AstNode]
-      const leftType = inferExpr(left, ctx, env, typeMap)
-      const rightType = inferExpr(right, ctx, env, typeMap)
-      result = union(leftType, rightType)
+      // ?? can have 2+ operands: a ?? b or ??(a, b, c)
+      const operands = payload as AstNode[]
+      const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
+      result = union(...types)
       break
     }
 

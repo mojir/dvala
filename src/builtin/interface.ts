@@ -120,7 +120,7 @@ export interface Variant {
   argumentNames: string[]
 }
 
-export type ExampleEntry = string | { code: string; noRun: true } | { code: string; throws: true }
+export type ExampleEntry = string | { code: string; noRun: true } | { code: string; throws: true } | { code: string; noCheck: true } | { code: string; noRun: true; noCheck: true }
 
 export interface FunctionDocs {
   category: Category

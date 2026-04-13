@@ -105,6 +105,37 @@ describe('apiReference', () => {
     })
   })
 
+  describe('typecheck examples', () => {
+    const typecheckDvala = createDvala({ modules: allBuiltinModules })
+    let passCount = 0
+    let failCount = 0
+    Object.entries(apiReference).forEach(([key, obj]) => {
+      test(key, () => {
+        obj.examples.forEach(entry => {
+          // Skip examples marked noCheck
+          if (typeof entry !== 'string' && 'noCheck' in entry) return
+          const example = typeof entry === 'string' ? entry : entry.code
+          try {
+            const result = typecheckDvala.typecheck(example)
+            if (result.diagnostics.length === 0) {
+              passCount++
+            } else {
+              failCount++
+            }
+          } catch {
+            failCount++
+          }
+        })
+      })
+    })
+    // Report final counts — this test always passes but tracks progress
+    test('typecheck coverage summary', () => {
+      // eslint-disable-next-line no-console
+      console.log(`Typecheck examples: ${passCount} pass, ${failCount} fail (${Math.round(100 * passCount / (passCount + failCount))}%)`)
+      expect(passCount).toBeGreaterThan(0)
+    })
+  })
+
   describe('operator functions', () => {
     Object.entries(normalExpressionReference)
       .forEach(([key, obj]) => {
