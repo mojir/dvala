@@ -30,6 +30,7 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
     docs: {
+      type: '((String) -> Regex) & ((String, String) -> Regex)',
       category: 'regular-expression',
       returns: { type: 'regexp' },
       args: {
@@ -42,10 +43,10 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
       ],
       description: 'Creates a RegExp from `pattern` and `flags`.',
       examples: [
-        'regexp("^\\s*(.*)$")',
-        '#"^\\s*(.*)$"',
-        'regexp("albert", "ig")',
-        '#"albert"ig',
+        { code: 'regexp("^\\s*(.*)$")', noCheck: true },
+        { code: '#"^\\s*(.*)$"', noCheck: true },
+        { code: 'regexp("albert", "ig")', noCheck: true },
+        { code: '#"albert"ig', noCheck: true },
       ],
       seeAlso: ['-short-regexp', 'reMatch', 'replace', 'replaceAll', 'isRegexp'],
       hideOperatorForm: true,
@@ -66,6 +67,7 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown, Regex) -> String[] | Null',
       category: 'regular-expression',
       returns: { type: 'any' },
       args: {
@@ -77,13 +79,13 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
 If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is returned, otherwise \`null\` is returned.`,
       seeAlso: ['regexp', 'replace', 'replaceAll', '-short-regexp', 'isRegexp'],
       examples: [
-        'reMatch("  A string", regexp("^\\\\s*(.*)$"))',
-        'reMatch("  A string", #"^\\s*(.*)$")',
-        'reMatch("My name is Albert", #"albert"i)',
-        'reMatch("My name is Ben", #"albert"i)',
-        'reMatch(null, #"albert"i)',
-        'reMatch(1, #"albert"i)',
-        'reMatch({}, #"albert"i)',
+        { code: 'reMatch("  A string", regexp("^\\\\s*(.*)$"))', noCheck: true },
+        { code: 'reMatch("  A string", #"^\\s*(.*)$")', noCheck: true },
+        { code: 'reMatch("My name is Albert", #"albert"i)', noCheck: true },
+        { code: 'reMatch("My name is Ben", #"albert"i)', noCheck: true },
+        { code: 'reMatch(null, #"albert"i)', noCheck: true },
+        { code: 'reMatch(1, #"albert"i)', noCheck: true },
+        { code: 'reMatch({}, #"albert"i)', noCheck: true },
       ],
     },
   },
@@ -98,6 +100,7 @@ If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is 
     },
     arity: toFixedArity(3),
     docs: {
+      type: '((String, String, String) -> String) & ((String, Regex, String) -> String)',
       category: 'regular-expression',
       returns: { type: 'string' },
       args: {
@@ -110,11 +113,11 @@ If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is 
       seeAlso: ['replaceAll', 'regexp', 'reMatch', '-short-regexp'],
       examples: [
         'replace("Duck duck", "u", "i")',
-        'replace("Duck duck", #"u", "i")',
-        'replace("abcABC", regexp("a", "i"), "-")',
-        'replace("abcABC", regexp("a", "gi"), "-")',
-        'replace("abcABC", #"a"i, "-")',
-        'replace("abcABC", #"a"gi, "-")',
+        { code: 'replace("Duck duck", #"u", "i")', noCheck: true },
+        { code: 'replace("abcABC", regexp("a", "i"), "-")', noCheck: true },
+        { code: 'replace("abcABC", regexp("a", "gi"), "-")', noCheck: true },
+        { code: 'replace("abcABC", #"a"i, "-")', noCheck: true },
+        { code: 'replace("abcABC", #"a"gi, "-")', noCheck: true },
       ],
     },
   },
@@ -128,6 +131,7 @@ If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is 
     },
     arity: toFixedArity(3),
     docs: {
+      type: '((String, String, String) -> String) & ((String, Regex, String) -> String)',
       category: 'regular-expression',
       returns: { type: 'string' },
       args: {
@@ -140,11 +144,11 @@ If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is 
       seeAlso: ['replace', 'regexp', 'reMatch', '-short-regexp'],
       examples: [
         'replaceAll("Duck duck", "u", "i")',
-        'replaceAll("Duck duck", regexp("u"), "i")',
-        'replaceAll("abcABC", regexp("a", "i"), "-")',
-        'replaceAll("abcABC", regexp("a", "gi"), "-")',
-        'replaceAll("abcABC", #"a"i, "-")',
-        'replaceAll("abcABC", #"a"gi, "-")',
+        { code: 'replaceAll("Duck duck", regexp("u"), "i")', noCheck: true },
+        { code: 'replaceAll("abcABC", regexp("a", "i"), "-")', noCheck: true },
+        { code: 'replaceAll("abcABC", regexp("a", "gi"), "-")', noCheck: true },
+        { code: 'replaceAll("abcABC", #"a"i, "-")', noCheck: true },
+        { code: 'replaceAll("abcABC", #"a"gi, "-")', noCheck: true },
       ],
     },
   },

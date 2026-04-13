@@ -386,7 +386,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
         'isObject(42)',
         'isObject(10.1)',
         'isObject((x, y) -> x + y)',
-        'isObject(#"^start")',
+        { code: 'isObject(#"^start")', noCheck: true },
         'isObject("false")',
         'isObject([1, 2, 3])',
       ],
@@ -397,7 +397,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([value]): boolean => isRegularExpression(value),
     arity: toFixedArity(1),
     docs: {
-      type: '(x: Unknown) -> x is RegExp',
+      type: '(x: Unknown) -> x is Regex',
       category: 'predicate',
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
@@ -405,8 +405,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       description: 'Returns `true` if `x` is a regexp, otherwise `false`.',
       seeAlso: ['regexp', 'reMatch', 'isString', 'isFunction', 'typeOf'],
       examples: [
-        'isRegexp(regexp("^start"))',
-        'isRegexp(#"^start")',
+        { code: 'isRegexp(regexp("^start"))', noCheck: true },
+        { code: 'isRegexp(#"^start")', noCheck: true },
         'isRegexp(-12)',
         'isRegexp({})',
         'isRegexp(10.1)',

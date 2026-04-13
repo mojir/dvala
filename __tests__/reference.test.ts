@@ -106,33 +106,20 @@ describe('apiReference', () => {
   })
 
   describe('typecheck examples', () => {
-    const typecheckDvala = createDvala({ modules: allBuiltinModules })
-    let passCount = 0
-    let failCount = 0
+    const typecheckDvala = createDvala({ modules: allBuiltinModules, typecheck: false })
     Object.entries(apiReference).forEach(([key, obj]) => {
       test(key, () => {
-        obj.examples.forEach(entry => {
-          // Skip examples marked noCheck
+        obj.examples.forEach((entry, index) => {
+          // Skip examples marked noCheck (typechecker limitations)
           if (typeof entry !== 'string' && 'noCheck' in entry) return
           const example = typeof entry === 'string' ? entry : entry.code
-          try {
-            const result = typecheckDvala.typecheck(example)
-            if (result.diagnostics.length === 0) {
-              passCount++
-            } else {
-              failCount++
-            }
-          } catch {
-            failCount++
-          }
+          const result = typecheckDvala.typecheck(example)
+          expect(
+            result.diagnostics,
+            `${obj.category}:${key} example ${index + 1}: ${result.diagnostics.map(d => d.message).join(', ')}`,
+          ).toHaveLength(0)
         })
       })
-    })
-    // Report final counts — this test always passes but tracks progress
-    test('typecheck coverage summary', () => {
-      // eslint-disable-next-line no-console
-      console.log(`Typecheck examples: ${passCount} pass, ${failCount} fail (${Math.round(100 * passCount / (passCount + failCount))}%)`)
-      expect(passCount).toBeGreaterThan(0)
     })
   })
 

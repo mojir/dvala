@@ -28,12 +28,12 @@ export const functionalNormalExpression: BuiltinNormalExpressions = {
       examples: [
         `
 1 |> inc |> inc`,
-        `range(10)
+        { code: `range(10)
   |> map(_, -> $ ^ 2) // [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
   |> filter(_, isOdd)  // [1, 9, 25, 49, 81]
   |> reduce(_, +, 0)  // 165
   |> sqrt             // 12.84523257866513
-  |> round(_, 2)`,
+  |> round(_, 2)`, noCheck: true },
       ],
     },
   },
@@ -113,12 +113,12 @@ apply(
   the next function (right-to-left) to the result, etc.`,
       seeAlso: ['|>', 'functional.juxt', 'functional.complement'],
       examples: [
-        `
+        { code: `
 let negativeQuotient = comp(-, /);
-negativeQuotient(9, 3)`,
-        `
+negativeQuotient(9, 3)`, noCheck: true },
+        { code: `
 let x = { bar: { foo: 42 } };
-comp("foo", "bar")(x)`,
+comp("foo", "bar")(x)`, noCheck: true },
       ],
     },
   },
@@ -143,9 +143,9 @@ comp("foo", "bar")(x)`,
       description: 'Returns a function that takes any number of arguments and always returns `x`.',
       seeAlso: ['identity', 'functional.fnull'],
       examples: [
-        `
+        { code: `
 let alwaysTrue = constantly(true);
-alwaysTrue(9, 3)`,
+alwaysTrue(9, 3)`, noCheck: true },
       ],
     },
   },

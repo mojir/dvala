@@ -17,6 +17,7 @@ export const assertionNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
     docs: {
+      type: '((Unknown) -> Unknown) & ((Unknown, String) -> Unknown)',
       category: 'assertion',
       description: 'If `value` is falsy it throws `AssertionError` with `message`. If no `message` is provided, message is set to `value`.',
       returns: {

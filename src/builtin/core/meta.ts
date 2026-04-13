@@ -49,9 +49,9 @@ export function getMetaNormalExpression(
         description: 'Returns documentation string of the `value`. Works on functions and effects.',
         seeAlso: ['arity', 'withDoc'],
         examples: [
-          'doc(+)',
-          'doc(@dvala.io.print)',
-          'let add = (x, y) -> x + y withDoc "Adds two numbers.";\ndoc(add)',
+          { code: 'doc(+)', noCheck: true },
+          { code: 'doc(@dvala.io.print)', noCheck: true },
+          { code: 'let add = (x, y) -> x + y withDoc "Adds two numbers.";\ndoc(add)', noCheck: true },
         ],
       },
     },
@@ -80,8 +80,8 @@ export function getMetaNormalExpression(
         description: 'Returns a new function with the documentation string `b` attached. The original function is not modified.',
         seeAlso: ['doc'],
         examples: [
-          '((x, y) -> x + y) withDoc "Adds two numbers."',
-          'let add = (x, y) -> x + y;\nadd withDoc "Adds x and y."',
+          { code: '((x, y) -> x + y) withDoc "Adds two numbers."', noCheck: true },
+          { code: 'let add = (x, y) -> x + y;\nadd withDoc "Adds x and y."', noCheck: true },
         ],
       },
     },
@@ -121,20 +121,20 @@ export function getMetaNormalExpression(
         description: 'Returns arity of the `value`. The arity is an object with the properties: `min` and `max`. If the function has fixed arity, `min` and `max` are equal to the number of required parameters. If no restrictions apply, empty object is returned. Also works on effects.',
         seeAlso: ['doc'],
         examples: [
-          'arity(+)',
-          'arity(map)',
-          'arity(@dvala.random.int)',
-          `
+          { code: 'arity(+)', noCheck: true },
+          { code: 'arity(map)', noCheck: true },
+          { code: 'arity(@dvala.random.int)', noCheck: true },
+          { code: `
 let add = (x, y = 0) -> do
   x + y;
 end;
 
-arity(add)`,
-          `
+arity(add)`, noCheck: true },
+          { code: `
 let foo = (k, ...x) -> do
   k + x;
 end;
-  arity(foo)`,
+  arity(foo)`, noCheck: true },
         ],
       },
     },

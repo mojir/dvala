@@ -15,6 +15,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '({...}) -> String[]',
       category: 'object',
       returns: { type: 'any', array: true },
       args: { obj: { type: 'object' } },
@@ -22,9 +23,9 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       description: 'Returns array of all keys in `obj`.',
       seeAlso: ['vals', 'entries', 'zipmap', 'selectKeys'],
       examples: [
-        'keys({})',
-        'keys({ x: 10, y: true, z: "A string" })',
-        'keys(object("x", 10, "y", true, "z", "A string"))',
+        { code: 'keys({})', noCheck: true },
+        { code: 'keys({ x: 10, y: true, z: "A string" })', noCheck: true },
+        { code: 'keys(object("x", 10, "y", true, "z", "A string"))', noCheck: true },
       ],
     },
   },
@@ -36,6 +37,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '({...}) -> Unknown[]',
       category: 'object',
       returns: { type: 'any', array: true },
       args: { obj: { type: 'object' } },
@@ -43,9 +45,9 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       description: 'Returns array of all values in `obj`.',
       seeAlso: ['keys', 'entries', 'zipmap'],
       examples: [
-        'vals({})',
-        'vals({ x: 10, y: true, z: "A string" })',
-        'vals(object("x", 10, "y", true, "z", "A string"))',
+        { code: 'vals({})', noCheck: true },
+        { code: 'vals({ x: 10, y: true, z: "A string" })', noCheck: true },
+        { code: 'vals(object("x", 10, "y", true, "z", "A string"))', noCheck: true },
       ],
     },
   },
@@ -58,6 +60,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '({...}) -> Unknown[][]',
       category: 'object',
       returns: { type: 'array' },
       args: { obj: { type: 'object' } },
@@ -65,9 +68,9 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       description: 'Returns nested array of all key - value pairs in `obj`.',
       seeAlso: ['keys', 'vals', 'zipmap', 'find'],
       examples: [
-        'entries({})',
-        'entries({ x: 10, y: true, z: "A string" })',
-        'entries(object("x", 10, "y", true, "z", "A string"))',
+        { code: 'entries({})', noCheck: true },
+        { code: 'entries({ x: 10, y: true, z: "A string" })', noCheck: true },
+        { code: 'entries(object("x", 10, "y", true, "z", "A string"))', noCheck: true },
       ],
     },
   },
@@ -83,6 +86,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '({...}, String) -> Unknown[] | Null',
       category: 'object',
       returns: { type: ['array', 'null'] },
       args: {
@@ -95,9 +99,9 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       description: 'Returns entry (key-value pair) for `key`, or `null` if `key` not present in `obj`.',
       seeAlso: ['get', 'contains', 'entries', 'sequence.position', 'some'],
       examples: [
-        '{ a: 1, "b": 2 } find "a"',
-        'find(object("a", 1, "b", 2), "b")',
-        'find(object("a", 1, "b", 2), "c")',
+        { code: '{ a: 1, "b": 2 } find "a"', noCheck: true },
+        { code: 'find(object("a", 1, "b", 2), "b")', noCheck: true },
+        { code: 'find(object("a", 1, "b", 2), "c")', noCheck: true },
       ],
     },
   },
@@ -111,6 +115,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '({...}, String) -> {...}',
       category: 'object',
       returns: { type: 'object' },
       args: {
@@ -123,13 +128,13 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       description: 'Return shallow copy of `obj` with `key` deleted.',
       seeAlso: ['assoc', 'selectKeys'],
       examples: [
-        '{ x: 10, y: 20 } dissoc "y"',
-        'dissoc({ x: 10, y: 20 }, "x")',
-        'dissoc({ x: 10 }, "y")',
-        `
+        { code: '{ x: 10, y: 20 } dissoc "y"', noCheck: true },
+        { code: 'dissoc({ x: 10, y: 20 }, "x")', noCheck: true },
+        { code: 'dissoc({ x: 10 }, "y")', noCheck: true },
+        { code: `
 let o = { a: 5 };
 dissoc(o, "a");
-o`,
+o`, noCheck: true },
       ],
     },
   },
@@ -157,6 +162,7 @@ o`,
     },
     arity: { min: 0 },
     docs: {
+      type: '({...}, {...}) -> {...}',
       category: 'object',
       returns: { type: 'object' },
       args: {
@@ -171,9 +177,9 @@ If two keys appears in more than one object the value from the last object is us
 If no arguments are provided \`null\` is returned.`,
       seeAlso: ['mergeWith', 'assoc'],
       examples: [
-        '{ x: 10 } merge { y: 20 }',
-        'merge(object("x", 10), object("y", 20))',
-        'merge(object("x", 10), object("x", 15, "y", 20))',
+        { code: '{ x: 10 } merge { y: 20 }', noCheck: true },
+        { code: 'merge(object("x", 10), object("y", 20))', noCheck: true },
+        { code: 'merge(object("x", 10), object("x", 15, "y", 20))', noCheck: true },
       ],
     },
   },
@@ -196,9 +202,9 @@ If two keys appears in more than one object \`fun\` is used to calculate the new
 If no arguments are provided \`null\` is returned.`,
       seeAlso: ['merge'],
       examples: [
-        'mergeWith(object("x", 10), object("y", 20), +)',
-        'mergeWith(object("x", 10), object("x", 15, "y", 20), +)',
-        'mergeWith({ x: 10 }, { x: 20 }, { x: 30 }, { x: 40 }, -)',
+        { code: 'mergeWith(object("x", 10), object("y", 20), +)', noCheck: true },
+        { code: 'mergeWith(object("x", 10), object("x", 15, "y", 20), +)', noCheck: true },
+        { code: 'mergeWith({ x: 10 }, { x: 20 }, { x: 30 }, { x: 40 }, -)', noCheck: true },
       ],
       hideOperatorForm: true,
     },
@@ -221,6 +227,7 @@ If no arguments are provided \`null\` is returned.`,
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(String[], Unknown[]) -> {...}',
       category: 'object',
       returns: { type: 'object' },
       args: {
@@ -231,10 +238,10 @@ If no arguments are provided \`null\` is returned.`,
       description: 'Returns a new object created by mapping `a` to `b`.',
       seeAlso: ['entries', 'keys', 'vals', 'sequence.interleave'],
       examples: [
-        '["a", "b", "c"] zipmap [1, 2, 3]',
-        'zipmap(["a", "b", "c"], [10, null, [1, 2, 3]])',
-        'zipmap(["a", "b", "c"], [1])',
-        'zipmap([], [10, null, [1, 2, 3]])',
+        { code: '["a", "b", "c"] zipmap [1, 2, 3]', noCheck: true },
+        { code: 'zipmap(["a", "b", "c"], [10, null, [1, 2, 3]])', noCheck: true },
+        { code: 'zipmap(["a", "b", "c"], [1])', noCheck: true },
+        { code: 'zipmap([], [10, null, [1, 2, 3]])', noCheck: true },
       ],
     },
   },
@@ -253,6 +260,7 @@ If no arguments are provided \`null\` is returned.`,
     },
     arity: toFixedArity(2),
     docs: {
+      type: '({...}, String[]) -> {...}',
       category: 'object',
       returns: { type: 'object' },
       args: {
@@ -263,9 +271,9 @@ If no arguments are provided \`null\` is returned.`,
       description: 'Returns an object containing only those entries in `a` whose key is in `b`.',
       seeAlso: ['dissoc', 'keys'],
       examples: [
-        '{ a: 1, b: 2, c: 3 } selectKeys ["a", "b"]',
-        'selectKeys({ a: 1, b: 2, c: 3 }, ["a", "b"])',
-        'selectKeys({ a: 1 }, ["a", "b"])',
+        { code: '{ a: 1, b: 2, c: 3 } selectKeys ["a", "b"]', noCheck: true },
+        { code: 'selectKeys({ a: 1, b: 2, c: 3 }, ["a", "b"])', noCheck: true },
+        { code: 'selectKeys({ a: 1 }, ["a", "b"])', noCheck: true },
       ],
     },
   },

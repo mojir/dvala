@@ -30,7 +30,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: {},
     docs: {
-      type: '(Unknown) -> String',
+      type: '(() -> String) & ((Unknown) -> String) & ((Unknown, Unknown) -> String) & ((Unknown, Unknown, Unknown) -> String)',
       category: 'string',
       returns: { type: 'string' },
       args: { values: { type: 'any', rest: true } },
@@ -41,7 +41,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
         'str("A string", ", and another string", " ...and more")',
         'str("Just one string")',
         'str()',
-        'str(0, false, true, null, #"^kalle", [1, 2, 3], {a: "a"})',
+        { code: 'str(0, false, true, null, #"^kalle", [1, 2, 3], {a: "a"})', noCheck: true },
         'str(:ok)',
       ],
       hideOperatorForm: true,
@@ -160,11 +160,11 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       description: 'Returns a new string by concatenating all of the elements in `arr`, separated by `delimiter`.',
       seeAlso: ['split', 'str', '++', 'sequence.interpose'],
       examples: [
-        'map([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], str) join ", "',
-        '([0, 1, 2, 3, 4, 5, 6, 7, 8, 9] map str) join ", "',
+        { code: 'map([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], str) join ", "', noCheck: true },
+        { code: '([0, 1, 2, 3, 4, 5, 6, 7, 8, 9] map str) join ", "', noCheck: true },
         'join(["Albert", 10], ", ")',
         'join(["Albert", "Mojir"], " ")',
-        'join(map([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], str), ", ")',
+        { code: 'join(map([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], str), ", ")', noCheck: true },
       ],
     },
   },
@@ -184,7 +184,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
     docs: {
-      type: '((String, String | Regex) -> String[]) & ((String, String | Regex, Number) -> String[])',
+      type: '((String, String) -> String[]) & ((String, String, Number) -> String[]) & ((String, Regex) -> String[]) & ((String, Regex, Number) -> String[])',
       category: 'string',
       returns: { type: 'string', array: true },
       args: {
@@ -203,9 +203,9 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       examples: [
         '"Albert Mojir" split " "',
         'split("Albert Mojir", " ")',
-        'split("abcdefghijklmnopqrstuvw", #"[aoueiy]")',
+        { code: 'split("abcdefghijklmnopqrstuvw", #"[aoueiy]")', noCheck: true },
         'split("0123456789", "")',
-        'split("0123456789", "", 5) map number',
+        { code: 'split("0123456789", "", 5) map number', noCheck: true },
       ],
     },
   },

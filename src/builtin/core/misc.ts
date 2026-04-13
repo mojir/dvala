@@ -30,7 +30,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '((Unknown) -> Boolean) & ((Unknown, Unknown) -> Boolean)',
+      type: '((Unknown) -> Boolean) & ((Unknown, Unknown) -> Boolean) & ((Unknown, Unknown, Unknown) -> Boolean) & ((Unknown, Unknown, Unknown, Unknown) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -72,7 +72,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '((Unknown) -> Boolean) & ((Unknown, Unknown) -> Boolean)',
+      type: '((Unknown) -> Boolean) & ((Unknown, Unknown) -> Boolean) & ((Unknown, Unknown, Unknown) -> Boolean) & ((Unknown, Unknown, Unknown, Unknown) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -110,7 +110,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean)',
+      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean) & ((Number | String, Number | String, Number | String) -> Boolean) & ((Number | String, Number | String, Number | String, Number | String) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -148,7 +148,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean)',
+      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean) & ((Number | String, Number | String, Number | String) -> Boolean) & ((Number | String, Number | String, Number | String, Number | String) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -185,7 +185,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean)',
+      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean) & ((Number | String, Number | String, Number | String) -> Boolean) & ((Number | String, Number | String, Number | String, Number | String) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -224,7 +224,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean)',
+      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean) & ((Number | String, Number | String, Number | String) -> Boolean) & ((Number | String, Number | String, Number | String, Number | String) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -353,8 +353,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       hideOperatorForm: true,
       description: 'Calls a macro\'s body with the given AST arguments and returns the expanded AST as data, without evaluating it. Use quote...end blocks to construct the AST arguments.',
       examples: [
-        'let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end)',
-        'let { prettyPrint } = import("ast"); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint',
+        { code: 'let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end)', noCheck: true },
+        { code: 'let { prettyPrint } = import("ast"); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint', noCheck: true },
       ],
     },
   },
@@ -422,9 +422,9 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       description: 'Returns a predicate function that matches any entity with a qualified name (effect references). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
       seeAlso: ['qualifiedName', 'effectName', 'isEffect'],
       examples: [
-        'qualifiedMatcher("dvala.*")(@dvala.error)',
-        'qualifiedMatcher("dvala.*")(@custom.foo)',
-        'qualifiedMatcher("*")(@dvala.io.print)',
+        { code: 'qualifiedMatcher("dvala.*")(@dvala.error)', noCheck: true },
+        { code: 'qualifiedMatcher("dvala.*")(@custom.foo)', noCheck: true },
+        { code: 'qualifiedMatcher("*")(@dvala.io.print)', noCheck: true },
       ],
     },
   },
@@ -473,7 +473,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         'typeOf([1, 2, 3])',
         'typeOf({ a: 1 })',
         'typeOf((x) -> x + 1)',
-        'typeOf(regexp("^start"))',
+        { code: 'typeOf(regexp("^start"))', noCheck: true },
         'typeOf(@dvala.io.print)',
       ],
     },

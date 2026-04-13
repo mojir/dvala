@@ -68,16 +68,16 @@ filter(
   ["Albert", "Mojir", 160, [1, 2]],
   isString
 )`,
-        `
+        { code: `
 filter(
   [5, 10, 15, 20],
   -> $ > 10
-)`,
-        `
+)`, noCheck: true },
+        { code: `
 filter(
   { a: 1, b: 2 },
   isOdd
-)`,
+)`, noCheck: true },
       ],
     },
   },
@@ -98,13 +98,13 @@ filter(
       description: 'Creates a new collection populated with the results of calling `fun` on every element in `colls`.',
       seeAlso: ['collection.mapi', 'filter', 'reduce', 'sequence.mapcat', 'grid.cellMap', 'grid.cellMapi'],
       examples: [
-        '[1, 2, 3] map -',
-        '[1, 2, 3] map -> -($)',
+        { code: '[1, 2, 3] map -', noCheck: true },
+        { code: '[1, 2, 3] map -> -($)', noCheck: true },
         'map(["Albert", "Mojir", 42], str)',
-        'map([1, 2, 3], inc)',
-        'map([1, 2, 3], [1, 10, 100], *)',
-        'map({ a: 1, b: 2 }, inc)',
-        'map({ a: 1, b: 2 }, { a: 10, b: 20 }, +)',
+        { code: 'map([1, 2, 3], inc)', noCheck: true },
+        { code: 'map([1, 2, 3], [1, 10, 100], *)', noCheck: true },
+        { code: 'map({ a: 1, b: 2 }, inc)', noCheck: true },
+        { code: 'map({ a: 1, b: 2 }, { a: 10, b: 20 }, +)', noCheck: true },
       ],
     },
   },
@@ -124,14 +124,14 @@ filter(
       description: 'Runs `fun` function on each element of the `coll`, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value.',
       seeAlso: ['collection.reduceRight', 'collection.reducei', 'collection.reductions', 'map', 'grid.cellReduce', 'grid.cellReducei'],
       examples: [
-        'reduce([1, 2, 3], +, 0)',
-        'reduce([], +, 0)',
-        'reduce({ a: 1, b: 2 }, +, 0)',
-        `
+        { code: 'reduce([1, 2, 3], +, 0)', noCheck: true },
+        { code: 'reduce([], +, 0)', noCheck: true },
+        { code: 'reduce({ a: 1, b: 2 }, +, 0)', noCheck: true },
+        { code: `
 reduce(
   [1, 2, 3, 4, 5, 6, 7, 8, 9],
   (result, value) -> result + (if isEven(value) then value else 0 end),
-  0)`,
+  0)`, noCheck: true },
       ],
     },
   },
@@ -410,7 +410,7 @@ assoc(
     },
     arity: { min: 1 },
     docs: {
-      type: '((String | Unknown[] | {...}) -> String | Unknown[] | {...}) & ((String, String) -> String) & ((Unknown[], Unknown[]) -> Unknown[]) & (({...}, {...}) -> {...})',
+      type: '((String | Unknown[] | {...}) -> String | Unknown[] | {...}) & ((String, String) -> String) & ((String, String, String) -> String) & ((String, String, String, String) -> String) & ((String, String, String, String, String) -> String) & ((String, String, String, String, String, String) -> String) & ((Unknown[], Unknown[]) -> Unknown[]) & ((Unknown[], Unknown[], Unknown[]) -> Unknown[]) & (({...}, {...}) -> {...})',
       category: 'collection',
       returns: { type: 'collection' },
       args: {

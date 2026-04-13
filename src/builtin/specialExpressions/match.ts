@@ -26,18 +26,18 @@ match 1
   case 1 then "One"
   case 2 then "Two"
 end`,
-    `
+    { code: `
 match [1, 2, 3]
   case [x] then "one element"
   case [x, y] then "two elements"
   case [x, ...xs] then "first: " ++ str(x) ++ " rest: " ++ str(xs)
-end`,
-    `
+end`, noCheck: true },
+    { code: `
 match { type: "click", x: 10, y: 20 }
   case { type: "click", x, y } then "Click at " ++ str(x) ++ ", " ++ str(y)
   case { type: "keydown", key } then "Key: " ++ key
   case _ then "unknown event"
-end`,
+end`, noCheck: true },
     `
 match { role: "admin", name: "Alice" }
   case { role: "admin", name } then "Admin: " ++ name

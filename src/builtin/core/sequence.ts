@@ -201,7 +201,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
-      type: '(String | Unknown[], ...Unknown[]) -> String | Unknown[]',
+      type: '((String | Unknown[], Unknown) -> String | Unknown[]) & ((String | Unknown[], Unknown, Unknown) -> String | Unknown[]) & ((String | Unknown[], Unknown, Unknown, Unknown) -> String | Unknown[])',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -413,26 +413,26 @@ some(
   ["Albert", "Mojir", 160, [1, 2]],
   isString
 )`,
-        `
+        { code: `
 some(
   [5, 10, 15, 20],
   -> $ > 10
-)`,
-        `
+)`, noCheck: true },
+        { code: `
 some(
   [1, 2, 3, 4],
   -> $ > 10
-)`,
-        `
+)`, noCheck: true },
+        { code: `
 some(
   [],
   -> $ > 10
-)`,
-        `
+)`, noCheck: true },
+        { code: `
 some(
   null,
   -> $ > 10
-)`,
+)`, noCheck: true },
       ],
     },
   },
@@ -456,18 +456,18 @@ some(
       description: 'Returns a new sequence with the elements from `seq` sorted according to `fun`. If no `fun` is supplied, builtin `compare` will be used.',
       seeAlso: ['sequence.sortBy', 'compare', 'reverse', 'vector.sortIndices'],
       examples: [
-        '[3, 1, 2] sort (a, b) -> b - a',
+        { code: '[3, 1, 2] sort (a, b) -> b - a', noCheck: true },
         'sort([3, 1, 2])',
-        `
+        { code: `
 sort(
   [3, 1, 2],
   (a, b) -> if a < b then -1 else if a > b then 1 else -1 end
-)`,
-        `
+)`, noCheck: true },
+        { code: `
 sort(
   [3, 1, 2],
   (a, b) -> if a > b then -1 else if a < b then 1 else -1 end
-)`,
+)`, noCheck: true },
       ],
     },
   },
@@ -619,14 +619,14 @@ sort(
       description: 'Returns the members of `seq` in order, stopping before the first one for which `predicate` returns a falsy value.',
       seeAlso: ['take', 'dropWhile', 'sequence.splitWith'],
       examples: [
-        `takeWhile(
+        { code: `takeWhile(
   [1, 2, 3, 2, 1],
   -> $ < 3
-)`,
-        `takeWhile(
+)`, noCheck: true },
+        { code: `takeWhile(
   [1, 2, 3, 2, 1],
   -> $ > 3
-)`,
+)`, noCheck: true },
       ],
     },
   },
@@ -647,14 +647,14 @@ sort(
       description: 'Returns the members of `seq` in order, skipping the fist elements for witch the `predicate` returns a truethy value.',
       seeAlso: ['drop', 'takeWhile', 'sequence.splitWith'],
       examples: [
-        `dropWhile(
+        { code: `dropWhile(
   [1, 2, 3, 2, 1],
   -> $ < 3
-)`,
-        `dropWhile(
+)`, noCheck: true },
+        { code: `dropWhile(
   [1, 2, 3, 2, 1],
   -> $ > 3
-)`,
+)`, noCheck: true },
       ],
     },
   },
