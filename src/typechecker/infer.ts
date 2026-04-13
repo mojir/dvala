@@ -185,15 +185,22 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // This is how overloaded function types work:
   //   (Number -> Number) & (Number[] -> Number[])  <:  (42 -> β)
   // The first overload matches (42 <: Number), so β gets lower bound Number.
+  //
+  // To avoid side-effect leakage from failed overloads, we snapshot variable
+  // bounds before each attempt and roll back on failure.
   if (lhs.tag === 'Inter') {
     const errors: TypeInferenceError[] = []
     for (const m of lhs.members) {
+      // Snapshot bounds of all variables in rhs (they might get modified)
+      const snapshot = snapshotVarBounds(rhs)
       try {
         constrain(ctx, m, rhs)
         return // at least one member worked — done
       } catch (e) {
         if (e instanceof TypeInferenceError) {
           errors.push(e)
+          // Roll back variable bounds from the failed attempt
+          restoreVarBounds(snapshot)
         } else {
           throw e
         }
@@ -921,6 +928,61 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Union':
     case 'Inter': return t.members.some(m => containsVarsAboveLevel(m, level))
     default: return false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Variable bound snapshots (for overload rollback)
+// ---------------------------------------------------------------------------
+
+interface VarBoundSnapshot {
+  var: TypeVar
+  lowerLen: number
+  upperLen: number
+}
+
+/** Snapshot the bounds of all type variables reachable from a type. */
+function snapshotVarBounds(t: Type): VarBoundSnapshot[] {
+  const result: VarBoundSnapshot[] = []
+  const visited = new Set<number>()
+  collectVars(t, result, visited)
+  return result
+}
+
+function collectVars(t: Type, result: VarBoundSnapshot[], visited: Set<number>): void {
+  switch (t.tag) {
+    case 'Var':
+      if (visited.has(t.id)) return
+      visited.add(t.id)
+      result.push({ var: t, lowerLen: t.lowerBounds.length, upperLen: t.upperBounds.length })
+      for (const lb of t.lowerBounds) collectVars(lb, result, visited)
+      for (const ub of t.upperBounds) collectVars(ub, result, visited)
+      break
+    case 'Function':
+      for (const p of t.params) collectVars(p, result, visited)
+      collectVars(t.ret, result, visited)
+      break
+    case 'Record':
+      for (const v of t.fields.values()) collectVars(v, result, visited)
+      break
+    case 'Array':
+      collectVars(t.element, result, visited)
+      break
+    case 'Tuple':
+      for (const e of t.elements) collectVars(e, result, visited)
+      break
+    case 'Union':
+    case 'Inter':
+      for (const m of t.members) collectVars(m, result, visited)
+      break
+  }
+}
+
+/** Restore variable bounds from a snapshot (truncate back to saved lengths). */
+function restoreVarBounds(snapshot: VarBoundSnapshot[]): void {
+  for (const s of snapshot) {
+    s.var.lowerBounds.length = s.lowerLen
+    s.var.upperBounds.length = s.upperLen
   }
 }
 

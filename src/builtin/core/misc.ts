@@ -30,7 +30,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '(Unknown, Unknown) -> Boolean',
+      type: '((Unknown) -> Boolean) & ((Unknown, Unknown) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -72,7 +72,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '(Unknown, Unknown) -> Boolean',
+      type: '((Unknown) -> Boolean) & ((Unknown, Unknown) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -110,7 +110,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '(Number | String, Number | String) -> Boolean',
+      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -148,7 +148,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '(Number | String, Number | String) -> Boolean',
+      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -185,7 +185,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '(Number | String, Number | String) -> Boolean',
+      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -224,7 +224,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '(Number | String, Number | String) -> Boolean',
+      type: '((Number | String) -> Boolean) & ((Number | String, Number | String) -> Boolean)',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -482,7 +482,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     evaluate: () => { throw new Error('raise is implemented in Dvala') },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '(String, Unknown?) -> Never',
+      type: '((String) -> Never) & ((String, Unknown) -> Never)',
       category: 'misc',
       returns: { type: 'never' },
       args: {

@@ -551,7 +551,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '((Number, Number?) -> Number) & ((Number[], Number?) -> Number[]) & ((Number[][], Number?) -> Number[][])',
+      type: '((Number) -> Number) & ((Number, Number) -> Number) & ((Number[]) -> Number[]) & ((Number[], Number) -> Number[]) & ((Number[][]) -> Number[][]) & ((Number[][], Number) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {

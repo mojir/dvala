@@ -85,7 +85,7 @@ filter(
     evaluate: () => { throw new Error('map is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
-      type: '(Unknown[] | {...}, (Unknown) -> Unknown) -> Unknown[] | {...}',
+      type: '((Unknown[] | {...}, (Unknown) -> Unknown) -> Unknown[] | {...}) & ((Unknown[] | {...}, Unknown[] | {...}, (Unknown, Unknown) -> Unknown) -> Unknown[] | {...})',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -149,7 +149,7 @@ reduce(
     },
     arity: { min: 2, max: 3 },
     docs: {
-      type: '(String | Unknown[] | {...} | Null, String | Number, Unknown?) -> Unknown',
+      type: '((String | Unknown[] | {...} | Null, String | Number) -> Unknown) & ((String | Unknown[] | {...} | Null, String | Number, Unknown) -> Unknown)',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -410,7 +410,7 @@ assoc(
     },
     arity: { min: 1 },
     docs: {
-      type: '((String, String) -> String) & ((Unknown[], Unknown[]) -> Unknown[])',
+      type: '((String | Unknown[] | {...}) -> String | Unknown[] | {...}) & ((String, String) -> String) & ((Unknown[], Unknown[]) -> Unknown[]) & (({...}, {...}) -> {...})',
       category: 'collection',
       returns: { type: 'collection' },
       args: {

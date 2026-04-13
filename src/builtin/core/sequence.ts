@@ -34,7 +34,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
     docs: {
-      type: '(String | Unknown[] | Null, Number, Unknown?) -> Unknown',
+      type: '((String | Unknown[] | Null, Number) -> Unknown) & ((String | Unknown[] | Null, Number, Unknown) -> Unknown)',
       category: 'sequence',
       returns: { type: 'any' },
       args: {
@@ -368,7 +368,7 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
     },
     arity: { min: 2, max: 3 },
     docs: {
-      type: '(String | Unknown[], Number, Number?) -> String | Unknown[]',
+      type: '((String | Unknown[], Number) -> String | Unknown[]) & ((String | Unknown[], Number, Number) -> String | Unknown[])',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -440,7 +440,7 @@ some(
     evaluate: () => { throw new Error('sort is implemented in Dvala') },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '(Unknown[], ((Unknown, Unknown) -> Number)?) -> Unknown[]',
+      type: '((Unknown[]) -> Unknown[]) & ((Unknown[], (Unknown, Unknown) -> Number) -> Unknown[])',
       category: 'sequence',
       returns: { type: 'any', rest: true },
       args: {
