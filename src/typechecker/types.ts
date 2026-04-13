@@ -27,6 +27,11 @@ export interface EffectSet {
   open: boolean
 }
 
+export interface HandlerEffectSignature {
+  argType: Type
+  retType: Type
+}
+
 /** The empty (pure) effect set. Frozen to prevent accidental mutation. */
 export const PureEffects: EffectSet = Object.freeze({ effects: Object.freeze(new Set<string>()), open: false })
 
@@ -36,6 +41,7 @@ export type Type =
   | { tag: 'Atom'; name: string } // Singleton: {:ok}
   | { tag: 'Literal'; value: string | number | boolean } // Singleton: {42}
   | { tag: 'Function'; params: Type[]; ret: Type; effects: EffectSet }
+  | { tag: 'Handler'; body: Type; output: Type; handled: Map<string, HandlerEffectSignature> }
   | { tag: 'AnyFunction' } // Supertype of all function types (any arity)
   | { tag: 'Tuple'; elements: Type[] }
   | { tag: 'Record'; fields: Map<string, Type>; open: boolean }
@@ -90,6 +96,10 @@ export function literal(value: string | number | boolean): Type {
 // Composite types
 export function fn(params: Type[], ret: Type, effects: EffectSet = PureEffects): Type {
   return { tag: 'Function', params, ret, effects }
+}
+
+export function handlerType(body: Type, output: Type, handled: Map<string, HandlerEffectSignature>): Type {
+  return { tag: 'Handler', body, output, handled }
 }
 
 export function tuple(elements: Type[]): Type {
@@ -181,6 +191,10 @@ export function typeToString(t: Type): string {
         ? `(${params}) -> ${effectStr} ${typeToString(t.ret)}`
         : `(${params}) -> ${typeToString(t.ret)}`
     }
+    case 'Handler': {
+      const handledEffects = effectSetToString(effectSet([...t.handled.keys()]))
+      return `Handler<${typeToString(t.body)}, ${typeToString(t.output)}, ${handledEffects || '@{}'}>`
+    }
     case 'Tuple': return `[${t.elements.map(typeToString).join(', ')}]`
     case 'Record': {
       const entries = [...t.fields.entries()].map(([k, v]) => `${k}: ${typeToString(v)}`)
@@ -229,6 +243,19 @@ export function typeEquals(a: Type, b: Type): boolean {
         && a.params.every((p, i) => typeEquals(p, bf.params[i]!))
         && typeEquals(a.ret, bf.ret)
         && effectSetEquals(a.effects, bf.effects)
+    }
+    case 'Handler': {
+      const bh = b as typeof a
+      if (!typeEquals(a.body, bh.body) || !typeEquals(a.output, bh.output)) return false
+      if (a.handled.size !== bh.handled.size) return false
+      for (const [name, sig] of a.handled) {
+        const other = bh.handled.get(name)
+        if (!other) return false
+        if (!typeEquals(sig.argType, other.argType) || !typeEquals(sig.retType, other.retType)) {
+          return false
+        }
+      }
+      return true
     }
     case 'Tuple': {
       const bt = b as typeof a

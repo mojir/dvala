@@ -9,7 +9,7 @@ import {
   NumberType, StringType, NullType,
   Unknown, Never,
   atom, literal, fn, record, array, inter, neg,
-  effectSet,
+  effectSet, typeToString,
 } from './types'
 import {
   InferenceContext, TypeEnv,
@@ -756,6 +756,48 @@ describe('inference — effect declarations and handler typing', () => {
     declareEffect('test.typed', NumberType, StringType)
     // perform(@test.typed, "wrong") should fail — arg is String but declared as Number
     expect(() => inferType('perform(@test.typed, "wrong")')).toThrow()
+  })
+
+  it('handler literal infers Handler<B, O, Σ>', () => {
+    declareEffect('test.handler', NumberType, StringType)
+    const t = inferAndExpand(`
+      handler
+        @test.handler(x) -> resume("ok")
+      transform
+        value -> { ok: true, value }
+      end
+    `)
+
+    expect(t.tag).toBe('Handler')
+    if (t.tag === 'Handler') {
+      expect([...t.handled.keys()]).toEqual(['test.handler'])
+      expect(typeToString(t)).toContain('Handler<')
+    }
+  })
+
+  it('resume argument is checked against the effect return type', () => {
+    declareEffect('test.resumeTyped', NumberType, StringType)
+    expect(() => inferType(`
+      handler
+        @test.resumeTyped(x) -> resume(42)
+      end
+    `)).toThrow('42 is not a subtype of String')
+  })
+
+  it('with-handler returns the handler output type', () => {
+    declareEffect('test.withHandler', StringType, NumberType)
+    const t = inferAndExpand(`
+      do
+        with handler
+          @test.withHandler(msg) -> resume(1)
+        transform
+          value -> { ok: true, value }
+        end;
+        perform(@test.withHandler, "hello")
+      end
+    `)
+
+    expect(typeToString(t)).toBe('{ok: true, value: Number}')
   })
 })
 

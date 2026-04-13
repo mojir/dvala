@@ -155,6 +155,17 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
     if (s.members.some(m => m.tag === 'Function')) return true
   }
 
+  if (s.tag === 'Handler' && t.tag === 'Handler') {
+    if (s.handled.size !== t.handled.size) return false
+    for (const [name, tSig] of t.handled) {
+      const sSig = s.handled.get(name)
+      if (!sSig) return false
+      if (!check(tSig.argType, sSig.argType, visited)) return false
+      if (!check(sSig.retType, tSig.retType, visited)) return false
+    }
+    return check(s.body, t.body, visited) && check(s.output, t.output, visited)
+  }
+
   // Function: contravariant params, covariant return, covariant effects
   if (s.tag === 'Function' && t.tag === 'Function') {
     // Must have compatible arity
@@ -380,6 +391,7 @@ function typeId(t: Type): string {
     case 'Record': return `R{${[...t.fields.entries()].map(([k, v]) => `${k}:${typeId(v)}`).join(',')}${t.open ? ',..' : ''}}`
     case 'Array': return `Ar[${typeId(t.element)}]`
     case 'Regex': return 'Rx'
+    case 'Handler': return `H(${typeId(t.body)}=>${typeId(t.output)}|${[...t.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')})`
     case 'AnyFunction': return 'AF'
     case 'Union': return `U(${t.members.map(typeId).join('|')})`
     case 'Inter': return `I(${t.members.map(typeId).join('&')})`

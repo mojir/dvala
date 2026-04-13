@@ -35,6 +35,21 @@ export function simplify(t: Type): Type {
       ret: simplify(t.ret),
       effects: t.effects,
     }
+    case 'Handler': {
+      const handled = new Map<string, { argType: Type; retType: Type }>()
+      for (const [name, sig] of t.handled) {
+        handled.set(name, {
+          argType: simplify(sig.argType),
+          retType: simplify(sig.retType),
+        })
+      }
+      return {
+        tag: 'Handler',
+        body: simplify(t.body),
+        output: simplify(t.output),
+        handled,
+      }
+    }
     case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(simplify) }
     case 'Array': return { tag: 'Array', element: simplify(t.element) }
     case 'Record': {

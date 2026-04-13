@@ -15,7 +15,7 @@ import type { Type, EffectSet } from './types'
 import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
-  atom, literal, fn, array, tuple, union,
+  atom, literal, fn, array, tuple, union, handlerType,
   typeToString, typeEquals,
   subtractEffects,
 } from './types'
@@ -24,6 +24,11 @@ import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { parseTypeAnnotation } from './parseType'
 import { getEffectDeclaration } from './effectTypes'
+
+interface ResumeContext {
+  argType: Type
+  answerType: Type
+}
 
 // ---------------------------------------------------------------------------
 // Type variable representation
@@ -62,6 +67,8 @@ export class InferenceContext {
   resolveFileType?: (importPath: string) => Type
   /** Stack of effect sets — each function body pushes a new set. */
   private effectStack: EffectSet[] = [{ effects: new Set(), open: false }]
+  /** Stack of active handler clause resume contexts. */
+  private resumeStack: ResumeContext[] = []
 
   get level(): number { return this._level }
 
@@ -73,6 +80,18 @@ export class InferenceContext {
 
   /** Pop and return the effect set (leaving a function body). */
   popEffects(): EffectSet { return this.effectStack.pop() ?? PureEffects }
+
+  get currentResume(): ResumeContext | undefined {
+    return this.resumeStack[this.resumeStack.length - 1]
+  }
+
+  pushResume(argType: Type, answerType: Type): void {
+    this.resumeStack.push({ argType, answerType })
+  }
+
+  popResume(): void {
+    this.resumeStack.pop()
+  }
 
   /** Record an effect in the current effect set. */
   addEffect(name: string): void { this.currentEffects.effects.add(name) }
@@ -138,6 +157,7 @@ function varKey(t: Type): string {
   if (t.tag === 'Atom') return `A:${t.name}`
   if (t.tag === 'Literal') return `L:${String(t.value)}`
   if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${varKey(t.ret)}`
+  if (t.tag === 'Handler') return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}`
   if (t.tag === 'Record') return `R:${[...t.fields.entries()].map(([k, v]) => `${k}=${varKey(v)}`).join(',')}`
   if (t.tag === 'Array') return `Ar:${varKey(t.element)}`
   if (t.tag === 'Tuple') return `Tu:${t.elements.map(varKey).join(',')}`
@@ -319,6 +339,20 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     }
     // Return: covariant (KEEP direction)
     constrain(ctx, lhs.ret, rhs.ret)
+    return
+  }
+
+  if (lhs.tag === 'Handler' && rhs.tag === 'Handler') {
+    for (const [name, rhsSig] of rhs.handled) {
+      const lhsSig = lhs.handled.get(name)
+      if (!lhsSig) {
+        throw new TypeInferenceError(`Handler is missing clause @${name}`)
+      }
+      constrain(ctx, rhsSig.argType, lhsSig.argType)
+      constrain(ctx, lhsSig.retType, rhsSig.retType)
+    }
+    constrain(ctx, lhs.body, rhs.body)
+    constrain(ctx, lhs.output, rhs.output)
     return
   }
 
@@ -849,60 +883,89 @@ export function inferExpr(
 
     // --- Handler (handler...end creates a handler value) ---
     case NodeTypes.Handler: {
-      // Payload: [[clauses], transform, shallow]
-      // Each clause: {effectName, params, body}
-      // Type the handler clauses to verify internal consistency.
-      const [clauses] = payload as [{ effectName: string; params: AstNode[]; body: AstNode[] }[], unknown, unknown]
+      const [clauses, transform] = payload as [{ effectName: string; params: AstNode[]; body: AstNode[] }[], [AstNode, AstNode[]] | null, boolean]
+      const bodyType = ctx.freshVar()
+      const answerType = ctx.freshVar()
+      const handled = new Map<string, { argType: Type; retType: Type }>()
+
       for (const clause of clauses) {
+        const effectDecl = getEffectDeclaration(clause.effectName)
+        if (!effectDecl) {
+          throw new TypeInferenceError(`Undeclared effect @${clause.effectName} — add 'effect @${clause.effectName}(ArgType) -> RetType' before handling it`)
+        }
+
         const clauseEnv = env.child()
-        // Bind the clause parameter with the effect's declared arg type
-        const declaredArgType = getEffectDeclaration(clause.effectName)?.argType ?? Unknown
+        const declaredArgType = effectDecl.argType
+        const declaredRetType = effectDecl.retType
+        handled.set(clause.effectName, { argType: declaredArgType, retType: declaredRetType })
+
         for (const param of clause.params) {
           bindPattern(param, declaredArgType, clauseEnv, ctx, typeMap)
         }
-        // Infer the clause body (where resume may be used)
+
+        ctx.pushResume(declaredRetType, answerType)
+        let clauseBodyType: Type = NullType
         for (const bodyNode of clause.body) {
-          inferExpr(bodyNode, ctx, clauseEnv, typeMap)
+          clauseBodyType = inferExpr(bodyNode, ctx, clauseEnv, typeMap)
         }
+        ctx.popResume()
+        constrain(ctx, clauseBodyType, answerType)
       }
-      // Handler values are opaque for now — full handler type is future work
-      result = Unknown
+
+      if (transform) {
+        const [transformParam, transformBody] = transform
+        const transformEnv = env.child()
+        bindPattern(transformParam, bodyType, transformEnv, ctx, typeMap)
+        let transformResult: Type = NullType
+        for (const bodyNode of transformBody) {
+          transformResult = inferExpr(bodyNode, ctx, transformEnv, typeMap)
+        }
+        constrain(ctx, transformResult, answerType)
+      } else {
+        constrain(ctx, bodyType, answerType)
+        constrain(ctx, answerType, bodyType)
+      }
+
+      result = handlerType(bodyType, answerType, handled)
       break
     }
 
     // --- WithHandler (do with handler; body end) ---
     case NodeTypes.WithHandler: {
-      // Payload: [handlerExpr, bodyExprs]
       const [handlerExpr, bodyExprs] = payload as [AstNode, AstNode[]]
+      const inferredHandlerType = inferExpr(handlerExpr, ctx, env, typeMap)
 
-      // Extract handled effect names from the handler expression
-      const handledEffects = extractHandledEffects(handlerExpr)
-
-      // Infer the body — effects from the body are accumulated in the current set
       let bodyType: Type = NullType
       for (const bodyNode of bodyExprs) {
         bodyType = inferExpr(bodyNode, ctx, env, typeMap)
       }
 
-      // Subtract handled effects from the current effect set
-      if (handledEffects.size > 0) {
-        ctx.handleEffects(handledEffects)
+      if (inferredHandlerType.tag === 'Handler') {
+        constrain(ctx, bodyType, inferredHandlerType.body)
+        ctx.handleEffects(new Set(inferredHandlerType.handled.keys()))
+        result = inferredHandlerType.output
+      } else {
+        result = bodyType
       }
-
-      result = bodyType
       break
     }
 
     // --- Resume ---
     case NodeTypes.Resume: {
-      // resume(value) — the value type should match what perform() returns.
-      // For now, type the argument and return Unknown (the answer type).
-      // Full resume typing (answer type propagation) is future work.
-      const resumeArg = payload as AstNode | undefined
-      if (resumeArg) {
-        inferExpr(resumeArg, ctx, env, typeMap)
+      const resumeContext = ctx.currentResume
+      if (!resumeContext) {
+        throw new TypeInferenceError('resume can only be used inside a handler clause')
       }
-      result = Unknown
+
+      if (payload === 'ref') {
+        result = fn([resumeContext.argType], resumeContext.answerType)
+        break
+      }
+
+      const resumeArg = payload as AstNode
+      const resumeArgType = inferExpr(resumeArg, ctx, env, typeMap)
+      constrain(ctx, resumeArgType, resumeContext.argType)
+      result = resumeContext.answerType
       break
     }
 
@@ -950,6 +1013,13 @@ function containsVars(t: Type): boolean {
   switch (t.tag) {
     case 'Var': return true
     case 'Function': return t.params.some(containsVars) || containsVars(t.ret)
+    case 'Handler': {
+      if (containsVars(t.body) || containsVars(t.output)) return true
+      for (const sig of t.handled.values()) {
+        if (containsVars(sig.argType) || containsVars(sig.retType)) return true
+      }
+      return false
+    }
     case 'Record': return [...t.fields.values()].some(containsVars)
     case 'Array': return containsVars(t.element)
     case 'Tuple': return t.elements.some(containsVars)
@@ -975,6 +1045,20 @@ function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<number, Typ
         freshenAllVars(ctx, t.ret, mapping),
         t.effects,
       )
+    case 'Handler': {
+      const handled = new Map<string, { argType: Type; retType: Type }>()
+      for (const [name, sig] of t.handled) {
+        handled.set(name, {
+          argType: freshenAllVars(ctx, sig.argType, mapping),
+          retType: freshenAllVars(ctx, sig.retType, mapping),
+        })
+      }
+      return handlerType(
+        freshenAllVars(ctx, t.body, mapping),
+        freshenAllVars(ctx, t.output, mapping),
+        handled,
+      )
+    }
     case 'Record': {
       const fields = new Map<string, Type>()
       for (const [k, v] of t.fields) fields.set(k, freshenAllVars(ctx, v, mapping))
@@ -1027,6 +1111,20 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<number, TypeV
         freshenInner(ctx, t.ret, mapping),
         t.effects,
       )
+    case 'Handler': {
+      const handled = new Map<string, { argType: Type; retType: Type }>()
+      for (const [name, sig] of t.handled) {
+        handled.set(name, {
+          argType: freshenInner(ctx, sig.argType, mapping),
+          retType: freshenInner(ctx, sig.retType, mapping),
+        })
+      }
+      return handlerType(
+        freshenInner(ctx, t.body, mapping),
+        freshenInner(ctx, t.output, mapping),
+        handled,
+      )
+    }
     case 'Record': {
       const fields = new Map<string, Type>()
       for (const [k, v] of t.fields) {
@@ -1054,6 +1152,15 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
   switch (t.tag) {
     case 'Var': return t.level > level
     case 'Function': return t.params.some(p => containsVarsAboveLevel(p, level)) || containsVarsAboveLevel(t.ret, level)
+    case 'Handler': {
+      if (containsVarsAboveLevel(t.body, level) || containsVarsAboveLevel(t.output, level)) return true
+      for (const sig of t.handled.values()) {
+        if (containsVarsAboveLevel(sig.argType, level) || containsVarsAboveLevel(sig.retType, level)) {
+          return true
+        }
+      }
+      return false
+    }
     case 'Record': return [...t.fields.values()].some(v => containsVarsAboveLevel(v, level))
     case 'Array': return containsVarsAboveLevel(t.element, level)
     case 'Tuple': return t.elements.some(e => containsVarsAboveLevel(e, level))
@@ -1095,6 +1202,14 @@ function collectVars(t: Type, result: VarBoundSnapshot[], visited: Set<number>):
       for (const p of t.params) collectVars(p, result, visited)
       collectVars(t.ret, result, visited)
       break
+    case 'Handler':
+      collectVars(t.body, result, visited)
+      collectVars(t.output, result, visited)
+      for (const sig of t.handled.values()) {
+        collectVars(sig.argType, result, visited)
+        collectVars(sig.retType, result, visited)
+      }
+      break
     case 'Record':
       for (const v of t.fields.values()) collectVars(v, result, visited)
       break
@@ -1122,23 +1237,6 @@ function restoreVarBounds(snapshot: VarBoundSnapshot[]): void {
 // ---------------------------------------------------------------------------
 // Effect helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Extract handled effect names from a handler AST node.
- * Handler node: ["Handler", [[{effectName, params, body}, ...], transform, shallow], id]
- */
-function extractHandledEffects(handlerExpr: AstNode): Set<string> {
-  const handled = new Set<string>()
-  if (handlerExpr[0] !== NodeTypes.Handler) return handled
-
-  const [clauses] = handlerExpr[1] as [{ effectName: string }[], unknown, unknown]
-  for (const clause of clauses) {
-    if (clause.effectName) {
-      handled.add(clause.effectName)
-    }
-  }
-  return handled
-}
 
 // ---------------------------------------------------------------------------
 // Match narrowing helpers
@@ -1354,6 +1452,20 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
         expandType(t.ret, polarity, new Set(visited)),
         t.effects,
       )
+    case 'Handler': {
+      const handled = new Map<string, { argType: Type; retType: Type }>()
+      for (const [name, sig] of t.handled) {
+        handled.set(name, {
+          argType: expandType(sig.argType, 'negative', new Set(visited)),
+          retType: expandType(sig.retType, 'positive', new Set(visited)),
+        })
+      }
+      return handlerType(
+        expandType(t.body, 'positive', new Set(visited)),
+        expandType(t.output, 'positive', new Set(visited)),
+        handled,
+      )
+    }
     case 'Record': {
       const fields = new Map<string, Type>()
       for (const [k, v] of t.fields) {
