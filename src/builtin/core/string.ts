@@ -203,7 +203,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       examples: [
         '"Albert Mojir" split " "',
         'split("Albert Mojir", " ")',
-        { code: 'split("abcdefghijklmnopqrstuvw", #"[aoueiy]")', noCheck: true },
+        'split("abcdefghijklmnopqrstuvw", #"[aoueiy]")',
         'split("0123456789", "")',
         { code: 'split("0123456789", "", 5) map number', noCheck: true },
       ],

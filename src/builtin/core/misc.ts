@@ -473,7 +473,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         'typeOf([1, 2, 3])',
         'typeOf({ a: 1 })',
         'typeOf((x) -> x + 1)',
-        { code: 'typeOf(regexp("^start"))', noCheck: true },
+        'typeOf(regexp("^start"))',
         'typeOf(@dvala.io.print)',
       ],
     },
