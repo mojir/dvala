@@ -71,7 +71,7 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(2),
       docs: {
-        type: '(Function, String) -> Function',
+        type: '(Unknown, String) -> Unknown',
         category: 'meta',
         returns: { type: 'function' },
         args: {
@@ -116,7 +116,7 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(1),
       docs: {
-        type: '(Function) -> {min: Number, max: Number}',
+        type: '(Unknown) -> {min: Number, max: Number}',
         category: 'meta',
         returns: { type: 'object' },
         args: { value: { type: ['function', 'effect'] } },
