@@ -209,9 +209,10 @@ function makeDvala(context: Record<string, unknown>, pure: boolean, noCheck = fa
 
 // Evaluate a file and merge its result (if object) into the context bindings
 function loadFileIntoContext(filename: string, context: Record<string, unknown>) {
-  const dvala = makeDvala(context, false)
-  const content = fs.readFileSync(filename, { encoding: 'utf-8' })
-  const result = dvala.run(content)
+  const resolvedFilename = path.resolve(filename)
+  const dvala = makeDvala(context, false, false, path.dirname(resolvedFilename))
+  const content = fs.readFileSync(resolvedFilename, { encoding: 'utf-8' })
+  const result = dvala.run(content, resolvedFilename)
   if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
     for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
       context[key] = value
