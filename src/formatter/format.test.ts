@@ -73,6 +73,11 @@ describe('formatter — functions', () => {
     'let f = (first, ...rest) -> rest;',
   ))
 
+  it('typed parameter keeps colon tight to the name', () => check(
+    'let f=(msg:String)->msg',
+    'let f = (msg: String) -> msg;',
+  ))
+
   it('multi-statement do-block always expands', () => check(
     'let f = (x) -> do\nlet y = x * 2;\ny + 1\nend',
     'let f = (x) -> do\n  let y = x * 2;\n  y + 1;\nend;',
@@ -81,6 +86,11 @@ describe('formatter — functions', () => {
   it('single-line do-block stays inline without semicolon before end', () => check(
     'do 1+1 end',
     'do 1 + 1 end;',
+  ))
+
+  it('handler clause typed parameter keeps colon tight to the name', () => check(
+    'let h=handler @project.log(msg:String)->resume(null) end',
+    'let h =\n  handler\n    @project.log(msg: String) -> resume(null)\n  end;',
   ))
 })
 

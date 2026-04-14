@@ -41,6 +41,8 @@ export {
   inferExpr,
   constrain,
   expandType,
+  expandTypeForDisplay,
+  sanitizeDisplayType,
   TypeInferenceError,
 } from './infer'
 export {

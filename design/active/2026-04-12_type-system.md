@@ -121,7 +121,7 @@ Subtyping is **semantic**: `S <: T` if and only if the set of values denoted by 
                   └──────────┘
                        │
                        v
-              Map<NodeId, Type>    ← side-table, erased after checking
+                  Map<NodeId, Type>    ← compiler side-table
                        │
                        v
                   ┌──────────┐
@@ -129,11 +129,12 @@ Subtyping is **semantic**: `S <: T` if and only if the set of values denoted by 
                   └──────────┘
 ```
 
-The typechecker builds a `Map<NodeId, Type>` during checking. After checking passes, the map is discarded. No type annotations are injected into AST nodes. The runtime never sees value types.
+The typechecker builds a `Map<NodeId, Type>` during checking. Types are not injected into AST nodes. The runtime does not execute a typed AST. However, selected type-derived artifacts may survive compilation as bundle metadata side tables. See `2026-04-13_bundle-type-metadata.md`.
 
-- **Zero runtime cost.** Type checking is a separate phase.
+- **Execution stays decoupled from typing.** Type checking is still a separate phase.
 - **No evidence passing.** Dvala's handler dispatch is already O(1) via `clauseMap`. No runtime changes needed.
 - **Serializable continuations remain unaffected.** Continuation frames contain no type information.
+- **AST remains clean.** Any preserved type/evidence artifacts live beside the AST, not inside nodes.
 
 ### Inference-first, annotations later
 
@@ -582,6 +583,27 @@ The host validates at `run()` time that all listed effects have registered handl
 
 Full typing of what flows through `perform` and `resume`.
 
+### First-class handler type
+
+Use an explicit first-class handler type:
+
+`Handler<B, O, Σ>`
+
+Where:
+
+- `B` = the normal completion type of the handled body before `transform`
+- `O` = the outward answer type after handling
+- `Σ` = the set of effects handled by this handler
+
+This is the smallest handler type that matches Dvala's current semantics.
+
+- It is enough to type `resume`.
+- It is enough to type aborting clauses.
+- It is enough to type `transform`.
+- It is enough to type effect subtraction when a handler is applied.
+
+We do **not** need a separate type parameter for `finally` in the core design. See `2026-04-13_handler-finally.md` for the deferred cleanup design.
+
 ### Effect declarations
 
 ```dvala
@@ -613,6 +635,156 @@ Where `answer_type` is the type of the whole `do with` block. Constraints:
 - All clause bodies have type `answer_type` (whether they call `resume` or abort)
 - `transform` clause maps `body_return_type -> answer_type`
 - Without `transform`: `body_return_type = answer_type`
+
+Using `Handler<B, O, Σ>`:
+
+- each handled effect `@eff` in `Σ` has a declared signature `A -> R`
+- inside the clause for `@eff`, the effect argument has type `A`
+- inside the clause for `@eff`, `resume : R -> O`
+- every clause body has type `O`
+- `transform : B -> O`
+- if `transform` is omitted, then `B = O`
+
+### Handler application rule
+
+Handler application is where effect subtraction happens.
+
+If:
+
+- `h : Handler<B, O, Σ>`
+- `body : @{Σ | ε} B`
+
+Then:
+
+- `do with h; body end : ε O`
+
+Equivalent thunk form:
+
+- if `thunk : () -> @{Σ | ε} B`
+- and `h : Handler<B, O, Σ>`
+- then `h(thunk) : ε O`
+
+Intuition:
+
+- the body may perform the handled effects `Σ` plus some remainder `ε`
+- applying the handler discharges `Σ`
+- the result type changes from `B` to `O`
+- the remaining effect set is `ε`
+
+Example:
+
+```dvala
+effect @log(String) -> Null;
+effect @fetch(String) -> String;
+
+let h = handler
+  @log(msg) -> resume(null)
+  @fetch(url) -> "cached"
+transform
+  value -> { ok: true, value }
+end;
+```
+
+This handler has shape:
+
+- `h : Handler<String, { ok: true, value: String }, @{log, fetch}>`
+
+So if a body has type:
+
+- `@{log, fetch, db} String`
+
+then:
+
+- `do with h; body end : @{db} { ok: true, value: String }`
+
+### Handler literal rule
+
+Given a handler literal that handles effects `Σ = {eff1, ..., effN}`:
+
+1. Look up each handled effect declaration.
+2. For each clause `@effi(arg) -> body` where `effi : Ai -> Ri`:
+   - bind `arg : Ai`
+   - bind `resume : Ri -> O`
+   - check `body : O`
+3. Check the optional `transform` clause as `B -> O`.
+4. If `transform` is omitted, unify `B` with `O`.
+5. The whole handler literal gets type `Handler<B, O, Σ>`.
+
+This rule is what makes first-class handlers typeable without relying on syntactic enclosure. A handler value carries its handled effect set `Σ` and its answer-type behavior explicitly in its type.
+
+### Module-boundary principle
+
+Locally declared handlers and imported handlers must provide the same type inference behavior.
+
+This is a design constraint, not an optimization target.
+
+Consequences:
+
+1. A handler's public type must carry the handled effect signatures needed for `perform` and `resume` typing.
+2. Importing a handler must be semantically equivalent to writing a local handler with the same inferred type.
+3. The typechecker must not rely on syntactic enclosure to discover effect signatures.
+4. Any effect signature inferred inside a module but needed by exported values must be frozen into the module interface.
+
+In particular, if:
+
+- `h : Handler<B, O, Σ>` is declared locally, or
+- `h : Handler<B, O, Σ>` is imported from another module,
+
+then:
+
+- `do with h; body end`
+
+must infer the same result type and effect subtraction in both cases.
+
+This implies that `Σ` is not merely a set of effect names. It must contain enough signature information to type:
+
+- `perform(@eff, arg)` inside the handled body
+- `resume(value)` inside the corresponding clause
+- the subtraction of handled effects from the body's effect row
+
+Operationally, local inference may discover these signatures, but module boundaries must publish them.
+
+### Inference limit: dynamic handler choice
+
+Effect signatures are inferable only when the active handler context determines a unique compatible handled signature.
+
+If handler choice depends on runtime control flow, inference must be conservative.
+
+Example:
+
+```dvala
+let h =
+  if useCache then cacheHandler
+  else logOnlyHandler
+  end;
+
+do
+  with h;
+  perform(@log, "hello");
+  perform(@cache.get, "user:1")
+end
+```
+
+If:
+
+- `cacheHandler : Handler<B, O, { @log : String -> Null, @cache.get : String -> User }>`
+- `logOnlyHandler : Handler<B, O, { @log : String -> Null }>`
+
+Then the conditional value `h` guarantees only the handled signatures common to both branches.
+
+So:
+
+- `@log` is guaranteed handled
+- `@cache.get` is **not** guaranteed handled
+
+Design rule:
+
+1. Performed effects from alternative control-flow paths combine by union.
+2. Guaranteed handled signatures from alternative handler values combine by intersection.
+3. A `perform(@eff, arg)` may be inferred as handled only if all reachable active handlers provide a compatible signature for `@eff`.
+4. If not, the effect remains in the residual effect type or requires annotation/narrowing.
+
+This is a feature, not a weakness. The typechecker should reject "maybe handled" effects instead of guessing based on one possible runtime handler.
 
 ### One-shot resume
 
@@ -735,7 +907,7 @@ Full type inference for values with subtyping, unions, intersections, and negati
 
 **Inference algorithm:** Adapted Simple-sub (Parreaux 2020)
 
-**Output:** `Map<NodeId, Type>` — side-table only, erased after checking.
+**Output:** `Map<NodeId, Type>` plus optional emitted metadata derived from it. The AST itself remains untyped.
 
 **`perform` returns:** `Unknown` (forces narrowing — effect typing with precise return types comes in Phase B/C).
 
@@ -760,8 +932,10 @@ Type the full handler contract — what flows through `perform` and `resume`.
 **What's added:**
 - Effect declarations: `effect @log(String) -> Null`
 - `perform(@log, x)` checks `x: String`, returns `Null`
+- First-class handler values: `Handler<B, O, Σ>`
 - Handler clause typing: `resume` gets the declared return type
 - Transform clause typing
+- Handler application subtracts `Σ` from the body effect set
 - All clause bodies must produce consistent answer type
 
 ### Phase D (future): Refinement Layer + Type-Level Computation
@@ -912,9 +1086,11 @@ Breaking changes needed before the type system is meaningful. Without these, the
 ### Step 7: Handler typing (Phase C)
 
 - Effect declarations (optional)
+- First-class handler type: `Handler<B, O, Σ>`
 - Handler clause typing
 - Resume/abort typing
 - Transform clause typing
+- Handler application and effect subtraction
 
 ---
 

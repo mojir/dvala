@@ -38,6 +38,10 @@ import { getEffectDeclaration } from './effectTypes'
 /** Registered type aliases: name → { params, body string } */
 const typeAliasRegistry = new Map<string, { params: string[]; body: string }>()
 
+export interface TypeAliasRegistrySnapshot {
+  entries: [string, { params: string[]; body: string }][]
+}
+
 /** Register a type alias. Called by typecheck.ts from parsed AST. */
 export function registerTypeAlias(name: string, params: string[], body: string): void {
   typeAliasRegistry.set(name, { params, body })
@@ -46,6 +50,21 @@ export function registerTypeAlias(name: string, params: string[], body: string):
 /** Reset user-registered type aliases (called between typecheck passes). */
 export function resetTypeAliases(): void {
   typeAliasRegistry.clear()
+}
+
+/** Snapshot the current alias registry so nested import typechecking can restore it. */
+export function snapshotTypeAliases(): TypeAliasRegistrySnapshot {
+  return {
+    entries: [...typeAliasRegistry.entries()].map(([name, alias]) => [name, { params: [...alias.params], body: alias.body }]),
+  }
+}
+
+/** Restore a previously captured alias registry snapshot. */
+export function restoreTypeAliases(snapshot: TypeAliasRegistrySnapshot): void {
+  typeAliasRegistry.clear()
+  for (const [name, alias] of snapshot.entries) {
+    typeAliasRegistry.set(name, alias)
+  }
 }
 
 // ---------------------------------------------------------------------------

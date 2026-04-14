@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createDvala } from '../createDvala'
 import { allBuiltinModules } from '../allModules'
-import { expandType } from './infer'
+import { expandType, expandTypeForDisplay, sanitizeDisplayType } from './infer'
 import { simplify } from './simplify'
 import { typeToString } from './types'
 import * as path from 'path'
@@ -32,7 +32,7 @@ function getHoverTypeStringAt(result: ReturnType<ReturnType<typeof createDvala>[
   }
 
   if (!bestType) return undefined
-  return typeToString(simplify(expandType(bestType)))
+  return typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(bestType))))
 }
 
 // File import type-checking tests.
@@ -100,5 +100,65 @@ describe('typecheck — file imports', () => {
     const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
 
     expect(getHoverTypeStringAt(result, 2, 6)).toBe('Number')
+  })
+
+  it('hover on destructured imported withLogging is available', () => {
+    const source = 'let { withLogging } = import("./lib/logging"); withLogging'
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+    const hoverCol = source.lastIndexOf('withLogging')
+
+    expect(getHoverTypeStringAt(result, 0, hoverCol)).toBeDefined()
+  })
+
+  it('hover on parameter in arithmetic lambda shows Number instead of Never', () => {
+    const source = 'let a = (a) -> a + 1;'
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+    const hoverCol = source.lastIndexOf('a + 1')
+
+    expect(getHoverTypeStringAt(result, 0, hoverCol)).toBe('Number')
+  })
+
+  it('hover on parameter in self-add lambda shows all viable overload shapes', () => {
+    const source = 'let result = (a) -> a + a;'
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+    const hoverCol = source.indexOf('(a)') + 1
+
+    expect(getHoverTypeStringAt(result, 0, hoverCol)).toBe('Number | Number[] | Number[][]')
+  })
+
+  it('hover on self-add callee at array call site shows selected overload', () => {
+    const source = 'let result = (a) -> a + a;\nresult([1, 2]);'
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+
+    expect(getHoverTypeStringAt(result, 1, 1)).toBe('(Number[]) -> Number[]')
+  })
+
+  it('hover on imported withLogging does not leak Never fields', () => {
+    const source = 'let { withLogging } = import("./lib/logging"); withLogging'
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+    const hoverCol = source.lastIndexOf('withLogging')
+    const hover = getHoverTypeStringAt(result, 0, hoverCol)
+
+    expect(hover).toBeDefined()
+    expect(hover).not.toContain('Never')
+    expect(hover).toContain('logs:')
+  })
+
+  it('hover on imported withLogging preserves logs as String[]', () => {
+    const source = 'let { withLogging } = import("./lib/logging"); withLogging'
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+    const hoverCol = source.lastIndexOf('withLogging')
+    const hover = getHoverTypeStringAt(result, 0, hoverCol)
+
+    expect(hover).toBeDefined()
+    expect(hover).toContain('logs: String[]')
+    expect(hover).not.toContain('logs: Unknown[]')
+  })
+
+  it('examples/project/main.dvala typechecks cleanly', () => {
+    const source = fs.readFileSync(path.join(projectDir, 'main.dvala'), 'utf-8')
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+
+    expect(result.diagnostics).toHaveLength(0)
   })
 })

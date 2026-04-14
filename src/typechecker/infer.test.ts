@@ -160,6 +160,26 @@ describe('constrain', () => {
     // Call with String → no overload matches
     expect(() => constrain(ctx, overloaded, fn([StringType], retVar))).toThrow(TypeInferenceError)
   })
+
+  it('intersection on left: preserves multiple viable overload branches', () => {
+    const ctx = new InferenceContext()
+    const argVar = ctx.freshVar()
+    const retVar = ctx.freshVar()
+    const overloaded = inter(
+      fn([NumberType, NumberType], NumberType),
+      fn([array(NumberType), array(NumberType)], array(NumberType)),
+      fn([array(array(NumberType)), array(array(NumberType))], array(array(NumberType))),
+    )
+
+    constrain(ctx, overloaded, fn([argVar, argVar], retVar))
+
+    expect(argVar.displayUpperBounds).toContainEqual(NumberType)
+    expect(argVar.displayUpperBounds).toContainEqual(array(NumberType))
+    expect(argVar.displayUpperBounds).toContainEqual(array(array(NumberType)))
+    expect(retVar.displayLowerBounds).toContainEqual(NumberType)
+    expect(retVar.displayLowerBounds).toContainEqual(array(NumberType))
+    expect(retVar.displayLowerBounds).toContainEqual(array(array(NumberType)))
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -403,6 +423,11 @@ describe('inference — builtin types', () => {
   it('let f = (a, b) -> a + b; f(1, 2) infers Number', () => {
     const t = inferAndExpand('let f = (a, b) -> a + b; f(1, 2)')
     expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('let result = (a) -> a + a; result([1, 2, 3]) infers Number[]', () => {
+    const t = inferAndExpand('let result = (a) -> a + a; result([1, 2, 3])')
+    expect(isSubtype(t, array(NumberType))).toBe(true)
   })
 })
 
@@ -894,12 +919,29 @@ describe('inference — effect declarations and handler typing', () => {
 describe('typecheck — imported handler parity', () => {
   const files = new Map<string, string>([
     ['./handlers.dvala', `
+      effect @test.log(String) -> Null;
+
       let h =
         handler
           @test.log(msg) -> resume(null)
         end;
 
       { h };
+    `],
+    ['./logging.dvala', `
+      let withLogging = (thunk) -> do
+        let h =
+          handler
+            @test.log(msg) -> do
+              let resumed = resume(null);
+              { result: resumed.result, logs: [msg] ++ resumed.logs };
+            end
+            transform result -> { result, logs: [] }
+          end;
+        h(thunk)
+      end;
+
+      { withLogging };
     `],
   ])
 
@@ -980,6 +1022,76 @@ describe('typecheck — imported handler parity', () => {
 
     expect(local.diagnostics).toHaveLength(0)
     expect(imported.diagnostics).toHaveLength(0)
+  })
+
+  it('perform infers from imported active handlers without a local effect declaration', () => {
+    const result = dvala.typecheck(`
+      let { h } = import("./handlers");
+
+      let value: Number = do
+        with h;
+        perform(@test.log, "hello");
+        1
+      end;
+
+      value
+    `, { fileResolverBaseDir: '.' })
+
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('callable imported handlers infer thunk effects without a local effect declaration', () => {
+    const result = dvala.typecheck(`
+      let { h } = import("./handlers");
+
+      let value: Number = h(-> do
+        perform(@test.log, "hello");
+        1
+      end);
+
+      value
+    `, { fileResolverBaseDir: '.' })
+
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('imported handler signatures still enforce perform arg types without a local declaration', () => {
+    const result = dvala.typecheck(`
+      let { h } = import("./handlers");
+
+      do
+        with h;
+        perform(@test.log, 42)
+      end
+    `, { fileResolverBaseDir: '.' })
+
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('imported handler wrappers propagate handled signatures into callback literals', () => {
+    const result = dvala.typecheck(`
+      let { withLogging } = import("./logging");
+
+      withLogging(-> do
+        perform(@test.log, "hello");
+        1
+      end)
+    `, { fileResolverBaseDir: '.' })
+
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('imported handler wrappers infer perform results from resume values', () => {
+    const result = dvala.typecheck(`
+      let { withLogging } = import("./logging");
+
+      withLogging(-> do
+        let a: Null = perform(@test.log, "hello");
+        a
+      end)
+    `, { fileResolverBaseDir: '.' })
+
+    expect(result.diagnostics).toHaveLength(0)
   })
 })
 

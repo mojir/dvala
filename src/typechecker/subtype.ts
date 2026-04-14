@@ -348,6 +348,7 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
       params: t.params.map(p => substituteVar(p, varId, replacement)),
       ret: substituteVar(t.ret, varId, replacement),
       effects: t.effects,
+      handlerWrapper: t.handlerWrapper,
     }
     case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(e => substituteVar(e, varId, replacement)) }
     case 'Array': return { tag: 'Array', element: substituteVar(t.element, varId, replacement) }
@@ -386,7 +387,7 @@ function typeId(t: Type): string {
     case 'Primitive': return `P:${t.name}`
     case 'Atom': return `A:${t.name}`
     case 'Literal': return `L:${t.value}`
-    case 'Function': return `F(${t.params.map(typeId).join(',')})${typeId(t.ret)}`
+    case 'Function': return `F(${t.params.map(typeId).join(',')})${typeId(t.ret)}${t.handlerWrapper ? `|HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}` : ''}`
     case 'Tuple': return `T[${t.elements.map(typeId).join(',')}]`
     case 'Record': return `R{${[...t.fields.entries()].map(([k, v]) => `${k}:${typeId(v)}`).join(',')}${t.open ? ',..' : ''}}`
     case 'Array': return `Ar[${typeId(t.element)}]`

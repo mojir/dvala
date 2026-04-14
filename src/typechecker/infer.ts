@@ -15,7 +15,7 @@ import type { Type, EffectSet } from './types'
 import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
-  atom, literal, fn, array, tuple, union, inter, handlerType,
+  atom, literal, fn, array, tuple, union, inter, neg, handlerType,
   typeToString, typeEquals,
   subtractEffects,
 } from './types'
@@ -30,6 +30,8 @@ interface ResumeContext {
   argType: Type
   answerType: Type
 }
+
+type HandledSignatureMap = Map<string, { argType: Type; retType: Type }>
 
 // ---------------------------------------------------------------------------
 // Type variable representation
@@ -48,6 +50,8 @@ export interface TypeVar {
   level: number
   lowerBounds: Type[] // what this variable must contain (positive)
   upperBounds: Type[] // what this variable must fit within (negative)
+  displayLowerBounds?: Type[] // hover-only viable lower-bound alternatives
+  displayUpperBounds?: Type[] // hover-only viable upper-bound alternatives
 }
 
 // ---------------------------------------------------------------------------
@@ -70,6 +74,10 @@ export class InferenceContext {
   private effectStack: EffectSet[] = [{ effects: new Set(), open: false }]
   /** Stack of active handler clause resume contexts. */
   private resumeStack: ResumeContext[] = []
+  /** Active handled signatures available to direct perform() sites. */
+  private handledSignatureStack: HandledSignatureMap[] = []
+  /** Parameter vars proven to feed directly into a handler thunk call. */
+  private wrappedThunkVarHandled = new Map<number, HandledSignatureMap>()
 
   get level(): number { return this._level }
 
@@ -92,6 +100,26 @@ export class InferenceContext {
 
   popResume(): void {
     this.resumeStack.pop()
+  }
+
+  get currentHandledSignatures(): HandledSignatureMap | undefined {
+    return this.handledSignatureStack[this.handledSignatureStack.length - 1]
+  }
+
+  pushHandledSignatures(signatures: HandledSignatureMap): void {
+    this.handledSignatureStack.push(signatures)
+  }
+
+  popHandledSignatures(): void {
+    this.handledSignatureStack.pop()
+  }
+
+  noteWrappedThunkVar(varId: number, signatures: HandledSignatureMap): void {
+    this.wrappedThunkVarHandled.set(varId, signatures)
+  }
+
+  getWrappedThunkVar(varId: number): HandledSignatureMap | undefined {
+    return this.wrappedThunkVarHandled.get(varId)
   }
 
   /** Record an effect in the current effect set. */
@@ -165,7 +193,7 @@ function varKey(t: Type): string {
   if (t.tag === 'Primitive') return `P:${t.name}`
   if (t.tag === 'Atom') return `A:${t.name}`
   if (t.tag === 'Literal') return `L:${String(t.value)}`
-  if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${varKey(t.ret)}`
+  if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}`
   if (t.tag === 'Handler') return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}`
   if (t.tag === 'Record') return `R:${[...t.fields.entries()].map(([k, v]) => `${k}=${varKey(v)}`).join(',')}`
   if (t.tag === 'Array') return `Ar:${varKey(t.element)}`
@@ -193,7 +221,7 @@ function varKey(t: Type): string {
 export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Trivial cases
   if (lhs === rhs) return
-  if (lhs.tag === 'Never' || rhs.tag === 'Unknown') return
+  if (lhs.tag === 'Never' || lhs.tag === 'Unknown' || rhs.tag === 'Unknown') return
 
   // Cycle guard
   if (ctx.checkAndAddConstraint(lhs, rhs)) return
@@ -234,13 +262,21 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // bounds before each attempt and roll back on failure.
   if (lhs.tag === 'Inter') {
     const errors: TypeInferenceError[] = []
+    const successfulDeltas: VarBoundDelta[][] = []
+    let firstSuccessfulDelta: VarBoundDelta[] | undefined
     for (const m of lhs.members) {
       // Snapshot bounds + cache so a failed overload doesn't leak side effects
       const boundsSnapshot = snapshotVarBounds(rhs)
       const cacheSnapshot = ctx.snapshotCacheSize()
       try {
         constrain(ctx, m, rhs)
-        return // at least one member worked — done
+        const delta = captureVarBoundDelta(boundsSnapshot)
+        successfulDeltas.push(delta)
+        if (!firstSuccessfulDelta) {
+          firstSuccessfulDelta = delta
+        }
+        restoreVarBounds(boundsSnapshot)
+        ctx.restoreCacheSize(cacheSnapshot)
       } catch (e) {
         if (e instanceof TypeInferenceError) {
           errors.push(e)
@@ -250,6 +286,11 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
           throw e
         }
       }
+    }
+    if (firstSuccessfulDelta) {
+      replayVarBoundDeltaExact(ctx, firstSuccessfulDelta)
+      annotateDisplayVarBoundDeltas(successfulDeltas)
+      return
     }
     // No member worked — report the last error
     throw errors[errors.length - 1] ?? new TypeInferenceError(
@@ -500,538 +541,599 @@ export function inferExpr(
 
   let result: Type
 
-  switch (nodeType) {
+  try {
+    switch (nodeType) {
     // --- Literals ---
-    case NodeTypes.Num:
-      result = literal(payload as number)
-      break
+      case NodeTypes.Num:
+        result = literal(payload as number)
+        break
 
-    case NodeTypes.Str:
-      result = literal(payload as string)
-      break
+      case NodeTypes.Str:
+        result = literal(payload as string)
+        break
 
-    case NodeTypes.Atom:
-      result = atom(payload as string)
-      break
+      case NodeTypes.Atom:
+        result = atom(payload as string)
+        break
 
-    // --- Variables ---
-    case NodeTypes.Sym: {
-      const name = payload as string
-      const t = env.lookup(name)
-      if (!t) {
-        throw new TypeInferenceError(`Undefined variable: ${name}`)
-      }
-      // Let-polymorphism: freshen variables above current level
-      result = freshen(ctx, t)
-      break
-    }
-
-    // --- Builtin reference — look up type from parsed docs ---
-    case NodeTypes.Builtin: {
-      const builtinName = payload as string
-      const info = getBuiltinType(builtinName)
-      // Freshen type variables from the annotation so each use gets fresh copies.
-      // Without this, type vars from polymorphic signatures (A[], (A)->B) -> B[]
-      // would accumulate bounds across all call sites.
-      result = freshenAnnotationVars(ctx, info.type)
-      break
-    }
-
-    // --- Boolean literals (encoded as Reserved symbols) ---
-    case NodeTypes.Reserved: {
-      const val = payload as string
-      if (val === 'true') result = literal(true)
-      else if (val === 'false') result = literal(false)
-      else if (val === 'null') result = NullType
-      else result = Unknown
-      break
-    }
-
-    // --- Block (sequence of expressions) ---
-    case NodeTypes.Block: {
-      const nodes = payload as AstNode[]
-      const blockEnv = env.child()
-      let blockType: Type = NullType
-      for (const stmt of nodes) {
-        blockType = inferExpr(stmt, ctx, blockEnv, typeMap)
-      }
-      result = blockType
-      break
-    }
-
-    // --- If expression ---
-    case NodeTypes.If: {
-      const [cond, thenNode, elseNode] = payload as [AstNode, AstNode, AstNode | undefined]
-      const condType = inferExpr(cond, ctx, env, typeMap)
-      constrain(ctx, condType, BooleanType)
-      const thenType = inferExpr(thenNode, ctx, env, typeMap)
-      if (elseNode) {
-        const elseType = inferExpr(elseNode, ctx, env, typeMap)
-        result = union(thenType, elseType)
-      } else {
-        result = union(thenType, NullType)
-      }
-      break
-    }
-
-    // --- Let binding ---
-    case NodeTypes.Let: {
-      const [binding, valueNode] = payload as [AstNode, AstNode]
-      // Infer the value's type at a higher level for generalization.
-      // Wrap in try/catch so that a type error in the value still binds the
-      // variable as Unknown — this prevents cascading "undefined variable"
-      // errors downstream (especially important for file imports).
-      let valueType: Type
-      ctx.enterLevel()
-      try {
-        valueType = inferExpr(valueNode, ctx, env, typeMap)
-      } catch (e) {
-        if (e instanceof TypeInferenceError) {
-          valueType = Unknown
-        } else {
-          throw e
+        // --- Variables ---
+      case NodeTypes.Sym: {
+        const name = payload as string
+        const t = env.lookup(name)
+        if (!t) {
+          throw new TypeInferenceError(`Undefined variable: ${name}`)
         }
-      }
-      ctx.leaveLevel()
-
-      // Check type annotation constraint: let x: T = expr → constrain expr <: T
-      const bindingNodeId = binding[2]
-      const annotation = ctx.typeAnnotations.get(bindingNodeId)
-      if (annotation) {
-        const declaredType = parseTypeAnnotation(annotation)
-        constrain(ctx, valueType, declaredType)
-        const expandedValueType = expandType(valueType)
-        if (!isSubtype(expandedValueType, declaredType)) {
-          throw new TypeInferenceError(`${typeToString(expandedValueType)} is not a subtype of ${typeToString(declaredType)}`)
-        }
-      }
-
-      // Bind the variable in the environment
-      bindPattern(binding, valueType, env, ctx, typeMap)
-      recordConcretePatternTypes(binding, valueType, typeMap)
-      result = valueType
-      break
-    }
-
-    // --- Function definition ---
-    case NodeTypes.Function: {
-      const [params, bodyNodes] = payload as [AstNode[], AstNode[]]
-      const funcEnv = env.child()
-      const paramTypes: Type[] = []
-
-      for (const param of params) {
-        const paramVar = ctx.freshVar()
-        paramTypes.push(paramVar)
-        bindPattern(param, paramVar, funcEnv, ctx, typeMap)
-        // Apply param type annotation: (a: Number) -> ... constrains paramVar <: Number
-        const paramAnnotation = ctx.typeAnnotations.get(param[2])
-        if (paramAnnotation) {
-          const declaredType = parseTypeAnnotation(paramAnnotation)
-          constrain(ctx, paramVar, declaredType)
-        }
-      }
-
-      // Push a fresh effect set to capture the body's effects
-      ctx.pushEffects()
-
-      // Infer the body — last expression is the return type
-      let retType: Type = NullType
-      for (const bodyNode of bodyNodes) {
-        retType = inferExpr(bodyNode, ctx, funcEnv, typeMap)
-      }
-
-      // Pop the captured effects — they become the function's effect set
-      const bodyEffects = ctx.popEffects()
-
-      result = fn(paramTypes, retType, bodyEffects)
-      break
-    }
-
-    // --- Function application (Call) ---
-    case NodeTypes.Call: {
-      const [calleeNode, argNodes] = payload as [AstNode, AstNode[]]
-      const calleeType = inferExpr(calleeNode, ctx, env, typeMap)
-      const argTypes = argNodes.map(arg => inferExpr(arg, ctx, env, typeMap))
-
-      const handlerAlternatives = getHandlerAlternatives(calleeType)
-      const thunkAlternatives = argTypes.length === 1
-        ? getFunctionAlternatives(argTypes[0]!)
-        : []
-
-      if (handlerAlternatives.length > 0 && thunkAlternatives.length > 0
-        && thunkAlternatives.every(thunk => thunk.params.length === 0)) {
-        const requiredBodyType = handlerAlternatives.length === 1
-          ? handlerAlternatives[0]!.body
-          : inter(...handlerAlternatives.map(handler => handler.body))
-
-        constrain(ctx, argTypes[0]!, fn([], requiredBodyType))
-
-        const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
-        const residualEffects = subtractEffects(
-          unionEffectSets(thunkAlternatives.map(thunk => thunk.effects)),
-          new Set(guaranteedHandled.keys()),
-        )
-        ctx.addEffects(residualEffects)
-
-        result = handlerAlternatives.length === 1
-          ? handlerAlternatives[0]!.output
-          : union(...handlerAlternatives.map(handler => handler.output))
+        // Let-polymorphism: freshen variables above current level
+        result = freshen(ctx, t)
         break
       }
 
-      // Create a fresh variable for the return type
-      const retVar = ctx.freshVar()
-
-      // Constrain: callee <: (argTypes...) -> retVar
-      // If the callee is a record and arg is a string, constrain() handles
-      // this as property access (see Record <: Function case in constrain).
-      constrain(ctx, calleeType, fn(argTypes, retVar))
-
-      result = retVar
-      break
-    }
-
-    // --- Array literal ---
-    case NodeTypes.Array: {
-      const elements = payload as AstNode[]
-      if (elements.length === 0) {
-        result = array(ctx.freshVar())
-      } else {
-        const elemTypes = elements.map(e => inferExpr(e, ctx, env, typeMap))
-        // All elements contribute to a union of the element type
-        const elemVar = ctx.freshVar()
-        for (const et of elemTypes) {
-          constrain(ctx, et, elemVar)
-        }
-        result = array(elemVar)
+      // --- Builtin reference — look up type from parsed docs ---
+      case NodeTypes.Builtin: {
+        const builtinName = payload as string
+        const info = getBuiltinType(builtinName)
+        // Freshen type variables from the annotation so each use gets fresh copies.
+        // Without this, type vars from polymorphic signatures (A[], (A)->B) -> B[]
+        // would accumulate bounds across all call sites.
+        result = freshenAnnotationVars(ctx, info.type)
+        break
       }
-      break
-    }
 
-    // --- Object literal ---
-    case NodeTypes.Object: {
-      const entries = payload as ([AstNode, AstNode] | AstNode)[]
-      const fields = new Map<string, Type>()
-      for (const entry of entries) {
-        if (Array.isArray(entry) && entry.length === 2) {
-          const [keyNode, valueNode] = entry
-          // Key is either a string literal or a symbol
-          const keyName = keyNode[0] === NodeTypes.Str
-            ? keyNode[1] as string
-            : keyNode[0] === NodeTypes.Sym
+      // --- Boolean literals (encoded as Reserved symbols) ---
+      case NodeTypes.Reserved: {
+        const val = payload as string
+        if (val === 'true') result = literal(true)
+        else if (val === 'false') result = literal(false)
+        else if (val === 'null') result = NullType
+        else result = Unknown
+        break
+      }
+
+      // --- Block (sequence of expressions) ---
+      case NodeTypes.Block: {
+        const nodes = payload as AstNode[]
+        const blockEnv = env.child()
+        let blockType: Type = NullType
+        for (const stmt of nodes) {
+          blockType = inferExpr(stmt, ctx, blockEnv, typeMap)
+        }
+        result = blockType
+        break
+      }
+
+      // --- If expression ---
+      case NodeTypes.If: {
+        const [cond, thenNode, elseNode] = payload as [AstNode, AstNode, AstNode | undefined]
+        const condType = inferExpr(cond, ctx, env, typeMap)
+        constrain(ctx, condType, BooleanType)
+        const thenType = inferExpr(thenNode, ctx, env, typeMap)
+        if (elseNode) {
+          const elseType = inferExpr(elseNode, ctx, env, typeMap)
+          result = union(thenType, elseType)
+        } else {
+          result = union(thenType, NullType)
+        }
+        break
+      }
+
+      // --- Let binding ---
+      case NodeTypes.Let: {
+        const [binding, valueNode] = payload as [AstNode, AstNode]
+        // Infer the value's type at a higher level for generalization.
+        // Wrap in try/catch so that a type error in the value still binds the
+        // variable as Unknown — this prevents cascading "undefined variable"
+        // errors downstream (especially important for file imports).
+        let valueType: Type
+        ctx.enterLevel()
+        try {
+          valueType = inferExpr(valueNode, ctx, env, typeMap)
+        } catch (e) {
+          if (e instanceof TypeInferenceError) {
+            valueType = Unknown
+          } else {
+            throw e
+          }
+        }
+        ctx.leaveLevel()
+
+        // Check type annotation constraint: let x: T = expr → constrain expr <: T
+        const bindingNodeId = binding[2]
+        const annotation = ctx.typeAnnotations?.get(bindingNodeId)
+        if (annotation) {
+          const declaredType = parseTypeAnnotation(annotation)
+          constrain(ctx, valueType, declaredType)
+          const expandedValueType = expandType(valueType)
+          if (!isSubtype(expandedValueType, declaredType)) {
+            throw new TypeInferenceError(`${typeToString(expandedValueType)} is not a subtype of ${typeToString(declaredType)}`)
+          }
+        }
+
+        // Bind the variable in the environment
+        bindPattern(binding, valueType, env, ctx, typeMap)
+        recordConcretePatternTypes(binding, valueType, typeMap)
+        result = valueType
+        break
+      }
+
+      // --- Function definition ---
+      case NodeTypes.Function: {
+        result = inferFunctionNode(node, ctx, env, typeMap)
+        break
+      }
+
+      // --- Function application (Call) ---
+      case NodeTypes.Call: {
+        const [calleeNode, argNodes] = payload as [AstNode, AstNode[]]
+        const calleeType = inferExpr(calleeNode, ctx, env, typeMap)
+        const handlerAlternatives = getHandlerAlternatives(calleeType)
+
+        if (handlerAlternatives.length > 0
+        && argNodes.length === 1
+        && isZeroArgFunctionNode(argNodes[0]!)) {
+          const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
+          ctx.pushHandledSignatures(guaranteedHandled)
+          let thunkType: Type
+          try {
+            thunkType = inferFunctionNode(argNodes[0]!, ctx, env, typeMap, { inheritHandledSignatures: true })
+          } finally {
+            ctx.popHandledSignatures()
+          }
+
+          const thunkAlternatives = getFunctionAlternatives(thunkType)
+          if (thunkAlternatives.length > 0 && thunkAlternatives.every(thunk => thunk.params.length === 0)) {
+            const requiredBodyType = handlerAlternatives.length === 1
+              ? handlerAlternatives[0]!.body
+              : inter(...handlerAlternatives.map(handler => handler.body))
+
+            constrain(ctx, thunkType, fn([], requiredBodyType))
+
+            const residualEffects = subtractEffects(
+              unionEffectSets(thunkAlternatives.map(thunk => thunk.effects)),
+              new Set(guaranteedHandled.keys()),
+            )
+            ctx.addEffects(residualEffects)
+
+            result = handlerAlternatives.length === 1
+              ? handlerAlternatives[0]!.output
+              : union(...handlerAlternatives.map(handler => handler.output))
+            break
+          }
+        }
+
+        const functionAlternatives = getFunctionAlternatives(calleeType)
+        const wrapperInfo = intersectFunctionWrapperInfo(functionAlternatives)
+        const argTypes = argNodes.map((arg, index) => {
+          if (wrapperInfo && wrapperInfo.paramIndex === index && isZeroArgFunctionNode(arg)) {
+            ctx.pushHandledSignatures(wrapperInfo.handled)
+            try {
+              return inferFunctionNode(arg, ctx, env, typeMap, { inheritHandledSignatures: true })
+            } finally {
+              ctx.popHandledSignatures()
+            }
+          }
+          return inferExpr(arg, ctx, env, typeMap)
+        })
+        const thunkAlternatives = argTypes.length === 1
+          ? getFunctionAlternatives(argTypes[0]!)
+          : []
+
+        if (handlerAlternatives.length > 0 && thunkAlternatives.length > 0
+        && thunkAlternatives.every(thunk => thunk.params.length === 0)) {
+          const requiredBodyType = handlerAlternatives.length === 1
+            ? handlerAlternatives[0]!.body
+            : inter(...handlerAlternatives.map(handler => handler.body))
+
+          constrain(ctx, argTypes[0]!, fn([], requiredBodyType))
+
+          const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
+          const residualEffects = subtractEffects(
+            unionEffectSets(thunkAlternatives.map(thunk => thunk.effects)),
+            new Set(guaranteedHandled.keys()),
+          )
+          ctx.addEffects(residualEffects)
+
+          result = handlerAlternatives.length === 1
+            ? handlerAlternatives[0]!.output
+            : union(...handlerAlternatives.map(handler => handler.output))
+          break
+        }
+
+        if (handlerAlternatives.length > 0 && argTypes.length === 1) {
+          const requiredBodyType = handlerAlternatives.length === 1
+            ? handlerAlternatives[0]!.body
+            : inter(...handlerAlternatives.map(handler => handler.body))
+          const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
+
+          constrain(ctx, argTypes[0]!, fn([], requiredBodyType))
+          if (argTypes[0]!.tag === 'Var') {
+            ctx.noteWrappedThunkVar(argTypes[0].id, guaranteedHandled)
+          }
+
+          result = handlerAlternatives.length === 1
+            ? handlerAlternatives[0]!.output
+            : union(...handlerAlternatives.map(handler => handler.output))
+          break
+        }
+
+        // Create a fresh variable for the return type
+        const retVar = ctx.freshVar()
+
+        const selectedAlternative = selectFirstSuccessfulFunctionAlternative(ctx, functionAlternatives, argTypes)
+
+        // Constrain: callee <: (argTypes...) -> retVar
+        // If the callee is a record and arg is a string, constrain() handles
+        // this as property access (see Record <: Function case in constrain).
+        constrain(ctx, calleeType, fn(argTypes, retVar))
+        recordSpecializedCalleeType(calleeNode, selectedAlternative, typeMap)
+
+        result = retVar
+        break
+      }
+
+      // --- Array literal ---
+      case NodeTypes.Array: {
+        const elements = payload as AstNode[]
+        if (elements.length === 0) {
+          result = array(ctx.freshVar())
+        } else {
+          const elemTypes = elements.map(e => inferExpr(e, ctx, env, typeMap))
+          // All elements contribute to a union of the element type
+          const elemVar = ctx.freshVar()
+          for (const et of elemTypes) {
+            constrain(ctx, et, elemVar)
+          }
+          result = array(elemVar)
+        }
+        break
+      }
+
+      // --- Object literal ---
+      case NodeTypes.Object: {
+        const entries = payload as ([AstNode, AstNode] | AstNode)[]
+        const fields = new Map<string, Type>()
+        for (const entry of entries) {
+          if (Array.isArray(entry) && entry.length === 2) {
+            const [keyNode, valueNode] = entry
+            // Key is either a string literal or a symbol
+            const keyName = keyNode[0] === NodeTypes.Str
               ? keyNode[1] as string
-              : String(keyNode[1])
-          const valueType = inferExpr(valueNode, ctx, env, typeMap)
-          fields.set(keyName, valueType)
-        }
+              : keyNode[0] === NodeTypes.Sym
+                ? keyNode[1] as string
+                : String(keyNode[1])
+            const valueType = inferExpr(valueNode, ctx, env, typeMap)
+            fields.set(keyName, valueType)
+          }
         // Spread entries are handled at a later step
+        }
+        result = { tag: 'Record', fields, open: false }
+        break
       }
-      result = { tag: 'Record', fields, open: false }
-      break
-    }
 
-    // --- Perform (effect invocation) ---
-    case NodeTypes.Perform: {
+      // --- Perform (effect invocation) ---
+      case NodeTypes.Perform: {
       // perform(@eff, arg) — adds the effect to the current effect set
       // and returns the declared return type. Undeclared effects are errors.
-      const [effectExpr, argExpr] = payload as [AstNode, AstNode | undefined]
-      if (effectExpr[0] === NodeTypes.Effect) {
-        const effectName = effectExpr[1] as string
-        ctx.addEffect(effectName)
+        const [effectExpr, argExpr] = payload as [AstNode, AstNode | undefined]
+        if (effectExpr[0] === NodeTypes.Effect) {
+          const effectName = effectExpr[1] as string
+          ctx.addEffect(effectName)
 
-        // Check that the effect is declared
-        const decl = getEffectDeclaration(effectName)
-        if (!decl) {
-          throw new TypeInferenceError(`Undeclared effect @${effectName} — add 'effect @${effectName}(ArgType) -> RetType' before use`)
-        }
-
-        // If there's an arg, constrain it against the declared arg type
-        if (argExpr) {
-          const argType = inferExpr(argExpr, ctx, env, typeMap)
-          if (decl.argType.tag !== 'Unknown') {
-            constrain(ctx, argType, decl.argType)
+          // Prefer signatures guaranteed by the active handler context.
+          // Fall back to explicit effect declarations when no handler proves it.
+          const decl = ctx.currentHandledSignatures?.get(effectName) ?? getEffectDeclaration(effectName)
+          if (!decl) {
+            throw new TypeInferenceError(`Undeclared effect @${effectName} — add 'effect @${effectName}(ArgType) -> RetType' before use`)
           }
+
+          // If there's an arg, constrain it against the declared arg type
+          if (argExpr) {
+            const argType = inferExpr(argExpr, ctx, env, typeMap)
+            if (decl.argType.tag !== 'Unknown') {
+              constrain(ctx, argType, decl.argType)
+            }
+          }
+
+          // Return the declared return type
+          result = decl.retType
+        } else {
+          result = Unknown
         }
-
-        // Return the declared return type
-        result = decl.retType
-      } else {
-        result = Unknown
+        break
       }
-      break
-    }
 
-    // --- Effect reference ---
-    case NodeTypes.Effect:
-      result = Unknown
-      break
+      // --- Effect reference ---
+      case NodeTypes.Effect:
+        result = Unknown
+        break
 
-    // --- Template string ---
-    case NodeTypes.TmplStr:
-      result = StringType
-      break
+        // --- Template string ---
+      case NodeTypes.TmplStr:
+        result = StringType
+        break
 
-    // --- And / Or ---
-    case NodeTypes.And:
-    case NodeTypes.Or: {
-      const operands = payload as AstNode[]
-      // Both operands contribute to the result type
-      const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
-      result = union(...types)
-      break
-    }
+        // --- And / Or ---
+      case NodeTypes.And:
+      case NodeTypes.Or: {
+        const operands = payload as AstNode[]
+        // Both operands contribute to the result type
+        const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
+        result = union(...types)
+        break
+      }
 
-    // --- Nullish coalescing ---
-    case NodeTypes.Qq: {
+      // --- Nullish coalescing ---
+      case NodeTypes.Qq: {
       // ?? can have 2+ operands: a ?? b or ??(a, b, c)
-      const operands = payload as AstNode[]
-      const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
-      result = union(...types)
-      break
-    }
+        const operands = payload as AstNode[]
+        const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
+        result = union(...types)
+        break
+      }
 
-    // --- Match ---
-    case NodeTypes.Match: {
+      // --- Match ---
+      case NodeTypes.Match: {
       // Payload: [matchExpr, [case1, case2, ...]]
       // Each case: [pattern, body, guard | null]
-      const matchPayload = payload as [AstNode, [AstNode, AstNode, AstNode | null][]]
-      const matchExpr = matchPayload[0]
-      const cases = matchPayload[1]
-      const matchType = inferExpr(matchExpr, ctx, env, typeMap)
+        const matchPayload = payload as [AstNode, [AstNode, AstNode, AstNode | null][]]
+        const matchExpr = matchPayload[0]
+        const cases = matchPayload[1]
+        const matchType = inferExpr(matchExpr, ctx, env, typeMap)
 
-      // Track remaining type for exhaustiveness
-      let remainingType: Type = expandType(matchType)
+        // Track remaining type for exhaustiveness
+        let remainingType: Type = expandType(matchType)
 
-      const branchTypes: Type[] = []
-      for (const [pattern, body, guard] of cases) {
-        const caseEnv = env.child()
-        const patternType = pattern[0] as string
+        const branchTypes: Type[] = []
+        for (const [pattern, body, guard] of cases) {
+          const caseEnv = env.child()
+          const patternType = pattern[0] as string
 
-        // Determine what type this pattern narrows to
-        let narrowedType: Type | null = null
+          // Determine what type this pattern narrows to
+          let narrowedType: Type | null = null
 
-        switch (patternType) {
-          case 'literal': {
+          switch (patternType) {
+            case 'literal': {
             // case 0, case "hello", case :ok — narrows to the literal/atom type
-            const [litNode] = pattern[1] as [AstNode]
-            if (litNode[0] === NodeTypes.Num) narrowedType = literal(litNode[1] as number)
-            else if (litNode[0] === NodeTypes.Str) narrowedType = literal(litNode[1] as string)
-            else if (litNode[0] === NodeTypes.Atom) narrowedType = atom(litNode[1] as string)
-            else if (litNode[0] === NodeTypes.Reserved) {
-              if (litNode[1] === 'true') narrowedType = literal(true)
-              else if (litNode[1] === 'false') narrowedType = literal(false)
-              else if (litNode[1] === 'null') narrowedType = NullType
-            }
-            break
-          }
-          case 'symbol': {
-            // case n — binds a variable, optionally narrowed by guard
-            const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
-            const name = nameNode[1] as string
-
-            // Check guard for type narrowing: when isNumber(n) → narrow to Number
-            let bindType: Type = matchType
-            if (guard) {
-              const guardNarrow = extractGuardNarrowing(guard, name)
-              if (guardNarrow) {
-                narrowedType = guardNarrow
-                bindType = guardNarrow
+              const [litNode] = pattern[1] as [AstNode]
+              if (litNode[0] === NodeTypes.Num) narrowedType = literal(litNode[1] as number)
+              else if (litNode[0] === NodeTypes.Str) narrowedType = literal(litNode[1] as string)
+              else if (litNode[0] === NodeTypes.Atom) narrowedType = atom(litNode[1] as string)
+              else if (litNode[0] === NodeTypes.Reserved) {
+                if (litNode[1] === 'true') narrowedType = literal(true)
+                else if (litNode[1] === 'false') narrowedType = literal(false)
+                else if (litNode[1] === 'null') narrowedType = NullType
               }
+              break
             }
+            case 'symbol': {
+            // case n — binds a variable, optionally narrowed by guard
+              const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
+              const name = nameNode[1] as string
 
-            caseEnv.bind(name, bindType)
-            // Record the binding's type for hover
-            const nameNodeId = nameNode[2]
-            if (nameNodeId > 0) {
-              typeMap.set(nameNodeId, bindType)
+              // Check guard for type narrowing: when isNumber(n) → narrow to Number
+              let bindType: Type = matchType
+              if (guard) {
+                const guardNarrow = extractGuardNarrowing(guard, name)
+                if (guardNarrow) {
+                  narrowedType = guardNarrow
+                  bindType = guardNarrow
+                }
+              }
+
+              caseEnv.bind(name, bindType)
+              // Record the binding's type for hover
+              const nameNodeId = nameNode[2]
+              if (nameNodeId > 0) {
+                typeMap.set(nameNodeId, bindType)
+              }
+              break
             }
-            break
-          }
-          case 'wildcard':
+            case 'wildcard':
             // _ — matches everything, no narrowing
-            break
-          case 'object': {
+              break
+            case 'object': {
             // case {name, age} — destructure and bind
-            const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
-            for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
-              const fieldVar = ctx.freshVar()
-              constrain(ctx, matchType, { tag: 'Record', fields: new Map([[fieldName, fieldVar]]), open: true })
-              bindPattern(fieldPattern, fieldVar, caseEnv, ctx, typeMap)
+              const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+              for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+                const fieldVar = ctx.freshVar()
+                constrain(ctx, matchType, { tag: 'Record', fields: new Map([[fieldName, fieldVar]]), open: true })
+                bindPattern(fieldPattern, fieldVar, caseEnv, ctx, typeMap)
+              }
+              break
             }
-            break
+            default:
+              break
           }
-          default:
-            break
+
+          // Infer body type in the case scope
+          const bodyType = inferExpr(body, ctx, caseEnv, typeMap)
+          branchTypes.push(bodyType)
+
+          // Subtract the narrowed type from remaining for exhaustiveness
+          if (narrowedType) {
+            remainingType = subtractType(remainingType, narrowedType)
+          } else if (patternType === 'wildcard') {
+            remainingType = Never // wildcard catches everything
+          }
         }
 
-        // Infer body type in the case scope
-        const bodyType = inferExpr(body, ctx, caseEnv, typeMap)
-        branchTypes.push(bodyType)
-
-        // Subtract the narrowed type from remaining for exhaustiveness
-        if (narrowedType) {
-          remainingType = subtractType(remainingType, narrowedType)
-        } else if (patternType === 'wildcard') {
-          remainingType = Never // wildcard catches everything
-        }
-      }
-
-      // Exhaustiveness check: if remainder is not Never after all literal/atom
-      // patterns, the match may not cover all cases. Only fires when the match
-      // value is a union of literals/atoms (where exhaustiveness is meaningful).
-      if (remainingType.tag !== 'Never'
+        // Exhaustiveness check: if remainder is not Never after all literal/atom
+        // patterns, the match may not cover all cases. Only fires when the match
+        // value is a union of literals/atoms (where exhaustiveness is meaningful).
+        if (remainingType.tag !== 'Never'
         && remainingType.tag !== 'Unknown'
         && remainingType.tag !== 'Var'
         && (remainingType.tag === 'Atom' || remainingType.tag === 'Literal'
           || (remainingType.tag === 'Union' && remainingType.members.every(
             m => m.tag === 'Atom' || m.tag === 'Literal')))) {
-        throw new TypeInferenceError(
-          `Non-exhaustive match — unhandled: ${typeToString(remainingType)}`,
-        )
-      }
-
-      result = branchTypes.length > 0 ? union(...branchTypes) : Never
-      break
-    }
-
-    // --- Loop ---
-    case NodeTypes.Loop: {
-      // Loop returns whatever the body returns when it doesn't recur
-      // For now, type it as Unknown (proper loop typing needs fixpoint)
-      result = Unknown
-      break
-    }
-
-    // --- For comprehension ---
-    case NodeTypes.For:
-      result = array(Unknown) // Conservative: array of unknown element type
-      break
-
-    // --- Import ---
-    case NodeTypes.Import: {
-      const moduleName = payload as string
-      // File import (relative path) — resolve and typecheck the imported file
-      if (moduleName.startsWith('.') && ctx.resolveFileType) {
-        result = ctx.resolveFileType(moduleName)
-      } else {
-        // Module import — record of module exports with their declared types
-        result = freshenAnnotationVars(ctx, getModuleType(moduleName))
-      }
-      break
-    }
-
-    // --- Handler (handler...end creates a handler value) ---
-    case NodeTypes.Handler: {
-      const [clauses, transform] = payload as [{ effectName: string; params: AstNode[]; body: AstNode[] }[], [AstNode, AstNode[]] | null, boolean]
-      const bodyType = ctx.freshVar()
-      const answerType = ctx.freshVar()
-      const handled = new Map<string, { argType: Type; retType: Type }>()
-
-      for (const clause of clauses) {
-        const effectDecl = getEffectDeclaration(clause.effectName)
-        if (!effectDecl) {
-          throw new TypeInferenceError(`Undeclared effect @${clause.effectName} — add 'effect @${clause.effectName}(ArgType) -> RetType' before handling it`)
+          throw new TypeInferenceError(
+            `Non-exhaustive match — unhandled: ${typeToString(remainingType)}`,
+          )
         }
 
-        const clauseEnv = env.child()
-        const declaredArgType = effectDecl.argType
-        const declaredRetType = effectDecl.retType
-        handled.set(clause.effectName, { argType: declaredArgType, retType: declaredRetType })
-
-        for (const param of clause.params) {
-          bindPattern(param, declaredArgType, clauseEnv, ctx, typeMap)
-        }
-
-        ctx.pushResume(declaredRetType, answerType)
-        let clauseBodyType: Type = NullType
-        for (const bodyNode of clause.body) {
-          clauseBodyType = inferExpr(bodyNode, ctx, clauseEnv, typeMap)
-        }
-        ctx.popResume()
-        constrain(ctx, clauseBodyType, answerType)
-      }
-
-      if (transform) {
-        const [transformParam, transformBody] = transform
-        const transformEnv = env.child()
-        bindPattern(transformParam, bodyType, transformEnv, ctx, typeMap)
-        let transformResult: Type = NullType
-        for (const bodyNode of transformBody) {
-          transformResult = inferExpr(bodyNode, ctx, transformEnv, typeMap)
-        }
-        constrain(ctx, transformResult, answerType)
-      } else {
-        constrain(ctx, bodyType, answerType)
-        constrain(ctx, answerType, bodyType)
-      }
-
-      result = handlerType(bodyType, answerType, handled)
-      break
-    }
-
-    // --- WithHandler (do with handler; body end) ---
-    case NodeTypes.WithHandler: {
-      const [handlerExpr, bodyExprs] = payload as [AstNode, AstNode[]]
-      const inferredHandlerType = inferExpr(handlerExpr, ctx, env, typeMap)
-      const handlerAlternatives = getHandlerAlternatives(inferredHandlerType)
-
-      let bodyType: Type = NullType
-      for (const bodyNode of bodyExprs) {
-        bodyType = inferExpr(bodyNode, ctx, env, typeMap)
-      }
-
-      if (handlerAlternatives.length > 0) {
-        const requiredBodyType = handlerAlternatives.length === 1
-          ? handlerAlternatives[0]!.body
-          : inter(...handlerAlternatives.map(handler => handler.body))
-        constrain(ctx, bodyType, requiredBodyType)
-
-        const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
-        ctx.handleEffects(new Set(guaranteedHandled.keys()))
-
-        result = handlerAlternatives.length === 1
-          ? handlerAlternatives[0]!.output
-          : union(...handlerAlternatives.map(handler => handler.output))
-      } else {
-        result = bodyType
-      }
-      break
-    }
-
-    // --- Resume ---
-    case NodeTypes.Resume: {
-      const resumeContext = ctx.currentResume
-      if (!resumeContext) {
-        throw new TypeInferenceError('resume can only be used inside a handler clause')
-      }
-
-      if (payload === 'ref') {
-        result = fn([resumeContext.argType], resumeContext.answerType)
+        result = branchTypes.length > 0 ? union(...branchTypes) : Never
         break
       }
 
-      const resumeArg = payload as AstNode
-      const resumeArgType = inferExpr(resumeArg, ctx, env, typeMap)
-      constrain(ctx, resumeArgType, resumeContext.argType)
-      result = resumeContext.answerType
-      break
+      // --- Loop ---
+      case NodeTypes.Loop: {
+      // Loop returns whatever the body returns when it doesn't recur
+      // For now, type it as Unknown (proper loop typing needs fixpoint)
+        result = Unknown
+        break
+      }
+
+      // --- For comprehension ---
+      case NodeTypes.For:
+        result = array(Unknown) // Conservative: array of unknown element type
+        break
+
+        // --- Import ---
+      case NodeTypes.Import: {
+        const moduleName = payload as string
+        // File import (relative path) — resolve and typecheck the imported file
+        if (moduleName.startsWith('.') && ctx.resolveFileType) {
+          result = ctx.resolveFileType(moduleName)
+        } else {
+        // Module import — record of module exports with their declared types
+          result = freshenAnnotationVars(ctx, getModuleType(moduleName))
+        }
+        break
+      }
+
+      // --- Handler (handler...end creates a handler value) ---
+      case NodeTypes.Handler: {
+        const [clauses, transform] = payload as [{ effectName: string; params: AstNode[]; body: AstNode[] }[], [AstNode, AstNode[]] | null, boolean]
+        const bodyType = ctx.freshVar()
+        const answerType = ctx.freshVar()
+        const handled = new Map<string, { argType: Type; retType: Type }>()
+
+        for (const clause of clauses) {
+        // When a handler clause lacks a source-level effect declaration, infer
+        // its payload/resume signature from how the clause body uses the
+        // parameter and resume value. This lets wrapper helpers propagate
+        // concrete perform-site types such as resume(null) -> Null.
+          const effectDecl = getEffectDeclaration(clause.effectName)
+
+          const clauseEnv = env.child()
+          const declaredArgType = effectDecl?.argType ?? ctx.freshVar()
+          const declaredRetType = effectDecl?.retType ?? ctx.freshVar()
+          handled.set(clause.effectName, { argType: declaredArgType, retType: declaredRetType })
+
+          for (const param of clause.params) {
+            bindPattern(param, declaredArgType, clauseEnv, ctx, typeMap)
+            const paramAnnotation = ctx.typeAnnotations?.get(param[2])
+            if (paramAnnotation) {
+              const annotatedType = parseTypeAnnotation(paramAnnotation)
+              constrain(ctx, declaredArgType, annotatedType)
+              constrain(ctx, annotatedType, declaredArgType)
+            }
+          }
+
+          ctx.pushResume(declaredRetType, answerType)
+          let clauseBodyType: Type = NullType
+          for (const bodyNode of clause.body) {
+            clauseBodyType = inferExpr(bodyNode, ctx, clauseEnv, typeMap)
+          }
+          ctx.popResume()
+          constrain(ctx, clauseBodyType, answerType)
+        }
+
+        if (transform) {
+          const [transformParam, transformBody] = transform
+          const transformEnv = env.child()
+          bindPattern(transformParam, bodyType, transformEnv, ctx, typeMap)
+          let transformResult: Type = NullType
+          for (const bodyNode of transformBody) {
+            transformResult = inferExpr(bodyNode, ctx, transformEnv, typeMap)
+          }
+          constrain(ctx, transformResult, answerType)
+          constrain(ctx, answerType, transformResult)
+        } else {
+          constrain(ctx, bodyType, answerType)
+          constrain(ctx, answerType, bodyType)
+        }
+
+        result = handlerType(bodyType, answerType, finalizeHandledSignatures(handled))
+        break
+      }
+
+      // --- WithHandler (do with handler; body end) ---
+      case NodeTypes.WithHandler: {
+        const [handlerExpr, bodyExprs] = payload as [AstNode, AstNode[]]
+        const inferredHandlerType = inferExpr(handlerExpr, ctx, env, typeMap)
+        const handlerAlternatives = getHandlerAlternatives(inferredHandlerType)
+
+        let bodyType: Type = NullType
+
+        if (handlerAlternatives.length > 0) {
+          const requiredBodyType = handlerAlternatives.length === 1
+            ? handlerAlternatives[0]!.body
+            : inter(...handlerAlternatives.map(handler => handler.body))
+          const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
+
+          ctx.pushHandledSignatures(guaranteedHandled)
+          try {
+            for (const bodyNode of bodyExprs) {
+              bodyType = inferExpr(bodyNode, ctx, env, typeMap)
+            }
+          } finally {
+            ctx.popHandledSignatures()
+          }
+          constrain(ctx, bodyType, requiredBodyType)
+          ctx.handleEffects(new Set(guaranteedHandled.keys()))
+
+          result = handlerAlternatives.length === 1
+            ? handlerAlternatives[0]!.output
+            : union(...handlerAlternatives.map(handler => handler.output))
+        } else {
+          for (const bodyNode of bodyExprs) {
+            bodyType = inferExpr(bodyNode, ctx, env, typeMap)
+          }
+          result = bodyType
+        }
+        break
+      }
+
+      // --- Resume ---
+      case NodeTypes.Resume: {
+        const resumeContext = ctx.currentResume
+        if (!resumeContext) {
+          throw new TypeInferenceError('resume can only be used inside a handler clause')
+        }
+
+        if (payload === 'ref') {
+          result = fn([resumeContext.argType], resumeContext.answerType)
+          break
+        }
+
+        const resumeArg = payload as AstNode
+        const resumeArgType = inferExpr(resumeArg, ctx, env, typeMap)
+        constrain(ctx, resumeArgType, resumeContext.argType)
+        result = resumeContext.answerType
+        break
+      }
+
+      // --- Macro, MacroCall ---
+      case NodeTypes.Macro:
+        result = AnyFunction // Macros are callable — type as AnyFunction so callers can invoke them
+        break
+      case NodeTypes.MacroCall:
+        result = Unknown // Macro calls expand at compile time — result type unknown
+        break
+
+        // --- Recur ---
+      case NodeTypes.Recur:
+        result = Never // recur never returns (it jumps back to loop)
+        break
+
+      default:
+        result = Unknown
     }
-
-    // --- Macro, MacroCall ---
-    case NodeTypes.Macro:
-      result = AnyFunction // Macros are callable — type as AnyFunction so callers can invoke them
-      break
-    case NodeTypes.MacroCall:
-      result = Unknown // Macro calls expand at compile time — result type unknown
-      break
-
-    // --- Recur ---
-    case NodeTypes.Recur:
-      result = Never // recur never returns (it jumps back to loop)
-      break
-
-    default:
-      result = Unknown
+  } catch (error) {
+    if (error instanceof TypeInferenceError && error.nodeId === undefined) {
+      error.nodeId = nodeId
+    }
+    throw error
   }
 
   // Record the inferred type in the side-table
@@ -1092,6 +1194,7 @@ function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<number, Typ
         t.params.map(p => freshenAllVars(ctx, p, mapping)),
         freshenAllVars(ctx, t.ret, mapping),
         t.effects,
+        t.handlerWrapper,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -1158,6 +1261,7 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<number, TypeV
         t.params.map(p => freshenInner(ctx, p, mapping)),
         freshenInner(ctx, t.ret, mapping),
         t.effects,
+        t.handlerWrapper,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -1229,6 +1333,12 @@ interface VarBoundSnapshot {
   upperLen: number
 }
 
+interface VarBoundDelta {
+  var: TypeVar
+  lowerBounds: Type[]
+  upperBounds: Type[]
+}
+
 /** Snapshot the bounds of all type variables reachable from a type. */
 function snapshotVarBounds(t: Type): VarBoundSnapshot[] {
   const result: VarBoundSnapshot[] = []
@@ -1282,6 +1392,60 @@ function restoreVarBounds(snapshot: VarBoundSnapshot[]): void {
   }
 }
 
+function captureVarBoundDelta(snapshot: VarBoundSnapshot[]): VarBoundDelta[] {
+  const deltas: VarBoundDelta[] = []
+  for (const s of snapshot) {
+    const lowerBounds = s.var.lowerBounds.slice(s.lowerLen)
+    const upperBounds = s.var.upperBounds.slice(s.upperLen)
+    if (lowerBounds.length === 0 && upperBounds.length === 0) continue
+    deltas.push({ var: s.var, lowerBounds, upperBounds })
+  }
+  return deltas
+}
+
+function replayVarBoundDeltaExact(ctx: InferenceContext, deltas: VarBoundDelta[]): void {
+  for (const delta of deltas) {
+    for (const lowerBound of delta.lowerBounds) {
+      constrain(ctx, lowerBound, delta.var)
+    }
+    for (const upperBound of delta.upperBounds) {
+      constrain(ctx, delta.var, upperBound)
+    }
+  }
+}
+
+function annotateDisplayVarBoundDeltas(successfulDeltas: VarBoundDelta[][]): void {
+  const merged = new Map<number, { var: TypeVar; lowerBounds: Type[]; upperBounds: Type[] }>()
+
+  for (const deltas of successfulDeltas) {
+    for (const delta of deltas) {
+      const entry = merged.get(delta.var.id) ?? { var: delta.var, lowerBounds: [], upperBounds: [] }
+      entry.lowerBounds.push(...delta.lowerBounds)
+      entry.upperBounds.push(...delta.upperBounds)
+      merged.set(delta.var.id, entry)
+    }
+  }
+
+  for (const entry of merged.values()) {
+    if (entry.lowerBounds.length > 0) {
+      entry.var.displayLowerBounds = dedupeDisplayBounds(entry.var.displayLowerBounds ?? [], entry.lowerBounds)
+    }
+    if (entry.upperBounds.length > 0) {
+      entry.var.displayUpperBounds = dedupeDisplayBounds(entry.var.displayUpperBounds ?? [], entry.upperBounds)
+    }
+  }
+}
+
+function dedupeDisplayBounds(existing: Type[], additions: Type[]): Type[] {
+  const merged = [...existing]
+  for (const candidate of additions) {
+    if (!merged.some(bound => typeEquals(bound, candidate))) {
+      merged.push(candidate)
+    }
+  }
+  return merged
+}
+
 // ---------------------------------------------------------------------------
 // Effect helpers
 // ---------------------------------------------------------------------------
@@ -1298,6 +1462,9 @@ function getHandlerAlternatives(type: Type): Extract<Type, { tag: 'Handler' }>[]
 function getFunctionAlternatives(type: Type): Extract<Type, { tag: 'Function' }>[] {
   const resolved = resolveCallableCarrier(type)
   if (resolved.tag === 'Function') return [resolved]
+  if (resolved.tag === 'Inter' && resolved.members.every(member => member.tag === 'Function')) {
+    return resolved.members
+  }
   if (resolved.tag === 'Union' && resolved.members.every(member => member.tag === 'Function')) {
     return resolved.members
   }
@@ -1341,6 +1508,50 @@ function intersectHandledSignatures(
   return intersection
 }
 
+function intersectFunctionWrapperInfo(
+  functions: Extract<Type, { tag: 'Function' }>[],
+): { paramIndex: number; handled: HandledSignatureMap } | undefined {
+  if (functions.length === 0) return undefined
+  const first = functions[0]!.handlerWrapper
+  if (!first) return undefined
+
+  const compatible = functions.every(fnType => {
+    const wrapper = fnType.handlerWrapper
+    if (!wrapper || wrapper.paramIndex !== first.paramIndex) return false
+    if (wrapper.handled.size !== first.handled.size) return false
+    for (const [name, sig] of first.handled) {
+      const other = wrapper.handled.get(name)
+      if (!other) return false
+      if (!typeEquals(sig.argType, other.argType) || !typeEquals(sig.retType, other.retType)) {
+        return false
+      }
+    }
+    return true
+  })
+
+  return compatible ? first : undefined
+}
+
+function finalizeHandledSignatures(handled: HandledSignatureMap): HandledSignatureMap {
+  const finalized = new Map<string, { argType: Type; retType: Type }>()
+
+  for (const [name, sig] of handled) {
+    finalized.set(name, {
+      argType: finalizeInferredHandledType(sig.argType),
+      retType: finalizeInferredHandledType(sig.retType),
+    })
+  }
+
+  return finalized
+}
+
+function finalizeInferredHandledType(type: Type): Type {
+  if (type.tag !== 'Var') return type
+  return type.lowerBounds.length === 0 && type.upperBounds.length === 0
+    ? Unknown
+    : type
+}
+
 function unionEffectSets(effectSets: EffectSet[]): EffectSet {
   if (effectSets.length === 0) return PureEffects
 
@@ -1352,6 +1563,150 @@ function unionEffectSets(effectSets: EffectSet[]): EffectSet {
   }
 
   return { effects, open }
+}
+
+function recordSpecializedCalleeType(
+  calleeNode: AstNode,
+  selectedAlternative: Extract<Type, { tag: 'Function' }> | undefined,
+  typeMap: Map<number, Type>,
+): void {
+  const calleeNodeId = calleeNode[2]
+  if (calleeNodeId <= 0 || !selectedAlternative) return
+  typeMap.set(calleeNodeId, selectedAlternative)
+}
+
+function selectFirstSuccessfulFunctionAlternative(
+  ctx: InferenceContext,
+  functionAlternatives: Extract<Type, { tag: 'Function' }>[],
+  argTypes: Type[],
+): Extract<Type, { tag: 'Function' }> | undefined {
+  if (functionAlternatives.length <= 1) return undefined
+
+  for (const alternative of functionAlternatives) {
+    const probeRetVar = ctx.freshVar()
+    const target = fn(argTypes, probeRetVar)
+    const boundsSnapshot = snapshotVarBounds(target)
+    const cacheSnapshot = ctx.snapshotCacheSize()
+
+    try {
+      constrain(ctx, alternative, target)
+      restoreVarBounds(boundsSnapshot)
+      ctx.restoreCacheSize(cacheSnapshot)
+      return alternative
+    } catch (error) {
+      if (!(error instanceof TypeInferenceError)) {
+        throw error
+      }
+      restoreVarBounds(boundsSnapshot)
+      ctx.restoreCacheSize(cacheSnapshot)
+    }
+  }
+
+  return undefined
+}
+
+function isZeroArgFunctionNode(node: AstNode): boolean {
+  return node[0] === NodeTypes.Function && ((node[1] as [AstNode[], AstNode[]])[0]).length === 0
+}
+
+function inferFunctionNode(
+  node: AstNode,
+  ctx: InferenceContext,
+  env: TypeEnv,
+  typeMap: Map<number, Type>,
+  options?: { inheritHandledSignatures?: boolean },
+): Type {
+  const payload = node[1] as [AstNode[], AstNode[]]
+  const [params, bodyNodes] = payload
+  const funcEnv = env.child()
+  const paramTypes: Type[] = []
+  const inheritedHandled = options?.inheritHandledSignatures ? ctx.currentHandledSignatures : undefined
+  const suspendedHandled = inheritedHandled ? undefined : ctx.currentHandledSignatures
+
+  if (suspendedHandled) {
+    ctx.popHandledSignatures()
+  }
+
+  try {
+    for (const param of params) {
+      const paramVar = ctx.freshVar()
+      paramTypes.push(paramVar)
+      bindPattern(param, paramVar, funcEnv, ctx, typeMap)
+      const paramAnnotation = ctx.typeAnnotations?.get(param[2])
+      if (paramAnnotation) {
+        const declaredType = parseTypeAnnotation(paramAnnotation)
+        constrain(ctx, paramVar, declaredType)
+      }
+    }
+
+    ctx.pushEffects()
+
+    let retType: Type = NullType
+    for (const bodyNode of bodyNodes) {
+      retType = inferExpr(bodyNode, ctx, funcEnv, typeMap)
+    }
+
+    const bodyEffects = ctx.popEffects()
+    const handlerWrapper = inferFunctionWrapperInfo(paramTypes, ctx)
+    const overloads = synthesizeFunctionOverloads(paramTypes, retType, bodyEffects, handlerWrapper)
+    if (overloads) {
+      return inter(...overloads)
+    }
+    return fn(paramTypes, retType, bodyEffects, handlerWrapper)
+  } finally {
+    if (suspendedHandled) {
+      ctx.pushHandledSignatures(suspendedHandled)
+    }
+  }
+}
+
+function synthesizeFunctionOverloads(
+  params: Type[],
+  ret: Type,
+  effects: EffectSet,
+  handlerWrapper?: { paramIndex: number; handled: HandledSignatureMap },
+): Extract<Type, { tag: 'Function' }>[] | undefined {
+  const paramAlternatives = params.map(getDisplayUpperAlternatives)
+  const retAlternatives = getDisplayLowerAlternatives(ret)
+
+  if (!retAlternatives || retAlternatives.length < 2) return undefined
+  if (paramAlternatives.some(alternatives => !alternatives || alternatives.length !== retAlternatives.length)) {
+    return undefined
+  }
+
+  const overloads = retAlternatives.map((retAlternative, index) => fn(
+    paramAlternatives.map(alternatives => alternatives![index]!),
+    retAlternative,
+    effects,
+    handlerWrapper,
+  ))
+
+  return dedupeDisplayBounds([], overloads) as Extract<Type, { tag: 'Function' }>[]
+}
+
+function getDisplayUpperAlternatives(type: Type): Type[] | undefined {
+  return type.tag === 'Var' && type.displayUpperBounds && type.displayUpperBounds.length > 0
+    ? type.displayUpperBounds
+    : undefined
+}
+
+function getDisplayLowerAlternatives(type: Type): Type[] | undefined {
+  return type.tag === 'Var' && type.displayLowerBounds && type.displayLowerBounds.length > 0
+    ? type.displayLowerBounds
+    : undefined
+}
+
+function inferFunctionWrapperInfo(
+  params: Type[],
+  ctx: InferenceContext,
+): { paramIndex: number; handled: HandledSignatureMap } | undefined {
+  for (let index = 0; index < params.length; index++) {
+    const param = params[index]!
+    if (param.tag !== 'Var') continue
+    const handled = ctx.getWrappedThunkVar(param.id)
+    if (handled) return { paramIndex: index, handled }
+  }
+  return undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -1567,6 +1922,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
         t.params.map(p => expandType(p, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))),
         expandType(t.ret, polarity, new Set(visited)),
         t.effects,
+        t.handlerWrapper,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -1602,13 +1958,232 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
   }
 }
 
+/**
+ * Expand a type for IDE display. Unlike semantic expansion, this prefers
+ * readable upper-bound information over `Never` when a variable has no lower
+ * bounds yet, and reconstructs record shapes from property-access constraints.
+ */
+export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' = 'positive', visited = new Set<number>()): Type {
+  switch (t.tag) {
+    case 'Var': {
+      if (visited.has(t.id)) return polarity === 'positive' ? Never : Unknown
+      visited.add(t.id)
+
+      const recordDisplay = synthesizeRecordDisplayType(t, visited)
+      if (recordDisplay) return recordDisplay
+
+      if ((t.displayLowerBounds?.length ?? 0) > 0) {
+        const candidates = t.displayLowerBounds!.map(lb => expandTypeForDisplay(lb, 'positive', new Set(visited)))
+        return normalizeDisplayCandidates(candidates)
+      }
+
+      if ((t.displayUpperBounds?.length ?? 0) > 0) {
+        const candidates = t.displayUpperBounds!.map(ub => expandTypeForDisplay(ub, 'positive', new Set(visited)))
+        return normalizeDisplayCandidates(candidates)
+      }
+
+      if (t.lowerBounds.length === 0 && t.upperBounds.length > 0) {
+        const candidates = t.upperBounds.map(ub => expandTypeForDisplay(ub, 'positive', new Set(visited)))
+        return normalizeDisplayCandidates(candidates)
+      }
+
+      if (polarity === 'positive') {
+        if (t.lowerBounds.length > 0) {
+          const expanded = t.lowerBounds.map(lb => expandTypeForDisplay(lb, 'positive', new Set(visited)))
+          return expanded.length === 1 ? expanded[0]! : union(...expanded)
+        }
+        if (t.upperBounds.length > 0) {
+          const expanded = t.upperBounds.map(ub => expandTypeForDisplay(ub, 'negative', new Set(visited)))
+          return expanded.length === 1 ? expanded[0]! : inter(...expanded)
+        }
+        return Never
+      }
+
+      const expanded = t.upperBounds.map(ub => expandTypeForDisplay(ub, 'negative', new Set(visited)))
+      return expanded.length === 0 ? Unknown : expanded.length === 1 ? expanded[0]! : inter(...expanded)
+    }
+    case 'Function':
+      return fn(
+        t.params.map(p => expandTypeForDisplay(p, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))),
+        expandTypeForDisplay(t.ret, polarity, new Set(visited)),
+        t.effects,
+        t.handlerWrapper,
+      )
+    case 'Handler': {
+      const handled = new Map<string, { argType: Type; retType: Type }>()
+      for (const [name, sig] of t.handled) {
+        handled.set(name, {
+          argType: expandTypeForDisplay(sig.argType, 'negative', new Set(visited)),
+          retType: expandTypeForDisplay(sig.retType, 'positive', new Set(visited)),
+        })
+      }
+      return handlerType(
+        expandTypeForDisplay(t.body, 'positive', new Set(visited)),
+        expandTypeForDisplay(t.output, 'positive', new Set(visited)),
+        handled,
+      )
+    }
+    case 'Record': {
+      const fields = new Map<string, Type>()
+      for (const [name, fieldType] of t.fields) {
+        fields.set(name, expandTypeForDisplay(fieldType, 'positive', new Set(visited)))
+      }
+      return { tag: 'Record', fields, open: t.open }
+    }
+    case 'Array':
+      return array(expandTypeForDisplay(t.element, 'positive', new Set(visited)))
+    case 'Tuple':
+      return tuple(t.elements.map(element => expandTypeForDisplay(element, 'positive', new Set(visited))))
+    case 'Union':
+      return normalizeDisplayUnion(t.members.map(member => expandTypeForDisplay(member, polarity, new Set(visited))))
+    case 'Inter':
+      return inter(...t.members.map(member => expandTypeForDisplay(member, polarity, new Set(visited))))
+    case 'Neg':
+      return neg(expandTypeForDisplay(t.inner, polarity === 'positive' ? 'negative' : 'positive', new Set(visited)))
+    case 'Alias':
+      return { tag: 'Alias', name: t.name, args: t.args.map(arg => expandTypeForDisplay(arg, 'positive', new Set(visited))), expanded: expandTypeForDisplay(t.expanded, polarity, new Set(visited)) }
+    case 'Recursive':
+      return { tag: 'Recursive', id: t.id, body: expandTypeForDisplay(t.body, polarity, new Set(visited)) }
+    default:
+      return t
+  }
+}
+
+export function sanitizeDisplayType(t: Type, nested = false): Type {
+  if (nested && t.tag === 'Never') return Unknown
+
+  switch (t.tag) {
+    case 'Function':
+      return fn(
+        t.params.map(param => sanitizeDisplayType(param, true)),
+        sanitizeDisplayType(t.ret, true),
+        t.effects,
+        t.handlerWrapper,
+      )
+    case 'Handler': {
+      const handled = new Map<string, { argType: Type; retType: Type }>()
+      for (const [name, sig] of t.handled) {
+        handled.set(name, {
+          argType: sanitizeDisplayType(sig.argType, true),
+          retType: sanitizeDisplayType(sig.retType, true),
+        })
+      }
+      return handlerType(
+        sanitizeDisplayType(t.body, true),
+        sanitizeDisplayType(t.output, true),
+        handled,
+      )
+    }
+    case 'Record': {
+      const fields = new Map<string, Type>()
+      for (const [name, fieldType] of t.fields) {
+        fields.set(name, sanitizeDisplayType(fieldType, true))
+      }
+      return { tag: 'Record', fields, open: t.open }
+    }
+    case 'Array':
+      return array(sanitizeDisplayType(t.element, true))
+    case 'Tuple':
+      return tuple(t.elements.map(element => sanitizeDisplayType(element, true)))
+    case 'Union':
+      return union(...t.members.map(member => sanitizeDisplayType(member, true)))
+    case 'Inter':
+      return inter(...t.members.map(member => sanitizeDisplayType(member, true)))
+    case 'Neg':
+      return neg(sanitizeDisplayType(t.inner, true))
+    case 'Alias':
+      return { tag: 'Alias', name: t.name, args: t.args.map(arg => sanitizeDisplayType(arg, true)), expanded: sanitizeDisplayType(t.expanded, true) }
+    case 'Recursive':
+      return { tag: 'Recursive', id: t.id, body: sanitizeDisplayType(t.body, true) }
+    default:
+      return t
+  }
+}
+
+function normalizeDisplayUnion(members: Type[]): Type {
+  if (members.length === 0) return Never
+  if (members.every(member => member.tag === 'Record')) {
+    const open = members.some(member => member.open)
+    const fieldNames = new Set<string>()
+    for (const member of members) {
+      for (const fieldName of member.fields.keys()) fieldNames.add(fieldName)
+    }
+
+    const mergedFields = new Map<string, Type>()
+    for (const fieldName of fieldNames) {
+      const candidates: Type[] = []
+      for (const member of members) {
+        const fieldType = member.fields.get(fieldName)
+        if (fieldType) candidates.push(fieldType)
+      }
+      if (candidates.length > 0) {
+        mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
+      }
+    }
+
+    return { tag: 'Record', fields: mergedFields, open }
+  }
+
+  if (members.every(member => member.tag === 'Array')) {
+    return array(union(...members.map(member => member.element)))
+  }
+
+  return union(...members)
+}
+
+function synthesizeRecordDisplayType(t: TypeVar, visited: Set<number>): Type | undefined {
+  const fieldTypes = new Map<string, Type[]>()
+  let sawRecordLikeInfo = false
+  let open = false
+
+  for (const lowerBound of t.lowerBounds) {
+    const expanded = expandTypeForDisplay(lowerBound, 'positive', new Set(visited))
+    if (expanded.tag !== 'Record') continue
+    sawRecordLikeInfo = true
+    open = open || expanded.open
+    for (const [fieldName, fieldType] of expanded.fields) {
+      const existing = fieldTypes.get(fieldName) ?? []
+      existing.push(fieldType)
+      fieldTypes.set(fieldName, existing)
+    }
+  }
+
+  for (const upperBound of t.upperBounds) {
+    if (upperBound.tag !== 'Function' || upperBound.params.length !== 1) continue
+    const fieldParam = upperBound.params[0]
+    if (!fieldParam || fieldParam.tag !== 'Literal' || typeof fieldParam.value !== 'string') continue
+    sawRecordLikeInfo = true
+    const existing = fieldTypes.get(fieldParam.value) ?? []
+    existing.push(expandTypeForDisplay(upperBound.ret, 'positive', new Set(visited)))
+    fieldTypes.set(fieldParam.value, existing)
+  }
+
+  if (!sawRecordLikeInfo) return undefined
+
+  const mergedFields = new Map<string, Type>()
+  for (const [fieldName, candidates] of fieldTypes) {
+    mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
+  }
+
+  return { tag: 'Record', fields: mergedFields, open }
+}
+
+function normalizeDisplayCandidates(candidates: Type[]): Type {
+  if (candidates.length === 0) return Never
+  if (candidates.length === 1) return candidates[0]!
+  return normalizeDisplayUnion(candidates)
+}
+
 // ---------------------------------------------------------------------------
 // Error type
 // ---------------------------------------------------------------------------
 
 export class TypeInferenceError extends Error {
-  constructor(message: string) {
+  nodeId?: number
+
+  constructor(message: string, nodeId?: number) {
     super(message)
     this.name = 'TypeInferenceError'
+    this.nodeId = nodeId
   }
 }

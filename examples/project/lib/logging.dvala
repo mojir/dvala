@@ -3,7 +3,7 @@
 let withLogging = (thunk) -> do
   let h =
     handler
-      @project.log(msg) -> do
+      @project.log(msg: String) -> do
         let resumed = resume(null);
         { result: resumed.result, logs: [msg] ++ resumed.logs };
       end

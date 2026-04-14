@@ -19,8 +19,8 @@ import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
 import { initBuiltinTypes, registerModuleType } from './builtinTypes'
-import { declareEffect, initBuiltinEffects, resetUserEffects } from './effectTypes'
-import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases } from './parseType'
+import { declareEffect, initBuiltinEffects, resetUserEffects, restoreEffectRegistry, snapshotEffectRegistry } from './effectTypes'
+import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases, restoreTypeAliases, snapshotTypeAliases } from './parseType'
 import { allBuiltinModules } from '../allModules'
 import { builtin } from '../builtin'
 import { expandMacros } from '../ast/expandMacros'
@@ -92,6 +92,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   const resolver = options?.fileResolver
   const baseDir = options?.fileResolverBaseDir ?? '.'
   const expandedAst = expandMacros(ast, resolver ? { fileResolver: resolver, fileResolverBaseDir: baseDir } : undefined)
+  const sourceMap = expandedAst.sourceMap ?? ast.sourceMap
 
   const ctx = new InferenceContext()
   // Wire file import resolution if a file resolver is provided
@@ -115,28 +116,52 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
         const importedAst = expandMacros(rawAst, { fileResolver: resolver, fileResolverBaseDir: nestedDir })
         const importCtx = new InferenceContext()
         importCtx.resolveFileType = makeResolveFileType(nestedDir)
+        if (importedAst.typeAnnotations) {
+          importCtx.typeAnnotations = importedAst.typeAnnotations
+        }
         const importEnv = new TypeEnv()
         const importTypeMap = new Map<number, Type>()
+        const effectSnapshot = snapshotEffectRegistry()
+        const typeAliasSnapshot = snapshotTypeAliases()
 
-        // Infer each node with per-node error recovery, same as top-level typecheck.
-        // Without this, a single TypeInferenceError in the imported file would cause
-        // the entire import to resolve as Unknown.
-        let resultType: Type = Unknown
-        for (const node of importedAst.body) {
-          try {
-            resultType = inferExpr(node, importCtx, importEnv, importTypeMap)
-          } catch (e) {
-            if (e instanceof TypeInferenceError) {
-              // Type error in imported file — skip this node, continue with rest
-              resultType = Unknown
-            } else {
-              throw e
+        try {
+          // Imported files need the same declaration setup as top-level files.
+          // Without this, handler/effect/type annotations inside imported modules
+          // silently collapse to Unknown during module interface inference.
+          if (importedAst.typeAliases) {
+            for (const [name, { params, body }] of importedAst.typeAliases) {
+              registerTypeAlias(name, params, body)
             }
           }
-        }
+          if (importedAst.effectDeclarations) {
+            for (const [name, { argType, retType }] of importedAst.effectDeclarations) {
+              declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
+            }
+          }
 
-        fileTypeCache.set(cacheKey, resultType)
-        return resultType
+          // Infer each node with per-node error recovery, same as top-level typecheck.
+          // Without this, a single TypeInferenceError in the imported file would cause
+          // the entire import to resolve as Unknown.
+          let resultType: Type = Unknown
+          for (const node of importedAst.body) {
+            try {
+              resultType = inferExpr(node, importCtx, importEnv, importTypeMap)
+            } catch (e) {
+              if (e instanceof TypeInferenceError) {
+                // Type error in imported file — skip this node, continue with rest
+                resultType = Unknown
+              } else {
+                throw e
+              }
+            }
+          }
+
+          fileTypeCache.set(cacheKey, resultType)
+          return resultType
+        } finally {
+          restoreEffectRegistry(effectSnapshot)
+          restoreTypeAliases(typeAliasSnapshot)
+        }
       } catch {
         // File resolution or parsing failed — return Unknown, don't crash
         fileTypeCache.set(cacheKey, Unknown)
@@ -176,7 +201,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
         diagnostics.push({
           message: e.message,
           severity: 'error',
-          sourceCodeInfo: resolveNodeSourceInfo(node, ast.sourceMap),
+          sourceCodeInfo: resolveErrorSourceInfo(e, node, sourceMap),
         })
       } else {
         // Unexpected error — rethrow
@@ -185,7 +210,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
     }
   }
 
-  return { diagnostics, typeMap, sourceMap: ast.sourceMap?.positions }
+  return { diagnostics, typeMap, sourceMap: sourceMap?.positions }
 }
 
 /**
@@ -209,7 +234,7 @@ export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap): Typechec
         diagnostics.push({
           message: e.message,
           severity: 'error',
-          sourceCodeInfo: resolveNodeSourceInfo(node, sourceMap),
+          sourceCodeInfo: resolveErrorSourceInfo(e, node, sourceMap),
         })
         resultType = { tag: 'Unknown' }
       } else {
@@ -230,6 +255,15 @@ function resolveNodeSourceInfo(node: AstNode, sourceMap?: SourceMap): SourceCode
   const nodeId = node[2]
   if (!sourceMap || nodeId <= 0) return undefined
   return resolveSourceCodeInfo(nodeId, sourceMap) ?? undefined
+}
+
+function resolveErrorSourceInfo(error: TypeInferenceError, fallbackNode: AstNode, sourceMap?: SourceMap): SourceCodeInfo | undefined {
+  if (sourceMap && error.nodeId && error.nodeId > 0) {
+    const resolved = resolveSourceCodeInfo(error.nodeId, sourceMap)
+    if (resolved) return resolved
+  }
+
+  return resolveNodeSourceInfo(fallbackNode, sourceMap)
 }
 
 function resolveImportedFileDir(fromDir: string, importPath: string): string {

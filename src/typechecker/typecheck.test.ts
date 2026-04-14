@@ -203,6 +203,30 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 
+  it('handler clause param annotation constrains performed arg types', () => {
+    const result = dvala.typecheck(`
+          let withLogging = (thunk) -> do
+            let h =
+              handler
+                @test.log(msg: String) -> do
+                  let resumed = resume(null);
+                  { result: resumed.result, logs: [msg] ++ resumed.logs }
+                end
+                transform result -> { result, logs: [] }
+              end;
+            h(thunk)
+          end;
+
+          withLogging(-> do
+            perform(@test.log, 10);
+            null
+          end)
+        `)
+
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('not a subtype of String')
+  })
+
   it('nullable annotation with union syntax: let x: Number | Null = null', () => {
     const result = dvala.typecheck('let x: Number | Null = null; x')
     expect(result.diagnostics).toHaveLength(0)

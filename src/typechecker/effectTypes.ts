@@ -24,6 +24,11 @@ export interface EffectDeclaration {
   retType: Type
 }
 
+export interface EffectRegistrySnapshot {
+  entries: [string, EffectDeclaration][]
+  builtinNames: string[]
+}
+
 /** Map from effect name to its type declaration. */
 const effectRegistry = new Map<string, EffectDeclaration>()
 /** Set of builtin effect names (not cleared between typechecks). */
@@ -51,6 +56,26 @@ export function getEffectReturnType(name: string): Type {
 /** Get the argument type of a declared effect, or Unknown if not declared. */
 export function getEffectArgType(name: string): Type {
   return effectRegistry.get(name)?.argType ?? Unknown
+}
+
+/** Snapshot the current registry so nested import typechecking can restore it. */
+export function snapshotEffectRegistry(): EffectRegistrySnapshot {
+  return {
+    entries: [...effectRegistry.entries()].map(([name, decl]) => [name, { ...decl }]),
+    builtinNames: [...builtinEffectNames],
+  }
+}
+
+/** Restore a previously captured registry snapshot. */
+export function restoreEffectRegistry(snapshot: EffectRegistrySnapshot): void {
+  effectRegistry.clear()
+  builtinEffectNames.clear()
+  for (const [name, decl] of snapshot.entries) {
+    effectRegistry.set(name, decl)
+  }
+  for (const name of snapshot.builtinNames) {
+    builtinEffectNames.add(name)
+  }
 }
 
 /** Reset user-declared effects (called at the start of each typecheck pass).

@@ -34,6 +34,7 @@ export function simplify(t: Type): Type {
       params: t.params.map(simplify),
       ret: simplify(t.ret),
       effects: t.effects,
+      handlerWrapper: t.handlerWrapper,
     }
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()

@@ -410,7 +410,7 @@ assoc(
     },
     arity: { min: 1 },
     docs: {
-      type: '((String | Unknown[] | {...}) -> String | Unknown[] | {...}) & ((String, String) -> String) & ((String, String, String) -> String) & ((String, String, String, String) -> String) & ((String, String, String, String, String) -> String) & ((String, String, String, String, String, String) -> String) & ((Unknown[], Unknown[]) -> Unknown[]) & ((Unknown[], Unknown[], Unknown[]) -> Unknown[]) & (({...}, {...}) -> {...})',
+      type: '((String | A[] | {...}) -> String | A[] | {...}) & ((String, String) -> String) & ((String, String, String) -> String) & ((String, String, String, String) -> String) & ((String, String, String, String, String) -> String) & ((String, String, String, String, String, String) -> String) & ((A[], A[]) -> A[]) & ((A[], A[], A[]) -> A[]) & (({...}, {...}) -> {...})',
       category: 'collection',
       returns: { type: 'collection' },
       args: {

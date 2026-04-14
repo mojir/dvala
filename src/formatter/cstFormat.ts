@@ -1467,6 +1467,8 @@ function formatFunction(node: UntypedCstNode): Doc {
       } else if (child.text === ',') {
         paramParts.push(formatTokenWithTrivia(child))
         paramParts.push(text(' '))
+      } else if (child.text === ':') {
+        paramParts.push(formatTokenWithTrivia(child))
       } else if (child.text === '...') {
         paramParts.push(formatTokenWithTrivia(child))
       } else if (child.text === '=') {
@@ -1534,6 +1536,8 @@ function formatHandler(node: UntypedCstNode): Doc {
         if (isToken(child)) {
           if (child.text === '->') {
             clauseTokens.push(text(' '), formatTokenWithTrivia(child), text(' '))
+          } else if (child.text === ':') {
+            clauseTokens.push(formatTokenWithTrivia(child))
           } else if (child.text === ',' || child.text === '(' || child.text === ')') {
             clauseTokens.push(formatTokenWithTrivia(child))
           } else {

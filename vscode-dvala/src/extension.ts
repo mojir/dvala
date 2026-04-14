@@ -11,7 +11,7 @@ import { WorkspaceIndex } from '../../src/languageService/WorkspaceIndex'
 import type { SymbolDef } from '../../src/languageService/types'
 import { formatSource } from '../../src/tooling'
 import type { TypecheckResult } from '../../src/typechecker/typecheck'
-import { typeToString, expandType, simplify } from '../../src/typechecker'
+import { typeToString, expandTypeForDisplay, sanitizeDisplayType, simplify } from '../../src/typechecker'
 import type { SourceMapPosition } from '../../src/parser/types'
 
 // Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
@@ -166,6 +166,60 @@ let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
 // Type system: cached typecheck result per document URI
 const typecheckCache = new Map<string, TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> }>()
+
+function getHoverTypeAtPosition(
+  cached: TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> },
+  position: vscode.Position,
+  preferredRange?: vscode.Range,
+): string | undefined {
+  const line = position.line
+  const col = position.character
+  let bestPreferredType: import('../../src/typechecker/types').Type | undefined
+  let bestPreferredStartDistance = Infinity
+  let bestPreferredSize = Infinity
+  let bestType: import('../../src/typechecker/types').Type | undefined
+  let bestSize = Infinity
+
+  for (const [nodeId, type] of cached.typeMap) {
+    if (type.tag === 'Unknown') continue
+
+    const sourcePos = cached.sourceMap?.get(nodeId)
+    if (!sourcePos) continue
+
+    const [startLine, startCol] = sourcePos.start
+    const [endLine, endCol] = sourcePos.end
+    if (line < startLine || line > endLine) continue
+
+    const inRange = (line > startLine || col >= startCol)
+      && (line < endLine || col <= endCol)
+    if (!inRange) continue
+
+    const size = (endLine - startLine) * 1000 + (endCol - startCol)
+    if (preferredRange) {
+      const lineDistance = Math.abs(startLine - preferredRange.start.line)
+      const colDistance = lineDistance === 0
+        ? Math.abs(startCol - preferredRange.start.character)
+        : Math.abs(startCol - preferredRange.start.character) + lineDistance * 1000
+
+      if (colDistance < bestPreferredStartDistance
+        || (colDistance === bestPreferredStartDistance && size < bestPreferredSize)) {
+        bestPreferredStartDistance = colDistance
+        bestPreferredSize = size
+        bestPreferredType = type
+      }
+    }
+
+    if (size < bestSize) {
+      bestSize = size
+      bestType = type
+    }
+  }
+
+  const selectedType = bestPreferredType ?? bestType
+  if (!selectedType) return undefined
+
+  return typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(selectedType))))
+}
 
 function getDiagnosticCollection(): vscode.DiagnosticCollection {
   if (!diagnosticCollection) {
@@ -487,46 +541,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
       // Look up inferred type from the type cache
       const cached = typecheckCache.get(document.uri.toString())
-      let inferredTypeStr: string | undefined
-      if (cached) {
-        // Find the best matching node at this position by checking the type map
-        // against source map positions. The typecheck result stores a full type map.
-        const line = position.line  // 0-based
-        const col = position.character  // 0-based
-        let bestType: import('../../src/typechecker/types').Type | undefined
-        let bestSize = Infinity
-
-        for (const [nodeId, type] of cached.typeMap) {
-          // Skip Unknown types — not useful for hover
-          if (type.tag === 'Unknown') continue
-
-          // Look up the source position for this node
-          const sourcePos = cached.sourceMap?.get(nodeId)
-          if (!sourcePos) continue
-
-          const [startLine, startCol] = sourcePos.start
-          const [endLine, endCol] = sourcePos.end
-
-          // Check if cursor is within this node's range
-          if (line >= startLine && line <= endLine) {
-            const inRange = (line > startLine || col >= startCol)
-              && (line < endLine || col <= endCol)
-            if (inRange) {
-              // Pick the smallest (most specific) node
-              const size = (endLine - startLine) * 1000 + (endCol - startCol)
-              if (size < bestSize) {
-                bestSize = size
-                bestType = type
-              }
-            }
-          }
-        }
-
-        if (bestType) {
-          const expanded = simplify(expandType(bestType))
-          inferredTypeStr = typeToString(expanded)
-        }
-      }
+      const inferredTypeStr = cached
+        ? getHoverTypeAtPosition(cached, position, range)
+        : undefined
 
       if (!diagnostics?.length && !ref && !inferredTypeStr) return undefined
 

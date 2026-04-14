@@ -32,6 +32,11 @@ export interface HandlerEffectSignature {
   retType: Type
 }
 
+export interface HandlerWrapperInfo {
+  paramIndex: number
+  handled: Map<string, HandlerEffectSignature>
+}
+
 /** The empty (pure) effect set. Frozen to prevent accidental mutation. */
 export const PureEffects: EffectSet = Object.freeze({ effects: Object.freeze(new Set<string>()), open: false })
 
@@ -40,7 +45,7 @@ export type Type =
   | { tag: 'Primitive'; name: PrimitiveName }
   | { tag: 'Atom'; name: string } // Singleton: {:ok}
   | { tag: 'Literal'; value: string | number | boolean } // Singleton: {42}
-  | { tag: 'Function'; params: Type[]; ret: Type; effects: EffectSet }
+  | { tag: 'Function'; params: Type[]; ret: Type; effects: EffectSet; handlerWrapper?: HandlerWrapperInfo }
   | { tag: 'Handler'; body: Type; output: Type; handled: Map<string, HandlerEffectSignature> }
   | { tag: 'AnyFunction' } // Supertype of all function types (any arity)
   | { tag: 'Tuple'; elements: Type[] }
@@ -58,7 +63,7 @@ export type Type =
   | { tag: 'Never' } // Bottom type — empty set, subtype of all
 
   // Inference (Step 2 — included in the type for completeness)
-  | { tag: 'Var'; id: number; level: number; lowerBounds: Type[]; upperBounds: Type[] }
+  | { tag: 'Var'; id: number; level: number; lowerBounds: Type[]; upperBounds: Type[]; displayLowerBounds?: Type[]; displayUpperBounds?: Type[] }
 
   // Named (Step 2+)
   | { tag: 'Alias'; name: string; args: Type[]; expanded: Type }
@@ -94,8 +99,10 @@ export function literal(value: string | number | boolean): Type {
 }
 
 // Composite types
-export function fn(params: Type[], ret: Type, effects: EffectSet = PureEffects): Type {
-  return { tag: 'Function', params, ret, effects }
+export function fn(params: Type[], ret: Type, effects: EffectSet = PureEffects, handlerWrapper?: HandlerWrapperInfo): Type {
+  return handlerWrapper
+    ? { tag: 'Function', params, ret, effects, handlerWrapper }
+    : { tag: 'Function', params, ret, effects }
 }
 
 export function handlerType(body: Type, output: Type, handled: Map<string, HandlerEffectSignature>): Type {
@@ -243,6 +250,7 @@ export function typeEquals(a: Type, b: Type): boolean {
         && a.params.every((p, i) => typeEquals(p, bf.params[i]!))
         && typeEquals(a.ret, bf.ret)
         && effectSetEquals(a.effects, bf.effects)
+        && handlerWrapperEquals(a.handlerWrapper, bf.handlerWrapper)
     }
     case 'Handler': {
       const bh = b as typeof a
@@ -354,4 +362,19 @@ function dedup(types: Type[]): Type[] {
     }
   }
   return result
+}
+
+function handlerWrapperEquals(a?: HandlerWrapperInfo, b?: HandlerWrapperInfo): boolean {
+  if (!a && !b) return true
+  if (!a || !b) return false
+  if (a.paramIndex !== b.paramIndex) return false
+  if (a.handled.size !== b.handled.size) return false
+  for (const [name, sig] of a.handled) {
+    const other = b.handled.get(name)
+    if (!other) return false
+    if (!typeEquals(sig.argType, other.argType) || !typeEquals(sig.retType, other.retType)) {
+      return false
+    }
+  }
+  return true
 }
