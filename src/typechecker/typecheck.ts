@@ -152,34 +152,14 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
             }
           }
 
-          // Infer each node with per-node error recovery, same as top-level typecheck.
-          // Without this, a single TypeInferenceError in the imported file would cause
-          // the entire import to resolve as Unknown.
-          let resultType: Type = Unknown
-          for (const node of importedAst.body) {
-            try {
-              resultType = inferExpr(node, importCtx, importEnv, importTypeMap)
-              for (const error of importCtx.takeDeferredErrors()) {
-                importDiagnostics.push({
-                  message: error.message,
-                  severity: 'error',
-                  sourceCodeInfo: resolveErrorSourceInfo(error, node, importedAst.sourceMap ?? rawAst.sourceMap),
-                })
-              }
-            } catch (e) {
-              if (e instanceof TypeInferenceError) {
-                importDiagnostics.push({
-                  message: e.message,
-                  severity: 'error',
-                  sourceCodeInfo: resolveErrorSourceInfo(e, node, importedAst.sourceMap ?? rawAst.sourceMap),
-                })
-                // Type error in imported file — skip this node, continue with rest
-                resultType = Unknown
-              } else {
-                throw e
-              }
-            }
-          }
+          const resultType = inferNodesRecoveringErrors(
+            importedAst.body,
+            importCtx,
+            importEnv,
+            importTypeMap,
+            importDiagnostics,
+            importedAst.sourceMap ?? rawAst.sourceMap,
+          )
 
           const cachedResult = { type: normalizeImportedExportType(resultType), diagnostics: importDiagnostics }
           fileTypeCache.set(cacheKey, cachedResult)
@@ -224,30 +204,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   }
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()
-
-  for (const node of expandedAst.body) {
-    try {
-      inferExpr(node, ctx, env, typeMap)
-      for (const error of ctx.takeDeferredErrors()) {
-        diagnostics.push({
-          message: error.message,
-          severity: 'error',
-          sourceCodeInfo: resolveErrorSourceInfo(error, node, sourceMap),
-        })
-      }
-    } catch (e) {
-      if (e instanceof TypeInferenceError) {
-        diagnostics.push({
-          message: e.message,
-          severity: 'error',
-          sourceCodeInfo: resolveErrorSourceInfo(e, node, sourceMap),
-        })
-      } else {
-        // Unexpected error — rethrow
-        throw e
-      }
-    }
-  }
+  inferNodesRecoveringErrors(expandedAst.body, ctx, env, typeMap, diagnostics, sourceMap)
 
   return { diagnostics, typeMap, sourceMap: sourceMap?.positions }
 }
@@ -269,31 +226,7 @@ export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap, options?:
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()
   const diagnostics: TypeDiagnostic[] = []
-  let resultType: Type = { tag: 'Unknown' }
-
-  for (const node of nodes) {
-    try {
-      resultType = inferExpr(node, ctx, env, typeMap)
-      for (const error of ctx.takeDeferredErrors()) {
-        diagnostics.push({
-          message: error.message,
-          severity: 'error',
-          sourceCodeInfo: resolveErrorSourceInfo(error, node, sourceMap),
-        })
-      }
-    } catch (e) {
-      if (e instanceof TypeInferenceError) {
-        diagnostics.push({
-          message: e.message,
-          severity: 'error',
-          sourceCodeInfo: resolveErrorSourceInfo(e, node, sourceMap),
-        })
-        resultType = { tag: 'Unknown' }
-      } else {
-        throw e
-      }
-    }
-  }
+  const resultType = inferNodesRecoveringErrors(nodes, ctx, env, typeMap, diagnostics, sourceMap)
 
   return { diagnostics, typeMap, type: resultType }
 }
@@ -358,18 +291,70 @@ function pushUniqueDiagnostic(
   diagnostics.push(diagnostic)
 }
 
+function inferNodesRecoveringErrors(
+  nodes: AstNode[],
+  ctx: InferenceContext,
+  env: TypeEnv,
+  typeMap: Map<number, Type>,
+  diagnostics: TypeDiagnostic[],
+  sourceMap?: SourceMap,
+): Type {
+  let resultType: Type = Unknown
+
+  for (const node of nodes) {
+    try {
+      resultType = inferExpr(node, ctx, env, typeMap)
+      drainDeferredDiagnostics(ctx, diagnostics, node, sourceMap)
+    } catch (error) {
+      if (!(error instanceof TypeInferenceError)) {
+        throw error
+      }
+
+      diagnostics.push({
+        message: error.message,
+        severity: 'error',
+        sourceCodeInfo: resolveErrorSourceInfo(error, node, sourceMap),
+      })
+      resultType = Unknown
+    }
+  }
+
+  return resultType
+}
+
+function drainDeferredDiagnostics(
+  ctx: InferenceContext,
+  diagnostics: TypeDiagnostic[],
+  fallbackNode: AstNode,
+  sourceMap?: SourceMap,
+): void {
+  for (const error of ctx.takeDeferredErrors()) {
+    diagnostics.push({
+      message: error.message,
+      severity: 'error',
+      sourceCodeInfo: resolveErrorSourceInfo(error, fallbackNode, sourceMap),
+    })
+  }
+}
+
+function normalizeHandledSignatures(
+  handled: Map<string, { argType: Type; retType: Type }>,
+): Map<string, { argType: Type; retType: Type }> {
+  return new Map(
+    [...handled.entries()].map(([name, sig]) => [name, {
+      argType: expandType(sig.argType, 'negative'),
+      retType: expandType(sig.retType, 'positive'),
+    }]),
+  )
+}
+
 function normalizeImportedExportType(type: Type): Type {
   switch (type.tag) {
     case 'Function': {
       const handlerWrapper = type.handlerWrapper
         ? {
           paramIndex: type.handlerWrapper.paramIndex,
-          handled: new Map(
-            [...type.handlerWrapper.handled.entries()].map(([name, sig]) => [name, {
-              argType: expandType(sig.argType, 'negative'),
-              retType: expandType(sig.retType, 'positive'),
-            }]),
-          ),
+          handled: normalizeHandledSignatures(type.handlerWrapper.handled),
         }
         : undefined
       return {
@@ -384,12 +369,7 @@ function normalizeImportedExportType(type: Type): Type {
         ...type,
         body: normalizeImportedExportType(type.body),
         output: normalizeImportedExportType(type.output),
-        handled: new Map(
-          [...type.handled.entries()].map(([name, sig]) => [name, {
-            argType: expandType(sig.argType, 'negative'),
-            retType: expandType(sig.retType, 'positive'),
-          }]),
-        ),
+        handled: normalizeHandledSignatures(type.handled),
       }
     case 'Record':
       return {
