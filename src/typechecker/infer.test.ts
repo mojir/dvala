@@ -180,6 +180,22 @@ describe('constrain', () => {
     expect(retVar.displayLowerBounds).toContainEqual(array(NumberType))
     expect(retVar.displayLowerBounds).toContainEqual(array(array(NumberType)))
   })
+
+  it('rest-parameter functions constrain against longer calls', () => {
+    const ctx = new InferenceContext()
+    const retVar = ctx.freshVar()
+
+    constrain(ctx, fn([NumberType], NumberType, undefined, undefined, NumberType), fn([NumberType, NumberType, NumberType], retVar))
+
+    expect(retVar.lowerBounds).toContainEqual(NumberType)
+  })
+
+  it('rest-parameter functions reject calls below the minimum arity', () => {
+    const ctx = new InferenceContext()
+    const retVar = ctx.freshVar()
+
+    expect(() => constrain(ctx, fn([NumberType], NumberType, undefined, undefined, NumberType), fn([], retVar))).toThrow(TypeInferenceError)
+  })
 })
 
 // ---------------------------------------------------------------------------

@@ -94,6 +94,10 @@ describe('typeToString', () => {
     expect(typeToString(fn([NumberType, NumberType], NumberType))).toBe('(Number, Number) -> Number')
   })
 
+  it('rest function types', () => {
+    expect(typeToString(fn([NumberType], NumberType, undefined, undefined, NumberType))).toBe('(Number, ...Number[]) -> Number')
+  })
+
   it('tuple types', () => {
     expect(typeToString(tuple([StringType, NumberType]))).toBe('[String, Number]')
   })
@@ -405,6 +409,27 @@ describe('subtyping — functions', () => {
     expect(isSubtype(
       fn([NumberType], NumberType),
       fn([NumberType, StringType], NumberType),
+    )).toBe(false)
+  })
+
+  it('rest params accept longer fixed arities', () => {
+    expect(isSubtype(
+      fn([NumberType], NumberType, undefined, undefined, NumberType),
+      fn([NumberType, NumberType, NumberType], NumberType),
+    )).toBe(true)
+  })
+
+  it('rest subtyping stays contravariant', () => {
+    expect(isSubtype(
+      fn([union(NumberType, StringType)], NumberType, undefined, undefined, union(NumberType, StringType)),
+      fn([NumberType], NumberType, undefined, undefined, NumberType),
+    )).toBe(true)
+  })
+
+  it('fixed arity is not subtype of rest domain with smaller minimum arity', () => {
+    expect(isSubtype(
+      fn([NumberType, NumberType], NumberType),
+      fn([NumberType], NumberType, undefined, undefined, NumberType),
     )).toBe(false)
   })
 })

@@ -360,6 +360,7 @@ function normalizeImportedExportType(type: Type): Type {
       return {
         ...type,
         params: type.params.map(normalizeImportedExportType),
+        ...(type.restParam !== undefined ? { restParam: normalizeImportedExportType(type.restParam) } : {}),
         ret: normalizeImportedExportType(type.ret),
         ...(handlerWrapper ? { handlerWrapper } : {}),
       }

@@ -32,6 +32,7 @@ export function simplify(t: Type): Type {
     case 'Function': return {
       tag: 'Function',
       params: t.params.map(simplify),
+      ...(t.restParam !== undefined ? { restParam: simplify(t.restParam) } : {}),
       ret: simplify(t.ret),
       effects: t.effects,
       handlerWrapper: t.handlerWrapper,

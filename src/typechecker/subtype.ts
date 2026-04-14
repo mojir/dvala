@@ -16,8 +16,8 @@
  * - Negation: S <: !T iff S & T = Never (S and T are disjoint)
  */
 
-import type { Type, PrimitiveName } from './types'
-import { typeEquals, isEffectSubset } from './types'
+import type { FunctionType, Type, PrimitiveName } from './types'
+import { functionAcceptsArity, getFunctionParamType, typeEquals, isEffectSubset } from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -168,10 +168,20 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
 
   // Function: contravariant params, covariant return, covariant effects
   if (s.tag === 'Function' && t.tag === 'Function') {
-    // Must have compatible arity
-    if (s.params.length !== t.params.length) return false
+    if (!isSubtypeFunctionArityCompatible(s, t)) return false
     // Params: contravariant (T's params <: S's params)
-    const paramsOk = s.params.every((sp, i) => check(t.params[i]!, sp, visited))
+    let paramsOk = true
+    for (let i = 0; i < Math.max(s.params.length, t.params.length); i++) {
+      const sourceParam = getFunctionParamType(s, i)
+      const targetParam = getFunctionParamType(t, i)
+      if (!sourceParam || !targetParam || !check(targetParam, sourceParam, visited)) {
+        paramsOk = false
+        break
+      }
+    }
+    if (paramsOk && t.restParam !== undefined) {
+      paramsOk = s.restParam !== undefined && check(t.restParam, s.restParam, visited)
+    }
     // Return: covariant (S's return <: T's return)
     const retOk = check(s.ret, t.ret, visited)
     // Effects: covariant (fewer effects is subtype — S's effects ⊆ T's effects)
@@ -346,6 +356,7 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
     case 'Function': return {
       tag: 'Function',
       params: t.params.map(p => substituteVar(p, varId, replacement)),
+      ...(t.restParam !== undefined ? { restParam: substituteVar(t.restParam, varId, replacement) } : {}),
       ret: substituteVar(t.ret, varId, replacement),
       effects: t.effects,
       handlerWrapper: t.handlerWrapper,
@@ -387,7 +398,7 @@ function typeId(t: Type): string {
     case 'Primitive': return `P:${t.name}`
     case 'Atom': return `A:${t.name}`
     case 'Literal': return `L:${t.value}`
-    case 'Function': return `F(${t.params.map(typeId).join(',')})${typeId(t.ret)}${t.handlerWrapper ? `|HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}` : ''}`
+    case 'Function': return `F(${t.params.map(typeId).join(',')}${t.restParam !== undefined ? `|...${typeId(t.restParam)}` : ''})${typeId(t.ret)}${t.handlerWrapper ? `|HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}` : ''}`
     case 'Tuple': return `T[${t.elements.map(typeId).join(',')}]`
     case 'Record': return `R{${[...t.fields.entries()].map(([k, v]) => `${k}:${typeId(v)}`).join(',')}${t.open ? ',..' : ''}}`
     case 'Array': return `Ar[${typeId(t.element)}]`
@@ -403,4 +414,11 @@ function typeId(t: Type): string {
     case 'Alias': return `Al:${t.name}`
     case 'Recursive': return `Rec:${t.id}`
   }
+}
+
+function isSubtypeFunctionArityCompatible(source: FunctionType, target: FunctionType): boolean {
+  if (target.restParam !== undefined) {
+    return source.restParam !== undefined && source.params.length <= target.params.length
+  }
+  return functionAcceptsArity(source, target.params.length)
 }

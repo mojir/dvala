@@ -16,6 +16,7 @@ import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
   atom, literal, fn, array, tuple, union, inter, neg, handlerType,
+  functionAcceptsArity, functionArityLabel, getFunctionParamType,
   typeToString, typeEquals,
   subtractEffects,
 } from './types'
@@ -217,7 +218,7 @@ function varKey(t: Type): string {
   if (t.tag === 'Primitive') return `P:${t.name}`
   if (t.tag === 'Atom') return `A:${t.name}`
   if (t.tag === 'Literal') return `L:${String(t.value)}`
-  if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}`
+  if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}`
   if (t.tag === 'Handler') return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}`
   if (t.tag === 'Record') return `R:${[...t.fields.entries()].map(([k, v]) => `${k}=${varKey(v)}`).join(',')}`
   if (t.tag === 'Array') return `Ar:${varKey(t.element)}`
@@ -402,14 +403,29 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 
   // Function: contravariant params, covariant return
   if (lhs.tag === 'Function' && rhs.tag === 'Function') {
-    if (lhs.params.length !== rhs.params.length) {
+    if (!isConstrainedFunctionArityCompatible(lhs, rhs)) {
       throw new TypeInferenceError(
-        `Function arity mismatch: expected ${rhs.params.length} params, got ${lhs.params.length}`,
+        `Function arity mismatch: expected ${functionArityLabel(rhs)} params, got ${functionArityLabel(lhs)}`,
       )
     }
     // Params: contravariant (FLIP direction)
-    for (let i = 0; i < lhs.params.length; i++) {
-      constrain(ctx, rhs.params[i]!, lhs.params[i]!)
+    for (let i = 0; i < Math.max(lhs.params.length, rhs.params.length); i++) {
+      const lhsParam = getFunctionParamType(lhs, i)
+      const rhsParam = getFunctionParamType(rhs, i)
+      if (!lhsParam || !rhsParam) {
+        throw new TypeInferenceError(
+          `Function arity mismatch: expected ${functionArityLabel(rhs)} params, got ${functionArityLabel(lhs)}`,
+        )
+      }
+      constrain(ctx, rhsParam, lhsParam)
+    }
+    if (rhs.restParam !== undefined) {
+      if (lhs.restParam === undefined) {
+        throw new TypeInferenceError(
+          `Function arity mismatch: expected ${functionArityLabel(rhs)} params, got ${functionArityLabel(lhs)}`,
+        )
+      }
+      constrain(ctx, rhs.restParam, lhs.restParam)
     }
     // Return: covariant (KEEP direction)
     constrain(ctx, lhs.ret, rhs.ret)
@@ -483,7 +499,7 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // means field access.
 
   // Record called with string literal → field access
-  if (lhs.tag === 'Record' && rhs.tag === 'Function' && rhs.params.length === 1) {
+  if (lhs.tag === 'Record' && rhs.tag === 'Function' && rhs.params.length === 1 && rhs.restParam === undefined) {
     const paramType = rhs.params[0]!
     if (paramType.tag === 'Literal' && typeof paramType.value === 'string') {
       const fieldName = paramType.value
@@ -498,13 +514,13 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   }
 
   // Array called with number → element access
-  if (lhs.tag === 'Array' && rhs.tag === 'Function' && rhs.params.length === 1) {
+  if (lhs.tag === 'Array' && rhs.tag === 'Function' && rhs.params.length === 1 && rhs.restParam === undefined) {
     constrain(ctx, lhs.element, rhs.ret)
     return
   }
 
   // Tuple called with number → element access (conservative: union of elements)
-  if (lhs.tag === 'Tuple' && rhs.tag === 'Function' && rhs.params.length === 1) {
+  if (lhs.tag === 'Tuple' && rhs.tag === 'Function' && rhs.params.length === 1 && rhs.restParam === undefined) {
     for (const elem of lhs.elements) {
       constrain(ctx, elem, rhs.ret)
     }
@@ -718,7 +734,7 @@ export function inferExpr(
           }
 
           const thunkAlternatives = getFunctionAlternatives(thunkType)
-          if (thunkAlternatives.length > 0 && thunkAlternatives.every(thunk => thunk.params.length === 0)) {
+          if (thunkAlternatives.length > 0 && thunkAlternatives.every(thunk => thunk.params.length === 0 && thunk.restParam === undefined)) {
             const requiredBodyType = handlerAlternatives.length === 1
               ? handlerAlternatives[0]!.body
               : inter(...handlerAlternatives.map(handler => handler.body))
@@ -756,7 +772,7 @@ export function inferExpr(
           : []
 
         if (handlerAlternatives.length > 0 && thunkAlternatives.length > 0
-        && thunkAlternatives.every(thunk => thunk.params.length === 0)) {
+        && thunkAlternatives.every(thunk => thunk.params.length === 0 && thunk.restParam === undefined)) {
           const requiredBodyType = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.body
             : inter(...handlerAlternatives.map(handler => handler.body))
@@ -1200,7 +1216,7 @@ function freshenAnnotationVars(ctx: InferenceContext, t: Type): Type {
 function containsVars(t: Type): boolean {
   switch (t.tag) {
     case 'Var': return true
-    case 'Function': return t.params.some(containsVars) || containsVars(t.ret)
+    case 'Function': return t.params.some(containsVars) || (t.restParam !== undefined && containsVars(t.restParam)) || containsVars(t.ret)
     case 'Handler': {
       if (containsVars(t.body) || containsVars(t.output)) return true
       for (const sig of t.handled.values()) {
@@ -1233,6 +1249,7 @@ function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<string, Typ
         freshenAllVars(ctx, t.ret, mapping),
         t.effects,
         t.handlerWrapper,
+        t.restParam !== undefined ? freshenAllVars(ctx, t.restParam, mapping) : undefined,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -1300,6 +1317,7 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeV
         freshenInner(ctx, t.ret, mapping),
         t.effects,
         t.handlerWrapper,
+        t.restParam !== undefined ? freshenInner(ctx, t.restParam, mapping) : undefined,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -1341,7 +1359,7 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeV
 function containsVarsAboveLevel(t: Type, level: number): boolean {
   switch (t.tag) {
     case 'Var': return t.level > level
-    case 'Function': return t.params.some(p => containsVarsAboveLevel(p, level)) || containsVarsAboveLevel(t.ret, level)
+    case 'Function': return t.params.some(p => containsVarsAboveLevel(p, level)) || (t.restParam !== undefined && containsVarsAboveLevel(t.restParam, level)) || containsVarsAboveLevel(t.ret, level)
     case 'Handler': {
       if (containsVarsAboveLevel(t.body, level) || containsVarsAboveLevel(t.output, level)) return true
       for (const sig of t.handled.values()) {
@@ -1396,6 +1414,7 @@ function collectVars(t: Type, result: VarBoundSnapshot[], visited: Set<string>):
       break
     case 'Function':
       for (const p of t.params) collectVars(p, result, visited)
+      if (t.restParam !== undefined) collectVars(t.restParam, result, visited)
       collectVars(t.ret, result, visited)
       break
     case 'Handler':
@@ -1755,6 +1774,16 @@ function inferFunctionWrapperInfo(
   return undefined
 }
 
+function isConstrainedFunctionArityCompatible(
+  lhs: Extract<Type, { tag: 'Function' }>,
+  rhs: Extract<Type, { tag: 'Function' }>,
+): boolean {
+  if (rhs.restParam !== undefined) {
+    return lhs.restParam !== undefined && lhs.params.length <= rhs.params.length
+  }
+  return functionAcceptsArity(lhs, rhs.params.length)
+}
+
 // ---------------------------------------------------------------------------
 // Match narrowing helpers
 // ---------------------------------------------------------------------------
@@ -1969,6 +1998,9 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
         expandType(t.ret, polarity, new Set(visited)),
         t.effects,
         t.handlerWrapper,
+        t.restParam !== undefined
+          ? expandType(t.restParam, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))
+          : undefined,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -2054,6 +2086,9 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
         expandTypeForDisplay(t.ret, polarity, new Set(visited)),
         t.effects,
         t.handlerWrapper,
+        t.restParam !== undefined
+          ? expandTypeForDisplay(t.restParam, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))
+          : undefined,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -2105,6 +2140,7 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
         sanitizeDisplayType(t.ret, true),
         t.effects,
         t.handlerWrapper,
+        t.restParam !== undefined ? sanitizeDisplayType(t.restParam, true) : undefined,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -2195,7 +2231,7 @@ function synthesizeRecordDisplayType(t: TypeVar, visited: Set<string>): Type | u
   }
 
   for (const upperBound of t.upperBounds) {
-    if (upperBound.tag !== 'Function' || upperBound.params.length !== 1) continue
+    if (upperBound.tag !== 'Function' || upperBound.params.length !== 1 || upperBound.restParam !== undefined) continue
     const fieldParam = upperBound.params[0]
     if (!fieldParam || fieldParam.tag !== 'Literal' || typeof fieldParam.value !== 'string') continue
     sawRecordLikeInfo = true

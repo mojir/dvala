@@ -20,13 +20,15 @@
  *   FuncOrParen= ParamList [":" Type] "->" [EffectSet] Type    // function type
  *              | ParamList "->" identifier "is" Type // type guard
  *              | Type                               // parenthesized type
+ *   ParamList   = Param ("," Param)*
+ *   Param       = Type | identifier ["?"] ":" Type | "..." Type[] | "..." identifier ":" Type[]
  *   EffectSet  = "@{" [effectName ("," effectName)*] ["," "..."] "}"
  */
 
 import type { Type } from './types'
 import {
   NumberType, StringType, BooleanType, NullType,
-  Unknown, Never, RegexType, AnyFunction,
+  Unknown, Never, RegexType, AnyFunction, PureEffects,
   atom, literal, fn, array, tuple, union, inter, neg, effectSet, handlerType,
 } from './types'
 import { getEffectDeclaration } from './effectTypes'
@@ -150,7 +152,7 @@ class TypeParser {
           // Check for type guard: -> paramName is Type
           const guardResult = this.tryParseTypeGuard(paramsResult.params)
           if (guardResult) {
-            const funcType = fn(paramsResult.types, BooleanType)
+            const funcType = fn(paramsResult.types, BooleanType, PureEffects, undefined, paramsResult.restType)
             return {
               type: funcType,
               guardParam: guardResult.paramName,
@@ -160,7 +162,7 @@ class TypeParser {
           // Regular return type
           const effects = this.tryParseEffectSet() ?? undefined
           const retType = this.parseType()
-          const funcType = fn(paramsResult.types, returnTypeAnnotation ?? retType, effects)
+          const funcType = fn(paramsResult.types, returnTypeAnnotation ?? retType, effects, undefined, paramsResult.restType)
           return { type: funcType }
         }
       }
@@ -312,7 +314,7 @@ class TypeParser {
         this.skipWhitespace()
         const effects = this.tryParseEffectSet() ?? undefined
         const retType = this.parseType()
-        return fn(paramsResult.types, retType, effects)
+        return fn(paramsResult.types, retType, effects, undefined, paramsResult.restType)
       }
       // Not a function — if we parsed a single type, return it as parenthesized
       if (paramsResult.types.length === 1 && !paramsResult.hasNames) {
@@ -504,7 +506,7 @@ class TypeParser {
    * Try to parse function parameters. Returns null if this doesn't
    * look like a parameter list (backtrack).
    */
-  private tryParseParams(): { params: ParamInfo[]; types: Type[] } | null {
+  private tryParseParams(): { params: ParamInfo[]; types: Type[]; restType?: Type } | null {
     this.skipWhitespace()
     const result = this.tryParseParamList()
     if (result === null) return null
@@ -514,17 +516,26 @@ class TypeParser {
     return result
   }
 
-  private tryParseParamList(): { params: ParamInfo[]; types: Type[]; hasNames: boolean } | null {
+  private tryParseParamList(): { params: ParamInfo[]; types: Type[]; hasNames: boolean; restType?: Type } | null {
     const params: ParamInfo[] = []
     const types: Type[] = []
     let hasNames = false
+    let restType: Type | undefined
 
     // First param
     const first = this.tryParseParam()
     if (first === null) return null
     params.push(first)
-    types.push(first.type)
+    if (first.rest) {
+      restType = this.extractRestElementType(first.type)
+    } else {
+      types.push(first.type)
+    }
     if (first.name) hasNames = true
+    if (first.rest) {
+      this.skipWhitespace()
+      return { params, types, hasNames, restType }
+    }
 
     // Remaining params
     this.skipWhitespace()
@@ -538,12 +549,22 @@ class TypeParser {
         break
       }
       params.push(param)
-      types.push(param.type)
+      if (param.rest) {
+        restType = this.extractRestElementType(param.type)
+      } else {
+        types.push(param.type)
+      }
       if (param.name) hasNames = true
       this.skipWhitespace()
+      if (param.rest) {
+        if (this.peek() === ',') {
+          throw this.error('Rest parameter must be last')
+        }
+        break
+      }
     }
 
-    return { params, types, hasNames }
+    return { params, types, hasNames, restType }
   }
 
   private tryParseParam(): ParamInfo | null {
@@ -736,6 +757,13 @@ class TypeParser {
 
   private error(message: string): TypeParseError {
     return new TypeParseError(message, this.input, this.pos)
+  }
+
+  private extractRestElementType(type: Type): Type {
+    if (type.tag !== 'Array') {
+      throw this.error('Rest parameter type must be an array type')
+    }
+    return type.element
   }
 }
 

@@ -194,7 +194,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: reduceMathOp(0, (a, b) => a + b),
     arity: {},
     docs: {
-      type: '(() -> Number) & ((Number) -> Number) & ((Number, Number) -> Number) & ((Number, Number, Number) -> Number) & ((Number, Number, Number, Number) -> Number) & ((Number[], Number[]) -> Number[]) & ((Number[][], Number[][]) -> Number[][])',
+      type: '(() -> Number) & ((Number, ...Number[]) -> Number) & ((Number[], ...Number[][]) -> Number[]) & ((Number[][], ...Number[][][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -222,7 +222,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: reduceMathOp(1, (a, b) => a * b),
     arity: {},
     docs: {
-      type: '(() -> Number) & ((Number) -> Number) & ((Number, Number) -> Number) & ((Number, Number, Number) -> Number) & ((Number, Number, Number, Number) -> Number) & ((Number, Number, Number, Number, Number) -> Number) & ((Number[], Number[]) -> Number[]) & ((Number[][], Number[][]) -> Number[][])',
+      type: '(() -> Number) & ((Number, ...Number[]) -> Number) & ((Number[], ...Number[][]) -> Number[]) & ((Number[][], ...Number[][][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -275,7 +275,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: {},
     docs: {
-      type: '(() -> Number) & ((Number) -> Number) & ((Number, Number) -> Number) & ((Number, Number, Number) -> Number) & ((Number, Number, Number, Number) -> Number) & ((Number[], Number[]) -> Number[]) & ((Number[][], Number[][]) -> Number[][])',
+      type: '(() -> Number) & ((Number, ...Number[]) -> Number) & ((Number[], ...Number[][]) -> Number[]) & ((Number[][], ...Number[][][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -328,7 +328,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: {},
     docs: {
-      type: '(() -> Number) & ((Number) -> Number) & ((Number, Number) -> Number) & ((Number, Number, Number) -> Number) & ((Number, Number, Number, Number) -> Number) & ((Number[], Number[]) -> Number[]) & ((Number[][], Number[][]) -> Number[][])',
+      type: '(() -> Number) & ((Number, ...Number[]) -> Number) & ((Number[], ...Number[][]) -> Number[]) & ((Number[][], ...Number[][][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {

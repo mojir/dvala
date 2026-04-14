@@ -37,6 +37,15 @@ export interface HandlerWrapperInfo {
   handled: Map<string, HandlerEffectSignature>
 }
 
+export interface FunctionType {
+  tag: 'Function'
+  params: Type[]
+  restParam?: Type
+  ret: Type
+  effects: EffectSet
+  handlerWrapper?: HandlerWrapperInfo
+}
+
 /** The empty (pure) effect set. Frozen to prevent accidental mutation. */
 export const PureEffects: EffectSet = Object.freeze({ effects: Object.freeze(new Set<string>()), open: false })
 
@@ -45,7 +54,7 @@ export type Type =
   | { tag: 'Primitive'; name: PrimitiveName }
   | { tag: 'Atom'; name: string } // Singleton: {:ok}
   | { tag: 'Literal'; value: string | number | boolean } // Singleton: {42}
-  | { tag: 'Function'; params: Type[]; ret: Type; effects: EffectSet; handlerWrapper?: HandlerWrapperInfo }
+  | FunctionType
   | { tag: 'Handler'; body: Type; output: Type; handled: Map<string, HandlerEffectSignature> }
   | { tag: 'AnyFunction' } // Supertype of all function types (any arity)
   | { tag: 'Tuple'; elements: Type[] }
@@ -99,10 +108,34 @@ export function literal(value: string | number | boolean): Type {
 }
 
 // Composite types
-export function fn(params: Type[], ret: Type, effects: EffectSet = PureEffects, handlerWrapper?: HandlerWrapperInfo): Type {
-  return handlerWrapper
-    ? { tag: 'Function', params, ret, effects, handlerWrapper }
-    : { tag: 'Function', params, ret, effects }
+export function fn(
+  params: Type[],
+  ret: Type,
+  effects: EffectSet = PureEffects,
+  handlerWrapper?: HandlerWrapperInfo,
+  restParam?: Type,
+): Type {
+  return {
+    tag: 'Function',
+    params,
+    ret,
+    effects,
+    ...(handlerWrapper ? { handlerWrapper } : {}),
+    ...(restParam !== undefined ? { restParam } : {}),
+  }
+}
+
+export function functionAcceptsArity(t: FunctionType, arity: number): boolean {
+  return t.restParam !== undefined ? arity >= t.params.length : arity === t.params.length
+}
+
+export function getFunctionParamType(t: FunctionType, index: number): Type | undefined {
+  if (index < t.params.length) return t.params[index]
+  return t.restParam
+}
+
+export function functionArityLabel(t: FunctionType): string {
+  return t.restParam !== undefined ? `at least ${t.params.length}` : `${t.params.length}`
 }
 
 export function handlerType(body: Type, output: Type, handled: Map<string, HandlerEffectSignature>): Type {
@@ -192,7 +225,10 @@ export function typeToString(t: Type): string {
     case 'Literal':
       return typeof t.value === 'string' ? `"${t.value}"` : String(t.value)
     case 'Function': {
-      const params = t.params.map(typeToString).join(', ')
+      const params = [
+        ...t.params.map(typeToString),
+        ...(t.restParam !== undefined ? [`...${typeToString(array(t.restParam))}`] : []),
+      ].join(', ')
       const effectStr = effectSetToString(t.effects)
       return effectStr
         ? `(${params}) -> ${effectStr} ${typeToString(t.ret)}`
@@ -248,6 +284,8 @@ export function typeEquals(a: Type, b: Type): boolean {
       const bf = b as typeof a
       return a.params.length === bf.params.length
         && a.params.every((p, i) => typeEquals(p, bf.params[i]!))
+        && ((a.restParam === undefined && bf.restParam === undefined)
+          || (a.restParam !== undefined && bf.restParam !== undefined && typeEquals(a.restParam, bf.restParam)))
         && typeEquals(a.ret, bf.ret)
         && effectSetEquals(a.effects, bf.effects)
         && handlerWrapperEquals(a.handlerWrapper, bf.handlerWrapper)

@@ -30,7 +30,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: {},
     docs: {
-      type: '(() -> String) & ((Unknown) -> String) & ((Unknown, Unknown) -> String) & ((Unknown, Unknown, Unknown) -> String)',
+      type: '(() -> String) & ((Unknown, ...Unknown[]) -> String)',
       category: 'string',
       returns: { type: 'string' },
       args: { values: { type: 'any', rest: true } },

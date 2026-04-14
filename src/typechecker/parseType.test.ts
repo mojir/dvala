@@ -252,6 +252,16 @@ describe('parseType — functions', () => {
     expect(typeEquals(t, fn([StringType], NumberType, effectSet(['http.get'])))).toBe(true)
   })
 
+  it('(Number, ...Number[]) -> Number', () => {
+    const t = parseTypeAnnotation('(Number, ...Number[]) -> Number')
+    expect(typeEquals(t, fn([NumberType], NumberType, effectSet([]), undefined, NumberType))).toBe(true)
+  })
+
+  it('(...Unknown[]) -> Unknown[]', () => {
+    const t = parseTypeAnnotation('(...Unknown[]) -> Unknown[]')
+    expect(typeEquals(t, fn([], array(Unknown), effectSet([]), undefined, Unknown))).toBe(true)
+  })
+
   it('Handler<Number, Number, @{test.log}>', () => {
     declareEffect('test.log', StringType, NullType)
 
@@ -321,6 +331,10 @@ describe('parseType — real-world builtin signatures', () => {
   it('parenthesized type: (Number)', () => {
     const t = parseTypeAnnotation('(Number)')
     expect(typeEquals(t, NumberType)).toBe(true)
+  })
+
+  it('error on non-array rest param type', () => {
+    expect(() => parseTypeAnnotation('(...Number) -> Number')).toThrow(TypeParseError)
   })
 
   it('error on invalid input', () => {
