@@ -57,8 +57,13 @@ export interface TypecheckOptions {
   modules?: DvalaModule[]
 }
 
-/** Cache of typechecked file imports: filePath → exported type */
-const fileTypeCache = new Map<string, Type>()
+interface CachedFileTypeResult {
+  type: Type
+  diagnostics: TypeDiagnostic[]
+}
+
+/** Cache of typechecked file imports: filePath → exported type + diagnostics */
+const fileTypeCache = new Map<string, CachedFileTypeResult>()
 // ---------------------------------------------------------------------------
 // Initialization
 // ---------------------------------------------------------------------------
@@ -92,6 +97,8 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   const baseDir = options?.fileResolverBaseDir ?? '.'
   const expandedAst = expandMacros(ast, resolver ? { fileResolver: resolver, fileResolverBaseDir: baseDir } : undefined)
   const sourceMap = expandedAst.sourceMap ?? ast.sourceMap
+  const diagnostics: TypeDiagnostic[] = []
+  const reportedImportDiagnostics = new Set<string>()
 
   const ctx = new InferenceContext()
   // Wire file import resolution if a file resolver is provided
@@ -102,11 +109,17 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
     const makeResolveFileType = (fromDir: string) => (importPath: string): Type => {
       const cacheKey = `${fromDir}:${importPath}`
       const cached = fileTypeCache.get(cacheKey)
-      if (cached) return cached
+      if (cached) {
+        for (const diagnostic of cached.diagnostics) {
+          pushUniqueDiagnostic(diagnostics, diagnostic, reportedImportDiagnostics)
+        }
+        return cached.type
+      }
 
       try {
         const source = resolver(importPath, fromDir)
-        const ts = tokenize(source, true, undefined)
+        const resolvedImportPath = resolveImportedFilePath(fromDir, importPath)
+        const ts = tokenize(source, true, resolvedImportPath)
         const min = minifyTokenStream(ts, { removeWhiteSpace: true })
         const rawAst = parseToAst(min)
         // Expand macros before type inference so macro calls get concrete types.
@@ -120,6 +133,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
         }
         const importEnv = new TypeEnv()
         const importTypeMap = new Map<number, Type>()
+        const importDiagnostics: TypeDiagnostic[] = []
         const effectSnapshot = snapshotEffectRegistry()
         const typeAliasSnapshot = snapshotTypeAliases()
 
@@ -147,6 +161,11 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
               resultType = inferExpr(node, importCtx, importEnv, importTypeMap)
             } catch (e) {
               if (e instanceof TypeInferenceError) {
+                importDiagnostics.push({
+                  message: e.message,
+                  severity: 'error',
+                  sourceCodeInfo: resolveErrorSourceInfo(e, node, importedAst.sourceMap ?? rawAst.sourceMap),
+                })
                 // Type error in imported file — skip this node, continue with rest
                 resultType = Unknown
               } else {
@@ -155,7 +174,11 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
             }
           }
 
-          fileTypeCache.set(cacheKey, resultType)
+          const cachedResult = { type: resultType, diagnostics: importDiagnostics }
+          fileTypeCache.set(cacheKey, cachedResult)
+          for (const diagnostic of importDiagnostics) {
+            pushUniqueDiagnostic(diagnostics, diagnostic, reportedImportDiagnostics)
+          }
           return resultType
         } finally {
           restoreEffectRegistry(effectSnapshot)
@@ -163,7 +186,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
         }
       } catch {
         // File resolution or parsing failed — return Unknown, don't crash
-        fileTypeCache.set(cacheKey, Unknown)
+        fileTypeCache.set(cacheKey, { type: Unknown, diagnostics: [] })
         return Unknown
       }
     }
@@ -194,7 +217,6 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   }
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()
-  const diagnostics: TypeDiagnostic[] = []
 
   for (const node of expandedAst.body) {
     try {
@@ -284,6 +306,35 @@ function resolveImportedFileDir(fromDir: string, importPath: string): string {
   }
 
   return dirnamePath(joinPath(normalizedFromDir, normalizedImportPath))
+}
+
+function resolveImportedFilePath(fromDir: string, importPath: string): string {
+  const normalizedFromDir = normalizePath(fromDir)
+  const normalizedImportPath = normalizePath(importPath)
+
+  if (isAbsolutePath(normalizedImportPath)) {
+    return normalizedImportPath
+  }
+
+  return joinPath(normalizedFromDir, normalizedImportPath)
+}
+
+function pushUniqueDiagnostic(
+  diagnostics: TypeDiagnostic[],
+  diagnostic: TypeDiagnostic,
+  seen: Set<string>,
+): void {
+  const key = JSON.stringify({
+    message: diagnostic.message,
+    severity: diagnostic.severity,
+    filePath: diagnostic.sourceCodeInfo?.filePath,
+    line: diagnostic.sourceCodeInfo?.position.line,
+    column: diagnostic.sourceCodeInfo?.position.column,
+  })
+
+  if (seen.has(key)) return
+  seen.add(key)
+  diagnostics.push(diagnostic)
 }
 
 function normalizePath(pathLike: string): string {

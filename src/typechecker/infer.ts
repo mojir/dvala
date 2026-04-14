@@ -641,10 +641,20 @@ export function inferExpr(
         const annotation = ctx.typeAnnotations?.get(bindingNodeId)
         if (annotation) {
           const declaredType = parseTypeAnnotation(annotation)
-          constrain(ctx, valueType, declaredType)
+          try {
+            constrain(ctx, valueType, declaredType)
+          } catch (error) {
+            if (error instanceof TypeInferenceError && error.nodeId === undefined) {
+              error.nodeId = valueNode[2]
+            }
+            throw error
+          }
           const expandedValueType = expandType(valueType)
           if (!isSubtype(expandedValueType, declaredType)) {
-            throw new TypeInferenceError(`${typeToString(expandedValueType)} is not a subtype of ${typeToString(declaredType)}`)
+            throw new TypeInferenceError(
+              `${typeToString(expandedValueType)} is not a subtype of ${typeToString(declaredType)}`,
+              valueNode[2],
+            )
           }
         }
 
@@ -1635,7 +1645,14 @@ function inferFunctionNode(
       const paramAnnotation = ctx.typeAnnotations?.get(param[2])
       if (paramAnnotation) {
         const declaredType = parseTypeAnnotation(paramAnnotation)
-        constrain(ctx, paramVar, declaredType)
+        try {
+          constrain(ctx, paramVar, declaredType)
+        } catch (error) {
+          if (error instanceof TypeInferenceError && error.nodeId === undefined) {
+            error.nodeId = param[2]
+          }
+          throw error
+        }
       }
     }
 

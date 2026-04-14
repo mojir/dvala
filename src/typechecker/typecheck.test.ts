@@ -143,6 +143,18 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics[0]!.message).toContain('not a subtype of String')
   })
 
+  it('attaches let annotation errors to the value expression source', () => {
+    const result = dvala.typecheck([
+      'let x: String =',
+      '  42;',
+      'x',
+    ].join('\n'))
+
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.sourceCodeInfo?.position.line).toBe(2)
+    expect(result.diagnostics[0]?.sourceCodeInfo?.code.trim()).toBe('42;')
+  })
+
   it('function param annotation: (a: Number) -> a + 1', () => {
     const result = dvala.typecheck('let f = (a: Number) -> a + 1; f(42)')
     expect(result.diagnostics).toHaveLength(0)
@@ -279,5 +291,28 @@ describe('typecheck — type aliases', () => {
     // 'type' is not a reserved word — can be used as a variable when not followed by uppercase
     const result = dvala.typecheck('let type = 42; type + 1')
     expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
+describe('typecheck — imported diagnostics', () => {
+  it('surfaces type errors from imported files with imported file paths', () => {
+    const files = new Map([
+      ['./bad.dvala', 'let value: String = 42; { value }'],
+    ])
+
+    const dvala = createDvala({
+      fileResolver: (importPath: string) => {
+        const source = files.get(importPath)
+        if (!source) throw new Error(`File not found: ${importPath}`)
+        return source
+      },
+    })
+
+    const result = dvala.typecheck('let { value } = import("./bad.dvala"); value', { fileResolverBaseDir: '.' })
+
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('not a subtype of String')
+    expect(result.diagnostics[0]?.sourceCodeInfo?.filePath).toBe('bad.dvala')
+    expect(result.diagnostics[0]?.sourceCodeInfo?.code.trim()).toBe('let value: String = 42; { value }')
   })
 })

@@ -307,7 +307,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     },
 
     typecheck(source: string, typecheckOptions?: { fileResolverBaseDir?: string }): TypecheckResult {
-      const ast = buildAst(source)
+      const ast = buildAst(source, undefined, true)
       return runTypecheck(ast, {
         modules: registeredModules,
         fileResolver: factoryFileResolver,
