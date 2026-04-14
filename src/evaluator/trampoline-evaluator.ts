@@ -308,7 +308,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       const newContext: Context = {}
       const newEnv = env.create(newContext)
       if (nodes.length === 0) {
-        return { type: 'Value', value: null, k }
+        throw new TypeError('Block AST requires at least one expression', sourceCodeInfo)
       }
       if (nodes.length === 1) {
         return { type: 'Eval', node: nodes[0]!, env: newEnv, k }
@@ -1579,7 +1579,7 @@ function applyIfBranch(frame: IfBranchFrame, value: Any, k: ContinuationStack): 
   if (elseNode) {
     return { type: 'Eval', node: elseNode, env, k }
   }
-  return { type: 'Value', value: null, k }
+  throw new TypeError('If AST requires an else branch', env.resolve(thenNode[2]))
 }
 
 function applyMatch(frame: MatchFrame, value: Any, k: ContinuationStack): Step {
