@@ -42,6 +42,7 @@ import mainTemplate from './templates/main.dvala'
 import mainTestTemplate from './templates/main.test.dvala'
 import { getCliModules } from './js-interop/Cli'
 import '../../src/initReferenceData'
+import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
 
 const useColor = !process.env.NO_COLOR
 const fmt = createColorizer(useColor)
@@ -127,6 +128,13 @@ interface ParseConfig {
   debug: boolean
 }
 
+interface CheckConfig {
+  subcommand: 'check'
+  code: string
+  filePath: Maybe<string>
+  fileResolverBaseDir: string
+}
+
 interface InitConfig {
   subcommand: 'init'
 }
@@ -143,7 +151,7 @@ interface VersionConfig {
   subcommand: 'version'
 }
 
-type Config = ReplConfig | RunConfig | TestConfig | BuildConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | InitConfig | ExamplesConfig | HelpConfig | VersionConfig
+type Config = ReplConfig | RunConfig | TestConfig | BuildConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | CheckConfig | InitConfig | ExamplesConfig | HelpConfig | VersionConfig
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
@@ -338,6 +346,35 @@ switch (config.subcommand) {
     }
     break
   }
+  case 'check': {
+    try {
+      const dvala = createDvala({
+        debug: true,
+        modules: [...allBuiltinModules, ...cliModules],
+        fileResolver: createFileResolver(),
+        fileResolverBaseDir: config.fileResolverBaseDir,
+      })
+      const result = dvala.typecheck(config.code, {
+        fileResolverBaseDir: config.fileResolverBaseDir,
+        filePath: config.filePath ?? undefined,
+      })
+      if (result.diagnostics.length === 0) {
+        console.log('No type errors.')
+        process.exit(0)
+        break
+      }
+
+      for (const diagnostic of result.diagnostics) {
+        printTypeDiagnostic(diagnostic)
+      }
+
+      process.exit(result.diagnostics.some(diagnostic => diagnostic.severity === 'error') ? 1 : 0)
+    } catch (error) {
+      printErrorMessage(`${error}`)
+      process.exit(1)
+    }
+    break
+  }
   case 'examples': {
     console.log(formatExamples())
     process.exit(0)
@@ -377,6 +414,10 @@ function resolveProjectConfig(arg: Maybe<string>): ResolvedConfig | null {
  * Used by -f flag handling and no-arg fallback.
  */
 function resolveEntryCode(subcommand: string): string {
+  return resolveEntrySource(subcommand).code
+}
+
+function resolveEntrySource(subcommand: string): { code: string; filePath: string } {
   const resolved = findConfig()
   if (!resolved) {
     printErrorMessage(`No dvala.json found. Pass code, use -f <file>, or run in a project directory. ("${subcommand}")`)
@@ -391,7 +432,27 @@ function resolveEntryCode(subcommand: string): string {
     printErrorMessage(`Entry file not found: ${entryPath}`)
     process.exit(1)
   }
-  return fs.readFileSync(entryPath, 'utf-8')
+  return { code: fs.readFileSync(entryPath, 'utf-8'), filePath: entryPath }
+}
+
+function resolveSourceInput(subcommand: string, positional: Maybe<string>, file: Maybe<string>): { code: string; filePath: Maybe<string>; fileResolverBaseDir: string } {
+  if (positional) {
+    return { code: positional, filePath: null, fileResolverBaseDir: process.cwd() }
+  }
+  if (file) {
+    const resolvedFilePath = path.resolve(file)
+    return {
+      code: readFileContent(resolvedFilePath),
+      filePath: resolvedFilePath,
+      fileResolverBaseDir: path.dirname(resolvedFilePath),
+    }
+  }
+  const entry = resolveEntrySource(subcommand)
+  return {
+    code: entry.code,
+    filePath: entry.filePath,
+    fileResolverBaseDir: path.dirname(entry.filePath),
+  }
 }
 
 /**
@@ -1294,7 +1355,8 @@ function processArguments(args: string[]): Config {
       return { subcommand: 'list', moduleName, showModules, showDatatypes }
     }
     case 'tokenize':
-    case 'parse': {
+    case 'parse':
+    case 'check': {
       let positional: Maybe<string> = null
       let file: Maybe<string> = null
       let debug = false
@@ -1317,6 +1379,10 @@ function processArguments(args: string[]): Config {
             i += parsed.count
             break
           case '--debug':
+            if (first === 'check') {
+              printErrorMessage(`Unknown option "${parsed.option}" for "${first}"`)
+              process.exit(1)
+            }
             debug = true
             i += parsed.count
             break
@@ -1329,15 +1395,16 @@ function processArguments(args: string[]): Config {
         printErrorMessage(`Cannot use both inline code and -f <file> for "${first}"`)
         process.exit(1)
       }
-      let code: string
-      if (positional) {
-        code = positional
-      } else if (file) {
-        code = readFileContent(file)
-      } else {
-        code = resolveEntryCode(first)
+      const sourceInput = resolveSourceInput(first, positional, file)
+      if (first === 'check') {
+        return {
+          subcommand: 'check',
+          code: sourceInput.code,
+          filePath: sourceInput.filePath,
+          fileResolverBaseDir: sourceInput.fileResolverBaseDir,
+        }
       }
-      return { subcommand: first, code, debug }
+      return { subcommand: first, code: sourceInput.code, debug }
     }
     case 'init': {
       return { subcommand: 'init' }
@@ -1470,6 +1537,7 @@ Subcommands:
   run [code] [options]            Run code, a file (-f), or project entry (dvala.json)
   build [dir] [options]           Build a project (uses dvala.json)
   test [file] [options]           Run a .test.dvala test file
+  check [code] [options]          Typecheck code, a file (-f), or project entry (dvala.json)
   init                            Initialize a new project (creates dvala.json)
   repl [options]                  Start an interactive REPL
   doc <name>                      Show documentation for a function/expression
@@ -1494,6 +1562,9 @@ Build options:
 
 Test options:
   --pattern=<regex>               Only run tests matching pattern
+
+Check options:
+  -f, --file=<file>               Read code from a .dvala file
 
 Repl options:
   -l, --load=<file>               Preload a .dvala file into the REPL context
@@ -1555,4 +1626,13 @@ function completer(line: string) {
 
 function printErrorMessage(message: string) {
   console.error(fmt.bright.red(message))
+}
+
+function printTypeDiagnostic(diagnostic: TypeDiagnostic) {
+  const info = diagnostic.sourceCodeInfo
+  const location = info
+    ? `${info.filePath ? `${info.filePath}:` : ''}${info.position.line}:${info.position.column}`
+    : 'unknown'
+  const prefix = diagnostic.severity === 'error' ? fmt.bright.red('[type error]') : fmt.bright.yellow('[type warning]')
+  console.error(`${prefix} ${location}: ${diagnostic.message}`)
 }

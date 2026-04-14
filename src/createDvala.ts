@@ -98,7 +98,7 @@ export interface DvalaRunner {
   getUndefinedSymbols: (source: string, symbolsOptions?: { scope?: Record<string, unknown> }) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
   /** Typecheck source code and return diagnostics + type map. */
-  typecheck: (source: string, options?: { fileResolverBaseDir?: string }) => TypecheckResult
+  typecheck: (source: string, options?: { fileResolverBaseDir?: string; filePath?: string }) => TypecheckResult
 }
 
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
@@ -306,8 +306,8 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       return new AutoCompleter(program, position, {})
     },
 
-    typecheck(source: string, typecheckOptions?: { fileResolverBaseDir?: string }): TypecheckResult {
-      const ast = buildAst(source, undefined, true)
+    typecheck(source: string, typecheckOptions?: { fileResolverBaseDir?: string; filePath?: string }): TypecheckResult {
+      const ast = buildAst(source, typecheckOptions?.filePath, true)
       return runTypecheck(ast, {
         modules: registeredModules,
         fileResolver: factoryFileResolver,
