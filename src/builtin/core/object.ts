@@ -162,9 +162,9 @@ o`,
     },
     arity: { min: 0 },
     docs: {
-      type: '({...}, {...}) -> {...}',
+      type: '(() -> Null) & (({...}, ...{...}[]) -> {...})',
       category: 'object',
-      returns: { type: 'object' },
+      returns: { type: ['object', 'null'] },
       args: {
         a: { type: 'object' },
         b: { type: 'object' },

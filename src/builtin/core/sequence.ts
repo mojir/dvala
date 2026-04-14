@@ -201,7 +201,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
-      type: '((String | Unknown[], Unknown) -> String | Unknown[]) & ((String | Unknown[], Unknown, Unknown) -> String | Unknown[]) & ((String | Unknown[], Unknown, Unknown, Unknown) -> String | Unknown[])',
+      type: '(String | Unknown[], Unknown, ...Unknown[]) -> String | Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {

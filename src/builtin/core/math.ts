@@ -670,7 +670,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '((Number, Number) -> Number) & ((Number, Number, Number) -> Number) & ((Number[]) -> Number)',
+      type: '((Number, ...Number[]) -> Number) & ((Number[]) -> Number)',
       category: 'math',
       returns: { type: 'number' },
       args: {
@@ -709,7 +709,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
-      type: '((Number, Number) -> Number) & ((Number, Number, Number) -> Number) & ((Number[]) -> Number)',
+      type: '((Number, ...Number[]) -> Number) & ((Number[]) -> Number)',
       category: 'math',
       returns: { type: 'number' },
       args: {

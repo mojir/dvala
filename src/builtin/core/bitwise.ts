@@ -90,7 +90,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
-      type: '((Number, Number) -> Number) & ((Number, Number, Number) -> Number)',
+      type: '(Number, Number, ...Number[]) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: {
@@ -121,7 +121,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
-      type: '((Number, Number) -> Number) & ((Number, Number, Number) -> Number)',
+      type: '(Number, Number, ...Number[]) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: {
@@ -152,7 +152,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
-      type: '((Number, Number) -> Number) & ((Number, Number, Number) -> Number)',
+      type: '(Number, Number, ...Number[]) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: {
