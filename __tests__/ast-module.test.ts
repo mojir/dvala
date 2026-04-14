@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { astModule } from '../src/builtin/modules/ast'
+import { createContextStack } from '../src/evaluator/ContextStack'
+import { evaluateNode } from '../src/evaluator/trampoline-evaluator'
+import { TypeError as DvalaTypeError } from '../src/errors'
+import { prettyPrint } from '../src/prettyPrint'
 
 const dvala = createDvala({ modules: [astModule] })
 const run = (code: string) => dvala.run(code)
@@ -46,14 +50,17 @@ describe('ast module', () => {
       expect(result).toEqual(['If', [['Sym', 'x', 0], ['Num', 1, 0], ['Num', 2, 0]], 0])
     })
 
-    it('should create if nodes without else', () => {
-      const result = run('let { ifNode, sym, num } = import("ast"); ifNode(sym("x"), num(1))')
-      expect(result).toEqual(['If', [['Sym', 'x', 0], ['Num', 1, 0]], 0])
+    it('should reject if nodes without else', () => {
+      expect(() => run('let { ifNode, sym, num } = import("ast"); ifNode(sym("x"), num(1))')).toThrowError(DvalaTypeError)
     })
 
     it('should create block nodes', () => {
       const result = run('let { block, num } = import("ast"); block([num(1), num(2)])')
       expect(result).toEqual(['Block', [['Num', 1, 0], ['Num', 2, 0]], 0])
+    })
+
+    it('should reject empty block nodes', () => {
+      expect(() => run('let { block } = import("ast"); block([])')).toThrowError(DvalaTypeError)
     })
   })
 
@@ -125,8 +132,8 @@ describe('ast module', () => {
       expect(run('let { prettyPrint, ifNode, sym, num } = import("ast"); prettyPrint(ifNode(sym("x"), num(1), num(2)))')).toBe('if x then 1 else 2 end')
     })
 
-    it('should print if without else', () => {
-      expect(run('let { prettyPrint, ifNode, sym, num } = import("ast"); prettyPrint(ifNode(sym("x"), num(1)))')).toBe('if x then 1 end')
+    it('should print get() as safe property access', () => {
+      expect(run('let { prettyPrint, call, builtin, sym, strNode } = import("ast"); prettyPrint(call(builtin("get"), [sym("obj"), strNode("key")]))')).toBe('obj?.key')
     })
 
     it('should print code template AST', () => {
@@ -135,6 +142,24 @@ describe('ast module', () => {
 
     it('should print effect references', () => {
       expect(run('let { prettyPrint, effectNode } = import("ast"); prettyPrint(effectNode("dvala.io.print"))')).toBe('@dvala.io.print')
+    })
+
+    it('should reject malformed if nodes without else', () => {
+      expect(() => prettyPrint(['If', [['Sym', 'x', 0], ['Num', 1, 0]], 0])).toThrowError(DvalaTypeError)
+    })
+
+    it('should reject malformed empty block nodes', () => {
+      expect(() => prettyPrint(['Block', [], 0])).toThrowError(DvalaTypeError)
+    })
+  })
+
+  describe('evaluation backstops', () => {
+    it('should reject malformed if nodes without else', () => {
+      expect(() => evaluateNode(['If', [['Reserved', 'false', 0], ['Num', 1, 0]], 0], createContextStack())).toThrowError(DvalaTypeError)
+    })
+
+    it('should reject malformed empty block nodes', () => {
+      expect(() => evaluateNode(['Block', [], 0], createContextStack())).toThrowError(DvalaTypeError)
     })
   })
 

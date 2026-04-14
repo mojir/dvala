@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '../constants/constants'
-import { UserDefinedError } from '../errors'
+import { TypeError, UserDefinedError } from '../errors'
 import type { Any } from '../interface'
 import { parse } from '../parser'
 import type { AstNode, NumberNode, StringNode } from '../parser/types'
@@ -312,8 +312,7 @@ describe('stepNode', () => {
       }
     })
 
-    it('should return null for empty block', () => {
-      // Empty blocks (do end) return null
+    it('should evaluate non-empty block nodes', () => {
       const node = parseFirst('do null end')
       const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
@@ -499,7 +498,7 @@ describe('applyFrame', () => {
       }
     })
 
-    it('should return null when condition is falsy and no else-branch', () => {
+    it('should reject malformed if nodes without an else-branch', () => {
       const thenNode: NumberNode = [NodeTypes.Num, 1, 0]
       const frame: IfBranchFrame = {
         type: 'IfBranch',
@@ -507,8 +506,7 @@ describe('applyFrame', () => {
         elseNode: undefined,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, false, null)
-      expect(step).toEqual({ type: 'Value', value: null, k: null })
+      expect(() => applyFrameSync(frame, false, null)).toThrowError(TypeError)
     })
   })
 
