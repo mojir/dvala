@@ -61,9 +61,6 @@ interface CachedFileTypeResult {
   type: Type
   diagnostics: TypeDiagnostic[]
 }
-
-/** Cache of typechecked file imports: filePath → exported type + diagnostics */
-const fileTypeCache = new Map<string, CachedFileTypeResult>()
 // ---------------------------------------------------------------------------
 // Initialization
 // ---------------------------------------------------------------------------
@@ -99,6 +96,10 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   const sourceMap = expandedAst.sourceMap ?? ast.sourceMap
   const diagnostics: TypeDiagnostic[] = []
   const reportedImportDiagnostics = new Set<string>()
+  // Imported-file types should be cached within one top-level typecheck pass
+  // so transitive imports are deduplicated without leaking stale results into
+  // later editor checks after a file changes on disk.
+  const fileTypeCache = new Map<string, CachedFileTypeResult>()
 
   const ctx = new InferenceContext()
   // Wire file import resolution if a file resolver is provided

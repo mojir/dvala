@@ -315,4 +315,29 @@ describe('typecheck — imported diagnostics', () => {
     expect(result.diagnostics[0]?.sourceCodeInfo?.filePath).toBe('bad.dvala')
     expect(result.diagnostics[0]?.sourceCodeInfo?.code.trim()).toBe('let value: String = 42; { value }')
   })
+
+  it('rechecks imported files after their source changes', () => {
+    const files = new Map([
+      ['./bad.dvala', 'let value: Number = 42; { value }'],
+    ])
+
+    const dvala = createDvala({
+      fileResolver: (importPath: string) => {
+        const source = files.get(importPath)
+        if (!source) throw new Error(`File not found: ${importPath}`)
+        return source
+      },
+    })
+
+    const first = dvala.typecheck('let { value } = import("./bad.dvala"); value', { fileResolverBaseDir: '.' })
+    expect(first.diagnostics).toHaveLength(0)
+
+    files.set('./bad.dvala', 'let value: String = 42; { value }')
+
+    const second = dvala.typecheck('let { value } = import("./bad.dvala"); value', { fileResolverBaseDir: '.' })
+
+    expect(second.diagnostics.length).toBeGreaterThan(0)
+    expect(second.diagnostics[0]?.message).toContain('not a subtype of String')
+    expect(second.diagnostics[0]?.sourceCodeInfo?.filePath).toBe('bad.dvala')
+  })
 })

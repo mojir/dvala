@@ -64,6 +64,13 @@ describe('CLI commands', () => {
       expect(result).toContain('clamp')
     })
 
+    it('runs a .dvala file with relative imports from the file directory', () => {
+      const result = exec(`run -f ${exampleProjectDir}/main.dvala`)
+      expect(result).toContain('avg')
+      expect(result).toContain('clamped')
+      expect(result).toContain('interpolated')
+    })
+
     it('runs a .json bundle with -f', () => {
       const bundlePath = path.join(tmpDir, 'test-bundle.json')
       exec(`build ${exampleProjectDir} -o ${bundlePath}`)

@@ -74,6 +74,8 @@ interface ReplConfig {
 interface RunConfig {
   subcommand: 'run'
   program: string | DvalaBundle
+  filePath: Maybe<string>
+  fileResolverBaseDir: string
   context: Record<string, unknown>
   printResult: boolean
   pure: boolean
@@ -183,12 +185,12 @@ function createFileResolver(): (importPath: string, fromDir: string) => string {
   }
 }
 
-function makeDvala(context: Record<string, unknown>, pure: boolean, noCheck = false) {
+function makeDvala(context: Record<string, unknown>, pure: boolean, noCheck = false, fileResolverBaseDir = process.cwd()) {
   const runner = createDvala({
     debug: true,
     modules: [...allBuiltinModules, ...cliModules],
     fileResolver: createFileResolver(),
-    fileResolverBaseDir: process.cwd(),
+    fileResolverBaseDir,
     typecheck: !noCheck,
     onTypeDiagnostic: d => {
       // Print type diagnostics as warnings to stderr
@@ -199,9 +201,9 @@ function makeDvala(context: Record<string, unknown>, pure: boolean, noCheck = fa
     },
   })
   return {
-    run: (program: string | DvalaBundle) => runner.run(program, pure
-      ? { scope: context, pure: true }
-      : { scope: context }),
+    run: (program: string | DvalaBundle, filePath?: string) => runner.run(program, pure
+      ? { scope: context, pure: true, filePath }
+      : { scope: context, filePath }),
   }
 }
 
@@ -219,9 +221,9 @@ function loadFileIntoContext(filename: string, context: Record<string, unknown>)
 
 switch (config.subcommand) {
   case 'run': {
-    const dvala = makeDvala(config.context, config.pure, config.noCheck)
+    const dvala = makeDvala(config.context, config.pure, config.noCheck, config.fileResolverBaseDir)
     try {
-      const result = dvala.run(config.program)
+      const result = dvala.run(config.program, config.filePath ?? undefined)
       if (config.printResult) {
         console.log(result)
       }
@@ -409,14 +411,6 @@ function resolveProjectConfig(arg: Maybe<string>): ResolvedConfig | null {
   return null
 }
 
-/**
- * Read code from a file path, or resolve the entry file from dvala.json in cwd.
- * Used by -f flag handling and no-arg fallback.
- */
-function resolveEntryCode(subcommand: string): string {
-  return resolveEntrySource(subcommand).code
-}
-
 function resolveEntrySource(subcommand: string): { code: string; filePath: string } {
   const resolved = findConfig()
   if (!resolved) {
@@ -450,6 +444,27 @@ function resolveSourceInput(subcommand: string, positional: Maybe<string>, file:
   const entry = resolveEntrySource(subcommand)
   return {
     code: entry.code,
+    filePath: entry.filePath,
+    fileResolverBaseDir: path.dirname(entry.filePath),
+  }
+}
+
+function resolveRunProgram(subcommand: string, positional: Maybe<string>, file: Maybe<string>): { program: string | DvalaBundle; filePath: Maybe<string>; fileResolverBaseDir: string } {
+  if (positional) {
+    return { program: positional, filePath: null, fileResolverBaseDir: process.cwd() }
+  }
+  if (file) {
+    const resolvedFilePath = path.resolve(file)
+    const program = readProgram(resolvedFilePath)
+    return {
+      program,
+      filePath: typeof program === 'string' ? resolvedFilePath : null,
+      fileResolverBaseDir: path.dirname(resolvedFilePath),
+    }
+  }
+  const entry = resolveEntrySource(subcommand)
+  return {
+    program: entry.code,
     filePath: entry.filePath,
     fileResolverBaseDir: path.dirname(entry.filePath),
   }
@@ -1141,15 +1156,17 @@ function processArguments(args: string[]): Config {
         printErrorMessage('Cannot use both inline code and -f <file>')
         process.exit(1)
       }
-      let program: string | DvalaBundle
-      if (positional) {
-        program = positional
-      } else if (file) {
-        program = readProgram(file)
-      } else {
-        program = resolveEntryCode('run')
+      const runProgram = resolveRunProgram('run', positional, file)
+      return {
+        subcommand: 'run',
+        program: runProgram.program,
+        filePath: runProgram.filePath,
+        fileResolverBaseDir: runProgram.fileResolverBaseDir,
+        context,
+        printResult,
+        pure,
+        noCheck,
       }
-      return { subcommand: 'run', program, context, printResult, pure, noCheck }
     }
     case 'build': {
       let directory: Maybe<string> = null
