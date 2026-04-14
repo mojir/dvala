@@ -33,6 +33,18 @@ interface ResumeContext {
 
 type HandledSignatureMap = Map<string, { argType: Type; retType: Type }>
 
+const typeVarObjectIds = new WeakMap<TypeVar, number>()
+let nextTypeVarObjectId = 0
+
+function typeVarIdentity(typeVar: TypeVar): string {
+  let objectId = typeVarObjectIds.get(typeVar)
+  if (objectId === undefined) {
+    objectId = nextTypeVarObjectId++
+    typeVarObjectIds.set(typeVar, objectId)
+  }
+  return `v${objectId}`
+}
+
 // ---------------------------------------------------------------------------
 // Type variable representation
 // ---------------------------------------------------------------------------
@@ -78,6 +90,8 @@ export class InferenceContext {
   private handledSignatureStack: HandledSignatureMap[] = []
   /** Parameter vars proven to feed directly into a handler thunk call. */
   private wrappedThunkVarHandled = new Map<number, HandledSignatureMap>()
+  /** Recoverable inference errors collected while continuing analysis. */
+  private deferredErrors: TypeInferenceError[] = []
 
   get level(): number { return this._level }
 
@@ -120,6 +134,16 @@ export class InferenceContext {
 
   getWrappedThunkVar(varId: number): HandledSignatureMap | undefined {
     return this.wrappedThunkVarHandled.get(varId)
+  }
+
+  deferError(error: TypeInferenceError): void {
+    this.deferredErrors.push(error)
+  }
+
+  takeDeferredErrors(): TypeInferenceError[] {
+    const errors = this.deferredErrors
+    this.deferredErrors = []
+    return errors
   }
 
   /** Record an effect in the current effect set. */
@@ -189,7 +213,7 @@ export class InferenceContext {
 }
 
 function varKey(t: Type): string {
-  if (t.tag === 'Var') return `v${t.id}`
+  if (t.tag === 'Var') return typeVarIdentity(t)
   if (t.tag === 'Primitive') return `P:${t.name}`
   if (t.tag === 'Atom') return `A:${t.name}`
   if (t.tag === 'Literal') return `L:${String(t.value)}`
@@ -228,7 +252,7 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 
   // --- Variable on the left: add upper bound + propagate ---
   if (lhs.tag === 'Var') {
-    if (rhs.tag === 'Var' && lhs.id === rhs.id) return
+    if (rhs.tag === 'Var' && lhs === rhs) return
     lhs.upperBounds.push(rhs)
     // Propagate: every existing lower bound must also be <: rhs
     for (const lb of lhs.lowerBounds) {
@@ -629,6 +653,10 @@ export function inferExpr(
           valueType = inferExpr(valueNode, ctx, env, typeMap)
         } catch (e) {
           if (e instanceof TypeInferenceError) {
+            if (e.nodeId === undefined) {
+              e.nodeId = valueNode[2]
+            }
+            ctx.deferError(e)
             valueType = Unknown
           } else {
             throw e
@@ -1190,13 +1218,13 @@ function containsVars(t: Type): boolean {
   }
 }
 
-function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<number, TypeVar>): Type {
+function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<string, TypeVar>): Type {
   switch (t.tag) {
     case 'Var': {
-      const existing = mapping.get(t.id)
+      const existing = mapping.get(typeVarIdentity(t))
       if (existing) return existing
       const fresh = ctx.freshVar()
-      mapping.set(t.id, fresh)
+      mapping.set(typeVarIdentity(t), fresh)
       return fresh
     }
     case 'Function':
@@ -1248,15 +1276,15 @@ function freshen(ctx: InferenceContext, t: Type): Type {
   return freshenInner(ctx, t, new Map())
 }
 
-function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<number, TypeVar>): Type {
+function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeVar>): Type {
   switch (t.tag) {
     case 'Var': {
       if (t.level <= ctx.level) return t
       // Variable is above the current level — copy it
-      const existing = mapping.get(t.id)
+      const existing = mapping.get(typeVarIdentity(t))
       if (existing) return existing
       const fresh = ctx.freshVar()
-      mapping.set(t.id, fresh)
+      mapping.set(typeVarIdentity(t), fresh)
       // Copy bounds (freshened recursively)
       for (const lb of t.lowerBounds) {
         fresh.lowerBounds.push(freshenInner(ctx, lb, mapping))
@@ -1352,16 +1380,16 @@ interface VarBoundDelta {
 /** Snapshot the bounds of all type variables reachable from a type. */
 function snapshotVarBounds(t: Type): VarBoundSnapshot[] {
   const result: VarBoundSnapshot[] = []
-  const visited = new Set<number>()
+  const visited = new Set<string>()
   collectVars(t, result, visited)
   return result
 }
 
-function collectVars(t: Type, result: VarBoundSnapshot[], visited: Set<number>): void {
+function collectVars(t: Type, result: VarBoundSnapshot[], visited: Set<string>): void {
   switch (t.tag) {
     case 'Var':
-      if (visited.has(t.id)) return
-      visited.add(t.id)
+      if (visited.has(typeVarIdentity(t))) return
+      visited.add(typeVarIdentity(t))
       result.push({ var: t, lowerLen: t.lowerBounds.length, upperLen: t.upperBounds.length })
       for (const lb of t.lowerBounds) collectVars(lb, result, visited)
       for (const ub of t.upperBounds) collectVars(ub, result, visited)
@@ -1481,14 +1509,14 @@ function getFunctionAlternatives(type: Type): Extract<Type, { tag: 'Function' }>
   return []
 }
 
-function resolveHandlerCarrier(type: Type, visited = new Set<number>()): Type {
+function resolveHandlerCarrier(type: Type, visited = new Set<string>()): Type {
   return resolveCallableCarrier(type, visited)
 }
 
-function resolveCallableCarrier(type: Type, visited = new Set<number>()): Type {
+function resolveCallableCarrier(type: Type, visited = new Set<string>()): Type {
   if (type.tag === 'Var') {
-    if (visited.has(type.id)) return type
-    visited.add(type.id)
+    if (visited.has(typeVarIdentity(type))) return type
+    visited.add(typeVarIdentity(type))
     if (type.lowerBounds.length === 0) return type
     const resolvedBounds = type.lowerBounds.map(bound => resolveCallableCarrier(bound, visited))
     return resolvedBounds.length === 1 ? resolvedBounds[0]! : union(...resolvedBounds)
@@ -1547,19 +1575,20 @@ function finalizeHandledSignatures(handled: HandledSignatureMap): HandledSignatu
 
   for (const [name, sig] of handled) {
     finalized.set(name, {
-      argType: finalizeInferredHandledType(sig.argType),
-      retType: finalizeInferredHandledType(sig.retType),
+      argType: finalizeInferredHandledType(sig.argType, 'negative'),
+      retType: finalizeInferredHandledType(sig.retType, 'positive'),
     })
   }
 
   return finalized
 }
 
-function finalizeInferredHandledType(type: Type): Type {
+function finalizeInferredHandledType(type: Type, polarity: 'positive' | 'negative'): Type {
   if (type.tag !== 'Var') return type
-  return type.lowerBounds.length === 0 && type.upperBounds.length === 0
-    ? Unknown
-    : type
+  if (type.lowerBounds.length === 0 && type.upperBounds.length === 0) {
+    return Unknown
+  }
+  return expandType(type, polarity)
 }
 
 function unionEffectSets(effectSets: EffectSet[]): EffectSet {
@@ -1919,11 +1948,11 @@ function recordConcretePatternTypes(pattern: AstNode, type: Type, typeMap: Map<n
  * Positive polarity: variables expand to their lower bounds (union).
  * Negative polarity: variables expand to their upper bounds (intersection).
  */
-export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positive', visited = new Set<number>()): Type {
+export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positive', visited = new Set<string>()): Type {
   switch (t.tag) {
     case 'Var': {
-      if (visited.has(t.id)) return polarity === 'positive' ? Never : Unknown
-      visited.add(t.id)
+      if (visited.has(typeVarIdentity(t))) return polarity === 'positive' ? Never : Unknown
+      visited.add(typeVarIdentity(t))
       if (polarity === 'positive') {
         // Positive: expand to union of lower bounds
         const expanded = t.lowerBounds.map(lb => expandType(lb, 'positive', visited))
@@ -1931,7 +1960,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
       } else {
         // Negative: expand to intersection of upper bounds
         const expanded = t.upperBounds.map(ub => expandType(ub, 'negative', visited))
-        return expanded.length === 0 ? Unknown : expanded.length === 1 ? expanded[0]! : { tag: 'Inter', members: expanded }
+        return expanded.length === 0 ? Unknown : expanded.length === 1 ? expanded[0]! : inter(...expanded)
       }
     }
     case 'Function':
@@ -1980,11 +2009,11 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
  * readable upper-bound information over `Never` when a variable has no lower
  * bounds yet, and reconstructs record shapes from property-access constraints.
  */
-export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' = 'positive', visited = new Set<number>()): Type {
+export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' = 'positive', visited = new Set<string>()): Type {
   switch (t.tag) {
     case 'Var': {
-      if (visited.has(t.id)) return polarity === 'positive' ? Never : Unknown
-      visited.add(t.id)
+      if (visited.has(typeVarIdentity(t))) return polarity === 'positive' ? Never : Unknown
+      visited.add(typeVarIdentity(t))
 
       const recordDisplay = synthesizeRecordDisplayType(t, visited)
       if (recordDisplay) return recordDisplay
@@ -2148,7 +2177,7 @@ function normalizeDisplayUnion(members: Type[]): Type {
   return union(...members)
 }
 
-function synthesizeRecordDisplayType(t: TypeVar, visited: Set<number>): Type | undefined {
+function synthesizeRecordDisplayType(t: TypeVar, visited: Set<string>): Type | undefined {
   const fieldTypes = new Map<string, Type[]>()
   let sawRecordLikeInfo = false
   let open = false

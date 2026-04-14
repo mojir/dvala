@@ -155,6 +155,39 @@ describe('typecheck — file imports', () => {
     expect(hover).not.toContain('logs: Unknown[]')
   })
 
+  it('project logging import enforces log payload types inside callback literals', () => {
+    const source = `
+      let { withLogging } = import("./lib/logging");
+
+      withLogging(-> do
+        perform(@project.log, 10);
+        1
+      end)
+    `
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('not a subtype of String')
+  })
+
+  it('macro imports do not suppress project logging payload diagnostics', () => {
+    const source = `
+      let { double, withDefault } = import("./lib/macros");
+      let { withLogging } = import("./lib/logging");
+
+      withLogging(-> do
+        let doubled = double(21);
+        let safe = withDefault(null, 42);
+        perform(@project.log, 10);
+        doubled + safe
+      end)
+    `
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics.some(diag => diag.message.includes('not a subtype of String'))).toBe(true)
+  })
+
   it('examples/project/main.dvala typechecks cleanly', () => {
     const source = fs.readFileSync(path.join(projectDir, 'main.dvala'), 'utf-8')
     const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })

@@ -18,7 +18,7 @@ import { parseToAst } from '../parser'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import { InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
+import { expandType, InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
 import { initBuiltinTypes, registerModuleType, resetModuleTypeCache } from './builtinTypes'
 import { declareEffect, initBuiltinEffects, resetUserEffects } from './effectTypes'
 import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases } from './parseType'
@@ -159,6 +159,13 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
           for (const node of importedAst.body) {
             try {
               resultType = inferExpr(node, importCtx, importEnv, importTypeMap)
+              for (const error of importCtx.takeDeferredErrors()) {
+                importDiagnostics.push({
+                  message: error.message,
+                  severity: 'error',
+                  sourceCodeInfo: resolveErrorSourceInfo(error, node, importedAst.sourceMap ?? rawAst.sourceMap),
+                })
+              }
             } catch (e) {
               if (e instanceof TypeInferenceError) {
                 importDiagnostics.push({
@@ -174,12 +181,12 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
             }
           }
 
-          const cachedResult = { type: resultType, diagnostics: importDiagnostics }
+          const cachedResult = { type: normalizeImportedExportType(resultType), diagnostics: importDiagnostics }
           fileTypeCache.set(cacheKey, cachedResult)
           for (const diagnostic of importDiagnostics) {
             pushUniqueDiagnostic(diagnostics, diagnostic, reportedImportDiagnostics)
           }
-          return resultType
+          return cachedResult.type
         } finally {
           restoreEffectRegistry(effectSnapshot)
           restoreTypeAliases(typeAliasSnapshot)
@@ -221,6 +228,13 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   for (const node of expandedAst.body) {
     try {
       inferExpr(node, ctx, env, typeMap)
+      for (const error of ctx.takeDeferredErrors()) {
+        diagnostics.push({
+          message: error.message,
+          severity: 'error',
+          sourceCodeInfo: resolveErrorSourceInfo(error, node, sourceMap),
+        })
+      }
     } catch (e) {
       if (e instanceof TypeInferenceError) {
         diagnostics.push({
@@ -260,6 +274,13 @@ export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap, options?:
   for (const node of nodes) {
     try {
       resultType = inferExpr(node, ctx, env, typeMap)
+      for (const error of ctx.takeDeferredErrors()) {
+        diagnostics.push({
+          message: error.message,
+          severity: 'error',
+          sourceCodeInfo: resolveErrorSourceInfo(error, node, sourceMap),
+        })
+      }
     } catch (e) {
       if (e instanceof TypeInferenceError) {
         diagnostics.push({
@@ -335,6 +356,69 @@ function pushUniqueDiagnostic(
   if (seen.has(key)) return
   seen.add(key)
   diagnostics.push(diagnostic)
+}
+
+function normalizeImportedExportType(type: Type): Type {
+  switch (type.tag) {
+    case 'Function': {
+      const handlerWrapper = type.handlerWrapper
+        ? {
+          paramIndex: type.handlerWrapper.paramIndex,
+          handled: new Map(
+            [...type.handlerWrapper.handled.entries()].map(([name, sig]) => [name, {
+              argType: expandType(sig.argType, 'negative'),
+              retType: expandType(sig.retType, 'positive'),
+            }]),
+          ),
+        }
+        : undefined
+      return {
+        ...type,
+        params: type.params.map(normalizeImportedExportType),
+        ret: normalizeImportedExportType(type.ret),
+        ...(handlerWrapper ? { handlerWrapper } : {}),
+      }
+    }
+    case 'Handler':
+      return {
+        ...type,
+        body: normalizeImportedExportType(type.body),
+        output: normalizeImportedExportType(type.output),
+        handled: new Map(
+          [...type.handled.entries()].map(([name, sig]) => [name, {
+            argType: expandType(sig.argType, 'negative'),
+            retType: expandType(sig.retType, 'positive'),
+          }]),
+        ),
+      }
+    case 'Record':
+      return {
+        ...type,
+        fields: new Map(
+          [...type.fields.entries()].map(([name, fieldType]) => [name, normalizeImportedExportType(fieldType)]),
+        ),
+      }
+    case 'Array':
+      return { ...type, element: normalizeImportedExportType(type.element) }
+    case 'Tuple':
+      return { ...type, elements: type.elements.map(normalizeImportedExportType) }
+    case 'Union':
+      return { ...type, members: type.members.map(normalizeImportedExportType) }
+    case 'Inter':
+      return { ...type, members: type.members.map(normalizeImportedExportType) }
+    case 'Neg':
+      return { ...type, inner: normalizeImportedExportType(type.inner) }
+    case 'Alias':
+      return {
+        ...type,
+        args: type.args.map(normalizeImportedExportType),
+        expanded: normalizeImportedExportType(type.expanded),
+      }
+    case 'Recursive':
+      return { ...type, body: normalizeImportedExportType(type.body) }
+    default:
+      return type
+  }
 }
 
 function normalizePath(pathLike: string): string {

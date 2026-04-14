@@ -932,7 +932,7 @@ describe('typecheck — imported handler parity', () => {
       let withLogging = (thunk) -> do
         let h =
           handler
-            @test.log(msg) -> do
+            @test.log(msg: String) -> do
               let resumed = resume(null);
               { result: resumed.result, logs: [msg] ++ resumed.logs };
             end
@@ -1092,6 +1092,93 @@ describe('typecheck — imported handler parity', () => {
     `, { fileResolverBaseDir: '.' })
 
     expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('imported handler wrappers preserve concrete handled payload types', () => {
+    const result = dvala.typecheck(`
+      let { withLogging } = import("./logging");
+      withLogging
+    `, { fileResolverBaseDir: '.' })
+
+    const lastType = [...result.typeMap.values()].at(-1)
+    const expanded = lastType ? expandType(lastType, 'positive') : undefined
+
+    expect(expanded?.tag).toBe('Function')
+    if (expanded?.tag !== 'Function') {
+      return
+    }
+
+    const handled = expanded.handlerWrapper?.handled.get('test.log')
+    expect(handled).toBeDefined()
+    expect(typeToString(expandType(handled!.argType, 'negative'))).toBe('String')
+    expect(typeToString(expandType(handled!.retType, 'positive'))).toBe('Null')
+  })
+
+  it('local handler wrappers preserve concrete handled payload types', () => {
+    const result = dvala.typecheck(`
+      let withLogging = (thunk) -> do
+        let h =
+          handler
+            @test.log(msg: String) -> do
+              let resumed = resume(null);
+              { result: resumed.result, logs: [msg] ++ resumed.logs }
+            end
+            transform result -> { result, logs: [] }
+          end;
+        h(thunk)
+      end;
+
+      withLogging
+    `)
+
+    const lastType = [...result.typeMap.values()].at(-1)
+    const expanded = lastType ? expandType(lastType, 'positive') : undefined
+
+    expect(expanded?.tag).toBe('Function')
+    if (expanded?.tag !== 'Function') {
+      return
+    }
+
+    const handled = expanded.handlerWrapper?.handled.get('test.log')
+    expect(handled).toBeDefined()
+    expect(typeToString(expandType(handled!.argType, 'negative'))).toBe('String')
+    expect(typeToString(expandType(handled!.retType, 'positive'))).toBe('Null')
+  })
+
+  it('raw imported records preserve concrete handled payload types', () => {
+    const result = dvala.typecheck('import("./logging")', { fileResolverBaseDir: '.' })
+
+    const lastType = [...result.typeMap.values()].at(-1)
+    const expanded = lastType ? expandType(lastType, 'positive') : undefined
+
+    expect(expanded?.tag).toBe('Record')
+    if (expanded?.tag !== 'Record') {
+      return
+    }
+
+    const withLogging = expanded.fields.get('withLogging')
+    expect(withLogging?.tag).toBe('Function')
+    if (withLogging?.tag !== 'Function') {
+      return
+    }
+
+    const handled = withLogging.handlerWrapper?.handled.get('test.log')
+    expect(handled).toBeDefined()
+    expect(typeToString(expandType(handled!.argType, 'negative'))).toBe('String')
+  })
+
+  it('imported handler wrappers enforce perform arg types inside callback literals', () => {
+    const result = dvala.typecheck(`
+      let { withLogging } = import("./logging");
+
+      withLogging(-> do
+        perform(@test.log, 10);
+        1
+      end)
+    `, { fileResolverBaseDir: '.' })
+
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('not a subtype of String')
   })
 })
 

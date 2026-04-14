@@ -292,7 +292,7 @@ export function typeEquals(a: Type, b: Type): boolean {
     case 'Neg': return typeEquals(a.inner, (b as typeof a).inner)
     case 'Unknown': return true
     case 'Never': return true
-    case 'Var': return a.id === (b as typeof a).id
+    case 'Var': return a === b
     case 'Alias': {
       const ba = b as typeof a
       return a.name === ba.name
