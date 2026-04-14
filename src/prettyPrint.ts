@@ -11,6 +11,7 @@
  */
 
 import { MAX_INLINE_ENTRIES, MAX_WIDTH } from './formatter/config'
+import { TypeError } from './errors'
 
 const INDENT_SIZE = 2
 
@@ -320,11 +321,11 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
     }
   }
 
-  // Smart rewrite: dot access — get(obj, "key") → obj.key
+  // Smart rewrite: safe dot access — get(obj, "key") → obj?.key
   if (fnNode[0] === NodeTypes.Builtin && fnNode[1] === 'get' && argNodes.length === 2) {
     const keyNode = argNodes[1]!
     if (keyNode[0] === NodeTypes.Str && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(keyNode[1] as string)) {
-      return `${printNode(argNodes[0]!, ind)}.${keyNode[1]}`
+      return `${printNode(argNodes[0]!, ind)}?.${keyNode[1]}`
     }
   }
 
@@ -459,6 +460,9 @@ function printIf(parts: unknown[][], ind: number): string {
   const cond = printNode(parts[0] as AstNode, ind)
   const thenNode = parts[1] as AstNode
   const elseNode = parts.length > 2 && parts[2] ? parts[2] as AstNode : null
+  if (!elseNode) {
+    throw new TypeError('If AST requires an else branch')
+  }
   const hasThenComments = hasNodeLevelComments(thenNode[2])
   const hasElseComments = elseNode ? hasNodeLevelComments(elseNode[2]) : false
 
@@ -467,38 +471,31 @@ function printIf(parts: unknown[][], ind: number): string {
 
   // Try flat — only when all components are single-line
   const thenStr = printNode(thenNode, ind)
-  if (elseNode) {
-    const elseStr = isElseIf
-      ? printIf((elseNode)[1] as unknown[][], ind)
-      : printNode(elseNode, ind)
-    if (!hasThenComments && !hasElseComments && allSingleLine(cond, thenStr, elseStr)) {
-      const flat = isElseIf
-        ? `if ${cond} then ${thenStr} else ${elseStr}`
-        : `if ${cond} then ${thenStr} else ${elseStr} end`
-      if (fits(flat, ind)) return flat
-    }
-  } else {
-    if (!hasThenComments && allSingleLine(cond, thenStr)) {
-      const flat = `if ${cond} then ${thenStr} end`
-      if (fits(flat, ind)) return flat
-    }
+  const elseStr = isElseIf
+    ? printIf((elseNode)[1] as unknown[][], ind)
+    : printNode(elseNode, ind)
+  if (!hasThenComments && !hasElseComments && allSingleLine(cond, thenStr, elseStr)) {
+    const flat = isElseIf
+      ? `if ${cond} then ${thenStr} else ${elseStr}`
+      : `if ${cond} then ${thenStr} else ${elseStr} end`
+    if (fits(flat, ind)) return flat
   }
 
   // Multi-line
   const thenMulti = renderCommentedNode(thenNode, ind + 1)
-  if (elseNode) {
-    if (isElseIf) {
-      // else if — keep same indent, no extra end
-      const elseIfStr = printIf((elseNode)[1] as unknown[][], ind)
-      return `if ${cond} then\n${thenMulti}\n${indent(ind)}else ${elseIfStr}`
-    }
-    const elseMulti = renderCommentedNode(elseNode, ind + 1)
-    return `if ${cond} then\n${thenMulti}\n${indent(ind)}else\n${elseMulti}\n${indent(ind)}end`
+  if (isElseIf) {
+    // else if — keep same indent, no extra end
+    const elseIfStr = printIf((elseNode)[1] as unknown[][], ind)
+    return `if ${cond} then\n${thenMulti}\n${indent(ind)}else ${elseIfStr}`
   }
-  return `if ${cond} then\n${thenMulti}\n${indent(ind)}end`
+  const elseMulti = renderCommentedNode(elseNode, ind + 1)
+  return `if ${cond} then\n${thenMulti}\n${indent(ind)}else\n${elseMulti}\n${indent(ind)}end`
 }
 
 function printBlock(stmts: unknown[][], ind: number): string {
+  if (stmts.length === 0) {
+    throw new TypeError('Block AST requires at least one expression')
+  }
   // Single statement: try flat (no semicolons needed, only when single-line)
   if (stmts.length === 1) {
     const stmtNode = stmts[0] as AstNode

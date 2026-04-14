@@ -11,6 +11,7 @@
 
 import type { Type } from './types'
 import { Unknown } from './types'
+import type { DvalaModule } from '../builtin/modules/interface'
 import type { AstNode, Ast, SourceMap, SourceMapPosition } from '../parser/types'
 import { resolveSourceCodeInfo } from '../parser/types'
 import { parseToAst } from '../parser'
@@ -18,10 +19,11 @@ import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
-import { initBuiltinTypes, registerModuleType } from './builtinTypes'
-import { declareEffect, initBuiltinEffects, resetUserEffects, restoreEffectRegistry, snapshotEffectRegistry } from './effectTypes'
-import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases, restoreTypeAliases, snapshotTypeAliases } from './parseType'
-import { allBuiltinModules } from '../allModules'
+import { initBuiltinTypes, registerModuleType, resetModuleTypeCache } from './builtinTypes'
+import { declareEffect, initBuiltinEffects, resetUserEffects } from './effectTypes'
+import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases } from './parseType'
+import { restoreEffectRegistry, snapshotEffectRegistry } from './effectTypes'
+import { restoreTypeAliases, snapshotTypeAliases } from './parseType'
 import { builtin } from '../builtin'
 import { expandMacros } from '../ast/expandMacros'
 
@@ -51,11 +53,12 @@ export interface TypecheckOptions {
   fileResolver?: (importPath: string, fromDir: string) => string
   /** Base directory for resolving relative imports. */
   fileResolverBaseDir?: string
+  /** Modules available to import during type checking. */
+  modules?: DvalaModule[]
 }
 
 /** Cache of typechecked file imports: filePath → exported type */
 const fileTypeCache = new Map<string, Type>()
-
 // ---------------------------------------------------------------------------
 // Initialization
 // ---------------------------------------------------------------------------
@@ -68,10 +71,6 @@ export function initTypeSystem(): void {
   initialized = true
   initBuiltinTypes(builtin.normalExpressions)
   initBuiltinEffects()
-  // Register module export types so import("math") etc. are typed
-  for (const mod of allBuiltinModules) {
-    registerModuleType(mod.name, mod.functions)
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +172,10 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   // Clear per-document state from previous typecheck passes
   resetUserEffects()
   resetTypeAliases()
+  resetModuleTypeCache()
+  for (const mod of options?.modules ?? []) {
+    registerModuleType(mod.name, mod.functions)
+  }
   // Pass type annotations from the parser to the inference engine
   if (ast.typeAnnotations) {
     ctx.typeAnnotations = ast.typeAnnotations
@@ -217,10 +220,16 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
  * Typecheck a single expression (for REPL / quick checks).
  * Returns the inferred type and any diagnostics.
  */
-export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap): TypecheckResult & { type: Type } {
+export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap, options?: TypecheckOptions): TypecheckResult & { type: Type } {
   initTypeSystem()
 
   const ctx = new InferenceContext()
+  resetUserEffects()
+  resetTypeAliases()
+  resetModuleTypeCache()
+  for (const mod of options?.modules ?? []) {
+    registerModuleType(mod.name, mod.functions)
+  }
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()
   const diagnostics: TypeDiagnostic[] = []

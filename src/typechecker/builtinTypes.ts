@@ -114,10 +114,18 @@ export function getModuleType(moduleName: string): Type {
 }
 
 /**
+ * Reset registered module types.
+ * Called between typecheck passes so each runner sees only its own modules.
+ */
+export function resetModuleTypeCache(): void {
+  moduleTypeCache.clear()
+}
+
+/**
  * Reset the cache (for testing).
  */
 export function resetBuiltinTypeCache(): void {
   builtinTypeCache.clear()
-  moduleTypeCache.clear()
+  resetModuleTypeCache()
   initialized = false
 }
