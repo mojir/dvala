@@ -470,6 +470,19 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
       }
       constrain(ctx, lhsType, rhsType)
     }
+
+    if (!rhs.open) {
+      if (lhs.open) {
+        throw new TypeInferenceError(`Open record ${typeToString(lhs)} is not a subtype of closed record ${typeToString(rhs)}`)
+      }
+
+      for (const name of lhs.fields.keys()) {
+        if (!rhs.fields.has(name)) {
+          throw new TypeInferenceError(`Extra field '${name}' in ${typeToString(lhs)}`)
+        }
+      }
+    }
+
     return
   }
 

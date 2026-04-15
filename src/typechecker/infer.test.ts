@@ -125,6 +125,16 @@ describe('constrain', () => {
     expect(v.lowerBounds).toHaveLength(1)
   })
 
+  it('record constraint rejects extra fields for closed rhs', () => {
+    const ctx = new InferenceContext()
+    expect(() => constrain(ctx, record({ x: NumberType, y: NumberType }), record({ x: NumberType }))).toThrow(TypeInferenceError)
+  })
+
+  it('record constraint rejects open lhs for closed rhs', () => {
+    const ctx = new InferenceContext()
+    expect(() => constrain(ctx, record({ x: NumberType }, true), record({ x: NumberType }))).toThrow(TypeInferenceError)
+  })
+
   it('intersection on left: overloaded function picks matching overload', () => {
     const ctx = new InferenceContext()
     const retVar = ctx.freshVar()

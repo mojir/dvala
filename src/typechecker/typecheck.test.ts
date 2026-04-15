@@ -163,6 +163,17 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics[0]!.message).toContain('not a subtype of String')
   })
 
+  it('invalid closed record annotation rejects extra fields', () => {
+    const result = dvala.typecheck('let x: {name: String} = {name: "Alice", age: 42}; x')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toContain("Extra field 'age'")
+  })
+
+  it('open record annotation accepts extra fields', () => {
+    const result = dvala.typecheck('let x: {name: String, ...} = {name: "Alice", age: 42}; x')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   it('attaches let annotation errors to the value expression source', () => {
     const result = dvala.typecheck([
       'let x: String =',
