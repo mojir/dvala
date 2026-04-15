@@ -11,11 +11,11 @@
  * - inferExpr(node, ctx, env): infers a type for an AST node
  */
 
-import type { Type, EffectSet } from './types'
+import type { Type, EffectSet, SequenceType } from './types'
 import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
-  atom, literal, fn, array, tuple, union, inter, neg, handlerType,
+  atom, literal, fn, array, tuple, union, inter, neg, handlerType, sequence, toSequenceType,
   functionAcceptsArity, functionArityLabel, getFunctionParamType,
   typeToString, typeEquals,
   subtractEffects,
@@ -224,6 +224,7 @@ function varKey(t: Type): string {
   if (t.tag === 'Record') return `R:${[...t.fields.entries()].map(([k, v]) => `${k}=${varKey(v)}`).join(',')}`
   if (t.tag === 'Array') return `Ar:${varKey(t.element)}`
   if (t.tag === 'Tuple') return `Tu:${t.elements.map(varKey).join(',')}`
+  if (t.tag === 'Sequence') return `Sq:${t.prefix.map(varKey).join(',')}:${varKey(t.rest)}:${t.minLength}:${t.maxLength ?? '*'}`
   if (t.tag === 'Union') return `U:${t.members.map(varKey).join('|')}`
   if (t.tag === 'Inter') return `I:${t.members.map(varKey).join('&')}`
   if (t.tag === 'Neg') return `N:${varKey(t.inner)}`
@@ -493,6 +494,13 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     return
   }
 
+  const lhsSequence = toSequenceType(lhs)
+  const rhsSequence = toSequenceType(rhs)
+  if (lhsSequence && rhsSequence) {
+    constrainSequenceSubtype(ctx, lhsSequence, rhsSequence)
+    return
+  }
+
   // Tuple: element-wise covariant, same length
   if (lhs.tag === 'Tuple' && rhs.tag === 'Tuple') {
     if (lhs.elements.length !== rhs.elements.length) {
@@ -540,6 +548,11 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Array called with number → element access
   if (lhs.tag === 'Array' && rhs.tag === 'Function' && rhs.params.length === 1 && rhs.restParam === undefined) {
     constrain(ctx, lhs.element, rhs.ret)
+    return
+  }
+
+  if (lhs.tag === 'Sequence' && rhs.tag === 'Function' && rhs.params.length === 1 && rhs.restParam === undefined) {
+    constrain(ctx, sequenceElementType(lhs), rhs.ret)
     return
   }
 
@@ -1230,6 +1243,7 @@ function containsVars(t: Type): boolean {
     case 'Record': return [...t.fields.values()].some(containsVars)
     case 'Array': return containsVars(t.element)
     case 'Tuple': return t.elements.some(containsVars)
+    case 'Sequence': return t.prefix.some(containsVars) || containsVars(t.rest)
     case 'Union':
     case 'Inter': return t.members.some(containsVars)
     case 'Neg': return containsVars(t.inner)
@@ -1275,6 +1289,13 @@ function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<string, Typ
     }
     case 'Array': return array(freshenAllVars(ctx, t.element, mapping))
     case 'Tuple': return tuple(t.elements.map(e => freshenAllVars(ctx, e, mapping)))
+    case 'Sequence':
+      return sequence(
+        t.prefix.map(member => freshenAllVars(ctx, member, mapping)),
+        freshenAllVars(ctx, t.rest, mapping),
+        t.minLength,
+        t.maxLength,
+      )
     case 'Union': return union(...t.members.map(m => freshenAllVars(ctx, m, mapping)))
     case 'Inter': return { tag: 'Inter', members: t.members.map(m => freshenAllVars(ctx, m, mapping)) }
     case 'Neg': return { tag: 'Neg', inner: freshenAllVars(ctx, t.inner, mapping) }
@@ -1347,6 +1368,13 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeV
       return array(freshenInner(ctx, t.element, mapping))
     case 'Tuple':
       return tuple(t.elements.map(e => freshenInner(ctx, e, mapping)))
+    case 'Sequence':
+      return sequence(
+        t.prefix.map(member => freshenInner(ctx, member, mapping)),
+        freshenInner(ctx, t.rest, mapping),
+        t.minLength,
+        t.maxLength,
+      )
     case 'Union':
       return union(...t.members.map(m => freshenInner(ctx, m, mapping)))
     case 'Inter':
@@ -1375,6 +1403,7 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Record': return [...t.fields.values()].some(v => containsVarsAboveLevel(v, level))
     case 'Array': return containsVarsAboveLevel(t.element, level)
     case 'Tuple': return t.elements.some(e => containsVarsAboveLevel(e, level))
+    case 'Sequence': return t.prefix.some(member => containsVarsAboveLevel(member, level)) || containsVarsAboveLevel(t.rest, level)
     case 'Union':
     case 'Inter': return t.members.some(m => containsVarsAboveLevel(m, level))
     case 'Neg': return containsVarsAboveLevel(t.inner, level)
@@ -1436,6 +1465,10 @@ function collectVars(t: Type, result: VarBoundSnapshot[], visited: Set<string>):
       break
     case 'Tuple':
       for (const e of t.elements) collectVars(e, result, visited)
+      break
+    case 'Sequence':
+      for (const member of t.prefix) collectVars(member, result, visited)
+      collectVars(t.rest, result, visited)
       break
     case 'Union':
     case 'Inter':
@@ -1915,7 +1948,7 @@ function matchedArrayPatternType(pattern: AstNode, candidateType: Type): Type {
 
   if (candidateType.tag === 'Union') {
     const compatibleMembers = candidateType.members.filter(
-      (member): member is Extract<Type, { tag: 'Array' | 'Tuple' }> => arrayTypeSupportsMatchPattern(elements, member),
+      (member): member is Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }> => arrayTypeSupportsMatchPattern(elements, member),
     )
     const narrowedMembers = compatibleMembers
       .map(member => narrowArrayLikeTypeForMatchPattern(elements, member))
@@ -1923,7 +1956,7 @@ function matchedArrayPatternType(pattern: AstNode, candidateType: Type): Type {
     return narrowedMembers.length === 0 ? Never : simplify(union(...narrowedMembers))
   }
 
-  if ((candidateType.tag === 'Array' || candidateType.tag === 'Tuple')
+  if ((candidateType.tag === 'Array' || candidateType.tag === 'Tuple' || candidateType.tag === 'Sequence')
     && arrayTypeSupportsMatchPattern(elements, candidateType)) {
     return narrowArrayLikeTypeForMatchPattern(elements, candidateType)
   }
@@ -1958,39 +1991,38 @@ function narrowRecordTypeForMatchPattern(
 
 function narrowArrayLikeTypeForMatchPattern(
   elements: AstNode[],
-  type: Extract<Type, { tag: 'Array' | 'Tuple' }>,
+  type: Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }>,
 ): Type {
-  if (type.tag === 'Array') {
-    for (const elementPattern of elements) {
-      if (!elementPattern || (elementPattern[0] as string) === 'rest') continue
-      const narrowedElementType = matchedTypeForPattern(elementPattern, type.element)
-      if (narrowedElementType.tag === 'Never') {
-        return Never
-      }
-    }
-    return type
+  const seq = toSequenceType(type)
+  if (!seq) return Never
+
+  const patternInterval = arrayPatternLengthInterval(elements)
+  const minLength = Math.max(seq.minLength, patternInterval.minLength)
+  const maxLength = minOptionalLength(seq.maxLength, patternInterval.maxLength)
+  if (maxLength !== undefined && minLength > maxLength) {
+    return Never
   }
 
-  const narrowedElements = [...type.elements]
+  const restIndex = arrayPatternRestIndex(elements)
+  const requiredPrefixLength = restIndex === -1 ? elements.length : restIndex
+  const prefixLength = Math.max(seq.prefix.length, requiredPrefixLength)
+  const narrowedPrefix = Array.from({ length: prefixLength }, (_, index) => sequenceElementAt(seq, index))
+
   for (let i = 0; i < elements.length; i++) {
     const elementPattern = elements[i]
     if (!elementPattern || (elementPattern[0] as string) === 'rest') continue
-    const elementType = type.elements[i]
-    if (elementType === undefined) {
-      if (!patternHasDefault(elementPattern)) {
-        return Never
-      }
-      continue
-    }
+    if (minLength <= i && patternHasDefault(elementPattern)) continue
 
-    const narrowedElementType = matchedTypeForPattern(elementPattern, elementType)
+    const narrowedElementType = matchedTypeForPattern(elementPattern, sequenceElementAt(seq, i))
     if (narrowedElementType.tag === 'Never') {
       return Never
     }
-    narrowedElements[i] = narrowedElementType
+    if (i < narrowedPrefix.length) {
+      narrowedPrefix[i] = narrowedElementType
+    }
   }
 
-  return tuple(narrowedElements)
+  return simplify(sequence(narrowedPrefix, restIndex === -1 ? Never : seq.rest, minLength, maxLength))
 }
 
 function intersectMatchTypes(left: Type, right: Type): Type {
@@ -2047,6 +2079,12 @@ function areMatchTypesDisjoint(left: Type, right: Type): boolean {
     return left.elements.some((element, index) => areMatchTypesDisjoint(element, right.elements[index]!))
   }
 
+  const leftSequence = toSequenceType(left)
+  const rightSequence = toSequenceType(right)
+  if (leftSequence && rightSequence) {
+    return areSequenceMatchTypesDisjoint(leftSequence, rightSequence)
+  }
+
   if (left.tag === 'Record' && right.tag === 'Record') {
     for (const [key, leftField] of left.fields) {
       const rightField = right.fields.get(key)
@@ -2090,6 +2128,9 @@ function isTrackableMatchRemainder(type: Type): boolean {
   }
   if (expanded.tag === 'Tuple') {
     return expanded.elements.every(member => isTrackableMatchRemainder(member))
+  }
+  if (expanded.tag === 'Sequence') {
+    return expanded.rest.tag === 'Never' && expanded.prefix.every(member => isTrackableMatchRemainder(member))
   }
   if (expanded.tag === 'Record') {
     return [...expanded.fields.values()].every(member => isTrackableMatchRemainder(member))
@@ -2140,8 +2181,10 @@ function subtractType(from: Type, subtract: Type): Type {
     return subtractRecordProductType(expandedFrom, expandedSubtract)
   }
 
-  if (expandedFrom.tag === 'Tuple' && expandedSubtract.tag === 'Tuple' && expandedFrom.elements.length === expandedSubtract.elements.length) {
-    return subtractTupleProductType(expandedFrom, expandedSubtract)
+  const fromSequence = toSequenceType(expandedFrom)
+  const subtractSequence = toSequenceType(expandedSubtract)
+  if (fromSequence && subtractSequence) {
+    return subtractSequenceProductType(fromSequence, subtractSequence)
   }
 
   // If subtracting the exact same type, result is Never
@@ -2192,39 +2235,54 @@ function subtractRecordProductType(
   return branches.length === 0 ? Never : simplify(union(...branches))
 }
 
-function subtractTupleProductType(
-  from: Extract<Type, { tag: 'Tuple' }>,
-  subtract: Extract<Type, { tag: 'Tuple' }>,
-): Type {
+function subtractSequenceProductType(from: SequenceType, subtract: SequenceType): Type {
   if (!isSubtype(subtract, from)) {
     return from
   }
 
+  const overlapMin = Math.max(from.minLength, subtract.minLength)
+  const overlapMax = minOptionalLength(from.maxLength, subtract.maxLength)
+  if (overlapMax !== undefined && overlapMin > overlapMax) {
+    return from
+  }
+
   const branches: Type[] = []
+
+  if (from.minLength < overlapMin) {
+    branches.push(simplify(sequence([...from.prefix], from.rest, from.minLength, overlapMin - 1)))
+  }
+
+  if (overlapMax !== undefined && (from.maxLength === undefined || overlapMax < from.maxLength)) {
+    branches.push(simplify(sequence([...from.prefix], from.rest, overlapMax + 1, from.maxLength)))
+  }
+
+  const prefixLimit = Math.max(from.prefix.length, subtract.prefix.length)
   const exactPrefix: Type[] = []
 
-  for (let index = 0; index < from.elements.length; index++) {
-    const fromElement = from.elements[index]!
-    const subtractElement = subtract.elements[index]!
+  for (let index = 0; index < prefixLimit; index++) {
+    if (overlapMax !== undefined && overlapMax <= index) break
+
+    const fromElement = sequenceElementAt(from, index)
+    const subtractElement = sequenceElementAt(subtract, index)
     const exactElement = intersectMatchTypes(fromElement, subtractElement)
     const remainderElement = subtractType(fromElement, subtractElement)
 
     if (remainderElement.tag !== 'Never') {
-      const branchElements = [...from.elements]
-      for (let prefixIndex = 0; prefixIndex < exactPrefix.length; prefixIndex++) {
-        branchElements[prefixIndex] = exactPrefix[prefixIndex]!
-      }
-      branchElements[index] = remainderElement
-      branches.push(tuple(branchElements))
+      const branchPrefix = Array.from({ length: Math.max(prefixLimit, index + 1) }, (_, prefixIndex) => {
+        if (prefixIndex < exactPrefix.length) return exactPrefix[prefixIndex]!
+        if (prefixIndex === index) return remainderElement
+        return sequenceElementAt(from, prefixIndex)
+      })
+      branches.push(simplify(sequence(branchPrefix, from.rest, Math.max(overlapMin, index + 1), overlapMax)))
     }
 
     if (exactElement.tag === 'Never') {
-      return branches.length === 0 ? Never : simplify(union(...branches))
+      return branches.length === 0 ? Never : simplify(union(...branches.filter(branch => branch.tag !== 'Never')))
     }
     exactPrefix.push(exactElement)
   }
 
-  return branches.length === 0 ? Never : simplify(union(...branches))
+  return branches.length === 0 ? Never : simplify(union(...branches.filter(branch => branch.tag !== 'Never')))
 }
 
 // ---------------------------------------------------------------------------
@@ -2410,9 +2468,10 @@ function collectionValueType(recordType: Extract<Type, { tag: 'Record' }>): Type
   return fieldTypes.length === 0 ? Unknown : union(...fieldTypes)
 }
 
-function collectionElementType(type: Extract<Type, { tag: 'Array' | 'Tuple' }>): Type {
+function collectionElementType(type: Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }>): Type {
   if (type.tag === 'Array') return type.element
-  return type.elements.length === 0 ? Unknown : union(...type.elements)
+  if (type.tag === 'Tuple') return type.elements.length === 0 ? Unknown : union(...type.elements)
+  return sequenceElementType(type)
 }
 
 function isStringCollectionType(type: Type): boolean {
@@ -2420,8 +2479,8 @@ function isStringCollectionType(type: Type): boolean {
     || (type.tag === 'Literal' && typeof type.value === 'string')
 }
 
-function isArrayCollectionType(type: Type): type is Extract<Type, { tag: 'Array' | 'Tuple' }> {
-  return type.tag === 'Array' || type.tag === 'Tuple'
+function isArrayCollectionType(type: Type): type is Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }> {
+  return type.tag === 'Array' || type.tag === 'Tuple' || type.tag === 'Sequence'
 }
 
 function assertCompatibleClosedRecordKeys(records: Extract<Type, { tag: 'Record' }>[]): void {
@@ -2536,7 +2595,7 @@ function bindMatchCasePattern(
 
       if (expandedType.tag === 'Union') {
         const compatibleMembers = expandedType.members.filter(
-          (member): member is Extract<Type, { tag: 'Array' | 'Tuple' }> => arrayTypeSupportsMatchPattern(elements, member),
+          (member): member is Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }> => arrayTypeSupportsMatchPattern(elements, member),
         )
         if (compatibleMembers.length === 0) return false
 
@@ -2544,18 +2603,14 @@ function bindMatchCasePattern(
           const elementPattern = elements[i]
           if (!elementPattern) continue
           if ((elementPattern[0] as string) === 'rest') {
-            if (!bindMatchCasePattern(elementPattern, mergePatternTypes(compatibleMembers), env, ctx, typeMap)) {
+            const restTypes = compatibleMembers.map(member => getArrayPatternRestType(member, i))
+            if (!bindMatchCasePattern(elementPattern, mergePatternTypes(restTypes), env, ctx, typeMap)) {
               return false
             }
             continue
           }
 
-          const elementTypes = compatibleMembers.map(member => {
-            if (member.tag === 'Tuple') {
-              return getTupleElementPatternType(member, i, elementPattern)
-            }
-            return member.element
-          })
+          const elementTypes = compatibleMembers.map(member => getArrayElementPatternType(member, i, elementPattern))
 
           if (!bindMatchCasePattern(elementPattern, mergePatternTypes(elementTypes), env, ctx, typeMap)) {
             return false
@@ -2568,22 +2623,21 @@ function bindMatchCasePattern(
         return false
       }
 
+      if (expandedType.tag !== 'Array' && expandedType.tag !== 'Tuple' && expandedType.tag !== 'Sequence') {
+        return false
+      }
+
       for (let i = 0; i < elements.length; i++) {
         const elementPattern = elements[i]
         if (!elementPattern) continue
         if ((elementPattern[0] as string) === 'rest') {
-          if (!bindMatchCasePattern(elementPattern, expandedType, env, ctx, typeMap)) {
+          if (!bindMatchCasePattern(elementPattern, getArrayPatternRestType(expandedType, i), env, ctx, typeMap)) {
             return false
           }
           continue
         }
 
-        let elementType: Type = Unknown
-        if (expandedType.tag === 'Tuple') {
-          elementType = getTupleElementPatternType(expandedType, i, elementPattern)
-        } else if (expandedType.tag === 'Array') {
-          elementType = expandedType.element
-        }
+        const elementType = getArrayElementPatternType(expandedType, i, elementPattern)
 
         if (!bindMatchCasePattern(elementPattern, elementType, env, ctx, typeMap)) {
           return false
@@ -2684,17 +2738,79 @@ function getRecordFieldPatternType(
   return Unknown
 }
 
-function getTupleElementPatternType(type: Extract<Type, { tag: 'Tuple' }>, index: number, pattern: AstNode): Type {
-  const elementType = type.elements[index]
-  if (elementType !== undefined) {
-    return elementType
+function getArrayElementPatternType(
+  type: Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }>,
+  index: number,
+  pattern: AstNode,
+): Type {
+  if (type.tag === 'Array') {
+    return type.element
   }
 
-  if (patternHasDefault(pattern)) {
-    return Never
+  if (type.tag === 'Tuple') {
+    const elementType = type.elements[index]
+    if (elementType !== undefined) {
+      return elementType
+    }
+
+    if (patternHasDefault(pattern)) {
+      return Never
+    }
+
+    return Unknown
   }
 
-  return Unknown
+  if (sequenceMayHaveIndex(type, index)) {
+    return sequenceElementAt(type, index)
+  }
+
+  return patternHasDefault(pattern) ? Never : Unknown
+}
+
+function getArrayPatternRestType(
+  type: Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }>,
+  index: number,
+): Type {
+  if (type.tag === 'Array') {
+    return type
+  }
+
+  if (type.tag === 'Tuple') {
+    return tuple(type.elements.slice(index))
+  }
+
+  return simplify(sequence(
+    type.prefix.slice(index),
+    type.rest,
+    Math.max(0, type.minLength - index),
+    type.maxLength !== undefined ? Math.max(0, type.maxLength - index) : undefined,
+  ))
+}
+
+function arrayPatternRestIndex(elements: AstNode[]): number {
+  return elements.findIndex(element => element && (element[0] as string) === 'rest')
+}
+
+function arrayPatternLengthInterval(elements: AstNode[]): { minLength: number; maxLength?: number } {
+  const restIndex = arrayPatternRestIndex(elements)
+  const minLength = elements.reduce((count, elementPattern, index) => {
+    if (!elementPattern || (elementPattern[0] as string) === 'rest' || patternHasDefault(elementPattern)) {
+      return count
+    }
+    return index + 1
+  }, 0)
+
+  if (restIndex !== -1) {
+    return { minLength }
+  }
+
+  return { minLength, maxLength: elements.length }
+}
+
+function minOptionalLength(left: number | undefined, right: number | undefined): number | undefined {
+  if (left === undefined) return right
+  if (right === undefined) return left
+  return Math.min(left, right)
 }
 
 function recordTypeSupportsMatchPattern(
@@ -2710,19 +2826,13 @@ function recordTypeSupportsMatchPattern(
 }
 
 function arrayTypeSupportsMatchPattern(elements: AstNode[], type: Type): boolean {
-  if (type.tag === 'Array') return true
-  if (type.tag !== 'Tuple') return false
+  const seq = toSequenceType(type)
+  if (!seq) return false
 
-  for (let i = 0; i < elements.length; i++) {
-    const elementPattern = elements[i]
-    if (!elementPattern) continue
-    if ((elementPattern[0] as string) === 'rest') return true
-    if (i >= type.elements.length && !patternHasDefault(elementPattern)) {
-      return false
-    }
-  }
-
-  return true
+  const patternInterval = arrayPatternLengthInterval(elements)
+  const overlapMin = Math.max(seq.minLength, patternInterval.minLength)
+  const overlapMax = minOptionalLength(seq.maxLength, patternInterval.maxLength)
+  return overlapMax === undefined || overlapMin <= overlapMax
 }
 
 /**
@@ -2764,6 +2874,8 @@ function recordConcretePatternTypes(pattern: AstNode, type: Type, typeMap: Map<n
           recordConcretePatternTypes(elem, concreteType.elements[i]!, typeMap)
         } else if (concreteType.tag === 'Array') {
           recordConcretePatternTypes(elem, concreteType.element, typeMap)
+        } else if (concreteType.tag === 'Sequence' && sequenceMayHaveIndex(concreteType, i)) {
+          recordConcretePatternTypes(elem, sequenceElementAt(concreteType, i), typeMap)
         }
       }
       break
@@ -2828,6 +2940,14 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
 
     case 'Tuple':
       return tuple(t.elements.map(element => expandTypeForMatchAnalysis(element, new Set(visited))))
+
+    case 'Sequence':
+      return sequence(
+        t.prefix.map(element => expandTypeForMatchAnalysis(element, new Set(visited))),
+        expandTypeForMatchAnalysis(t.rest, new Set(visited)),
+        t.minLength,
+        t.maxLength,
+      )
 
     case 'Union':
       return simplify(union(...t.members.map(member => expandTypeForMatchAnalysis(member, new Set(visited)))))
@@ -2905,6 +3025,13 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
       return array(expandType(t.element, polarity, new Set(visited)))
     case 'Tuple':
       return tuple(t.elements.map(e => expandType(e, polarity, new Set(visited))))
+    case 'Sequence':
+      return sequence(
+        t.prefix.map(member => expandType(member, polarity, new Set(visited))),
+        expandType(t.rest, polarity, new Set(visited)),
+        t.minLength,
+        t.maxLength,
+      )
     case 'Union':
       return union(...t.members.map(m => expandType(m, polarity, new Set(visited))))
     case 'Inter':
@@ -2993,6 +3120,13 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
       return array(expandTypeForDisplay(t.element, 'positive', new Set(visited)))
     case 'Tuple':
       return tuple(t.elements.map(element => expandTypeForDisplay(element, 'positive', new Set(visited))))
+    case 'Sequence':
+      return sequence(
+        t.prefix.map(member => expandTypeForDisplay(member, 'positive', new Set(visited))),
+        expandTypeForDisplay(t.rest, 'positive', new Set(visited)),
+        t.minLength,
+        t.maxLength,
+      )
     case 'Union':
       return normalizeDisplayUnion(t.members.map(member => expandTypeForDisplay(member, polarity, new Set(visited))))
     case 'Inter':
@@ -3045,6 +3179,13 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
       return array(sanitizeDisplayType(t.element, true))
     case 'Tuple':
       return tuple(t.elements.map(element => sanitizeDisplayType(element, true)))
+    case 'Sequence':
+      return sequence(
+        t.prefix.map(member => sanitizeDisplayType(member, true)),
+        sanitizeDisplayType(t.rest, true),
+        t.minLength,
+        t.maxLength,
+      )
     case 'Union':
       return union(...t.members.map(member => sanitizeDisplayType(member, true)))
     case 'Inter':
@@ -3089,6 +3230,63 @@ function normalizeDisplayUnion(members: Type[]): Type {
   }
 
   return union(...members)
+}
+
+function constrainSequenceSubtype(ctx: InferenceContext, lhs: SequenceType, rhs: SequenceType): void {
+  if (lhs.minLength < rhs.minLength) {
+    throw new TypeInferenceError(`Sequence length mismatch: expected minimum ${rhs.minLength}, got ${lhs.minLength}`)
+  }
+  if (rhs.maxLength !== undefined && lhs.maxLength === undefined) {
+    throw new TypeInferenceError(`Sequence length mismatch: expected maximum ${rhs.maxLength}, got unbounded`)
+  }
+  if (rhs.maxLength !== undefined && lhs.maxLength !== undefined && lhs.maxLength > rhs.maxLength) {
+    throw new TypeInferenceError(`Sequence length mismatch: expected maximum ${rhs.maxLength}, got ${lhs.maxLength}`)
+  }
+
+  const relevantPrefixLength = Math.max(lhs.prefix.length, rhs.prefix.length)
+  for (let index = 0; index < relevantPrefixLength; index++) {
+    if (!sequenceMayHaveIndex(lhs, index)) continue
+    constrain(ctx, sequenceElementAt(lhs, index), sequenceElementAt(rhs, index))
+  }
+
+  if (sequenceMayHaveIndex(lhs, relevantPrefixLength)) {
+    constrain(ctx, lhs.rest, rhs.rest)
+  }
+}
+
+function areSequenceMatchTypesDisjoint(left: SequenceType, right: SequenceType): boolean {
+  const overlapMin = Math.max(left.minLength, right.minLength)
+  const overlapMax = minOptionalLength(left.maxLength, right.maxLength)
+  if (overlapMax !== undefined && overlapMin > overlapMax) {
+    return true
+  }
+
+  const prefixLimit = Math.max(left.prefix.length, right.prefix.length)
+  for (let index = 0; index < prefixLimit; index++) {
+    if (!sequenceMayHaveIndex(left, index) || !sequenceMayHaveIndex(right, index)) continue
+    if (areMatchTypesDisjoint(sequenceElementAt(left, index), sequenceElementAt(right, index))) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function sequenceElementType(type: SequenceType): Type {
+  if (type.prefix.length === 0) return type.rest
+  const members = [...type.prefix]
+  if (type.rest.tag !== 'Never') {
+    members.push(type.rest)
+  }
+  return members.length === 1 ? members[0]! : union(...members)
+}
+
+function sequenceElementAt(type: SequenceType, index: number): Type {
+  return index < type.prefix.length ? type.prefix[index]! : type.rest
+}
+
+function sequenceMayHaveIndex(type: SequenceType, index: number): boolean {
+  return type.maxLength === undefined || index < type.maxLength
 }
 
 function synthesizeRecordDisplayType(t: TypeVar, visited: Set<string>): Type | undefined {
