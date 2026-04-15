@@ -117,10 +117,12 @@ class TypeParser {
   /** Maps type variable names (A, B, T, etc.) to shared Var nodes within this annotation. */
   private typeVarMap = new Map<string, Type>()
   private nextVarId = 0
+  private scopedTypeRefs: Map<string, Type>
 
-  constructor(input: string) {
+  constructor(input: string, scopedTypeRefs = new Map<string, Type>()) {
     this.input = input
     this.pos = 0
+    this.scopedTypeRefs = scopedTypeRefs
   }
 
   // --- Core parsing ---
@@ -647,6 +649,9 @@ class TypeParser {
   // --- Type variable / named type ---
 
   private makeTypeRef(name: string): Type {
+    const scoped = this.scopedTypeRefs.get(name)
+    if (scoped) return scoped
+
     // Single uppercase letter = type variable (A, B, T, K, V, etc.)
     // Same letter within one annotation → same variable (shared identity)
     if (name.length === 1 && name >= 'A' && name <= 'Z') {
@@ -659,13 +664,47 @@ class TypeParser {
     // Multi-char uppercase names: check type alias registry
     const alias = typeAliasRegistry.get(name)
     if (alias) {
-      // TODO: handle generic aliases with type arguments (Name<T>)
-      // For now, parse the body as a type expression
-      const parser = new TypeParser(alias.body)
-      return parser.parseType()
+      const args = this.tryParseTypeArguments()
+      if (args.length !== alias.params.length) {
+        throw this.error(`Type alias '${name}' expects ${alias.params.length} type argument(s), got ${args.length}`)
+      }
+
+      const scopedTypeRefs = new Map(alias.params.map((param, index) => [param, args[index]!]))
+      const parser = new TypeParser(alias.body, scopedTypeRefs)
+      const expanded = parser.parseType()
+      if (!parser.isAtEnd()) {
+        throw this.error(`Unexpected token in type alias '${name}': '${parser.remaining()}'`)
+      }
+      return { tag: 'Alias', name, args, expanded }
     }
     // Unknown named type
     return Unknown
+  }
+
+  private tryParseTypeArguments(): Type[] {
+    this.skipWhitespace()
+    if (!this.tryConsume('<')) {
+      return []
+    }
+
+    const args: Type[] = []
+    this.skipWhitespace()
+    if (this.tryConsume('>')) {
+      return args
+    }
+
+    for (;;) {
+      args.push(this.parseType())
+      this.skipWhitespace()
+      if (this.tryConsume(',')) {
+        this.skipWhitespace()
+        continue
+      }
+      if (this.tryConsume('>')) {
+        return args
+      }
+      throw this.error('Expected "," or ">" in type argument list')
+    }
   }
 
   // --- Lexer helpers ---

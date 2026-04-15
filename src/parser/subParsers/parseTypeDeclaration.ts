@@ -14,10 +14,18 @@
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
 import type { AstNode } from '../types'
-import { isOperatorToken, isSymbolToken } from '../../tokenizer/token'
+import { isOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { collectTypeAnnotation } from './parseTypeAnnotationTokens'
+
+function skipWhitespace(ctx: ParserContext): void {
+  while (!ctx.isAtEnd()) {
+    const token = ctx.peek()
+    if (token[0] !== 'Whitespace') break
+    ctx.advance()
+  }
+}
 
 export function parseTypeDeclaration(ctx: ParserContext): AstNode {
   const token = ctx.peek() // 'type'
@@ -33,21 +41,25 @@ export function parseTypeDeclaration(ctx: ParserContext): AstNode {
 
   // Optional type parameters: <A, B, C>
   const params: string[] = []
+  skipWhitespace(ctx)
   if (isOperatorToken(ctx.tryPeek(), '<')) {
     ctx.advance() // consume '<'
     while (!ctx.isAtEnd()) {
+      skipWhitespace(ctx)
       const paramToken = ctx.peek()
-      if (!isSymbolToken(paramToken)) {
+      if (!isSymbolToken(paramToken) && !isReservedSymbolToken(paramToken)) {
         throw new ParseError('Expected type parameter name', ctx.peekSourceCodeInfo())
       }
       params.push(paramToken[1])
       ctx.advance()
+      skipWhitespace(ctx)
       if (isOperatorToken(ctx.tryPeek(), ',')) {
         ctx.advance() // consume ','
       } else {
         break
       }
     }
+    skipWhitespace(ctx)
     if (!isOperatorToken(ctx.tryPeek(), '>')) {
       throw new ParseError('Expected ">" after type parameters', ctx.peekSourceCodeInfo())
     }
@@ -55,6 +67,7 @@ export function parseTypeDeclaration(ctx: ParserContext): AstNode {
   }
 
   // Expect '='
+  skipWhitespace(ctx)
   if (!isOperatorToken(ctx.tryPeek(), '=')) {
     throw new ParseError('Expected "=" after type name', ctx.peekSourceCodeInfo())
   }

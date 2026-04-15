@@ -287,6 +287,22 @@ describe('typecheck — type aliases', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('generic type alias instantiation in let annotation', () => {
+    const result = dvala.typecheck('type Box<T> = { value: T }; let x: Box<Number> = { value: 42 }; x')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('generic type alias enforces substituted field types', () => {
+    const result = dvala.typecheck('type Box<T> = { value: T }; let x: Box<Number> = { value: "hello" }; x')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('not a subtype of Number')
+  })
+
+  it('generic aliases support multiple parameters', () => {
+    const result = dvala.typecheck('type Result<T, E> = { tag: :ok, value: T } | { tag: :error, error: E }; let x: Result<Number, String> = { tag: :ok, value: 42 }; x')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   it('type does not interfere with variable named type', () => {
     // 'type' is not a reserved word — can be used as a variable when not followed by uppercase
     const result = dvala.typecheck('let type = 42; type + 1')

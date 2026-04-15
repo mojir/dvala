@@ -251,6 +251,16 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Cycle guard
   if (ctx.checkAndAddConstraint(lhs, rhs)) return
 
+  // Aliases are transparent during constraint solving.
+  if (lhs.tag === 'Alias') {
+    constrain(ctx, lhs.expanded, rhs)
+    return
+  }
+  if (rhs.tag === 'Alias') {
+    constrain(ctx, lhs, rhs.expanded)
+    return
+  }
+
   // --- Variable on the left: add upper bound + propagate ---
   if (lhs.tag === 'Var') {
     if (rhs.tag === 'Var' && lhs === rhs) return

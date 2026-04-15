@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { parseTypeAnnotation, parseFunctionTypeAnnotation, TypeParseError } from './parseType'
+import { parseTypeAnnotation, parseFunctionTypeAnnotation, registerTypeAlias, resetTypeAliases, TypeParseError } from './parseType'
 import {
   NumberType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType,
@@ -11,6 +11,7 @@ import { isSubtype } from './subtype'
 
 afterEach(() => {
   resetEffectRegistry()
+  resetTypeAliases()
 })
 
 // ---------------------------------------------------------------------------
@@ -209,6 +210,69 @@ describe('parseType — records', () => {
     if (t.tag === 'Record') {
       expect(t.open).toBe(true)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Type aliases
+// ---------------------------------------------------------------------------
+
+describe('parseType — type aliases', () => {
+  it('expands simple aliases', () => {
+    registerTypeAlias('Id', [], 'Number')
+
+    const t = parseTypeAnnotation('Id')
+    expect(typeEquals(t, { tag: 'Alias', name: 'Id', args: [], expanded: NumberType })).toBe(true)
+  })
+
+  it('expands generic aliases with one type argument', () => {
+    registerTypeAlias('Box', ['T'], '{ value: T }')
+
+    const t = parseTypeAnnotation('Box<Number>')
+    expect(typeEquals(t, {
+      tag: 'Alias',
+      name: 'Box',
+      args: [NumberType],
+      expanded: { tag: 'Record', fields: new Map([['value', NumberType]]), open: false },
+    })).toBe(true)
+  })
+
+  it('expands generic aliases with multiple type arguments', () => {
+    registerTypeAlias('Result', ['T', 'E'], '{ tag: :ok, value: T } | { tag: :error, error: E }')
+
+    const t = parseTypeAnnotation('Result<Number, String>')
+    expect(typeEquals(t, {
+      tag: 'Alias',
+      name: 'Result',
+      args: [NumberType, StringType],
+      expanded: union(
+        { tag: 'Record', fields: new Map([['tag', atom('ok')], ['value', NumberType]]), open: false },
+        { tag: 'Record', fields: new Map([['tag', atom('error')], ['error', StringType]]), open: false },
+      ),
+    })).toBe(true)
+  })
+
+  it('supports nested generic alias expansion', () => {
+    registerTypeAlias('Box', ['T'], '{ value: T }')
+    registerTypeAlias('MaybeBox', ['T'], 'Box<T> | Null')
+
+    const t = parseTypeAnnotation('MaybeBox<Number>')
+    expect(typeEquals(t, {
+      tag: 'Alias',
+      name: 'MaybeBox',
+      args: [NumberType],
+      expanded: union(
+        { tag: 'Alias', name: 'Box', args: [NumberType], expanded: { tag: 'Record', fields: new Map([['value', NumberType]]), open: false } },
+        NullType,
+      ),
+    })).toBe(true)
+  })
+
+  it('errors on wrong number of type arguments', () => {
+    registerTypeAlias('Box', ['T'], '{ value: T }')
+
+    expect(() => parseTypeAnnotation('Box')).toThrow(TypeParseError)
+    expect(() => parseTypeAnnotation('Box<Number, String>')).toThrow(TypeParseError)
   })
 })
 
