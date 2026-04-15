@@ -522,6 +522,11 @@ describe('inference — match narrowing', () => {
     expect(isSubtype(t, StringType)).toBe(true)
   })
 
+  it('later symbol cases see the remaining match type', () => {
+    const t = inferAndExpand('let x = if true then 1 else :ok end; match x case :ok then 0 case n then n + 1 end')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
   it('match with atom patterns returns union', () => {
     const t = inferAndExpand('match :ok case :ok then 1 case :error then 0 end')
     expect(isSubtype(t, NumberType)).toBe(true)
@@ -543,6 +548,11 @@ describe('inference — match narrowing', () => {
     expect(isSubtype(t, NumberType)).toBe(true)
   })
 
+  it('match narrows tagged object unions by nested literal fields', () => {
+    const t = inferAndExpand('let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
   it('match with array destructuring pattern', () => {
     const t = inferAndExpand('let pair = [1, 2]; match pair case [x, y] then x + y end')
     expect(isSubtype(t, NumberType)).toBe(true)
@@ -559,7 +569,7 @@ describe('inference — match narrowing', () => {
   })
 
   it('match with mixed branch types returns union', () => {
-    const t = inferAndExpand('match 1 case 0 then "zero" case _ then 42 end')
+    const t = inferAndExpand('let x = if true then 0 else 1 end; match x case 0 then "zero" case _ then 42 end')
     // Result is "zero" | 42, which is String | Number
     expect(isSubtype(literal('zero'), t)).toBe(true)
     expect(isSubtype(literal(42), t)).toBe(true)
@@ -573,6 +583,35 @@ describe('inference — exhaustiveness', () => {
       match x
         case :ok then 1
         case :error then 0
+      end
+    `)).not.toThrow()
+  })
+
+  it('exhaustive match on Boolean works through the Boolean primitive space', () => {
+    expect(() => inferType(`
+      let x = isNumber(42);
+      match x
+        case true then 1
+        case false then 0
+      end
+    `)).not.toThrow()
+  })
+
+  it('non-exhaustive match on atoms reports the remaining cases', () => {
+    expect(() => inferType(`
+      let x = if true then :ok else :error end;
+      match x
+        case :ok then 1
+      end
+    `)).toThrow('Non-exhaustive match')
+  })
+
+  it('exhaustive tagged object matches consume each variant by nested literal fields', () => {
+    expect(() => inferType(`
+      let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end;
+      match event
+        case {type: "click", x, y} then x + y
+        case {type: "keydown", key} then count(key)
       end
     `)).not.toThrow()
   })

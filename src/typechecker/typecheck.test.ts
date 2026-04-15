@@ -148,6 +148,63 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('rejects non-exhaustive matches over finite atom unions', () => {
+    const result = dvala.typecheck('let x = if true then :ok else :error end; match x case :ok then 1 end')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('Non-exhaustive match')
+    expect(result.diagnostics[0]?.severity).toBe('error')
+  })
+
+  it('rejects non-exhaustive matches over Boolean values', () => {
+    const result = dvala.typecheck('let x = isNumber(42); match x case true then 1 end')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('Non-exhaustive match')
+    expect(result.diagnostics[0]?.severity).toBe('error')
+  })
+
+  it('warns on redundant literal match cases', () => {
+    const result = dvala.typecheck('match :ok case :ok then 1 case :ok then 2 end')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('Redundant match case')
+    expect(result.diagnostics[0]?.severity).toBe('warning')
+  })
+
+  it('warns on redundant destructuring cases after earlier shape coverage', () => {
+    const result = dvala.typecheck('let x = if true then [1] else { a: 1 } end; match x case [y] then y case [z] then z case _ then 0 end')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('Redundant match case')
+    expect(result.diagnostics[0]?.severity).toBe('warning')
+  })
+
+  it('accepts exhaustive tagged object matches without a wildcard', () => {
+    const result = dvala.typecheck('let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('accepts exhaustive matches on open records with finite tag fields', () => {
+    const result = dvala.typecheck('let classify = (event: {type: "click" | "keydown", ...}) -> match event case {type: "click"} then 1 case {type: "keydown"} then 2 end; classify')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('warns when a tagged object branch is repeated', () => {
+    const result = dvala.typecheck('let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('Redundant match case')
+    expect(result.diagnostics[0]?.severity).toBe('warning')
+  })
+
+  it('warns when an open-record tagged branch is repeated', () => {
+    const result = dvala.typecheck('let classify = (event: {type: "click" | "keydown", ...}) -> match event case {type: "click"} then 1 case {type: "click"} then 2 case {type: "keydown"} then 3 end; classify')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('Redundant match case')
+    expect(result.diagnostics[0]?.severity).toBe('warning')
+  })
+
+  it('does not warn when a destructuring case was impossible from the start', () => {
+    const result = dvala.typecheck('match 42 case [x] then x case _ then 0 end')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   it('rejects invalid object match defaults when the default is used', () => {
     const result = dvala.typecheck('match {} case { a = "x" } then a + 1 end')
     expect(result.diagnostics.length).toBeGreaterThan(0)

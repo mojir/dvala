@@ -25,6 +25,7 @@ import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { parseTypeAnnotation } from './parseType'
 import { getEffectDeclaration } from './effectTypes'
+import { simplify } from './simplify'
 import { isSubtype } from './subtype'
 
 interface ResumeContext {
@@ -965,96 +966,64 @@ export function inferExpr(
         const matchPayload = payload as [AstNode, [AstNode, AstNode, AstNode | null][]]
         const matchExpr = matchPayload[0]
         const cases = matchPayload[1]
-        const matchType = inferExpr(matchExpr, ctx, env, typeMap)
+        const matchType = simplify(expandTypeForMatchAnalysis(inferExpr(matchExpr, ctx, env, typeMap)))
+        const matchSpace = normalizeTrackableMatchSpace(matchType)
 
         // Track remaining type for exhaustiveness
-        let remainingType: Type = expandType(matchType)
+        let remainingType: Type = matchSpace
+        const checkExhaustiveness = isTrackableMatchRemainder(remainingType)
 
         const branchTypes: Type[] = []
         for (const [pattern, body, guard] of cases) {
           const caseEnv = env.child()
-          const patternType = pattern[0] as string
+          const { matchedType, consumedType } = analyzeMatchCase(pattern, remainingType, guard)
 
-          // Determine what type this pattern narrows to
-          let narrowedType: Type | null = null
-
-          switch (patternType) {
-            case 'literal': {
-            // case 0, case "hello", case :ok — narrows to the literal/atom type
-              const [litNode] = pattern[1] as [AstNode]
-              if (litNode[0] === NodeTypes.Num) narrowedType = literal(litNode[1] as number)
-              else if (litNode[0] === NodeTypes.Str) narrowedType = literal(litNode[1] as string)
-              else if (litNode[0] === NodeTypes.Atom) narrowedType = atom(litNode[1] as string)
-              else if (litNode[0] === NodeTypes.Reserved) {
-                if (litNode[1] === 'true') narrowedType = literal(true)
-                else if (litNode[1] === 'false') narrowedType = literal(false)
-                else if (litNode[1] === 'null') narrowedType = NullType
-              }
-              break
+          if (matchedType.tag === 'Never') {
+            if (shouldWarnRedundantMatchCase(pattern, remainingType, matchSpace)) {
+              ctx.deferError(new TypeInferenceError('Redundant match case — pattern is unreachable', pattern[2], 'warning'))
             }
+            continue
+          }
+
+          switch (pattern[0] as string) {
             case 'symbol': {
-            // case n — binds a variable, optionally narrowed by guard
               const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
               const name = nameNode[1] as string
-
-              // Check guard for type narrowing: when isNumber(n) → narrow to Number
-              let bindType: Type = matchType
-              if (guard) {
-                const guardNarrow = extractGuardNarrowing(guard, name)
-                if (guardNarrow) {
-                  narrowedType = guardNarrow
-                  bindType = guardNarrow
-                }
-              }
-
-              caseEnv.bind(name, bindType)
-              // Record the binding's type for hover
+              caseEnv.bind(name, matchedType)
               const nameNodeId = nameNode[2]
               if (nameNodeId > 0) {
-                typeMap.set(nameNodeId, bindType)
+                typeMap.set(nameNodeId, matchedType)
               }
               break
             }
-            case 'wildcard':
-            // _ — matches everything, no narrowing
-              break
             case 'array':
-            case 'object': {
-            // case [x, y] / case {name, age} — destructure and bind when the
-            // matched value shape supports the pattern. Impossible shapes fall
-            // through to later cases instead of producing a type error.
-              if (!bindMatchCasePattern(pattern, matchType, caseEnv, ctx, typeMap)) {
+            case 'object':
+              if (!bindMatchCasePattern(pattern, matchedType, caseEnv, ctx, typeMap)) {
                 continue
               }
               break
-            }
             default:
               break
+          }
+
+          if (guard) {
+            const guardType = inferExpr(guard, ctx, caseEnv, typeMap)
+            constrain(ctx, guardType, BooleanType)
           }
 
           // Infer body type in the case scope
           const bodyType = inferExpr(body, ctx, caseEnv, typeMap)
           branchTypes.push(bodyType)
 
-          // Subtract the narrowed type from remaining for exhaustiveness
-          if (narrowedType) {
-            remainingType = subtractType(remainingType, narrowedType)
-          } else if (patternType === 'wildcard') {
-            remainingType = Never // wildcard catches everything
-          }
+          // Subtract only what the clause definitely consumes.
+          remainingType = simplify(subtractType(remainingType, consumedType))
         }
 
-        // Exhaustiveness check: if remainder is not Never after all literal/atom
-        // patterns, the match may not cover all cases. Only fires when the match
-        // value is a union of literals/atoms (where exhaustiveness is meaningful).
-        if (remainingType.tag !== 'Never'
-        && remainingType.tag !== 'Unknown'
-        && remainingType.tag !== 'Var'
-        && (remainingType.tag === 'Atom' || remainingType.tag === 'Literal'
-          || (remainingType.tag === 'Union' && remainingType.members.every(
-            m => m.tag === 'Atom' || m.tag === 'Literal')))) {
+        // Exhaustiveness only fires for match spaces we can track precisely.
+        if (checkExhaustiveness && remainingType.tag !== 'Never') {
           throw new TypeInferenceError(
             `Non-exhaustive match — unhandled: ${typeToString(remainingType)}`,
+            nodeId,
           )
         }
 
@@ -1848,26 +1817,414 @@ function extractGuardNarrowing(guard: AstNode, boundName: string): Type | null {
   return null
 }
 
+interface MatchCaseAnalysis {
+  matchedType: Type
+  consumedType: Type
+}
+
+function analyzeMatchCase(pattern: AstNode, candidateType: Type, guard: AstNode | null): MatchCaseAnalysis {
+  const patternType = pattern[0] as string
+  const matchedByPattern = matchedTypeForPattern(pattern, candidateType)
+  if (matchedByPattern.tag === 'Never') {
+    return { matchedType: Never, consumedType: Never }
+  }
+
+  if (!guard) {
+    return { matchedType: matchedByPattern, consumedType: matchedByPattern }
+  }
+
+  if (patternType === 'symbol') {
+    const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
+    const guardNarrow = extractGuardNarrowing(guard, nameNode[1] as string)
+    if (guardNarrow) {
+      const narrowed = intersectMatchTypes(matchedByPattern, guardNarrow)
+      return {
+        matchedType: narrowed,
+        consumedType: narrowed,
+      }
+    }
+  }
+
+  return { matchedType: matchedByPattern, consumedType: Never }
+}
+
+function matchedTypeForPattern(pattern: AstNode, candidateType: Type): Type {
+  const expandedCandidate = simplify(expandTypeForMatchAnalysis(candidateType))
+  if (expandedCandidate.tag === 'Never') return Never
+
+  switch (pattern[0] as string) {
+    case 'wildcard':
+    case 'symbol':
+      return expandedCandidate
+    case 'literal': {
+      const literalType = getLiteralMatchPatternType(pattern)
+      return literalType ? intersectMatchTypes(expandedCandidate, literalType) : Never
+    }
+    case 'object':
+      return matchedObjectPatternType(pattern, expandedCandidate)
+    case 'array':
+      return matchedArrayPatternType(pattern, expandedCandidate)
+    default:
+      return expandedCandidate
+  }
+}
+
+function getLiteralMatchPatternType(pattern: AstNode): Type | null {
+  const [litNode] = pattern[1] as [AstNode]
+  if (litNode[0] === NodeTypes.Num) return literal(litNode[1] as number)
+  if (litNode[0] === NodeTypes.Str) return literal(litNode[1] as string)
+  if (litNode[0] === NodeTypes.Atom) return atom(litNode[1] as string)
+  if (litNode[0] === NodeTypes.Reserved) {
+    if (litNode[1] === 'true') return literal(true)
+    if (litNode[1] === 'false') return literal(false)
+    if (litNode[1] === 'null') return NullType
+  }
+  return null
+}
+
+function matchedObjectPatternType(pattern: AstNode, candidateType: Type): Type {
+  const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+
+  if (candidateType.tag === 'Unknown' || candidateType.tag === 'Var') {
+    return candidateType
+  }
+
+  if (candidateType.tag === 'Union') {
+    const compatibleMembers = candidateType.members.filter(
+      (member): member is Extract<Type, { tag: 'Record' }> => (
+        member.tag === 'Record' && recordTypeSupportsMatchPattern(fieldsObj, member)
+      ),
+    )
+    const narrowedMembers = compatibleMembers
+      .map(member => narrowRecordTypeForMatchPattern(fieldsObj, member))
+      .filter(member => member.tag !== 'Never')
+    return narrowedMembers.length === 0 ? Never : simplify(union(...narrowedMembers))
+  }
+
+  return candidateType.tag === 'Record' && recordTypeSupportsMatchPattern(fieldsObj, candidateType)
+    ? narrowRecordTypeForMatchPattern(fieldsObj, candidateType)
+    : Never
+}
+
+function matchedArrayPatternType(pattern: AstNode, candidateType: Type): Type {
+  const [elements] = pattern[1] as [AstNode[], AstNode | undefined]
+
+  if (candidateType.tag === 'Unknown' || candidateType.tag === 'Var') {
+    return candidateType
+  }
+
+  if (candidateType.tag === 'Union') {
+    const compatibleMembers = candidateType.members.filter(
+      (member): member is Extract<Type, { tag: 'Array' | 'Tuple' }> => arrayTypeSupportsMatchPattern(elements, member),
+    )
+    const narrowedMembers = compatibleMembers
+      .map(member => narrowArrayLikeTypeForMatchPattern(elements, member))
+      .filter(member => member.tag !== 'Never')
+    return narrowedMembers.length === 0 ? Never : simplify(union(...narrowedMembers))
+  }
+
+  if ((candidateType.tag === 'Array' || candidateType.tag === 'Tuple')
+    && arrayTypeSupportsMatchPattern(elements, candidateType)) {
+    return narrowArrayLikeTypeForMatchPattern(elements, candidateType)
+  }
+
+  return Never
+}
+
+function narrowRecordTypeForMatchPattern(
+  fieldsObj: Record<string, AstNode>,
+  type: Extract<Type, { tag: 'Record' }>,
+): Type {
+  const narrowedFields = new Map(type.fields)
+
+  for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+    const fieldType = type.fields.get(fieldName)
+    if (fieldType === undefined) {
+      if (!type.open && !patternHasDefault(fieldPattern)) {
+        return Never
+      }
+      continue
+    }
+
+    const narrowedFieldType = matchedTypeForPattern(fieldPattern, fieldType)
+    if (narrowedFieldType.tag === 'Never') {
+      return Never
+    }
+    narrowedFields.set(fieldName, narrowedFieldType)
+  }
+
+  return { tag: 'Record', fields: narrowedFields, open: type.open }
+}
+
+function narrowArrayLikeTypeForMatchPattern(
+  elements: AstNode[],
+  type: Extract<Type, { tag: 'Array' | 'Tuple' }>,
+): Type {
+  if (type.tag === 'Array') {
+    for (const elementPattern of elements) {
+      if (!elementPattern || (elementPattern[0] as string) === 'rest') continue
+      const narrowedElementType = matchedTypeForPattern(elementPattern, type.element)
+      if (narrowedElementType.tag === 'Never') {
+        return Never
+      }
+    }
+    return type
+  }
+
+  const narrowedElements = [...type.elements]
+  for (let i = 0; i < elements.length; i++) {
+    const elementPattern = elements[i]
+    if (!elementPattern || (elementPattern[0] as string) === 'rest') continue
+    const elementType = type.elements[i]
+    if (elementType === undefined) {
+      if (!patternHasDefault(elementPattern)) {
+        return Never
+      }
+      continue
+    }
+
+    const narrowedElementType = matchedTypeForPattern(elementPattern, elementType)
+    if (narrowedElementType.tag === 'Never') {
+      return Never
+    }
+    narrowedElements[i] = narrowedElementType
+  }
+
+  return tuple(narrowedElements)
+}
+
+function intersectMatchTypes(left: Type, right: Type): Type {
+  const expandedLeft = simplify(expandType(left))
+  const expandedRight = simplify(expandType(right))
+
+  if (expandedLeft.tag === 'Never' || expandedRight.tag === 'Never') return Never
+  if (expandedLeft.tag === 'Unknown') return expandedRight
+  if (expandedRight.tag === 'Unknown') return expandedLeft
+  if (areMatchTypesDisjoint(expandedLeft, expandedRight)) return Never
+  if (isSubtype(expandedLeft, expandedRight)) return expandedLeft
+  if (isSubtype(expandedRight, expandedLeft)) return expandedRight
+
+  if (expandedLeft.tag === 'Union') {
+    return simplify(union(...expandedLeft.members.map(member => intersectMatchTypes(member, expandedRight)).filter(member => member.tag !== 'Never')))
+  }
+
+  if (expandedRight.tag === 'Union') {
+    return simplify(union(...expandedRight.members.map(member => intersectMatchTypes(expandedLeft, member)).filter(member => member.tag !== 'Never')))
+  }
+
+  return simplify(inter(expandedLeft, expandedRight))
+}
+
+function areMatchTypesDisjoint(left: Type, right: Type): boolean {
+  if (left.tag === 'Never' || right.tag === 'Never') return true
+
+  if (left.tag === 'Literal' && right.tag === 'Literal') {
+    return left.value !== right.value
+  }
+
+  if (left.tag === 'Atom' && right.tag === 'Atom') {
+    return left.name !== right.name
+  }
+
+  if (left.tag === 'Literal' && right.tag === 'Primitive') {
+    return !isSubtype(left, right)
+  }
+
+  if (left.tag === 'Primitive' && right.tag === 'Literal') {
+    return !isSubtype(right, left)
+  }
+
+  if (left.tag === 'Union') {
+    return left.members.every(member => areMatchTypesDisjoint(member, right))
+  }
+
+  if (right.tag === 'Union') {
+    return right.members.every(member => areMatchTypesDisjoint(left, member))
+  }
+
+  if (left.tag === 'Tuple' && right.tag === 'Tuple') {
+    if (left.elements.length !== right.elements.length) return true
+    return left.elements.some((element, index) => areMatchTypesDisjoint(element, right.elements[index]!))
+  }
+
+  if (left.tag === 'Record' && right.tag === 'Record') {
+    for (const [key, leftField] of left.fields) {
+      const rightField = right.fields.get(key)
+      if (rightField && areMatchTypesDisjoint(leftField, rightField)) {
+        return true
+      }
+    }
+    for (const key of left.fields.keys()) {
+      if (!right.fields.has(key) && !right.open) {
+        return true
+      }
+    }
+    for (const key of right.fields.keys()) {
+      if (!left.fields.has(key) && !left.open) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+function normalizeTrackableMatchSpace(type: Type): Type {
+  const expanded = simplify(expandTypeForMatchAnalysis(type))
+
+  if (expanded.tag === 'Primitive' && expanded.name === 'Boolean') {
+    return union(literal(true), literal(false))
+  }
+
+  if (expanded.tag === 'Union') {
+    return simplify(union(...expanded.members.map(normalizeTrackableMatchSpace)))
+  }
+
+  return expanded
+}
+
+function isTrackableMatchRemainder(type: Type): boolean {
+  const expanded = simplify(expandTypeForMatchAnalysis(type))
+  if (expanded.tag === 'Literal' || expanded.tag === 'Atom' || (expanded.tag === 'Primitive' && expanded.name === 'Null')) {
+    return true
+  }
+  if (expanded.tag === 'Tuple') {
+    return expanded.elements.every(member => isTrackableMatchRemainder(member))
+  }
+  if (expanded.tag === 'Record') {
+    return [...expanded.fields.values()].every(member => isTrackableMatchRemainder(member))
+  }
+  return expanded.tag === 'Union' && expanded.members.every(member => isTrackableMatchRemainder(member))
+}
+
+function shouldWarnRedundantMatchCase(pattern: AstNode, remainingType: Type, overallMatchType: Type): boolean {
+  if (simplify(expandTypeForMatchAnalysis(remainingType)).tag === 'Never') return true
+
+  const patternType = pattern[0] as string
+  if (patternType === 'literal' || patternType === 'symbol' || patternType === 'wildcard') {
+    return true
+  }
+
+  if (patternType === 'array' || patternType === 'object') {
+    return matchedTypeForPattern(pattern, overallMatchType).tag !== 'Never'
+  }
+
+  return false
+}
+
 /**
  * Subtract one type from another: remainingType \ narrowedType.
  * Used for exhaustiveness checking — each match clause subtracts
  * its pattern type from the remaining unmatched type.
  */
 function subtractType(from: Type, subtract: Type): Type {
-  // If subtracting from a union, remove matching members
-  if (from.tag === 'Union') {
-    const remaining = from.members.filter(m => !typeEquals(m, subtract))
-    if (remaining.length === 0) return Never
-    if (remaining.length === 1) return remaining[0]!
-    return { tag: 'Union', members: remaining }
+  const expandedFrom = simplify(expandTypeForMatchAnalysis(from))
+  const expandedSubtract = simplify(expandTypeForMatchAnalysis(subtract))
+
+  if (expandedSubtract.tag === 'Never') return expandedFrom
+  if (expandedFrom.tag === 'Never') return Never
+  if (isSubtype(expandedFrom, expandedSubtract)) return Never
+
+  if (expandedSubtract.tag === 'Union') {
+    return simplify(expandedSubtract.members.reduce((remaining, member) => subtractType(remaining, member), expandedFrom))
+  }
+
+  if (expandedFrom.tag === 'Union') {
+    const remaining = expandedFrom.members
+      .map(member => subtractType(member, expandedSubtract))
+      .filter(member => member.tag !== 'Never')
+    return remaining.length === 0 ? Never : simplify(union(...remaining))
+  }
+
+  if (expandedFrom.tag === 'Record' && expandedSubtract.tag === 'Record') {
+    return subtractRecordProductType(expandedFrom, expandedSubtract)
+  }
+
+  if (expandedFrom.tag === 'Tuple' && expandedSubtract.tag === 'Tuple' && expandedFrom.elements.length === expandedSubtract.elements.length) {
+    return subtractTupleProductType(expandedFrom, expandedSubtract)
   }
 
   // If subtracting the exact same type, result is Never
-  if (typeEquals(from, subtract)) return Never
+  if (typeEquals(expandedFrom, expandedSubtract)) return Never
 
   // If subtracting a literal from a primitive, can't simplify further
   // (would need full set-theoretic complement which is deferred)
-  return from
+  return expandedFrom
+}
+
+function subtractRecordProductType(
+  from: Extract<Type, { tag: 'Record' }>,
+  subtract: Extract<Type, { tag: 'Record' }>,
+): Type {
+  if (!isSubtype(subtract, from)) {
+    return from
+  }
+
+  const constrainedKeys = [...subtract.fields.keys()].filter(key => from.fields.has(key))
+  if (constrainedKeys.length === 0) {
+    return from
+  }
+
+  const branches: Type[] = []
+  const exactPrefix = new Map<string, Type>()
+
+  for (const key of constrainedKeys) {
+    const fromField = from.fields.get(key)!
+    const subtractField = subtract.fields.get(key)!
+    const exactField = intersectMatchTypes(fromField, subtractField)
+    const remainderField = subtractType(fromField, subtractField)
+
+    if (remainderField.tag !== 'Never') {
+      const branchFields = new Map(from.fields)
+      for (const [prefixKey, prefixType] of exactPrefix) {
+        branchFields.set(prefixKey, prefixType)
+      }
+      branchFields.set(key, remainderField)
+      branches.push({ tag: 'Record', fields: branchFields, open: from.open })
+    }
+
+    if (exactField.tag === 'Never') {
+      return branches.length === 0 ? Never : simplify(union(...branches))
+    }
+    exactPrefix.set(key, exactField)
+  }
+
+  return branches.length === 0 ? Never : simplify(union(...branches))
+}
+
+function subtractTupleProductType(
+  from: Extract<Type, { tag: 'Tuple' }>,
+  subtract: Extract<Type, { tag: 'Tuple' }>,
+): Type {
+  if (!isSubtype(subtract, from)) {
+    return from
+  }
+
+  const branches: Type[] = []
+  const exactPrefix: Type[] = []
+
+  for (let index = 0; index < from.elements.length; index++) {
+    const fromElement = from.elements[index]!
+    const subtractElement = subtract.elements[index]!
+    const exactElement = intersectMatchTypes(fromElement, subtractElement)
+    const remainderElement = subtractType(fromElement, subtractElement)
+
+    if (remainderElement.tag !== 'Never') {
+      const branchElements = [...from.elements]
+      for (let prefixIndex = 0; prefixIndex < exactPrefix.length; prefixIndex++) {
+        branchElements[prefixIndex] = exactPrefix[prefixIndex]!
+      }
+      branchElements[index] = remainderElement
+      branches.push(tuple(branchElements))
+    }
+
+    if (exactElement.tag === 'Never') {
+      return branches.length === 0 ? Never : simplify(union(...branches))
+    }
+    exactPrefix.push(exactElement)
+  }
+
+  return branches.length === 0 ? Never : simplify(union(...branches))
 }
 
 // ---------------------------------------------------------------------------
@@ -2417,6 +2774,78 @@ function recordConcretePatternTypes(pattern: AstNode, type: Type, typeMap: Map<n
   }
 }
 
+function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type {
+  switch (t.tag) {
+    case 'Var': {
+      if (visited.has(typeVarIdentity(t))) return Never
+      visited.add(typeVarIdentity(t))
+
+      if (t.lowerBounds.length > 0) {
+        return simplify(union(...t.lowerBounds.map(bound => expandTypeForMatchAnalysis(bound, new Set(visited)))))
+      }
+
+      if (t.upperBounds.length > 0) {
+        return simplify(inter(...t.upperBounds.map(bound => expandTypeForMatchAnalysis(bound, new Set(visited)))))
+      }
+
+      return Never
+    }
+
+    case 'Function':
+      return fn(
+        t.params.map(param => expandTypeForMatchAnalysis(param, new Set(visited))),
+        expandTypeForMatchAnalysis(t.ret, new Set(visited)),
+        t.effects,
+        t.handlerWrapper,
+        t.restParam !== undefined ? expandTypeForMatchAnalysis(t.restParam, new Set(visited)) : undefined,
+      )
+
+    case 'Handler': {
+      const handled = new Map<string, { argType: Type; retType: Type }>()
+      for (const [name, sig] of t.handled) {
+        handled.set(name, {
+          argType: expandTypeForMatchAnalysis(sig.argType, new Set(visited)),
+          retType: expandTypeForMatchAnalysis(sig.retType, new Set(visited)),
+        })
+      }
+      return handlerType(
+        expandTypeForMatchAnalysis(t.body, new Set(visited)),
+        expandTypeForMatchAnalysis(t.output, new Set(visited)),
+        handled,
+      )
+    }
+
+    case 'Record': {
+      const fields = new Map<string, Type>()
+      for (const [key, value] of t.fields) {
+        fields.set(key, expandTypeForMatchAnalysis(value, new Set(visited)))
+      }
+      return { tag: 'Record', fields, open: t.open }
+    }
+
+    case 'Array':
+      return array(expandTypeForMatchAnalysis(t.element, new Set(visited)))
+
+    case 'Tuple':
+      return tuple(t.elements.map(element => expandTypeForMatchAnalysis(element, new Set(visited))))
+
+    case 'Union':
+      return simplify(union(...t.members.map(member => expandTypeForMatchAnalysis(member, new Set(visited)))))
+
+    case 'Inter':
+      return simplify(inter(...t.members.map(member => expandTypeForMatchAnalysis(member, new Set(visited)))))
+
+    case 'Neg':
+      return neg(expandTypeForMatchAnalysis(t.inner, new Set(visited)))
+
+    case 'Alias':
+      return expandTypeForMatchAnalysis(t.expanded, visited)
+
+    default:
+      return t
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Expand type variables to concrete types
 // ---------------------------------------------------------------------------
@@ -2711,10 +3140,12 @@ function normalizeDisplayCandidates(candidates: Type[]): Type {
 
 export class TypeInferenceError extends Error {
   nodeId?: number
+  severity: 'error' | 'warning'
 
-  constructor(message: string, nodeId?: number) {
+  constructor(message: string, nodeId?: number, severity: 'error' | 'warning' = 'error') {
     super(message)
     this.name = 'TypeInferenceError'
     this.nodeId = nodeId
+    this.severity = severity
   }
 }

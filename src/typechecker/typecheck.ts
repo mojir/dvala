@@ -313,7 +313,7 @@ function inferNodesRecoveringErrors(
 
       diagnostics.push({
         message: error.message,
-        severity: 'error',
+        severity: error.severity,
         sourceCodeInfo: resolveErrorSourceInfo(error, node, sourceMap),
       })
       resultType = Unknown
@@ -332,7 +332,7 @@ function drainDeferredDiagnostics(
   for (const error of ctx.takeDeferredErrors()) {
     diagnostics.push({
       message: error.message,
-      severity: 'error',
+      severity: error.severity,
       sourceCodeInfo: resolveErrorSourceInfo(error, fallbackNode, sourceMap),
     })
   }
