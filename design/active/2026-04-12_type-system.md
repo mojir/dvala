@@ -958,9 +958,9 @@ Extensions that fit naturally into the set-theoretic foundation. None require ch
 
 ### Broadcasting types (scalar/vector/matrix mixing)
 
-Currently `inc` has type `((Number) -> Number) & ((Number[]) -> Number[])` — but `inc([1,2])` works at runtime even though `[1,2]` is not `Number`. Dvala broadcasts scalars element-wise. The type system needs a way to express "same shape in, same shape out" or "broadcastable" — possibly via a `Broadcastable<T>` type constructor or shape-polymorphic types.
+Historically, core math builtins such as `inc` broadcast over vectors and matrices at runtime, which created pressure for the type system to model "same shape in, same shape out" behavior via something like a `Broadcastable<T>` type constructor or other shape-polymorphic types.
 
-Note: this item may be removed rather than implemented. The current design direction under discussion is to redefine core math builtins as scalar-only in the runtime as well as the type system, and require explicit lifting through `map`, vector helpers, matrix helpers, or future explicit broadcasting utilities. If that direction is adopted, builtin broadcasting types are no longer needed for core math; any future broadcasting support should be modeled as an explicit library feature instead of implicit scalar math semantics.
+Status: core math builtins are now scalar-only in both the runtime and the type system, with explicit lifting required through `map`, vector helpers, matrix helpers, or future explicit broadcasting utilities. The `min` and `max` vector forms remain as collection-aware aggregation exceptions. That means builtin broadcasting types are no longer needed for core math; if broadcasting support is added in the future, it should be modeled as an explicit library feature rather than implicit scalar math semantics.
 
 ### Object type variables
 

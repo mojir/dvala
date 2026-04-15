@@ -346,9 +346,11 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 
 ### Math
 
+Core math is scalar-only. Use explicit lifting for collections, for example `map([1, 2, 3], inc)` or `map(xs, ys, +)`. The collection-aware exceptions in core are `min(vector)` and `max(vector)`.
+
 | Function | Description |
 |----------|-------------|
-| `inc(x)` | x + 1 (also works on vectors/matrices element-wise) |
+| `inc(x)` | x + 1 |
 | `dec(x)` | x - 1 |
 | `+(a, b, ...)` | Addition (variadic) |
 | `-(a, b)` / `-(a)` | Subtraction / negation |
