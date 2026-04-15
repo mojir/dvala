@@ -60,6 +60,17 @@ describe('typecheck — end-to-end', () => {
     const result = dvala.typecheck('reduce({ a: 1, b: 2 }, +, 0)')
     expect(result.diagnostics).toHaveLength(0)
   })
+
+  it('accepts documenting a user-defined function', () => {
+    const result = dvala.typecheck('let add = ((a, b) -> a + b) withDoc "Adds two numbers."; doc(add)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects documenting a non-function value', () => {
+    const result = dvala.typecheck('42 withDoc "Not a function"')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('not a function')
+  })
 })
 
 // ---------------------------------------------------------------------------

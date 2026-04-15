@@ -52,7 +52,7 @@ export function getMetaNormalExpression(
         examples: [
           'doc(+)',
           'doc(@dvala.io.print)',
-          { code: 'let add = (x, y) -> x + y withDoc "Adds two numbers.";\ndoc(add)', noCheck: true },
+          'let add = ((x, y) -> x + y) withDoc "Adds two numbers.";\ndoc(add)',
         ],
       },
     },
@@ -71,7 +71,7 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(2),
       docs: {
-        type: '(Unknown, String) -> Unknown',
+        type: '(Function, String) -> Function',
         category: 'meta',
         returns: { type: 'function' },
         args: {
