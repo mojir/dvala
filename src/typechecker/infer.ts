@@ -37,6 +37,7 @@ type HandledSignatureMap = Map<string, { argType: Type; retType: Type }>
 
 const typeVarObjectIds = new WeakMap<TypeVar, number>()
 let nextTypeVarObjectId = 0
+const GENERALIZED_LEVEL = Number.MAX_SAFE_INTEGER
 
 function typeVarIdentity(typeVar: TypeVar): string {
   let objectId = typeVarObjectIds.get(typeVar)
@@ -66,6 +67,10 @@ export interface TypeVar {
   upperBounds: Type[] // what this variable must fit within (negative)
   displayLowerBounds?: Type[] // hover-only viable lower-bound alternatives
   displayUpperBounds?: Type[] // hover-only viable upper-bound alternatives
+}
+
+function isGeneralizedTypeVar(typeVar: TypeVar): boolean {
+  return typeVar.level === GENERALIZED_LEVEL
 }
 
 // ---------------------------------------------------------------------------
@@ -722,6 +727,8 @@ export function inferExpr(
         }
         ctx.leaveLevel()
 
+        generalizeTypeVars(valueType, ctx.level)
+
         // Check type annotation constraint: let x: T = expr → constrain expr <: T
         const bindingNodeId = binding[2]
         const annotation = ctx.typeAnnotations?.get(bindingNodeId)
@@ -1326,7 +1333,7 @@ function freshen(ctx: InferenceContext, t: Type): Type {
 function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeVar>): Type {
   switch (t.tag) {
     case 'Var': {
-      if (t.level <= ctx.level) return t
+      if (!isGeneralizedTypeVar(t) && t.level <= ctx.level) return t
       // Variable is above the current level — copy it
       const existing = mapping.get(typeVarIdentity(t))
       if (existing) return existing
@@ -1395,7 +1402,7 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeV
 /** Check if a type contains any variables above the given level. */
 function containsVarsAboveLevel(t: Type, level: number): boolean {
   switch (t.tag) {
-    case 'Var': return t.level > level
+    case 'Var': return isGeneralizedTypeVar(t) || t.level > level
     case 'Function': return t.params.some(p => containsVarsAboveLevel(p, level)) || (t.restParam !== undefined && containsVarsAboveLevel(t.restParam, level)) || containsVarsAboveLevel(t.ret, level)
     case 'Handler': {
       if (containsVarsAboveLevel(t.body, level) || containsVarsAboveLevel(t.output, level)) return true
@@ -1414,6 +1421,88 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Inter': return t.members.some(m => containsVarsAboveLevel(m, level))
     case 'Neg': return containsVarsAboveLevel(t.inner, level)
     default: return false
+  }
+}
+
+function generalizeTypeVars(t: Type, level: number, visited = new Set<string>()): void {
+  switch (t.tag) {
+    case 'Var': {
+      const identity = typeVarIdentity(t)
+      if (visited.has(identity)) return
+      visited.add(identity)
+      if (t.level > level) {
+        t.level = GENERALIZED_LEVEL
+      }
+      for (const lowerBound of t.lowerBounds) {
+        generalizeTypeVars(lowerBound, level, visited)
+      }
+      for (const upperBound of t.upperBounds) {
+        generalizeTypeVars(upperBound, level, visited)
+      }
+      for (const lowerBound of t.displayLowerBounds ?? []) {
+        generalizeTypeVars(lowerBound, level, visited)
+      }
+      for (const upperBound of t.displayUpperBounds ?? []) {
+        generalizeTypeVars(upperBound, level, visited)
+      }
+      return
+    }
+    case 'Function':
+      for (const param of t.params) {
+        generalizeTypeVars(param, level, visited)
+      }
+      if (t.restParam !== undefined) {
+        generalizeTypeVars(t.restParam, level, visited)
+      }
+      generalizeTypeVars(t.ret, level, visited)
+      return
+    case 'Handler':
+      generalizeTypeVars(t.body, level, visited)
+      generalizeTypeVars(t.output, level, visited)
+      for (const handled of t.handled.values()) {
+        generalizeTypeVars(handled.argType, level, visited)
+        generalizeTypeVars(handled.retType, level, visited)
+      }
+      return
+    case 'Record':
+      for (const fieldType of t.fields.values()) {
+        generalizeTypeVars(fieldType, level, visited)
+      }
+      return
+    case 'Array':
+      generalizeTypeVars(t.element, level, visited)
+      return
+    case 'Tuple':
+      for (const element of t.elements) {
+        generalizeTypeVars(element, level, visited)
+      }
+      return
+    case 'Sequence':
+      for (const member of t.prefix) {
+        generalizeTypeVars(member, level, visited)
+      }
+      generalizeTypeVars(t.rest, level, visited)
+      return
+    case 'Union':
+    case 'Inter':
+      for (const member of t.members) {
+        generalizeTypeVars(member, level, visited)
+      }
+      return
+    case 'Neg':
+      generalizeTypeVars(t.inner, level, visited)
+      return
+    case 'Alias':
+      for (const arg of t.args) {
+        generalizeTypeVars(arg, level, visited)
+      }
+      generalizeTypeVars(t.expanded, level, visited)
+      return
+    case 'Recursive':
+      generalizeTypeVars(t.body, level, visited)
+      return
+    default:
+      return
   }
 }
 
@@ -3147,7 +3236,7 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
           const expanded = t.upperBounds.map(ub => expandTypeForDisplay(ub, 'negative', new Set(visited)))
           return expanded.length === 1 ? expanded[0]! : inter(...expanded)
         }
-        return Never
+        return Unknown
       }
 
       const expanded = t.upperBounds.map(ub => expandTypeForDisplay(ub, 'negative', new Set(visited)))
@@ -3375,6 +3464,17 @@ function synthesizeRecordDisplayType(t: TypeVar, visited: Set<string>): Type | u
   }
 
   for (const upperBound of t.upperBounds) {
+    if (upperBound.tag === 'Record') {
+      sawRecordLikeInfo = true
+      open = open || upperBound.open
+      for (const [fieldName, fieldType] of upperBound.fields) {
+        const existing = fieldTypes.get(fieldName) ?? []
+        existing.push(expandTypeForDisplay(fieldType, 'positive', new Set(visited)))
+        fieldTypes.set(fieldName, existing)
+      }
+      continue
+    }
+
     if (upperBound.tag !== 'Function' || upperBound.params.length !== 1 || upperBound.restParam !== undefined) continue
     const fieldParam = upperBound.params[0]
     if (!fieldParam || fieldParam.tag !== 'Literal' || typeof fieldParam.value !== 'string') continue

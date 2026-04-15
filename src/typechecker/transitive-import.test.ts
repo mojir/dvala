@@ -126,6 +126,37 @@ describe('typecheck — file imports', () => {
     expect(getHoverTypeStringAt(result, 0, hoverCol)).toBe('Number')
   })
 
+  it('hover on destructured generic field binding shows Unknown instead of Never', () => {
+    const source = [
+      'let describeUser = (user) -> do',
+      '  let { name, tags: [firstTag, ...otherTags] } = user;',
+      '  { name, firstTag, otherTagCount: count(otherTags), totalTagCount: count(user.tags) }',
+      'end;',
+      'describeUser',
+    ].join('\n')
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+    const bindingCol = source.split('\n')[1]!.indexOf('name')
+
+    expect(getHoverTypeStringAt(result, 1, bindingCol)).toBe('Unknown')
+  })
+
+  it('hover on destructured generic parameter preserves record fields', () => {
+    const source = [
+      'let describeUser = (user) -> do',
+      '  let { name, tags: [firstTag, ...otherTags] } = user;',
+      '  { name, firstTag, otherTagCount: count(otherTags), totalTagCount: count(user.tags) }',
+      'end;',
+      'describeUser',
+    ].join('\n')
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+    const hover = getHoverTypeStringAt(result, 0, source.split('\n')[0]!.indexOf('user'))
+
+    expect(hover).toBeDefined()
+    expect(hover).toContain('name:')
+    expect(hover).toContain('tags:')
+    expect(hover).not.toContain('Never')
+  })
+
   it('hover on self-add callee at scalar call site shows selected overload', () => {
     const source = 'let result = (a) -> a + a;\nresult(2);'
     const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })

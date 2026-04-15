@@ -186,6 +186,7 @@ function getHoverTypeAtPosition(
     const sourcePos = cached.sourceMap?.get(nodeId)
     if (!sourcePos) continue
 
+    // Parser/typechecker source maps are already 0-based, matching VS Code positions.
     const [startLine, startCol] = sourcePos.start
     const [endLine, endCol] = sourcePos.end
     if (line < startLine || line > endLine) continue
@@ -216,9 +217,20 @@ function getHoverTypeAtPosition(
   }
 
   const selectedType = bestPreferredType ?? bestType
-  if (!selectedType) return undefined
+  return selectedType ? formatHoverType(selectedType) : undefined
+}
 
-  return typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(selectedType))))
+function formatHoverType(type: import('../../src/typechecker/types').Type): string {
+  return typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(type))))
+}
+
+function getHoverTypeAtNodeId(
+  cached: TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> },
+  nodeId: number,
+): string | undefined {
+  const type = cached.typeMap.get(nodeId)
+  if (!type || type.tag === 'Unknown') return undefined
+  return formatHoverType(type)
 }
 
 function getDiagnosticCollection(): vscode.DiagnosticCollection {
@@ -531,6 +543,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const hoverProvider = vscode.languages.registerHoverProvider('dvala', {
     provideHover(document, position) {
+      indexDocument(document)
+
       const diagnostics = getDiagnosticCollection()
         .get(document.uri)
         ?.filter(d => d.range.contains(position))
@@ -541,9 +555,24 @@ export function activate(context: vscode.ExtensionContext): void {
 
       // Look up inferred type from the type cache
       const cached = typecheckCache.get(document.uri.toString())
-      const inferredTypeStr = cached
+      let inferredTypeStr = cached
         ? getHoverTypeAtPosition(cached, position, range)
         : undefined
+
+      if (!inferredTypeStr) {
+        const symbol = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, position.line + 1, position.character + 1)
+        if (symbol?.def && symbol.def.location.file === document.uri.fsPath && cached) {
+          inferredTypeStr = getHoverTypeAtNodeId(cached, symbol.def.nodeId)
+        }
+
+        if (!inferredTypeStr && word && cached) {
+          const visibleDefs = workspaceIndex.getSymbolsInScope(document.uri.fsPath, position.line + 1, position.character + 1)
+          const matchingDef = visibleDefs.find(def => def.name === word && def.location.file === document.uri.fsPath)
+          if (matchingDef) {
+            inferredTypeStr = getHoverTypeAtNodeId(cached, matchingDef.nodeId)
+          }
+        }
+      }
 
       if (!diagnostics?.length && !ref && !inferredTypeStr) return undefined
 
@@ -692,6 +721,10 @@ export function activate(context: vscode.ExtensionContext): void {
     if (document.languageId !== 'dvala') return
     const filePath = document.uri.fsPath
     workspaceIndex.updateFile(filePath, document.getText())
+    // Clear stale run diagnostics whenever the document changes or is re-opened.
+    // Runtime diagnostics are snapshot-specific and quickly become misleading
+    // once the source has changed.
+    getDiagnosticCollection().delete(document.uri)
     refreshDiagnostics(document)
   }
 

@@ -41,6 +41,11 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('accepts polymorphic identity inside object fields passed to count', () => {
+    const result = dvala.typecheck('let id = (x) -> x; { sameNumber: id(42), sameString: id("hello"), stringLength: count(id("hello")) }')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   it('accepts filter on objects', () => {
     const result = dvala.typecheck('filter({ a: 1, b: 2 }, isOdd)')
     expect(result.diagnostics).toHaveLength(0)

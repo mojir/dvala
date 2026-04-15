@@ -370,6 +370,11 @@ describe('inference — let-polymorphism', () => {
     // We test that each call infers without throwing (no type conflict).
     expect(() => inferType('let id = (x) -> x; let a = id(42); let b = id("hello"); b')).not.toThrow()
   })
+
+  it('preserves the later use type for polymorphic identity bindings', () => {
+    const t = inferAndExpand('let id = (x) -> x; let a = id(42); let b = id("hello"); b')
+    expect(typeToString(t)).toBe('"hello"')
+  })
 })
 
 // ---------------------------------------------------------------------------
