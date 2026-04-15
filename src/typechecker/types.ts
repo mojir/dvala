@@ -46,6 +46,14 @@ export interface FunctionType {
   handlerWrapper?: HandlerWrapperInfo
 }
 
+export interface SequenceType {
+  tag: 'Sequence'
+  prefix: Type[]
+  rest: Type
+  minLength: number
+  maxLength?: number
+}
+
 /** The empty (pure) effect set. Frozen to prevent accidental mutation. */
 export const PureEffects: EffectSet = Object.freeze({ effects: Object.freeze(new Set<string>()), open: false })
 
@@ -60,6 +68,7 @@ export type Type =
   | { tag: 'Tuple'; elements: Type[] }
   | { tag: 'Record'; fields: Map<string, Type>; open: boolean }
   | { tag: 'Array'; element: Type }
+  | SequenceType
   | { tag: 'Regex' }
 
   // Set operations
@@ -154,6 +163,46 @@ export function array(element: Type): Type {
   return { tag: 'Array', element }
 }
 
+export function sequence(prefix: Type[], rest: Type, minLength = prefix.length, maxLength?: number): SequenceType {
+  return normalizeSequenceType({
+    tag: 'Sequence',
+    prefix,
+    rest,
+    minLength,
+    ...(maxLength !== undefined ? { maxLength } : {}),
+  })
+}
+
+export function toSequenceType(type: Type): SequenceType | undefined {
+  switch (type.tag) {
+    case 'Sequence':
+      return normalizeSequenceType(type)
+    case 'Array':
+      return sequence([], type.element, 0)
+    case 'Tuple':
+      return sequence(type.elements, Never)
+    default:
+      return undefined
+  }
+}
+
+export function normalizeSequenceType(type: SequenceType): SequenceType {
+  const minLength = type.rest.tag === 'Never'
+    ? type.prefix.length
+    : Math.max(type.minLength, type.prefix.length)
+  const maxLength = type.rest.tag === 'Never'
+    ? type.prefix.length
+    : (type.maxLength !== undefined && type.maxLength < minLength ? minLength : type.maxLength)
+
+  return {
+    tag: 'Sequence',
+    prefix: type.prefix,
+    rest: type.rest,
+    minLength,
+    ...(maxLength !== undefined ? { maxLength } : {}),
+  }
+}
+
 // Set operations — flatten and deduplicate at construction
 export function union(...members: Type[]): Type {
   // Flatten nested unions
@@ -246,6 +295,19 @@ export function typeToString(t: Type): string {
         : `{${entries.join(', ')}}`
     }
     case 'Array': return `${typeToString(t.element)}[]`
+    case 'Sequence': {
+      if (t.rest.tag === 'Never' && t.minLength === t.prefix.length && t.maxLength === t.prefix.length) {
+        return `[${t.prefix.map(typeToString).join(', ')}]`
+      }
+      if (t.prefix.length === 0 && t.minLength === 0 && t.maxLength === undefined) {
+        return `${typeToString(t.rest)}[]`
+      }
+
+      const prefix = `[${t.prefix.map(typeToString).join(', ')}]`
+      const rest = t.rest.tag === 'Never' ? '' : `, ...${typeToString(array(t.rest))}`
+      const length = t.maxLength === undefined ? `${t.minLength}..` : `${t.minLength}..${t.maxLength}`
+      return `Sequence<${prefix}${rest}, len=${length}>`
+    }
     case 'Regex': return 'Regex'
     case 'AnyFunction': return 'Function'
     case 'Union': return t.members.map(m => typeToString(m)).join(' | ')
@@ -319,6 +381,14 @@ export function typeEquals(a: Type, b: Type): boolean {
       return true
     }
     case 'Array': return typeEquals(a.element, (b as typeof a).element)
+    case 'Sequence': {
+      const bs = b as typeof a
+      return a.prefix.length === bs.prefix.length
+        && a.prefix.every((member, index) => typeEquals(member, bs.prefix[index]!))
+        && typeEquals(a.rest, bs.rest)
+        && a.minLength === bs.minLength
+        && a.maxLength === bs.maxLength
+    }
     case 'Regex': return true
     case 'AnyFunction': return true
     case 'Union':

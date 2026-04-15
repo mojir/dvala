@@ -382,6 +382,12 @@ function normalizeImportedExportType(type: Type): Type {
       }
     case 'Array':
       return { ...type, element: normalizeImportedExportType(type.element) }
+    case 'Sequence':
+      return {
+        ...type,
+        prefix: type.prefix.map(normalizeImportedExportType),
+        rest: normalizeImportedExportType(type.rest),
+      }
     case 'Tuple':
       return { ...type, elements: type.elements.map(normalizeImportedExportType) }
     case 'Union':

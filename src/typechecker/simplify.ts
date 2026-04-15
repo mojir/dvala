@@ -13,7 +13,7 @@
  */
 
 import type { Type, PrimitiveName } from './types'
-import { Never, Unknown, typeEquals, union, inter, neg } from './types'
+import { Never, Unknown, normalizeSequenceType, typeEquals, union, inter, neg } from './types'
 import { isSubtype } from './subtype'
 
 // ---------------------------------------------------------------------------
@@ -54,6 +54,14 @@ export function simplify(t: Type): Type {
     }
     case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(simplify) }
     case 'Array': return { tag: 'Array', element: simplify(t.element) }
+    case 'Sequence':
+      return normalizeSequenceType({
+        tag: 'Sequence',
+        prefix: t.prefix.map(simplify),
+        rest: simplify(t.rest),
+        minLength: t.minLength,
+        ...(t.maxLength !== undefined ? { maxLength: t.maxLength } : {}),
+      })
     case 'Record': {
       const fields = new Map<string, Type>()
       for (const [k, v] of t.fields) {

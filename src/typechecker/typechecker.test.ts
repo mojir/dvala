@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   NumberType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType,
-  atom, literal, fn, tuple, record, array, union, inter, neg,
+  atom, literal, fn, tuple, record, array, sequence, toSequenceType, union, inter, neg,
   typeToString, typeEquals,
 } from './types'
 import { isSubtype } from './subtype'
@@ -111,6 +111,15 @@ describe('typeToString', () => {
     expect(typeToString(array(NumberType))).toBe('Number[]')
   })
 
+  it('sequence types render specialized tuple and array forms', () => {
+    expect(typeToString(sequence([StringType, NumberType], Never))).toBe('[String, Number]')
+    expect(typeToString(sequence([], NumberType, 0))).toBe('Number[]')
+  })
+
+  it('sequence types render internal debug form for prefix-constrained tails', () => {
+    expect(typeToString(sequence([literal(1)], NumberType, 1))).toBe('Sequence<[1], ...Number[], len=1..>')
+  })
+
   it('union types', () => {
     expect(typeToString(union(NumberType, StringType))).toBe('Number | String')
   })
@@ -158,6 +167,40 @@ describe('typeEquals', () => {
 
   it('records with different open/closed are not equal', () => {
     expect(typeEquals(record({ x: NumberType }), record({ x: NumberType }, true))).toBe(false)
+  })
+
+  it('sequences with same shape are equal', () => {
+    expect(typeEquals(sequence([literal(1)], NumberType, 1), sequence([literal(1)], NumberType, 1))).toBe(true)
+  })
+
+  it('sequences with different bounds are not equal', () => {
+    expect(typeEquals(sequence([literal(1)], NumberType, 1), sequence([literal(1)], NumberType, 2))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Sequence normalization helpers
+// ---------------------------------------------------------------------------
+
+describe('sequence normalization helpers', () => {
+  it('normalizes arrays into open-ended homogeneous sequences', () => {
+    expect(typeEquals(toSequenceType(array(NumberType))!, sequence([], NumberType, 0))).toBe(true)
+  })
+
+  it('normalizes tuples into exact-length sequences', () => {
+    expect(typeEquals(toSequenceType(tuple([NumberType, StringType]))!, sequence([NumberType, StringType], Never))).toBe(true)
+  })
+
+  it('normalizes sequence min length to cover the prefix', () => {
+    const normalized = sequence([NumberType, StringType], NumberType, 0)
+    expect(normalized.minLength).toBe(2)
+    expect(normalized.maxLength).toBeUndefined()
+  })
+
+  it('normalizes impossible tails with Never into exact sequences', () => {
+    const normalized = sequence([NumberType], Never, 0, 3)
+    expect(normalized.minLength).toBe(1)
+    expect(normalized.maxLength).toBe(1)
   })
 })
 

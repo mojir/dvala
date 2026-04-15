@@ -319,7 +319,7 @@ function literalMatchesPrimitive(value: string | number | boolean, name: Primiti
 /** A ground type has no type variables, unions, intersections, or negations. */
 function isGroundType(t: Type): boolean {
   return t.tag === 'Primitive' || t.tag === 'Atom' || t.tag === 'Literal'
-    || t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array'
+    || t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
     || t.tag === 'Regex' || t.tag === 'Function' || t.tag === 'AnyFunction'
 }
 
@@ -363,6 +363,13 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
     }
     case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(e => substituteVar(e, varId, replacement)) }
     case 'Array': return { tag: 'Array', element: substituteVar(t.element, varId, replacement) }
+    case 'Sequence': return {
+      tag: 'Sequence',
+      prefix: t.prefix.map(member => substituteVar(member, varId, replacement)),
+      rest: substituteVar(t.rest, varId, replacement),
+      minLength: t.minLength,
+      ...(t.maxLength !== undefined ? { maxLength: t.maxLength } : {}),
+    }
     case 'Record': {
       const fields = new Map<string, Type>()
       for (const [k, v] of t.fields) {
@@ -402,6 +409,7 @@ function typeId(t: Type): string {
     case 'Tuple': return `T[${t.elements.map(typeId).join(',')}]`
     case 'Record': return `R{${[...t.fields.entries()].map(([k, v]) => `${k}:${typeId(v)}`).join(',')}${t.open ? ',..' : ''}}`
     case 'Array': return `Ar[${typeId(t.element)}]`
+    case 'Sequence': return `Sq[${t.prefix.map(typeId).join(',')}|${typeId(t.rest)}|${t.minLength}|${t.maxLength ?? '*'}]`
     case 'Regex': return 'Rx'
     case 'Handler': return `H(${typeId(t.body)}=>${typeId(t.output)}|${[...t.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')})`
     case 'AnyFunction': return 'AF'
