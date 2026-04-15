@@ -18,6 +18,18 @@ The standard math operators, with whitespace required:
 17 % 5;
 ```
 
+Core arithmetic is scalar-only. If you want element-wise collection math, lift it explicitly with collection functions:
+
+```dvala
+map([1, 2, 3], inc);
+```
+
+```dvala
+map([1, 2, 3], [10, 20, 30], +);
+```
+
+`min` and `max` remain collection-aware when called with a single vector.
+
 ## Comparison
 
 Comparison operators use structural equality (`==`), not reference equality:

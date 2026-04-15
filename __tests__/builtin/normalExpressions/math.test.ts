@@ -5,6 +5,10 @@ import { mathUtilsModule } from '../../../src/builtin/modules/math'
 
 describe('math functions', () => {
   const dvala = createDvala()
+  const expectScalarOnly = (...expressions: string[]) => {
+    expressions.forEach(expression => expect(() => dvala.run(expression)).toThrow(DvalaError))
+  }
+
   describe('inc', () => {
     it('samples', () => {
       expect(dvala.run('inc(2.5)')).toBe(3.5)
@@ -21,16 +25,8 @@ describe('math functions', () => {
       expect(() => dvala.run('inc(boolean)')).toThrow(DvalaError)
       expect(() => dvala.run('inc({})')).toThrow(DvalaError)
     })
-    it('should increment a vector', () => {
-      expect(dvala.run('inc([1, 2, 3])')).toEqual([2, 3, 4])
-      expect(dvala.run('inc([-1, -2, -3])')).toEqual([0, -1, -2])
-      expect(dvala.run('inc([0])')).toEqual([1])
-      expect(dvala.run('inc([])')).toEqual([])
-    })
-    it('should increment a matrix', () => {
-      expect(dvala.run('inc([[1, 2], [3, 4]])')).toEqual([[2, 3], [4, 5]])
-      expect(dvala.run('inc([[-1, -2], [-3, -4]])')).toEqual([[0, -1], [-2, -3]])
-      expect(dvala.run('inc([[0]])')).toEqual([[1]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('inc([1, 2, 3])', 'inc([])', 'inc([[1, 2], [3, 4]])')
     })
   })
 
@@ -50,16 +46,8 @@ describe('math functions', () => {
       expect(() => dvala.run('dec(boolean)')).toThrow(DvalaError)
       expect(() => dvala.run('dec({})')).toThrow(DvalaError)
     })
-    it('should decrement a vector', () => {
-      expect(dvala.run('dec([1, 2, 3])')).toEqual([0, 1, 2])
-      expect(dvala.run('dec([-1, -2, -3])')).toEqual([-2, -3, -4])
-      expect(dvala.run('dec([0])')).toEqual([-1])
-      expect(dvala.run('dec([])')).toEqual([])
-    })
-    it('should decrement a matrix', () => {
-      expect(dvala.run('dec([[1, 2], [3, 4]])')).toEqual([[0, 1], [2, 3]])
-      expect(dvala.run('dec([[-1, -2], [-3, -4]])')).toEqual([[-2, -3], [-4, -5]])
-      expect(dvala.run('dec([[0]])')).toEqual([[-1]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('dec([1, 2, 3])', 'dec([])', 'dec([[1, 2], [3, 4]])')
     })
   })
 
@@ -72,32 +60,14 @@ describe('math functions', () => {
       expect(dvala.run('1 + 2 + 3 + 4')).toBe(10)
       expect(() => dvala.run('"1" + 2')).toThrow(DvalaError)
     })
-    it('should add vectors element-wise', () => {
-      expect(dvala.run('+([1, 2, 3])')).toEqual([1, 2, 3])
-      expect(dvala.run('[1, 2, 3] + [4, 5, 6]')).toEqual([5, 7, 9])
-      expect(dvala.run('+([1, 2, 3], [4, 5, 6])')).toEqual([5, 7, 9])
-      expect(dvala.run('+([1, 2, 3], [4, 5, 6], [7, 8, 9])')).toEqual([12, 15, 18])
-      expect(dvala.run('+([1], [2])')).toEqual([3])
-      expect(dvala.run('+([], [])')).toEqual([])
-      expect(() => dvala.run('+([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('+([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('+([1], [])')).toThrowError(DvalaError)
-    })
-    it('should add vectors and scalars', () => {
-      expect(dvala.run('+([1, 2, 3], 4)')).toEqual([5, 6, 7])
-      expect(dvala.run('+([1], 4)')).toEqual([5])
-      expect(dvala.run('+([], 4)')).toEqual([])
-      expect(dvala.run('+(4, [1, 2, 3])')).toEqual([5, 6, 7])
-      expect(dvala.run('+(4, [1])')).toEqual([5])
-      expect(dvala.run('+(4, [])')).toEqual([])
-      expect(dvala.run('+(4, [1, 2, 3], 5)')).toEqual([10, 11, 12])
-      expect(() => dvala.run('+([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('+([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('+([1], [])')).toThrowError(DvalaError)
-    })
-    it('should throw if incompatible operands', () => {
-      expect(() => dvala.run('+([[1, 2]], [3, 4])')).toThrowError(DvalaError)
-      expect(() => dvala.run('+([[1, 2]], [[3, 4], [5, 6]])')).toThrowError(DvalaError)
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly(
+        '+([1, 2, 3])',
+        '[1, 2, 3] + [4, 5, 6]',
+        '+([1, 2, 3], 4)',
+        '+(4, [1, 2, 3])',
+        '+([[1, 2]], [[3, 4]])',
+      )
     })
   })
 
@@ -111,16 +81,8 @@ describe('math functions', () => {
       expect(dvala.run('1 * 2 * 3 * 4')).toBe(24)
       expect(() => dvala.run('"1" * 2')).toThrow(DvalaError)
     })
-    it('should multiply two vectors element-wise', () => {
-      expect(dvala.run('*([1, 2, 3], [4, 5, 6])')).toEqual([4, 10, 18])
-      expect(dvala.run('*(2, [1, 2, 3])')).toEqual([2, 4, 6])
-      expect(dvala.run('*(2, [1, 2, 3], 2)')).toEqual([4, 8, 12])
-      expect(dvala.run('*(2, [1, 2, 3], [2, 2, 2])')).toEqual([4, 8, 12])
-      expect(dvala.run('*([1], [2])')).toEqual([2])
-      expect(dvala.run('*([], [])')).toEqual([])
-      expect(() => dvala.run('*([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('*([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('*([1], [])')).toThrowError(DvalaError)
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('*([1, 2, 3], [4, 5, 6])', '*(2, [1, 2, 3])', '*(2, [[1, 2], [3, 4]])')
     })
   })
 
@@ -135,15 +97,8 @@ describe('math functions', () => {
       expect(dvala.run('1 / 2 / 3 / 4')).toBe(1 / 2 / 3 / 4)
       expect(() => dvala.run('"1" / 2')).toThrow(DvalaError)
     })
-    it('should divide two vectors element-wise', () => {
-      expect(dvala.run('/([1, 2, 3], [4, 5, 6])')).toEqual([0.25, 0.4, 0.5])
-      expect(dvala.run('/([1, 2, 3], 2)')).toEqual([0.5, 1, 1.5])
-      expect(dvala.run('/(12, [1, 2, 3], 2)')).toEqual([6, 3, 2])
-      expect(dvala.run('/([1], [2])')).toEqual([0.5])
-      expect(dvala.run('/([], [])')).toEqual([])
-      expect(() => dvala.run('/([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('/([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('/([1], [])')).toThrowError(DvalaError)
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('/([1, 2, 3], [4, 5, 6])', '/([1, 2, 3], 2)', '/([[12, 6]], 2)')
     })
   })
 
@@ -160,16 +115,8 @@ describe('math functions', () => {
     it('strange bug', () => {
       expect(dvala.run('let a = 0; let b = 2; a - b')).toBe(-2)
     })
-    it('should subtract vectors', () => {
-      expect(dvala.run('-([1, 2, 3], [4, 5, 6])')).toEqual([-3, -3, -3])
-      expect(dvala.run('-([1, 2, 3], [4, 5, 6], -3)')).toEqual([0, 0, 0])
-      expect(dvala.run('-(10, [1, 2, 3])')).toEqual([9, 8, 7])
-      expect(dvala.run('-([1], [2])')).toEqual([-1])
-      expect(dvala.run('-([], [])')).toEqual([])
-      expect(() => dvala.run('-([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('-([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('-([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('-([1], [])')).toThrowError(DvalaError)
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('-([1, 2, 3], [4, 5, 6])', '-(10, [1, 2, 3])', '-([[1, 2]], [[3, 4]])')
     })
   })
 
@@ -182,16 +129,8 @@ describe('math functions', () => {
       expect(dvala.run('sqrt(1)')).toBe(1)
       expect(dvala.run('sqrt(4)')).toBe(2)
     })
-    it('should take the square root of a vector', () => {
-      expect(dvala.run('sqrt([1, 4, 9])')).toEqual([1, 2, 3])
-      expect(dvala.run('sqrt([0])')).toEqual([0])
-      expect(dvala.run('sqrt([])')).toEqual([])
-      // checkedFn throws when an element-wise result is non-finite
-      expect(() => dvala.run('sqrt([-1, 4])')).toThrow(DvalaError)
-    })
-    it('should take the square root of a matrix', () => {
-      expect(dvala.run('sqrt([[1, 4], [9, 16]])')).toEqual([[1, 2], [3, 4]])
-      expect(dvala.run('sqrt([[0]])')).toEqual([[0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('sqrt([1, 4, 9])', 'sqrt([])', 'sqrt([[1, 4], [9, 16]])')
     })
   })
 
@@ -205,14 +144,8 @@ describe('math functions', () => {
       expect(dvala.run('cbrt(8)')).toBe(2)
       expect(dvala.run('cbrt(12)')).toBe(Math.cbrt(12))
     })
-    it('should take the cube root of a vector', () => {
-      expect(dvala.run('cbrt([1, 8, 27])')).toEqual([1, 2, 3])
-      expect(dvala.run('cbrt([0])')).toEqual([0])
-      expect(dvala.run('cbrt([])')).toEqual([])
-    })
-    it('should take the cube root of a matrix', () => {
-      expect(dvala.run('cbrt([[1, 8], [27, 64]])')).toEqual([[1, 2], [3, 4]])
-      expect(dvala.run('cbrt([[0]])')).toEqual([[0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('cbrt([1, 8, 27])', 'cbrt([])', 'cbrt([[1, 8], [27, 64]])')
     })
   })
 
@@ -233,27 +166,8 @@ describe('math functions', () => {
       expect(dvala.run('^(-2, -1)')).toBe(-0.5)
       expect(dvala.run('^(-2, -2)')).toBe(0.25)
     })
-    it('should exponentiate two vectors element-wise', () => {
-      expect(dvala.run('^([1, 2, 3], [4, 5, 6])')).toEqual([1, 32, 729])
-      expect(dvala.run('^([1], [2])')).toEqual([1])
-      expect(dvala.run('^([], [])')).toEqual([])
-      expect(() => dvala.run('^([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('^([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('^([1], [])')).toThrowError(DvalaError)
-    })
-    it('should exponentiate a vector by a scalar', () => {
-      expect(dvala.run('^([1, 2, 3], 2)')).toEqual([1, 4, 9])
-      expect(dvala.run('^([1], 2)')).toEqual([1])
-      expect(dvala.run('^([], 2)')).toEqual([])
-      expect(() => dvala.run('^([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('^([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('^([1], [])')).toThrowError(DvalaError)
-    })
-    it('should exponentiate a scalar by a vector', () => {
-      expect(dvala.run('^(2, [1, 2, 3])')).toEqual([2, 4, 8])
-      expect(dvala.run('^(2, [1])')).toEqual([2])
-      expect(dvala.run('^(2, [])')).toEqual([])
-      expect(() => dvala.run('^([2], [3, 4, 5])')).toThrowError(DvalaError)
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('^([1, 2, 3], [4, 5, 6])', '^([1, 2, 3], 2)', '^(2, [1, 2, 3])', '^([[1, 2]], 2)')
     })
   })
 
@@ -272,16 +186,8 @@ describe('math functions', () => {
       expect(dvala.run('round(-0.125, 1)')).toBe(-0.1)
       expect(dvala.run('round(0.125, 2)')).toBe(0.13)
     })
-    it('should round a vector', () => {
-      expect(dvala.run('round([1, 2, 3])')).toEqual([1, 2, 3])
-      expect(dvala.run('round([1.4, 2.5, 3.6])')).toEqual([1, 3, 4])
-      expect(dvala.run('round([0])')).toEqual([0])
-      expect(dvala.run('round([])')).toEqual([])
-    })
-    it('should round a matrix', () => {
-      expect(dvala.run('round([[1, 2], [3, 4]])')).toEqual([[1, 2], [3, 4]])
-      expect(dvala.run('round([[1.4, 2.5], [3.6, 4.7]])')).toEqual([[1, 3], [4, 5]])
-      expect(dvala.run('round([[0]])')).toEqual([[0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('round([1.4, 2.5, 3.6])', 'round([])', 'round([[1.4, 2.5], [3.6, 4.7]])', 'round([1.2], 1)')
     })
   })
 
@@ -298,16 +204,8 @@ describe('math functions', () => {
       expect(dvala.run('floor(-0.5)')).toBe(-1)
       expect(dvala.run('floor(-0.6)')).toBe(-1)
     })
-    it('should floor a vector', () => {
-      expect(dvala.run('floor([1, 2, 3])')).toEqual([1, 2, 3])
-      expect(dvala.run('floor([1.4, 2.5, 3.6])')).toEqual([1, 2, 3])
-      expect(dvala.run('floor([0])')).toEqual([0])
-      expect(dvala.run('floor([])')).toEqual([])
-    })
-    it('should floor a matrix', () => {
-      expect(dvala.run('floor([[1, 2], [3, 4]])')).toEqual([[1, 2], [3, 4]])
-      expect(dvala.run('floor([[1.4, 2.5], [3.6, 4.7]])')).toEqual([[1, 2], [3, 4]])
-      expect(dvala.run('floor([[0]])')).toEqual([[0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('floor([1.4, 2.5, 3.6])', 'floor([])', 'floor([[1.4, 2.5], [3.6, 4.7]])')
     })
   })
 
@@ -324,16 +222,8 @@ describe('math functions', () => {
       expect(dvala.run('ceil(-0.5)')).toBe(-0)
       expect(dvala.run('ceil(-0.6)')).toBe(-0)
     })
-    it('should ceil a vector', () => {
-      expect(dvala.run('ceil([1, 2, 3])')).toEqual([1, 2, 3])
-      expect(dvala.run('ceil([1.4, 2.5, 3.6])')).toEqual([2, 3, 4])
-      expect(dvala.run('ceil([0])')).toEqual([0])
-      expect(dvala.run('ceil([])')).toEqual([])
-    })
-    it('should ceil a matrix', () => {
-      expect(dvala.run('ceil([[1, 2], [3, 4]])')).toEqual([[1, 2], [3, 4]])
-      expect(dvala.run('ceil([[1.4, 2.5], [3.6, 4.7]])')).toEqual([[2, 3], [4, 5]])
-      expect(dvala.run('ceil([[0]])')).toEqual([[0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('ceil([1.4, 2.5, 3.6])', 'ceil([])', 'ceil([[1.4, 2.5], [3.6, 4.7]])')
     })
   })
 
@@ -343,6 +233,7 @@ describe('math functions', () => {
       expect(dvala.run('min(1)')).toBe(1)
       expect(dvala.run('min(1, -2)')).toBe(-2)
       expect(dvala.run('min(3, 1, 2 )')).toBe(1)
+      expect(dvala.run('min([3, 1, 2])')).toBe(1)
       expect(() => dvala.run('min()')).toThrow(DvalaError)
       expect(() => dvala.run('min("1")')).toThrow(DvalaError)
       expect(() => dvala.run('min("1", "3")')).toThrow(DvalaError)
@@ -355,6 +246,7 @@ describe('math functions', () => {
       expect(dvala.run('max(1)')).toBe(1)
       expect(dvala.run('max(1, -2)')).toBe(1)
       expect(dvala.run('max(3, 1, 2)')).toBe(3)
+      expect(dvala.run('max([3, 1, 2])')).toBe(3)
       expect(() => dvala.run('max()')).toThrow(DvalaError)
       expect(() => dvala.run('max("1")')).toThrow(DvalaError)
       expect(() => dvala.run('max("1", "3")')).toThrow(DvalaError)
@@ -369,16 +261,8 @@ describe('math functions', () => {
       expect(() => dvala.run('abs()')).toThrow(DvalaError)
       expect(() => dvala.run('abs(1, 2)')).toThrow(DvalaError)
     })
-    it('should take the absolute value of a vector', () => {
-      expect(dvala.run('abs([1, -2, 3])')).toEqual([1, 2, 3])
-      expect(dvala.run('abs([-1, -2, -3])')).toEqual([1, 2, 3])
-      expect(dvala.run('abs([0])')).toEqual([0])
-      expect(dvala.run('abs([])')).toEqual([])
-    })
-    it('should take the absolute value of a matrix', () => {
-      expect(dvala.run('abs([[1, -2], [3, -4]])')).toEqual([[1, 2], [3, 4]])
-      expect(dvala.run('abs([[-1, -2], [-3, -4]])')).toEqual([[1, 2], [3, 4]])
-      expect(dvala.run('abs([[0]])')).toEqual([[0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('abs([1, -2, 3])', 'abs([])', 'abs([[1, -2], [3, -4]])')
     })
   })
 
@@ -391,16 +275,8 @@ describe('math functions', () => {
       expect(() => dvala.run('sign()')).toThrow(DvalaError)
       expect(() => dvala.run('sign(1, 2)')).toThrow(DvalaError)
     })
-    it('should take the sign of a vector', () => {
-      expect(dvala.run('sign([1, -2, 3])')).toEqual([1, -1, 1])
-      expect(dvala.run('sign([-1, -2, -3])')).toEqual([-1, -1, -1])
-      expect(dvala.run('sign([0])')).toEqual([0])
-      expect(dvala.run('sign([])')).toEqual([])
-    })
-    it('should take the sign of a matrix', () => {
-      expect(dvala.run('sign([[1, -2], [3, -4]])')).toEqual([[1, -1], [1, -1]])
-      expect(dvala.run('sign([[-1, -2], [-3, -4]])')).toEqual([[-1, -1], [-1, -1]])
-      expect(dvala.run('sign([[0]])')).toEqual([[0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('sign([1, -2, 3])', 'sign([])', 'sign([[1, -2], [3, -4]])')
     })
   })
 
@@ -487,15 +363,8 @@ describe('math functions', () => {
       expect(() => dvala.run('trunc()')).toThrow(DvalaError)
       expect(() => dvala.run('trunc(100, 200)')).toThrow(DvalaError)
     })
-    it('should truncate a vector', () => {
-      expect(dvala.run('trunc([1, 2, 3])')).toEqual([1, 2, 3])
-      expect(dvala.run('trunc([0.1, -0.1])')).toEqual([0, -0])
-      expect(dvala.run('trunc([])')).toEqual([])
-    })
-    it('should truncate a matrix', () => {
-      expect(dvala.run('trunc([[1, 2], [3, 4]])')).toEqual([[1, 2], [3, 4]])
-      expect(dvala.run('trunc([[0.1, -0.1], [-0.1, 0.1]])')).toEqual([[0, -0], [-0, 0]])
-      expect(dvala.run('trunc([[0]])')).toEqual([[0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('trunc([1, 2, 3])', 'trunc([0.1, -0.1])', 'trunc([])', 'trunc([[1, 2], [3, 4]])')
     })
   })
 
@@ -757,19 +626,8 @@ describe('math functions', () => {
       expect(() => dvala.run('quot(1)')).toThrow(DvalaError)
       expect(() => dvala.run('quot(1, 2, 3)')).toThrow(DvalaError)
     })
-    it('should take the integer division of a vector', () => {
-      expect(dvala.run('quot([1, 2, 3], 2)')).toEqual([0, 1, 1])
-      expect(dvala.run('quot([1, 2, 3], [3, 2, 1])')).toEqual([0, 1, 3])
-      expect(dvala.run('quot([1], 2)')).toEqual([0])
-      expect(dvala.run('quot([], 2)')).toEqual([])
-      expect(() => dvala.run('quot([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('quot([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('quot([1], [])')).toThrowError(DvalaError)
-    })
-    it('should take the integer division of a matrix', () => {
-      expect(dvala.run('quot([[1, 2], [3, 4]], 2)')).toEqual([[0, 1], [1, 2]])
-      expect(dvala.run('quot([[1, 2], [3, 4]], [[4, 3], [2, 1]])')).toEqual([[0, 0], [1, 4]])
-      expect(dvala.run('quot([[1], [2]], 2)')).toEqual([[0], [1]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('quot([1, 2, 3], 2)', 'quot([1, 2, 3], [3, 2, 1])', 'quot([[1, 2], [3, 4]], 2)')
     })
   })
 
@@ -792,19 +650,8 @@ describe('math functions', () => {
       expect(() => dvala.run('mod(4, 0)')).toThrow(DvalaError)
       expect(() => dvala.run('mod(4, 0, 3)')).toThrow(DvalaError)
     })
-    it('should take the modulus of a vector', () => {
-      expect(dvala.run('mod([1, 2, 3], 2)')).toEqual([1, 0, 1])
-      expect(dvala.run('mod([1, 2, 3], [3, 2, 1])')).toEqual([1, 0, 0])
-      expect(dvala.run('mod([1], 2)')).toEqual([1])
-      expect(dvala.run('mod([], 2)')).toEqual([])
-      expect(() => dvala.run('mod([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('mod([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('mod([1], [])')).toThrowError(DvalaError)
-    })
-    it('should take the modulus of a matrix', () => {
-      expect(dvala.run('mod([[1, 2], [3, 4]], 2)')).toEqual([[1, 0], [1, 0]])
-      expect(dvala.run('mod([[1, 2], [3, 4]], [[4, 3], [2, 1]])')).toEqual([[1, 2], [1, 0]])
-      expect(dvala.run('mod([[1], [2]], 2)')).toEqual([[1], [0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('mod([1, 2, 3], 2)', 'mod([1, 2, 3], [3, 2, 1])', 'mod([[1, 2], [3, 4]], 2)')
     })
   })
 
@@ -821,19 +668,8 @@ describe('math functions', () => {
       expect(() => dvala.run('%(1)')).toThrow(DvalaError)
       expect(() => dvala.run('%(1, 2, 3)')).toThrow(DvalaError)
     })
-    it('should take the remainder of a vector', () => {
-      expect(dvala.run('%([1, 2, 3], 2)')).toEqual([1, 0, 1])
-      expect(dvala.run('%([1, 2, 3], [3, 2, 1])')).toEqual([1, 0, 0])
-      expect(dvala.run('%([1], 2)')).toEqual([1])
-      expect(dvala.run('%([], 2)')).toEqual([])
-      expect(() => dvala.run('%([1, 2], [3, 4, 5])')).toThrowError(DvalaError)
-      expect(() => dvala.run('%([], [1])')).toThrowError(DvalaError)
-      expect(() => dvala.run('%([1], [])')).toThrowError(DvalaError)
-    })
-    it('should take the remainder of a matrix', () => {
-      expect(dvala.run('%([[1, 2], [3, 4]], 2)')).toEqual([[1, 0], [1, 0]])
-      expect(dvala.run('%([[1, 2], [3, 4]], [[4, 3], [2, 1]])')).toEqual([[1, 2], [1, 0]])
-      expect(dvala.run('%([[1], [2]], 2)')).toEqual([[1], [0]])
+    it('rejects vectors and matrices', () => {
+      expectScalarOnly('%([1, 2, 3], 2)', '%([1, 2, 3], [3, 2, 1])', '%([[1, 2], [3, 4]], 2)')
     })
   })
 })

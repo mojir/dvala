@@ -451,9 +451,9 @@ describe('inference — builtin types', () => {
     expect(isSubtype(t, NumberType)).toBe(true)
   })
 
-  it('let result = (a) -> a + a; result([1, 2, 3]) infers Number[]', () => {
-    const t = inferAndExpand('let result = (a) -> a + a; result([1, 2, 3])')
-    expect(isSubtype(t, array(NumberType))).toBe(true)
+  it('let result = (a) -> a + a; result(3) infers Number', () => {
+    const t = inferAndExpand('let result = (a) -> a + a; result(3)')
+    expect(isSubtype(t, NumberType)).toBe(true)
   })
 })
 

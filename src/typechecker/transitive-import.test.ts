@@ -118,19 +118,19 @@ describe('typecheck — file imports', () => {
     expect(getHoverTypeStringAt(result, 0, hoverCol)).toBe('Number')
   })
 
-  it('hover on parameter in self-add lambda shows all viable overload shapes', () => {
+  it('hover on parameter in self-add lambda shows the scalar arithmetic shape', () => {
     const source = 'let result = (a) -> a + a;'
     const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
     const hoverCol = source.indexOf('(a)') + 1
 
-    expect(getHoverTypeStringAt(result, 0, hoverCol)).toBe('Number | Number[] | Number[][]')
+    expect(getHoverTypeStringAt(result, 0, hoverCol)).toBe('Number')
   })
 
-  it('hover on self-add callee at array call site shows selected overload', () => {
-    const source = 'let result = (a) -> a + a;\nresult([1, 2]);'
+  it('hover on self-add callee at scalar call site shows selected overload', () => {
+    const source = 'let result = (a) -> a + a;\nresult(2);'
     const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
 
-    expect(getHoverTypeStringAt(result, 1, 1)).toBe('(Number[]) -> Number[]')
+    expect(getHoverTypeStringAt(result, 1, 1)).toBe('(Number) -> Number')
   })
 
   it('hover on imported withLogging does not leak Never fields', () => {

@@ -960,6 +960,8 @@ Extensions that fit naturally into the set-theoretic foundation. None require ch
 
 Currently `inc` has type `((Number) -> Number) & ((Number[]) -> Number[])` — but `inc([1,2])` works at runtime even though `[1,2]` is not `Number`. Dvala broadcasts scalars element-wise. The type system needs a way to express "same shape in, same shape out" or "broadcastable" — possibly via a `Broadcastable<T>` type constructor or shape-polymorphic types.
 
+Note: this item may be removed rather than implemented. The current design direction under discussion is to redefine core math builtins as scalar-only in the runtime as well as the type system, and require explicit lifting through `map`, vector helpers, matrix helpers, or future explicit broadcasting utilities. If that direction is adopted, builtin broadcasting types are no longer needed for core math; any future broadcasting support should be modeled as an explicit library feature instead of implicit scalar math semantics.
+
 ### Object type variables
 
 Collection functions like `filter`, `map`, `reduce` work on objects too: `filter({a: 1, b: 2}, isOdd)`. Currently typed with array-only generics `(A[], (A) -> Boolean) -> A[]`. Need object variants: `({...}, (Unknown) -> Boolean) -> {...}` with structural subtyping.

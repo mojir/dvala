@@ -92,6 +92,36 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 
+  it('rejects unary core math on arrays', () => {
+    const result = dvala.typecheck('inc([1, 2, 3])')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('rejects variadic core arithmetic on arrays', () => {
+    const result = dvala.typecheck('+([1, 2, 3], 4)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('rejects binary core math on arrays', () => {
+    const result = dvala.typecheck('quot([1, 2, 3], 2)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('rejects rounding helpers on arrays', () => {
+    const result = dvala.typecheck('round([1.2, 2.3], 1)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('accepts min on a vector', () => {
+    const result = dvala.typecheck('min([1, 2, 3])')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('accepts max on a vector', () => {
+    const result = dvala.typecheck('max([1, 2, 3])')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   it('accepts documenting a user-defined function', () => {
     const result = dvala.typecheck('let add = ((a, b) -> a + b) withDoc "Adds two numbers."; doc(add)')
     expect(result.diagnostics).toHaveLength(0)
