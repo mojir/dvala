@@ -56,6 +56,17 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('rejects object map with mismatched keys', () => {
+    const result = dvala.typecheck('map({ a: 1 }, { b: 2 }, +)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('All objects must have the same keys')
+  })
+
+  it('rejects object map when callback cannot handle object values', () => {
+    const result = dvala.typecheck('map({ a: 1 }, { a: "x" }, +)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
   it('accepts reduce on objects', () => {
     const result = dvala.typecheck('reduce({ a: 1, b: 2 }, +, 0)')
     expect(result.diagnostics).toHaveLength(0)
@@ -85,6 +96,16 @@ describe('typecheck — end-to-end', () => {
   it('allows impossible destructured cases to fall through', () => {
     const result = dvala.typecheck('match 42 case [x] then x case _ then 0 end')
     expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects invalid object match defaults when the default is used', () => {
+    const result = dvala.typecheck('match {} case { a = "x" } then a + 1 end')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('rejects invalid array match defaults when the default is used', () => {
+    const result = dvala.typecheck('match [1] case [x, y = "x"] then x + y case _ then 0 end')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 })
 

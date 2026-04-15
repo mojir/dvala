@@ -794,6 +794,17 @@ export function inferExpr(
           ? getFunctionAlternatives(argTypes[0]!)
           : []
 
+        const runtimeAlignedObjectCollectionResult = inferObjectCollectionCall(
+          calleeNode,
+          argTypes,
+          ctx,
+          typeMap,
+        )
+        if (runtimeAlignedObjectCollectionResult) {
+          result = runtimeAlignedObjectCollectionResult
+          break
+        }
+
         if (handlerAlternatives.length > 0 && thunkAlternatives.length > 0
         && thunkAlternatives.every(thunk => thunk.params.length === 0 && thunk.restParam === undefined)) {
           const requiredBodyType = handlerAlternatives.length === 1
@@ -1012,7 +1023,7 @@ export function inferExpr(
             // case [x, y] / case {name, age} — destructure and bind when the
             // matched value shape supports the pattern. Impossible shapes fall
             // through to later cases instead of producing a type error.
-              if (!bindMatchCasePattern(pattern, matchType, caseEnv, typeMap)) {
+              if (!bindMatchCasePattern(pattern, matchType, caseEnv, ctx, typeMap)) {
                 continue
               }
               break
@@ -1942,7 +1953,131 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
   }
 }
 
-function bindMatchCasePattern(pattern: AstNode, type: Type, env: TypeEnv, typeMap: Map<number, Type>): boolean {
+function inferObjectCollectionCall(
+  calleeNode: AstNode,
+  argTypes: Type[],
+  ctx: InferenceContext,
+  typeMap: Map<number, Type>,
+): Type | null {
+  if (calleeNode[0] !== NodeTypes.Builtin) return null
+
+  const builtinName = calleeNode[1] as string
+  switch (builtinName) {
+    case 'filter':
+      return inferObjectFilterCall(calleeNode, argTypes, ctx, typeMap)
+    case 'map':
+      return inferObjectMapCall(calleeNode, argTypes, ctx, typeMap)
+    case 'reduce':
+      return inferObjectReduceCall(calleeNode, argTypes, ctx, typeMap)
+    default:
+      return null
+  }
+}
+
+function inferObjectFilterCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
+  if (argTypes.length !== 2) return null
+
+  const collectionType = expandType(argTypes[0]!)
+  if (collectionType.tag !== 'Record') return null
+
+  const valueType = collectionValueType(collectionType)
+  const predicateRet = ctx.freshVar()
+  constrain(ctx, argTypes[1]!, fn([valueType], predicateRet))
+  constrain(ctx, predicateRet, BooleanType)
+
+  const result: Type = { tag: 'Record', fields: new Map(), open: true }
+  const calleeNodeId = calleeNode[2]
+  if (calleeNodeId > 0) {
+    typeMap.set(calleeNodeId, fn([collectionType, fn([valueType], BooleanType)], result))
+  }
+  return result
+}
+
+function inferObjectMapCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
+  if (argTypes.length < 2) return null
+
+  const functionType = argTypes[argTypes.length - 1]!
+  const collectionTypes = argTypes.slice(0, -1).map(type => expandType(type))
+  if (collectionTypes.length === 0 || collectionTypes.some(type => type.tag !== 'Record')) {
+    return null
+  }
+
+  const records = collectionTypes as Extract<Type, { tag: 'Record' }>[]
+  assertCompatibleClosedRecordKeys(records)
+
+  const callbackParamTypes = records.map(collectionValueType)
+  const callbackRet = ctx.freshVar()
+  constrain(ctx, functionType, fn(callbackParamTypes, callbackRet))
+
+  const result = buildMappedRecordResult(records, callbackRet)
+  const calleeNodeId = calleeNode[2]
+  if (calleeNodeId > 0) {
+    typeMap.set(calleeNodeId, fn([...records, fn(callbackParamTypes, callbackRet)], result))
+  }
+  return result
+}
+
+function inferObjectReduceCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
+  if (argTypes.length !== 3) return null
+
+  const collectionType = expandType(argTypes[0]!)
+  if (collectionType.tag !== 'Record') return null
+
+  const reducerType = argTypes[1]!
+  const initialType = argTypes[2]!
+  const valueType = collectionValueType(collectionType)
+  const accType = ctx.freshVar()
+  constrain(ctx, initialType, accType)
+  constrain(ctx, reducerType, fn([accType, valueType], accType))
+
+  const calleeNodeId = calleeNode[2]
+  if (calleeNodeId > 0) {
+    typeMap.set(calleeNodeId, fn([collectionType, fn([accType, valueType], accType), initialType], accType))
+  }
+  return accType
+}
+
+function collectionValueType(recordType: Extract<Type, { tag: 'Record' }>): Type {
+  const fieldTypes = [...recordType.fields.values()]
+  return fieldTypes.length === 0 ? Unknown : union(...fieldTypes)
+}
+
+function assertCompatibleClosedRecordKeys(records: Extract<Type, { tag: 'Record' }>[]): void {
+  const closedRecords = records.filter(record => !record.open)
+  if (closedRecords.length < 2) return
+
+  const expectedKeys = [...closedRecords[0]!.fields.keys()].sort()
+  for (const record of closedRecords.slice(1)) {
+    const keys = [...record.fields.keys()].sort()
+    if (expectedKeys.length !== keys.length || expectedKeys.some((key, index) => key !== keys[index])) {
+      throw new TypeInferenceError(
+        `All objects must have the same keys. Expected: ${expectedKeys.join(', ')}. Found: ${keys.join(', ')}`,
+      )
+    }
+  }
+}
+
+function buildMappedRecordResult(records: Extract<Type, { tag: 'Record' }>[], valueType: Type): Type {
+  const allClosed = records.every(record => !record.open)
+  if (!allClosed) {
+    return { tag: 'Record', fields: new Map(), open: true }
+  }
+
+  const keys = [...records[0]!.fields.keys()]
+  return {
+    tag: 'Record',
+    fields: new Map(keys.map(key => [key, valueType])),
+    open: false,
+  }
+}
+
+function bindMatchCasePattern(
+  pattern: AstNode,
+  type: Type,
+  env: TypeEnv,
+  ctx: InferenceContext,
+  typeMap: Map<number, Type>,
+): boolean {
   const patternType = pattern[0] as string
   const expandedType = expandType(type)
 
@@ -1958,12 +2093,13 @@ function bindMatchCasePattern(pattern: AstNode, type: Type, env: TypeEnv, typeMa
 
   switch (patternType) {
     case 'symbol': {
-      const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
+      const [nameNode, defaultNode] = pattern[1] as [AstNode, AstNode | undefined]
       const name = nameNode[1] as string
-      env.bind(name, type)
+      const bindType = getPatternBindingType(type, defaultNode, env, ctx, typeMap)
+      env.bind(name, bindType)
       const nameNodeId = nameNode[2]
       if (nameNodeId > 0) {
-        typeMap.set(nameNodeId, type)
+        typeMap.set(nameNodeId, bindType)
       }
       return true
     }
@@ -1992,8 +2128,8 @@ function bindMatchCasePattern(pattern: AstNode, type: Type, env: TypeEnv, typeMa
         if (compatibleMembers.length === 0) return false
 
         for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
-          const fieldTypes = compatibleMembers.map(member => member.fields.get(fieldName) ?? Unknown)
-          if (!bindMatchCasePattern(fieldPattern, mergePatternTypes(fieldTypes), env, typeMap)) {
+          const fieldTypes = compatibleMembers.map(member => getRecordFieldPatternType(member, fieldName, fieldPattern))
+          if (!bindMatchCasePattern(fieldPattern, mergePatternTypes(fieldTypes), env, ctx, typeMap)) {
             return false
           }
         }
@@ -2005,8 +2141,8 @@ function bindMatchCasePattern(pattern: AstNode, type: Type, env: TypeEnv, typeMa
       }
 
       for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
-        const fieldType = expandedType.fields.get(fieldName) ?? Unknown
-        if (!bindMatchCasePattern(fieldPattern, fieldType, env, typeMap)) {
+        const fieldType = getRecordFieldPatternType(expandedType, fieldName, fieldPattern)
+        if (!bindMatchCasePattern(fieldPattern, fieldType, env, ctx, typeMap)) {
           return false
         }
       }
@@ -2026,7 +2162,7 @@ function bindMatchCasePattern(pattern: AstNode, type: Type, env: TypeEnv, typeMa
           const elementPattern = elements[i]
           if (!elementPattern) continue
           if ((elementPattern[0] as string) === 'rest') {
-            if (!bindMatchCasePattern(elementPattern, mergePatternTypes(compatibleMembers), env, typeMap)) {
+            if (!bindMatchCasePattern(elementPattern, mergePatternTypes(compatibleMembers), env, ctx, typeMap)) {
               return false
             }
             continue
@@ -2034,12 +2170,12 @@ function bindMatchCasePattern(pattern: AstNode, type: Type, env: TypeEnv, typeMa
 
           const elementTypes = compatibleMembers.map(member => {
             if (member.tag === 'Tuple') {
-              return member.elements[i] ?? Unknown
+              return getTupleElementPatternType(member, i, elementPattern)
             }
             return member.element
           })
 
-          if (!bindMatchCasePattern(elementPattern, mergePatternTypes(elementTypes), env, typeMap)) {
+          if (!bindMatchCasePattern(elementPattern, mergePatternTypes(elementTypes), env, ctx, typeMap)) {
             return false
           }
         }
@@ -2054,7 +2190,7 @@ function bindMatchCasePattern(pattern: AstNode, type: Type, env: TypeEnv, typeMa
         const elementPattern = elements[i]
         if (!elementPattern) continue
         if ((elementPattern[0] as string) === 'rest') {
-          if (!bindMatchCasePattern(elementPattern, expandedType, env, typeMap)) {
+          if (!bindMatchCasePattern(elementPattern, expandedType, env, ctx, typeMap)) {
             return false
           }
           continue
@@ -2062,12 +2198,12 @@ function bindMatchCasePattern(pattern: AstNode, type: Type, env: TypeEnv, typeMa
 
         let elementType: Type = Unknown
         if (expandedType.tag === 'Tuple') {
-          elementType = expandedType.elements[i] ?? Unknown
+          elementType = getTupleElementPatternType(expandedType, i, elementPattern)
         } else if (expandedType.tag === 'Array') {
           elementType = expandedType.element
         }
 
-        if (!bindMatchCasePattern(elementPattern, elementType, env, typeMap)) {
+        if (!bindMatchCasePattern(elementPattern, elementType, env, ctx, typeMap)) {
           return false
         }
       }
@@ -2130,9 +2266,53 @@ function mergePatternTypes(types: Type[]): Type {
   return types.length === 1 ? types[0]! : union(...types)
 }
 
+function getPatternBindingType(
+  type: Type,
+  defaultNode: AstNode | undefined,
+  env: TypeEnv,
+  ctx: InferenceContext,
+  typeMap: Map<number, Type>,
+): Type {
+  if (!defaultNode) return type
+
+  const defaultType = inferExpr(defaultNode, ctx, env, typeMap)
+  if (type.tag === 'Never') return defaultType
+  return union(type, defaultType)
+}
+
 function patternHasDefault(pattern: AstNode): boolean {
   const payload = pattern[1]
   return Array.isArray(payload) && payload[1] !== undefined
+}
+
+function getRecordFieldPatternType(
+  type: Extract<Type, { tag: 'Record' }>,
+  fieldName: string,
+  pattern: AstNode,
+): Type {
+  const fieldType = type.fields.get(fieldName)
+  if (fieldType !== undefined) {
+    return fieldType
+  }
+
+  if (!type.open && patternHasDefault(pattern)) {
+    return Never
+  }
+
+  return Unknown
+}
+
+function getTupleElementPatternType(type: Extract<Type, { tag: 'Tuple' }>, index: number, pattern: AstNode): Type {
+  const elementType = type.elements[index]
+  if (elementType !== undefined) {
+    return elementType
+  }
+
+  if (patternHasDefault(pattern)) {
+    return Never
+  }
+
+  return Unknown
 }
 
 function recordTypeSupportsMatchPattern(
