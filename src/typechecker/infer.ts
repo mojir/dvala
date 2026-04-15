@@ -2298,6 +2298,7 @@ function subtractSequenceProductType(from: SequenceType, subtract: SequenceType)
  */
 function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: InferenceContext, typeMap?: Map<number, Type>): void {
   const patternType = pattern[0] as string
+  const expandedType = expandType(type)
   switch (patternType) {
     case 'symbol': {
       // ["symbol", [["Sym", name, id], defaultNode | null], id]
@@ -2338,19 +2339,25 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
           // Rest element: ...rest gets the array type
           const [restName] = elem[1] as [string, AstNode | undefined]
           if (restName && restName !== 'rest') {
-            env.bind(restName, type) // conservative: bind rest to the full type
+            if (expandedType.tag === 'Array' || expandedType.tag === 'Tuple' || expandedType.tag === 'Sequence') {
+              env.bind(restName, getArrayPatternRestType(expandedType, i))
+            } else {
+              env.bind(restName, type)
+            }
           }
         } else if (ctx) {
           // Each element gets a fresh variable constrained by the array element type
           const elemVar = ctx.freshVar()
-          if (type.tag === 'Tuple' && i < type.elements.length) {
-            constrain(ctx, type.elements[i]!, elemVar)
-          } else if (type.tag === 'Array') {
-            constrain(ctx, type.element, elemVar)
+          if (expandedType.tag === 'Array' || expandedType.tag === 'Tuple' || expandedType.tag === 'Sequence') {
+            constrain(ctx, getArrayElementPatternType(expandedType, i, elem), elemVar)
           }
           bindPattern(elem, elemVar, env, ctx, typeMap)
         } else {
-          bindPattern(elem, Unknown, env, undefined, typeMap)
+          if (expandedType.tag === 'Array' || expandedType.tag === 'Tuple' || expandedType.tag === 'Sequence') {
+            bindPattern(elem, getArrayElementPatternType(expandedType, i, elem), env, undefined, typeMap)
+          } else {
+            bindPattern(elem, Unknown, env, undefined, typeMap)
+          }
         }
       }
       break

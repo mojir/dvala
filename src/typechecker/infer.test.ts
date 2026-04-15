@@ -510,6 +510,11 @@ describe('inference — array destructuring', () => {
     // [1, 2] is inferred as an array, and a gets the element type
     expect(() => inferType('let [a, b] = array(1, 2); a')).not.toThrow()
   })
+
+  it('let [head, ...tail] = [1, 2, 3]; count(tail) infers Number', () => {
+    const t = inferAndExpand('let [head, ...tail] = [1, 2, 3]; count(tail)')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------

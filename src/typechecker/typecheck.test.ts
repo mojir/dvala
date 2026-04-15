@@ -138,6 +138,11 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('accepts rest bindings in let array destructuring', () => {
+    const result = dvala.typecheck('let [head, ...tail] = [1, 2, 3]; count(tail)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   it('accepts typed object destructuring in match cases', () => {
     const result = dvala.typecheck('match { x: 1, y: 2 } case { x, y } then x + y end')
     expect(result.diagnostics).toHaveLength(0)
