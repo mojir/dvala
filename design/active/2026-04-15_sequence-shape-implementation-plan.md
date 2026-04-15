@@ -1,11 +1,35 @@
 # Sequence-Shape Implementation Plan
 
-**Status:** Draft
+**Status:** Implemented
 **Created:** 2026-04-15
 
 ## Goal
 
 Turn the sequence-shape design into a concrete implementation plan for `feat/type-system-step5`, with small enough slices that each stage can be validated independently and reverted safely if needed.
+
+## Outcome
+
+This plan has now been implemented on `feat/type-system-step5`.
+
+Landed slices:
+
+1. `3d8f84ae` — `feat: add sequence type scaffolding`
+2. `f391fa1a` — `feat: add sequence subtype support`
+3. `76d065de` — `feat: use sequences in array match analysis`
+4. `14b395ea` — `feat: preserve rest bindings in destructuring`
+5. `361821ad` — `feat: respect builtin shadowing in typechecker`
+6. `0b423ee9` — `feat: harden defaulted array match diagnostics`
+
+Validation completed for the shipped implementation:
+
+- `npm run check`
+- `npm run test:e2e`
+
+What remains intentionally deferred:
+
+- prettier user-facing rendering for irreducible residual `Sequence` diagnostics
+- more precise subtraction through guards on non-symbol destructuring patterns
+- extracting sequence analysis into a dedicated helper module if `infer.ts` grows further
 
 ---
 
@@ -52,6 +76,8 @@ This keeps the risky logic changes late and gives good rollback points.
 
 ## Phase 1: Type Algebra and Normalization
 
+**Status:** Implemented
+
 ## Goal
 
 Add `Sequence` to the internal type system without changing behavior yet.
@@ -79,6 +105,8 @@ Add `Sequence` to the internal type system without changing behavior yet.
 - No expected behavioral changes in existing typechecker tests.
 
 ## Phase 2: Sequence-Aware Subtyping and Simplification
+
+**Status:** Implemented
 
 ## Goal
 
@@ -114,6 +142,8 @@ Make `Sequence` semantically meaningful and interoperable with `Array` and `Tupl
   - `Sequence([], Number, 0, undefined)` collapses to `Number[]`
 
 ## Phase 3: Match Analysis on Sequences
+
+**Status:** Implemented
 
 ## Goal
 
@@ -154,6 +184,8 @@ Switch array-pattern match reasoning from `Array | Tuple` heuristics to proper s
   - exhaustive prefix coverage without wildcard where representable
 
 ## Phase 4: Defaults, Diagnostics, and Hardening
+
+**Status:** Implemented
 
 ## Goal
 
@@ -229,6 +261,8 @@ Mitigation:
 
 ## Completion Criteria
 
+Status: met.
+
 This plan is complete when all of the following are true:
 
 - `Sequence` exists as an internal representation
@@ -239,14 +273,19 @@ This plan is complete when all of the following are true:
 
 ## Open Questions
 
+These remain open follow-ups rather than blockers for Step 5.
+
 - Should `Sequence` live permanently in `Type`, or should it be desugared away before the type map is exposed to IDE features?
 - Should sequence rendering be hidden entirely from user diagnostics unless no tuple/array form is possible?
 - Is it worth introducing a small helper module just for sequence normalization/subtraction to keep `infer.ts` from growing further?
 
-## Implementation Plan
+## Implementation Summary
 
-1. Land `Sequence` representation and normalization helpers with no behavior change.
-2. Add sequence-aware subtype and simplify support.
-3. Rework array-pattern match analysis to use sequences.
-4. Add defaults/rest-pattern support and harden diagnostics.
-5. Run full validation and then decide whether to keep the work as one branch or split it into multiple PRs.
+The branch now includes:
+
+1. internal `Sequence` representation and normalization helpers
+2. sequence-aware subtype and simplify support
+3. sequence-backed array-pattern narrowing and subtraction
+4. rest-binding preservation in destructuring and match bodies
+5. defaulted array pattern expansion for redundancy/exhaustiveness diagnostics
+6. builtin shadowing fixes required to make match-body rest bindings resolve consistently with runtime behavior

@@ -1,11 +1,28 @@
 # Sequence-Shape Types for Match Analysis
 
-**Status:** Draft
+**Status:** Adopted and implemented
 **Created:** 2026-04-15
 
 ## Goal
 
 Introduce an internal type representation for sequence shapes that can express positional constraints, length constraints, and residual array spaces well enough to support true homogeneous-array subtraction during match exhaustiveness and redundancy analysis.
+
+## Implementation Result
+
+This design has been adopted for the Step 5 array-match work.
+
+Implemented outcomes:
+
+- `Sequence` now exists as an internal type representation in the type algebra
+- tuple/array/sequence subtyping and simplification normalize through the sequence model
+- array-pattern narrowing and subtraction in match analysis run through `Sequence`
+- rest bindings preserve tail shapes in destructuring and match cases
+- defaulted array patterns are expanded into explicit length variants for redundancy and exhaustiveness diagnostics
+
+Still intentionally deferred:
+
+- user-facing rendering polish for residual sequence diagnostics that cannot collapse back to tuple/array forms
+- stronger subtraction through guards on non-symbol destructuring patterns
 
 ---
 
@@ -37,6 +54,8 @@ The problem is structural:
 So any attempt to do true subtraction with only `Array<T>` either becomes unsound or immediately collapses back to the original type.
 
 ## Proposal
+
+Implemented as described below.
 
 Add an internal `Sequence` type that generalizes both tuples and arrays.
 

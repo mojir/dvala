@@ -1074,9 +1074,10 @@ Breaking changes needed before the type system is meaningful. Without these, the
 Current status:
 
 - record-side product subtraction and finite open-record exhaustiveness are implemented
-- homogeneous-array subtraction still needs a richer internal sequence representation
-- follow-up design: [2026-04-15_sequence-shape-types.md](2026-04-15_sequence-shape-types.md)
-- implementation plan: [2026-04-15_sequence-shape-implementation-plan.md](2026-04-15_sequence-shape-implementation-plan.md)
+- homogeneous-array subtraction now runs through an internal `Sequence` representation
+- sequence-aware subtype/simplify, array-pattern subtraction, rest-binding preservation, and defaulted-array diagnostics are implemented
+- follow-up design record: [2026-04-15_sequence-shape-types.md](2026-04-15_sequence-shape-types.md)
+- implementation record: [2026-04-15_sequence-shape-implementation-plan.md](2026-04-15_sequence-shape-implementation-plan.md)
 
 ### Step 5: Atom and tagged union typing
 
