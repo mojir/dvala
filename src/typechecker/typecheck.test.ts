@@ -40,6 +40,26 @@ describe('typecheck — end-to-end', () => {
     const result = dvala.typecheck('let f = (a, b) -> a + b; f(1, 2)')
     expect(result.diagnostics).toHaveLength(0)
   })
+
+  it('accepts filter on objects', () => {
+    const result = dvala.typecheck('filter({ a: 1, b: 2 }, isOdd)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('accepts map on objects', () => {
+    const result = dvala.typecheck('map({ a: 1, b: 2 }, inc)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('accepts two-object map', () => {
+    const result = dvala.typecheck('map({ a: 1, b: 2 }, { a: 10, b: 20 }, +)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('accepts reduce on objects', () => {
+    const result = dvala.typecheck('reduce({ a: 1, b: 2 }, +, 0)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
 })
 
 // ---------------------------------------------------------------------------

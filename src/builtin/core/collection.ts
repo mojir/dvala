@@ -50,7 +50,7 @@ export const collectionNormalExpression: BuiltinNormalExpressions = {
     evaluate: () => { throw new Error('filter is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
-      type: '(A[], (A) -> Boolean) -> A[]',
+      type: '((A[], (A) -> Boolean) -> A[]) & (({...}, (Unknown) -> Boolean) -> {...})',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -73,11 +73,11 @@ filter(
   [5, 10, 15, 20],
   -> $ > 10
 )`,
-        { code: `
+        `
 filter(
   { a: 1, b: 2 },
   isOdd
-)`, noCheck: true },
+)`,
       ],
     },
   },
@@ -85,7 +85,7 @@ filter(
     evaluate: () => { throw new Error('map is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
-      type: '((A[], (A) -> B) -> B[]) & ((A[], A[], (A, A) -> B) -> B[])',
+      type: '((A[], (A) -> B) -> B[]) & ((A[], A[], (A, A) -> B) -> B[]) & (({...}, (Unknown) -> Unknown) -> {...}) & (({...}, {...}, (Unknown, Unknown) -> Unknown) -> {...})',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -103,8 +103,8 @@ filter(
         'map(["Albert", "Mojir", 42], str)',
         'map([1, 2, 3], inc)',
         'map([1, 2, 3], [1, 10, 100], *)',
-        { code: 'map({ a: 1, b: 2 }, inc)', noCheck: true },
-        { code: 'map({ a: 1, b: 2 }, { a: 10, b: 20 }, +)', noCheck: true },
+        'map({ a: 1, b: 2 }, inc)',
+        'map({ a: 1, b: 2 }, { a: 10, b: 20 }, +)',
       ],
     },
   },
@@ -112,7 +112,7 @@ filter(
     evaluate: () => { throw new Error('reduce is implemented in Dvala') },
     arity: toFixedArity(3),
     docs: {
-      type: '(A[], (B, A) -> B, B) -> B',
+      type: '((A[], (B, A) -> B, B) -> B) & (({...}, (B, Unknown) -> B, B) -> B)',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -126,7 +126,7 @@ filter(
       examples: [
         'reduce([1, 2, 3], +, 0)',
         'reduce([], +, 0)',
-        { code: 'reduce({ a: 1, b: 2 }, +, 0)', noCheck: true },
+        'reduce({ a: 1, b: 2 }, +, 0)',
         `
 reduce(
   [1, 2, 3, 4, 5, 6, 7, 8, 9],
