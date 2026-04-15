@@ -648,6 +648,11 @@ export function inferExpr(
       // --- Builtin reference — look up type from parsed docs ---
       case NodeTypes.Builtin: {
         const builtinName = payload as string
+        const shadowed = lookupShadowedBuiltin(env, builtinName)
+        if (shadowed) {
+          result = freshen(ctx, shadowed)
+          break
+        }
         const info = getBuiltinType(builtinName)
         // Freshen type variables from the annotation so each use gets fresh copies.
         // Without this, type vars from polymorphic signatures (A[], (A)->B) -> B[]
@@ -812,6 +817,7 @@ export function inferExpr(
           calleeNode,
           argTypes,
           ctx,
+          env,
           typeMap,
         )
         if (runtimeAlignedCollectionResult) {
@@ -989,7 +995,7 @@ export function inferExpr(
         const branchTypes: Type[] = []
         for (const [pattern, body, guard] of cases) {
           const caseEnv = env.child()
-          const { matchedType, consumedType } = analyzeMatchCase(pattern, remainingType, guard)
+          const { matchedType, consumedType } = analyzeMatchCase(pattern, remainingType, guard, env)
 
           if (matchedType.tag === 'Never') {
             if (shouldWarnRedundantMatchCase(pattern, remainingType, matchSpace)) {
@@ -1564,6 +1570,10 @@ function getFunctionAlternatives(type: Type): Extract<Type, { tag: 'Function' }>
   return []
 }
 
+function lookupShadowedBuiltin(env: TypeEnv, name: string): Type | undefined {
+  return env.lookup(name)
+}
+
 function resolveHandlerCarrier(type: Type, visited = new Set<string>()): Type {
   return resolveCallableCarrier(type, visited)
 }
@@ -1829,7 +1839,7 @@ function isConstrainedFunctionArityCompatible(
  * Recognizes patterns like `isNumber(n)` → returns NumberType.
  * Uses the builtin type guard info from the type registry.
  */
-function extractGuardNarrowing(guard: AstNode, boundName: string): Type | null {
+function extractGuardNarrowing(guard: AstNode, boundName: string, env: TypeEnv): Type | null {
   // Guard must be a Call to a builtin: ["Call", [["Builtin", name, id], [["Sym", boundName, id]]], id]
   if (guard[0] !== NodeTypes.Call) return null
   const [calleeNode, argNodes] = guard[1] as [AstNode, AstNode[]]
@@ -1842,6 +1852,7 @@ function extractGuardNarrowing(guard: AstNode, boundName: string): Type | null {
 
   // Look up type guard info for the builtin
   const builtinName = calleeNode[1] as string
+  if (lookupShadowedBuiltin(env, builtinName)) return null
   const info = getBuiltinType(builtinName)
   if (info.guardType) {
     return info.guardType
@@ -1855,7 +1866,7 @@ interface MatchCaseAnalysis {
   consumedType: Type
 }
 
-function analyzeMatchCase(pattern: AstNode, candidateType: Type, guard: AstNode | null): MatchCaseAnalysis {
+function analyzeMatchCase(pattern: AstNode, candidateType: Type, guard: AstNode | null, env: TypeEnv): MatchCaseAnalysis {
   const patternType = pattern[0] as string
   const matchedByPattern = matchedTypeForPattern(pattern, candidateType)
   if (matchedByPattern.tag === 'Never') {
@@ -1868,7 +1879,7 @@ function analyzeMatchCase(pattern: AstNode, candidateType: Type, guard: AstNode 
 
   if (patternType === 'symbol') {
     const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
-    const guardNarrow = extractGuardNarrowing(guard, nameNode[1] as string)
+    const guardNarrow = extractGuardNarrowing(guard, nameNode[1] as string, env)
     if (guardNarrow) {
       const narrowed = intersectMatchTypes(matchedByPattern, guardNarrow)
       return {
@@ -2379,11 +2390,13 @@ function inferCollectionCall(
   calleeNode: AstNode,
   argTypes: Type[],
   ctx: InferenceContext,
+  env: TypeEnv,
   typeMap: Map<number, Type>,
 ): Type | null {
   if (calleeNode[0] !== NodeTypes.Builtin) return null
 
   const builtinName = calleeNode[1] as string
+  if (lookupShadowedBuiltin(env, builtinName)) return null
   switch (builtinName) {
     case 'map':
       return inferCollectionMapCall(calleeNode, argTypes, ctx, typeMap)

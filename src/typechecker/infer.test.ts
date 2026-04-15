@@ -511,6 +511,11 @@ describe('inference — array destructuring', () => {
     expect(() => inferType('let [a, b] = array(1, 2); a')).not.toThrow()
   })
 
+  it('local bindings can shadow builtin-tagged names', () => {
+    const t = inferAndExpand('let rest = [1, 2]; count(rest)')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
   it('let [head, ...tail] = [1, 2, 3]; count(tail) infers Number', () => {
     const t = inferAndExpand('let [head, ...tail] = [1, 2, 3]; count(tail)')
     expect(isSubtype(t, NumberType)).toBe(true)
@@ -560,6 +565,11 @@ describe('inference — match narrowing', () => {
 
   it('match with array destructuring pattern', () => {
     const t = inferAndExpand('let pair = [1, 2]; match pair case [x, y] then x + y end')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('match rest bindings remain usable as arrays in branch bodies', () => {
+    const t = inferAndExpand('let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then count(rest) case _ then 0 end')
     expect(isSubtype(t, NumberType)).toBe(true)
   })
 

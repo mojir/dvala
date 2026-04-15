@@ -138,6 +138,16 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('accepts references to bindings that shadow builtin-tagged names', () => {
+    const result = dvala.typecheck('let rest = [1, 2]; count(rest)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('accepts rest bindings in match array destructuring', () => {
+    const result = dvala.typecheck('let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then count(rest) case _ then 0 end')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   it('accepts rest bindings in let array destructuring', () => {
     const result = dvala.typecheck('let [head, ...tail] = [1, 2, 3]; count(tail)')
     expect(result.diagnostics).toHaveLength(0)
