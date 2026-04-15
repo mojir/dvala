@@ -1007,13 +1007,13 @@ export function inferExpr(
             case 'wildcard':
             // _ — matches everything, no narrowing
               break
+            case 'array':
             case 'object': {
-            // case {name, age} — destructure and bind
-              const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
-              for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
-                const fieldVar = ctx.freshVar()
-                constrain(ctx, matchType, { tag: 'Record', fields: new Map([[fieldName, fieldVar]]), open: true })
-                bindPattern(fieldPattern, fieldVar, caseEnv, ctx, typeMap)
+            // case [x, y] / case {name, age} — destructure and bind when the
+            // matched value shape supports the pattern. Impossible shapes fall
+            // through to later cases instead of producing a type error.
+              if (!bindMatchCasePattern(pattern, matchType, caseEnv, typeMap)) {
+                continue
               }
               break
             }
@@ -1940,6 +1940,227 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
     default:
       break
   }
+}
+
+function bindMatchCasePattern(pattern: AstNode, type: Type, env: TypeEnv, typeMap: Map<number, Type>): boolean {
+  const patternType = pattern[0] as string
+  const expandedType = expandType(type)
+
+  if (type.tag === 'Var' && expandedType.tag === 'Never') {
+    bindUnknownPattern(pattern, env, typeMap)
+    return true
+  }
+
+  if (expandedType.tag === 'Unknown') {
+    bindUnknownPattern(pattern, env, typeMap)
+    return true
+  }
+
+  switch (patternType) {
+    case 'symbol': {
+      const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
+      const name = nameNode[1] as string
+      env.bind(name, type)
+      const nameNodeId = nameNode[2]
+      if (nameNodeId > 0) {
+        typeMap.set(nameNodeId, type)
+      }
+      return true
+    }
+
+    case 'wildcard':
+    case 'literal':
+      return true
+
+    case 'rest': {
+      const [restName] = pattern[1] as [string, AstNode | undefined]
+      if (restName) {
+        env.bind(restName, type)
+      }
+      return true
+    }
+
+    case 'object': {
+      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+
+      if (expandedType.tag === 'Union') {
+        const compatibleMembers = expandedType.members.filter(
+          (member): member is Extract<Type, { tag: 'Record' }> => (
+            member.tag === 'Record' && recordTypeSupportsMatchPattern(fieldsObj, member)
+          ),
+        )
+        if (compatibleMembers.length === 0) return false
+
+        for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+          const fieldTypes = compatibleMembers.map(member => member.fields.get(fieldName) ?? Unknown)
+          if (!bindMatchCasePattern(fieldPattern, mergePatternTypes(fieldTypes), env, typeMap)) {
+            return false
+          }
+        }
+        return true
+      }
+
+      if (expandedType.tag !== 'Record' || !recordTypeSupportsMatchPattern(fieldsObj, expandedType)) {
+        return false
+      }
+
+      for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+        const fieldType = expandedType.fields.get(fieldName) ?? Unknown
+        if (!bindMatchCasePattern(fieldPattern, fieldType, env, typeMap)) {
+          return false
+        }
+      }
+      return true
+    }
+
+    case 'array': {
+      const [elements] = pattern[1] as [AstNode[], AstNode | undefined]
+
+      if (expandedType.tag === 'Union') {
+        const compatibleMembers = expandedType.members.filter(
+          (member): member is Extract<Type, { tag: 'Array' | 'Tuple' }> => arrayTypeSupportsMatchPattern(elements, member),
+        )
+        if (compatibleMembers.length === 0) return false
+
+        for (let i = 0; i < elements.length; i++) {
+          const elementPattern = elements[i]
+          if (!elementPattern) continue
+          if ((elementPattern[0] as string) === 'rest') {
+            if (!bindMatchCasePattern(elementPattern, mergePatternTypes(compatibleMembers), env, typeMap)) {
+              return false
+            }
+            continue
+          }
+
+          const elementTypes = compatibleMembers.map(member => {
+            if (member.tag === 'Tuple') {
+              return member.elements[i] ?? Unknown
+            }
+            return member.element
+          })
+
+          if (!bindMatchCasePattern(elementPattern, mergePatternTypes(elementTypes), env, typeMap)) {
+            return false
+          }
+        }
+        return true
+      }
+
+      if (!arrayTypeSupportsMatchPattern(elements, expandedType)) {
+        return false
+      }
+
+      for (let i = 0; i < elements.length; i++) {
+        const elementPattern = elements[i]
+        if (!elementPattern) continue
+        if ((elementPattern[0] as string) === 'rest') {
+          if (!bindMatchCasePattern(elementPattern, expandedType, env, typeMap)) {
+            return false
+          }
+          continue
+        }
+
+        let elementType: Type = Unknown
+        if (expandedType.tag === 'Tuple') {
+          elementType = expandedType.elements[i] ?? Unknown
+        } else if (expandedType.tag === 'Array') {
+          elementType = expandedType.element
+        }
+
+        if (!bindMatchCasePattern(elementPattern, elementType, env, typeMap)) {
+          return false
+        }
+      }
+      return true
+    }
+
+    default:
+      return true
+  }
+}
+
+function bindUnknownPattern(pattern: AstNode, env: TypeEnv, typeMap: Map<number, Type>): void {
+  const patternType = pattern[0] as string
+
+  switch (patternType) {
+    case 'symbol': {
+      const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
+      const name = nameNode[1] as string
+      env.bind(name, Unknown)
+      const nameNodeId = nameNode[2]
+      if (nameNodeId > 0) {
+        typeMap.set(nameNodeId, Unknown)
+      }
+      break
+    }
+
+    case 'object': {
+      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      for (const fieldPattern of Object.values(fieldsObj)) {
+        bindUnknownPattern(fieldPattern, env, typeMap)
+      }
+      break
+    }
+
+    case 'array': {
+      const [elements] = pattern[1] as [AstNode[], AstNode | undefined]
+      for (const elementPattern of elements) {
+        if (elementPattern) {
+          bindUnknownPattern(elementPattern, env, typeMap)
+        }
+      }
+      break
+    }
+
+    case 'rest': {
+      const [restName] = pattern[1] as [string, AstNode | undefined]
+      if (restName) {
+        env.bind(restName, Unknown)
+      }
+      break
+    }
+
+    default:
+      break
+  }
+}
+
+function mergePatternTypes(types: Type[]): Type {
+  if (types.length === 0) return Unknown
+  return types.length === 1 ? types[0]! : union(...types)
+}
+
+function patternHasDefault(pattern: AstNode): boolean {
+  const payload = pattern[1]
+  return Array.isArray(payload) && payload[1] !== undefined
+}
+
+function recordTypeSupportsMatchPattern(
+  fieldsObj: Record<string, AstNode>,
+  type: Extract<Type, { tag: 'Record' }>,
+): boolean {
+  for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+    if (!type.fields.has(fieldName) && !type.open && !patternHasDefault(fieldPattern)) {
+      return false
+    }
+  }
+  return true
+}
+
+function arrayTypeSupportsMatchPattern(elements: AstNode[], type: Type): boolean {
+  if (type.tag === 'Array') return true
+  if (type.tag !== 'Tuple') return false
+
+  for (let i = 0; i < elements.length; i++) {
+    const elementPattern = elements[i]
+    if (!elementPattern) continue
+    if ((elementPattern[0] as string) === 'rest') return true
+    if (i >= type.elements.length && !patternHasDefault(elementPattern)) {
+      return false
+    }
+  }
+
+  return true
 }
 
 /**

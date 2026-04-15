@@ -71,6 +71,21 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('not a function')
   })
+
+  it('accepts typed array destructuring in match cases', () => {
+    const result = dvala.typecheck('match [1, 2] case [x, y] then x + y end')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('accepts typed object destructuring in match cases', () => {
+    const result = dvala.typecheck('match { x: 1, y: 2 } case { x, y } then x + y end')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('allows impossible destructured cases to fall through', () => {
+    const result = dvala.typecheck('match 42 case [x] then x case _ then 0 end')
+    expect(result.diagnostics).toHaveLength(0)
+  })
 })
 
 // ---------------------------------------------------------------------------

@@ -543,6 +543,21 @@ describe('inference — match narrowing', () => {
     expect(isSubtype(t, NumberType)).toBe(true)
   })
 
+  it('match with array destructuring pattern', () => {
+    const t = inferAndExpand('let pair = [1, 2]; match pair case [x, y] then x + y end')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('match destructuring ignores impossible array branches', () => {
+    const t = inferAndExpand('match 42 case [x] then x case _ then 0 end')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
+  it('match destructuring ignores impossible object branches', () => {
+    const t = inferAndExpand('match 42 case {x} then x case _ then 0 end')
+    expect(isSubtype(t, NumberType)).toBe(true)
+  })
+
   it('match with mixed branch types returns union', () => {
     const t = inferAndExpand('match 1 case 0 then "zero" case _ then 42 end')
     // Result is "zero" | 42, which is String | Number
