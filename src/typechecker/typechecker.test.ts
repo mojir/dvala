@@ -504,6 +504,13 @@ describe('subtyping — tuples', () => {
       array(union(NumberType, StringType)),
     )).toBe(true)
   })
+
+  it('[Number, String] <: Sequence<[Number, String], ...Never[], len=2..2>', () => {
+    expect(isSubtype(
+      tuple([NumberType, StringType]),
+      sequence([NumberType, StringType], Never),
+    )).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -521,6 +528,44 @@ describe('subtyping — arrays', () => {
 
   it('Number[] </: String[]', () => {
     expect(isSubtype(array(NumberType), array(StringType))).toBe(false)
+  })
+
+  it('42[] <: Sequence<[], ...Number[], len=0..>', () => {
+    expect(isSubtype(array(literal(42)), sequence([], NumberType, 0))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — sequences
+// ---------------------------------------------------------------------------
+
+describe('subtyping — sequences', () => {
+  it('exact sequences subtype matching wider element types', () => {
+    expect(isSubtype(
+      sequence([literal(42), literal('hi')], Never),
+      sequence([NumberType, StringType], Never),
+    )).toBe(true)
+  })
+
+  it('prefix-constrained sequences subtype homogeneous arrays when every position fits', () => {
+    expect(isSubtype(
+      sequence([NumberType], NumberType, 1),
+      array(NumberType),
+    )).toBe(true)
+  })
+
+  it('sequence length intervals must be contained', () => {
+    expect(isSubtype(
+      sequence([], NumberType, 0),
+      sequence([], NumberType, 1),
+    )).toBe(false)
+  })
+
+  it('sequence prefixes must respect target element types', () => {
+    expect(isSubtype(
+      sequence([StringType], NumberType, 1),
+      array(NumberType),
+    )).toBe(false)
   })
 })
 
@@ -632,6 +677,32 @@ describe('simplify', () => {
   it('Number & 42 → 42 (narrow supertype in intersection)', () => {
     const t = simplify(inter(NumberType, literal(42)))
     expect(typeEquals(t, literal(42))).toBe(true)
+  })
+
+  it('exact Sequence simplifies to tuple', () => {
+    const t = simplify(sequence([NumberType, StringType], Never))
+    expect(typeEquals(t, tuple([NumberType, StringType]))).toBe(true)
+  })
+
+  it('open-ended homogeneous Sequence simplifies to array', () => {
+    const t = simplify(sequence([], NumberType, 0))
+    expect(typeEquals(t, array(NumberType))).toBe(true)
+  })
+
+  it('Sequence with impossible length interval simplifies to Never', () => {
+    const t = simplify({
+      tag: 'Sequence',
+      prefix: [NumberType],
+      rest: NumberType,
+      minLength: 2,
+      maxLength: 1,
+    })
+    expect(typeEquals(t, Never)).toBe(true)
+  })
+
+  it('Sequence with Never in its prefix simplifies to Never', () => {
+    const t = simplify(sequence([Never], NumberType, 1))
+    expect(typeEquals(t, Never)).toBe(true)
   })
 })
 

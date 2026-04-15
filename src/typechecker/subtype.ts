@@ -16,8 +16,8 @@
  * - Negation: S <: !T iff S & T = Never (S and T are disjoint)
  */
 
-import type { FunctionType, Type, PrimitiveName } from './types'
-import { functionAcceptsArity, getFunctionParamType, typeEquals, isEffectSubset } from './types'
+import type { FunctionType, SequenceType, Type, PrimitiveName } from './types'
+import { functionAcceptsArity, getFunctionParamType, typeEquals, isEffectSubset, toSequenceType } from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -115,6 +115,12 @@ function check(s: Type, t: Type, visited: Set<string>): boolean {
   // --- Type variables: check bounds (Step 2 will extend this) ---
   if (s.tag === 'Var' || t.tag === 'Var') return false
 
+  const sourceSequence = toSequenceType(s)
+  const targetSequence = toSequenceType(t)
+  if (sourceSequence && targetSequence) {
+    return checkSequenceSubtype(sourceSequence, targetSequence, visited)
+  }
+
   // --- Same-tag structural checks ---
   return checkStructural(s, t, visited)
 }
@@ -189,22 +195,6 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
     return paramsOk && retOk && effectsOk
   }
 
-  // Tuple: element-wise covariant, same length
-  if (s.tag === 'Tuple' && t.tag === 'Tuple') {
-    if (s.elements.length !== t.elements.length) return false
-    return s.elements.every((se, i) => check(se, t.elements[i]!, visited))
-  }
-
-  // Tuple <: Array: all tuple elements <: array element type
-  if (s.tag === 'Tuple' && t.tag === 'Array') {
-    return s.elements.every(e => check(e, t.element, visited))
-  }
-
-  // Array <: Array: covariant element type
-  if (s.tag === 'Array' && t.tag === 'Array') {
-    return check(s.element, t.element, visited)
-  }
-
   // Record: width + depth subtyping
   // {name: String, age: Number} <: {name: String} (more fields is subtype)
   if (s.tag === 'Record' && t.tag === 'Record') {
@@ -228,6 +218,20 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
 
   // No match — not a subtype
   return false
+}
+
+function checkSequenceSubtype(s: SequenceType, t: SequenceType, visited: Set<string>): boolean {
+  if (!isLengthIntervalContained(s, t)) return false
+
+  const relevantPrefixLength = Math.max(s.prefix.length, t.prefix.length)
+  for (let index = 0; index < relevantPrefixLength; index++) {
+    if (!sequenceMayHaveIndex(s, index)) continue
+    if (!check(sequenceElementAt(s, index), sequenceElementAt(t, index), visited)) {
+      return false
+    }
+  }
+
+  return !sequenceMayHaveIndex(s, relevantPrefixLength) || check(s.rest, t.rest, visited)
 }
 
 // ---------------------------------------------------------------------------
@@ -300,6 +304,21 @@ function areDisjoint(s: Type, t: Type, visited: Set<string>): boolean {
 
   // Default: not provably disjoint
   return false
+}
+
+function isLengthIntervalContained(source: SequenceType, target: SequenceType): boolean {
+  if (source.minLength < target.minLength) return false
+  if (target.maxLength !== undefined && source.maxLength === undefined) return false
+  if (target.maxLength !== undefined && source.maxLength !== undefined && source.maxLength > target.maxLength) return false
+  return true
+}
+
+function sequenceMayHaveIndex(type: SequenceType, index: number): boolean {
+  return type.maxLength === undefined || type.maxLength > index
+}
+
+function sequenceElementAt(type: SequenceType, index: number): Type {
+  return index < type.prefix.length ? type.prefix[index]! : type.rest
 }
 
 // ---------------------------------------------------------------------------

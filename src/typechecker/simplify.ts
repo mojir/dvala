@@ -13,7 +13,7 @@
  */
 
 import type { Type, PrimitiveName } from './types'
-import { Never, Unknown, normalizeSequenceType, typeEquals, union, inter, neg } from './types'
+import { Never, Unknown, array, normalizeSequenceType, tuple, typeEquals, union, inter, neg } from './types'
 import { isSubtype } from './subtype'
 
 // ---------------------------------------------------------------------------
@@ -55,7 +55,7 @@ export function simplify(t: Type): Type {
     case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(simplify) }
     case 'Array': return { tag: 'Array', element: simplify(t.element) }
     case 'Sequence':
-      return normalizeSequenceType({
+      return simplifySequence({
         tag: 'Sequence',
         prefix: t.prefix.map(simplify),
         rest: simplify(t.rest),
@@ -196,4 +196,26 @@ function narrowSupertypes(members: Type[]): Type[] {
 function simplifyNeg(inner: Type): Type {
   // neg() constructor already handles: !!A = A, !Never = Unknown, !Unknown = Never
   return neg(inner)
+}
+
+function simplifySequence(type: Extract<Type, { tag: 'Sequence' }>): Type {
+  const normalized = normalizeSequenceType(type)
+
+  if (normalized.maxLength !== undefined && normalized.minLength > normalized.maxLength) {
+    return Never
+  }
+
+  if (normalized.prefix.some(member => member.tag === 'Never')) {
+    return Never
+  }
+
+  if (normalized.rest.tag === 'Never') {
+    return tuple(normalized.prefix)
+  }
+
+  if (normalized.prefix.length === 0 && normalized.minLength === 0 && normalized.maxLength === undefined) {
+    return array(normalized.rest)
+  }
+
+  return normalized
 }

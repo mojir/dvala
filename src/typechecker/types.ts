@@ -192,7 +192,7 @@ export function normalizeSequenceType(type: SequenceType): SequenceType {
     : Math.max(type.minLength, type.prefix.length)
   const maxLength = type.rest.tag === 'Never'
     ? type.prefix.length
-    : (type.maxLength !== undefined && type.maxLength < minLength ? minLength : type.maxLength)
+    : type.maxLength
 
   return {
     tag: 'Sequence',
