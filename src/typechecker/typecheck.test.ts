@@ -67,9 +67,29 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 
+  it('rejects string map when callback cannot handle string inputs', () => {
+    const result = dvala.typecheck('map("ab", inc)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('rejects mixed array map when callback cannot handle inferred element types', () => {
+    const result = dvala.typecheck('map([1], ["a"], +)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
   it('accepts reduce on objects', () => {
     const result = dvala.typecheck('reduce({ a: 1, b: 2 }, +, 0)')
     expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects string reduce when reducer cannot handle string elements', () => {
+    const result = dvala.typecheck('reduce("ab", +, 0)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('rejects array reduce when reducer cannot handle array element types', () => {
+    const result = dvala.typecheck('reduce(["a"], +, 0)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 
   it('accepts documenting a user-defined function', () => {

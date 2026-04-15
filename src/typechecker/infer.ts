@@ -794,14 +794,14 @@ export function inferExpr(
           ? getFunctionAlternatives(argTypes[0]!)
           : []
 
-        const runtimeAlignedObjectCollectionResult = inferObjectCollectionCall(
+        const runtimeAlignedCollectionResult = inferCollectionCall(
           calleeNode,
           argTypes,
           ctx,
           typeMap,
         )
-        if (runtimeAlignedObjectCollectionResult) {
-          result = runtimeAlignedObjectCollectionResult
+        if (runtimeAlignedCollectionResult) {
+          result = runtimeAlignedCollectionResult
           break
         }
 
@@ -1953,7 +1953,7 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
   }
 }
 
-function inferObjectCollectionCall(
+function inferCollectionCall(
   calleeNode: AstNode,
   argTypes: Type[],
   ctx: InferenceContext,
@@ -1963,42 +1963,44 @@ function inferObjectCollectionCall(
 
   const builtinName = calleeNode[1] as string
   switch (builtinName) {
-    case 'filter':
-      return inferObjectFilterCall(calleeNode, argTypes, ctx, typeMap)
     case 'map':
-      return inferObjectMapCall(calleeNode, argTypes, ctx, typeMap)
+      return inferCollectionMapCall(calleeNode, argTypes, ctx, typeMap)
     case 'reduce':
-      return inferObjectReduceCall(calleeNode, argTypes, ctx, typeMap)
+      return inferCollectionReduceCall(calleeNode, argTypes, ctx, typeMap)
     default:
       return null
   }
 }
 
-function inferObjectFilterCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
-  if (argTypes.length !== 2) return null
-
-  const collectionType = expandType(argTypes[0]!)
-  if (collectionType.tag !== 'Record') return null
-
-  const valueType = collectionValueType(collectionType)
-  const predicateRet = ctx.freshVar()
-  constrain(ctx, argTypes[1]!, fn([valueType], predicateRet))
-  constrain(ctx, predicateRet, BooleanType)
-
-  const result: Type = { tag: 'Record', fields: new Map(), open: true }
-  const calleeNodeId = calleeNode[2]
-  if (calleeNodeId > 0) {
-    typeMap.set(calleeNodeId, fn([collectionType, fn([valueType], BooleanType)], result))
-  }
-  return result
-}
-
-function inferObjectMapCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
+function inferCollectionMapCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
   if (argTypes.length < 2) return null
 
   const functionType = argTypes[argTypes.length - 1]!
   const collectionTypes = argTypes.slice(0, -1).map(type => expandType(type))
-  if (collectionTypes.length === 0 || collectionTypes.some(type => type.tag !== 'Record')) {
+  if (collectionTypes.length === 0) {
+    return null
+  }
+
+  if (collectionTypes.every(isStringCollectionType)) {
+    constrain(ctx, functionType, fn(new Array(collectionTypes.length).fill(StringType), StringType))
+    if (calleeNode[2] > 0) {
+      typeMap.set(calleeNode[2], fn([...collectionTypes, fn(new Array(collectionTypes.length).fill(StringType), StringType)], StringType))
+    }
+    return StringType
+  }
+
+  if (collectionTypes.every(isArrayCollectionType)) {
+    const callbackParamTypes = collectionTypes.map(collectionElementType)
+    const callbackRet = ctx.freshVar()
+    constrain(ctx, functionType, fn(callbackParamTypes, callbackRet))
+    const result = array(callbackRet)
+    if (calleeNode[2] > 0) {
+      typeMap.set(calleeNode[2], fn([...collectionTypes, fn(callbackParamTypes, callbackRet)], result))
+    }
+    return result
+  }
+
+  if (collectionTypes.some(type => type.tag !== 'Record')) {
     return null
   }
 
@@ -2017,15 +2019,24 @@ function inferObjectMapCall(calleeNode: AstNode, argTypes: Type[], ctx: Inferenc
   return result
 }
 
-function inferObjectReduceCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
+function inferCollectionReduceCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
   if (argTypes.length !== 3) return null
 
   const collectionType = expandType(argTypes[0]!)
-  if (collectionType.tag !== 'Record') return null
-
   const reducerType = argTypes[1]!
   const initialType = argTypes[2]!
-  const valueType = collectionValueType(collectionType)
+  let valueType: Type
+
+  if (isStringCollectionType(collectionType)) {
+    valueType = StringType
+  } else if (isArrayCollectionType(collectionType)) {
+    valueType = collectionElementType(collectionType)
+  } else if (collectionType.tag === 'Record') {
+    valueType = collectionValueType(collectionType)
+  } else {
+    return null
+  }
+
   const accType = ctx.freshVar()
   constrain(ctx, initialType, accType)
   constrain(ctx, reducerType, fn([accType, valueType], accType))
@@ -2040,6 +2051,20 @@ function inferObjectReduceCall(calleeNode: AstNode, argTypes: Type[], ctx: Infer
 function collectionValueType(recordType: Extract<Type, { tag: 'Record' }>): Type {
   const fieldTypes = [...recordType.fields.values()]
   return fieldTypes.length === 0 ? Unknown : union(...fieldTypes)
+}
+
+function collectionElementType(type: Extract<Type, { tag: 'Array' | 'Tuple' }>): Type {
+  if (type.tag === 'Array') return type.element
+  return type.elements.length === 0 ? Unknown : union(...type.elements)
+}
+
+function isStringCollectionType(type: Type): boolean {
+  return (type.tag === 'Primitive' && type.name === 'String')
+    || (type.tag === 'Literal' && typeof type.value === 'string')
+}
+
+function isArrayCollectionType(type: Type): type is Extract<Type, { tag: 'Array' | 'Tuple' }> {
+  return type.tag === 'Array' || type.tag === 'Tuple'
 }
 
 function assertCompatibleClosedRecordKeys(records: Extract<Type, { tag: 'Record' }>[]): void {
