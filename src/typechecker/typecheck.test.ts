@@ -205,6 +205,25 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics[0]?.severity).toBe('warning')
   })
 
+  it('accepts exhaustive matches with defaulted array elements', () => {
+    const result = dvala.typecheck('let xs = if true then [1] else [1, 2] end; match xs case [x, y = 0] then x + y end')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('warns when a later array branch is covered by an earlier defaulted element branch', () => {
+    const result = dvala.typecheck('let xs = if true then [1] else [1, 2] end; match xs case [x, y = 0] then x + y case [a] then a case _ then 0 end')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('Redundant match case')
+    expect(result.diagnostics[0]?.severity).toBe('warning')
+  })
+
+  it('warns when a later rest-pattern branch is covered by an earlier broader rest-pattern branch', () => {
+    const result = dvala.typecheck('let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...xs] then 1 case [1, 2, ...ys] then 2 case _ then 0 end')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain('Redundant match case')
+    expect(result.diagnostics[0]?.severity).toBe('warning')
+  })
+
   it('accepts exhaustive tagged object matches without a wildcard', () => {
     const result = dvala.typecheck('let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end')
     expect(result.diagnostics).toHaveLength(0)

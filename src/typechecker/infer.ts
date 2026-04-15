@@ -1953,6 +1953,22 @@ function matchedObjectPatternType(pattern: AstNode, candidateType: Type): Type {
 function matchedArrayPatternType(pattern: AstNode, candidateType: Type): Type {
   const [elements] = pattern[1] as [AstNode[], AstNode | undefined]
 
+  const explicitVariants = explicitArrayPatternVariants(elements)
+  if (explicitVariants.length > 1) {
+    const matchedVariants = explicitVariants
+      .map(variant => matchedExplicitArrayPatternType(variant, candidateType))
+      .filter(member => member.tag !== 'Never')
+    return matchedVariants.length === 0 ? Never : simplify(union(...matchedVariants))
+  }
+
+  return matchedExplicitArrayPatternType(elements, candidateType)
+}
+
+function matchedExplicitArrayPatternType(
+  elements: AstNode[],
+  candidateType: Type,
+): Type {
+
   if (candidateType.tag === 'Unknown' || candidateType.tag === 'Var') {
     return candidateType
   }
@@ -1973,6 +1989,38 @@ function matchedArrayPatternType(pattern: AstNode, candidateType: Type): Type {
   }
 
   return Never
+}
+
+function explicitArrayPatternVariants(elements: AstNode[]): AstNode[][] {
+  if (arrayPatternRestIndex(elements) !== -1) {
+    return [elements]
+  }
+
+  const variantLengths: number[] = []
+  const minLength = arrayPatternLengthInterval(elements).minLength
+  for (let length = minLength; length <= elements.length; length++) {
+    const omitted = elements.slice(length)
+    if (omitted.some(element => element && !patternHasDefault(element))) {
+      continue
+    }
+    variantLengths.push(length)
+  }
+
+  if (variantLengths.length <= 1) {
+    return [elements]
+  }
+
+  return variantLengths.map(length => elements
+    .slice(0, length)
+    .map(element => element ? stripPatternDefault(element) : element))
+}
+
+function stripPatternDefault(pattern: AstNode): AstNode {
+  const payload = pattern[1]
+  if (!Array.isArray(payload) || payload.length < 2 || payload[1] === undefined) {
+    return pattern
+  }
+  return [pattern[0], [payload[0], undefined], pattern[2]] as AstNode
 }
 
 function narrowRecordTypeForMatchPattern(
