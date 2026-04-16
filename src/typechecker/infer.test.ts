@@ -2682,7 +2682,6 @@ describe('inference — match array pattern against union of arrays', () => {
 
 describe('inference — constrain tuple edge cases', () => {
   it('tuple length mismatch in let annotation', () => {
-    const dvala = createDvala()
     // Not directly testable through Dvala syntax since tuples are inferred as arrays
     // But we can test the constrain function directly
     const ctx = new InferenceContext()

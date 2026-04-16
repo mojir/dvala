@@ -1508,7 +1508,7 @@ describe('typecheck — imported diagnostics', () => {
           if (p === '..') resolved.pop()
           else if (p !== '.') resolved.push(p)
         }
-        const key = './' + resolved.join('/')
+        const key = `./${resolved.join('/')}`
         const source = files.get(key)
         if (!source) throw new Error(`File not found: ${key} (from ${fromDir}/${importPath})`)
         return source
@@ -1528,7 +1528,7 @@ describe('typecheck — imported diagnostics', () => {
     // When baseDir is relative and importPath uses ".." past all segments,
     // joinPath should push ".." onto resolvedSegments since there is no root.
     const dvala = createDvala({
-      fileResolver: (importPath: string) => {
+      fileResolver: (_importPath: string) => {
         // Accept any import — return a simple value
         return '{ value: 1 }'
       },
