@@ -81,4 +81,31 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
     const warnings = result.diagnostics.filter(d => d.severity === 'warning')
     expect(warnings.some(w => /@dvala\.error/.test(w.message))).toBe(true)
   })
+
+  // --- Composite reconstruction integration (decision #10) ---
+  it('folds count([1, 2, 3]) → 3 when fold is on', async () => {
+    stubFoldOn()
+    const t = await inferLastTypeString('count([1, 2, 3])')
+    expect(t).toBe('3')
+  })
+
+  it('folds keys({ a: 1, b: 2 }) → ["a", "b"] when fold is on', async () => {
+    stubFoldOn()
+    const t = await inferLastTypeString('keys({ a: 1, b: 2 })')
+    // Tuple of string-literal keys.
+    expect(t).toBe('["a", "b"]')
+  })
+
+  it('folds reverse on a literal array when fold is on', async () => {
+    stubFoldOn()
+    const t = await inferLastTypeString('reverse([1, 2, 3])')
+    // Tuple of number literals.
+    expect(t).toBe('[3, 2, 1]')
+  })
+
+  it('widens composite-producing builtins to Number when fold is off', async () => {
+    stubFoldOff()
+    const t = await inferLastTypeString('count([1, 2, 3])')
+    expect(t).toBe('Number')
+  })
 })

@@ -26,13 +26,19 @@ import { NodeTypes } from '../constants/constants'
 import { createContextStack } from '../evaluator/ContextStack'
 import { evaluateNodeForFold } from '../evaluator/foldEvaluate'
 import type { AstNode } from '../parser/types'
+import { isPersistentMap, isPersistentVector } from '../utils/persistent'
 import type { Type } from './types'
-import { NullType, literal, atom as atomType } from './types'
+import { NullType, atom as atomType, literal, record, tuple } from './types'
 
 /**
- * Reconstruct a literal AST node from an inferred primitive literal type.
- * Returns `null` if the type isn't primitive-reconstructible (e.g. a plain
- * `Number` with no known value, an open record, a function type).
+ * Reconstruct a literal AST node from an inferred type.
+ *
+ * Supports primitives (Literal, Atom, Null) and closed composites (Tuple,
+ * closed Record) with arbitrary nesting — per decision #10. Bails on:
+ *   - Plain `Number` / `String` / `Boolean` (no concrete value).
+ *   - Open records (`open: true`) — can't know all fields.
+ *   - `Array` types (element-only, no length info).
+ *   - Function values, `Unknown`, type vars.
  */
 function literalTypeToAstNode(t: Type): AstNode | null {
   if (t.tag === 'Literal') {
@@ -47,12 +53,34 @@ function literalTypeToAstNode(t: Type): AstNode | null {
   if (t.tag === 'Primitive' && t.name === 'Null') {
     return [NodeTypes.Reserved, 'null', 0] as unknown as AstNode
   }
+  if (t.tag === 'Tuple') {
+    const elements: AstNode[] = []
+    for (const elemType of t.elements) {
+      const elem = literalTypeToAstNode(elemType)
+      if (!elem) return null
+      elements.push(elem)
+    }
+    return [NodeTypes.Array, elements, 0] as unknown as AstNode
+  }
+  if (t.tag === 'Record' && !t.open) {
+    const entries: [AstNode, AstNode][] = []
+    for (const [key, fieldType] of t.fields) {
+      const valueAst = literalTypeToAstNode(fieldType)
+      if (!valueAst) return null
+      const keyAst = [NodeTypes.Str, key, 0] as unknown as AstNode
+      entries.push([keyAst, valueAst])
+    }
+    return [NodeTypes.Object, entries, 0] as unknown as AstNode
+  }
   return null
 }
 
 /**
- * Lift a runtime value back into a `Literal`-ish type. Primitives only in v1;
- * composite reconstruction (Tuple, Record) is a follow-up per decision #10.
+ * Lift a runtime value back into a `Literal`-ish type.
+ *
+ * Supports the same shapes as `literalTypeToAstNode`: primitives, atoms,
+ * null, PersistentVector → closed Tuple, PersistentMap → closed Record.
+ * Recurses through composite elements / fields.
  */
 function valueToLiteralType(value: unknown): Type | null {
   if (value === null || value === undefined) return NullType
@@ -64,6 +92,27 @@ function valueToLiteralType(value: unknown): Type | null {
     && typeof (value as { name: unknown }).name === 'string'
     && '^^atom^^' in value) {
     return atomType((value as { name: string }).name)
+  }
+  if (isPersistentVector(value)) {
+    const elementTypes: Type[] = []
+    for (const elem of value) {
+      const elemType = valueToLiteralType(elem)
+      if (!elemType) return null
+      elementTypes.push(elemType)
+    }
+    return tuple(elementTypes)
+  }
+  if (isPersistentMap(value)) {
+    const fields: Record<string, Type> = {}
+    for (const [key, val] of value) {
+      // Record keys are strings in the Dvala type system; skip anything else.
+      if (typeof key !== 'string') return null
+      const fieldType = valueToLiteralType(val)
+      if (!fieldType) return null
+      fields[key] = fieldType
+    }
+    // Closed record — every field is a known literal type.
+    return record(fields, false)
   }
   return null
 }

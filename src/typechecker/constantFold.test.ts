@@ -10,7 +10,7 @@ import { NodeTypes } from '../constants/constants'
 import type { AstNode } from '../parser/types'
 import { tryFoldBuiltinCall } from './constantFold'
 import type { Type } from './types'
-import { NumberType, Unknown, atom, literal } from './types'
+import { NumberType, Unknown, atom, literal, record, tuple } from './types'
 
 function builtinNode(name: string): AstNode {
   return [NodeTypes.Builtin, name, 0] as unknown as AstNode
@@ -68,5 +68,77 @@ describe('tryFoldBuiltinCall', () => {
     expect(tryFoldBuiltinCall(builtinNode('+'), [literal(1), Unknown])).toBeNull()
     // Plain `Number` (not a literal) → bail.
     expect(tryFoldBuiltinCall(builtinNode('+'), [literal(1), NumberType])).toBeNull()
+  })
+
+  // --- Composite reconstruction (decision #10) ---
+  describe('composite arg reconstruction', () => {
+    it('folds a builtin taking a literal Tuple', () => {
+      // count([1, 2, 3]) — reconstructible Tuple arg.
+      const result = tryFoldBuiltinCall(
+        builtinNode('count'),
+        [tuple([literal(1), literal(2), literal(3)])],
+      )
+      expect(result).toEqual({ type: literal(3) })
+    })
+
+    it('folds a builtin taking a Tuple containing mixed primitives', () => {
+      const result = tryFoldBuiltinCall(
+        builtinNode('count'),
+        [tuple([literal(1), literal('two'), literal(true), atom('ok')])],
+      )
+      expect(result).toEqual({ type: literal(4) })
+    })
+
+    it('folds nested Tuples (Tuple of Tuples)', () => {
+      // first([[1, 2], [3, 4]]) → [1, 2]. The fold lifts back to a
+      // closed Tuple<Literal(1), Literal(2)>.
+      const result = tryFoldBuiltinCall(
+        builtinNode('first'),
+        [tuple([
+          tuple([literal(1), literal(2)]),
+          tuple([literal(3), literal(4)]),
+        ])],
+      )
+      expect(result).toEqual({ type: tuple([literal(1), literal(2)]) })
+    })
+
+    it('folds a builtin taking a closed Record arg', () => {
+      // count({a: 1, b: 2}) → 2.
+      const result = tryFoldBuiltinCall(
+        builtinNode('count'),
+        [record({ a: literal(1), b: literal(2) })],
+      )
+      expect(result).toEqual({ type: literal(2) })
+    })
+
+    it('folds keys({...}) back into a Tuple of string literals', () => {
+      const result = tryFoldBuiltinCall(
+        builtinNode('keys'),
+        [record({ a: literal(1), b: literal(2) })],
+      )
+      expect(result).toEqual({ type: tuple([literal('a'), literal('b')]) })
+    })
+
+    it('bails on open records', () => {
+      const openRec = record({ a: literal(1) }, true)
+      expect(tryFoldBuiltinCall(builtinNode('count'), [openRec])).toBeNull()
+    })
+
+    it('bails on Tuples containing non-literal elements', () => {
+      // Tuple([Number, Literal(1)]) — first element has no concrete value.
+      const result = tryFoldBuiltinCall(
+        builtinNode('count'),
+        [tuple([NumberType, literal(1)])],
+      )
+      expect(result).toBeNull()
+    })
+
+    it('bails on Records containing non-literal field values', () => {
+      const result = tryFoldBuiltinCall(
+        builtinNode('count'),
+        [record({ a: NumberType })],
+      )
+      expect(result).toBeNull()
+    })
   })
 })
