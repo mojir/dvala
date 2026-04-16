@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   NumberType, StringType, BooleanType, NullType,
-  Unknown, Never, RegexType,
-  atom, literal, fn, tuple, record, array, sequence, toSequenceType, union, inter, neg,
+  Unknown, Never, RegexType, PureEffects,
+  atom, literal, fn, tuple, record, array, sequence, toSequenceType, union, inter, neg, handlerType,
   typeToString, typeEquals,
 } from './types'
+import type { Type } from './types'
 import { isSubtype } from './subtype'
 import { simplify } from './simplify'
 
@@ -629,6 +630,259 @@ describe('subtyping — regex', () => {
 
   it('Regex </: String', () => {
     expect(isSubtype(RegexType, StringType)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — negation
+// ---------------------------------------------------------------------------
+
+describe('subtyping — negation', () => {
+  it('Number <: !String (disjoint types)', () => {
+    expect(isSubtype(NumberType, neg(StringType))).toBe(true)
+  })
+
+  it('Number </: !Number (same type)', () => {
+    expect(isSubtype(NumberType, neg(NumberType))).toBe(false)
+  })
+
+  it('42 <: !String (literal disjoint with negated primitive)', () => {
+    expect(isSubtype(literal(42), neg(StringType))).toBe(true)
+  })
+
+  it('!Number <: !Number (equal negations)', () => {
+    expect(isSubtype(neg(NumberType), neg(NumberType))).toBe(true)
+  })
+
+  it('!String <: !Number iff Number <: String — false', () => {
+    expect(isSubtype(neg(StringType), neg(NumberType))).toBe(false)
+  })
+
+  it('!Number </: String (negation on left is conservative)', () => {
+    expect(isSubtype(neg(NumberType), StringType)).toBe(false)
+  })
+
+  it(':ok <: !Number (atom disjoint with negated primitive)', () => {
+    expect(isSubtype(atom('ok'), neg(NumberType))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — handlers
+// ---------------------------------------------------------------------------
+
+describe('subtyping — handlers', () => {
+  const h1 = handlerType(NumberType, StringType, new Map([['eff', { argType: NumberType, retType: StringType }]]))
+  const h2 = handlerType(NumberType, StringType, new Map([['eff', { argType: NumberType, retType: StringType }]]))
+  const h3 = handlerType(NumberType, StringType, new Map([['other', { argType: NumberType, retType: StringType }]]))
+
+  it('identical handlers are subtypes', () => {
+    expect(isSubtype(h1, h2)).toBe(true)
+  })
+
+  it('handlers with different effect names are not subtypes', () => {
+    expect(isSubtype(h1, h3)).toBe(false)
+  })
+
+  it('handlers with different effect count are not subtypes', () => {
+    const hEmpty = handlerType(NumberType, StringType, new Map())
+    expect(isSubtype(h1, hEmpty)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — AnyFunction
+// ---------------------------------------------------------------------------
+
+describe('subtyping — AnyFunction', () => {
+  const anyFn: Type = { tag: 'AnyFunction' }
+
+  it('Function <: AnyFunction', () => {
+    expect(isSubtype(fn([NumberType], StringType), anyFn)).toBe(true)
+  })
+
+  it('AnyFunction <: AnyFunction', () => {
+    expect(isSubtype(anyFn, anyFn)).toBe(true)
+  })
+
+  it('AnyFunction </: Function', () => {
+    expect(isSubtype(anyFn, fn([NumberType], StringType))).toBe(false)
+  })
+
+  it('Number </: AnyFunction', () => {
+    expect(isSubtype(NumberType, anyFn)).toBe(false)
+  })
+
+  it('intersection of functions <: AnyFunction', () => {
+    expect(isSubtype(
+      inter(fn([NumberType], NumberType), fn([StringType], StringType)),
+      anyFn,
+    )).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — aliases and recursive types
+// ---------------------------------------------------------------------------
+
+describe('subtyping — aliases and recursive types', () => {
+  it('alias is transparent — expanded form is compared', () => {
+    const alias: Type = { tag: 'Alias', name: 'MyNum', args: [], expanded: NumberType }
+    expect(isSubtype(alias, NumberType)).toBe(true)
+    expect(isSubtype(NumberType, alias)).toBe(true)
+  })
+
+  it('alias with different args produces different cache keys', () => {
+    const aliasNum: Type = { tag: 'Alias', name: 'Box', args: [NumberType], expanded: record({ value: NumberType }) }
+    const aliasStr: Type = { tag: 'Alias', name: 'Box', args: [StringType], expanded: record({ value: StringType }) }
+    expect(isSubtype(aliasNum, aliasStr)).toBe(false)
+  })
+
+  it('recursive type unfolds for subtyping', () => {
+    // μ0.Number | [0] — a recursive list of numbers
+    const recType: Type = { tag: 'Recursive', id: 0, body: union(NumberType, tuple([{ tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }])) }
+    // Number is a subtype of the recursive type (it's one of the union members)
+    expect(isSubtype(NumberType, recType)).toBe(true)
+  })
+
+  it('recursive type on left unfolds for subtyping', () => {
+    // μ0.Number — a recursive type that is just Number
+    const recType: Type = { tag: 'Recursive', id: 0, body: NumberType }
+    expect(isSubtype(recType, NumberType)).toBe(true)
+  })
+
+  it('recursive type substitutes vars through structural types', () => {
+    // μ0.{value: Number, next: 0 | Null} — a linked list node
+    const selfVar: Type = { tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }
+    const recType: Type = {
+      tag: 'Recursive',
+      id: 0,
+      body: record({ value: NumberType, next: union(selfVar, NullType) }),
+    }
+    // A concrete node with null next is a subtype of the recursive type
+    const concreteNode = record({ value: NumberType, next: NullType })
+    expect(isSubtype(concreteNode, recType)).toBe(true)
+  })
+
+  it('recursive type with function body substitutes correctly', () => {
+    // μ0.(Number) -> 0 — a recursive function returning itself
+    const selfVar: Type = { tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }
+    const recFn: Type = { tag: 'Recursive', id: 0, body: fn([NumberType], selfVar) }
+    // Any (Number) -> ... function should partially match
+    expect(isSubtype(recFn, { tag: 'AnyFunction' })).toBe(true)
+  })
+
+  it('recursive type with array body substitutes correctly', () => {
+    // μ0.Number | Number[] — array union
+    const selfVar: Type = { tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }
+    const recType: Type = { tag: 'Recursive', id: 0, body: union(NumberType, array(selfVar)) }
+    expect(isSubtype(NumberType, recType)).toBe(true)
+  })
+
+  it('recursive type with negation substitutes correctly', () => {
+    // μ0.!0 — meaningless but exercises substituteVar through negation
+    const selfVar: Type = { tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }
+    const recType: Type = { tag: 'Recursive', id: 0, body: neg(selfVar) }
+    // Never <: anything
+    expect(isSubtype(Never, recType)).toBe(true)
+  })
+
+  it('recursive type with intersection substitutes correctly', () => {
+    const selfVar: Type = { tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }
+    const recType: Type = { tag: 'Recursive', id: 0, body: inter(NumberType, selfVar) }
+    expect(isSubtype(Never, recType)).toBe(true)
+  })
+
+  it('recursive type with alias body substitutes correctly', () => {
+    const selfVar: Type = { tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }
+    const aliasBody: Type = { tag: 'Alias', name: 'Wrapper', args: [selfVar], expanded: union(NumberType, selfVar) }
+    const recType: Type = { tag: 'Recursive', id: 0, body: aliasBody }
+    expect(isSubtype(NumberType, recType)).toBe(true)
+  })
+
+  it('nested recursive type does not substitute shadowed variables', () => {
+    const selfVar: Type = { tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }
+    // μ0.(μ0.Number) — inner recursive shadows the outer variable
+    const innerRec: Type = { tag: 'Recursive', id: 0, body: NumberType }
+    const recType: Type = { tag: 'Recursive', id: 0, body: union(selfVar, innerRec) }
+    expect(isSubtype(NumberType, recType)).toBe(true)
+  })
+
+  it('recursive type with sequence body substitutes correctly', () => {
+    const selfVar: Type = { tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }
+    const recType: Type = { tag: 'Recursive', id: 0, body: union(NumberType, sequence([selfVar], Never)) }
+    expect(isSubtype(NumberType, recType)).toBe(true)
+  })
+
+  it('recursive type with rest-param function substitutes correctly', () => {
+    const selfVar: Type = { tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }
+    // μ0.(Number, ...Number[]) -> 0 — function with rest param referencing self
+    const recFn: Type = { tag: 'Recursive', id: 0, body: fn([NumberType], selfVar, undefined, undefined, NumberType) }
+    expect(isSubtype(recFn, { tag: 'AnyFunction' })).toBe(true)
+  })
+
+  it('Unknown <: Unknown via cycle detection cache', () => {
+    // This exercises the Unknown and Var branches of typeId indirectly
+    // through the cycle detection cache
+    expect(isSubtype(Unknown, Unknown)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — disjointness edge cases
+// ---------------------------------------------------------------------------
+
+describe('subtyping — disjointness', () => {
+  it('Atom and Primitive are disjoint', () => {
+    expect(isSubtype(atom('ok'), neg(NumberType))).toBe(true)
+    expect(isSubtype(atom('ok'), neg(StringType))).toBe(true)
+  })
+
+  it('Literal and non-matching Atom are disjoint', () => {
+    expect(isSubtype(literal(42), neg(atom('ok')))).toBe(true)
+  })
+
+  it('Regex and Primitive are disjoint', () => {
+    expect(isSubtype(RegexType, neg(NumberType))).toBe(true)
+  })
+
+  it('AnyFunction and Primitive are disjoint', () => {
+    const anyFn: Type = { tag: 'AnyFunction' }
+    expect(isSubtype(anyFn, neg(NumberType))).toBe(true)
+  })
+
+  it('Function and Record are disjoint', () => {
+    expect(isSubtype(fn([NumberType], NumberType), neg(record({ x: NumberType })))).toBe(true)
+  })
+
+  it('intersection of disjoint types <: Never', () => {
+    expect(isSubtype(inter(NumberType, StringType), Never)).toBe(true)
+  })
+
+  it('intersection of primitive and non-matching atom <: Never', () => {
+    expect(isSubtype(inter(NumberType, atom('ok')), Never)).toBe(true)
+  })
+
+  it('intersection of primitive and non-matching literal <: Never', () => {
+    expect(isSubtype(inter(NumberType, literal('hello')), Never)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — effects
+// ---------------------------------------------------------------------------
+
+describe('subtyping — function effects', () => {
+  it('pure function <: effectful function (fewer effects is subtype)', () => {
+    const pure = fn([NumberType], NumberType, PureEffects)
+    const effectful = fn([NumberType], NumberType, { effects: new Set(['io']), open: false })
+    expect(isSubtype(pure, effectful)).toBe(true)
+  })
+
+  it('effectful function </: pure function', () => {
+    const pure = fn([NumberType], NumberType, PureEffects)
+    const effectful = fn([NumberType], NumberType, { effects: new Set(['io']), open: false })
+    expect(isSubtype(effectful, pure)).toBe(false)
   })
 })
 
