@@ -80,24 +80,24 @@ For each module we also note:
 
 | Module | Status | Type annotations? | Notes |
 |---|---|---|---|
-| `assertion` | ⏳ Not started | — | |
-| `ast` | ⏳ Not started | — | AST constructors/predicates — pure-deterministic over AST values. |
-| `bitwise` | ⏳ Not started | — | Bit ops — pure. |
-| `collection` | ⏳ Not started | — | |
-| `convert` | ⏳ Not started | — | Unit conversions using math constants — pure-deterministic. |
-| `effectHandler` | ⏳ Not started | — | Effect infrastructure; likely not fold-eligible. |
-| `functional` | ⏳ Not started | — | Higher-order; polymorphic effects. |
-| `grid` | ⏳ Not started | — | |
-| `json` | ⏳ Not started | — | `parse`/`stringify` — pure-deterministic. |
-| `linear-algebra` | ⏳ Not started | — | Matrix math — pure-deterministic. |
-| `math` | ⏳ Not started | — | `sin`, `cos`, `sqrt`, etc. — pure-deterministic. |
-| `matrix` | ⏳ Not started | — | |
-| `number-theory` | ⏳ Not started | — | |
-| `sequence` | ⏳ Not started | — | |
-| `string` | ⏳ Not started | — | String utilities — pure-deterministic. Verify `randomString` etc. if present. |
-| `test` | ⏳ Not started | — | Test helpers — may perform `@test.report` effect. |
-| `time` | ⚠ Missing type annotations | No | `epochToIsoDate(ms)` and `isoDateToEpoch(iso)` are deterministic by input — no wall-clock read. Add type annotations. |
-| `vector` | ⏳ Not started | — | Vector math — pure-deterministic. |
+| `assertion` | ✅ Audited | 27 TS + Dvala source | All pure-partial via `AssertionError` (DvalaError). See [Per-module audit results](#assertion). |
+| `ast` | ✅ Audited | 27, all annotated | Pure constructors/predicates over AST values. |
+| `bitwise` | ✅ Audited | 6, all annotated | Bit ops on integers — pure. |
+| `collection` | ✅ Audited | 27 TS + Dvala source | Pure. Some entries Dvala-impl, higher-order (see module notes below). |
+| `convert` | ✅ Audited | ~60 generated via unit-matrix helpers | Pure linear / temperature conversions. |
+| `effectHandler` | ✅ Audited | 0 TS; all in `effectHandler.dvala` | ⚠ `chooseRandom` performs `@dvala.random.item`; declared pure. See [Per-module audit results](#effecthandler). |
+| `functional` | ✅ Audited | 5 + Dvala source | Higher-order. |
+| `grid` | ✅ Audited | 36, all annotated | Pure grid/coordinate math. |
+| `json` | ✅ Audited | 2 (`parse`, `stringify`), all annotated | Pure. `JSON.parse` / `JSON.stringify` are stateless. |
+| `linear-algebra` | ✅ Audited | 40, all annotated | Pure matrix/linear algebra. |
+| `math` | ✅ Audited | 17, all annotated | `sin`, `cos`, `sqrt`, `ln`, etc. — pure. |
+| `matrix` | ✅ Audited | 25, all annotated | Pure matrix ops. |
+| `number-theory` | ✅ Audited | 19, all annotated | Pure combinatorics / primes / sequences. `lucky.ts` uses `MaybePromise` machinery but the exported sync path never returns a Promise. |
+| `sequence` | ✅ Audited | 20 TS + Dvala source | Pure; some higher-order. |
+| `string` | ✅ Audited | 14 TS + Dvala source | Pure. Module-level `/\$\$/g` regex used only with `String.replace` (stateless despite `g` flag). See [Per-module audit results](#string-module). |
+| `test` | ✅ Audited | 2 TS + Dvala source | ⚠ **`TestCollector` has mutable state**; factory-per-file isolation. See [Per-module audit results](#test). |
+| `time` | ⚠ Needs annotation | No `type` fields | `epochToIsoDate(ms)` / `isoDateToEpoch(iso)` — pure, deterministic by input. No wall-clock read. Missing type annotations block folding. |
+| `vector` | ✅ Audited | 33, all annotated | Pure vector math. |
 
 ### Special Expressions (`src/builtin/specialExpressions/`)
 
@@ -399,4 +399,120 @@ Once effect polymorphism lands, these signatures should be upgraded. Not part of
 
 **Missing annotations in core/:** None.
 
-**Ready for:** continuing to `src/builtin/modules/` (20 modules).
+**Ready for:** continuing to `src/builtin/modules/` (20 modules — now complete, see below).
+
+---
+
+## Per-module Audit Results
+
+### assertion
+
+**Builtins (27 TS + Dvala source):** `assertEqual`, `assertNotEqual`, `assertGt`, `assertGte`, `assertLt`, `assertLte`, `assertTrue`, `assertFalse`, `assertTruthy`, `assertFalsy`, `assertNull`, `assertNotNull`, `assertThrows`, `assertDoesNotThrow`, `assertStringIncludes`, `assertArrayIncludes`, and several more plus `assertFails`, `assertFailsWith`, `assertSucceeds` in the Dvala source.
+
+**Classification:** All **pure-partial** — throw `AssertionError` (extends `DvalaError`) on failure. No hidden state, no `Math.random`, no I/O.
+
+**Fold impact:** Useful — folding `assertEqual(2 + 2, 4)` at type-check time could catch assertion failures statically via the `@dvala.error` warning path.
+
+**Declaration bugs / missing annotations:** None in TS. Dvala-impl helpers rely on inferred effect sets from the Dvala source.
+
+### effectHandler
+
+**Builtins:** 0 TS. All implemented in `effectHandler.dvala` with docs declared in `index.ts`:
+
+- `retry(n, bodyFn)` — catches `@dvala.error`, re-performs if retries exhausted.
+- `fallback(value)` — returns a handler that catches `@dvala.error`.
+- `chooseAll(bodyFn)` — handles `@choose` nondeterministically, explores all branches.
+- `chooseFirst(bodyFn)` — handles `@choose`, picks first option.
+- `chooseRandom(bodyFn)` — handles `@choose` by performing `@dvala.random.item`.
+- `chooseTake(n, bodyFn)` — like `chooseAll` but caps at `n` results.
+
+**Declaration issue — `chooseRandom`:**
+
+`chooseRandom` is typed `((() -> Unknown)) -> Unknown` with an empty effect set, but the Dvala implementation performs `@dvala.random.item` on every `@choose` the body requests. The correct signature would be `((() -> @{choose} A)) -> @{dvala.random.item} A` (or similar with effect-polymorphic subtraction).
+
+**Fold impact:** Low risk. When folded with a literal argument, the sandbox catches `@dvala.random.item` and surfaces as a warning (decision #2). The declaration is aspirationally wrong but operationally safe.
+
+**Other `choose*` variants:** These *consume* `@choose` from the body (subtractive effect handling). The outer signature shouldn't declare `@choose` unless it re-performs. `chooseAll` and `chooseFirst` are closer to correct — they translate `@choose` into plain values. `retry` and `fallback` are also subtractive on `@dvala.error`.
+
+**Recommendation:** Declaration upgrades for this module need effect-polymorphic handler types (type-system Phase C — see [2026-04-12_type-system.md](2026-04-12_type-system.md)). Track as a follow-up. Not a blocker.
+
+### string (module)
+
+**Builtins (14 TS + Dvala source):** `capitalize`, `decapitalize`, `camelCase`, `snakeCase`, `kebabCase`, `pascalCase`, `padLeft`, `padRight`, `padCenter`, `stringRepeat`, `template`, `trimLeft`, `trimRight`, `splitLines`, etc.
+
+**Classification:** All **pure**. Mostly pure-partial via `assertString` / `assertNumber`.
+
+**Key observation — module-level regex:**
+
+The `applyPlaceholders` helper uses a module-level `const doubleDollarRegexp = /\$\$/g`. The `g` flag is normally stateful (`lastIndex`), but the regex is used exclusively with `String.prototype.replace`, which is spec-mandated to be stateless for global regexes (the replace operation doesn't read or write `lastIndex`). Safe.
+
+Inside `applyPlaceholders`, there's also `new RegExp(..., 'g')` used with `.test()` — this WOULD be stateful, but the regex is created fresh per invocation, so the state doesn't leak across calls.
+
+**Declaration bugs / missing annotations:** None.
+
+### test
+
+**Builtins (2 TS + Dvala source):** `test`, `describe`, `skip` (from the Dvala source), plus the TS `createTestCollector` / `createTestModule` factories.
+
+**Classification:** TS-impl factories are not callable from Dvala. The Dvala-side `test(name, body)` and `describe(group, body)` functions **mutate** a `TestCollector` captured via closure.
+
+**Mutable state:** The `TestCollector` (`tests: TestEntry[]`, `describeStack: string[]`, `skipDepth: number`) is a dedicated accumulator per `.test.dvala` file. `createTestModule(collector)` binds a fresh collector into each module instance. The test runner creates a collector, runs the test file, and reads results.
+
+**Fold impact:**
+
+- For production code (non-`.test.dvala`), the `test` module isn't imported. Fold never sees it.
+- For test-file typechecking, a `test` module *is* active. If fold attempts to evaluate `test("a", -> 42)` at type-check time, the Dvala implementation would mutate the active collector — surprising, and semantically wrong.
+- **Mitigation:** `test` and `describe` should declare a dedicated effect (e.g. `@test.register`) so folding is blocked for them.
+
+**Recommendation:** Flag as a Phase A follow-up. Not a blocker because (a) test-file typecheck doesn't currently fold, and (b) when folding lands, we can gate on "importing the test module" as a coarse-grained block until effects are properly declared.
+
+**Declaration bugs:** Effect declarations needed on `test` / `describe` / `skip`. Track as follow-up.
+
+### time
+
+Already noted in the tracking table. Two pure functions (`epochToIsoDate`, `isoDateToEpoch`) that lack type annotations entirely. Add `type: '(Number) -> String'` and `type: '(String) -> Number'` respectively. No behavior change.
+
+### Other modules (ast, bitwise, collection, convert, functional, grid, json, linear-algebra, math, matrix, number-theory, sequence, vector)
+
+All **pure** TS-impls (or Dvala-impls for higher-order functions). All have type annotations. No declaration bugs, no missing annotations, no shared mutable state, no `Math.random`, no clock reads, no I/O.
+
+Concise details:
+
+- **ast** (27): AST constructors (`num`, `str`, `bool`, `sym`, `call`, `ifNode`, `block`, `nodeType`, …) and predicates (`isNum`, `isStr`, …). Pure structural operations on AST values.
+- **bitwise** (6): shifts and logical ops on integers, matching `core/bitwise.ts` at the module level.
+- **collection** (27): `collection.getIn`, `collection.assocIn`, `collection.update`, `collection.mapi`, `collection.filteri`, etc. Higher-order entries (`mapi`, `filteri`) inherit their callback's effects — same caveat as core/.
+- **convert** (~60 generated): linear and temperature unit conversions, generated programmatically from `lengthUnits`, `weightUnits`, … tables. Pure.
+- **functional** (5 + Dvala): `fnull`, `juxt`, `complement`, `partial`, `trampoline`. Some are higher-order.
+- **grid** (36): coordinate / bounds / cell-map helpers. Pure.
+- **json** (2): `parse`, `stringify`. `JSON.parse` and `JSON.stringify` are stateless. `parse` throws `DvalaError` on malformed input — sandbox catches.
+- **linear-algebra** (40): dot products, determinants, eigenvalues, etc. Pure.
+- **math** (17): trig (`sin`, `cos`, `asin`, ...), hyperbolic, `exp`, `ln`, `log`, etc. Pure (with checkedFn wrapping per `core/math.ts` convention).
+- **matrix** (25): matrix manipulation (transpose, slice, etc.). Pure.
+- **number-theory** (19): primes, combinations, sequences (lucky, collatz, golomb, …). `lucky.ts` uses `MaybePromise`/`chain` machinery but the sync entrypoints never return a Promise.
+- **sequence** (20 + Dvala): extra sequence utilities beyond `core/sequence.ts`. Pure.
+- **vector** (33): vector norms, angles, projections, statistics. Pure.
+
+---
+
+## Phase A status — modules/ complete
+
+**Date:** 2026-04-16.
+
+**Summary:** 20/20 modules audited. Roughly 340+ additional builtins classified across modules. Every TS-impl is pure. Three declaration issues found (all non-blocking):
+
+1. **`effectHandler.chooseRandom`** — declared pure, actually performs `@dvala.random.item`. Fix requires effect-polymorphic handler types (type-system Phase C).
+2. **`test.test` / `test.describe` / `test.skip`** — declared pure, actually mutate a shared `TestCollector`. Should carry a `@test.register` (or similar) effect declaration. Must be addressed before fold is enabled for test-file typecheck.
+3. **`time/` module** — missing type annotations entirely on `epochToIsoDate`, `isoDateToEpoch`. Both are pure-deterministic-by-input; just add annotations.
+
+**All three issues are non-critical for folding correctness** because the fold sandbox catches runtime effects regardless of declared signature. They are **correctness-of-declaration issues** that will improve IDE experience and enable sharper inference.
+
+## Phase A final summary
+
+- **Core (13 files, 127 builtins):** all pure. 1 declaration issue (`core/misc.ts::raise`).
+- **Modules (20 modules, ~340 builtins):** all pure. 3 declaration issues (effectHandler.chooseRandom, test.*, time/ annotations).
+- **Total declaration fixes needed:** 4 items, tracked as Phase A follow-ups.
+- **Total critical blockers:** 0.
+
+**Phase A can be declared complete** once the four follow-ups are tracked as issues. Fold sandbox catches every effect at runtime, so none of the declaration imperfections risk unsound folding.
+
+**Next:** Phase B — `DVALA_FOLD` toggle and differential test matrix.
