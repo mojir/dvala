@@ -754,6 +754,7 @@ export function inferExpr(
         // Bind the variable in the environment
         bindPattern(binding, valueType, env, ctx, typeMap)
         recordConcretePatternTypes(binding, valueType, typeMap)
+        recordLiteralPatternTypes(binding, valueNode, typeMap)
         result = valueType
         break
       }
@@ -3033,6 +3034,78 @@ function recordConcretePatternTypes(pattern: AstNode, type: Type, typeMap: Map<n
           recordConcretePatternTypes(elem, concreteType.element, typeMap)
         } else if (concreteType.tag === 'Sequence' && sequenceMayHaveIndex(concreteType, i)) {
           recordConcretePatternTypes(elem, sequenceElementAt(concreteType, i), typeMap)
+        }
+      }
+      break
+    }
+
+    default:
+      break
+  }
+}
+
+function recordLiteralPatternTypes(pattern: AstNode, valueNode: AstNode, typeMap: Map<number, Type>): void {
+  const patternType = pattern[0] as string
+
+  switch (patternType) {
+    case 'symbol': {
+      const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
+      const bindingType = typeMap.get(valueNode[2])
+      if (bindingType && nameNode[2] > 0) {
+        typeMap.set(nameNode[2], bindingType)
+      }
+      break
+    }
+
+    case 'object': {
+      if (valueNode[0] !== NodeTypes.Object) return
+
+      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      const entries = valueNode[1] as ([AstNode, AstNode] | AstNode)[]
+      const fieldNodes = new Map<string, AstNode>()
+
+      for (const entry of entries) {
+        if (!Array.isArray(entry) || entry.length !== 2) continue
+        const [keyNode, fieldValueNode] = entry
+        const keyName = keyNode[0] === NodeTypes.Str
+          ? keyNode[1] as string
+          : keyNode[0] === NodeTypes.Sym
+            ? keyNode[1] as string
+            : String(keyNode[1])
+        fieldNodes.set(keyName, fieldValueNode)
+      }
+
+      for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+        const fieldValueNode = fieldNodes.get(fieldName)
+        if (fieldValueNode) {
+          recordLiteralPatternTypes(fieldPattern, fieldValueNode, typeMap)
+        }
+      }
+      break
+    }
+
+    case 'array': {
+      if (valueNode[0] !== NodeTypes.Array) return
+
+      const [elements] = pattern[1] as [AstNode[], AstNode | undefined]
+      const valueElements = valueNode[1] as AstNode[]
+
+      for (let i = 0; i < elements.length; i++) {
+        const elementPattern = elements[i]
+        if (!elementPattern) continue
+
+        if ((elementPattern[0] as string) === 'rest') {
+          const restTypes = valueElements.slice(i)
+            .map(elementNode => typeMap.get(elementNode[2]) ?? Unknown)
+          if (elementPattern[2] > 0) {
+            typeMap.set(elementPattern[2], tuple(restTypes))
+          }
+          continue
+        }
+
+        const elementValueNode = valueElements[i]
+        if (elementValueNode) {
+          recordLiteralPatternTypes(elementPattern, elementValueNode, typeMap)
         }
       }
       break

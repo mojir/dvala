@@ -157,6 +157,25 @@ describe('typecheck — file imports', () => {
     expect(hover).not.toContain('Never')
   })
 
+  it('hover on destructured literal array binding preserves positional literals', () => {
+    const source = 'let [first, second, ...tailValues] = [1, 2, 3, 4];\nfirst;'
+    const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
+
+    expect(getHoverTypeStringAt(result, 0, source.indexOf('first'))).toBe('1')
+  })
+
+  it('hover on destructured literal array binding in the showcase file preserves positional literals', () => {
+    const source = fs.readFileSync(path.resolve('examples/type-system-step2-4-showcase.dvala'), 'utf-8')
+    const result = dvala.typecheck(source, {
+      fileResolverBaseDir: path.resolve('.'),
+      filePath: path.resolve('examples/type-system-step2-4-showcase.dvala'),
+    })
+    const line = source.split('\n')[43]!
+    const col = line.indexOf('first')
+
+    expect(getHoverTypeStringAt(result, 43, col)).toBe('1')
+  })
+
   it('hover on self-add callee at scalar call site shows selected overload', () => {
     const source = 'let result = (a) -> a + a;\nresult(2);'
     const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })

@@ -111,7 +111,7 @@ Use `...name` to capture remaining elements:
 
 ```dvala
 match [1, 2, 3, 4]
-  case [ x, ... xs] then xs
+  case [ x, ...xs] then xs
 end;
 ```
 
@@ -124,7 +124,7 @@ let describe = (lst) -> match lst
   case [] then "empty"
   case [ x] then "one element"
   case [ x, y] then "two elements"
-  case [ x, ... xs] then "many elements"
+  case [ x, ...xs] then "many elements"
 end;
 
 [describe([]), describe([1]), describe([1, 2]), describe([1, 2, 3])];
@@ -188,7 +188,7 @@ Capture remaining keys with `...`:
 
 ```dvala
 match { a: 1, b: 2, c: 3 }
-  case { a, ... r} then r
+  case { a, ...r} then r
 end;
 ```
 
@@ -267,7 +267,7 @@ end;
 ```dvala
 let sumList = (lst) -> match lst
   case [] then 0
-  case [ x, ... xs] then x + sumList(xs)
+  case [ x, ...xs] then x + sumList(xs)
 end;
 
 sumList([1, 2, 3, 4, 5]);

@@ -41,6 +41,11 @@ describe('formatter — let bindings', () => {
     'let {x,y}=obj',
     'let { x, y } = obj;',
   ))
+
+  it('rest destructuring stays tight to the binding name', () => check(
+    'let {tags:[first,...otherTags]}=user; let [head,...tailValues]=xs',
+    'let { tags: [first, ...otherTags] } = user;\nlet [head, ...tailValues] = xs;',
+  ))
 })
 
 // ---------------------------------------------------------------------------
@@ -149,6 +154,13 @@ end`,
   else
     "\\n"
   end;`,
+  ))
+})
+
+describe('formatter — match patterns', () => {
+  it('rest patterns stay tight to the binding name', () => check(
+    'match xs case [head,...tail] then count(tail) case _ then 0 end',
+    'match xs\n  case [ head, ...tail] then count(tail)\n  case _ then 0\nend;',
   ))
 })
 

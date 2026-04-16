@@ -31,7 +31,7 @@ let arr2 = [0, ...arr, 4];
 let obj2 = { ...obj, d: 4 };
 
 // --- Destructuring: array with rest ---
-let [dx, dy, ... dzs] = [10, 20, 30, 40];
+let [dx, dy, ...dzs] = [10, 20, 30, 40];
 
 // --- Destructuring: object ---
 let { a, b, c } = obj;
@@ -41,7 +41,7 @@ let { a as aVal } = obj;
 
 // --- Destructuring: nested ---
 let nested = { user: { name: "Alice", scores: [95, 87] } };
-let { user: { name, scores: [firstScore, ... restScores] } } = nested;
+let { user: { name, scores: [firstScore, ...restScores] } } = nested;
 
 // --- Destructuring: default value ---
 let [dp = 0, dq = 99] = [7];

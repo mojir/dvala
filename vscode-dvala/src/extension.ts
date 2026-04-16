@@ -224,13 +224,13 @@ function formatHoverType(type: import('../../src/typechecker/types').Type): stri
   return typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(type))))
 }
 
-function getHoverTypeAtNodeId(
+function getHoverTypeAtDefinition(
   cached: TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> },
-  nodeId: number,
+  def: SymbolDef,
 ): string | undefined {
-  const type = cached.typeMap.get(nodeId)
-  if (!type || type.tag === 'Unknown') return undefined
-  return formatHoverType(type)
+  const start = new vscode.Position(def.location.line - 1, def.location.column - 1)
+  const end = new vscode.Position(def.location.line - 1, def.location.column - 1 + def.name.length)
+  return getHoverTypeAtPosition(cached, start, new vscode.Range(start, end))
 }
 
 function getDiagnosticCollection(): vscode.DiagnosticCollection {
@@ -551,25 +551,25 @@ export function activate(context: vscode.ExtensionContext): void {
 
       const range = document.getWordRangeAtPosition(position, DVALA_WORD_PATTERN)
       const word = range ? document.getText(range) : undefined
-      const ref = word ? (allReference[word] ?? referenceByTitle[word]) : undefined
+      const symbol = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, position.line + 1, position.character + 1)
+      const ref = word && !symbol ? (allReference[word] ?? referenceByTitle[word]) : undefined
 
       // Look up inferred type from the type cache
       const cached = typecheckCache.get(document.uri.toString())
-      let inferredTypeStr = cached
-        ? getHoverTypeAtPosition(cached, position, range)
+      let inferredTypeStr = cached && symbol?.def && symbol.def.location.file === document.uri.fsPath
+        ? getHoverTypeAtDefinition(cached, symbol.def)
         : undefined
 
-      if (!inferredTypeStr) {
-        const symbol = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, position.line + 1, position.character + 1)
-        if (symbol?.def && symbol.def.location.file === document.uri.fsPath && cached) {
-          inferredTypeStr = getHoverTypeAtNodeId(cached, symbol.def.nodeId)
-        }
+      if (!inferredTypeStr && cached) {
+        inferredTypeStr = getHoverTypeAtPosition(cached, position, range)
+      }
 
+      if (!inferredTypeStr) {
         if (!inferredTypeStr && word && cached) {
           const visibleDefs = workspaceIndex.getSymbolsInScope(document.uri.fsPath, position.line + 1, position.character + 1)
           const matchingDef = visibleDefs.find(def => def.name === word && def.location.file === document.uri.fsPath)
           if (matchingDef) {
-            inferredTypeStr = getHoverTypeAtNodeId(cached, matchingDef.nodeId)
+            inferredTypeStr = getHoverTypeAtDefinition(cached, matchingDef)
           }
         }
       }
