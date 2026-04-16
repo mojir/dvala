@@ -114,9 +114,13 @@ describe('apiReference', () => {
           if (typeof entry !== 'string' && 'noCheck' in entry) return
           const example = typeof entry === 'string' ? entry : entry.code
           const result = typecheckDvala.typecheck(example)
+          // Only errors are blocking — fold-generated warnings (e.g.
+          // `@dvala.error` on a compile-time-provable failure like
+          // `assert(0, ...)`) are advisory and expected when DVALA_FOLD=1.
+          const errors = result.diagnostics.filter(d => d.severity === 'error')
           expect(
-            result.diagnostics,
-            `${obj.category}:${key} example ${index + 1}: ${result.diagnostics.map(d => d.message).join(', ')}`,
+            errors,
+            `${obj.category}:${key} example ${index + 1}: ${errors.map(d => d.message).join(', ')}`,
           ).toHaveLength(0)
         })
       })

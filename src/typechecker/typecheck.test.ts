@@ -4,6 +4,7 @@ import { createDvala } from '../createDvala'
 import { parseToAst } from '../parser'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
+import { FOLD_ENABLED } from './foldToggle'
 import { expandType } from './infer'
 import { simplify } from './simplify'
 import type { TypeDiagnostic } from './typecheck'
@@ -184,7 +185,9 @@ describe('typecheck — end-to-end', () => {
   })
 
   it('rejects non-exhaustive matches over Boolean values', () => {
-    const result = dvala.typecheck('let x = isNumber(42); match x case true then 1 end')
+    // Force x to be a full Boolean (not a literal): take the value from a
+    // function parameter so fold can't reduce it to true/false.
+    const result = dvala.typecheck('let check = (v) -> match isNumber(v) case true then 1 end; check(42)')
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('Non-exhaustive match')
     expect(result.diagnostics[0]?.severity).toBe('error')
@@ -1631,7 +1634,10 @@ describe('typecheckExpr', () => {
 
     expect(result.diagnostics).toHaveLength(0)
     const expanded = simplify(expandType(result.type))
-    expect(typeToString(expanded)).toBe('Number')
+    // With constant folding enabled, `1 + 2` collapses to a Literal type;
+    // otherwise it widens to Number.
+    const expected = FOLD_ENABLED ? '3' : 'Number'
+    expect(typeToString(expanded)).toBe(expected)
   })
 
   it('reports type diagnostics for mismatched expressions', () => {

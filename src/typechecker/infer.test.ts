@@ -2982,12 +2982,17 @@ describe('inference — match narrowing edge cases', () => {
 
   it('match boolean patterns on conditional', () => {
     const dvala = createDvala()
+    // Take the value from a parameter so fold can't reduce it to true/false;
+    // the point of this test is matching the full Boolean domain.
     const result = dvala.typecheck(`
-      let b = isNumber(42);
-      match b
-        case true then 1
-        case false then 0
-      end
+      let check = (v) -> do
+        let b = isNumber(v);
+        match b
+          case true then 1
+          case false then 0
+        end;
+      end;
+      check(42)
     `)
     expect(result.diagnostics).toHaveLength(0)
   })
