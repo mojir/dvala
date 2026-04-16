@@ -1,6 +1,6 @@
 # Scalar-Only Math Builtins
 
-**Status:** Draft
+**Status:** Implemented
 **Created:** 2026-04-15
 
 ## Goal
