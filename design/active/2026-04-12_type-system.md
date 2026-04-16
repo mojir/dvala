@@ -981,8 +981,8 @@ Today, type-guard narrowing (decision #20) only fires inside `match` guards. The
 ```dvala
 let describe = (x) -> if isString(x) then count(x) else x + 1 end
 describe("hi")
-// Current: type error — x inferred as Number because the else branch
-//          constrains x + 1 without narrowing the then branch away.
+// Current: the else branch constrains x + 1, so x is inferred as Number.
+//          The call site then errors: "hi" is not a subtype of Number.
 // Desired: x: String | Number, narrowed per branch; both calls check.
 ```
 
@@ -999,7 +999,8 @@ No change to the core algebra — purely an inference-time refinement, reusing t
 Grammar only permits `?` on function params (`identifier ["?"] ":" Type`). Records have no surface syntax for optionality:
 
 ```dvala
-type User = { name: String, age?: Number }   // TypeParseError today
+type User = { name: String, age?: Number }
+let u: User = {name: "Alice"}                // TypeParseError when the alias is used
 ```
 
 Two semantic options:
