@@ -23,6 +23,8 @@ import {
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
+import { tryFoldBuiltinCall } from './constantFold'
+import { FOLD_ENABLED } from './foldToggle'
 import { parseTypeAnnotation } from './parseType'
 import { getEffectDeclaration } from './effectTypes'
 import { simplify } from './simplify'
@@ -883,6 +885,28 @@ export function inferExpr(
         recordSpecializedCalleeType(calleeNode, selectedAlternative, typeMap)
 
         result = retVar
+
+        // Constant folding: if enabled and the callee is a direct Builtin
+        // with all-primitive-literal args and an empty inferred effect set,
+        // run the call through the fold sandbox and use the result as the
+        // inferred type. Effects surfaced during fold (typically
+        // @dvala.error from partial builtins like `/` on zero) become
+        // `severity: 'warning'` diagnostics — decision #2 of the folding
+        // design. See design/active/2026-04-16_constant-folding-in-types.md.
+        if (FOLD_ENABLED
+          && functionAlternatives.length > 0
+          && functionAlternatives.every(alt => alt.effects.effects.size === 0 && !alt.effects.open)) {
+          const foldOutcome = tryFoldBuiltinCall(calleeNode, argTypes)
+          if (foldOutcome?.type) {
+            result = foldOutcome.type
+          } else if (foldOutcome?.effectName !== undefined) {
+            ctx.deferError(new TypeInferenceError(
+              `This expression will perform \`@${foldOutcome.effectName}\` at runtime`,
+              nodeId,
+              'warning',
+            ))
+          }
+        }
         break
       }
 
