@@ -311,10 +311,20 @@ export function typeToString(t: Type): string {
         return `${typeToString(t.rest)}[]`
       }
 
-      const prefix = `[${t.prefix.map(typeToString).join(', ')}]`
-      const rest = t.rest.tag === 'Never' ? '' : `, ...${typeToString(array(t.rest))}`
-      const length = t.maxLength === undefined ? `${t.minLength}..` : `${t.minLength}..${t.maxLength}`
-      return `Sequence<${prefix}${rest}, len=${length}>`
+      // Render irreducible sequences in familiar Dvala syntax.
+      // Approximate with [prefix..., ...rest[]] and add a length qualifier
+      // only when it can't be inferred from the syntax alone.
+      const parts: string[] = t.prefix.map(typeToString)
+      if (t.rest.tag !== 'Never') {
+        parts.push(`...${typeToString(array(t.rest))}`)
+      }
+      const base = `[${parts.join(', ')}]`
+      const impliedMin = t.prefix.length
+      const impliedMax = t.rest.tag === 'Never' ? t.prefix.length : undefined
+      const needsQualifier = t.minLength !== impliedMin || t.maxLength !== impliedMax
+      if (!needsQualifier) return base
+      const length = t.maxLength === undefined ? `${t.minLength}+` : `${t.minLength}..${t.maxLength}`
+      return `${base} (length ${length})`
     }
     case 'Regex': return 'Regex'
     case 'AnyFunction': return 'Function'

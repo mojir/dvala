@@ -116,8 +116,16 @@ describe('typeToString', () => {
     expect(typeToString(sequence([], NumberType, 0))).toBe('Number[]')
   })
 
-  it('sequence types render internal debug form for prefix-constrained tails', () => {
-    expect(typeToString(sequence([literal(1)], NumberType, 1))).toBe('Sequence<[1], ...Number[], len=1..>')
+  it('sequence types render familiar syntax for prefix-constrained tails', () => {
+    expect(typeToString(sequence([literal(1)], NumberType, 1))).toBe('[1, ...Number[]]')
+  })
+
+  it('sequence types add length qualifier when min length exceeds prefix', () => {
+    expect(typeToString(sequence([literal(1)], NumberType, 2))).toBe('[1, ...Number[]] (length 2+)')
+  })
+
+  it('sequence types add length qualifier for bounded ranges', () => {
+    expect(typeToString(sequence([], NumberType, 2, 5))).toBe('[...Number[]] (length 2..5)')
   })
 
   it('union types', () => {

@@ -1989,7 +1989,6 @@ interface MatchCaseAnalysis {
 }
 
 function analyzeMatchCase(pattern: AstNode, candidateType: Type, guard: AstNode | null, env: TypeEnv): MatchCaseAnalysis {
-  const patternType = pattern[0] as string
   const matchedByPattern = matchedTypeForPattern(pattern, candidateType)
   if (matchedByPattern.tag === 'Never') {
     return { matchedType: Never, consumedType: Never }
@@ -1999,19 +1998,157 @@ function analyzeMatchCase(pattern: AstNode, candidateType: Type, guard: AstNode 
     return { matchedType: matchedByPattern, consumedType: matchedByPattern }
   }
 
-  if (patternType === 'symbol') {
-    const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
-    const guardNarrow = extractGuardNarrowing(guard, nameNode[1] as string, env)
-    if (guardNarrow) {
-      const narrowed = intersectMatchTypes(matchedByPattern, guardNarrow)
-      return {
-        matchedType: narrowed,
-        consumedType: narrowed,
-      }
-    }
+  // Try to narrow the consumed type using guard information.
+  // For bare symbol patterns, the guard narrows the entire matched type.
+  // For destructuring patterns, the guard may narrow individual bound names
+  // at specific positions (e.g., `case [x, y] when isNumber(x)` narrows
+  // position 0 to Number).
+  const narrowed = narrowMatchedTypeByGuard(pattern, matchedByPattern, guard, env)
+  if (narrowed) {
+    return { matchedType: narrowed, consumedType: narrowed }
   }
 
   return { matchedType: matchedByPattern, consumedType: Never }
+}
+
+/**
+ * Attempt to narrow a matched type using guard information.
+ * Returns the narrowed type if any guard narrowing applies, or null if
+ * the guard is opaque (can't extract narrowing information).
+ */
+function narrowMatchedTypeByGuard(pattern: AstNode, matchedType: Type, guard: AstNode, env: TypeEnv): Type | null {
+  const patternType = pattern[0] as string
+
+  switch (patternType) {
+    case 'symbol': {
+      const [nameNode] = pattern[1] as [AstNode, AstNode | undefined]
+      const guardNarrow = extractGuardNarrowing(guard, nameNode[1] as string, env)
+      return guardNarrow ? intersectMatchTypes(matchedType, guardNarrow) : null
+    }
+
+    case 'array': {
+      const [elements] = pattern[1] as [AstNode[], AstNode | undefined]
+      return narrowArrayMatchTypeByGuard(elements, matchedType, guard, env)
+    }
+
+    case 'object': {
+      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      return narrowObjectMatchTypeByGuard(fieldsObj, matchedType, guard, env)
+    }
+
+    default:
+      return null
+  }
+}
+
+/**
+ * For array destructuring patterns, check if the guard narrows any element
+ * binding. If so, refine the matched type at that position.
+ *
+ * Example: `case [x, y] when isNumber(x)` with matched type `[Unknown, Unknown]`
+ * narrows to `[Number, Unknown]`.
+ */
+function narrowArrayMatchTypeByGuard(
+  elements: AstNode[],
+  matchedType: Type,
+  guard: AstNode,
+  env: TypeEnv,
+): Type | null {
+  // Collect guard narrowings for bound element names
+  const elementNarrowings = new Map<number, Type>()
+  for (let i = 0; i < elements.length; i++) {
+    const elem = elements[i]
+    if (!elem || (elem[0] as string) === 'rest') continue
+    if ((elem[0] as string) !== 'symbol') continue
+
+    const [nameNode] = elem[1] as [AstNode, AstNode | undefined]
+    const boundName = nameNode[1] as string
+    const guardNarrow = extractGuardNarrowing(guard, boundName, env)
+    if (guardNarrow) {
+      elementNarrowings.set(i, guardNarrow)
+    }
+  }
+
+  if (elementNarrowings.size === 0) return null
+
+  return narrowSequenceElementTypes(matchedType, elementNarrowings)
+}
+
+// Apply element-level narrowings to an array-like type (or union of them).
+function narrowSequenceElementTypes(type: Type, elementNarrowings: Map<number, Type>): Type {
+  if (type.tag === 'Union') {
+    const narrowed = type.members
+      .map(m => narrowSequenceElementTypes(m, elementNarrowings))
+      .filter(m => m.tag !== 'Never')
+    return narrowed.length === 0 ? Never : simplify(union(...narrowed))
+  }
+
+  const seq = toSequenceType(type)
+  if (!seq) return type
+
+  const narrowedPrefix = [...seq.prefix]
+  for (const [index, guardType] of elementNarrowings) {
+    while (narrowedPrefix.length <= index) {
+      narrowedPrefix.push(seq.rest)
+    }
+    const narrowed = intersectMatchTypes(narrowedPrefix[index]!, guardType)
+    if (narrowed.tag === 'Never') return Never
+    narrowedPrefix[index] = narrowed
+  }
+
+  return simplify(sequence(narrowedPrefix, seq.rest, seq.minLength, seq.maxLength))
+}
+
+/**
+ * For object destructuring patterns, check if the guard narrows any field
+ * binding. If so, refine the matched type at that field.
+ *
+ * Example: `case { x, y } when isNumber(x)` with matched type `{x: Unknown, y: Unknown}`
+ * narrows to `{x: Number, y: Unknown}`.
+ */
+function narrowObjectMatchTypeByGuard(
+  fieldsObj: Record<string, AstNode>,
+  matchedType: Type,
+  guard: AstNode,
+  env: TypeEnv,
+): Type | null {
+  // Collect guard narrowings for bound field names
+  const fieldNarrowings = new Map<string, Type>()
+  for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
+    if ((fieldPattern[0] as string) !== 'symbol') continue
+
+    const [nameNode] = fieldPattern[1] as [AstNode, AstNode | undefined]
+    const boundName = nameNode[1] as string
+    const guardNarrow = extractGuardNarrowing(guard, boundName, env)
+    if (guardNarrow) {
+      fieldNarrowings.set(fieldName, guardNarrow)
+    }
+  }
+
+  if (fieldNarrowings.size === 0) return null
+
+  return narrowRecordFieldTypes(matchedType, fieldNarrowings)
+}
+
+// Apply field-level narrowings to a record type (or union of records).
+function narrowRecordFieldTypes(type: Type, fieldNarrowings: Map<string, Type>): Type {
+  if (type.tag === 'Union') {
+    const narrowed = type.members
+      .map(m => narrowRecordFieldTypes(m, fieldNarrowings))
+      .filter(m => m.tag !== 'Never')
+    return narrowed.length === 0 ? Never : simplify(union(...narrowed))
+  }
+
+  if (type.tag !== 'Record') return type
+
+  const narrowedFields = new Map(type.fields)
+  for (const [fieldName, guardType] of fieldNarrowings) {
+    const existingFieldType = narrowedFields.get(fieldName) ?? Unknown
+    const narrowed = intersectMatchTypes(existingFieldType, guardType)
+    if (narrowed.tag === 'Never') return Never
+    narrowedFields.set(fieldName, narrowed)
+  }
+  return { tag: 'Record', fields: narrowedFields, open: type.open }
 }
 
 function matchedTypeForPattern(pattern: AstNode, candidateType: Type): Type {

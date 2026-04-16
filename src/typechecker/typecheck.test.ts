@@ -229,6 +229,31 @@ describe('typecheck — end-to-end', () => {
     expect(result.diagnostics[0]?.severity).toBe('warning')
   })
 
+  it('narrows consumed type when guard applies to array element binding', () => {
+    // Without guard narrowing, `case [x] when isNumber(x)` would not subtract
+    // anything, and the second `case [y] when isString(y)` would not be
+    // recognized as covering the remaining space.
+    const result = dvala.typecheck(
+      'let xs = if true then [1] else ["a"] end;'
+      + ' match xs'
+      + ' case [x] when isNumber(x) then x'
+      + ' case [y] when isString(y) then y'
+      + ' end',
+    )
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('narrows consumed type when guard applies to object field binding', () => {
+    const result = dvala.typecheck(
+      'let obj = if true then { v: 1 } else { v: "a" } end;'
+      + ' match obj'
+      + ' case { v } when isNumber(v) then v'
+      + ' case { v } when isString(v) then v'
+      + ' end',
+    )
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   it('accepts exhaustive tagged object matches without a wildcard', () => {
     const result = dvala.typecheck('let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end')
     expect(result.diagnostics).toHaveLength(0)

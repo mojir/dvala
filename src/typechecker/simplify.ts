@@ -198,6 +198,12 @@ function simplifyNeg(inner: Type): Type {
   return neg(inner)
 }
 
+// Current strategy: conservative — only collapse sequences back to tuple/array
+// canonical forms, no branch merging between distinct sequences in unions.
+// If diagnostics become noisy from match subtraction producing many sequence
+// branches, consider moderate merging: merge sequences with identical prefixes
+// and adjacent/overlapping length intervals (e.g., Sequence([!1], Number, 2, 2)
+// | Sequence([!1], Number, 3, undefined) → Sequence([!1], Number, 2, undefined)).
 function simplifySequence(type: Extract<Type, { tag: 'Sequence' }>): Type {
   const normalized = normalizeSequenceType(type)
 

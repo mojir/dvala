@@ -271,12 +271,14 @@ This plan is complete when all of the following are true:
 - repeated array prefix branches can be reported as redundant when appropriate
 - full repo validation passes
 
+## Resolved Questions (2026-04-16)
+
+- **`Sequence` stays permanently in `Type`.** `simplify` already collapses exact sequences to tuples and unconstrained ones to arrays. Only genuinely irreducible residuals survive — those represent something tuples/arrays can't express, and desugaring would lose information.
+- **Irreducible sequences render as approximate familiar syntax with a qualifier** (e.g., `[1, ...Number[]] (and other lengths)`). Not yet implemented — follow-up task for the rendering side.
+- **Helper module extraction is deferred** until `infer.ts` grows further. Not urgent at current size.
+
 ## Open Questions
 
-These remain open follow-ups rather than blockers for Step 5.
-
-- Should `Sequence` live permanently in `Type`, or should it be desugared away before the type map is exposed to IDE features?
-- Should sequence rendering be hidden entirely from user diagnostics unless no tuple/array form is possible?
 - Is it worth introducing a small helper module just for sequence normalization/subtraction to keep `infer.ts` from growing further?
 
 ## Implementation Summary

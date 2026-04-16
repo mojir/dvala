@@ -318,13 +318,13 @@ Do not expose it in user syntax yet.
 
 That keeps the change local, solves the actual blocker, and gives a clean path toward future fixed-size array features.
 
-## Open Questions
+## Resolved Questions (2026-04-16)
 
-- Should `Sequence` be a first-class member of `Type`, or an internal normalized form used only inside subtype/simplify/match analysis?
-- Should homogeneous array literals continue to infer as `Array<T>` first and normalize later, or should array literals infer as `Sequence` directly?
-- How aggressively should the simplifier merge sequence branches before user-facing diagnostics?
-- Should defaults in sequence patterns be expanded immediately to unions, or preserved in a lighter intermediate pattern-space form until subtraction?
-- Do we want a debug-only sequence renderer before designing a user-facing representation?
+- **`Sequence` stays as a first-class member of `Type`.** `simplify` already collapses reducible sequences back to tuples/arrays. Only irreducible residuals survive, and those carry information that would be lost by desugaring.
+- **Array literals keep inferring as `Array<T>`.** Match analysis normalizes to `Sequence` when precision is needed. Changing general inference would ripple through display and user expectations for no current benefit.
+- **Conservative simplification for now.** No branch merging between distinct sequences. If diagnostics become noisy, consider moderate merging (identical prefixes + adjacent length intervals). See comment in `simplify.ts`.
+- **Defaults expand immediately to unions.** `[x, y = 0]` becomes `[x] | [x, y]` before match analysis. Simple, works with existing subtraction, and the union size is small (one branch per optional parameter).
+- **Irreducible sequences render as approximate familiar syntax** (e.g., `[1, ...Number[]] (and other lengths)`) rather than the internal debug format. Not yet implemented — follow-up rendering task.
 
 ## Implementation Plan
 
