@@ -18,7 +18,7 @@ import {
 } from './infer'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
-import { initBuiltinTypes, registerModuleType } from './builtinTypes'
+import { getBuiltinType, initBuiltinTypes, isTypeGuard, registerModuleType, resetBuiltinTypeCache } from './builtinTypes'
 import { declareEffect } from './effectTypes'
 import { allBuiltinModules } from '../allModules'
 
@@ -1314,5 +1314,50 @@ describe('typecheck — effect declarations in source', () => {
   it('builtin effects are pre-declared (no error)', () => {
     const result = dvala.typecheck('perform(@dvala.error, "oops")')
     expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// builtinTypes — isTypeGuard and resetBuiltinTypeCache
+// ---------------------------------------------------------------------------
+
+describe('builtinTypes', () => {
+  it('isTypeGuard returns true for a known type guard (isNumber)', () => {
+    // isNumber has type annotation "(x: Unknown) -> x is Number" which sets guardParam
+    expect(isTypeGuard('isNumber')).toBe(true)
+  })
+
+  it('isTypeGuard returns true for isString type guard', () => {
+    expect(isTypeGuard('isString')).toBe(true)
+  })
+
+  it('isTypeGuard returns false for a non-guard builtin', () => {
+    // "+" is a normal builtin with no guard annotation
+    expect(isTypeGuard('+')).toBe(false)
+  })
+
+  it('isTypeGuard returns false for an unknown builtin name', () => {
+    expect(isTypeGuard('nonExistentBuiltin')).toBe(false)
+  })
+
+  it('resetBuiltinTypeCache clears the cache and allows re-initialization', () => {
+    // Verify cache is populated before reset
+    expect(getBuiltinType('isNumber').type).not.toEqual(Unknown)
+
+    // Reset the cache — this covers lines 126-128
+    resetBuiltinTypeCache()
+
+    // After reset, lookups should return Unknown (cache is empty)
+    expect(getBuiltinType('isNumber')).toEqual({ type: Unknown })
+    expect(isTypeGuard('isNumber')).toBe(false)
+
+    // Re-initialize so other tests are not affected
+    initBuiltinTypes(builtin.normalExpressions)
+    for (const mod of allBuiltinModules) {
+      registerModuleType(mod.name, mod.functions)
+    }
+
+    // Verify re-initialization worked
+    expect(isTypeGuard('isNumber')).toBe(true)
   })
 })
