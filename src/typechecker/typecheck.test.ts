@@ -1610,7 +1610,7 @@ describe('typecheck — imported diagnostics', () => {
 describe('typecheckExpr', () => {
   // Helper: parse source into AST nodes and optional source map
   function parseNodes(source: string) {
-    const ts = tokenize(source, true)
+    const ts = tokenize(source, true, undefined)
     const min = minifyTokenStream(ts, { removeWhiteSpace: true })
     const ast = parseToAst(min)
     return { nodes: ast.body, sourceMap: ast.sourceMap }

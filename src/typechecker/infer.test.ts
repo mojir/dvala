@@ -2413,7 +2413,7 @@ describe('expandTypeForDisplay — complex type shapes', () => {
   })
 
   it('expands Recursive type', () => {
-    const r: Type = { tag: 'Recursive', id: 'rec1', body: NumberType }
+    const r: Type = { tag: 'Recursive', id: 1, body: NumberType }
     const result = expandTypeForDisplay(r)
     expect(result.tag).toBe('Recursive')
   })
@@ -2495,7 +2495,7 @@ describe('sanitizeDisplayType — complex type shapes', () => {
   })
 
   it('sanitizes Recursive type with nested Never', () => {
-    const r: Type = { tag: 'Recursive', id: 'rec1', body: Never }
+    const r: Type = { tag: 'Recursive', id: 1, body: Never }
     const result = sanitizeDisplayType(r, true)
     expect(result.tag).toBe('Recursive')
   })
