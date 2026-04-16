@@ -51,10 +51,9 @@ export function initBuiltinTypes(normalExpressions: BuiltinNormalExpressions): v
         guardParam: parsed.guardParam,
         guardType: parsed.guardType,
       })
-    } catch (e) {
-      // Log parse errors during development but don't crash
-      // eslint-disable-next-line no-console
-      console.warn(`Failed to parse type for builtin '${name}': ${typeStr}`, e)
+    } catch {
+      // Silently degrade to Unknown — the builtin works at runtime,
+      // it just won't have type information for the checker.
     }
   }
 }
