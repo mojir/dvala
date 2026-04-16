@@ -430,7 +430,7 @@ function typeId(t: Type): string {
     case 'Unknown': return '?'
     case 'Never': return '!'
     case 'Var': return `V:${t.id}`
-    case 'Alias': return `Al:${t.name}`
+    case 'Alias': return `Al:${t.name}<${t.args.map(typeId).join(',')}>`
     case 'Recursive': return `Rec:${t.id}`
   }
 }
