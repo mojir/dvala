@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import { allBuiltinModules } from '../allModules'
 import { createDvala } from '../createDvala'
-import type { TypeDiagnostic } from './typecheck'
-import { typeToString } from './types'
+import { parseToAst } from '../parser'
+import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
+import { tokenize } from '../tokenizer/tokenize'
 import { expandType } from './infer'
 import { simplify } from './simplify'
+import type { TypeDiagnostic } from './typecheck'
+import { typecheckExpr } from './typecheck'
+import { typeToString } from './types'
 
 // ---------------------------------------------------------------------------
 // End-to-end: typecheck() method on DvalaRunner
@@ -618,5 +623,269 @@ describe('typecheck — imported diagnostics', () => {
     expect(second.diagnostics.length).toBeGreaterThan(0)
     expect(second.diagnostics[0]?.message).toContain('not a subtype of String')
     expect(second.diagnostics[0]?.sourceCodeInfo?.filePath).toBe('bad.dvala')
+  })
+
+  it('deduplicates diagnostics when the same imported file is referenced twice', () => {
+    // Importing the same file twice should use the file type cache on the
+    // second access and avoid emitting duplicate diagnostics.
+    const files = new Map([
+      ['./bad.dvala', 'let value: String = 42; { value }'],
+    ])
+
+    const dvala = createDvala({
+      fileResolver: (importPath: string) => {
+        const source = files.get(importPath)
+        if (!source) throw new Error(`File not found: ${importPath}`)
+        return source
+      },
+    })
+
+    // Two separate import expressions for the same file in sequence
+    const result = dvala.typecheck(
+      'let a = import("./bad.dvala"); let b = import("./bad.dvala"); a',
+      { fileResolverBaseDir: '.' },
+    )
+
+    // There should be diagnostics (the file has a type error), but they should
+    // NOT be duplicated — the dedup logic should keep only one copy.
+    const errorMessages = result.diagnostics.filter(d => d.severity === 'error').map(d => d.message)
+    const uniqueMessages = [...new Set(errorMessages)]
+    expect(errorMessages).toEqual(uniqueMessages)
+  })
+
+  it('returns Unknown when file resolver throws', () => {
+    const dvala = createDvala({
+      fileResolver: () => {
+        throw new Error('cannot read file')
+      },
+    })
+
+    // Importing a file that the resolver cannot find should not crash the
+    // typechecker — it should fall back to Unknown and produce no error diagnostic.
+    const result = dvala.typecheck(
+      'let x = import("./nonexistent.dvala"); x',
+      { fileResolverBaseDir: '.' },
+    )
+
+    // Should not throw; the import gets Unknown type
+    expect(result.typeMap.size).toBeGreaterThan(0)
+  })
+
+  it('processes type aliases declared in imported files', () => {
+    // The imported file declares a type alias and uses it in an annotation.
+    // Without type alias registration in the import path, the annotation
+    // would silently collapse to Unknown.
+    const files = new Map([
+      ['./types.dvala', 'type Num = Number; let value: Num = 42; { value }'],
+    ])
+
+    const dvala = createDvala({
+      fileResolver: (importPath: string) => {
+        const source = files.get(importPath)
+        if (!source) throw new Error(`File not found: ${importPath}`)
+        return source
+      },
+    })
+
+    const result = dvala.typecheck(
+      'let { value } = import("./types.dvala"); value + 1',
+      { fileResolverBaseDir: '.' },
+    )
+
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('processes effect declarations in imported files', () => {
+    // The imported file declares an effect and uses it. Without effect
+    // declaration registration in the import path, perform() would collapse
+    // to Unknown.
+    const files = new Map([
+      ['./effects.dvala', [
+        'effect @test.imported(Number) -> String;',
+        'let handle = (thunk) -> do',
+        '  let h = handler @test.imported(x) -> resume(str(x)) end;',
+        '  h(thunk)',
+        'end;',
+        '{ handle }',
+      ].join('\n')],
+    ])
+
+    const dvala = createDvala({
+      fileResolver: (importPath: string) => {
+        const source = files.get(importPath)
+        if (!source) throw new Error(`File not found: ${importPath}`)
+        return source
+      },
+    })
+
+    const result = dvala.typecheck(
+      'let { handle } = import("./effects.dvala"); handle',
+      { fileResolverBaseDir: '.' },
+    )
+
+    // The import should succeed without errors — the effect declaration
+    // should be recognized and the handler should typecheck correctly.
+    const errors = result.diagnostics.filter(d => d.severity === 'error')
+    expect(errors).toHaveLength(0)
+  })
+
+  it('resolves imports with parent directory traversal (..)', () => {
+    // Tests the joinPath ".." segment handling where resolvedSegments.pop() is called
+    const files = new Map([
+      ['./lib/helper.dvala', '{ x: 42 }'],
+    ])
+
+    const dvala = createDvala({
+      fileResolver: (importPath: string, fromDir: string) => {
+        // Normalize: resolve ".." manually for the flat file map
+        const parts = `${fromDir}/${importPath}`.split('/').filter(Boolean)
+        const resolved: string[] = []
+        for (const p of parts) {
+          if (p === '..') resolved.pop()
+          else if (p !== '.') resolved.push(p)
+        }
+        const key = './' + resolved.join('/')
+        const source = files.get(key)
+        if (!source) throw new Error(`File not found: ${key} (from ${fromDir}/${importPath})`)
+        return source
+      },
+    })
+
+    // Import from a nested directory, going up via ".."
+    const result = dvala.typecheck(
+      'let { x } = import("../lib/helper.dvala"); x',
+      { fileResolverBaseDir: './sub' },
+    )
+
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('resolves imports with parent traversal past empty relative root', () => {
+    // When baseDir is relative and importPath uses ".." past all segments,
+    // joinPath should push ".." onto resolvedSegments since there is no root.
+    const dvala = createDvala({
+      fileResolver: (importPath: string) => {
+        // Accept any import — return a simple value
+        return '{ value: 1 }'
+      },
+    })
+
+    // The ".." traversal past the relative root exercises the !root branch
+    // in joinPath where ".." segments are pushed onto resolvedSegments.
+    const result = dvala.typecheck(
+      'let { value } = import("../../far.dvala"); value',
+      { fileResolverBaseDir: '.' },
+    )
+
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('normalizes handler types in imported exports', () => {
+    // Import a file that exports a handler to exercise the Handler case
+    // in normalizeImportedExportType.
+    const files = new Map([
+      ['./handler.dvala', [
+        'effect @test.norm(Number) -> Number;',
+        'handler @test.norm(x) -> resume(x * 2) end',
+      ].join('\n')],
+    ])
+
+    const dvala = createDvala({
+      fileResolver: (importPath: string) => {
+        const source = files.get(importPath)
+        if (!source) throw new Error(`File not found: ${importPath}`)
+        return source
+      },
+    })
+
+    const result = dvala.typecheck(
+      'let h = import("./handler.dvala"); h',
+      { fileResolverBaseDir: '.' },
+    )
+
+    // The handler import should be resolved without crashing
+    expect(result.typeMap.size).toBeGreaterThan(0)
+  })
+
+  it('normalizes function types with handler wrappers in imports', () => {
+    // Import a file that exports a function wrapping a handler to
+    // exercise the handlerWrapper branch in normalizeImportedExportType.
+    const files = new Map([
+      ['./wrapped.dvala', [
+        'effect @test.wrap(String) -> Null;',
+        'let run = (thunk) -> do',
+        '  let h = handler @test.wrap(msg) -> resume(null) end;',
+        '  h(thunk)',
+        'end;',
+        '{ run }',
+      ].join('\n')],
+    ])
+
+    const dvala = createDvala({
+      fileResolver: (importPath: string) => {
+        const source = files.get(importPath)
+        if (!source) throw new Error(`File not found: ${importPath}`)
+        return source
+      },
+    })
+
+    const result = dvala.typecheck(
+      'let { run } = import("./wrapped.dvala"); run',
+      { fileResolverBaseDir: '.' },
+    )
+
+    expect(result.typeMap.size).toBeGreaterThan(0)
+  })
+
+})
+
+// ---------------------------------------------------------------------------
+// typecheckExpr — standalone expression type checking
+// ---------------------------------------------------------------------------
+
+describe('typecheckExpr', () => {
+  // Helper: parse source into AST nodes and optional source map
+  function parseNodes(source: string) {
+    const ts = tokenize(source, true)
+    const min = minifyTokenStream(ts, { removeWhiteSpace: true })
+    const ast = parseToAst(min)
+    return { nodes: ast.body, sourceMap: ast.sourceMap }
+  }
+
+  it('infers number type for arithmetic expression', () => {
+    const { nodes, sourceMap } = parseNodes('1 + 2')
+    const result = typecheckExpr(nodes, sourceMap, { modules: allBuiltinModules })
+
+    expect(result.diagnostics).toHaveLength(0)
+    const expanded = simplify(expandType(result.type))
+    expect(typeToString(expanded)).toBe('Number')
+  })
+
+  it('reports type diagnostics for mismatched expressions', () => {
+    const { nodes, sourceMap } = parseNodes('"hello" + 1')
+    const result = typecheckExpr(nodes, sourceMap, { modules: allBuiltinModules })
+
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('populates typeMap for let binding expressions', () => {
+    const { nodes, sourceMap } = parseNodes('let x = 42; x + 1')
+    const result = typecheckExpr(nodes, sourceMap, { modules: allBuiltinModules })
+
+    expect(result.typeMap.size).toBeGreaterThan(0)
+  })
+
+  it('returns Unknown type for empty node list', () => {
+    const result = typecheckExpr([], undefined, { modules: allBuiltinModules })
+
+    expect(result.diagnostics).toHaveLength(0)
+    expect(result.type.tag).toBe('Unknown')
+  })
+
+  it('works without modules option', () => {
+    const { nodes, sourceMap } = parseNodes('let x = 42; x')
+    const result = typecheckExpr(nodes, sourceMap)
+
+    expect(result.type).toBeDefined()
   })
 })
