@@ -812,6 +812,8 @@ export function activate(context: vscode.ExtensionContext): void {
   // Clear diagnostics when a document is closed
   const onDidClose = vscode.workspace.onDidCloseTextDocument(doc => {
     lsDiagnostics.delete(doc.uri)
+    typeDiagnostics.delete(doc.uri)
+    typecheckCache.delete(doc.uri.toString())
   })
 
   // Reference provider — Find All References (Shift+F12)
