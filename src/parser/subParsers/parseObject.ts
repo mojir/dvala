@@ -35,9 +35,11 @@ export function parseObject(ctx: ParserContext): ObjectNode {
           : token[1]
         keyNode = withSourceCodeInfo([NodeTypes.Str, value, 0], token[2], ctx)
         ctx.advance()
+        ctx.setNodeEnd(keyNode[2])
         // Shorthand property: { foo } → { foo: foo } (only for unquoted symbols)
         if (!isQuoted && !isOperatorToken(ctx.tryPeek(), ':')) {
           const valueNode = withSourceCodeInfo([NodeTypes.Sym, value, 0], token[2], ctx)
+          ctx.setNodeEnd(valueNode[2])
           entries.push([keyNode, valueNode])
           const nextToken = ctx.tryPeek()
           if (!isOperatorToken(nextToken, ',') && !isRBraceToken(nextToken)) {

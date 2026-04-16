@@ -2672,7 +2672,10 @@ describe('inference — match array pattern against union of arrays', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [a, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 })
 
@@ -2773,7 +2776,10 @@ describe('inference — match array rest against union of arrays', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [first, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 
   it('array element + rest pattern against union with compatible members', () => {
@@ -2785,7 +2791,10 @@ describe('inference — match array rest against union of arrays', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [a, b, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 })
 

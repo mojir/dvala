@@ -155,7 +155,10 @@ describe('typecheck — end-to-end', () => {
 
   it('accepts rest bindings in match array destructuring', () => {
     const result = dvala.typecheck('let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then count(rest) case _ then 0 end')
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [1, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 
   it('accepts rest bindings in let array destructuring', () => {
@@ -394,7 +397,10 @@ describe('typecheck — sequence exhaustiveness', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [1, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 })
 
@@ -564,7 +570,10 @@ describe('typecheck — complex match narrowing', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [1, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 
   it('exhaustive match on tuple of atoms succeeds', () => {

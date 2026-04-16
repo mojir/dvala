@@ -892,13 +892,19 @@ export function inferExpr(
         if (elements.length === 0) {
           result = array(ctx.freshVar())
         } else {
+          // Check if any element is a spread — if so, fall back to homogeneous Array
+          const hasSpread = elements.some(e => e[0] === NodeTypes.Spread)
           const elemTypes = elements.map(e => inferExpr(e, ctx, env, typeMap))
-          // All elements contribute to a union of the element type
-          const elemVar = ctx.freshVar()
-          for (const et of elemTypes) {
-            constrain(ctx, et, elemVar)
+          if (hasSpread) {
+            const elemVar = ctx.freshVar()
+            for (const et of elemTypes) {
+              constrain(ctx, et, elemVar)
+            }
+            result = array(elemVar)
+          } else {
+            // Fixed-length literal: infer as Tuple to preserve positional types
+            result = tuple(elemTypes)
           }
-          result = array(elemVar)
         }
         break
       }
@@ -918,6 +924,11 @@ export function inferExpr(
                 : String(keyNode[1])
             const valueType = inferExpr(valueNode, ctx, env, typeMap)
             fields.set(keyName, valueType)
+            // Record value type on the key node so hovering on the key shows the field type
+            const keyNodeId = keyNode[2]
+            if (keyNodeId > 0) {
+              typeMap.set(keyNodeId, valueType)
+            }
           }
         // Spread entries are handled at a later step
         }
@@ -3617,25 +3628,36 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
 function normalizeDisplayUnion(members: Type[]): Type {
   if (members.length === 0) return Never
   if (members.every(member => member.tag === 'Record')) {
-    const open = members.some(member => member.open)
-    const fieldNames = new Set<string>()
-    for (const member of members) {
-      for (const fieldName of member.fields.keys()) fieldNames.add(fieldName)
-    }
+    // Merging records in a union is only sound when at most one field varies
+    // across branches. Otherwise the merge loses per-branch field correlation,
+    // widening e.g. `{a:1,b:1} | {a:2,b:2}` to allow `{a:1,b:2}` — a discriminated
+    // union like `{type:"click", x, y} | {type:"keydown", key}` must stay a union.
+    const first = members[0]!
+    const firstKeys = [...first.fields.keys()]
+    const sameKeys = members.every(m =>
+      m.fields.size === firstKeys.length
+      && firstKeys.every(k => m.fields.has(k)),
+    )
 
-    const mergedFields = new Map<string, Type>()
-    for (const fieldName of fieldNames) {
-      const candidates: Type[] = []
-      for (const member of members) {
-        const fieldType = member.fields.get(fieldName)
-        if (fieldType) candidates.push(fieldType)
+    if (sameKeys) {
+      let varyingFields = 0
+      for (const key of firstKeys) {
+        const firstType = first.fields.get(key)!
+        if (members.some(m => !typeEquals(m.fields.get(key)!, firstType))) {
+          varyingFields++
+        }
       }
-      if (candidates.length > 0) {
-        mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
+
+      if (varyingFields <= 1) {
+        const open = members.some(member => member.open)
+        const mergedFields = new Map<string, Type>()
+        for (const fieldName of firstKeys) {
+          const candidates = members.map(m => m.fields.get(fieldName)!)
+          mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
+        }
+        return { tag: 'Record', fields: mergedFields, open }
       }
     }
-
-    return { tag: 'Record', fields: mergedFields, open }
   }
 
   if (members.every(member => member.tag === 'Array')) {
