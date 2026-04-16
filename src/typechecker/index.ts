@@ -65,3 +65,7 @@ export {
   initBuiltinEffects,
   type EffectDeclaration,
 } from './effectTypes'
+export {
+  type TypecheckResult,
+  type TypeDiagnostic,
+} from './typecheck'
