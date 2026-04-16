@@ -203,6 +203,14 @@ export function normalizeSequenceType(type: SequenceType): SequenceType {
   }
 }
 
+export function sequenceElementAt(type: SequenceType, index: number): Type {
+  return index < type.prefix.length ? type.prefix[index]! : type.rest
+}
+
+export function sequenceMayHaveIndex(type: SequenceType, index: number): boolean {
+  return type.maxLength === undefined || index < type.maxLength
+}
+
 // Set operations — flatten and deduplicate at construction
 export function union(...members: Type[]): Type {
   // Flatten nested unions

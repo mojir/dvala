@@ -564,13 +564,11 @@ export function activate(context: vscode.ExtensionContext): void {
         inferredTypeStr = getHoverTypeAtPosition(cached, position, range)
       }
 
-      if (!inferredTypeStr) {
-        if (!inferredTypeStr && word && cached) {
-          const visibleDefs = workspaceIndex.getSymbolsInScope(document.uri.fsPath, position.line + 1, position.character + 1)
-          const matchingDef = visibleDefs.find(def => def.name === word && def.location.file === document.uri.fsPath)
-          if (matchingDef) {
-            inferredTypeStr = getHoverTypeAtDefinition(cached, matchingDef)
-          }
+      if (!inferredTypeStr && word && cached) {
+        const visibleDefs = workspaceIndex.getSymbolsInScope(document.uri.fsPath, position.line + 1, position.character + 1)
+        const matchingDef = visibleDefs.find(def => def.name === word && def.location.file === document.uri.fsPath)
+        if (matchingDef) {
+          inferredTypeStr = getHoverTypeAtDefinition(cached, matchingDef)
         }
       }
 

@@ -15,7 +15,7 @@ import type { Type, EffectSet, SequenceType } from './types'
 import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
-  atom, literal, fn, array, tuple, union, inter, neg, handlerType, sequence, toSequenceType,
+  atom, literal, fn, array, tuple, union, inter, neg, handlerType, sequence, sequenceElementAt, sequenceMayHaveIndex, toSequenceType,
   functionAcceptsArity, functionArityLabel, getFunctionParamType,
   typeToString, typeEquals,
   subtractEffects,
@@ -727,7 +727,7 @@ export function inferExpr(
         }
         ctx.leaveLevel()
 
-        generalizeTypeVars(valueType, ctx.level)
+        valueType = generalizeTypeVars(valueType, ctx.level)
 
         // Check type annotation constraint: let x: T = expr → constrain expr <: T
         const bindingNodeId = binding[2]
@@ -1425,85 +1425,117 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
   }
 }
 
-function generalizeTypeVars(t: Type, level: number, visited = new Set<string>()): void {
+/**
+ * Create a copy of the type where all type variables above `level` are replaced
+ * with fresh copies at GENERALIZED_LEVEL. Original type variables and their
+ * bounds are never mutated — the returned type is a new tree that shares
+ * structure with the original wherever no generalization was needed.
+ */
+function generalizeTypeVars(t: Type, level: number): Type {
+  const mapping = new Map<string, TypeVar>()
+  return generalizeInner(t, level, mapping)
+}
+
+function generalizeInner(t: Type, level: number, mapping: Map<string, TypeVar>): Type {
   switch (t.tag) {
     case 'Var': {
+      if (t.level <= level) return t
+
       const identity = typeVarIdentity(t)
-      if (visited.has(identity)) return
-      visited.add(identity)
-      if (t.level > level) {
-        t.level = GENERALIZED_LEVEL
+      const existing = mapping.get(identity)
+      if (existing) return existing
+
+      // Create a generalized copy — same id for display, new object identity
+      const copy: TypeVar = {
+        tag: 'Var',
+        id: t.id,
+        level: GENERALIZED_LEVEL,
+        lowerBounds: [],
+        upperBounds: [],
       }
-      for (const lowerBound of t.lowerBounds) {
-        generalizeTypeVars(lowerBound, level, visited)
+      // Register before recursing into bounds to handle cycles
+      mapping.set(identity, copy)
+
+      copy.lowerBounds = t.lowerBounds.map(lb => generalizeInner(lb, level, mapping))
+      copy.upperBounds = t.upperBounds.map(ub => generalizeInner(ub, level, mapping))
+      if (t.displayLowerBounds) {
+        copy.displayLowerBounds = t.displayLowerBounds.map(lb => generalizeInner(lb, level, mapping))
       }
-      for (const upperBound of t.upperBounds) {
-        generalizeTypeVars(upperBound, level, visited)
+      if (t.displayUpperBounds) {
+        copy.displayUpperBounds = t.displayUpperBounds.map(ub => generalizeInner(ub, level, mapping))
       }
-      for (const lowerBound of t.displayLowerBounds ?? []) {
-        generalizeTypeVars(lowerBound, level, visited)
-      }
-      for (const upperBound of t.displayUpperBounds ?? []) {
-        generalizeTypeVars(upperBound, level, visited)
-      }
-      return
+      return copy
     }
-    case 'Function':
-      for (const param of t.params) {
-        generalizeTypeVars(param, level, visited)
+    case 'Function': {
+      const params = t.params.map(p => generalizeInner(p, level, mapping))
+      const restParam = t.restParam !== undefined ? generalizeInner(t.restParam, level, mapping) : undefined
+      const ret = generalizeInner(t.ret, level, mapping)
+      if (params.every((p, i) => p === t.params[i]) && restParam === t.restParam && ret === t.ret) return t
+      return fn(params, ret, t.effects, t.handlerWrapper, restParam)
+    }
+    case 'Handler': {
+      const body = generalizeInner(t.body, level, mapping)
+      const output = generalizeInner(t.output, level, mapping)
+      let handledChanged = false
+      const handled = new Map<string, { argType: Type; retType: Type }>()
+      for (const [name, sig] of t.handled) {
+        const argType = generalizeInner(sig.argType, level, mapping)
+        const retType = generalizeInner(sig.retType, level, mapping)
+        if (argType !== sig.argType || retType !== sig.retType) handledChanged = true
+        handled.set(name, { argType, retType })
       }
-      if (t.restParam !== undefined) {
-        generalizeTypeVars(t.restParam, level, visited)
+      if (body === t.body && output === t.output && !handledChanged) return t
+      return handlerType(body, output, handled)
+    }
+    case 'Record': {
+      let changed = false
+      const fields = new Map<string, Type>()
+      for (const [k, v] of t.fields) {
+        const gv = generalizeInner(v, level, mapping)
+        if (gv !== v) changed = true
+        fields.set(k, gv)
       }
-      generalizeTypeVars(t.ret, level, visited)
-      return
-    case 'Handler':
-      generalizeTypeVars(t.body, level, visited)
-      generalizeTypeVars(t.output, level, visited)
-      for (const handled of t.handled.values()) {
-        generalizeTypeVars(handled.argType, level, visited)
-        generalizeTypeVars(handled.retType, level, visited)
-      }
-      return
-    case 'Record':
-      for (const fieldType of t.fields.values()) {
-        generalizeTypeVars(fieldType, level, visited)
-      }
-      return
-    case 'Array':
-      generalizeTypeVars(t.element, level, visited)
-      return
-    case 'Tuple':
-      for (const element of t.elements) {
-        generalizeTypeVars(element, level, visited)
-      }
-      return
-    case 'Sequence':
-      for (const member of t.prefix) {
-        generalizeTypeVars(member, level, visited)
-      }
-      generalizeTypeVars(t.rest, level, visited)
-      return
-    case 'Union':
-    case 'Inter':
-      for (const member of t.members) {
-        generalizeTypeVars(member, level, visited)
-      }
-      return
-    case 'Neg':
-      generalizeTypeVars(t.inner, level, visited)
-      return
-    case 'Alias':
-      for (const arg of t.args) {
-        generalizeTypeVars(arg, level, visited)
-      }
-      generalizeTypeVars(t.expanded, level, visited)
-      return
-    case 'Recursive':
-      generalizeTypeVars(t.body, level, visited)
-      return
+      if (!changed) return t
+      return { tag: 'Record', fields, open: t.open }
+    }
+    case 'Array': {
+      const element = generalizeInner(t.element, level, mapping)
+      return element === t.element ? t : array(element)
+    }
+    case 'Tuple': {
+      const elements = t.elements.map(e => generalizeInner(e, level, mapping))
+      return elements.every((e, i) => e === t.elements[i]) ? t : tuple(elements)
+    }
+    case 'Sequence': {
+      const prefix = t.prefix.map(m => generalizeInner(m, level, mapping))
+      const rest = generalizeInner(t.rest, level, mapping)
+      if (prefix.every((m, i) => m === t.prefix[i]) && rest === t.rest) return t
+      return sequence(prefix, rest, t.minLength, t.maxLength)
+    }
+    case 'Union': {
+      const members = t.members.map(m => generalizeInner(m, level, mapping))
+      return members.every((m, i) => m === t.members[i]) ? t : union(...members)
+    }
+    case 'Inter': {
+      const members = t.members.map(m => generalizeInner(m, level, mapping))
+      return members.every((m, i) => m === t.members[i]) ? t : inter(...members)
+    }
+    case 'Neg': {
+      const inner = generalizeInner(t.inner, level, mapping)
+      return inner === t.inner ? t : neg(inner)
+    }
+    case 'Alias': {
+      const args = t.args.map(a => generalizeInner(a, level, mapping))
+      const expanded = generalizeInner(t.expanded, level, mapping)
+      if (args.every((a, i) => a === t.args[i]) && expanded === t.expanded) return t
+      return { tag: 'Alias', name: t.name, args, expanded }
+    }
+    case 'Recursive': {
+      const body = generalizeInner(t.body, level, mapping)
+      return body === t.body ? t : { tag: 'Recursive', id: t.id, body }
+    }
     default:
-      return
+      return t
   }
 }
 
@@ -3044,6 +3076,17 @@ function recordConcretePatternTypes(pattern: AstNode, type: Type, typeMap: Map<n
   }
 }
 
+/**
+ * Walk a destructuring pattern alongside its literal value AST to propagate
+ * positional types from the value's inferred types into the pattern bindings.
+ *
+ * Supported AST forms:
+ * - symbol: ["symbol", [nameNode, defaultNode | null], id]
+ * - object: ["object", [fieldsObj, restNode | undefined], id]  (value must be NodeTypes.Object)
+ * - array:  ["array",  [elements[], restNode | undefined], id] (value must be NodeTypes.Array)
+ *
+ * Spread elements and computed keys in the value AST are silently skipped.
+ */
 function recordLiteralPatternTypes(pattern: AstNode, valueNode: AstNode, typeMap: Map<number, Type>): void {
   const patternType = pattern[0] as string
 
@@ -3312,6 +3355,9 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
         return Unknown
       }
 
+      // Negative-polarity vars with no upper bounds return Unknown (not Never) for display.
+      // Never is technically more precise, but Unknown is more useful in hover tooltips
+      // for unconstrained generic parameters (e.g. destructured fields of an open parameter).
       const expanded = t.upperBounds.map(ub => expandTypeForDisplay(ub, 'negative', new Set(visited)))
       return expanded.length === 0 ? Unknown : expanded.length === 1 ? expanded[0]! : inter(...expanded)
     }
@@ -3509,14 +3555,6 @@ function sequenceElementType(type: SequenceType): Type {
     members.push(type.rest)
   }
   return members.length === 1 ? members[0]! : union(...members)
-}
-
-function sequenceElementAt(type: SequenceType, index: number): Type {
-  return index < type.prefix.length ? type.prefix[index]! : type.rest
-}
-
-function sequenceMayHaveIndex(type: SequenceType, index: number): boolean {
-  return type.maxLength === undefined || index < type.maxLength
 }
 
 function synthesizeRecordDisplayType(t: TypeVar, visited: Set<string>): Type | undefined {

@@ -17,7 +17,7 @@
  */
 
 import type { FunctionType, SequenceType, Type, PrimitiveName } from './types'
-import { functionAcceptsArity, getFunctionParamType, typeEquals, isEffectSubset, toSequenceType } from './types'
+import { functionAcceptsArity, getFunctionParamType, isEffectSubset, sequenceElementAt, sequenceMayHaveIndex, toSequenceType, typeEquals } from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -311,14 +311,6 @@ function isLengthIntervalContained(source: SequenceType, target: SequenceType): 
   if (target.maxLength !== undefined && source.maxLength === undefined) return false
   if (target.maxLength !== undefined && source.maxLength !== undefined && source.maxLength > target.maxLength) return false
   return true
-}
-
-function sequenceMayHaveIndex(type: SequenceType, index: number): boolean {
-  return type.maxLength === undefined || type.maxLength > index
-}
-
-function sequenceElementAt(type: SequenceType, index: number): Type {
-  return index < type.prefix.length ? type.prefix[index]! : type.rest
 }
 
 // ---------------------------------------------------------------------------
