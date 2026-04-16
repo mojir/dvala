@@ -62,17 +62,17 @@ For each module we also note:
 |---|---|---|---|
 | `array.ts` | — | ⏳ Not started | |
 | `assertion.ts` | — | ⏳ Not started | `assert*` functions — throw on falsy; pure-partial. |
-| `bitwise.ts` | — | ⏳ Not started | Bit ops on numbers — pure-deterministic. |
+| `bitwise.ts` | 6 | ✅ Audited | All pure. See [Per-file audit results](#bitwise-ts). |
 | `collection.ts` | — | ⏳ Not started | |
 | `functional.ts` | — | ⏳ Not started | Higher-order — effect set depends on callback. Needs polymorphic effect handling in the signature. |
 | `math.ts` | 20 | ✅ Audited | All pure; no misdeclarations. See [Per-file audit results](#math-ts). |
 | `meta.ts` | — | ⏳ Not started | `arity`, `doc`, `withDoc` — inspect function values; likely pure-deterministic. |
 | `misc.ts` | — | ⏳ Not started | |
 | `object.ts` | — | ⏳ Not started | Record operations — pure-deterministic. |
-| `predicates.ts` | — | ⏳ Not started | `isNumber`, `isString`, etc. — pure-deterministic. |
+| `predicates.ts` | 26 | ✅ Audited | All pure. See [Per-file audit results](#predicates-ts). |
 | `regexp.ts` | — | ⏳ Not started | Match/replace on strings — pure-deterministic (no global flag state). Verify. |
 | `sequence.ts` | — | ⏳ Not started | |
-| `string.ts` | — | ⏳ Not started | String ops — pure-deterministic. |
+| `string.ts` | 8 | ✅ Audited | All pure. See [Per-file audit results](#string-ts). |
 
 ### Modules (`src/builtin/modules/`)
 
@@ -147,3 +147,62 @@ After Phase A, Phase B (differential test matrix) can start.
 **Fold eligibility:** All 20 builtins eligible. `/`, `%`, `mod`, `quot`, `sqrt`, `cbrt`, `^`, `round` (when the decimals arg is invalid), `min`, `max`, and the `checkedFn`-wrapped arithmetic ops can surface `@dvala.error` warnings when folded with bad inputs (decision #2).
 
 **Recommendation:** No action. Ship as-is — math.ts is a model of what the rest of the audit should find.
+
+### bitwise.ts
+
+**Builtins (6):** `<<`, `>>`, `>>>`, `&`, `|`, `xor`.
+
+**Classification:** All **pure-partial**. Each uses JS bitwise operators on integers after asserting integer inputs via `assertNumber(..., { integer: true })`.
+
+**Error surface:** `RuntimeError` from `assertNumber` on non-integer or non-number inputs. `RuntimeError → DvalaError`, caught by the sandbox as `@dvala.error`.
+
+**Key observations:**
+
+- No state, no randomness, no I/O. Pure JS bit ops (`<<`, `>>`, `>>>`, `&`, `|`, `^`) on coerced 32-bit integers.
+- All 6 builtins have type annotations.
+
+**Declaration bugs:** None.
+
+**Missing annotations:** None.
+
+**Fold eligibility:** All 6 eligible.
+
+### predicates.ts
+
+**Builtins (26):** `isFunction`, `isMacro`, `isString`, `isNumber`, `isInteger`, `isBoolean`, `isAtom`, `isNull`, `isZero`, `isPos`, `isNeg`, `isEven`, `isOdd`, `isArray`, `isCollection`, `isSequence`, `isObject`, `isRegexp`, `isEffect`, `isTrue`, `isFalse`, `isEmpty`, `isNotEmpty`, `isVector`, `isMatrix`, `isGrid`.
+
+**Classification:** All **pure**. The typeof / typeGuard predicates (`isString`, `isNumber`, `isArray`, etc.) are pure-deterministic. The numeric predicates (`isZero`, `isPos`, `isNeg`, `isEven`, `isOdd`) are pure-partial because they call `assertNumber(..., { finite: true })` first. Collection predicates (`isEmpty`, `isNotEmpty`) assert collection types on non-null inputs.
+
+**Error surface:** `RuntimeError` from assertion helpers on wrong-type inputs. All descend from `DvalaError`.
+
+**Key observations:**
+
+- Every predicate uses the `(x: Unknown) -> x is T` type-guard syntax (decision #20 of the type-system design). Folding these is especially valuable because their results flow into `match` guards and `if` conditions where narrowing kicks in.
+- No state, no `Math.random`, no clock reads. Pure structural / type-kind checks.
+- All 26 builtins have type annotations.
+
+**Declaration bugs:** None.
+
+**Missing annotations:** None.
+
+**Fold eligibility:** All 26 eligible. High value for folding because predicate results drive narrowing.
+
+### string.ts
+
+**Builtins (8):** `str`, `number`, `lowerCase`, `upperCase`, `trim`, `join`, `split`, `isBlank`.
+
+**Classification:** All **pure**. `str`, `lowerCase`, `upperCase`, `trim` are pure-deterministic (or pure-partial on non-string inputs). `number` is pure-partial — throws `TypeError` on non-numeric strings. `join`, `split` are pure-partial (assertions on input shape). `isBlank` is pure-deterministic on `null` / `String` inputs.
+
+**Error surface:** `TypeError` (extends `RuntimeError → DvalaError`) from `number` on unparsable strings. `RuntimeError` from assertion helpers on wrong-type inputs.
+
+**Key observations:**
+
+- Module-level `blankRegexp = /^\s*$/` used by `isBlank`. **No `g` flag** — `RegExp.test` is stateless without `g`, so this is safe.
+- `split` constructs `new RegExp(s, f)` from the captured pattern/flags at each call — no shared mutable regex state.
+- All 8 builtins have type annotations.
+
+**Declaration bugs:** None.
+
+**Missing annotations:** None.
+
+**Fold eligibility:** All 8 eligible. `str`, `join`, `split`, `upperCase`, `lowerCase`, `trim` are common in real code and will fold often.
