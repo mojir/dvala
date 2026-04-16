@@ -1571,6 +1571,7 @@ Run options:
   -C, --context-file=<file>       Context from a .json file
   -s, --silent                    Suppress printing the result
   --pure                          Enforce pure mode (no side effects or non-determinism)
+  --no-check                      Skip type checking
 
 Build options:
   -o, --output=<file>             Write build output to file (default: stdout)
