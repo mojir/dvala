@@ -65,7 +65,7 @@ For each module we also note:
 | `bitwise.ts` | — | ⏳ Not started | Bit ops on numbers — pure-deterministic. |
 | `collection.ts` | — | ⏳ Not started | |
 | `functional.ts` | — | ⏳ Not started | Higher-order — effect set depends on callback. Needs polymorphic effect handling in the signature. |
-| `math.ts` | — | ⏳ Not started | `inc`, `dec`, `+`, `-`, `*`, `/`, `%`, etc. — pure-deterministic or pure-partial (`/` by zero). |
+| `math.ts` | 20 | ✅ Audited | All pure; no misdeclarations. See [Per-file audit results](#math-ts). |
 | `meta.ts` | — | ⏳ Not started | `arity`, `doc`, `withDoc` — inspect function values; likely pure-deterministic. |
 | `misc.ts` | — | ⏳ Not started | |
 | `object.ts` | — | ⏳ Not started | Record operations — pure-deterministic. |
@@ -119,3 +119,31 @@ After Phase A, Phase B (differential test matrix) can start.
 1. **Higher-order builtins and polymorphic effects.** `map(xs, f)` inherits the effect set of `f`. Current signatures (`(A[], (A) -> B) -> B[]`) don't express this. We need `(A[], (A) -> @{e...} B) -> @{e...} B[]` once effect polymorphism is implemented — but that's a type-system feature, not strictly an audit finding. Flag and defer.
 2. **Module source files written in Dvala (`*.dvala`).** Several modules have a `.dvala` source (e.g. `collection.dvala`, `functional.dvala`). Their effects should be inferable from the typechecker; they don't need manual annotation. Confirm this works end-to-end during the audit.
 3. **`test` module effects.** Assertions report results somewhere — is it a `@test.report` effect, or does it accumulate to a host-visible state?
+
+---
+
+## Per-file Audit Results
+
+### math.ts
+
+**Builtins (20):** `inc`, `dec`, `+`, `-`, `*`, `/`, `quot`, `mod`, `%`, `sqrt`, `cbrt`, `^`, `round`, `trunc`, `floor`, `ceil`, `min`, `max`, `abs`, `sign`.
+
+**Classification:** All **pure** — either *pure-deterministic* (always succeeds given well-typed inputs) or *pure-partial* (can throw a `DvalaError` subclass on edge cases like division-by-zero or non-finite results).
+
+**Error surface:** Every thrown error in `math.ts` is either `ArithmeticError` (thrown by the `checkedFn` wrapper when the JS result is non-finite) or `RuntimeError` (thrown by `getNumberOperands` if any argument isn't a JS number). Both extend `DvalaError` via the chain `ArithmeticError → RuntimeError → DvalaError`, so the fold sandbox catches them uniformly and surfaces as a `@dvala.error` warning per decision #2.
+
+**Key observations:**
+
+- No hidden state, no `Math.random`, no clock reads, no host calls. Every operation is a closed-form function of its numeric inputs.
+- `checkedFn` wraps `unaryMathOp` and `binaryMathOp`; it throws `ArithmeticError` on non-finite results (NaN / Infinity). Partial ops like `sqrt(-1)`, `^(0, -1)`, `1/0` route through here.
+- `+` and `*` use `reduceMathOp` and do *not* wrap in `checkedFn`. They can silently return Infinity on overflow. This is a deliberate choice (empty-args identity + associative reduce) but means `+(Number.MAX_VALUE, Number.MAX_VALUE)` returns `Infinity` at runtime and folds would do the same. Not a correctness issue for folding — the fold is still observationally equivalent to normal evaluation.
+- `min` and `max` accept either varargs of numbers OR a single vector. The vector variant is still pure (reads the vector's elements). No issue.
+- Every builtin has a `type` annotation in its `docs`. No missing annotations.
+
+**Declaration bugs:** None found.
+
+**Missing annotations:** None.
+
+**Fold eligibility:** All 20 builtins eligible. `/`, `%`, `mod`, `quot`, `sqrt`, `cbrt`, `^`, `round` (when the decimals arg is invalid), `min`, `max`, and the `checkedFn`-wrapped arithmetic ops can surface `@dvala.error` warnings when folded with bad inputs (decision #2).
+
+**Recommendation:** No action. Ship as-is — math.ts is a model of what the rest of the audit should find.
