@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { allBuiltinModules } from '../allModules'
 import { createDvala } from '../createDvala'
 import type { Any } from '../interface'
 import { parse } from '../parser'
@@ -9,6 +10,10 @@ import { toJS } from '../utils/interop'
 import { createContextStack } from './ContextStack'
 import type { FoldResult } from './foldEvaluate'
 import { evaluateNodeForFold } from './foldEvaluate'
+
+// Shared module map — same registrations for both eval paths so module
+// imports resolve identically in runNormal and runFold.
+const moduleMap = new Map(allBuiltinModules.map(m => [m.name, m]))
 
 // Parse a Dvala source snippet to a single AST node. Requires the source
 // to be a single top-level expression (no let-bindings, no semicolons).
@@ -22,17 +27,19 @@ function parseExpression(source: string): AstNode {
   return ast[0]!
 }
 
-const dvala = createDvala()
+const dvala = createDvala({ modules: allBuiltinModules })
 function runNormal(source: string): unknown {
   return dvala.run(source)
 }
 
 // Run the same source through the fold sandbox. The `ok: true` value is
 // normalised via `toJS` so the shape matches `runNormal`'s return (plain
-// arrays / plain objects, not PersistentVector / PersistentMap).
+// arrays / plain objects, not PersistentVector / PersistentMap). The
+// context stack uses the same module registry as runNormal so module
+// imports resolve identically.
 function runFold(source: string): FoldResult {
   const node = parseExpression(source)
-  const result = evaluateNodeForFold(node, createContextStack())
+  const result = evaluateNodeForFold(node, createContextStack({}, moduleMap))
   if (result.ok) {
     return { ok: true, value: toJS(result.value) as Any }
   }
@@ -422,6 +429,113 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
 
         const fold = runFold(src)
         expect(fold).toEqual({ ok: false, reason: 'effect', effectName: 'dvala.error' })
+      })
+    }
+  })
+
+  // --- modules/math ---
+  describe('module: math', () => {
+    const cases: { src: string; expected: number }[] = [
+      { src: 'do let { sin } = import("math"); sin(0) end', expected: 0 },
+      { src: 'do let { cos } = import("math"); cos(0) end', expected: 1 },
+      { src: 'do let { tan } = import("math"); tan(0) end', expected: 0 },
+      { src: 'do let { ln } = import("math"); ln(1) end', expected: 0 },
+      { src: 'do let { log2 } = import("math"); log2(8) end', expected: 3 },
+      { src: 'do let { log10 } = import("math"); log10(1000) end', expected: 3 },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toBe(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/string ---
+  describe('module: string', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { capitalize } = import("string"); capitalize("hello") end', expected: 'Hello' },
+      { src: 'do let { padLeft } = import("string"); padLeft("x", 4) end', expected: '   x' },
+      { src: 'do let { padRight } = import("string"); padRight("x", 4) end', expected: 'x   ' },
+      { src: 'do let { stringRepeat } = import("string"); stringRepeat("ab", 3) end', expected: 'ababab' },
+      { src: 'do let { trimLeft } = import("string"); trimLeft("  hi") end', expected: 'hi' },
+      { src: 'do let { trimRight } = import("string"); trimRight("hi  ") end', expected: 'hi' },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/json ---
+  describe('module: json', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { jsonParse } = import("json"); jsonParse("42") end', expected: 42 },
+      { src: 'do let { jsonParse } = import("json"); jsonParse("\\"hi\\"") end', expected: 'hi' },
+      { src: 'do let { jsonParse } = import("json"); jsonParse("[1, 2, 3]") end', expected: [1, 2, 3] },
+      { src: 'do let { jsonParse } = import("json"); jsonParse("{\\"a\\": 1}") end', expected: { a: 1 } },
+      { src: 'do let { jsonStringify } = import("json"); jsonStringify(42) end', expected: '42' },
+      { src: 'do let { jsonStringify } = import("json"); jsonStringify([1, 2, 3]) end', expected: '[1,2,3]' },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/number-theory ---
+  describe('module: numberTheory', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { factorial } = import("numberTheory"); factorial(5) end', expected: 120 },
+      { src: 'do let { factorial } = import("numberTheory"); factorial(0) end', expected: 1 },
+      { src: 'do let { isPrime } = import("numberTheory"); isPrime(7) end', expected: true },
+      { src: 'do let { isPrime } = import("numberTheory"); isPrime(8) end', expected: false },
+      { src: 'do let { gcd } = import("numberTheory"); gcd(12, 18) end', expected: 6 },
+      { src: 'do let { lcm } = import("numberTheory"); lcm(4, 6) end', expected: 12 },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/bitwise ---
+  describe('module: bitwise', () => {
+    const cases: { src: string; expected: number }[] = [
+      { src: 'do let { bitNot } = import("bitwise"); bitNot(0) end', expected: -1 },
+      { src: 'do let { bitAndNot } = import("bitwise"); bitAndNot(0b1111, 0b0011) end', expected: 0b1100 },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toBe(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/convert ---
+  describe('module: convert', () => {
+    const cases: { src: string; expected: number }[] = [
+      { src: 'do let { kmToM } = import("convert"); kmToM(1) end', expected: 1000 },
+      { src: 'do let { mToKm } = import("convert"); mToKm(2500) end', expected: 2.5 },
+      { src: 'do let { kgToLb } = import("convert"); round(kgToLb(1), 4) end', expected: 2.2046 },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toBe(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
       })
     }
   })
