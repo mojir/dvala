@@ -5,8 +5,7 @@
 
 import type { Type } from './types'
 import { Unknown } from './types'
-import { parseFunctionTypeAnnotation } from './parseType'
-import type { ParsedFunctionType } from './parseType'
+import { parseFunctionTypeAnnotation, type ParsedFunctionType } from './parseType'
 import type { BuiltinNormalExpressions } from '../builtin/interface'
 
 // ---------------------------------------------------------------------------
