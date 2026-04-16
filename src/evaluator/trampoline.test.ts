@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '../constants/constants'
-import { UserDefinedError } from '../errors'
+import { TypeError, UserDefinedError } from '../errors'
 import type { Any } from '../interface'
 import { parse } from '../parser'
 import type { AstNode, NumberNode, StringNode } from '../parser/types'
@@ -295,15 +295,15 @@ describe('stepNode', () => {
       }
     })
 
-    it('should return null immediately for if with false condition and no else', () => {
-      const node = parseFirst('if false then 1 end')
+    it('should push IfBranchFrame for if with false condition and else', () => {
+      const node = parseFirst('if false then 1 else 2 end')
       const step = stepNodeSync(node, emptyEnv(), null)
-      // This will push an IfBranchFrame then evaluate; just verify it steps
+      // Pushes an IfBranchFrame, then evaluates condition
       expect(step.type).toBe('Eval')
     })
 
-    it('should push IfBranchFrame for if/else if', () => {
-      const node = parseFirst('if true then 1 end')
+    it('should push IfBranchFrame for if/else expression', () => {
+      const node = parseFirst('if true then 1 else 2 end')
       const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
@@ -312,13 +312,10 @@ describe('stepNode', () => {
       }
     })
 
-    it('should return null for empty block', () => {
-      const node = parseFirst('do end')
+    it('should evaluate non-empty block nodes', () => {
+      const node = parseFirst('do null end')
       const step = stepNodeSync(node, emptyEnv(), null)
-      expect(step.type).toBe('Value')
-      if (step.type === 'Value') {
-        expect(step.value).toBe(null)
-      }
+      expect(step.type).toBe('Eval')
     })
 
     it('should eval single-node block without SequenceFrame', () => {
@@ -501,7 +498,7 @@ describe('applyFrame', () => {
       }
     })
 
-    it('should return null when condition is falsy and no else-branch', () => {
+    it('should reject malformed if nodes without an else-branch', () => {
       const thenNode: NumberNode = [NodeTypes.Num, 1, 0]
       const frame: IfBranchFrame = {
         type: 'IfBranch',
@@ -509,8 +506,7 @@ describe('applyFrame', () => {
         elseNode: undefined,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, false, null)
-      expect(step).toEqual({ type: 'Value', value: null, k: null })
+      expect(() => applyFrameSync(frame, false, null)).toThrowError(TypeError)
     })
   })
 
@@ -897,7 +893,7 @@ describe('trampoline integration', () => {
   })
 
   it('should evaluate if/else if expression', () => {
-    const node = parseFirst('if false then 1 else if true then 2 end')
+    const node = parseFirst('if false then 1 else if true then 2 else null end')
     const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(2)
   })
@@ -1066,7 +1062,7 @@ describe('sync/async trampoline parity', () => {
     ['(1 + 2) * (3 + 4)', 21],
     ['if true then 1 else 2 end', 1],
     ['if false then 1 else 2 end', 2],
-    ['if false then 1 else if true then 2 end', 2],
+    ['if false then 1 else if true then 2 else null end', 2],
     ['&& (true, true, 3)', 3],
     ['|| (false, false, 5)', 5],
     ['??(null, 42)', 42],

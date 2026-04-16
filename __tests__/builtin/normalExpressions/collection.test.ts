@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
-import { DvalaError } from '../../../src/errors'
+import { DvalaError, KeyError } from '../../../src/errors'
 import { collectionUtilsModule } from '../../../src/builtin/modules/collection'
 
 const dvala = createDvala()
@@ -631,8 +631,8 @@ describe('collection-Utils module functions', () => {
           a: 2,
           b: 2,
         })
-        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; "c"(x)`)).toEqual(null)
-        expect(mdvala.run(`${imp}cu.update({}, "a", val -> if isNull(val) then 0 end)`)).toEqual({ a: 0 })
+        expect(() => mdvala.run(`${imp}let x = {a: 1, b: 2}; "c"(x)`)).toThrow(KeyError)
+        expect(mdvala.run(`${imp}cu.update({}, "a", val -> if isNull(val) then 0 else null end)`)).toEqual({ a: 0 })
         expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update(x, "c", val -> if isNull(val) then 0 else inc(val) end)`)).toEqual({
           a: 1,
           b: 2,
@@ -664,16 +664,16 @@ describe('collection-Utils module functions', () => {
           a: 2,
           b: 2,
         })
-        expect(mdvala.run(`${imp}cu.updateIn({}, ["a"], val -> if isNull(val) then 0 end)`)).toEqual({ a: 0 })
+        expect(mdvala.run(`${imp}cu.updateIn({}, ["a"], val -> if isNull(val) then 0 else null end)`)).toEqual({ a: 0 })
         expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["c"], val -> if isNull(val) then 0 else inc(val) end)`)).toEqual({
           a: 1,
           b: 2,
           c: 0,
         })
-        expect(mdvala.run(`${imp}cu.updateIn({a: [1, 2, 3]}, ["a", 1], val -> if isNull(val) then 0 end)`)).toEqual({
+        expect(mdvala.run(`${imp}cu.updateIn({a: [1, 2, 3]}, ["a", 1], val -> if isNull(val) then 0 else null end)`)).toEqual({
           a: [1, null, 3],
         })
-        expect(mdvala.run(`${imp}cu.updateIn({a: [1, null, 3]}, ["a", 1], val -> if isNull(val) then 0 end)`)).toEqual({
+        expect(mdvala.run(`${imp}cu.updateIn({a: [1, null, 3]}, ["a", 1], val -> if isNull(val) then 0 else null end)`)).toEqual({
           a: [1, 0, 3],
         })
         expect(mdvala.run(`${imp}cu.updateIn({a: [1, "Albert", 3]}, ["a", 1, 0], val -> if isNull(val) then "?" else "!" end)`)).toEqual({

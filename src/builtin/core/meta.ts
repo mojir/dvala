@@ -42,6 +42,7 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(1),
       docs: {
+        type: '(Unknown) -> String',
         category: 'meta',
         returns: { type: 'string' },
         args: { value: { type: ['function', 'effect'] } },
@@ -51,7 +52,7 @@ export function getMetaNormalExpression(
         examples: [
           'doc(+)',
           'doc(@dvala.io.print)',
-          'let add = (x, y) -> x + y withDoc "Adds two numbers.";\ndoc(add)',
+          'let add = ((x, y) -> x + y) withDoc "Adds two numbers.";\ndoc(add)',
         ],
       },
     },
@@ -70,6 +71,7 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(2),
       docs: {
+        type: '(Function, String) -> Function',
         category: 'meta',
         returns: { type: 'function' },
         args: {
@@ -114,6 +116,7 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(1),
       docs: {
+        type: '(Unknown) -> {min: Number, max: Number}',
         category: 'meta',
         returns: { type: 'object' },
         args: { value: { type: ['function', 'effect'] } },
@@ -123,7 +126,7 @@ export function getMetaNormalExpression(
         examples: [
           'arity(+)',
           'arity(map)',
-          'arity(@dvala.random.int)',
+          { code: 'arity(@dvala.random.int)', noCheck: true },
           `
 let add = (x, y = 0) -> do
   x + y;

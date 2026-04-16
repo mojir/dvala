@@ -10,6 +10,7 @@ import { parseSymbol } from './parseSymbol'
 import { parseString } from './parseString'
 import { parseNumber } from './parseNumber'
 import { parseTemplateString } from './parseTemplateString'
+import { collectTypeAnnotation, isTypeAnnotationColon } from './parseTypeAnnotationTokens'
 import type { TokenDebugInfo } from '../../tokenizer/token'
 
 /**
@@ -33,9 +34,10 @@ export interface ParseBindingTargetOptions {
   requireDefaultValue?: true
   noRest?: true
   allowLiteralPatterns?: true
+  stopTypeAnnotationAtRParen?: true
 }
 
-export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, noRest, allowLiteralPatterns }: ParseBindingTargetOptions = {}): BindingTarget {
+export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, noRest, allowLiteralPatterns, stopTypeAnnotationAtRParen }: ParseBindingTargetOptions = {}): BindingTarget {
   const firstToken = ctx.tryPeek()
 
   // Wildcard _ (only in pattern matching context)
@@ -102,6 +104,16 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
   if (isSymbolToken(firstToken)) {
     const symbol = toUserDefinedSymbol(parseSymbol(ctx), firstToken[2], ctx)
 
+    // Type annotation: x: Type — stored in side-table, not in the binding target
+    let typeAnnotation: string | undefined
+    if (isTypeAnnotationColon(ctx)) {
+      ctx.advance() // consume ':'
+      typeAnnotation = collectTypeAnnotation(ctx, { stopAtRParen: stopTypeAnnotationAtRParen ?? false })
+      if (!typeAnnotation) {
+        throw new ParseError('Expected type after ":"', ctx.peekSourceCodeInfo())
+      }
+    }
+
     const defaultValue = parseOptionalDefaulValue(ctx)
     if (requireDefaultValue && !defaultValue) {
       throw new ParseError('Expected assignment', ctx.peekSourceCodeInfo())
@@ -109,6 +121,12 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
 
     const target = withSourceCodeInfo([bindingTargetTypes.symbol, [symbol, defaultValue], 0], firstToken[2], ctx)
     ctx.setNodeEnd(target[2])
+
+    // Store annotation keyed by the binding target's allocated nodeId
+    if (typeAnnotation) {
+      ctx.typeAnnotations.set(target[2], typeAnnotation)
+    }
+
     return target
   }
 
@@ -286,3 +304,4 @@ function isLiteralToken(token: Token | undefined): boolean {
     || isReservedSymbolToken(token, 'false')
     || isReservedSymbolToken(token, 'null')
 }
+

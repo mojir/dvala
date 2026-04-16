@@ -45,4 +45,12 @@ describe('tokenenizers', () => {
     expect(types).not.toContain('Shebang')
     expect(types).not.toContain('SingleLineComment')
   })
+
+  test('tokenize effect names before bare @ operator', () => {
+    const tokens = minifyTokenStream(tokenize('perform(@test.log, x); let t: () -> @{test.log} Null = f', false, undefined), { removeWhiteSpace: true }).tokens
+
+    expect(tokens).toContainEqual(['EffectName', 'test.log'])
+    expect(tokens).toContainEqual(['Operator', '@'])
+    expect(tokens).toContainEqual(['LBrace', '{'])
+  })
 })

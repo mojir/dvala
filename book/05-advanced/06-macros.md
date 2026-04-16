@@ -16,7 +16,6 @@ addOne(2 + 3);
 // Macro: argument is passed as AST, not as 5
 let id = macro(ast) -> ast;
 id(2 + 3);
-
 ```
 
 The function returns 6 (`5 + 1`). The macro returns 5 (it passes `2 + 3` through unchanged). The difference: the function receives the **value** 5, the macro receives the **expression** `2 + 3` as a data structure.
@@ -30,17 +29,14 @@ Use the `macro` keyword. The syntax is identical to functions but with `macro` b
 ```dvala
 let myMacro = macro(ast) -> ast;
 typeOf(myMacro);
-
 ```
 
 ```dvala
 isMacro(macro(ast) -> ast);
-
 ```
 
 ```dvala
 isFunction(macro(ast) -> ast);
-
 ```
 
 Macros are a distinct type — `isMacro` returns true, `isFunction` returns false.
@@ -84,7 +80,6 @@ let showType =
     ["Str", nodeType, 0];
   end;
 showType(42);
-
 ```
 
 ```dvala
@@ -94,7 +89,6 @@ let showType =
     ["Str", nodeType, 0];
   end;
 showType(x + 1);
-
 ```
 
 The first returns `"Num"` because `42` is a number literal. The second returns `"Call"` because `x + 1` is a function call to `+`.
@@ -133,13 +127,11 @@ This is the key to building macros — you receive AST, splice it into a templat
 // double: duplicates an expression
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 double(21);
-
 ```
 
 ```dvala
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 double(inc(5));
-
 ```
 
 The macro receives the AST of `21` (or `inc(5)`), splices it into `$^{ast} + $^{ast}`, and returns the expanded AST. The evaluator then evaluates the result.
@@ -182,7 +174,6 @@ let unless =
   macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end;
 
 unless(false, 42);
-
 ```
 
 ```dvala
@@ -190,7 +181,6 @@ let unless =
   macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end;
 
 unless(true, 42);
-
 ```
 
 A regular function `unless(cond, body)` would evaluate `body` before calling the function — defeating the purpose. The macro delays evaluation.
@@ -203,7 +193,6 @@ let safely = macro(ast) -> quote fallback(null)(-> $^{ast}) end;
 
 let { fallback } = import("effectHandler");
 safely(0 / 0);
-
 ```
 
 ### Multiple Arguments
@@ -213,7 +202,6 @@ Macros can take multiple AST arguments:
 ```dvala
 let pickFirst = macro(a, b) -> a;
 pickFirst(42, 1 / 0);
-
 ```
 
 The second argument (`1 / 0`) is never evaluated because the macro only returns the first AST.
@@ -228,7 +216,6 @@ Because `a |> b` is desugared to `b(a)` at parse time, macros work naturally wit
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 let negate = macro(ast) -> quote - $^{ast} end;
 21 |> double |> negate;
-
 ```
 
 Macros also work inside lambdas passed to pipes:
@@ -236,7 +223,6 @@ Macros also work inside lambdas passed to pipes:
 ```dvala
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 map(_, -> double($))([1, 2, 3]);
-
 ```
 
 ---
@@ -248,7 +234,6 @@ The `#` prefix provides a concise way to call single-argument macros. Instead of
 ```dvala
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 #double 21;
-
 ```
 
 This is equivalent to `double(21)` — the `#` is purely syntactic sugar. All three forms below produce the same result:
@@ -256,7 +241,6 @@ This is equivalent to `double(21)` — the `#` is purely syntactic sugar. All th
 ```dvala
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 [double(21), #double 21, double(21)];
-
 ```
 
 The `#` prefix consumes one operand, so it chains naturally — each `#` wraps the next:
@@ -265,7 +249,6 @@ The `#` prefix consumes one operand, so it chains naturally — each `#` wraps t
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 let inc = macro(ast) -> quote $^{ast} + 1 end;
 #double #inc 10;
-
 ```
 
 Here `#double #inc 10` parses as `double(inc(10))` — `inc(10)` expands to `11`, then `double(11)` expands to `11 + 11`.
@@ -285,7 +268,6 @@ The `#` prefix consumes a full expression, including `let` bindings. This means 
 let double = macro(x) -> quote $^{x} + $^{x} end;
 let x = #double 21;
 x;
-
 ```
 
 ```dvala no-run
@@ -308,7 +290,6 @@ let double =
 assertEqual(#double 21, 42);
 #double let x = 21;
 assertEqual(x, 42);
-
 ```
 
 The transform function receives the value AST and returns new AST. `decorate` handles the `let` unwrapping and rewrapping automatically.
@@ -330,7 +311,6 @@ let tmp = 999;
 
 // No collision — macro's "tmp" is gensymed
 [withTemp(5), tmp];
-
 ```
 
 The macro's `tmp` becomes something like `__gensym_tmp_42__` — invisible to the caller. The caller's `tmp` stays 999.
@@ -354,7 +334,6 @@ let makeAdder = macro(ast) -> quote(n) -> n + $^{ast} end;
 let n = 100;
 let f = makeAdder(n);
 f(1);
-
 ```
 
 Without hygiene this would return 2 (param `n` shadows caller's `n`). With hygiene it correctly returns 101.
@@ -363,67 +342,15 @@ Without hygiene this would return 2 (param `n` shadows caller's `n`). With hygie
 
 ## Qualified Names
 
-Macros can have a **qualified name** — a dotted DNS-style identifier for host-level dispatch:
+Effect references carry a **qualified name** — a dotted DNS-style identifier that identifies the effect. Macros are always anonymous and have no qualified name.
 
 ```dvala
-let m = macro@mylib.double(ast) -> quote $^{ast} + $^{ast} end;
-qualifiedName(m);
-
+qualifiedName(@dvala.io.print);
 ```
 
 ```dvala
-// Anonymous macros have no qualified name
+// Macros always return null for qualifiedName
 qualifiedName(macro(ast) -> ast);
-
-```
-
-The `@` must be attached to `macro` with no space — `macro@name`, not `macro @name`.
-
-### Qualified Names and Effects
-
-Qualified names connect macros to the effect system. When a **named** macro is called, the evaluator emits `@dvala.macro.expand` — an effect that host handlers can intercept:
-
-```dvala
-let double = macro@mylib.double(ast) -> quote $^{ast} + $^{ast} end;
-
-// Named macro emits the effect — handler can intercept
-do
-  with handler
-    @dvala.macro.expand(arg) -> do
-      perform(@dvala.io.print, `Expanding macro: ${qualifiedName(arg.fn)}`);
-      resume(["Num", 99, 0]);
-    end
-  end;
-  double(21);
-end;
-// Return the expansion result as AST
-
-```
-
-**Anonymous** macros (without `macro@name`) skip the effect entirely — they're direct calls with no host visibility:
-
-```dvala
-let double = macro(ast) -> quote $^{ast} + $^{ast} end;
-
-// Anonymous — handler is NOT called
-do
-  with handler
-    @dvala.macro.expand(arg) -> resume(["Num", 99, 0])
-  end;
-  double(21);
-end;
-
-```
-
-This gives you a spectrum:
-- **Anonymous macros** — fast, private, no overhead
-- **Named macros** — observable, interceptable, good for libraries
-
-The `qualifiedName` function works on both macros and effects — they share the same namespace:
-
-```dvala
-[qualifiedName(@dvala.io.print), qualifiedName(macro@my.lib(x) -> x)];
-
 ```
 
 ---
@@ -437,7 +364,6 @@ The `qualifiedName` function works on both macros and effects — they share the
 ```dvala
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 macroexpand(double, quote 21 end);
-
 ```
 
 Pass the macro function and AST arguments (constructed with quote blocks). The result is the expanded AST as data.
@@ -450,7 +376,6 @@ Combine `macroexpand` with `prettyPrint` from the `ast` module for readable outp
 let { prettyPrint } = import("ast");
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
 prettyPrint(macroexpand(double, quote 21 end));
-
 ```
 
 ```dvala
@@ -458,7 +383,6 @@ let { prettyPrint } = import("ast");
 let unless =
   macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end;
 prettyPrint(macroexpand(unless, quote x > 10 end, quote 42 end));
-
 ```
 
 ---
@@ -519,7 +443,6 @@ let describe =
   end;
 
 [describe(42), describe("hi"), describe(1 + 2), describe(true)];
-
 ```
 
 This is powerful for macros that need to inspect and transform specific AST shapes.
@@ -533,7 +456,6 @@ When a splice `$^{expr}` evaluates to an **array of AST nodes** (not a single no
 ```dvala
 let args = [["Num", 1, 0], ["Num", 2, 0]];
 quote + ($^{args}) end;
-
 ```
 
 Detection is unambiguous: a single AST node starts with a string (`["Num", ...]`), an array of nodes starts with an array (`[["Num", ...], ...]`).
@@ -552,7 +474,6 @@ let showType = macro(ast) -> ["Str", first(ast), 0];
 
 // Direct call — macro intercepts, receives AST node ["Num", 42, 0]
 showType(42);
-
 ```
 
 ```dvala throws
@@ -563,7 +484,6 @@ let fns = [showType];
 // first(fns) evaluates to the macro, then it's called as a regular function
 // ast receives the VALUE 42 (not AST), so first(42) fails
 first(fns)(42); // Error: Expected string or array, got 42
-
 ```
 
 ### AST Arguments Are Arrays
@@ -580,7 +500,6 @@ let check =
     ["Str", "got something else", 0]
   end;
 check(42);
-
 ```
 
 ### Quote Block Bindings Are Always Gensymed
@@ -601,16 +520,13 @@ let bad = macro (ast) -> quote let x = $^{ast} end;
 
 | Concept | Description |
 |---------|-------------|
-| `macro (params) -> body` | Define an anonymous macro |
-| `macro@name (params) -> body` | Define a named macro with qualified name |
+| `macro (params) -> body` | Define a macro |
 | `quote code end` | Quote block — produces AST data |
 | `$^{expr}` | Splice — insert evaluated AST into quote block |
 | `$^^{expr}` | Deferred splice — resolved in inner expansion |
 | `macroexpand(m, ...args)` | Expand without evaluating |
 | `prettyPrint(ast)` | AST to readable source |
-| `qualifiedName(m)` | Get the qualified name (or null) |
 | Hygiene | Quote block bindings auto-gensymed |
-| `@dvala.macro.expand` | Effect emitted by named macros |
 | `a \|> myMacro` | Pipe into macro (desugared at parse time) |
 | `#myMacro expr` | Prefix macro call (macro-only, chains: `#a #b x`) |
 | `decorate(ast, transform)` | Decorator helper — extracts value, calls transform, rewraps let |

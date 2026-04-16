@@ -2,6 +2,7 @@ import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
   'reflect': {
+    type: '(Number[], Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Reflects a vector across a given axis.',
     returns: {
@@ -32,6 +33,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.refract', 'linearAlgebra.projection'],
   },
   'refract': {
+    type: '(Number[], Number[], Number) -> Number[]',
     category: 'linearAlgebra',
     description: 'Refracts a vector across a given axis.',
     returns: {
@@ -67,6 +69,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.reflect'],
   },
   'lerp': {
+    type: '(Number[], Number[], Number) -> Number[]',
     category: 'linearAlgebra',
     description: 'Performs linear interpolation between two vectors.',
     returns: {
@@ -104,6 +107,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.projection'],
   },
   'rotate2d': {
+    type: '(Number[], Number) -> Number[]',
     category: 'linearAlgebra',
     description: 'Rotates a 2D vector by a given angle in radians.',
     returns: {
@@ -134,6 +138,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.rotate3d', 'linearAlgebra.angle'],
   },
   'rotate3d': {
+    type: '(Number[], Number[], Number) -> Number[]',
     category: 'linearAlgebra',
     description: 'Rotates a 3D vector around a given axis by a given angle in radians.',
     returns: {
@@ -169,6 +174,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.rotate2d', 'linearAlgebra.angle'],
   },
   'dot': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the dot product of two vectors. The result is a scalar.',
     returns: {
@@ -199,6 +205,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.cross', 'linearAlgebra.cosineSimilarity', 'linearAlgebra.angle', 'linearAlgebra.projection', 'linearAlgebra.isOrthogonal'],
   },
   'cross': {
+    type: '(Number[], Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Calculates the cross product of two 3D vectors. The result is a vector perpendicular to both input vectors.',
     returns: {
@@ -232,6 +239,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.dot'],
   },
   'normalizeMinmax': {
+    type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Normalizes the vector using min-max normalization. The result is a vector with values between 0 and 1.',
     returns: {
@@ -261,6 +269,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.normalizeZscore', 'linearAlgebra.normalizeRobust', 'linearAlgebra.normalizeL1', 'linearAlgebra.normalizeL2', 'linearAlgebra.normalizeLog'],
   },
   'normalizeZscore': {
+    type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Normalizes the vector using z-score normalization. The result is a vector with mean 0 and standard deviation 1.',
     returns: {
@@ -290,6 +299,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.normalizeMinmax', 'linearAlgebra.normalizeRobust', 'linearAlgebra.normalizeL1', 'linearAlgebra.normalizeL2', 'linearAlgebra.normalizeLog'],
   },
   'normalizeRobust': {
+    type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Normalizes the vector using robust normalization. The result is a vector with median 0 and median absolute deviation 1.',
     returns: {
@@ -319,6 +329,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.normalizeMinmax', 'linearAlgebra.normalizeZscore'],
   },
   'normalizeL1': {
+    type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Normalizes the vector using L1 normalization. The result is a vector with L1 norm equal to 1.',
     returns: {
@@ -348,6 +359,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.normalizeL2', 'linearAlgebra.normalizeMinmax', 'linearAlgebra.manhattanNorm', 'linearAlgebra.normalizeZscore'],
   },
   'normalizeL2': {
+    type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Normalizes the vector using L2 normalization. The result is a vector with L2 norm equal to 1.',
     returns: {
@@ -378,6 +390,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.normalizeL1', 'linearAlgebra.normalizeMinmax', 'linearAlgebra.euclideanNorm', 'linearAlgebra.normalizeZscore'],
   },
   'normalizeLog': {
+    type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Normalizes the vector using natural log normalization. The result is a vector with log-transformed values.',
     returns: {
@@ -405,6 +418,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.normalizeMinmax', 'linearAlgebra.normalizeZscore'],
   },
   'angle': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **angle** between two vectors in radians.',
     returns: {
@@ -433,6 +447,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.dot', 'linearAlgebra.isCollinear', 'linearAlgebra.isOrthogonal', 'linearAlgebra.rotate2d', 'linearAlgebra.rotate3d', 'linearAlgebra.isParallel', 'linearAlgebra.cosineSimilarity', 'linearAlgebra.toPolar'],
   },
   'projection': {
+    type: '(Number[], Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Calculates the **projection** of vector `a` onto vector `b`.',
     returns: {
@@ -461,6 +476,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.dot', 'linearAlgebra.reflect', 'linearAlgebra.lerp'],
   },
   'isCollinear': {
+    type: '(Number[], Number[]) -> Boolean',
     category: 'linearAlgebra',
     description: 'Checks if two vectors are **collinear**.',
     returns: {
@@ -490,6 +506,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.isParallel', 'linearAlgebra.isOrthogonal', 'linearAlgebra.angle'],
   },
   'isParallel': {
+    type: '(Number[], Number[]) -> Boolean',
     category: 'linearAlgebra',
     description: 'Checks if two vectors are **parallel**.',
     returns: {
@@ -520,6 +537,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.isCollinear', 'linearAlgebra.isOrthogonal', 'linearAlgebra.angle'],
   },
   'isOrthogonal': {
+    type: '(Number[], Number[]) -> Boolean',
     category: 'linearAlgebra',
     description: 'Checks if two vectors are **orthogonal**.',
     returns: {
@@ -549,6 +567,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.isCollinear', 'linearAlgebra.isParallel', 'linearAlgebra.dot', 'matrix.isOrthogonalMatrix', 'linearAlgebra.angle'],
   },
   'cosineSimilarity': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **cosine similarity** between two vectors. The result is a value between -1 and 1.',
     returns: {
@@ -578,6 +597,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.dot', 'linearAlgebra.angle', 'linearAlgebra.euclideanDistance'],
   },
   'euclideanDistance': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Euclidean distance** between two vectors. The result is a non-negative number.',
     returns: {
@@ -607,6 +627,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.manhattanDistance', 'linearAlgebra.chebyshevDistance', 'linearAlgebra.minkowskiDistance', 'linearAlgebra.euclideanNorm', 'linearAlgebra.cosineSimilarity', 'linearAlgebra.hammingDistance'],
   },
   'euclideanNorm': {
+    type: '(Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Euclidean norm** (L2 norm) of a vector. The result is a non-negative number.',
     returns: {
@@ -633,6 +654,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.manhattanNorm', 'linearAlgebra.chebyshevNorm', 'linearAlgebra.minkowskiNorm', 'linearAlgebra.euclideanDistance', 'linearAlgebra.normalizeL2', 'linearAlgebra.hammingNorm'],
   },
   'manhattanDistance': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Manhattan distance** between two vectors. The result is a non-negative number.',
     returns: {
@@ -662,6 +684,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.euclideanDistance', 'linearAlgebra.chebyshevDistance', 'linearAlgebra.minkowskiDistance', 'linearAlgebra.manhattanNorm', 'linearAlgebra.hammingDistance'],
   },
   'manhattanNorm': {
+    type: '(Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Manhattan norm** (L1 norm) of a vector. The result is a non-negative number.',
     returns: {
@@ -688,6 +711,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.euclideanNorm', 'linearAlgebra.chebyshevNorm', 'linearAlgebra.minkowskiNorm', 'linearAlgebra.manhattanDistance', 'linearAlgebra.normalizeL1', 'linearAlgebra.hammingNorm'],
   },
   'hammingDistance': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Hamming distance** between two vectors. The result is a non-negative integer.',
     returns: {
@@ -717,6 +741,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.euclideanDistance', 'linearAlgebra.manhattanDistance', 'linearAlgebra.hammingNorm'],
   },
   'hammingNorm': {
+    type: '(Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Hamming norm** of a vector. The result is a non-negative integer.',
     returns: {
@@ -743,6 +768,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.euclideanNorm', 'linearAlgebra.manhattanNorm', 'linearAlgebra.hammingDistance'],
   },
   'chebyshevDistance': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Chebyshev distance** between two vectors. The result is a non-negative number.',
     returns: {
@@ -772,6 +798,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.euclideanDistance', 'linearAlgebra.manhattanDistance', 'linearAlgebra.minkowskiDistance', 'linearAlgebra.chebyshevNorm'],
   },
   'chebyshevNorm': {
+    type: '(Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Chebyshev norm** of a vector. The result is a non-negative number.',
     returns: {
@@ -798,6 +825,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.euclideanNorm', 'linearAlgebra.manhattanNorm', 'linearAlgebra.minkowskiNorm', 'linearAlgebra.chebyshevDistance'],
   },
   'minkowskiDistance': {
+    type: '(Number[], Number[], Number) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Minkowski distance** between two vectors. The result is a non-negative number.',
     returns: {
@@ -832,6 +860,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.euclideanDistance', 'linearAlgebra.manhattanDistance', 'linearAlgebra.chebyshevDistance', 'linearAlgebra.minkowskiNorm'],
   },
   'minkowskiNorm': {
+    type: '(Number[], Number) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Minkowski norm** of a vector. The result is a non-negative number.',
     returns: {
@@ -863,6 +892,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.euclideanNorm', 'linearAlgebra.manhattanNorm', 'linearAlgebra.chebyshevNorm', 'linearAlgebra.minkowskiDistance'],
   },
   'cov': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **covariance** between two vectors. The result is a number.',
     returns: {
@@ -892,6 +922,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.corr', 'linearAlgebra.pearsonCorr', 'vector.variance'],
   },
   'corr': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **correlation** between two vectors. The result is a number between -1 and 1.',
     returns: {
@@ -921,6 +952,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.cov', 'linearAlgebra.pearsonCorr', 'linearAlgebra.spearmanCorr', 'linearAlgebra.kendallTau', 'linearAlgebra.autocorrelation', 'linearAlgebra.crossCorrelation'],
   },
   'spearmanCorr': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Spearman rank correlation** between two vectors. The result is a number between -1 and 1.',
     returns: {
@@ -950,6 +982,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.pearsonCorr', 'linearAlgebra.kendallTau', 'linearAlgebra.corr'],
   },
   'pearsonCorr': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Pearson correlation** between two vectors. The result is a number between -1 and 1.',
     returns: {
@@ -979,6 +1012,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.spearmanCorr', 'linearAlgebra.kendallTau', 'linearAlgebra.corr', 'linearAlgebra.cov'],
   },
   'kendallTau': {
+    type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Kendall Tau** rank correlation coefficient between two vectors. The result is a number between -1 and 1.',
     returns: {
@@ -1008,6 +1042,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.spearmanCorr', 'linearAlgebra.pearsonCorr', 'linearAlgebra.corr'],
   },
   'autocorrelation': {
+    type: '(Number[], Number) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **autocorrelation** of a vector. The result is a vector of autocorrelation coefficients.',
     returns: {
@@ -1041,6 +1076,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.crossCorrelation', 'linearAlgebra.corr'],
   },
   'crossCorrelation': {
+    type: '(Number[], Number[], Number) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **crossCorrelation** between two vectors. The result is a vector of crossCorrelation coefficients.',
     returns: {
@@ -1077,6 +1113,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.autocorrelation', 'linearAlgebra.corr'],
   },
   'rref': {
+    type: '(Number[][]) -> Number[][]',
     category: 'linearAlgebra',
     description: 'Calculates the **Reduced Row Echelon Form** (RREF) of a matrix.',
     returns: {
@@ -1103,6 +1140,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['linearAlgebra.solve', 'matrix.rank'],
   },
   'solve': {
+    type: '(Number[][], Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Solves a system of linear equations represented by a matrix and a vector.',
     returns: {
@@ -1134,6 +1172,7 @@ solve([[2, 3], [1, -1]], [8, 2])`,
     seeAlso: ['linearAlgebra.rref', 'matrix.inv'],
   },
   'toPolar': {
+    type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Converts a 2D vector to polar coordinates.',
     returns: {
@@ -1159,6 +1198,7 @@ solve([[2, 3], [1, -1]], [8, 2])`,
     seeAlso: ['linearAlgebra.fromPolar', 'linearAlgebra.angle'],
   },
   'fromPolar': {
+    type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Converts polar coordinates to a 2D vector.',
     returns: {

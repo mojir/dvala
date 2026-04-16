@@ -7,12 +7,16 @@
         @dvala.error,
         { message: str("Expected function, got: ", type(fn)) }
       )
+    else
+      null
     end;
     if count(objs) == 0 then
       perform(
         @dvala.error,
         { message: "Expected at least one object argument" }
       )
+    else
+      null
     end;
     reduce(
       rest(objs),
@@ -22,6 +26,8 @@
             @dvala.error,
             { message: str("Expected object, got: ", type(obj)) }
           )
+        else
+          null
         end;
         reduce(
           keys(obj),
@@ -42,6 +48,8 @@
             @dvala.error,
             { message: str("Expected object, got: ", type(f)) }
           )
+        else
+          null
         end;
         f;
       end

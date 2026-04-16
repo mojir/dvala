@@ -64,6 +64,13 @@ describe('CLI commands', () => {
       expect(result).toContain('clamp')
     })
 
+    it('runs a .dvala file with relative imports from the file directory', () => {
+      const result = exec(`run -f ${exampleProjectDir}/main.dvala`)
+      expect(result).toContain('avg')
+      expect(result).toContain('clamped')
+      expect(result).toContain('interpolated')
+    })
+
     it('runs a .json bundle with -f', () => {
       const bundlePath = path.join(tmpDir, 'test-bundle.json')
       exec(`build ${exampleProjectDir} -o ${bundlePath}`)
@@ -428,6 +435,24 @@ describe('CLI commands', () => {
     })
   })
 
+  // --- check ---
+  describe('check', () => {
+    it('reports success for valid inline code', () => {
+      const result = exec('check "1 + 2"')
+      expect(result).toBe('No type errors.')
+    })
+
+    it('reports type errors for invalid inline code', () => {
+      const result = execFails('check "perform(@no.such.eff, 42)"')
+      expect(result).toContain('Undeclared effect')
+    })
+
+    it('typechecks a file with relative imports', () => {
+      const result = exec(`check -f ${exampleProjectDir}/main.dvala`)
+      expect(result).toBe('No type errors.')
+    })
+  })
+
   // --- examples ---
   describe('examples', () => {
     it('shows example programs', () => {
@@ -444,6 +469,7 @@ describe('CLI commands', () => {
       expect(result).toContain('run')
       expect(result).toContain('build')
       expect(result).toContain('test')
+      expect(result).toContain('check')
     })
   })
 

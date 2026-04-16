@@ -1,0 +1,88 @@
+// Type system showcase for feat/type-system-step2, feat/type-system-step3,
+// and feat/type-system-step4.
+//
+// Step 2: Simple-sub inference engine
+// - polymorphic let-bound functions
+// - higher-order inference
+// - inference through repeated function application
+//
+// Step 3: Record and collection types
+// - open record parameters inferred from field access
+// - tuple/array destructuring
+// - rest bindings in collections
+//
+// Step 4: Match narrowing and exhaustiveness
+// - exhaustive tagged-object matches without a wildcard
+// - array-pattern matches that narrow each branch precisely
+
+// --- Step 2: inference ----------------------------------------------------
+
+let id = (x) -> x;
+
+let twice = (f, value) -> f(f(value));
+
+let inferredValues = {
+  sameNumber: id(42),
+  sameString: id("hello"),
+  incrementedTwice: twice(inc, 40),
+  stringLength: count(id("hello")),
+};
+
+// --- Step 3: records and collections --------------------------------------
+
+let describeUser = (user) -> do
+  let { name, tags: [firstTag, ...otherTags] } = user;
+  {
+    name,
+    firstTag,
+    otherTagCount: count(otherTags),
+    totalTagCount: count(user.tags),
+  };
+end;
+
+let collectionValues = do
+  let [first, second, ...tailValues] = [1, 2, 3, 4];
+  {
+    first,
+    second,
+    tailCount: count(tailValues),
+    nextValues: map([first, second, ...tailValues], inc),
+    userSummary: describeUser(
+      { name: "Ada", tags: ["math", "logic", "effects"], active: true }
+    ),
+  };
+end;
+
+// --- Step 4: match narrowing and exhaustiveness ---------------------------
+
+let chooseClick = isOdd(count("xy"));
+let event =
+  if chooseClick then
+    { type: "click", x: 3, y: 4 }
+  else
+    { type: "keydown", key: "Enter" }
+  end;
+
+let eventScore =
+  match event
+    case { type: "click", x, y} then x + y
+    case { type: "keydown", key} then count(key)
+  end;
+
+let pairScore =
+  match [10, 20]
+    case [ x, y] then x + y
+    case _ then 0
+  end;
+
+let listScore =
+  match [10, 20, 30, 40]
+    case [ head, ...tailValues] then head + count(tailValues)
+    case _ then 0
+  end;
+
+{
+  step2: inferredValues,
+  step3: collectionValues,
+  step4: { eventScore, pairScore, listScore },
+};

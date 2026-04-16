@@ -64,6 +64,7 @@ export const arrayNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 3 },
     docs: {
+      type: '((Number) -> Number[]) & ((Number, Number) -> Number[]) & ((Number, Number, Number) -> Number[])',
       category: 'array',
       returns: { type: 'number', array: true },
       args: {
@@ -108,6 +109,7 @@ range(
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown, Number) -> Unknown[]',
       category: 'array',
       returns: { type: 'any', array: true },
       args: {
@@ -138,6 +140,7 @@ range(
     },
     arity: { min: 1, max: 2 },
     docs: {
+      type: '((Unknown[]) -> Unknown[]) & ((Unknown[], Number) -> Unknown[])',
       category: 'array',
       returns: { type: 'any', array: true },
       args: {

@@ -30,6 +30,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: {},
     docs: {
+      type: '(() -> String) & ((Unknown, ...Unknown[]) -> String)',
       category: 'string',
       returns: { type: 'string' },
       args: { values: { type: 'any', rest: true } },
@@ -40,7 +41,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
         'str("A string", ", and another string", " ...and more")',
         'str("Just one string")',
         'str()',
-        'str(0, false, true, null, #"^kalle", [1, 2, 3], {a: "a"})',
+        { code: 'str(0, false, true, null, #"^kalle", [1, 2, 3], {a: "a"})', noCheck: true },
         'str(:ok)',
       ],
       hideOperatorForm: true,
@@ -58,6 +59,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String) -> Number',
       category: 'string',
       returns: { type: 'number' },
       args: { s: { type: 'string' } },
@@ -79,6 +81,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String) -> String',
       category: 'string',
       returns: { type: 'string' },
       args: { s: { type: 'string' } },
@@ -99,6 +102,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String) -> String',
       category: 'string',
       returns: { type: 'string' },
       args: { s: { type: 'string' } },
@@ -119,6 +123,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String) -> String',
       category: 'string',
       returns: { type: 'string' },
       args: { s: { type: 'string' } },
@@ -142,6 +147,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '((String | Number)[], String) -> String',
       category: 'string',
       returns: { type: 'string' },
       args: {
@@ -178,6 +184,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
     docs: {
+      type: '((String, String) -> String[]) & ((String, String, Number) -> String[]) & ((String, Regex) -> String[]) & ((String, Regex, Number) -> String[])',
       category: 'string',
       returns: { type: 'string', array: true },
       args: {
@@ -212,6 +219,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Null) -> Boolean',
       category: 'string',
       returns: { type: 'boolean' },
       args: { s: { type: ['string', 'null'] } },

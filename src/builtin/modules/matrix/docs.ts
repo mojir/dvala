@@ -2,6 +2,7 @@ import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
   'mul': {
+    type: '(Number[][], Number[][]) -> Number[][]',
     category: 'matrix',
     description: 'Multiplies two `matrices` using standard `matrix` multiplication based on **dot products** of rows and columns.',
     returns: {
@@ -30,6 +31,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.det', 'matrix.inv'],
   },
   'det': {
+    type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **determinant** of a square matrix.',
     returns: {
@@ -55,6 +57,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.inv', 'matrix.cofactor', 'matrix.adj', 'matrix.trace', 'matrix.rank', 'matrix.isInvertible', 'matrix.mul', 'matrix.minor'],
   },
   'inv': {
+    type: '(Number[][]) -> Number[][]',
     category: 'matrix',
     description: 'Calculates the **inverse** of a square matrix.',
     returns: {
@@ -80,6 +83,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.det', 'matrix.adj', 'matrix.isInvertible', 'linearAlgebra.solve', 'matrix.mul', 'matrix.isOrthogonalMatrix'],
   },
   'adj': {
+    type: '(Number[][]) -> Number[][]',
     category: 'matrix',
     description: 'Calculates the **adjugate** of a square matrix.',
     returns: {
@@ -106,6 +110,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.cofactor', 'matrix.det', 'matrix.inv'],
   },
   'cofactor': {
+    type: '(Number[][]) -> Number[][]',
     category: 'matrix',
     description: 'Calculates the **cofactor** of a square matrix.',
     returns: {
@@ -132,6 +137,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.adj', 'matrix.minor', 'matrix.det'],
   },
   'minor': {
+    type: '(Number[][], Number, Number) -> Number[][]',
     category: 'matrix',
     description: 'Calculates the **minor** of a square matrix.',
     returns: {
@@ -167,6 +173,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.cofactor', 'matrix.det'],
   },
   'trace': {
+    type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **trace** of a square matrix.',
     returns: {
@@ -192,6 +199,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.det', 'matrix.isDiagonal'],
   },
   'isSymmetric': {
+    type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **symmetric**.',
     returns: {
@@ -217,6 +225,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.isOrthogonalMatrix', 'matrix.isDiagonal', 'matrix.isSquare', 'matrix.hilbert'],
   },
   'isTriangular': {
+    type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **triangular**.',
     returns: {
@@ -242,6 +251,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.isUpperTriangular', 'matrix.isLowerTriangular', 'matrix.isDiagonal', 'matrix.isBanded'],
   },
   'isUpperTriangular': {
+    type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **upper triangular**.',
     returns: {
@@ -267,6 +277,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.isLowerTriangular', 'matrix.isTriangular', 'matrix.isDiagonal'],
   },
   'isLowerTriangular': {
+    type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **lower triangular**.',
     returns: {
@@ -292,6 +303,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.isUpperTriangular', 'matrix.isTriangular', 'matrix.isDiagonal'],
   },
   'isDiagonal': {
+    type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **diagonal**.',
     returns: {
@@ -318,6 +330,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.isIdentity', 'matrix.isSymmetric', 'matrix.isTriangular', 'matrix.trace', 'matrix.isUpperTriangular', 'matrix.isLowerTriangular', 'matrix.band', 'matrix.isBanded'],
   },
   'isSquare': {
+    type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **square**.',
     returns: {
@@ -344,6 +357,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.isSymmetric', 'matrix.isIdentity', 'matrix.isInvertible'],
   },
   'isOrthogonalMatrix': {
+    type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **orthogonal**.',
     returns: {
@@ -370,6 +384,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.isSymmetric', 'matrix.inv', 'matrix.isIdentity', 'linearAlgebra.isOrthogonal'],
   },
   'isIdentity': {
+    type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is an **identity matrix**.',
     returns: {
@@ -396,6 +411,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.isDiagonal', 'matrix.isSquare', 'matrix.isOrthogonalMatrix'],
   },
   'isInvertible': {
+    type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **invertible**.',
     returns: {
@@ -422,6 +438,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.det', 'matrix.inv', 'matrix.rank', 'matrix.isSquare'],
   },
   'hilbert': {
+    type: '(Number) -> Number[][]',
     category: 'matrix',
     description: 'Generates a **Hilbert matrix** of size `n`.',
     returns: {
@@ -447,6 +464,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.vandermonde', 'matrix.isSymmetric'],
   },
   'vandermonde': {
+    type: '(Number[]) -> Number[][]',
     category: 'matrix',
     description: 'Generates a **Vandermonde matrix** from a vector.',
     returns: {
@@ -472,6 +490,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.hilbert', 'matrix.band'],
   },
   'band': {
+    type: '(Number, Number, Number) -> Number[][]',
     category: 'matrix',
     description: 'Generates a **banded matrix** of size `n` with lower band index `lband` and upper band index `uband`.',
     returns: {
@@ -507,6 +526,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.isBanded', 'matrix.isDiagonal', 'matrix.vandermonde'],
   },
   'isBanded': {
+    type: '(Number[][], Number, Number) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **banded** with lower band index `lband` and upper band index `uband`.',
     returns: {
@@ -542,6 +562,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.band', 'matrix.isTriangular', 'matrix.isDiagonal'],
   },
   'rank': {
+    type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **rank** of a matrix using **Gaussian elimination**.',
     returns: {
@@ -568,6 +589,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.det', 'matrix.isInvertible', 'linearAlgebra.rref'],
   },
   'frobeniusNorm': {
+    type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **Frobenius norm** of a matrix.',
     returns: {
@@ -593,6 +615,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.oneNorm', 'matrix.infNorm', 'matrix.maxNorm'],
   },
   'oneNorm': {
+    type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **oneNorm** (column norm) of a matrix.',
     returns: {
@@ -618,6 +641,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.frobeniusNorm', 'matrix.infNorm', 'matrix.maxNorm'],
   },
   'infNorm': {
+    type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **infinity norm** of a matrix.',
     returns: {
@@ -643,6 +667,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['matrix.frobeniusNorm', 'matrix.oneNorm', 'matrix.maxNorm'],
   },
   'maxNorm': {
+    type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **max norm** of a matrix.',
     returns: {

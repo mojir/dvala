@@ -60,6 +60,7 @@ const mathUtilsFunctions: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.sin(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -88,6 +89,7 @@ sin([[1, 2], [3, 4]])`,
     evaluate: unaryMathOp(val => Math.asin(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -114,6 +116,7 @@ asin([[0, 0.5], [-0.5, -1]])`,
     evaluate: unaryMathOp(val => Math.sinh(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -140,6 +143,7 @@ sinh([[0.1, 0.2], [0.3, 0.4]])`,
     evaluate: unaryMathOp(val => Math.asinh(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -166,6 +170,7 @@ asinh([[10, 20], [30, 40]])`,
     evaluate: unaryMathOp(val => Math.cos(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -194,6 +199,7 @@ cos([[1, 2], [3, 4]])`,
     evaluate: unaryMathOp(val => Math.acos(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -220,6 +226,7 @@ acos([[0.1, 0.2], [0.3, 0.4]])`,
     evaluate: unaryMathOp(val => Math.cosh(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -246,6 +253,7 @@ cosh([[0.1, 0.2], [0.3, 0.4]])`,
     evaluate: unaryMathOp(val => Math.acosh(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -274,6 +282,7 @@ acosh([[1, 2], [3, 4]])`,
     evaluate: unaryMathOp(val => Math.tan(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -302,6 +311,7 @@ tan([[1, 2], [3, 4]])`,
     evaluate: unaryMathOp(val => Math.atan(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -328,6 +338,7 @@ atan([[0.1, 0.2], [0.3, 0.4]])`,
     evaluate: unaryMathOp(val => Math.tanh(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -352,6 +363,7 @@ tanh(50)`,
     evaluate: unaryMathOp(val => Math.atanh(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -378,6 +390,7 @@ atanh([[0.1, 0.2], [0.3, 0.4]])`,
     evaluate: unaryMathOp(val => Math.log(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -404,6 +417,7 @@ ln([[1, 2], [3, 4]])`,
     evaluate: unaryMathOp(val => Math.log2(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -430,6 +444,7 @@ log2([[1, 2], [3, 4]])`,
     evaluate: unaryMathOp(val => Math.log10(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -456,6 +471,7 @@ log10([[1, 2], [3, 4]])`,
     evaluate: unaryMathOp(val => (val * Math.PI) / 180),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {
@@ -484,6 +500,7 @@ toRad([[0, 90], [180, 360]])`,
     evaluate: unaryMathOp(val => (val * 180) / Math.PI),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number) & ((Number[]) -> Number[]) & ((Number[][]) -> Number[][])',
       category: 'math',
       returns: { type: ['number', 'vector', 'matrix'] },
       args: {

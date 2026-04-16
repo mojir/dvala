@@ -42,6 +42,7 @@ import mainTemplate from './templates/main.dvala'
 import mainTestTemplate from './templates/main.test.dvala'
 import { getCliModules } from './js-interop/Cli'
 import '../../src/initReferenceData'
+import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
 
 const useColor = !process.env.NO_COLOR
 const fmt = createColorizer(useColor)
@@ -73,9 +74,12 @@ interface ReplConfig {
 interface RunConfig {
   subcommand: 'run'
   program: string | DvalaBundle
+  filePath: Maybe<string>
+  fileResolverBaseDir: string
   context: Record<string, unknown>
   printResult: boolean
   pure: boolean
+  noCheck: boolean
 }
 
 type TestReporter = 'default' | 'verbose' | 'tap' | 'junit' | 'html'
@@ -126,6 +130,13 @@ interface ParseConfig {
   debug: boolean
 }
 
+interface CheckConfig {
+  subcommand: 'check'
+  code: string
+  filePath: Maybe<string>
+  fileResolverBaseDir: string
+}
+
 interface InitConfig {
   subcommand: 'init'
 }
@@ -142,11 +153,11 @@ interface VersionConfig {
   subcommand: 'version'
 }
 
-type Config = ReplConfig | RunConfig | TestConfig | BuildConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | InitConfig | ExamplesConfig | HelpConfig | VersionConfig
+type Config = ReplConfig | RunConfig | TestConfig | BuildConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | CheckConfig | InitConfig | ExamplesConfig | HelpConfig | VersionConfig
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
-const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap', '--no-expand-macros', '--no-tree-shake', '--coverage'])
+const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap', '--no-expand-macros', '--no-tree-shake', '--no-check', '--coverage'])
 
 const commands = [':help', ':quit', ':builtins', ':context', ':reload']
 const expressionRegExp = new RegExp(`^(.*\\(\\s*)(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*)$`)
@@ -174,20 +185,34 @@ function createFileResolver(): (importPath: string, fromDir: string) => string {
   }
 }
 
-function makeDvala(context: Record<string, unknown>, pure: boolean) {
-  const runner = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules], fileResolver: createFileResolver(), fileResolverBaseDir: process.cwd() })
+function makeDvala(context: Record<string, unknown>, pure: boolean, noCheck = false, fileResolverBaseDir = process.cwd()) {
+  const runner = createDvala({
+    debug: true,
+    modules: [...allBuiltinModules, ...cliModules],
+    fileResolver: createFileResolver(),
+    fileResolverBaseDir,
+    typecheck: !noCheck,
+    onTypeDiagnostic: d => {
+      // Print type diagnostics as warnings to stderr
+      const loc = d.sourceCodeInfo
+        ? ` at ${d.sourceCodeInfo.position.line}:${d.sourceCodeInfo.position.column}`
+        : ''
+      process.stderr.write(`\x1b[33m[type ${d.severity}]${loc}: ${d.message}\x1b[0m\n`)
+    },
+  })
   return {
-    run: (program: string | DvalaBundle) => runner.run(program, pure
-      ? { scope: context, pure: true }
-      : { scope: context }),
+    run: (program: string | DvalaBundle, filePath?: string) => runner.run(program, pure
+      ? { scope: context, pure: true, filePath }
+      : { scope: context, filePath }),
   }
 }
 
 // Evaluate a file and merge its result (if object) into the context bindings
 function loadFileIntoContext(filename: string, context: Record<string, unknown>) {
-  const dvala = makeDvala(context, false)
-  const content = fs.readFileSync(filename, { encoding: 'utf-8' })
-  const result = dvala.run(content)
+  const resolvedFilename = path.resolve(filename)
+  const dvala = makeDvala(context, false, false, path.dirname(resolvedFilename))
+  const content = fs.readFileSync(resolvedFilename, { encoding: 'utf-8' })
+  const result = dvala.run(content, resolvedFilename)
   if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
     for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
       context[key] = value
@@ -197,9 +222,9 @@ function loadFileIntoContext(filename: string, context: Record<string, unknown>)
 
 switch (config.subcommand) {
   case 'run': {
-    const dvala = makeDvala(config.context, config.pure)
+    const dvala = makeDvala(config.context, config.pure, config.noCheck, config.fileResolverBaseDir)
     try {
-      const result = dvala.run(config.program)
+      const result = dvala.run(config.program, config.filePath ?? undefined)
       if (config.printResult) {
         console.log(result)
       }
@@ -324,6 +349,35 @@ switch (config.subcommand) {
     }
     break
   }
+  case 'check': {
+    try {
+      const dvala = createDvala({
+        debug: true,
+        modules: [...allBuiltinModules, ...cliModules],
+        fileResolver: createFileResolver(),
+        fileResolverBaseDir: config.fileResolverBaseDir,
+      })
+      const result = dvala.typecheck(config.code, {
+        fileResolverBaseDir: config.fileResolverBaseDir,
+        filePath: config.filePath ?? undefined,
+      })
+      if (result.diagnostics.length === 0) {
+        console.log('No type errors.')
+        process.exit(0)
+        break
+      }
+
+      for (const diagnostic of result.diagnostics) {
+        printTypeDiagnostic(diagnostic)
+      }
+
+      process.exit(result.diagnostics.some(diagnostic => diagnostic.severity === 'error') ? 1 : 0)
+    } catch (error) {
+      printErrorMessage(`${error}`)
+      process.exit(1)
+    }
+    break
+  }
   case 'examples': {
     console.log(formatExamples())
     process.exit(0)
@@ -358,11 +412,7 @@ function resolveProjectConfig(arg: Maybe<string>): ResolvedConfig | null {
   return null
 }
 
-/**
- * Read code from a file path, or resolve the entry file from dvala.json in cwd.
- * Used by -f flag handling and no-arg fallback.
- */
-function resolveEntryCode(subcommand: string): string {
+function resolveEntrySource(subcommand: string): { code: string; filePath: string } {
   const resolved = findConfig()
   if (!resolved) {
     printErrorMessage(`No dvala.json found. Pass code, use -f <file>, or run in a project directory. ("${subcommand}")`)
@@ -377,7 +427,48 @@ function resolveEntryCode(subcommand: string): string {
     printErrorMessage(`Entry file not found: ${entryPath}`)
     process.exit(1)
   }
-  return fs.readFileSync(entryPath, 'utf-8')
+  return { code: fs.readFileSync(entryPath, 'utf-8'), filePath: entryPath }
+}
+
+function resolveSourceInput(subcommand: string, positional: Maybe<string>, file: Maybe<string>): { code: string; filePath: Maybe<string>; fileResolverBaseDir: string } {
+  if (positional) {
+    return { code: positional, filePath: null, fileResolverBaseDir: process.cwd() }
+  }
+  if (file) {
+    const resolvedFilePath = path.resolve(file)
+    return {
+      code: readFileContent(resolvedFilePath),
+      filePath: resolvedFilePath,
+      fileResolverBaseDir: path.dirname(resolvedFilePath),
+    }
+  }
+  const entry = resolveEntrySource(subcommand)
+  return {
+    code: entry.code,
+    filePath: entry.filePath,
+    fileResolverBaseDir: path.dirname(entry.filePath),
+  }
+}
+
+function resolveRunProgram(subcommand: string, positional: Maybe<string>, file: Maybe<string>): { program: string | DvalaBundle; filePath: Maybe<string>; fileResolverBaseDir: string } {
+  if (positional) {
+    return { program: positional, filePath: null, fileResolverBaseDir: process.cwd() }
+  }
+  if (file) {
+    const resolvedFilePath = path.resolve(file)
+    const program = readProgram(resolvedFilePath)
+    return {
+      program,
+      filePath: typeof program === 'string' ? resolvedFilePath : null,
+      fileResolverBaseDir: path.dirname(resolvedFilePath),
+    }
+  }
+  const entry = resolveEntrySource(subcommand)
+  return {
+    program: entry.code,
+    filePath: entry.filePath,
+    fileResolverBaseDir: path.dirname(entry.filePath),
+  }
 }
 
 /**
@@ -982,10 +1073,11 @@ function parsePrintOptions(args: string[], startIndex: number): { options: Print
   return { options, nextIndex: i }
 }
 
-function parseRunOptions(args: string[], startIndex: number): { context: Record<string, unknown>; printResult: boolean; pure: boolean; file: Maybe<string>; positional: Maybe<string>; nextIndex: number } {
+function parseRunOptions(args: string[], startIndex: number): { context: Record<string, unknown>; printResult: boolean; pure: boolean; noCheck: boolean; file: Maybe<string>; positional: Maybe<string>; nextIndex: number } {
   let context: Record<string, unknown> = {}
   let printResult = true
   let pure = false
+  let noCheck = false
   let file: Maybe<string> = null
   let positional: Maybe<string> = null
   let i = startIndex
@@ -1031,12 +1123,16 @@ function parseRunOptions(args: string[], startIndex: number): { context: Record<
         pure = true
         i += parsed.count
         break
+      case '--no-check':
+        noCheck = true
+        i += parsed.count
+        break
       default:
         printErrorMessage(`Unknown option "${parsed.option}"`)
         process.exit(1)
     }
   }
-  return { context, printResult, pure, file, positional, nextIndex: i }
+  return { context, printResult, pure, noCheck, file, positional, nextIndex: i }
 }
 
 function processArguments(args: string[]): Config {
@@ -1056,20 +1152,22 @@ function processArguments(args: string[]): Config {
 
   switch (first) {
     case 'run': {
-      const { positional, file, context, printResult, pure } = parseRunOptions(args, 1)
+      const { positional, file, context, printResult, pure, noCheck } = parseRunOptions(args, 1)
       if (positional && file) {
         printErrorMessage('Cannot use both inline code and -f <file>')
         process.exit(1)
       }
-      let program: string | DvalaBundle
-      if (positional) {
-        program = positional
-      } else if (file) {
-        program = readProgram(file)
-      } else {
-        program = resolveEntryCode('run')
+      const runProgram = resolveRunProgram('run', positional, file)
+      return {
+        subcommand: 'run',
+        program: runProgram.program,
+        filePath: runProgram.filePath,
+        fileResolverBaseDir: runProgram.fileResolverBaseDir,
+        context,
+        printResult,
+        pure,
+        noCheck,
       }
-      return { subcommand: 'run', program, context, printResult, pure }
     }
     case 'build': {
       let directory: Maybe<string> = null
@@ -1275,7 +1373,8 @@ function processArguments(args: string[]): Config {
       return { subcommand: 'list', moduleName, showModules, showDatatypes }
     }
     case 'tokenize':
-    case 'parse': {
+    case 'parse':
+    case 'check': {
       let positional: Maybe<string> = null
       let file: Maybe<string> = null
       let debug = false
@@ -1298,6 +1397,10 @@ function processArguments(args: string[]): Config {
             i += parsed.count
             break
           case '--debug':
+            if (first === 'check') {
+              printErrorMessage(`Unknown option "${parsed.option}" for "${first}"`)
+              process.exit(1)
+            }
             debug = true
             i += parsed.count
             break
@@ -1310,15 +1413,16 @@ function processArguments(args: string[]): Config {
         printErrorMessage(`Cannot use both inline code and -f <file> for "${first}"`)
         process.exit(1)
       }
-      let code: string
-      if (positional) {
-        code = positional
-      } else if (file) {
-        code = readFileContent(file)
-      } else {
-        code = resolveEntryCode(first)
+      const sourceInput = resolveSourceInput(first, positional, file)
+      if (first === 'check') {
+        return {
+          subcommand: 'check',
+          code: sourceInput.code,
+          filePath: sourceInput.filePath,
+          fileResolverBaseDir: sourceInput.fileResolverBaseDir,
+        }
       }
-      return { subcommand: first, code, debug }
+      return { subcommand: first, code: sourceInput.code, debug }
     }
     case 'init': {
       return { subcommand: 'init' }
@@ -1451,6 +1555,7 @@ Subcommands:
   run [code] [options]            Run code, a file (-f), or project entry (dvala.json)
   build [dir] [options]           Build a project (uses dvala.json)
   test [file] [options]           Run a .test.dvala test file
+  check [code] [options]          Typecheck code, a file (-f), or project entry (dvala.json)
   init                            Initialize a new project (creates dvala.json)
   repl [options]                  Start an interactive REPL
   doc <name>                      Show documentation for a function/expression
@@ -1466,6 +1571,7 @@ Run options:
   -C, --context-file=<file>       Context from a .json file
   -s, --silent                    Suppress printing the result
   --pure                          Enforce pure mode (no side effects or non-determinism)
+  --no-check                      Skip type checking
 
 Build options:
   -o, --output=<file>             Write build output to file (default: stdout)
@@ -1475,6 +1581,9 @@ Build options:
 
 Test options:
   --pattern=<regex>               Only run tests matching pattern
+
+Check options:
+  -f, --file=<file>               Read code from a .dvala file
 
 Repl options:
   -l, --load=<file>               Preload a .dvala file into the REPL context
@@ -1536,4 +1645,13 @@ function completer(line: string) {
 
 function printErrorMessage(message: string) {
   console.error(fmt.bright.red(message))
+}
+
+function printTypeDiagnostic(diagnostic: TypeDiagnostic) {
+  const info = diagnostic.sourceCodeInfo
+  const location = info
+    ? `${info.filePath ? `${info.filePath}:` : ''}${info.position.line}:${info.position.column}`
+    : 'unknown'
+  const prefix = diagnostic.severity === 'error' ? fmt.bright.red('[type error]') : fmt.bright.yellow('[type warning]')
+  console.error(`${prefix} ${location}: ${diagnostic.message}`)
 }

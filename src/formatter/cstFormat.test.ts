@@ -107,8 +107,8 @@ describe('cstFormat — basic', () => {
 // ---------------------------------------------------------------------------
 
 describe('cstFormat — complex constructs', () => {
-  it('formats if/then/end — tries flat', () => {
-    expect(fmt('if true then 1 end').trimEnd()).toBe('if true then 1 end;')
+  it('formats if/then/else/end — tries flat (with else)', () => {
+    expect(fmt('if true then 1 else 0 end').trimEnd()).toBe('if true then 1 else 0 end;')
   })
 
   it('formats if/then/else/end — tries flat', () => {

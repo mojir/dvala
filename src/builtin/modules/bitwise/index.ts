@@ -17,6 +17,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(Number) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: { a: { type: 'integer' } },
@@ -40,6 +41,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
+      type: '(Number, Number, ...Number) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: {
@@ -69,6 +71,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Number, Number) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
@@ -92,6 +95,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Number, Number) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
@@ -115,6 +119,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Number, Number) -> Number',
       category: 'bitwise',
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
@@ -138,6 +143,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Number, Number) -> Boolean',
       category: 'bitwise',
       returns: { type: 'boolean' },
       args: { ...getOperatorArgs('integer', 'integer') },

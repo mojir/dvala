@@ -11,6 +11,7 @@
  */
 
 import { MAX_INLINE_ENTRIES, MAX_WIDTH } from './formatter/config'
+import { TypeError } from './errors'
 
 const INDENT_SIZE = 2
 
@@ -238,7 +239,7 @@ function printNode(node: AstNode, ind: number, isRoot = false): string {
     case NodeTypes.Function:
       return printFunction(payload as [unknown[][], unknown[][]], ind)
     case NodeTypes.Macro:
-      return printMacro(payload as [unknown[][], unknown[][], string | null], ind)
+      return printMacro(payload as [unknown[][], unknown[][]], ind)
     case NodeTypes.Perform:
       return printPerform(payload as [unknown[], unknown[] | undefined], ind)
     case NodeTypes.Array:
@@ -320,11 +321,11 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
     }
   }
 
-  // Smart rewrite: dot access — get(obj, "key") → obj.key
+  // Smart rewrite: safe dot access — get(obj, "key") → obj?.key
   if (fnNode[0] === NodeTypes.Builtin && fnNode[1] === 'get' && argNodes.length === 2) {
     const keyNode = argNodes[1]!
     if (keyNode[0] === NodeTypes.Str && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(keyNode[1] as string)) {
-      return `${printNode(argNodes[0]!, ind)}.${keyNode[1]}`
+      return `${printNode(argNodes[0]!, ind)}?.${keyNode[1]}`
     }
   }
 
@@ -459,6 +460,9 @@ function printIf(parts: unknown[][], ind: number): string {
   const cond = printNode(parts[0] as AstNode, ind)
   const thenNode = parts[1] as AstNode
   const elseNode = parts.length > 2 && parts[2] ? parts[2] as AstNode : null
+  if (!elseNode) {
+    throw new TypeError('If AST requires an else branch')
+  }
   const hasThenComments = hasNodeLevelComments(thenNode[2])
   const hasElseComments = elseNode ? hasNodeLevelComments(elseNode[2]) : false
 
@@ -467,38 +471,31 @@ function printIf(parts: unknown[][], ind: number): string {
 
   // Try flat — only when all components are single-line
   const thenStr = printNode(thenNode, ind)
-  if (elseNode) {
-    const elseStr = isElseIf
-      ? printIf((elseNode)[1] as unknown[][], ind)
-      : printNode(elseNode, ind)
-    if (!hasThenComments && !hasElseComments && allSingleLine(cond, thenStr, elseStr)) {
-      const flat = isElseIf
-        ? `if ${cond} then ${thenStr} else ${elseStr}`
-        : `if ${cond} then ${thenStr} else ${elseStr} end`
-      if (fits(flat, ind)) return flat
-    }
-  } else {
-    if (!hasThenComments && allSingleLine(cond, thenStr)) {
-      const flat = `if ${cond} then ${thenStr} end`
-      if (fits(flat, ind)) return flat
-    }
+  const elseStr = isElseIf
+    ? printIf((elseNode)[1] as unknown[][], ind)
+    : printNode(elseNode, ind)
+  if (!hasThenComments && !hasElseComments && allSingleLine(cond, thenStr, elseStr)) {
+    const flat = isElseIf
+      ? `if ${cond} then ${thenStr} else ${elseStr}`
+      : `if ${cond} then ${thenStr} else ${elseStr} end`
+    if (fits(flat, ind)) return flat
   }
 
   // Multi-line
   const thenMulti = renderCommentedNode(thenNode, ind + 1)
-  if (elseNode) {
-    if (isElseIf) {
-      // else if — keep same indent, no extra end
-      const elseIfStr = printIf((elseNode)[1] as unknown[][], ind)
-      return `if ${cond} then\n${thenMulti}\n${indent(ind)}else ${elseIfStr}`
-    }
-    const elseMulti = renderCommentedNode(elseNode, ind + 1)
-    return `if ${cond} then\n${thenMulti}\n${indent(ind)}else\n${elseMulti}\n${indent(ind)}end`
+  if (isElseIf) {
+    // else if — keep same indent, no extra end
+    const elseIfStr = printIf((elseNode)[1] as unknown[][], ind)
+    return `if ${cond} then\n${thenMulti}\n${indent(ind)}else ${elseIfStr}`
   }
-  return `if ${cond} then\n${thenMulti}\n${indent(ind)}end`
+  const elseMulti = renderCommentedNode(elseNode, ind + 1)
+  return `if ${cond} then\n${thenMulti}\n${indent(ind)}else\n${elseMulti}\n${indent(ind)}end`
 }
 
 function printBlock(stmts: unknown[][], ind: number): string {
+  if (stmts.length === 0) {
+    throw new TypeError('Block AST requires at least one expression')
+  }
   // Single statement: try flat (no semicolons needed, only when single-line)
   if (stmts.length === 1) {
     const stmtNode = stmts[0] as AstNode
@@ -570,23 +567,22 @@ function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: numbe
   return `(${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
-function printMacro(payload: [unknown[][], unknown[][], string | null], ind: number): string {
-  const [params, body, qualifiedName] = payload
+function printMacro(payload: [unknown[][], unknown[][]], ind: number): string {
+  const [params, body] = payload
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
-  const namePrefix = qualifiedName ? `macro@${qualifiedName}` : 'macro'
 
   if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler && !hasNodeLevelComments((body[0] as AstNode)[2])) {
     const bodyStr = printNode(body[0] as AstNode, ind)
     if (allSingleLine(bodyStr)) {
-      const flat = `${namePrefix} (${paramStr}) -> ${bodyStr}`
+      const flat = `macro (${paramStr}) -> ${bodyStr}`
       if (fits(flat, ind)) return flat
     }
-    return `${namePrefix} (${paramStr}) ->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
+    return `macro (${paramStr}) ->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
   }
 
   // Multi-statement body (or single WithHandler): always expand (no mid-line semicolons)
   const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-  return `${namePrefix} (${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
+  return `macro (${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
 function printPerform(payload: [unknown[], unknown[] | undefined], ind: number): string {

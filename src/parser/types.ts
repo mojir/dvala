@@ -48,8 +48,6 @@ export interface UserDefinedFunction extends GenericDvalaFunction {
 export interface MacroFunction extends GenericDvalaFunction {
   functionType: 'Macro'
   name: string | undefined
-  /** Dotted DNS-style identifier for host-level dispatch. Null for anonymous macros. */
-  qualifiedName: QualifiedName | null
   evaluatedfunction: EvaluatedFunction
   docString: string
 }
@@ -279,7 +277,25 @@ export function resolveSourceCodeInfo(nodeId: number, sourceMap: SourceMap | und
 }
 
 type AstBody = AstNode[]
+/** Parsed effect declaration: effect @name(ArgType) -> RetType */
+export interface EffectDeclarationInfo {
+  argType: string
+  retType: string
+}
+
+/** Parsed type alias: type Name<Params> = Body */
+export interface TypeAliasInfo {
+  params: string[]
+  body: string
+}
+
 export interface Ast {
   body: AstBody // body
   sourceMap?: SourceMap // present when debug mode is on
+  /** Type annotations from source code, keyed by nodeId. Erased before evaluation. */
+  typeAnnotations?: Map<number, string>
+  /** Effect declarations from source code. Erased before evaluation. */
+  effectDeclarations?: Map<string, EffectDeclarationInfo>
+  /** Type alias declarations from source code. Erased before evaluation. */
+  typeAliases?: Map<string, TypeAliasInfo>
 }

@@ -15,6 +15,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '({...}) -> String[]',
       category: 'object',
       returns: { type: 'any', array: true },
       args: { obj: { type: 'object' } },
@@ -36,6 +37,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '({...}) -> Unknown[]',
       category: 'object',
       returns: { type: 'any', array: true },
       args: { obj: { type: 'object' } },
@@ -58,6 +60,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '({...}) -> Unknown[][]',
       category: 'object',
       returns: { type: 'array' },
       args: { obj: { type: 'object' } },
@@ -83,6 +86,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '({...}, String) -> Unknown[] | Null',
       category: 'object',
       returns: { type: ['array', 'null'] },
       args: {
@@ -111,6 +115,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '({...}, String) -> {...}',
       category: 'object',
       returns: { type: 'object' },
       args: {
@@ -157,8 +162,9 @@ o`,
     },
     arity: { min: 0 },
     docs: {
+      type: '(() -> Null) & (({...}, ...{...}[]) -> {...})',
       category: 'object',
-      returns: { type: 'object' },
+      returns: { type: ['object', 'null'] },
       args: {
         a: { type: 'object' },
         b: { type: 'object' },
@@ -182,6 +188,7 @@ If no arguments are provided \`null\` is returned.`,
     evaluate: () => { throw new Error('mergeWith is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
+      type: '(({...}, {...}, (Unknown, Unknown) -> Unknown) -> {...}) & (({...}, {...}, {...}, (Unknown, Unknown) -> Unknown) -> {...}) & (({...}, {...}, {...}, {...}, (Unknown, Unknown) -> Unknown) -> {...})',
       category: 'object',
       returns: { type: 'object' },
       args: {
@@ -196,9 +203,9 @@ If two keys appears in more than one object \`fun\` is used to calculate the new
 If no arguments are provided \`null\` is returned.`,
       seeAlso: ['merge'],
       examples: [
-        'mergeWith(object("x", 10), object("y", 20), +)',
-        'mergeWith(object("x", 10), object("x", 15, "y", 20), +)',
-        'mergeWith({ x: 10 }, { x: 20 }, { x: 30 }, { x: 40 }, -)',
+        { code: 'mergeWith(object("x", 10), object("y", 20), +)', noCheck: true },
+        { code: 'mergeWith(object("x", 10), object("x", 15, "y", 20), +)', noCheck: true },
+        { code: 'mergeWith({ x: 10 }, { x: 20 }, { x: 30 }, { x: 40 }, -)', noCheck: true },
       ],
       hideOperatorForm: true,
     },
@@ -221,6 +228,7 @@ If no arguments are provided \`null\` is returned.`,
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(String[], Unknown[]) -> {...}',
       category: 'object',
       returns: { type: 'object' },
       args: {
@@ -253,6 +261,7 @@ If no arguments are provided \`null\` is returned.`,
     },
     arity: toFixedArity(2),
     docs: {
+      type: '({...}, String[]) -> {...}',
       category: 'object',
       returns: { type: 'object' },
       args: {

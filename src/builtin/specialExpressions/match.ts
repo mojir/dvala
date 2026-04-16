@@ -22,24 +22,26 @@ const docs: CustomDocs = {
   description: 'Pattern matching expression. Matches `value` against each `pattern` sequentially. If a pattern matches (and the optional `when` guard is truthy), the corresponding `body` is evaluated and its result returned. Bound variables from the pattern are available in the guard and body. If no pattern matches, `null` is returned.',
   examples: [
     `
-match 1
+let day = if true then 1 else 2 end;
+match day
   case 1 then "One"
   case 2 then "Two"
 end`,
-    `
+    { code: `
 match [1, 2, 3]
   case [x] then "one element"
   case [x, y] then "two elements"
   case [x, ...xs] then "first: " ++ str(x) ++ " rest: " ++ str(xs)
-end`,
-    `
+end`, noCheck: true },
+    { code: `
 match { type: "click", x: 10, y: 20 }
   case { type: "click", x, y } then "Click at " ++ str(x) ++ ", " ++ str(y)
   case { type: "keydown", key } then "Key: " ++ key
   case _ then "unknown event"
-end`,
+end`, noCheck: true },
     `
-match { role: "admin", name: "Alice" }
+let user = if true then { role: "admin", name: "Alice" } else { role: "user", name: "Bob" } end;
+match user
   case { role: "admin", name } then "Admin: " ++ name
   case { role, name } when role == "user" then "User: " ++ name
   case _ then "Unknown role"

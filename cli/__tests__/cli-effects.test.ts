@@ -11,10 +11,12 @@
  */
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { spawn } from 'node:child_process'
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const dvalaCliPath = path.join(__dirname, '../../dist/cli/cli.js')
+const exampleProjectDir = path.join(__dirname, '../../examples/project')
 
 /**
  * Spawn the REPL, send a Dvala expression that wraps the result in a known marker,
@@ -24,13 +26,13 @@ const dvalaCliPath = path.join(__dirname, '../../dist/cli/cli.js')
  *   let __r = <code>; "<<RESULT:" ++ str(__r) ++ ":END>>"
  * so we can reliably find the result in the mixed stdout output.
  */
-function replEval(code: string, answers: string[] = []): Promise<string> {
+function replEval(code: string, answers: string[] = [], cliArgs: string[] = []): Promise<string> {
   // Wrap code so result is clearly delimited in stdout.
   // Use explicit null check since str(null) returns "".
   const wrappedCode = `let __r = (${code}); "<<RESULT:" ++ (if __r == null then "null" else str(__r) end) ++ ":END>>"`
 
   return new Promise((resolve, reject) => {
-    const child: ChildProcessWithoutNullStreams = spawn('node', [dvalaCliPath], {
+    const child: ChildProcessWithoutNullStreams = spawn('node', [dvalaCliPath, ...cliArgs], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
     })
@@ -82,6 +84,19 @@ function replEval(code: string, answers: string[] = []): Promise<string> {
 }
 
 describe('CLI IO effect handlers', () => {
+  it('loads a file into the REPL with relative imports resolved from that file', async () => {
+    const mainFile = path.join(exampleProjectDir, 'main.dvala')
+    expect(fs.existsSync(mainFile)).toBe(true)
+
+    const result = await replEval(
+      'result.avg',
+      [],
+      ['repl', '-l', mainFile],
+    )
+
+    expect(result).toBe('5')
+  })
+
   // ── dvala.io.read ─────────────────────────────────────────────────────
 
   describe('dvala.io.read', () => {

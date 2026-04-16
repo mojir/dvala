@@ -105,6 +105,24 @@ describe('apiReference', () => {
     })
   })
 
+  describe('typecheck examples', () => {
+    const typecheckDvala = createDvala({ modules: allBuiltinModules, typecheck: false })
+    Object.entries(apiReference).forEach(([key, obj]) => {
+      test(key, () => {
+        obj.examples.forEach((entry, index) => {
+          // Skip examples marked noCheck (typechecker limitations)
+          if (typeof entry !== 'string' && 'noCheck' in entry) return
+          const example = typeof entry === 'string' ? entry : entry.code
+          const result = typecheckDvala.typecheck(example)
+          expect(
+            result.diagnostics,
+            `${obj.category}:${key} example ${index + 1}: ${result.diagnostics.map(d => d.message).join(', ')}`,
+          ).toHaveLength(0)
+        })
+      })
+    })
+  })
+
   describe('operator functions', () => {
     Object.entries(normalExpressionReference)
       .forEach(([key, obj]) => {

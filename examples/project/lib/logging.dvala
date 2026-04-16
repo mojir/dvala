@@ -3,9 +3,9 @@
 let withLogging = (thunk) -> do
   let h =
     handler
-      @project.log(msg) -> do
-        let rest = resume(null);
-        { result: rest.result, logs: [msg] ++ rest.logs };
+      @project.log(msg: String) -> do
+        let resumed = resume(null);
+        { result: resumed.result, logs: [msg] ++ resumed.logs };
       end
       transform result ->  { result, logs: [] }
     end;

@@ -34,7 +34,9 @@ if configExists then
         options: { default: false },
       }
     );
-  if not(overwrite) then raise("Aborted.") end
+  if not(overwrite) then raise("Aborted.") else null end
+else
+  null
 end;
 
 let name = perform(@dvala.io.read, `Project name (${dirName}): `) || "";

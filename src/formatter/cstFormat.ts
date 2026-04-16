@@ -1148,6 +1148,7 @@ function formatLet(node: UntypedCstNode): Doc {
         continue
       }
       if (targetParts.length > 0 && !isPunctuation(t) && !isOpenBracket(lastTargetText)
+        && lastTargetText !== '...'
         && !lastTargetText.endsWith(' ')) {
         targetParts.push(text(' '))
       }
@@ -1155,7 +1156,7 @@ function formatLet(node: UntypedCstNode): Doc {
       lastTargetText = t
     } else {
       // Add space before node unless previous was open bracket or already ends with space
-      if (targetParts.length > 0 && !isOpenBracket(lastTargetText) && !lastTargetText.endsWith(' ')) {
+      if (targetParts.length > 0 && !isOpenBracket(lastTargetText) && lastTargetText !== '...' && !lastTargetText.endsWith(' ')) {
         targetParts.push(text(' '))
       }
       targetParts.push(formatExprChild(child))
@@ -1405,14 +1406,19 @@ function formatMatch(node: UntypedCstNode): Doc {
 
       // Collect pattern (tokens and nodes until 'when' or 'then')
       const patternParts: Doc[] = []
+      let lastPatternText = ''
       while (!iter.done() && !iter.isToken('then') && !iter.isToken('when')) {
         const child = iter.next()
         if (isToken(child)) {
-          if (patternParts.length > 0 && !isPunctuation(child.text)) patternParts.push(text(' '))
+          if (patternParts.length > 0 && !isPunctuation(child.text) && lastPatternText !== '...') {
+            patternParts.push(text(' '))
+          }
           patternParts.push(formatClosingToken(child))
+          lastPatternText = child.text
         } else {
-          if (patternParts.length > 0) patternParts.push(text(' '))
+          if (patternParts.length > 0 && lastPatternText !== '...') patternParts.push(text(' '))
           patternParts.push(formatExprChild(child))
+          lastPatternText = ''
         }
       }
 
@@ -1467,6 +1473,8 @@ function formatFunction(node: UntypedCstNode): Doc {
       } else if (child.text === ',') {
         paramParts.push(formatTokenWithTrivia(child))
         paramParts.push(text(' '))
+      } else if (child.text === ':') {
+        paramParts.push(formatTokenWithTrivia(child))
       } else if (child.text === '...') {
         paramParts.push(formatTokenWithTrivia(child))
       } else if (child.text === '=') {
@@ -1534,6 +1542,8 @@ function formatHandler(node: UntypedCstNode): Doc {
         if (isToken(child)) {
           if (child.text === '->') {
             clauseTokens.push(text(' '), formatTokenWithTrivia(child), text(' '))
+          } else if (child.text === ':') {
+            clauseTokens.push(formatTokenWithTrivia(child))
           } else if (child.text === ',' || child.text === '(' || child.text === ')') {
             clauseTokens.push(formatTokenWithTrivia(child))
           } else {
@@ -1587,7 +1597,7 @@ function formatResume(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatMacro(node: UntypedCstNode): Doc {
-  // Children: macro (or macro@name), [(], params..., [)], ->, body
+  // Children: macro, [(], params..., [)], ->, body
   // Same structure as Function but with macro keyword
   return formatFromChildren(node)
 }

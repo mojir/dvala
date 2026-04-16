@@ -36,7 +36,7 @@ import {
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '../constants/constants'
-import { ArithmeticError, AssertionError, DvalaError, MacroError, ReferenceError, RuntimeError, TypeError, UserError } from '../errors'
+import { ArithmeticError, AssertionError, DvalaError, KeyError, MacroError, MatchError, ReferenceError, RuntimeError, TypeError, UserError } from '../errors'
 import { reconstructCallStack } from './callStack'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
@@ -161,6 +161,8 @@ function evaluateObjectAsFunction(fn: Obj, params: Arr, sourceCodeInfo?: SourceC
     throw new TypeError('Object as function requires one string parameter.', sourceCodeInfo)
   const key = params.get(0)
   assertString(key, sourceCodeInfo)
+  if (!fn.has(key))
+    throw new KeyError(`Key '${key}' not found in object`, sourceCodeInfo)
   return toAny(fn.get(key))
 }
 
@@ -169,6 +171,8 @@ function evaluateArrayAsFunction(fn: Arr, params: Arr, sourceCodeInfo?: SourceCo
     throw new TypeError('Array as function requires one non negative integer parameter.', sourceCodeInfo)
   const index = params.get(0)
   assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
+  if (index < 0 || index >= fn.size)
+    throw new KeyError(`Index ${index} out of bounds for array of size ${fn.size}`, sourceCodeInfo)
   return toAny(fn.get(index))
 }
 
@@ -176,10 +180,16 @@ function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: Sour
   if (params.size !== 1)
     throw new TypeError('String as function requires one Obj parameter.', sourceCodeInfo)
   const param = toAny(params.get(0))
-  if (isObj(param))
-    return toAny((param).get(fn))
-  if (isNumber(param, { integer: true }))
+  if (isObj(param)) {
+    if (!param.has(fn))
+      throw new KeyError(`Key '${fn}' not found in object`, sourceCodeInfo)
+    return toAny(param.get(fn))
+  }
+  if (isNumber(param, { integer: true })) {
+    if (param < 0 || param >= fn.length)
+      throw new KeyError(`Index ${param} out of bounds for string of length ${fn.length}`, sourceCodeInfo)
     return toAny(fn[param])
+  }
   throw new TypeError(
     `string as function expects Obj or integer parameter, got ${valueToString(param)}`,
     sourceCodeInfo,
@@ -192,6 +202,9 @@ function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: Sour
     throw new TypeError('Number as function requires one Arr parameter.', sourceCodeInfo)
   const param = params.get(0)
   assertSeq(param, sourceCodeInfo)
+  const size = typeof param === 'string' ? param.length : param.size
+  if (fn < 0 || fn >= size)
+    throw new KeyError(`Index ${fn} out of bounds for sequence of size ${size}`, sourceCodeInfo)
   return toAny(typeof param === 'string' ? param[fn] : param.get(fn))
 }
 
@@ -295,7 +308,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       const newContext: Context = {}
       const newEnv = env.create(newContext)
       if (nodes.length === 0) {
-        return { type: 'Value', value: null, k }
+        throw new TypeError('Block AST requires at least one expression', sourceCodeInfo)
       }
       if (nodes.length === 1) {
         return { type: 'Eval', node: nodes[0]!, env: newEnv, k }
@@ -416,8 +429,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: dvalaFunction, k }
     }
     case NodeTypes.Macro: {
-      const fn = node[1] as [BindingTarget[], AstNode[], string | null]
-      const qualifiedName = fn[2] ?? null
+      const fn = node[1] as [BindingTarget[], AstNode[]]
       const evaluatedFunc = evaluateFunction(fn, env)
       const min = evaluatedFunc[0].filter(arg => arg[0] !== bindingTargetTypes.rest && arg[1][1] === undefined).length
       const max = evaluatedFunc[0].some(arg => arg[0] === bindingTargetTypes.rest) ? undefined : evaluatedFunc[0].length
@@ -427,7 +439,6 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         sourceCodeInfo: env.resolve(node[2]),
         functionType: 'Macro',
         name: undefined,
-        qualifiedName,
         evaluatedfunction: evaluatedFunc,
         arity,
         docString: '',
@@ -1044,12 +1055,10 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       // Generalized matcher — works on any entity with a qualified name (effects, named macros)
       assertNumberOfParams({ min: 1, max: 1 }, params.size, fn.sourceCodeInfo ?? sourceCodeInfo)
       const entity = params.get(0)
-      // Extract qualified name from the entity
+      // Extract qualified name from the entity (only effects have qualified names)
       let qName: string | null = null
       if (isEffect(entity)) {
         qName = entity.name
-      } else if (isMacroFunction(entity)) {
-        qName = entity.qualifiedName
       }
       if (qName === null) {
         return { type: 'Value', value: false, k }
@@ -1570,7 +1579,7 @@ function applyIfBranch(frame: IfBranchFrame, value: Any, k: ContinuationStack): 
   if (elseNode) {
     return { type: 'Eval', node: elseNode, env, k }
   }
-  return { type: 'Value', value: null, k }
+  throw new TypeError('If AST requires an else branch', env.resolve(thenNode[2]))
 }
 
 function applyMatch(frame: MatchFrame, value: Any, k: ContinuationStack): Step {
@@ -1610,8 +1619,8 @@ function processMatchCase(frame: MatchFrame, k: ContinuationStack): Step {
   const { matchValue, cases, index, env, sourceCodeInfo } = frame
 
   if (index >= cases.length) {
-    // No more cases — match failed
-    return { type: 'Value', value: null, k }
+    // No more cases — non-exhaustive match is an error
+    throw new MatchError(`Non-exhaustive match — no case matched ${valueToString(matchValue)}`, sourceCodeInfo)
   }
 
   const [pattern] = cases[index]!
@@ -2945,25 +2954,6 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
     return standardHandler(arg, k, sourceCodeInfo)
   }
 
-  // dvala.macro.expand — default handler calls the macro function directly.
-  // The MacroEvalFrame on k?.head provides the calling scope for evaluating the result.
-  if (effect.name === 'dvala.macro.expand') {
-    // payload is a PM: { fn: MacroFunction, args: PV<PV<AstNode>> }
-    // (fromJS was applied at callMacro: fn passes through, args are PV-converted)
-    const payloadPM = arg as unknown as PersistentMap<Any>
-    const macroEvalFrame = k!.head as MacroEvalFrame
-    const macroFn_ = payloadPM.get('fn') as unknown as UserDefinedFunction
-    // args is a PV of PV-converted AST nodes — each element is already a PV
-    const argsAsPV = payloadPM.get('args') as unknown as Arr
-    return setupUserDefinedCall(
-      macroFn_,
-      argsAsPV,
-      macroEvalFrame.env,
-      sourceCodeInfo,
-      k,
-    )
-  }
-
   // dvala.checkpoint resolves to null when completely unhandled.
   if (effect.name === 'dvala.checkpoint') {
     return { type: 'Value', value: null, k }
@@ -3090,7 +3080,7 @@ function dispatchHostHandler(
         // Capture a post-effect snapshot so time travel can rewind to right after this effect.
         // Snapshot after (not before) so the effect result is baked in — re-execution from here
         // is pure and needs no effect-result replay.
-        if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint' && effectName !== 'dvala.macro.expand') {
+        if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint') {
           const continuation = serializeToObject(composeCheckpointContinuation(k))
           const snapshot = createSnapshot({
             continuation,
@@ -4589,9 +4579,8 @@ function applyFiniteCheck(frame: FiniteCheckFrame, value: Any, k: ContinuationSt
 // ---------------------------------------------------------------------------
 
 /**
- * Call a macro. Named macros (with a qualifiedName) emit @dvala.macro.expand
- * so the host can intercept expansion. Anonymous macros are called directly
- * with no effect overhead.
+ * Call a macro. Macros are always pure — they expand at compile time,
+ * called directly with no effect overhead.
  */
 function callMacro(
   macroFn: MacroFunction,
@@ -4624,31 +4613,15 @@ function callMacro(
     sourceCodeInfo,
   }
 
-  // Anonymous macros — call directly, no effect, no host visibility
-  if (!macroFn.qualifiedName) {
-    // Convert each AST node (plain array) to PV so macro bodies can use Dvala builtins
-    // like first(), get(), etc. on the received arguments.
-    return setupUserDefinedCall(
-      macroFn as unknown as UserDefinedFunction,
-      PersistentVector.from(argNodes.map(arg => fromJS(arg as unknown as Any))) as unknown as Arr,
-      env,
-      sourceCodeInfo,
-      cons<Frame>(macroEvalFrame, k),
-    )
-  }
-
-  // Named macros — emit @dvala.macro.expand so the host can intercept.
-  // The effect arg is a Dvala PM with fn (the macro) and args (PV of PV-converted AST nodes).
-  // We use fromJS so that Dvala handlers can use get(arg, "fn"), get(arg, "args") etc.
-  const payload = fromJS({ fn: macroFn, args: argNodes })
-
-  return {
-    type: 'Perform',
-    effect: getEffectRef('dvala.macro.expand'),
-    arg: payload,
-    k: cons<Frame>(macroEvalFrame, k),
+  // Convert each AST node (plain array) to PV so macro bodies can use Dvala builtins
+  // like first(), get(), etc. on the received arguments.
+  return setupUserDefinedCall(
+    macroFn as unknown as UserDefinedFunction,
+    PersistentVector.from(argNodes.map(arg => fromJS(arg as unknown as Any))) as unknown as Arr,
+    env,
     sourceCodeInfo,
-  }
+    cons<Frame>(macroEvalFrame, k),
+  )
 }
 
 /**

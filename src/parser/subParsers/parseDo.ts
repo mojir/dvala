@@ -36,6 +36,10 @@ export function parseDo(ctx: ParserContext): DoNode {
     }
   }
 
+  if (expressions.length === 0) {
+    throw new ParseError('Empty block is not allowed — every block must produce a value', ctx.peekSourceCodeInfo())
+  }
+
   assertReservedSymbolToken(ctx.tryPeek(), 'end')
   ctx.advance()
   const node = withSourceCodeInfo([NodeTypes.Block, expressions, 0], token[2], ctx) as DoNode

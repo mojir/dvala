@@ -72,7 +72,7 @@ export function parseHandler(ctx: ParserContext, shallow = false): HandlerNode {
     if (isLParenToken(ctx.tryPeek())) {
       ctx.advance() // consume (
       while (!ctx.isAtEnd() && !isRParenToken(ctx.tryPeek())) {
-        params.push(parseBindingTarget(ctx))
+        params.push(parseBindingTarget(ctx, { stopTypeAnnotationAtRParen: true }))
         if (isOperatorToken(ctx.tryPeek(), ',')) {
           ctx.advance() // consume comma
         }

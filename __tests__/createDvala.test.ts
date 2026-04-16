@@ -3,7 +3,31 @@ import path from 'node:path'
 import { createDvala } from '../src/createDvala'
 import { bundle } from '../src/bundler'
 import { mathUtilsModule } from '../src/builtin/modules/math'
+import type { DvalaModule } from '../src/builtin/modules/interface'
 import type { DvalaBundle } from '../src/bundler/interface'
+import type { Any } from '../src/interface'
+
+const customTypedModule: DvalaModule = {
+  name: 'custom',
+  description: 'Test module for typecheck integration.',
+  functions: {
+    id: {
+      evaluate: ([value]): Any => value as Any,
+      arity: { min: 1, max: 1 },
+      docs: {
+        type: '(Number) -> Number',
+        category: 'misc',
+        returns: { type: 'number' },
+        args: {
+          value: { type: 'number' },
+        },
+        variants: [{ argumentNames: ['value'] }],
+        description: 'Returns the provided value.',
+        examples: ['let m = import("custom"); m.id(1)'],
+      },
+    },
+  },
+}
 
 describe('createDvala', () => {
   describe('basic run', () => {
@@ -39,6 +63,45 @@ describe('createDvala', () => {
       d.run('1 + 2')
       d.run('1 + 2') // should hit cache
       expect(d.run('1 + 2')).toBe(3)
+    })
+  })
+
+  describe('typecheck integration', () => {
+    it('run emits non-blocking type diagnostics', () => {
+      const diagnostics: string[] = []
+      const d = createDvala({ onTypeDiagnostic: diagnostic => diagnostics.push(diagnostic.message) })
+
+      expect(d.run('let x: Number = "hello"; 42')).toBe(42)
+      expect(diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('runAsync emits non-blocking type diagnostics', async () => {
+      const diagnostics: string[] = []
+      const d = createDvala({ onTypeDiagnostic: diagnostic => diagnostics.push(diagnostic.message) })
+
+      const result = await d.runAsync('let x: Number = "hello"; 42')
+
+      expect(result).toMatchObject({ type: 'completed', value: 42, scope: {} })
+      expect(diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('typecheck false suppresses diagnostics during run', () => {
+      const diagnostics: string[] = []
+      const d = createDvala({ typecheck: false, onTypeDiagnostic: diagnostic => diagnostics.push(diagnostic.message) })
+
+      expect(d.run('let x: Number = "hello"; 42')).toBe(42)
+      expect(diagnostics).toEqual([])
+    })
+
+    it('typechecks factory modules registered on the runner', () => {
+      const diagnostics: string[] = []
+      const d = createDvala({
+        modules: [customTypedModule],
+        onTypeDiagnostic: diagnostic => diagnostics.push(diagnostic.message),
+      })
+
+      expect(d.run('let m = import("custom"); m.id(1)')).toBe(1)
+      expect(diagnostics).toEqual([])
     })
   })
 

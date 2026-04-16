@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
+import { MatchError } from '../src/errors'
 
 const dvala = createDvala()
 
@@ -97,8 +98,8 @@ describe('atoms in pattern matching', () => {
     expect(dvala.run('match [:ok, 42] case [ :ok, v] then v case [ :error, e] then e end')).toBe(42)
   })
 
-  it('no match returns null', () => {
-    expect(dvala.run('match :pending case :ok then "yes" case :error then "no" end')).toBe(null)
+  it('no match throws MatchError', () => {
+    expect(() => dvala.run('match :pending case :ok then "yes" case :error then "no" end')).toThrow(MatchError)
   })
 })
 

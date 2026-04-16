@@ -4,6 +4,9 @@
 - [project_macro_system.md](project_macro_system.md) — Macro system architecture and status
 - [project_quote_end_syntax.md](project_quote_end_syntax.md) — Code templates replaced with quote...end + $^{} splicing (shipped)
 
+## Type System
+- [project_type_system.md](project_type_system.md) — Set-theoretic type system: reviewed 2026-04-12, ready for impl. Design doc: `design/active/2026-04-12_type-system.md`
+
 ## Roadmap
 - [project_roadmap.md](project_roadmap.md) — Four phases: handlers → lazy → persistent → multi-shot
 
@@ -21,3 +24,4 @@
 ## User Preferences
 - [feedback_preferences.md](feedback_preferences.md) — Coding and design preferences
 - [feedback_commit_discipline.md](feedback_commit_discipline.md) — Always use /check and show demos before committing
+- [feedback_readability.md](feedback_readability.md) — Favor readability and maintainability over clever/smart solutions

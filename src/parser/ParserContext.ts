@@ -20,6 +20,14 @@ export class ParserContext {
   /** Allocates a unique node ID — provided by the caller to scope uniqueness per instance. */
   readonly allocateId: () => number
 
+  // -- Type annotation side-table --
+  /** Type annotations collected during parsing, keyed by nodeId. */
+  readonly typeAnnotations = new Map<number, string>()
+  /** Effect declarations: effect @name(ArgType) -> RetType */
+  readonly effectDeclarations = new Map<string, { argType: string; retType: string }>()
+  /** Type alias declarations: type Name<Params> = TypeExpr */
+  readonly typeAliases = new Map<string, { params: string[]; body: string }>()
+
   // -- CST mode fields --
   /** When present, the parser operates in CST mode on the full token stream. */
   readonly builder: CstBuilder | undefined

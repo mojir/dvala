@@ -151,8 +151,11 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     }
     /* v8 ignore next 11 */
     case '.':
+    case '?.':
+    case '?':
     case ';':
     case ':':
+    case '@':
     case '=':
     case ',':
     case '->':

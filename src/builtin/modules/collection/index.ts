@@ -86,6 +86,9 @@ const collectionUtilsFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
     docs: {
+      // TODO: The type signature here is a bit awkward because we want to allow any nested collection structure, but we don't have a way to express that precisely in the type system. We could consider introducing a recursive type for nested collections in the future.
+      // TODO, should first parameter be Unknown?
+      type: '(Unknown[], Unknown[], Unknown) -> Unknown',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -131,6 +134,7 @@ cu.getIn(
     },
     arity: toFixedArity(3),
     docs: {
+      type: '(Unknown[], Unknown[], Unknown) -> Unknown[]',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -173,6 +177,7 @@ cu.assocIn(
     evaluate: () => { throw new Error('update: Dvala implementation should be used instead') },
     arity: { min: 3 },
     docs: {
+      type: '(Unknown[], (String | Number), (Unknown -> Unknown), ...Unknown) -> Unknown[]',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -211,6 +216,7 @@ cu.update(
     evaluate: () => { throw new Error('updateIn: Dvala implementation should be used instead') },
     arity: { min: 3 },
     docs: {
+      type: '(Unknown[], Unknown[], (Unknown -> Unknown), ...Unknown) -> Unknown[]',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -267,6 +273,7 @@ cu.updateIn(
     evaluate: () => { throw new Error('filteri: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown, Number) -> Boolean) -> Unknown[]',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -290,6 +297,7 @@ cu.updateIn(
     evaluate: () => { throw new Error('mapi: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown, Number) -> Unknown) -> Unknown[]',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
@@ -315,6 +323,7 @@ cu.updateIn(
     evaluate: () => { throw new Error('reducei: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
+      type: '(Unknown[], (Unknown, Unknown, Number) -> Unknown, Unknown) -> Unknown',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -342,6 +351,7 @@ cu.updateIn(
     evaluate: () => { throw new Error('reduceRight: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
+      type: '(Unknown[], (Unknown, Unknown) -> Unknown, Unknown) -> Unknown',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -362,6 +372,7 @@ cu.updateIn(
     evaluate: () => { throw new Error('reduceiRight: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
+      type: '(Unknown[], (Unknown, Unknown, Number) -> Unknown, Unknown) -> Unknown',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -389,6 +400,7 @@ cu.updateIn(
     evaluate: () => { throw new Error('reductions: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
+      type: '(Unknown[], (Unknown, Unknown) -> Unknown, Unknown) -> Unknown[]',
       category: 'collection',
       returns: { type: 'any', array: true },
       args: {
@@ -418,6 +430,7 @@ cu.reductions(
     evaluate: () => { throw new Error('reductionsi: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
+      type: '(Unknown[], (Unknown, Unknown, Number) -> Unknown, Unknown) -> Unknown[]',
       category: 'collection',
       returns: { type: 'any', array: true },
       args: {
@@ -458,6 +471,7 @@ cu.reductions(
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(Unknown[] | Null) -> (Unknown[] | Null)',
       category: 'collection',
       returns: { type: 'any' },
       args: {
@@ -481,6 +495,7 @@ cu.reductions(
     evaluate: () => { throw new Error('isEvery: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown -> Boolean)) -> Boolean',
       category: 'collection',
       returns: { type: 'boolean' },
       args: {
@@ -527,6 +542,7 @@ cu.isEvery(
     evaluate: () => { throw new Error('isAny: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown -> Boolean)) -> Boolean',
       category: 'collection',
       returns: { type: 'boolean' },
       args: {
@@ -571,6 +587,7 @@ cu.isAny(
     evaluate: () => { throw new Error('notAny: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown -> Boolean)) -> Boolean',
       category: 'collection',
       returns: { type: 'boolean' },
       args: {
@@ -615,6 +632,7 @@ cu.notAny(
     evaluate: () => { throw new Error('notEvery: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown[], (Unknown -> Boolean)) -> Boolean',
       category: 'collection',
       returns: { type: 'boolean' },
       args: {

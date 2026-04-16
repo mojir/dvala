@@ -190,6 +190,24 @@ export class UserError extends RuntimeError {
   }
 }
 
+export class MatchError extends RuntimeError {
+  override readonly errorType = 'MatchError'
+  constructor(message: string, sourceCodeInfo?: SourceCodeInfo) {
+    super(message, sourceCodeInfo)
+    Object.setPrototypeOf(this, MatchError.prototype)
+    this.name = 'MatchError'
+  }
+}
+
+export class KeyError extends RuntimeError {
+  override readonly errorType = 'KeyError'
+  constructor(message: string, sourceCodeInfo?: SourceCodeInfo) {
+    super(message, sourceCodeInfo)
+    Object.setPrototypeOf(this, KeyError.prototype)
+    this.name = 'KeyError'
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Backward compatibility aliases (to remove after full migration)
 // ---------------------------------------------------------------------------

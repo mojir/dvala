@@ -22,7 +22,7 @@ let { name, age } = { name: "Alice", age: 30 };
 
 // === 6. Array destructuring ===
 let [first, second] = [10, 20];
-let [head, ... tail] = [1, 2, 3, 4, 5];
+let [head, ...tail] = [1, 2, 3, 4, 5];
 
 // === 7. Import destructuring (cross-file) ===
 let { clamp, lerp } = import("./lib/math");
@@ -50,7 +50,7 @@ let arrayMatch =
   match [1, 2, 3, 4, 5]
     case [] then "empty"
     case [ only] then "single: " ++ str(only)
-    case [ a, b, ... rest] then "first: " ++ str(a) ++ " second: " ++ str(b) ++
+    case [ a, b, ...rest] then "first: " ++ str(a) ++ " second: " ++ str(b) ++
       " rest: " ++
       str(rest)
   end;

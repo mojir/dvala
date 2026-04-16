@@ -34,6 +34,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
     docs: {
+      type: '((String | Unknown[] | Null, Number) -> Unknown) & ((String | Unknown[] | Null, Number, Unknown) -> Unknown)',
       category: 'sequence',
       returns: { type: 'any' },
       args: {
@@ -78,6 +79,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Unknown[] | Null) -> Unknown',
       category: 'sequence',
       returns: { type: 'any' },
       args: { seq: { type: ['sequence', 'null'] } },
@@ -104,6 +106,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Unknown[] | Null) -> Unknown',
       category: 'sequence',
       returns: { type: 'any' },
       args: { seq: { type: ['sequence', 'null'] } },
@@ -130,6 +133,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Unknown[]) -> String | Unknown[]',
       category: 'sequence',
       returns: { type: ['sequence', 'null'], rest: true },
       args: { seq: { type: 'sequence' } },
@@ -160,6 +164,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(String | Unknown[] | Null, Unknown) -> Number | Null',
       category: 'sequence',
       returns: { type: ['number', 'null'] },
       args: {
@@ -196,6 +201,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
     docs: {
+      type: '(String | Unknown[], Unknown, ...Unknown[]) -> String | Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -232,6 +238,7 @@ l`,
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Unknown[]) -> String | Unknown[]',
       category: 'sequence',
       returns: { type: ['sequence', 'null'] },
       args: { seq: { type: 'sequence' } },
@@ -266,6 +273,7 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Unknown[]) -> String | Unknown[] | Null',
       category: 'sequence',
       returns: { type: ['sequence', 'null'] },
       args: { seq: { type: 'sequence' } },
@@ -296,6 +304,7 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Unknown[] | Null) -> String | Unknown[] | Null',
       category: 'sequence',
       returns: { type: ['sequence', 'null'] },
       args: { seq: { type: ['sequence', 'null'] } },
@@ -323,6 +332,7 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Unknown[] | Null) -> Unknown',
       category: 'sequence',
       returns: { type: 'any' },
       args: { seq: { type: ['sequence', 'null'] } },
@@ -358,6 +368,7 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
     },
     arity: { min: 2, max: 3 },
     docs: {
+      type: '((String | Unknown[], Number) -> String | Unknown[]) & ((String | Unknown[], Number, Number) -> String | Unknown[])',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -384,6 +395,7 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
     evaluate: () => { throw new Error('some is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
+      type: '(A[], (A) -> Boolean) -> A',
       category: 'sequence',
       returns: { type: 'any' },
       args: {
@@ -416,11 +428,11 @@ some(
   [],
   -> $ > 10
 )`,
-        `
+        { code: `
 some(
   null,
   -> $ > 10
-)`,
+)`, noCheck: true },
       ],
     },
   },
@@ -428,6 +440,7 @@ some(
     evaluate: () => { throw new Error('sort is implemented in Dvala') },
     arity: { min: 1, max: 2 },
     docs: {
+      type: '((A[]) -> A[]) & ((A[], (A, A) -> Number) -> A[])',
       category: 'sequence',
       returns: { type: 'any', rest: true },
       args: {
@@ -470,6 +483,7 @@ sort(
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(String | Unknown[], Number) -> String | Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -504,6 +518,7 @@ sort(
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(String | Unknown[], Number) -> String | Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -534,6 +549,7 @@ sort(
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(String | Unknown[], Number) -> String | Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -567,6 +583,7 @@ sort(
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(String | Unknown[], Number) -> String | Unknown[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -589,6 +606,7 @@ sort(
     evaluate: () => { throw new Error('takeWhile is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
+      type: '(A[], (A) -> Boolean) -> A[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {
@@ -616,6 +634,7 @@ sort(
     evaluate: () => { throw new Error('dropWhile is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
+      type: '(A[], (A) -> Boolean) -> A[]',
       category: 'sequence',
       returns: { type: 'sequence' },
       args: {

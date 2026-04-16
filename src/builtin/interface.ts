@@ -120,7 +120,7 @@ export interface Variant {
   argumentNames: string[]
 }
 
-export type ExampleEntry = string | { code: string; noRun: true } | { code: string; throws: true }
+export type ExampleEntry = string | { code: string; noRun: true } | { code: string; throws: true } | { code: string; noCheck: true } | { code: string; noRun: true; noCheck: true }
 
 export interface FunctionDocs {
   category: Category
@@ -132,6 +132,9 @@ export interface FunctionDocs {
   seeAlso?: string[]
   hideOperatorForm?: true
   tags?: string[]
+  /** Type annotation in Dvala syntax, parsed by the typechecker.
+   * e.g. "(Number, Number) -> Number" or "(x: Unknown) -> x is Number" */
+  type?: string
 }
 
 export interface CustomDocs {

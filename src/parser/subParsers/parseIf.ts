@@ -1,5 +1,6 @@
 import type { IfNode } from '../../builtin/specialExpressions/if'
 import { NodeTypes } from '../../constants/constants'
+import { ParseError } from '../../errors'
 import type { SymbolToken } from '../../tokenizer/token'
 import { assertReservedSymbolToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
@@ -24,6 +25,8 @@ export function parseIf(ctx: ParserContext, token: SymbolToken): IfNode {
     } else {
       elseExpression = parseImplicitBlock(ctx, ['end'])
     }
+  } else {
+    throw new ParseError('`if` without `else` is not allowed — use `when condition do expr end` for side effects, or add an `else` clause', ctx.peekSourceCodeInfo())
   }
 
   ctx.advance()
@@ -54,6 +57,8 @@ function parseElseIf(ctx: ParserContext): IfNode {
     } else {
       elseExpression = parseImplicitBlock(ctx, ['end'])
     }
+  } else {
+    throw new ParseError('`if` without `else` is not allowed — use `when condition do expr end` for side effects, or add an `else` clause', ctx.peekSourceCodeInfo())
   }
 
   const node = withSourceCodeInfo([NodeTypes.If, [condition, thenExpression, elseExpression], 0], token[2], ctx) as IfNode

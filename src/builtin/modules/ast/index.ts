@@ -222,26 +222,22 @@ const astFunctions: BuiltinNormalExpressions = {
     evaluate: ([cond, then, else_], sourceCodeInfo): Any => {
       assertAstNode(cond, sourceCodeInfo)
       assertAstNode(then, sourceCodeInfo)
-      // else_ can be null/undefined for if-without-else
-      if (else_ !== null && else_ !== undefined) {
-        assertAstNode(else_, sourceCodeInfo)
+      if (else_ === null || else_ === undefined) {
+        throw new TypeError('ifNode requires an else branch', sourceCodeInfo)
       }
-      const payload = else_ !== null && else_ !== undefined ? [cond, then, else_] : [cond, then]
-      return toAny([NodeTypes.If, payload, 0])
+      assertAstNode(else_, sourceCodeInfo)
+      return toAny([NodeTypes.If, [cond, then, else_], 0])
     },
-    arity: { min: 2, max: 3 },
+    arity: toFixedArity(3),
     docs: {
       category: 'ast',
       returns: { type: 'array' },
       args: {
         cond: { type: 'array', description: 'Condition AST node.' },
         thenBranch: { type: 'array', description: 'Then-branch AST node.' },
-        elseBranch: { type: 'array', description: 'Else-branch AST node (optional).' },
+        elseBranch: { type: 'array', description: 'Else-branch AST node.' },
       },
-      variants: [
-        { argumentNames: ['cond', 'thenBranch'] },
-        { argumentNames: ['cond', 'thenBranch', 'elseBranch'] },
-      ],
+      variants: [{ argumentNames: ['cond', 'thenBranch', 'elseBranch'] }],
       description: 'Creates an if-expression AST node.',
       examples: [
         'let { ifNode, sym, num } = import("ast"); ifNode(sym("x"), num(1), num(2))',
@@ -251,6 +247,10 @@ const astFunctions: BuiltinNormalExpressions = {
   'block': {
     evaluate: ([stmts], sourceCodeInfo): Any => {
       assertArray(stmts, sourceCodeInfo)
+      const statementCount = isPersistentVector(stmts) ? stmts.size : (stmts as unknown[]).length
+      if (statementCount === 0) {
+        throw new TypeError('block requires at least one expression', sourceCodeInfo)
+      }
       return toAny([NodeTypes.Block, stmts, 0])
     },
     arity: toFixedArity(1),

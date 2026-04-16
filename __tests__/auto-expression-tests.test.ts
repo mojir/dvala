@@ -13,8 +13,15 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { normalExpressions } from '../src/builtin/normalExpressions'
-import type { TypedValue } from '../src/builtin/interface'
+import type { ExampleEntry, TypedValue } from '../src/builtin/interface'
 import '../src/initReferenceData'
+
+/** Extract the code string from an ExampleEntry, or return null if it should be skipped (noRun). */
+function getExampleCode(entry: ExampleEntry): string | null {
+  if (typeof entry === 'string') return entry
+  if ('noRun' in entry) return null
+  return entry.code
+}
 
 const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
 
@@ -240,13 +247,16 @@ describe('auto: return type on examples (core)', () => {
     if (!typeCheck)
       continue // skip 'any', 'never'
 
-    for (const [i, example] of examples.entries()) {
+    for (const [i, entry] of examples.entries()) {
       if (skipCoreExampleIndices[name]?.has(i))
+        continue
+      const exampleCode = getExampleCode(entry)
+      if (exampleCode === null)
         continue
       it(`${name} example ${i + 1}: returns ${JSON.stringify(returns.type)}`, () => {
         const wrapped = `do
   let __r = do
-    ${example}
+    ${exampleCode}
   end;
   assert(${typeCheck}, "${name} example ${i + 1} returned wrong type");
   __r
@@ -298,7 +308,7 @@ for (const mod of allBuiltinModules) {
       if (moduleSkips?.has(fnName))
         return false
       return generateTypeCheck('__r', docs.returns) !== null
-        && docs.examples.some((_e, i) => !skipModuleExampleIndices[`${mod.name}.${fnName}`]?.has(i))
+        && docs.examples.some((e, i) => !skipModuleExampleIndices[`${mod.name}.${fnName}`]?.has(i) && getExampleCode(e) !== null)
     })
     if (!hasTestable) {
       it.skip(`${mod.name}: all examples skipped`, () => {})
@@ -315,14 +325,17 @@ for (const mod of allBuiltinModules) {
       if (!typeCheck)
         continue
 
-      for (const [i, example] of docs.examples.entries()) {
+      for (const [i, entry] of docs.examples.entries()) {
         const moduleExampleKey = `${mod.name}.${fnName}`
         if (skipModuleExampleIndices[moduleExampleKey]?.has(i))
+          continue
+        const exampleCode = getExampleCode(entry)
+        if (exampleCode === null)
           continue
         it(`${mod.name}.${fnName} example ${i + 1}: returns ${JSON.stringify(docs.returns.type)}`, () => {
           const wrapped = `do
   let __r = do
-    ${example}
+    ${exampleCode}
   end;
   assert(${typeCheck}, "${mod.name}.${fnName} example ${i + 1} returned wrong type");
   __r

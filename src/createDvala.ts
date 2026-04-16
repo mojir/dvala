@@ -16,6 +16,7 @@ import { isDvalaBundle } from './bundler/interface'
 import type { Handlers, RunResult, SnapshotState } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
 import { toJS, validateFromJS } from './utils/interop'
+import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } from './typechecker/typecheck'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
@@ -62,6 +63,17 @@ export interface CreateDvalaOptions {
    * Default: `'.'`
    */
   fileResolverBaseDir?: string
+  /**
+   * Enable type checking (default: true). Source code is type-checked after parsing.
+   * Type errors are reported via `onTypeDiagnostic` but do NOT block evaluation.
+   * Set to `false` to skip type checking for performance.
+   */
+  typecheck?: boolean
+  /**
+   * Callback invoked with type diagnostics after type checking.
+   * Only called when `typecheck: true`.
+   */
+  onTypeDiagnostic?: (diagnostic: TypeDiagnostic) => void
 }
 
 /**
@@ -85,6 +97,8 @@ export interface DvalaRunner {
   runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RunResult>
   getUndefinedSymbols: (source: string, symbolsOptions?: { scope?: Record<string, unknown> }) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
+  /** Typecheck source code and return diagnostics + type map. */
+  typecheck: (source: string, options?: { fileResolverBaseDir?: string; filePath?: string }) => TypecheckResult
 }
 
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
@@ -102,6 +116,9 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const factoryFileResolver = options?.fileResolver
   const factoryFileResolverBaseDir = options?.fileResolverBaseDir
   const debug = options?.debug ?? false
+  const typecheckEnabled = options?.typecheck ?? true
+  const onTypeDiagnostic = options?.onTypeDiagnostic
+  const registeredModules = modules ? [...modules.values()] : undefined
   // Always use an internal AST cache to ensure deterministic node IDs
   // when the same source is run multiple times.
   const cache = new Cache(options?.cache ?? 100)
@@ -174,6 +191,13 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     return ctx
   }
 
+  function emitTypeDiagnostics(ast: Ast): void {
+    if (!typecheckEnabled) return
+    const { diagnostics } = runTypecheck(ast, { modules: registeredModules })
+    if (!onTypeDiagnostic) return
+    for (const diagnostic of diagnostics) onTypeDiagnostic(diagnostic)
+  }
+
   return {
     run(source: string | DvalaBundle, runOptions?: DvalaRunOptions): unknown {
       const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
@@ -201,6 +225,9 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
       const ast = buildAst(source, runOptions?.filePath)
 
+      // Run typecheck pass if enabled (non-blocking — diagnostics only)
+      emitTypeDiagnostics(ast)
+
       if (effectHandlers) {
         return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers) as never)
       }
@@ -226,6 +253,9 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         // For AST bundles, use the pre-parsed AST directly.
         // Force debug (sourceMap building) when onNodeEval is set so nodeIds can be resolved.
         const ast = isDvalaBundle(source) ? source.ast : buildAst(source, runOptions?.filePath, forceDebug)
+        if (!isDvalaBundle(source)) {
+          emitTypeDiagnostics(ast)
+        }
         // For bundles, merge the bundle's sourceMap into accumulatedSourceMap so that
         // onNodeEval callers can resolve nodeIds to positions after the run.
         if (isDvalaBundle(source) && source.ast.sourceMap && forceDebug) {
@@ -276,5 +306,13 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       return new AutoCompleter(program, position, {})
     },
 
+    typecheck(source: string, typecheckOptions?: { fileResolverBaseDir?: string; filePath?: string }): TypecheckResult {
+      const ast = buildAst(source, typecheckOptions?.filePath, true)
+      return runTypecheck(ast, {
+        modules: registeredModules,
+        fileResolver: factoryFileResolver,
+        fileResolverBaseDir: typecheckOptions?.fileResolverBaseDir ?? factoryFileResolverBaseDir,
+      })
+    },
   }
 }

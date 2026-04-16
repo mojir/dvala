@@ -30,6 +30,7 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
     docs: {
+      type: '((String) -> Regex) & ((String, String) -> Regex)',
       category: 'regular-expression',
       returns: { type: 'regexp' },
       args: {
@@ -66,6 +67,7 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Unknown, Regex) -> String[] | Null',
       category: 'regular-expression',
       returns: { type: 'any' },
       args: {
@@ -98,6 +100,7 @@ If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is 
     },
     arity: toFixedArity(3),
     docs: {
+      type: '((String, String, String) -> String) & ((String, Regex, String) -> String)',
       category: 'regular-expression',
       returns: { type: 'string' },
       args: {
@@ -128,6 +131,7 @@ If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is 
     },
     arity: toFixedArity(3),
     docs: {
+      type: '((String, String, String) -> String) & ((String, Regex, String) -> String)',
       category: 'regular-expression',
       returns: { type: 'string' },
       args: {

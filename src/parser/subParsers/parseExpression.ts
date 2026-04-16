@@ -4,7 +4,7 @@ import { NodeTypes } from '../../constants/constants'
 import type { CstBuilder } from '../../cst/builder'
 import { ParseError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'
-import { isA_BinaryOperatorToken, isEffectNameToken, isLParenToken, isMacroQualifiedToken, isReservedSymbolToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
+import { isA_BinaryOperatorToken, isEffectNameToken, isLParenToken, isReservedSymbolToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
 import { isSpecialSymbolNode } from '../../typeGuards/astNode'
 import { binaryFunctionalOperatorPrecedence, createNamedNormalExpressionNode, exponentiationPrecedence, fromBinaryOperatorToNode, isAtExpressionEnd, withSourceCodeInfo } from '../helpers'
@@ -12,7 +12,9 @@ import { getPrecedence } from '../getPrecedence'
 import { ParserContext } from '../ParserContext'
 import type { AstNode, SymbolNode } from '../types'
 import { parseDo } from './parseDo'
+import { parseEffectDeclaration } from './parseEffectDeclaration'
 import { parseForOrDoseq } from './parseForOrDoseq'
+import { parseTypeDeclaration } from './parseTypeDeclaration'
 import { parseHandler } from './parseHandler'
 import { parseIf } from './parseIf'
 import { parseLet } from './parseLet'
@@ -85,10 +87,21 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
           left = parseResume(ctx)
         }
         break
+      case 'effect':
+        // Effect declaration: effect @name(ArgType) -> RetType
+        // Contextual: only when followed by @effectName (otherwise it's `effect(name)` call)
+        if (isEffectNameToken(ctx.peekAhead(1))) {
+          left = parseEffectDeclaration(ctx)
+        }
+        break
+      case 'type':
+        // Type alias declaration: type Name = TypeExpr or type Name<A, B> = TypeExpr
+        // Contextual: only when followed by an uppercase symbol (otherwise it's a variable)
+        if (isSymbolToken(ctx.peekAhead(1)) && /^[A-Z]/.test(ctx.peekAhead(1)![1])) {
+          left = parseTypeDeclaration(ctx)
+        }
+        break
     }
-  } else if (isMacroQualifiedToken(token)) {
-    // macro@qualified.name — pass the qualified name to parseMacro
-    left = parseMacro(ctx)
   } else if (isReservedSymbolToken(token, 'do')) {
     left = parseDo(ctx)
   } else if (isReservedSymbolToken(token, 'quote')) {

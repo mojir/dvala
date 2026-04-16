@@ -1,89 +1,24 @@
 import { ArithmeticError, RuntimeError } from '../../errors'
 import type { Any, Arr } from '../../interface'
 import type { SourceCodeInfo } from '../../tokenizer/token'
-import { assertMatrix, assertNonEmptyVector, assertVector, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
+import { assertNonEmptyVector, isVector } from '../../typeGuards/annotatedCollections'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import { toFixedArity } from '../../utils/arity'
 import type { BuiltinNormalExpressions } from '../interface'
 
-function getNumberVectorOrMatrixOperation(
-  params: Iterable<unknown>,
-  sourceCodeInfo: SourceCodeInfo | undefined,
-):
-  | ['number', number[]]
-  | ['vector', number[][]]
-  | ['matrix', number[][][]] {
-  // Convert to plain array once so we can use .map() and cast at the end
-  const paramsArr = Array.from(params)
-  let hasVector: boolean = false
-  let hasMatrix: boolean = false
-  for (const param of paramsArr) {
-    if (isVector(param)) {
-      hasVector = true
-    } else if (isMatrix(param)) {
-      hasMatrix = true
-    } else if (!isNumber(param)) {
+function getNumberOperands(params: Iterable<unknown>, sourceCodeInfo: SourceCodeInfo | undefined): number[] {
+  const operands = Array.from(params)
+  operands.forEach(param => {
+    if (!isNumber(param)) {
       throw new RuntimeError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
     }
-  }
-  if (hasMatrix) {
-    if (hasVector) {
-      throw new RuntimeError('Cannot mix vector and matrix types', sourceCodeInfo)
-    }
-    let rows: number | null = null
-    let cold: number | null = null
-    // Convert PV→plain before dimension checks so .length works
-    const plainParams = paramsArr.map(p => isMatrix(p) ? assertMatrix(p, sourceCodeInfo) : p)
-    for (const param of plainParams) {
-      if (isMatrix(param)) {
-        if (rows === null) {
-          rows = param.length
-          cold = param[0]!.length
-        } else {
-          if (param.length !== rows || param[0]!.length !== cold) {
-            throw new RuntimeError('Matrix dimensions do not match', sourceCodeInfo)
-          }
-        }
-      }
-    }
-    const matrices = plainParams.map(param => {
-      if (isMatrix(param)) {
-        return param
-      }
-      return Array.from({ length: rows as number }, () => Array.from({ length: cold as number }, () => param as number))
-    })
-    return ['matrix', matrices]
-  }
-  if (hasVector) {
-    let length: number | null = null
-    // Convert PV→plain before length checks so .length works
-    const plainParams = paramsArr.map(p => isVector(p) ? assertVector(p, sourceCodeInfo) : p)
-    for (const param of plainParams) {
-      if (isVector(param)) {
-        if (length === null) {
-          length = param.length
-        } else {
-          if (param.length !== length) {
-            throw new RuntimeError('Vector lengths do not match', sourceCodeInfo)
-          }
-        }
-      }
-    }
-    const vectors = plainParams.map(param => {
-      if (isVector(param)) {
-        return param
-      }
-      return Array.from({ length: length as number }, () => param as number)
-    })
-
-    return ['vector', vectors]
-  }
-  return ['number', paramsArr as number[]]
+  })
+  return operands as number[]
 }
 
 // Applies fn and throws if the result is not finite (NaN or Infinity).
-// Used for element-wise vector/matrix operations where the FiniteCheckFrame
-// only sees the top-level array, not individual numeric elements.
+// Core math is scalar-only, so this keeps the runtime checks aligned with the
+// builtin docs and the typechecker.
 function checkedFn(fn: (a: number, b: number) => number, a: number, b: number, sourceCodeInfo: SourceCodeInfo | undefined): number
 function checkedFn(fn: (a: number) => number, a: number, b: undefined, sourceCodeInfo: SourceCodeInfo | undefined): number
 function checkedFn(fn: (...args: number[]) => number, a: number, b: number | undefined, sourceCodeInfo: SourceCodeInfo | undefined): number {
@@ -98,15 +33,8 @@ function unaryMathOp(
   fn: (val: number) => number,
 ): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
   return (params, sourceCodeInfo) => {
-    const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
-    if (operation === 'number') {
-      return fn(operands[0]!)
-    } else if (operation === 'vector') {
-      // number[] is a Dvala vector (annotated plain JS array) — cast to Any
-      return operands[0]!.map(val => checkedFn(fn, val, undefined, sourceCodeInfo)) as unknown as Any
-    } else {
-      return operands[0]!.map(row => row.map(val => checkedFn(fn, val, undefined, sourceCodeInfo))) as unknown as Any
-    }
+    const operands = getNumberOperands(params, sourceCodeInfo)
+    return checkedFn(fn, operands[0]!, undefined, sourceCodeInfo)
   }
 }
 
@@ -114,14 +42,8 @@ function binaryMathOp(
   fn: (a: number, b: number) => number,
 ): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
   return (params, sourceCodeInfo) => {
-    const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
-    if (operation === 'number') {
-      return fn(operands[0]!, operands[1]!)
-    } else if (operation === 'vector') {
-      return operands[0]!.map((val, i) => checkedFn(fn, val, operands[1]![i]!, sourceCodeInfo)) as unknown as Any
-    } else {
-      return operands[0]!.map((row, i) => row.map((val, j) => checkedFn(fn, val, operands[1]![i]![j]!, sourceCodeInfo))) as unknown as Any
-    }
+    const operands = getNumberOperands(params, sourceCodeInfo)
+    return checkedFn(fn, operands[0]!, operands[1]!, sourceCodeInfo)
   }
 }
 
@@ -132,16 +54,8 @@ function reduceMathOp(
   return (params, sourceCodeInfo) => {
     if (params.size === 0)
       return identity
-    const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
-    if (operation === 'number') {
-      return operands.reduce((a, b) => fn(a, b), identity)
-    } else if (operation === 'vector') {
-      const [first, ...rest] = operands
-      return rest.reduce((acc, v) => acc.map((val, i) => checkedFn(fn, val, v[i]!, sourceCodeInfo)), first!) as unknown as Any
-    } else {
-      const [first, ...rest] = operands
-      return rest.reduce((acc, m) => acc.map((row, i) => row.map((val, j) => checkedFn(fn, val, m[i]![j]!, sourceCodeInfo))), first!) as unknown as Any
-    }
+    const operands = getNumberOperands(params, sourceCodeInfo)
+    return operands.reduce((a, b) => fn(a, b), identity)
   }
 }
 
@@ -150,20 +64,20 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => val + 1),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number)',
       category: 'math',
       returns: { type: 'number' },
       args: {
-        x: { type: ['number', 'vector', 'matrix'] },
+        x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `inc` function increments its argument by 1, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it increases each element by 1 while preserving the original structure.',
+      description: 'The `inc` function increments a number by 1.',
       seeAlso: ['dec', '+'],
       examples: [
         'inc(0)',
         'inc(1)',
         'inc(100.1)',
-        'inc([1, 2, 3])',
-        'inc([[1, 2], [3, 4]])',
+        'inc(-2.5)',
       ],
     },
   },
@@ -171,20 +85,20 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => val - 1),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        x: { type: ['number', 'vector', 'matrix'] },
+        x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `dec` function decrements its argument by 1, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it decreases each element by 1 while preserving the original structure.',
+      description: 'The `dec` function decrements a number by 1.',
       seeAlso: ['inc', '-'],
       examples: [
         'dec(0)',
         'dec(1)',
         'dec(100.1)',
-        'dec([1, 2, 3])',
-        'dec([[1, 2], [3, 4]])',
+        'dec(-2.5)',
       ],
     },
   },
@@ -192,15 +106,16 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: reduceMathOp(0, (a, b) => a + b),
     arity: {},
     docs: {
+      type: '(() -> Number) & ((Number, ...Number[]) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'vector', 'matrix'] },
-        b: { type: ['number', 'vector', 'matrix'] },
-        xs: { type: ['number', 'vector', 'matrix'], rest: true },
+        a: { type: 'number' },
+        b: { type: 'number' },
+        xs: { type: 'number', rest: true },
       },
       variants: [{ argumentNames: ['xs'] }],
-      description: 'The `+` function performs addition of numbers and element-wise addition of `vectors` and `matrices` of compatible dimensions, returning the same type as its inputs. When used with mixed types, it adds the scalar to each element of the collection.',
+      description: 'The `+` function adds numbers. With no arguments it returns `0`.',
       seeAlso: ['-', '*', '/', 'inc'],
       examples: [
         '1 + 2',
@@ -208,10 +123,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         '+(1, 2, 3, 4)',
         '+()',
         '+(1)',
-        '[1, 2, 3] + 2',
-        '[1, 2, 3] + [4, 5, 6]',
-        '[[1, 2, 3], [4, 5, 6]] + [[7, 8, 9], [10, 11, 12]]',
-        '[[1, 2, 3], [4, 5, 6]] + 2',
+        '-2 + 2',
       ],
     },
   },
@@ -219,15 +131,16 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: reduceMathOp(1, (a, b) => a * b),
     arity: {},
     docs: {
+      type: '(() -> Number) & ((Number, ...Number[]) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'vector', 'matrix'] },
-        b: { type: ['number', 'vector', 'matrix'] },
-        xs: { type: ['number', 'vector', 'matrix'], rest: true },
+        a: { type: 'number' },
+        b: { type: 'number' },
+        xs: { type: 'number', rest: true },
       },
       variants: [{ argumentNames: ['xs'] }],
-      description: 'The `*` function performs multiplication of `numbers` and element-wise multiplication of `vectors` and `matrices` of compatible dimensions, returning the same type as its inputs. When used with mixed types, it multiplies each element of the collection by the scalar.',
+      description: 'The `*` function multiplies numbers. With no arguments it returns `1`.',
       seeAlso: ['/', '+', '-', '^'],
       examples: [
         '6 * 7',
@@ -236,10 +149,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         '*(1, 2, 3, 4, 5)',
         '*()',
         '*(8)',
-        '[1, 2, 3] * 2',
-        '[1, 2, 3] * [4, 5, 6]',
-        '[[1, 2, 3], [4, 5, 6]] * [[7, 8, 9], [10, 11, 12]]',
-        '[[1, 2, 3], [4, 5, 6]] * 2',
+        '2 * 2',
       ],
     },
   },
@@ -249,37 +159,26 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         return 1
       }
 
-      const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
+      const operands = getNumberOperands(params, sourceCodeInfo)
 
-      if (operation === 'number') {
-        const [first, ...rest] = operands
-        if (rest.length === 0) {
-          return 1 / first!
-        }
-        return rest.reduce((result, param) => {
-          return result / param
-        }, first!)
-      } else if (operation === 'vector') {
-        const firstVector = operands[0]!
-        const restVectors = operands.slice(1)
-        return restVectors.reduce((acc, vector) => acc.map((val, i) => val / vector[i]!), firstVector) as unknown as Any
-      } else {
-        const firstMatrix = operands[0]!
-        const restMatrices = operands.slice(1)
-        return restMatrices.reduce((acc, matrix) => acc.map((row, i) => row.map((val, j) => val / matrix[i]![j]!)), firstMatrix) as unknown as Any
+      const [first, ...rest] = operands
+      if (rest.length === 0) {
+        return checkedFn(val => 1 / val, first!, undefined, sourceCodeInfo)
       }
+      return rest.reduce((result, param) => checkedFn((a, b) => a / b, result, param, sourceCodeInfo), first!)
     },
     arity: {},
     docs: {
+      type: '(() -> Number) & ((Number, ...Number[]) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'vector', 'matrix'] },
-        b: { type: ['number', 'vector', 'matrix'] },
-        xs: { type: ['number', 'vector', 'matrix'], rest: true },
+        a: { type: 'number' },
+        b: { type: 'number' },
+        xs: { type: 'number', rest: true },
       },
       variants: [{ argumentNames: ['xs'] }],
-      description: 'The `/` function performs division of `numbers` and element-wise division of `vectors` and `matrices` of compatible dimensions, returning the same type as its inputs. When used with mixed types, it divides each element of the collection by the scalar.',
+      description: 'The `/` function divides numbers. With no arguments it returns `1`, and with one argument it returns the reciprocal.',
       seeAlso: ['*', '+', '-', 'quot', 'mod', '%'],
       examples: [
         '12 / 100',
@@ -288,10 +187,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         '/(1, 2, 4, 8)',
         '/()',
         '/(8)',
-        '[1, 2, 3] / 2',
-        '[1, 2, 3] / [4, 5, 6]',
-        '[[1, 2, 3], [4, 5, 6]] / [[7, 8, 9], [10, 11, 12]]',
-        '[[1, 2, 3], [4, 5, 6]] / 2',
+        '2 / 5',
       ],
     },
   },
@@ -301,37 +197,26 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         return 0
       }
 
-      const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
+      const operands = getNumberOperands(params, sourceCodeInfo)
 
-      if (operation === 'number') {
-        const [first, ...rest] = operands
-        if (rest.length === 0)
-          return -first!
+      const [first, ...rest] = operands
+      if (rest.length === 0)
+        return checkedFn(val => -val, first!, undefined, sourceCodeInfo)
 
-        return rest.reduce((result, param) => {
-          return result - param
-        }, first!)
-      } else if (operation === 'vector') {
-        const firstVector = operands[0]!
-        const restVectors = operands.slice(1)
-        return restVectors.reduce((acc, vector) => acc.map((val, i) => val - vector[i]!), firstVector) as unknown as Any
-      } else {
-        const firstMatrix = operands[0]!
-        const restMatrices = operands.slice(1)
-        return restMatrices.reduce((acc, matrix) => acc.map((row, i) => row.map((val, j) => val - matrix[i]![j]!)), firstMatrix) as unknown as Any
-      }
+      return rest.reduce((result, param) => checkedFn((a, b) => a - b, result, param, sourceCodeInfo), first!)
     },
     arity: {},
     docs: {
+      type: '(() -> Number) & ((Number, ...Number[]) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'vector', 'matrix'] },
-        b: { type: ['number', 'vector', 'matrix'] },
-        xs: { type: ['number', 'vector', 'matrix'], rest: true },
+        a: { type: 'number' },
+        b: { type: 'number' },
+        xs: { type: 'number', rest: true },
       },
       variants: [{ argumentNames: ['xs'] }],
-      description: 'Computes difference between first value and sum of the rest. When called with only one argument, it does negation.',
+      description: 'Computes the difference between the first number and the rest. With one argument it negates the number.',
       seeAlso: ['+', '*', '/', 'dec', 'abs'],
       examples: [
         '50 - 8',
@@ -339,10 +224,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         '-()',
         '-(4, 2)',
         '-(4, 3, 2, 1,)',
-        '[1, 2, 3] - 2',
-        '[1, 2, 3] - [4, 5, 6]',
-        '[[1, 2, 3], [4, 5, 6]] - [[7, 8, 9], [10, 11, 12]]',
-        '[[1, 2, 3], [4, 5, 6]] - 2',
+        'let a = 0; let b = 2; a - b',
       ],
     },
   },
@@ -350,14 +232,15 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => Math.trunc(a / b)),
     arity: toFixedArity(2),
     docs: {
+      type: '((Number, Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'vector', 'matrix'] },
-        b: { type: ['number', 'vector', 'matrix'] },
+        a: { type: 'number' },
+        b: { type: 'number' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'The `quot` function performs integer division truncated toward zero, working on `numbers` and element-wise on `vectors` and `matrices` of compatible dimensions. When used with mixed types, it applies integer division between each element of the collection and the scalar.',
+      description: 'The `quot` function performs integer division truncated toward zero on two numbers.',
       seeAlso: ['mod', '%', '/', 'trunc'],
       examples: [
         'quot(5, 3)',
@@ -366,12 +249,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         '5 quot -3',
         '-5 quot -3',
         'quot(0, 5)',
-        '[1, 2, 3] quot 2',
-        '2 quot [1, 2, 3]',
-        'quot([1, 2, 3], [4, 5, 6])',
-        '[[1, 2, 3], [4, 5, 6]] quot [[7, 8, 9], [10, 11, 12]]',
-        'quot([[1, 2, 3], [4, 5, 6]], 2)',
-        '[[1, 2, 3], [4, 5, 6]] quot [[7, 8, 9], [10, 11, 12]]',
+        'quot(13.75, 3.25)',
       ],
     },
   },
@@ -379,14 +257,15 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => a - b * Math.floor(a / b)),
     arity: toFixedArity(2),
     docs: {
+      type: '((Number, Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'vector', 'matrix'] },
-        b: { type: ['number', 'vector', 'matrix'] },
+        a: { type: 'number' },
+        b: { type: 'number' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'The `mod` function computes the modulo of division with the same sign as the divisor, working on `numbers` and element-wise on `vectors` and `matrices` of compatible dimensions. When used with mixed types, it applies the modulo operation between each element of the collection and the scalar.',
+      description: 'The `mod` function computes the modulo of division with the same sign as the divisor.',
       seeAlso: ['%', 'quot', '/'],
       examples: [
         'mod(5, 3)',
@@ -394,11 +273,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         'mod(-5, 3)',
         '5 mod -3',
         '-5 mod -3',
-        '[1, 2, 3] mod 2',
-        '2 mod [1, 2, 3]',
-        'mod([1, 2, 3], [4, 5, 6])',
-        '[[1, 2, 3], [4, 5, 6]] mod [[7, 8, 9], [10, 11, 12]]',
-        'mod([[1, 2, 3], [4, 5, 6]], 2)',
+        'mod(13.75, 3.25)',
       ],
     },
   },
@@ -406,14 +281,15 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => a % b),
     arity: toFixedArity(2),
     docs: {
+      type: '((Number, Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'vector', 'matrix'] },
-        b: { type: ['number', 'vector', 'matrix'] },
+        a: { type: 'number' },
+        b: { type: 'number' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'The `%` function computes the remainder of division with the same sign as the dividend, working on `numbers` and element-wise on `vectors` and `matrices` of compatible dimensions. When used with mixed types, it applies the remainder operation between each element of the collection and the scalar.',
+      description: 'The `%` function computes the remainder of division with the same sign as the dividend.',
       seeAlso: ['mod', 'quot', '/'],
       examples: [
         '5 % 3',
@@ -421,11 +297,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         '-5 % 3',
         '%(5, -3)',
         '%(-5, -3)',
-        '[1, 2, 3] % 2',
-        '2 % [1, 2, 3]',
-        '%([1, 2, 3], [4, 5, 6])',
-        '[[1, 2, 3], [4, 5, 6]] % [[7, 8, 9], [10, 11, 12]]',
-        '%([[1, 2, 3], [4, 5, 6]], 2)',
+        '%(13.75, 3.25)',
       ],
     },
   },
@@ -433,23 +305,20 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.sqrt(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        x: { type: ['number', 'vector', 'matrix'] },
+        x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `sqrt` function calculates the square root of `numbers` and computes element-wise square roots of `vectors` and `matrices`. When applied to collections, it returns the square root of each element while preserving the original structure.',
+      description: 'The `sqrt` function calculates the square root of a number.',
       seeAlso: ['cbrt', '^'],
       examples: [
         'sqrt(0)',
         'sqrt(9)',
         'sqrt(2)',
-        'sqrt(0)',
-        'sqrt(9)',
-        'sqrt(2)',
-        'sqrt([1, 4, 9])',
-        'sqrt([[1, 4], [9, 16]])',
+        'sqrt(1)',
       ],
     },
   },
@@ -457,25 +326,21 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.cbrt(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        x: { type: ['number', 'vector', 'matrix'] },
+        x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `cbrt` function calculates the cube root of `numbers` and computes element-wise cube roots of `vectors` and `matrices`. When applied to collections, it returns the cube root of each element while preserving the original structure.',
+      description: 'The `cbrt` function calculates the cube root of a number.',
       seeAlso: ['sqrt', '^'],
       examples: [
         'cbrt(0)',
         'cbrt(27)',
         'cbrt(2)',
         'cbrt(1)',
-        'cbrt(0)',
-        'cbrt(27)',
-        'cbrt(2)',
-        'cbrt(1)',
-        'cbrt([1, 8, 27])',
-        'cbrt([[1, 8], [27, 64]])',
+        'cbrt(-8)',
       ],
     },
   },
@@ -483,14 +348,15 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => a ** b),
     arity: toFixedArity(2),
     docs: {
+      type: '((Number, Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'vector', 'matrix'] },
-        b: { type: ['number', 'vector', 'matrix'] },
+        a: { type: 'number' },
+        b: { type: 'number' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'The ^ function computes exponentiation, raising the first argument to the power of the second, working on `numbers` and element-wise on `vectors` and `matrices` of compatible dimensions. When used with mixed types, it applies the power operation between each element of the collection and the scalar.',
+      description: 'The `^` function computes exponentiation, raising the first number to the power of the second.',
       seeAlso: ['sqrt', 'cbrt', '*', 'math.ln'],
       examples: [
         '2 ^ 3',
@@ -498,58 +364,35 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         '2 ^ -3',
         '^(-2, 3)',
         '^(-2, -3)',
-        '[1, 2, 3] ^ 2',
-        '2 ^ [1, 2, 3]',
-        '^([1, 2, 3], [4, 5, 6])',
-        '[[1, 2, 3], [4, 5, 6]] ^ [[7, 8, 9], [10, 11, 12]]',
-        '^([[1, 2, 3], [4, 5, 6]], 2)',
+        '^(16, 0.5)',
       ],
     },
   },
   'round': {
     evaluate: ([value, decimals], sourceCodeInfo): Any => {
-      const [operation, operands] = getNumberVectorOrMatrixOperation([value], sourceCodeInfo)
-      if (operation === 'number') {
-        if (decimals === undefined || decimals === 0) {
-          return Math.round(operands[0]!)
-        } else {
-          assertNumber(decimals, sourceCodeInfo, { integer: true, positive: true })
-          const factor = 10 ** decimals
-          return Math.round(operands[0]! * factor) / factor
-        }
-      } else if (operation === 'vector') {
-        const vector = operands[0]!
-        if (decimals === undefined || decimals === 0) {
-          return vector.map(val => Math.round(val)) as unknown as Any
-        } else {
-          assertNumber(decimals, sourceCodeInfo, { integer: true, positive: true })
-          const factor = 10 ** decimals
-          return vector.map(val => Math.round(val * factor) / factor) as unknown as Any
-        }
+      const [operand] = getNumberOperands([value], sourceCodeInfo)
+      if (decimals === undefined || decimals === 0) {
+        return Math.round(operand!)
       } else {
-        const matrix = operands[0]!
-        if (decimals === undefined || decimals === 0) {
-          return matrix.map(row => row.map(val => Math.round(val))) as unknown as Any
-        } else {
-          assertNumber(decimals, sourceCodeInfo, { integer: true, positive: true })
-          const factor = 10 ** decimals
-          return matrix.map(row => row.map(val => Math.round(val * factor) / factor)) as unknown as Any
-        }
+        assertNumber(decimals, sourceCodeInfo, { integer: true, positive: true })
+        const factor = 10 ** decimals
+        return Math.round(operand! * factor) / factor
       }
     },
     arity: { min: 1, max: 2 },
     docs: {
+      type: '((Number) -> Number) & ((Number, Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        a: { type: ['number', 'vector', 'matrix'] },
+        a: { type: 'number' },
         b: { type: 'integer' },
       },
       variants: [
         { argumentNames: ['a'] },
         { argumentNames: ['a', 'b'] },
       ],
-      description: 'The `round` function rounds a `number` to the nearest `integer` or to a specified number of `decimal` places, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it rounds each element while preserving the original structure.',
+      description: 'The `round` function rounds a number to the nearest integer or to a specified number of decimal places.',
       seeAlso: ['floor', 'ceil', 'trunc'],
       examples: [
         'round(2)',
@@ -560,10 +403,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         'round(-2.501)',
         'round(1.23456789, 4)',
         '1.123456789 round 2',
-        'round([1.23456789, 2.3456789], 1)',
-        '[1.23456789, 2.3456789] round 4',
-        '[[1.23456789, 2.3456789], [3.456789, 4.56789]] round 4',
-        'round([[1.23456789, 2.3456789], [3.456789, 4.56789]], 2)',
+        'round(-0.125, 1)',
       ],
     },
   },
@@ -571,13 +411,14 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.trunc(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number)',
       category: 'math',
-      returns: { type: ['integer', 'vector', 'matrix'] },
+      returns: { type: 'integer' },
       args: {
-        x: { type: ['number', 'vector', 'matrix'] },
+        x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `trunc` function truncates `numbers` toward zero (removing decimal portions without rounding), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it truncates each element while preserving the original structure.',
+      description: 'The `trunc` function truncates a number toward zero, removing its decimal portion without rounding.',
       seeAlso: ['round', 'floor', 'ceil', 'quot'],
       examples: [
         'trunc(2)',
@@ -586,8 +427,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         'trunc(-2.49)',
         'trunc(-2.5)',
         'trunc(-2.501)',
-        'trunc([1.23456789, 2.3456789])',
-        'trunc([[1.23456789, 2.3456789], [3.456789, 4.56789]])',
+        'trunc(0.999)',
       ],
     },
   },
@@ -595,13 +435,14 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.floor(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number)',
       category: 'math',
-      returns: { type: ['integer', 'vector', 'matrix'] },
+      returns: { type: 'integer' },
       args: {
-        x: { type: ['number', 'vector', 'matrix'] },
+        x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `floor` function returns the largest `integer` less than or equal to a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the floor of each element while preserving the original structure.',
+      description: 'The `floor` function returns the largest integer less than or equal to a number.',
       seeAlso: ['ceil', 'round', 'trunc'],
       examples: [
         'floor(2)',
@@ -610,8 +451,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         'floor(-2.49)',
         'floor(-2.5)',
         'floor(-2.501)',
-        'floor([1.23456789, 2.3456789])',
-        'floor([[1.23456789, 2.3456789], [3.456789, 4.56789]])',
+        'floor(0.4)',
       ],
     },
   },
@@ -619,13 +459,14 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.ceil(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number)',
       category: 'math',
-      returns: { type: ['integer', 'vector', 'matrix'] },
+      returns: { type: 'integer' },
       args: {
-        x: { type: ['number', 'vector', 'matrix'] },
+        x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `ceil` function returns the smallest `integer` greater than or equal to a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the ceiling of each element while preserving the original structure.',
+      description: 'The `ceil` function returns the smallest integer greater than or equal to a number.',
       seeAlso: ['floor', 'round', 'trunc'],
       examples: [
         'ceil(2)',
@@ -634,8 +475,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         'ceil(-2.49)',
         'ceil(-2.5)',
         'ceil(-2.501)',
-        'ceil([1.23456789, 2.3456789])',
-        'ceil([[1.23456789, 2.3456789], [3.456789, 4.56789]])',
+        'ceil(0.4)',
       ],
     },
   },
@@ -654,6 +494,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
+      type: '((Number, ...Number[]) -> Number) & ((Number[]) -> Number)',
       category: 'math',
       returns: { type: 'number' },
       args: {
@@ -692,6 +533,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
+      type: '((Number, ...Number[]) -> Number) & ((Number[]) -> Number)',
       category: 'math',
       returns: { type: 'number' },
       args: {
@@ -719,20 +561,20 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.abs(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        x: { type: ['number', 'vector', 'matrix'] },
+        x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The abs function returns the absolute value (magnitude) of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the absolute value of each element while preserving the original structure.',
+      description: 'The `abs` function returns the absolute value of a number.',
       seeAlso: ['sign', '-'],
       examples: [
         'abs(-2.3)',
         'abs(0)',
         'abs(2.5)',
-        'abs([1, -2, 3])',
-        'abs([[1, -2], [3, -4]])',
+        'abs(-0)',
       ],
     },
   },
@@ -740,21 +582,21 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.sign(val)),
     arity: toFixedArity(1),
     docs: {
+      type: '((Number) -> Number)',
       category: 'math',
-      returns: { type: ['number', 'vector', 'matrix'] },
+      returns: { type: 'number' },
       args: {
-        x: { type: ['number', 'vector', 'matrix'] },
+        x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `sign` function returns the `sign` of a `number` (-1 for negative, 0 for zero, 1 for positive), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the sign of each element while preserving the original structure.',
+      description: 'The `sign` function returns the sign of a number: `-1` for negative, `0` for zero, and `1` for positive.',
       seeAlso: ['abs'],
       examples: [
         'sign(-2.3)',
         'sign(-0)',
         'sign(0)',
         'sign(12312)',
-        'sign([1, -2, 3])',
-        'sign([[1, -2], [3, -4]])',
+        'sign(-2)',
       ],
     },
   },

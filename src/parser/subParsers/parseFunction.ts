@@ -9,6 +9,7 @@ import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseBindingTarget } from './parseBindingTarget'
 import { parseDo } from './parseDo'
+import { collectTypeAnnotation } from './parseTypeAnnotationTokens'
 import { parseSymbol } from './parseSymbol'
 
 const placeholderRegexp = /^\$([1-9]\d?)?$/
@@ -19,6 +20,13 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
   ctx.builder?.startNode('Function')
   const firstToken = ctx.peek()
   const functionArguments = parseFunctionArguments(ctx)
+
+  // Return type annotation: (params): ReturnType ->
+  let returnTypeAnnotation: string | undefined
+  if (isOperatorToken(ctx.peek(), ':')) {
+    ctx.advance() // consume ':'
+    returnTypeAnnotation = collectTypeAnnotation(ctx, { stopAtArrow: true, stopAtRParen: false })
+  }
 
   if (!isOperatorToken(ctx.peek(), '->')) {
     throw new ParseError('Expected ->', ctx.peekSourceCodeInfo())
@@ -43,6 +51,12 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
     0,
   ], firstToken[2], ctx) as LambdaNode
   ctx.setNodeEnd(node[2])
+
+  // Store return type annotation keyed by the function node's ID
+  if (returnTypeAnnotation) {
+    ctx.typeAnnotations.set(node[2], `return:${returnTypeAnnotation}`)
+  }
+
   ctx.builder?.endNode()
   return node
 }
@@ -63,7 +77,7 @@ export function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
     if (rest) {
       throw new ParseError('Rest argument must be last', ctx.peekSourceCodeInfo())
     }
-    const bindingTarget = parseBindingTarget(ctx)
+    const bindingTarget = parseBindingTarget(ctx, { stopTypeAnnotationAtRParen: true })
     if (bindingTarget[1][1] !== undefined) {
       defaults = true
     }

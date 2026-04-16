@@ -41,6 +41,11 @@ describe('formatter — let bindings', () => {
     'let {x,y}=obj',
     'let { x, y } = obj;',
   ))
+
+  it('rest destructuring stays tight to the binding name', () => check(
+    'let {tags:[first,...otherTags]}=user; let [head,...tailValues]=xs',
+    'let { tags: [first, ...otherTags] } = user;\nlet [head, ...tailValues] = xs;',
+  ))
 })
 
 // ---------------------------------------------------------------------------
@@ -73,6 +78,11 @@ describe('formatter — functions', () => {
     'let f = (first, ...rest) -> rest;',
   ))
 
+  it('typed parameter keeps colon tight to the name', () => check(
+    'let f=(msg:String)->msg',
+    'let f = (msg: String) -> msg;',
+  ))
+
   it('multi-statement do-block always expands', () => check(
     'let f = (x) -> do\nlet y = x * 2;\ny + 1\nend',
     'let f = (x) -> do\n  let y = x * 2;\n  y + 1;\nend;',
@@ -81,6 +91,11 @@ describe('formatter — functions', () => {
   it('single-line do-block stays inline without semicolon before end', () => check(
     'do 1+1 end',
     'do 1 + 1 end;',
+  ))
+
+  it('handler clause typed parameter keeps colon tight to the name', () => check(
+    'let h=handler @project.log(msg:String)->resume(null) end',
+    'let h =\n  handler\n    @project.log(msg: String) -> resume(null)\n  end;',
   ))
 })
 
@@ -142,6 +157,13 @@ end`,
   ))
 })
 
+describe('formatter — match patterns', () => {
+  it('rest patterns stay tight to the binding name', () => check(
+    'match xs case [head,...tail] then count(tail) case _ then 0 end',
+    'match xs\n  case [ head, ...tail] then count(tail)\n  case _ then 0\nend;',
+  ))
+})
+
 // ---------------------------------------------------------------------------
 // Structural formatting — pipe chains (authored form preserved)
 // ---------------------------------------------------------------------------
@@ -200,10 +222,12 @@ describe('formatter — control flow', () => {
     'if x > 0 then 1 else -1 end;',
   ))
 
-  it('if without else', () => check(
-    'if done then perform(@dvala.io.print,"done") end',
-    'if done then perform(@dvala.io.print, "done") end;',
-  ))
+  it('if without else is a parse error — format returns source unchanged', () => {
+    // The formatter intentionally swallows parse errors and returns the original source
+    // so that format-on-save never destroys partially-written code.
+    const src = 'if done then perform(@dvala.io.print,"done") end'
+    expect(format(src)).toBe(src)
+  })
 })
 
 // ---------------------------------------------------------------------------

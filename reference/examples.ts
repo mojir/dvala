@@ -185,14 +185,14 @@ let showTodos = (user) -> do
   perform(@dvala.io.print, "\\nCompleted (" ++ str(count(done)) ++ "/" ++ str(count(todos)) ++ "):");
   for (t in done take 5) -> perform(@dvala.io.print, "  ✓ " ++ t.title);
   if count(done) > 5 then
-    perform(@dvala.io.print, "  ... and " ++ str(count(done) - 5) ++ " more");
-  end;
+    perform(@dvala.io.print, "  ... and " ++ str(count(done) - 5) ++ " more")
+  else null end;
 
   perform(@dvala.io.print, "\\nPending (" ++ str(count(pending)) ++ "):");
   for (t in pending take 5) -> perform(@dvala.io.print, "  ○ " ++ t.title);
   if count(pending) > 5 then
-    perform(@dvala.io.print, "  ... and " ++ str(count(pending) - 5) ++ " more");
-  end
+    perform(@dvala.io.print, "  ... and " ++ str(count(pending) - 5) ++ " more")
+  else null end
 end;
 
 // Main interaction loop
@@ -208,8 +208,8 @@ let main = () -> do
         let user = lookupUser(input);
         if user then
           let show = perform(@dvala.io.read, "Show todos for " ++ user.name ++ "? (yes/no)");
-          if show == "yes" then showTodos(user) end;
-        end;
+          if show == "yes" then showTodos(user) else null end;
+        else null end;
         perform(@dvala.io.print, "");
         recur(true)
       end
@@ -748,20 +748,17 @@ perform(@dvala.io.print, 21 |> double |> negate);   // -42`,
   {
     id: 'macros-advanced',
     name: 'Macros — Advanced',
-    description: 'Named macros, macroexpand for debugging, hygiene (auto-gensym), and the ast module for programmatic inspection.',
+    description: 'macroexpand for debugging, hygiene (auto-gensym), and the ast module for programmatic inspection.',
     category: 'Macros',
     code: dvala`
 let { prettyPrint } = import("ast");
 
-// --- Named macros with qualified names ---
-// macro@name attaches a qualified name for host-level dispatch
-let double = macro@mylib.double (ast) -> quote $^{ast} + $^{ast} end;
+// --- macroexpand — inspect without evaluating ---
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 
 perform(@dvala.io.print, "Type: " ++ typeOf(double));
-perform(@dvala.io.print, "Name: " ++ qualifiedName(double));
 perform(@dvala.io.print, "Is macro: " ++ str(isMacro(double)));
 
-// --- macroexpand — inspect without evaluating ---
 let expanded = macroexpand(double, quote x + 1 end);
 perform(@dvala.io.print, "Expanded AST: " ++ prettyPrint(expanded));
 
@@ -774,12 +771,7 @@ end end;
 let result = 999;                    // caller's "result"
 let doubled = withTemp(result + 1);  // macro's "result" is gensymed
 perform(@dvala.io.print, "doubled: " ++ str(doubled));   // 2000
-perform(@dvala.io.print, "result: " ++ str(result));     // 999 (not clobbered)
-
-// --- Named macros emit @dvala.macro.expand ---
-// Host handlers can intercept expansion of named macros
-perform(@dvala.io.print, "double is named: " ++ str(qualifiedName(double) != null));
-perform(@dvala.io.print, "anonymous has no name: " ++ str(qualifiedName(withTemp) == null))`,
+perform(@dvala.io.print, "result: " ++ str(result));     // 999 (not clobbered)`,
   },
   {
     id: 'macro-inception',
@@ -1267,7 +1259,7 @@ let s11 = [do let t = 10; t + 1 end, do let v1 = 1; let v2 = 2; v1 + v2 end];
 let s12 = [
   if true then "yes" else "no" end,
   if false then 1 else if false then 2 else 3 end,
-  if false then "x" end,
+  if false then "x" else null end,
 ];
 
 // --- 13: Functions - all forms ---

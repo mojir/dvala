@@ -6,7 +6,7 @@ import type { AstNode, BuiltinSymbolNode, NormalExpressionNodeExpression, Specia
 import { isBinaryOperator } from '../../tokenizer/operators'
 import { isNumberReservedSymbol } from '../../tokenizer/reservedNames'
 import type { StringToken, TemplateStringToken, TokenDebugInfo, TokenType } from '../../tokenizer/token'
-import { isLBraceToken, isLBracketToken, isLParenToken, isOperatorToken, isRBracketToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
+import { isLBraceToken, isLBracketToken, isLParenToken, isOperatorToken, isRBracketToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseRegexpShorthand } from './parseRegexpShorthand'
@@ -39,7 +39,6 @@ const validDvalaEffects: ReadonlySet<string> = new Set([
   'dvala.sleep',
   'dvala.error',
   'dvala.checkpoint',
-  'dvala.macro.expand',
   'dvala.host',
   'dvala.env',
   'dvala.args',
@@ -53,8 +52,9 @@ export function parseOperand(ctx: ParserContext): AstNode {
   let operand: AstNode = parseOperandPart(ctx)
   let token = ctx.tryPeek()
 
-  while (isOperatorToken(token, '.') || isLBracketToken(token) || isLParenToken(token)) {
-    if (token[1] === '.') {
+  while (isOperatorToken(token, '.') || isOperatorToken(token, '?.') || isLBracketToken(token) || isLParenToken(token)) {
+    if (token[1] === '.' || token[1] === '?.') {
+      const safe = token[1] === '?.'
       ctx.builder?.startNodeAt(checkpoint!, 'PropertyAccess')
       ctx.advance()
       const symbolToken = ctx.tryPeek()
@@ -62,7 +62,13 @@ export function parseOperand(ctx: ParserContext): AstNode {
         throw new ParseError('Expected symbol', ctx.peekSourceCodeInfo())
       }
       const stringNode: StringNode = withSourceCodeInfo([NodeTypes.Str, symbolToken[1], 0], symbolToken[2], ctx) as StringNode
-      operand = createAccessorNode(ctx, operand, stringNode, token[2])
+      if (safe) {
+        // `a?.b` → get(a, "b") — returns null for missing key
+        operand = createAccessorNode(ctx, operand, stringNode, token[2])
+      } else {
+        // `a.b` → a("b") — strict, throws KeyError for missing key
+        operand = createStrictAccessorNode(ctx, operand, stringNode, token[2])
+      }
       ctx.advance()
       ctx.builder?.endNode()
       token = ctx.tryPeek()
@@ -197,7 +203,6 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     | 'MultiLineComment' // Should have been removed
     | 'SingleLineComment' // Should have been removed
     | 'Whitespace' // Should have been removed
-    | 'MacroQualified' // Handled in parseExpression
     | 'MacroPrefix' // Handled above
   >
   switch (tokenType) {
@@ -267,7 +272,25 @@ function looksLikeLambda(ctx: ParserContext): boolean {
       else if (isRParenToken(t)) depth--
       offset++
     }
-    return isOperatorToken(ctx.peekAhead(offset), '->')
+    // Check for `->` directly after `)`, or `: ReturnType ->` pattern
+    if (isOperatorToken(ctx.peekAhead(offset), '->')) return true
+    // Return type annotation: (...): Type ->
+    if (isOperatorToken(ctx.peekAhead(offset), ':')) {
+      // Skip past the type annotation to find `->`
+      offset++ // skip ':'
+      let typeDepth = 0
+      while (ctx.peekAhead(offset)) {
+        const t = ctx.peekAhead(offset)!
+        if (typeDepth === 0 && isOperatorToken(t, '->')) return true
+        if (isLParenToken(t) || isLBracketToken(t)) typeDepth++
+        else if (isRParenToken(t) || isRBracketToken(t)) typeDepth--
+        // Stop if we hit something that can't be part of a type annotation
+        if (typeDepth === 0 && (isOperatorToken(t, '=') || isOperatorToken(t, ';')
+          || isReservedSymbolToken(t, 'end') || isReservedSymbolToken(t, 'do'))) break
+        offset++
+      }
+    }
+    return false
   }
 
   return false
@@ -275,6 +298,17 @@ function looksLikeLambda(ctx: ParserContext): boolean {
 
 function createAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {
   const node = withSourceCodeInfo([NodeTypes.Call, [withSourceCodeInfo([NodeTypes.Builtin, 'get', 0], debugInfo, ctx), [left, right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+  ctx.setNodeEnd(node[2])
+  return node
+}
+
+/**
+ * Creates a strict property access node: `obj("key")` — a function call
+ * where the object is called as a function with the key as argument.
+ * Throws KeyError for missing keys (unlike get which returns null).
+ */
+function createStrictAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {
+  const node = withSourceCodeInfo([NodeTypes.Call, [left, [right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
   ctx.setNodeEnd(node[2])
   return node
 }

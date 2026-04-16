@@ -134,9 +134,9 @@ const skipWrongTypeTests = new Set([
   'get', // accepts collection
   'contains', // accepts collection
   'assoc', // accepts collection
-  'map', // first arg is collection but also handles objects
-  'filter', // first arg is collection but also handles objects
-  'reduce', // first arg is collection but also handles objects
+  'map', // flexible collection semantics exceed auto-generated rejection cases
+  'filter', // flexible collection semantics exceed auto-generated rejection cases
+  'reduce', // flexible collection semantics exceed auto-generated rejection cases
   'some', // sequence but varies
   'find', // sequence but varies
   'sorted?', // flexible input

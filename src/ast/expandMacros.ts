@@ -1,5 +1,6 @@
 import { NodeTypes } from '../constants/constants'
 import { createDvala } from '../createDvala'
+import type { FileResolver } from '../evaluator/ContextStack'
 import { hostHandler } from '../evaluator/effectTypes'
 import { prettyPrint } from '../prettyPrint'
 import type { Ast, AstNode, SourceMap, SourceMapPosition } from '../parser/types'
@@ -7,6 +8,13 @@ import { isMacroFunction } from '../typeGuards/dvalaFunction'
 import { fromJS } from '../utils/interop'
 import type { Any } from '../interface'
 import { PersistentVector } from '../utils/persistent'
+
+export interface MacroExpandOptions {
+  /** File resolver for cross-file macro imports (e.g. let { double } = import("./macros")) */
+  fileResolver?: FileResolver
+  /** Base directory for resolving relative imports in macro evaluation */
+  fileResolverBaseDir?: string
+}
 
 /**
  * Build-time macro expansion pass.
@@ -16,33 +24,57 @@ import { PersistentVector } from '../utils/persistent'
  * to those macros using macroexpand. The macro definitions are
  * removed from the output.
  *
- * Only expands macros that are statically defined as let bindings
- * with Macro node values and whose bodies don't depend on runtime context.
+ * When a fileResolver is provided, also discovers macros imported from
+ * other files (e.g. let { double } = import("./macros")).
+ *
  * Macros that fail to evaluate are left unexpanded.
  */
-export function expandMacros(ast: Ast): Ast {
-  // Phase 1: Collect all macro definitions from the entire AST
+export function expandMacros(ast: Ast, options?: MacroExpandOptions): Ast {
+  // Phase 1: Collect local macro definitions and import statements that may bring in macros
   const macroDefs: { name: string; node: AstNode }[] = []
+  const importBindings: { names: string[]; node: AstNode }[] = []
   collectMacroDefs(ast.body, macroDefs)
+  if (options?.fileResolver) {
+    collectImportBindings(ast.body, importBindings)
+  }
 
-  if (macroDefs.length === 0) {
+  if (macroDefs.length === 0 && importBindings.length === 0) {
     return ast
   }
 
-  // Phase 2: Evaluate all macro definitions together so they can reference each other.
-  const dvala = createDvala()
+  // Phase 2: Evaluate macro definitions (and import statements) to get macro functions.
+  // When file resolution is available, imported macros are discovered too.
+  const dvala = createDvala({
+    fileResolver: options?.fileResolver,
+    fileResolverBaseDir: options?.fileResolverBaseDir,
+    typecheck: false,
+  })
   const macroFunctions = new Map<string, unknown>()
 
-  const defSources = macroDefs.map(d => prettyPrint(d.node))
-  const returnObj = macroDefs.map(d => `${d.name}: ${d.name}`).join(', ')
-  const evalSource = `${defSources.join(';\n')};\n{ ${returnObj} }`
+  // Build source to evaluate: imports first, then local macro defs, then return all names
+  const allNames: string[] = []
+  const sourceFragments: string[] = []
+
+  for (const ib of importBindings) {
+    sourceFragments.push(prettyPrint(ib.node))
+    allNames.push(...ib.names)
+  }
+  for (const def of macroDefs) {
+    sourceFragments.push(prettyPrint(def.node))
+    allNames.push(def.name)
+  }
+
+  // Deduplicate names (an import binding name might also appear as a local macro)
+  const uniqueNames = [...new Set(allNames)]
+  const returnObj = uniqueNames.map(n => `${n}: ${n}`).join(', ')
+  const evalSource = `${sourceFragments.join(';\n')};\n{ ${returnObj} }`
 
   try {
     const result = dvala.run(evalSource) as Record<string, unknown>
-    for (const def of macroDefs) {
-      const fn = result[def.name]
+    for (const name of uniqueNames) {
+      const fn = result[name]
       if (isMacroFunction(fn)) {
-        macroFunctions.set(def.name, fn)
+        macroFunctions.set(name, fn)
       }
     }
   } catch {
@@ -86,6 +118,30 @@ function recurseForCollection(payload: unknown, result: { name: string; node: As
       recurseForCollection((item as AstNode)[1], result)
     } else if (Array.isArray(item)) {
       recurseForCollection(item, result)
+    }
+  }
+}
+
+/**
+ * Collect `let { name, ... } = import("...")` bindings.
+ * These may bring macros from other files. The actual nodes are kept
+ * so we can pretty-print and evaluate them to discover which values are macros.
+ */
+function collectImportBindings(nodes: AstNode[], result: { names: string[]; node: AstNode }[]): void {
+  for (const node of nodes) {
+    if (node[0] !== NodeTypes.Let) continue
+    const [target, value] = node[1] as [AstNode, AstNode]
+    // Value must be an Import node with a relative path
+    if (!Array.isArray(value) || value[0] !== NodeTypes.Import) continue
+    const importPath = value[1] as string
+    if (!importPath.startsWith('.')) continue
+    // Target must be an object destructuring pattern (binding patterns use plain strings, not NodeTypes)
+    if (!Array.isArray(target) || (target[0] as string) !== 'object') continue
+    const [fieldsObj] = target[1] as [Record<string, unknown>]
+    if (!fieldsObj || typeof fieldsObj !== 'object') continue
+    const names = Object.keys(fieldsObj)
+    if (names.length > 0) {
+      result.push({ names, node })
     }
   }
 }

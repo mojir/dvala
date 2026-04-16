@@ -122,6 +122,8 @@ const result = await dvala.runAsync('perform(@dvala.io.print, "hello")', {
 })
 ```
 
+Core math builtins are scalar-only. Use explicit lifting for collections, for example `map([1, 2, 3], inc)` or `map(xs, ys, +)`. The collection-aware exceptions in core are `min` and `max`, which still accept a single vector.
+
 ### Use as a CLI
 
 ```bash

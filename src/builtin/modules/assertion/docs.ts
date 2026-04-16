@@ -2,6 +2,7 @@ import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
   'assertNotEqual': {
+    type: '(Unknown, Unknown) -> Null',
     category: 'assertion',
     description: 'If `a` is the same as `b` it throws `AssertionError`.',
     returns: {
@@ -43,6 +44,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertEqual': {
+    type: '(Unknown, Unknown) -> Null',
     category: 'assertion',
     description: 'If `a` is not structural equal to `b` it throws `AssertionError`.',
     returns: {
@@ -83,6 +85,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertGt': {
+    type: '((String | Number), (String | Number)) -> Null',
     category: 'assertion',
     description: 'If `a` is not greater than `b` it throws `AssertionError`.',
     returns: {
@@ -123,6 +126,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertLt': {
+    type: '((String | Number), (String | Number)) -> Null',
     category: 'assertion',
     description: 'If `a` is not less than `b` it throws `AssertionError`.',
     returns: {
@@ -163,6 +167,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertGte': {
+    type: '((String | Number), (String | Number)) -> Null',
     category: 'assertion',
     description: 'If `a` is less than `b` it throws `AssertionError`.',
     returns: {
@@ -203,6 +208,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertLte': {
+    type: '((String | Number), (String | Number)) -> Null',
     category: 'assertion',
     description: 'If `a` is grater than `b` it throws `AssertionError`.',
     returns: {
@@ -243,6 +249,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertTrue': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `true` it throws `AssertionError`.',
     returns: {
@@ -278,6 +285,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertFalse': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `false` it throws `AssertionError`.',
     returns: {
@@ -313,6 +321,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertTruthy': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `truthy` it throws `AssertionError`.',
     returns: {
@@ -355,6 +364,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertFalsy': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `falsy` it throws `AssertionError`.',
     returns: {
@@ -396,6 +406,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertNull': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `null` it throws `AssertionError`.',
     returns: {
@@ -437,6 +448,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertFails': {
+    type: '((() -> Unknown)) -> Null',
     category: 'assertion',
     description: 'If `fun` does not fail (perform `dvala.error`), it throws `AssertionError`.',
     returns: {
@@ -471,6 +483,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertFailsWith': {
+    type: '((() -> Unknown), String) -> Null',
     category: 'assertion',
     description: 'If `fun` does not fail with `error-message`, it throws `AssertionError`.',
     returns: {
@@ -510,6 +523,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertSucceeds': {
+    type: '((() -> Unknown)) -> Null',
     category: 'assertion',
     description: 'If `fun` fails (performs `dvala.error`), it throws `AssertionError`.',
     returns: {
@@ -544,6 +558,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertArray': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not an `array` it throws `AssertionError`.',
     returns: {
@@ -579,6 +594,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertBoolean': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `boolean` it throws `AssertionError`.',
     returns: {
@@ -614,6 +630,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertCollection': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `collection` (array, object, or string) it throws `AssertionError`.',
     returns: {
@@ -650,6 +667,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertFunction': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `function` it throws `AssertionError`.',
     returns: {
@@ -684,6 +702,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertGrid': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `grid` it throws `AssertionError`.',
     returns: {
@@ -718,6 +737,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertInteger': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not an `integer` it throws `AssertionError`.',
     returns: {
@@ -752,6 +772,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertMatrix': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `matrix` it throws `AssertionError`.',
     returns: {
@@ -786,6 +807,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertNumber': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `number` it throws `AssertionError`.',
     returns: {
@@ -820,6 +842,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertObject': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not an `object` it throws `AssertionError`.',
     returns: {
@@ -854,6 +877,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertRegexp': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `regexp` it throws `AssertionError`.',
     returns: {
@@ -888,6 +912,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertSequence': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `sequence` (array or string) it throws `AssertionError`.',
     returns: {
@@ -923,6 +948,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertString': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `string` it throws `AssertionError`.',
     returns: {
@@ -957,6 +983,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
   },
   'assertVector': {
+    type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `vector` it throws `AssertionError`.',
     returns: {

@@ -440,7 +440,7 @@ export interface CstResume {
 
 export interface CstMacro {
   kind: 'Macro'
-  /** The `macro` keyword or `macro@qualified.name` token. */
+  /** The `macro` keyword token. */
   macroKeyword: CstToken
   openParen?: CstToken
   params: CstBindingTarget[]

@@ -2,7 +2,7 @@ import { describe, expect, it, test } from 'vitest'
 import { createDvala } from '../createDvala'
 import { getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../tooling'
 import { NodeTypes } from '../constants/constants'
-import { DvalaError } from '../errors'
+import { DvalaError, MatchError } from '../errors'
 import { mathUtilsModule } from '../builtin/modules/math'
 
 const dvala = createDvala()
@@ -73,11 +73,11 @@ describe('parser', () => {
     expect(() => dvalaDebug.run('let a = (b) -> do 1, end;')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('match 1 case 1 then 1; 2 end')).not.toThrow()
     expect(() => dvalaDebug.run('match 1 case 1 then 1, end end')).toThrow(DvalaError)
-    expect(() => dvalaDebug.run('if 1 then 1 end; 2')).not.toThrow()
+    expect(() => dvalaDebug.run('if 1 then 1 end; 2')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('if 1 then 1 end,')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('if true then 1 else 1 end; 2')).not.toThrow()
     expect(() => dvalaDebug.run('if true then 1 else 1 end,')).toThrow(DvalaError)
-    expect(() => dvalaDebug.run('if true then 1 end; 2')).not.toThrow()
+    expect(() => dvalaDebug.run('if true then 1 end; 2')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('if true then 1 end; 2,')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('for (a in [1, 2] when a == 2 when b == 1) -> 1')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('for (a in [1, 2] while a == 2 while a == 1) -> 1')).toThrow(DvalaError)
@@ -396,7 +396,7 @@ describe('parser', () => {
   describe('negated if expression', () => {
     test('samples', () => {
       expect(dvala.run('if not(1 < 2) then 1 else 2 end')).toBe(2)
-      expect(dvala.run('if not(1 < 2) then 1 end')).toBe(null)
+      expect(() => dvala.run('if not(1 < 2) then 1 end')).toThrow('`if` without `else` is not allowed')
       expect(dvala.run('if not(1 > 2) then 1 else 2 end')).toBe(1)
     })
   })
@@ -766,7 +766,8 @@ foo(1, 2)`)).toBe(3)
       if val < 5 then "S"
       else if val < 10 then "M"
       else if val < 15 then "L"
-      end ?? "No match"`)).toBe('M')
+      else null
+      end`)).toBe('M')
 
     expect(dvala.run(`
         let val = 20;
@@ -774,7 +775,8 @@ foo(1, 2)`)).toBe(3)
         if val < 5 then "S"
         else if val < 10 then "M"
         else if val < 15 then "L"
-        end ?? "No match"`)).toBe('No match')
+        else null
+        end`)).toBe(null)
   })
   test('match expression', () => {
     expect(dvala.run(`
@@ -788,13 +790,13 @@ foo(1, 2)`)).toBe(3)
         case 1 then "one"
         case 2 then "two"
       end`)).toBe('one')
-    expect(dvala.run(`
+    expect(() => dvala.run(`
       let x = 10;
       match x
         case 0 then "zero"
         case 1 then "one"
         case 2 then "two"
-      end`)).toBe(null)
+      end`)).toThrow(MatchError)
   })
 
   test('simple for (formerly doseq).', () => {
@@ -1202,7 +1204,8 @@ foo(1, 2)`)).toBe(3)
           match n
             case 0 then a
             case 1 then b
-          end ?? self(n - 1, b, a + b);
+            case _ then self(n - 1, b, a + b)
+          end;
 
         fib(10)`)).toBe(55)
     })

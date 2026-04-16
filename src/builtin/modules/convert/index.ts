@@ -335,6 +335,7 @@ function generateLinearConversions(category: UnitCategory): BuiltinNormalExpress
         },
         arity: toFixedArity(1),
         docs: {
+          type: '(Number) -> Number',
           category: 'convert',
           returns: { type: 'number' },
           args: {
@@ -383,6 +384,7 @@ function generateTemperatureConversions(): BuiltinNormalExpressions {
         },
         arity: toFixedArity(1),
         docs: {
+          type: '(Number) -> Number',
           category: 'convert',
           returns: { type: 'number' },
           args: {

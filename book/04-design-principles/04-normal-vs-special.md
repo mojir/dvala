@@ -89,7 +89,6 @@ end;
 
 ```dvala
 loop(i = 0, total = 0) -> if i > 4 then total else recur(i + 1, total + i) end;
-
 ```
 
 ### match — Pattern Matching
@@ -110,7 +109,6 @@ end;
 
 ```dvala
 for(x in [1, 2, 3] when x > 1) -> x * 10;
-
 ```
 
 ### @name / perform — Algebraic Effects

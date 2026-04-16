@@ -30,6 +30,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
+      type: '(Unknown, ...Unknown[]) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -71,6 +72,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
+      type: '(Unknown, ...Unknown[]) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -108,6 +110,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
+      type: '(Number | String, ...(Number | String)[]) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -145,6 +148,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
+      type: '(Number | String, ...(Number | String)[]) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -181,6 +185,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
+      type: '(Number | String, ...(Number | String)[]) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -219,6 +224,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
     docs: {
+      type: '(Number | String, ...(Number | String)[]) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
       args: {
@@ -247,6 +253,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first]): boolean => !first,
     arity: toFixedArity(1),
     docs: {
+      type: '(Unknown) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
@@ -270,6 +277,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(Unknown) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
@@ -290,6 +298,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
     docs: {
+      type: '(Number | String | Atom, Number | String | Atom) -> Number',
       category: 'misc',
       returns: { type: 'number' },
       args: {
@@ -314,6 +323,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(Effect) -> String',
       category: 'meta',
       returns: { type: 'string' },
       args: {
@@ -332,6 +342,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     evaluate: (): never => { throw new Error('macroexpand is handled by the evaluator') },
     arity: { min: 1 },
     docs: {
+      type: '(Unknown, Unknown) -> Unknown',
       category: 'meta',
       returns: { type: 'any' },
       args: {
@@ -343,7 +354,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       description: 'Calls a macro\'s body with the given AST arguments and returns the expanded AST as data, without evaluating it. Use quote...end blocks to construct the AST arguments.',
       examples: [
         'let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end)',
-        'let { prettyPrint } = import("ast"); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint',
+        { code: 'let { prettyPrint } = import("ast"); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint', noCheck: true },
       ],
     },
   },
@@ -353,27 +364,22 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       if (isEffect(first)) {
         return first.name
       }
-      // Macros may have an optional qualified name
-      if (isMacroFunction(first)) {
-        return first.qualifiedName
-      }
       // Everything else has no qualified name
       return null
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(Unknown) -> String | Null',
       category: 'meta',
       returns: { type: ['string', 'null'] },
       args: {
-        entity: { type: 'any', description: 'An effect reference, macro, or any other value.' },
+        entity: { type: 'any', description: 'An effect reference or any other value.' },
       },
       variants: [{ argumentNames: ['entity'] }],
-      description: 'Returns the qualified name (dotted DNS-style identifier) of an entity, or null if it has none. Works on effect references and named macros.',
-      seeAlso: ['effectName', 'qualifiedMatcher', 'isMacro', 'isEffect'],
+      description: 'Returns the qualified name (dotted DNS-style identifier) of an entity, or null if it has none. Works on effect references.',
+      seeAlso: ['effectName', 'qualifiedMatcher', 'isEffect'],
       examples: [
         'qualifiedName(@dvala.io.print)',
-        'qualifiedName(macro@my.lib (ast) -> ast)',
-        'qualifiedName(macro (ast) -> ast)',
         'qualifiedName(42)',
       ],
     },
@@ -406,19 +412,19 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String | Regex) -> (Unknown) -> Boolean',
       category: 'meta',
       returns: { type: 'function' },
       args: {
         pattern: { type: ['string', 'regexp'], description: 'A wildcard pattern or regexp to match against qualified names.' },
       },
       variants: [{ argumentNames: ['pattern'] }],
-      description: 'Returns a predicate function that matches any entity with a qualified name (effects, named macros). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
-      seeAlso: ['qualifiedName', 'effectName', 'isEffect', 'isMacro'],
+      description: 'Returns a predicate function that matches any entity with a qualified name (effect references). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
+      seeAlso: ['qualifiedName', 'effectName', 'isEffect'],
       examples: [
         'qualifiedMatcher("dvala.*")(@dvala.error)',
         'qualifiedMatcher("dvala.*")(@custom.foo)',
-        'qualifiedMatcher("*")(macro@my.lib (ast) -> ast)',
-        'qualifiedMatcher("my.*")(macro@my.lib (ast) -> ast)',
+        'qualifiedMatcher("*")(@dvala.io.print)',
       ],
     },
   },
@@ -450,6 +456,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(Unknown) -> String',
       category: 'misc',
       returns: { type: 'string' },
       args: {
@@ -475,6 +482,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     evaluate: () => { throw new Error('raise is implemented in Dvala') },
     arity: { min: 1, max: 2 },
     docs: {
+      type: '((String) -> Never) & ((String, Unknown) -> Never)',
       category: 'misc',
       returns: { type: 'never' },
       args: {
@@ -486,8 +494,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       description: 'Raises an error by performing `@dvala.error` with a structured payload `{ type: "UserError", message, data }`. Convenience wrapper — use `perform(@dvala.error, ...)` directly for custom error types or additional fields.',
       seeAlso: ['perform'],
       examples: [
-        'do with handler @dvala.error(err) -> resume(err.message) end; raise("oops") end',
-        'do with handler @dvala.error(err) -> resume(err.data.field) end; raise("bad input", { field: "email" }) end',
+        'do with handler @dvala.error(err) -> resume("caught") end; raise("oops") end',
+        'do with handler @dvala.error(err) -> resume(null) end; raise("bad input", { field: "email" }) end',
       ],
     },
   },

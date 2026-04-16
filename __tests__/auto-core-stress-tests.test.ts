@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../src/allModules'
+import { MatchError } from '../src/errors'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, transformSymbols, untokenize } from '../src/tooling'
 
 const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
@@ -338,8 +339,8 @@ describe('pattern matching edge cases', () => {
       .toBe(5) // 1 + 2 + 2
   })
 
-  it('match returns null when no pattern matches', () => {
-    expect(dvala.run('match 42 case "hello" then 1 end')).toBeNull()
+  it('match throws MatchError when no pattern matches', () => {
+    expect(() => dvala.run('match 42 case "hello" then 1 end')).toThrow(MatchError)
   })
 
   it('match with complex guard and destructuring', () => {
@@ -810,10 +811,10 @@ describe('parser edge cases', () => {
     `)).toBe('three')
   })
 
-  it('if with no matching branch returns null', () => {
-    expect(dvala.run(`
+  it('if without else throws ParseError', () => {
+    expect(() => dvala.run(`
       if false then "nope" end
-    `)).toBeNull()
+    `)).toThrow('`if` without `else` is not allowed')
   })
 })
 

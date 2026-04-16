@@ -4,6 +4,8 @@
     assert(isFunction(fn), "First argument must be a function");
     if not(isNull(message)) then
       assert(isString(message), "Second argument must be a string")
+    else
+      null
     end;
     let failedSentinel = @assertion.failed;
     let errorHandler =
@@ -23,6 +25,8 @@
     assert(isString(expectedError), "Second argument must be a string");
     if not(isNull(message)) then
       assert(isString(message), "Third argument must be a string")
+    else
+      null
     end;
     let failedSentinel = @assertion.failed;
     let errorHandler =
@@ -58,6 +62,8 @@
     assert(isFunction(fn), "First argument must be a function");
     if not(isNull(message)) then
       assert(isString(message), "Second argument must be a string")
+    else
+      null
     end;
     let failedSentinel = @assertion.failed;
     let errorHandler =
