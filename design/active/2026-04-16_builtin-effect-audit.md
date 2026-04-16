@@ -60,18 +60,18 @@ For each module we also note:
 
 | File | Builtins | Status | Notes |
 |---|---|---|---|
-| `array.ts` | — | ⏳ Not started | |
-| `assertion.ts` | — | ⏳ Not started | `assert*` functions — throw on falsy; pure-partial. |
+| `array.ts` | 3 | ✅ Audited | All pure. See [Per-file audit results](#array-ts). |
+| `assertion.ts` | 1 | ✅ Audited | Single `assert`, pure-partial. See [Per-file audit results](#assertion-ts). |
 | `bitwise.ts` | 6 | ✅ Audited | All pure. See [Per-file audit results](#bitwise-ts). |
-| `collection.ts` | — | ⏳ Not started | |
-| `functional.ts` | — | ⏳ Not started | Higher-order — effect set depends on callback. Needs polymorphic effect handling in the signature. |
+| `collection.ts` | 8 | ✅ Audited | 5 TS-impl pure; 3 Dvala-impl higher-order (`filter`, `map`, `reduce`). See [Per-file audit results](#collection-ts). |
+| `functional.ts` | 5 | ✅ Audited | 3 TS-impl pure; 2 Dvala-impl higher-order (`\|>`, `apply`). See [Per-file audit results](#functional-ts). |
 | `math.ts` | 20 | ✅ Audited | All pure; no misdeclarations. See [Per-file audit results](#math-ts). |
-| `meta.ts` | — | ⏳ Not started | `arity`, `doc`, `withDoc` — inspect function values; likely pure-deterministic. |
-| `misc.ts` | — | ⏳ Not started | |
-| `object.ts` | — | ⏳ Not started | Record operations — pure-deterministic. |
+| `meta.ts` | 3 | ✅ Audited | All pure. See [Per-file audit results](#meta-ts). |
+| `misc.ts` | 15 | ✅ Audited | 13 TS-impl pure; `raise` (Dvala-impl) has a declaration issue. See [Per-file audit results](#misc-ts). |
+| `object.ts` | 9 | ✅ Audited | 8 TS-impl pure; `mergeWith` (Dvala-impl) higher-order. See [Per-file audit results](#object-ts). |
 | `predicates.ts` | 26 | ✅ Audited | All pure. See [Per-file audit results](#predicates-ts). |
-| `regexp.ts` | — | ⏳ Not started | Match/replace on strings — pure-deterministic (no global flag state). Verify. |
-| `sequence.ts` | — | ⏳ Not started | |
+| `regexp.ts` | 4 | ✅ Audited | All pure; fresh regex constructed per call (no `g`-flag state leak). See [Per-file audit results](#regexp-ts). |
+| `sequence.ts` | 19 | ✅ Audited | 15 TS-impl pure; 4 Dvala-impl higher-order (`some`, `sort`, `takeWhile`, `dropWhile`). See [Per-file audit results](#sequence-ts). |
 | `string.ts` | 8 | ✅ Audited | All pure. See [Per-file audit results](#string-ts). |
 
 ### Modules (`src/builtin/modules/`)
@@ -206,3 +206,197 @@ After Phase A, Phase B (differential test matrix) can start.
 **Missing annotations:** None.
 
 **Fold eligibility:** All 8 eligible. `str`, `join`, `split`, `upperCase`, `lowerCase`, `trim` are common in real code and will fold often.
+
+### assertion.ts
+
+**Builtins (1):** `assert`.
+
+**Classification:** **Pure-partial.** Throws `AssertionError` (extends `RuntimeError → DvalaError`) if the value is falsy.
+
+**Fold eligibility:** Eligible. When folded with a literal falsy value, the sandbox catches the `AssertionError` and surfaces as `@dvala.error` — exactly the "statically-provable runtime error" case decision #2 targets.
+
+**Declaration bugs / missing annotations:** None.
+
+### array.ts
+
+**Builtins (3):** `range`, `repeat`, `flatten`.
+
+**Classification:** All **pure-partial** via `assertNumber` / `assertArray` checks.
+
+**Key observations:**
+
+- `range` and `repeat` can build large vectors — budget-bound at fold time. `repeat(value, 1_000_000)` would blow the 10k step budget and fall back silently.
+- `flatten` uses a helper (`flattenDeep`) that handles both `PersistentVector` and plain JS arrays. Pure.
+- All have type annotations.
+
+**Fold eligibility:** All 3 eligible. Large-collection calls may blow budget and fall back — that's acceptable behavior.
+
+**Declaration bugs / missing annotations:** None.
+
+### object.ts
+
+**Builtins (9):** `keys`, `vals`, `entries`, `find`, `dissoc`, `merge`, `mergeWith`, `zipmap`, `selectKeys`.
+
+**Classification:** All TS-impl builtins are **pure** (pure-deterministic for `keys`/`vals`/`entries`, pure-partial for the rest via assertions). `mergeWith` is implemented in Dvala (TS stub throws).
+
+**Key observations:**
+
+- `mergeWith` takes a merge function as a callback — higher-order. Effect set depends on the callback; fold safety depends on the sandbox catching any effects the callback performs. See [Higher-order builtins](#higher-order-builtins-overall-note) below.
+- All have type annotations.
+
+**Fold eligibility:** 8 TS-impl builtins eligible. `mergeWith` foldable when the merge callback is pure.
+
+**Declaration bugs / missing annotations:** None.
+
+### regexp.ts
+
+**Builtins (4):** `regexp`, `reMatch`, `replace`, `replaceAll`.
+
+**Classification:** All **pure-partial**.
+
+**Key observations:**
+
+- Every call constructs a fresh `new RegExp(source, flags)` — **no shared mutable regex state**. The `g`/`y` flag's stateful `.lastIndex` is irrelevant because the regex is reconstructed per call.
+- `reMatch` calls `regExp.exec(text)` exactly once per invocation, so `lastIndex` side effects don't leak.
+- `replace`/`replaceAll` use `String.prototype.replace`/`replaceAll` which are stateless.
+- All have type annotations.
+
+**Fold eligibility:** All 4 eligible.
+
+**Declaration bugs / missing annotations:** None.
+
+### meta.ts
+
+**Builtins (3):** `doc`, `withDoc`, `arity`.
+
+**Classification:** All **pure-deterministic** (or pure-partial via assertions on wrong-type inputs).
+
+**Key observations:**
+
+- `getMetaNormalExpression` captures `normalExpressionReference` and `effectReference` as closure parameters. These are module-registration references — **populated once at startup and not mutated thereafter**. Functionally constant. The closure accesses them read-only, so the builtins are pure despite reading module-level data.
+- `withDoc` returns a new function value with a modified `docString` — pure (value-level, no mutation).
+- All have type annotations.
+
+**Fold eligibility:** All 3 eligible. Typical use is to introspect builtin or user-function metadata — valid fold target.
+
+**Declaration bugs / missing annotations:** None.
+
+### functional.ts
+
+**Builtins (5):** `|>`, `apply`, `identity`, `comp`, `constantly`.
+
+**Classification:**
+
+- `identity` — **pure-deterministic**.
+- `comp` — **pure**: constructs a `CompFunction` value. No execution.
+- `constantly` — **pure**: constructs a `ConstantlyFunction` value.
+- `|>` and `apply` — TS stubs throw ("implemented in Dvala"). Real implementation is in a `.dvala` source file. They call their function argument, so **effect set depends on the callback** (higher-order).
+
+**Key observations:**
+
+- All have type annotations.
+- `|>` and `apply` are the classic higher-order examples. See [Higher-order builtins](#higher-order-builtins-overall-note).
+
+**Fold eligibility:** All 5 eligible *when their inputs are fold-compatible*. For `|>` and `apply`, that means the callback is pure; the sandbox catches effects that escape.
+
+**Declaration bugs / missing annotations:** None.
+
+### collection.ts
+
+**Builtins (8):** `filter`, `map`, `reduce`, `get`, `count`, `contains`, `assoc`, `++`.
+
+**Classification:**
+
+- `get`, `count`, `contains`, `assoc`, `++` — TS-impl, **pure-partial** via assertions.
+- `filter`, `map`, `reduce` — TS stubs throw ("implemented in Dvala"). Real impl in Dvala source. All three are higher-order — effect set depends on the callback.
+
+**Key observations:**
+
+- `++` handles strings, numbers, and persistent vectors in the same builtin — polymorphic dispatch on the first arg's type. Pure either way.
+- All have type annotations.
+
+**Fold eligibility:** All 8 eligible. `filter`/`map`/`reduce` foldable when the callback is pure.
+
+**Declaration bugs / missing annotations:** None.
+
+### sequence.ts
+
+**Builtins (19):** `nth`, `first`, `last`, `pop`, `indexOf`, `push`, `rest`, `next`, `reverse`, `second`, `slice`, `some`, `sort`, `take`, `takeLast`, `drop`, `dropLast`, `takeWhile`, `dropWhile`.
+
+**Classification:**
+
+- 15 TS-impl builtins: **pure** (pure-deterministic for position accessors like `first`/`last`/`second`/`nth` with default value; pure-partial for assertions elsewhere).
+- 4 Dvala-impl builtins: `some`, `sort`, `takeWhile`, `dropWhile`. `some`, `takeWhile`, `dropWhile` are higher-order (predicate callback). `sort` is higher-order when a comparator is supplied.
+
+**Key observations:**
+
+- `nth` is the canonical fold-eligible collection accessor — design doc step 7 explicitly calls it out. Out-of-bounds without a default returns `null` (decision #2's partial-with-default pattern).
+- All have type annotations.
+
+**Fold eligibility:** All 19 eligible. Higher-order ones depend on their callback.
+
+**Declaration bugs / missing annotations:** None.
+
+### misc.ts
+
+**Builtins (15):** `==`, `!=`, `>`, `<`, `>=`, `<=`, `not`, `boolean`, `compare`, `effectName`, `macroexpand`, `qualifiedName`, `qualifiedMatcher`, `typeOf`, `raise`.
+
+**Classification:**
+
+- `==`, `!=`, `compare` — **pure-deterministic** via `deepEqual` / `compare`.
+- `>`, `<`, `>=`, `<=` — pure-partial on non-number/string input.
+- `not`, `boolean`, `typeOf` — pure-deterministic.
+- `effectName`, `qualifiedName`, `qualifiedMatcher` — pure-partial (assertions on input type).
+- `macroexpand` — TS stub throws ("handled by the evaluator"). Not called through this path during fold — fold would attempt it and silently fall back on the thrown non-DvalaError.
+- `raise` — TS stub throws ("implemented in Dvala"). Actual Dvala implementation performs `@dvala.error`.
+
+**Declaration issue — `raise`:**
+
+The type signature is `((String) -> Never) & ((String, Unknown) -> Never)` with an **empty effect set**, but the runtime implementation performs `@dvala.error`. In the rigorous set-theoretic model (type-system design decision #12 and the folding design's decision #13) this is a misdeclaration — `raise` should carry an `@{dvala.error}` effect.
+
+**Fold impact:** Low. The sandbox intercepts `@dvala.error` via the `DvalaError` catch branch and surfaces as a warning (decision #2) regardless of what the declared signature says. So fold behavior is correct in practice — the declaration just isn't as informative as it could be.
+
+**Recommendation:** Once effect-set annotations are added (separate from this audit), retype `raise` as `(String) -> @{dvala.error} Never` (and similarly for the 2-arg variant). Track as a follow-up, not a blocker for Phase C.
+
+**Key observations:**
+
+- All have type annotations.
+- `typeOf` is a natural match for match-narrowing workflows — fold-eligible and valuable.
+
+**Fold eligibility:** 13 TS-impl eligible. `macroexpand` is not exercised through the fold path (TS stub is a no-op that throws; Dvala-side macroexpansion happens at a different evaluator phase). `raise` is eligible — fold correctly surfaces a warning via the `@dvala.error` path.
+
+**Declaration bugs:** `raise`'s empty effect declaration is the one documented issue in core/. Non-blocking.
+
+**Missing annotations:** None.
+
+---
+
+## Higher-order builtins — overall note
+
+Across core/, the following builtins are **higher-order** (take a function argument whose effect set determines the outer call's effect set):
+
+- `collection.ts`: `filter`, `map`, `reduce`
+- `sequence.ts`: `some`, `sort` (when a comparator is supplied), `takeWhile`, `dropWhile`
+- `functional.ts`: `|>`, `apply`, `comp`
+- `object.ts`: `mergeWith`
+
+Their declared type signatures currently use pure function types for the callback position (`(A) -> B`) instead of effect-polymorphic signatures (`(A) -> @{e...} B`). This is the **polymorphic-effect expressiveness gap** flagged in Open Question #1 — a type-system feature, not an audit finding per se.
+
+**Why this doesn't block folding:** The fold sandbox inspects effects *at runtime*, not via the declared signature. If the caller passes a pure callback, fold succeeds. If the caller passes an effectful callback, the sandbox catches the effect and surfaces as a warning (decision #2). The declared type being imprecise means inference may attempt folds that fail — but those failures are observationally correct (the warning tells the user what's happening).
+
+Once effect polymorphism lands, these signatures should be upgraded. Not part of Phase A.
+
+---
+
+## Phase A status — core/ complete
+
+**Date:** 2026-04-16.
+
+**Summary:** 13/13 core files audited. 127 builtins classified. Every TS-impl builtin is pure (pure-deterministic or pure-partial). Every thrown error descends from `DvalaError` and is caught by the fold sandbox.
+
+**Declaration issues found:**
+1. `raise` (misc.ts) — should declare `@{dvala.error}` effect but declares pure. Non-blocking for folding. Flag for follow-up once effect annotations are applied across builtins.
+
+**Missing annotations in core/:** None.
+
+**Ready for:** continuing to `src/builtin/modules/` (20 modules).
