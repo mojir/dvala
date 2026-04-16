@@ -13,6 +13,7 @@ const timeFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(Number) -> String',
       category: 'time',
       returns: { type: 'string' },
       args: { ms: { type: 'number' } },
@@ -34,6 +35,7 @@ const timeFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
     docs: {
+      type: '(String) -> Number',
       category: 'time',
       returns: { type: 'number' },
       args: { iso: { type: 'string' } },

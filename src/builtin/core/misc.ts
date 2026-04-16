@@ -482,7 +482,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     evaluate: () => { throw new Error('raise is implemented in Dvala') },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '((String) -> Never) & ((String, Unknown) -> Never)',
+      type: '((String) -> @{dvala.error} Never) & ((String, Unknown) -> @{dvala.error} Never)',
       category: 'misc',
       returns: { type: 'never' },
       args: {
