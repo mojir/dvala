@@ -433,20 +433,267 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
     }
   })
 
-  // --- modules/math ---
+  // --- modules/math (all 17 TS-impl builtins) ---
   describe('module: math', () => {
     const cases: { src: string; expected: number }[] = [
+      // Trig
       { src: 'do let { sin } = import("math"); sin(0) end', expected: 0 },
       { src: 'do let { cos } = import("math"); cos(0) end', expected: 1 },
       { src: 'do let { tan } = import("math"); tan(0) end', expected: 0 },
+      { src: 'do let { asin } = import("math"); asin(0) end', expected: 0 },
+      { src: 'do let { acos } = import("math"); acos(1) end', expected: 0 },
+      { src: 'do let { atan } = import("math"); atan(0) end', expected: 0 },
+      // Hyperbolic
+      { src: 'do let { sinh } = import("math"); sinh(0) end', expected: 0 },
+      { src: 'do let { cosh } = import("math"); cosh(0) end', expected: 1 },
+      { src: 'do let { tanh } = import("math"); tanh(0) end', expected: 0 },
+      { src: 'do let { asinh } = import("math"); asinh(0) end', expected: 0 },
+      { src: 'do let { acosh } = import("math"); acosh(1) end', expected: 0 },
+      { src: 'do let { atanh } = import("math"); atanh(0) end', expected: 0 },
+      // Logarithms
       { src: 'do let { ln } = import("math"); ln(1) end', expected: 0 },
       { src: 'do let { log2 } = import("math"); log2(8) end', expected: 3 },
       { src: 'do let { log10 } = import("math"); log10(1000) end', expected: 3 },
+      // Angle conversions
+      { src: 'do let { toRad } = import("math"); toRad(180) end', expected: Math.PI },
+      { src: 'do let { toDeg } = import("math"); toDeg(0) end', expected: 0 },
     ]
 
     for (const { src, expected } of cases) {
       it(src, () => {
-        expect(runNormal(src)).toBe(expected)
+        expect(runNormal(src)).toBeCloseTo(expected, 10)
+        const fold = runFold(src)
+        expect(fold.ok).toBe(true)
+        if (fold.ok)
+          expect(fold.value as number).toBeCloseTo(expected, 10)
+      })
+    }
+  })
+
+  // --- modules/string (extensions beyond core/string) ---
+  describe('module: string (extensions)', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { splitLines } = import("string"); splitLines("a\\nb\\nc") end', expected: ['a', 'b', 'c'] },
+      { src: 'do let { fromCharCode } = import("string"); fromCharCode(65) end', expected: 'A' },
+      { src: 'do let { toCharCode } = import("string"); toCharCode("A") end', expected: 65 },
+      { src: 'do let { encodeUriComponent } = import("string"); encodeUriComponent("hello world") end', expected: 'hello%20world' },
+      { src: 'do let { decodeUriComponent } = import("string"); decodeUriComponent("hello%20world") end', expected: 'hello world' },
+      { src: 'do let { encodeBase64 } = import("string"); encodeBase64("hi") end', expected: 'aGk=' },
+      { src: 'do let { decodeBase64 } = import("string"); decodeBase64("aGk=") end', expected: 'hi' },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/assertion (success paths; failures surface @dvala.error) ---
+  describe('module: assertion (success paths)', () => {
+    const cases: string[] = [
+      'do let { assertEqual } = import("assertion"); assertEqual(1, 1) end',
+      'do let { assertNotEqual } = import("assertion"); assertNotEqual(1, 2) end',
+      'do let { assertGt } = import("assertion"); assertGt(2, 1) end',
+      'do let { assertLt } = import("assertion"); assertLt(1, 2) end',
+      'do let { assertTrue } = import("assertion"); assertTrue(true) end',
+      'do let { assertFalse } = import("assertion"); assertFalse(false) end',
+      'do let { assertNull } = import("assertion"); assertNull(null) end',
+    ]
+
+    for (const src of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toBeNull()
+        expect(runFold(src)).toEqual({ ok: true, value: null })
+      })
+    }
+  })
+
+  describe('module: assertion (failure → @dvala.error)', () => {
+    const cases: string[] = [
+      'do let { assertEqual } = import("assertion"); assertEqual(1, 2) end',
+      'do let { assertTrue } = import("assertion"); assertTrue(false) end',
+      'do let { assertGt } = import("assertion"); assertGt(1, 2) end',
+    ]
+
+    for (const src of cases) {
+      it(`${src} — surfaces @dvala.error`, () => {
+        expect(() => runNormal(src)).toThrow()
+        expect(runFold(src)).toEqual({ ok: false, reason: 'effect', effectName: 'dvala.error' })
+      })
+    }
+  })
+
+  // --- modules/ast (constructors & predicates) ---
+  describe('module: ast', () => {
+    const cases: string[] = [
+      'do let { num } = import("ast"); num(42) end',
+      'do let { strNode } = import("ast"); strNode("hi") end',
+      'do let { bool } = import("ast"); bool(true) end',
+      'do let { nil } = import("ast"); nil() end',
+      'do let { sym } = import("ast"); sym("x") end',
+      'do let { isNum, num } = import("ast"); isNum(num(5)) end',
+      'do let { isStr, strNode } = import("ast"); isStr(strNode("hi")) end',
+      'do let { isSym, sym } = import("ast"); isSym(sym("x")) end',
+      'do let { nodeType, num } = import("ast"); nodeType(num(5)) end',
+    ]
+
+    for (const src of cases) {
+      it(src, () => {
+        const normal = runNormal(src)
+        const fold = runFold(src)
+        expect(fold.ok).toBe(true)
+        if (fold.ok)
+          expect(fold.value).toEqual(normal)
+      })
+    }
+  })
+
+  // --- modules/collection (TS-impl; skipping higher-order like mapi/filteri/reducei) ---
+  describe('module: collection (extensions)', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { getIn } = import("collection"); getIn({ a: { b: 42 } }, ["a", "b"]) end', expected: 42 },
+      { src: 'do let { getIn } = import("collection"); getIn({ a: 1 }, ["missing", "x"], "default") end', expected: 'default' },
+      { src: 'do let { assocIn } = import("collection"); assocIn({ a: { b: 1 } }, ["a", "b"], 99) end', expected: { a: { b: 99 } } },
+      { src: 'do let { notEmpty } = import("collection"); notEmpty([1, 2, 3]) end', expected: [1, 2, 3] },
+      { src: 'do let { notEmpty } = import("collection"); notEmpty([]) end', expected: null },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/sequence (extensions beyond core/sequence; TS-impl only) ---
+  describe('module: sequence (extensions)', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { lastIndexOf } = import("sequence"); lastIndexOf([1, 2, 3, 2], 2) end', expected: 3 },
+      { src: 'do let { lastIndexOf } = import("sequence"); lastIndexOf([1, 2, 3], 99) end', expected: null },
+      { src: 'do let { distinct } = import("sequence"); distinct([1, 2, 2, 3, 1]) end', expected: [1, 2, 3] },
+      { src: 'do let { unshift } = import("sequence"); unshift([2, 3], 1) end', expected: [1, 2, 3] },
+      { src: 'do let { removeAt } = import("sequence"); removeAt([10, 20, 30], 1) end', expected: [10, 30] },
+      { src: 'do let { splitAt } = import("sequence"); splitAt([1, 2, 3, 4], 2) end', expected: [[1, 2], [3, 4]] },
+      { src: 'do let { interleave } = import("sequence"); interleave([1, 2, 3], [10, 20, 30]) end', expected: [1, 10, 2, 20, 3, 30] },
+      { src: 'do let { interpose } = import("sequence"); interpose([1, 2, 3], 0) end', expected: [1, 0, 2, 0, 3] },
+      { src: 'do let { isStartsWith } = import("sequence"); isStartsWith("Hello world", "Hello") end', expected: true },
+      { src: 'do let { isStartsWith } = import("sequence"); isStartsWith("Hello world", "bye") end', expected: false },
+      { src: 'do let { isEndsWith } = import("sequence"); isEndsWith("Hello world", "world") end', expected: true },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/vector ---
+  describe('module: vector', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { sum } = import("vector"); sum([1, 2, 3]) end', expected: 6 },
+      { src: 'do let { prod } = import("vector"); prod([2, 3, 4]) end', expected: 24 },
+      { src: 'do let { mean } = import("vector"); mean([2, 4, 6]) end', expected: 4 },
+      { src: 'do let { median } = import("vector"); median([3, 1, 2]) end', expected: 2 },
+      { src: 'do let { minIndex } = import("vector"); minIndex([3, 1, 2]) end', expected: 1 },
+      { src: 'do let { maxIndex } = import("vector"); maxIndex([1, 3, 2]) end', expected: 1 },
+      { src: 'do let { cumsum } = import("vector"); cumsum([1, 2, 3]) end', expected: [1, 3, 6] },
+      { src: 'do let { cumprod } = import("vector"); cumprod([1, 2, 3]) end', expected: [1, 2, 6] },
+      { src: 'do let { isMonotonic } = import("vector"); isMonotonic([1, 2, 3]) end', expected: true },
+      { src: 'do let { isIncreasing } = import("vector"); isIncreasing([1, 2, 3]) end', expected: true },
+      { src: 'do let { isStrictlyIncreasing } = import("vector"); isStrictlyIncreasing([1, 2, 2]) end', expected: false },
+      { src: 'do let { linspace } = import("vector"); linspace(0, 1, 5) end', expected: [0, 0.25, 0.5, 0.75, 1] },
+      { src: 'do let { sortIndices } = import("vector"); sortIndices([30, 10, 20]) end', expected: [1, 2, 0] },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/matrix ---
+  describe('module: matrix', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { mul } = import("matrix"); mul([[1, 2], [3, 4]], [[5, 6], [7, 8]]) end', expected: [[19, 22], [43, 50]] },
+      { src: 'do let { det } = import("matrix"); det([[1, 2], [3, 4]]) end', expected: -2 },
+      { src: 'do let { trace } = import("matrix"); trace([[1, 2], [3, 4]]) end', expected: 5 },
+      { src: 'do let { isSquare } = import("matrix"); isSquare([[1, 2], [3, 4]]) end', expected: true },
+      { src: 'do let { isSquare } = import("matrix"); isSquare([[1, 2, 3]]) end', expected: false },
+      { src: 'do let { isDiagonal } = import("matrix"); isDiagonal([[1, 0], [0, 2]]) end', expected: true },
+      { src: 'do let { isSymmetric } = import("matrix"); isSymmetric([[1, 2], [2, 1]]) end', expected: true },
+      { src: 'do let { isIdentity } = import("matrix"); isIdentity([[1, 0], [0, 1]]) end', expected: true },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/linearAlgebra ---
+  describe('module: linearAlgebra', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { dot } = import("linearAlgebra"); dot([1, 2, 3], [4, 5, 6]) end', expected: 32 },
+      { src: 'do let { cross } = import("linearAlgebra"); cross([1, 0, 0], [0, 1, 0]) end', expected: [0, 0, 1] },
+      { src: 'do let { lerp } = import("linearAlgebra"); lerp([0, 0], [10, 10], 0.5) end', expected: [5, 5] },
+      { src: 'do let { euclideanDistance } = import("linearAlgebra"); euclideanDistance([0, 0], [3, 4]) end', expected: 5 },
+      { src: 'do let { isOrthogonal } = import("linearAlgebra"); isOrthogonal([1, 0], [0, 1]) end', expected: true },
+      { src: 'do let { isParallel } = import("linearAlgebra"); isParallel([1, 2], [2, 4]) end', expected: true },
+      { src: 'do let { cosineSimilarity } = import("linearAlgebra"); cosineSimilarity([1, 0], [1, 0]) end', expected: 1 },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/grid ---
+  describe('module: grid', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { shape } = import("grid"); shape([[1, 2, 3], [4, 5, 6]]) end', expected: [2, 3] },
+      { src: 'do let { fill } = import("grid"); fill(2, 2, 0) end', expected: [[0, 0], [0, 0]] },
+      { src: 'do let { transpose } = import("grid"); transpose([[1, 2], [3, 4]]) end', expected: [[1, 3], [2, 4]] },
+      { src: 'do let { flipH } = import("grid"); flipH([[1, 2], [3, 4]]) end', expected: [[2, 1], [4, 3]] },
+      { src: 'do let { flipV } = import("grid"); flipV([[1, 2], [3, 4]]) end', expected: [[3, 4], [1, 2]] },
+      { src: 'do let { row } = import("grid"); row([[1, 2], [3, 4]], 0) end', expected: [1, 2] },
+      { src: 'do let { col } = import("grid"); col([[1, 2], [3, 4]], 1) end', expected: [2, 4] },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
+        expect(runFold(src)).toEqual({ ok: true, value: expected })
+      })
+    }
+  })
+
+  // --- modules/numberTheory (extensions) ---
+  describe('module: numberTheory (extensions)', () => {
+    const cases: { src: string; expected: unknown }[] = [
+      { src: 'do let { isCoprime } = import("numberTheory"); isCoprime(8, 9) end', expected: true },
+      { src: 'do let { isCoprime } = import("numberTheory"); isCoprime(4, 6) end', expected: false },
+      { src: 'do let { isDivisibleBy } = import("numberTheory"); isDivisibleBy(10, 5) end', expected: true },
+      { src: 'do let { multinomial } = import("numberTheory"); multinomial(1, 2, 1) end', expected: 12 },
+      { src: 'do let { eulerTotient } = import("numberTheory"); eulerTotient(9) end', expected: 6 },
+      { src: 'do let { sigma } = import("numberTheory"); sigma(6) end', expected: 12 },
+      { src: 'do let { modExp } = import("numberTheory"); modExp(2, 10, 1000) end', expected: 24 },
+    ]
+
+    for (const { src, expected } of cases) {
+      it(src, () => {
+        expect(runNormal(src)).toEqual(expected)
         expect(runFold(src)).toEqual({ ok: true, value: expected })
       })
     }
