@@ -39,8 +39,11 @@ import { NullType, atom as atomType, literal, record, tuple } from './types'
  *   - Open records (`open: true`) — can't know all fields.
  *   - `Array` types (element-only, no length info).
  *   - Function values, `Unknown`, type vars.
+ *
+ * Exported so the C6a closure-capture reconstruction path in `infer.ts`
+ * can use the same machinery to build let-binding values for captures.
  */
-function literalTypeToAstNode(t: Type): AstNode | null {
+export function literalTypeToAstNode(t: Type): AstNode | null {
   if (t.tag === 'Literal') {
     const value = t.value
     if (typeof value === 'number') return [NodeTypes.Num, value, 0] as unknown as AstNode
@@ -194,29 +197,75 @@ export function tryFoldBuiltinCall(
 }
 
 /**
- * Attempt to fold a Call to a user-defined function (C6).
+ * Recursively collect all symbol references (`NodeTypes.Sym`) reachable
+ * from an AST subtree. Used by C6a to enumerate potential closure
+ * captures; the caller then decides which of those references correspond
+ * to outer let-bindings (versus params, builtins, or local lets).
+ *
+ * Implementation note: a universal walker that descends into every array
+ * / object value in the payload. The AST's uniformly `[type, payload, id]`
+ * shape means we can recognise Sym nodes by their first element.
+ */
+export function collectSymRefs(ast: AstNode): Set<string> {
+  const refs = new Set<string>()
+  walkForSymRefs(ast, refs)
+  return refs
+}
+
+function walkForSymRefs(value: unknown, into: Set<string>): void {
+  if (!Array.isArray(value)) return
+  // Node shape: [type, payload, nodeId]. Any Sym ref has `type === 'Sym'`
+  // and a string payload.
+  if (value[0] === NodeTypes.Sym && typeof value[1] === 'string') {
+    into.add(value[1])
+    return
+  }
+  // Recurse into payload. For node-like values the payload is at index 1;
+  // for inner arrays (e.g. params, body-statement lists) every element
+  // is itself a node.
+  for (const child of value) {
+    if (Array.isArray(child)) walkForSymRefs(child, into)
+    else if (child && typeof child === 'object') {
+      for (const v of Object.values(child)) walkForSymRefs(v, into)
+    }
+  }
+}
+
+/**
+ * Attempt to fold a Call to a user-defined function (C6 + C6a).
  *
  * @param functionAst  The Function-node AST that the caller's binding
  *                     resolves to (captured via `env.bindFunctionAst`).
  * @param argTypes     The inferred types of each argument.
+ * @param captures     Map of free-variable name → reconstructed value AST.
+ *                     The caller (inferExpr) walks the function body for
+ *                     symbol references, resolves each through the outer
+ *                     TypeEnv, and converts literal-typed ones via
+ *                     `literalTypeToAstNode`. Capture entries become
+ *                     `let name = <valueAst>` bindings wrapped around the
+ *                     synthesized Call, so the sandbox can resolve them.
  * @returns Same contract as `tryFoldBuiltinCall`.
  *
- * How it works: we synthesize a Call whose callee is the function AST
- * itself (not a Sym lookup), so the sandbox evaluates the function
- * literal and immediately applies it to the reconstructed literal args.
- * Free variables in the body that aren't builtins will fail lookup in
- * the empty fresh ContextStack — the evaluator raises a `DvalaError`,
- * the sandbox intercepts that as `@dvala.error`, and we return
- * `{ effectName: 'dvala.error' }`. Callers treat that as a warning (a
- * conservative signal that the function references something the
- * typechecker can't reconstruct, not a true runtime failure).
+ * How it works: we build a Block AST `do let c1 = v1; … let cN = vN; (<fn>)(<args>) end`,
+ * evaluate through the sandbox, and lift the result back to a type.
+ * Function-parameter shadowing works naturally — when a capture name
+ * matches a function param, the param wins inside the body.
  *
- * Out of scope for v1: closure-capture reconstruction for functions
- * that close over top-level let-bindings. Those currently bail.
+ * When `captures` is empty (e.g. the function is closure-free), the
+ * Block wrapping is skipped and we use the raw Call.
+ *
+ * Free variables the caller *didn't* include in `captures` are assumed
+ * to be builtins (resolved globally by the sandbox's context stack) or
+ * locally bound inside the function body. If either assumption fails —
+ * typically because a capture wasn't reconstructible and the caller
+ * passed a partial map — the sandbox raises ReferenceError, which
+ * `evaluateNodeForFold` surfaces as `reason: 'error'` (silent fallback),
+ * not as a warning.
  */
 export function tryFoldUserFunctionCall(
   functionAst: AstNode,
   argTypes: Type[],
+  captures: Map<string, AstNode>,
 ): FoldOutcome | null {
   if (functionAst[0] !== NodeTypes.Function) return null
 
@@ -232,5 +281,22 @@ export function tryFoldUserFunctionCall(
     0,
   ] as unknown as AstNode
 
-  return runFold(syntheticCall)
+  // Wrap in a Block with let-bindings for each capture. Without captures,
+  // skip the Block to avoid extra evaluator steps.
+  let rootNode: AstNode = syntheticCall
+  if (captures.size > 0) {
+    const statements: AstNode[] = []
+    for (const [name, valueAst] of captures) {
+      // BindingTarget: ['symbol', [SymbolNode, default?], nodeId]
+      const symbolNode: AstNode = [NodeTypes.Sym, name, 0] as unknown as AstNode
+      const symbolBinding: AstNode = ['symbol', [symbolNode, undefined], 0] as unknown as AstNode
+      // Let node: [Let, [BindingTarget, valueNode], nodeId]
+      const letNode: AstNode = [NodeTypes.Let, [symbolBinding, valueAst], 0] as unknown as AstNode
+      statements.push(letNode)
+    }
+    statements.push(syntheticCall)
+    rootNode = [NodeTypes.Block, statements, 0] as unknown as AstNode
+  }
+
+  return runFold(rootNode)
 }

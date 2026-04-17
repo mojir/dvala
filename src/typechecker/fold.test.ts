@@ -281,17 +281,51 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
       expect(t).toBe('[1, "two"]')
     })
 
-    it('silently bails (no warning) when user function captures an outer binding', async () => {
+    it('folds a user function that captures a literal outer binding (C6a)', async () => {
       stubFoldOn()
-      const { createDvala } = await import('../createDvala')
-      const dvala = createDvala()
-      // `addBase` captures `base` from the outer scope. The fold sandbox
-      // runs the function in an empty ContextStack, fails to resolve
-      // `base`, and bails with reason:'error' — no spurious warning.
-      const result = dvala.typecheck(`
+      // `addBase` captures `base`. C6a reconstructs the capture from the
+      // outer TypeEnv and seeds the fold sandbox, so the call resolves
+      // through to a literal.
+      const t = await inferLastTypeString(`
         let base = 10;
         let addBase = (x) -> x + base;
         addBase(5)
+      `)
+      expect(t).toBe('15')
+    })
+
+    it('folds through multiple captures (C6a)', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString(`
+        let scale = 3;
+        let offset = 1;
+        let transform = (x) -> x * scale + offset;
+        transform(4)
+      `)
+      expect(t).toBe('13')
+    })
+
+    it('captures a composite-typed binding (C6a + C2/C3)', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString(`
+        let origin = [0, 0];
+        let translate = (dx, dy) -> [nth(origin, 0) + dx, nth(origin, 1) + dy];
+        translate(3, 4)
+      `)
+      expect(t).toBe('[3, 4]')
+    })
+
+    it('silently bails when a capture is not reconstructible (no warning)', async () => {
+      stubFoldOn()
+      const { createDvala } = await import('../createDvala')
+      const dvala = createDvala()
+      // `randomBase` has a non-literal type (Number), so fold can't
+      // reconstruct it. The fold bails silently — no spurious warning.
+      const result = dvala.typecheck(`
+        let randomBase = (n) -> n + 1;
+        let current = randomBase(41);
+        let addBase = (x) -> x + current;
+        (v: Number) -> addBase(v)
       `)
       expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
       expect(result.diagnostics.filter(d => d.severity === 'warning')).toHaveLength(0)

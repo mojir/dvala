@@ -23,7 +23,7 @@ import {
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
-import { tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
+import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
 import { FOLD_ENABLED } from './foldToggle'
 import { parseTypeAnnotation } from './parseType'
 import { getEffectDeclaration } from './effectTypes'
@@ -952,7 +952,31 @@ export function inferExpr(
           if (!foldOutcome && calleeNode[0] === NodeTypes.Sym) {
             const functionAst = env.lookupFunctionAst(calleeNode[1] as string)
             if (functionAst) {
-              foldOutcome = tryFoldUserFunctionCall(functionAst, argTypes)
+              // C6a: reconstruct literal-typed closure captures so the
+              // fold sandbox can resolve free vars. For each symbol
+              // reference in the function body that resolves through the
+              // outer TypeEnv, expand the type and convert to a literal
+              // AST. If any capture's type isn't reconstructible, bail
+              // silently — the function may still be called at runtime.
+              // References that don't resolve in the TypeEnv are assumed
+              // to be builtins (resolved globally by the sandbox) or
+              // locally bound inside the function body.
+              const captures = new Map<string, AstNode>()
+              let capturesReconstructible = true
+              for (const name of collectSymRefs(functionAst)) {
+                const captureType = env.lookup(name)
+                if (!captureType) continue
+                const expanded = expandType(captureType)
+                const valueAst = literalTypeToAstNode(expanded)
+                if (!valueAst) {
+                  capturesReconstructible = false
+                  break
+                }
+                captures.set(name, valueAst)
+              }
+              if (capturesReconstructible) {
+                foldOutcome = tryFoldUserFunctionCall(functionAst, argTypes, captures)
+              }
             }
           }
           if (foldOutcome?.type) {
