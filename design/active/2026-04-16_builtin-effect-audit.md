@@ -501,7 +501,7 @@ Concise details:
 **Summary:** 20/20 modules audited. Roughly 340+ additional builtins classified across modules. Every TS-impl is pure. Three declaration issues found (all non-blocking):
 
 1. **`effectHandler.chooseRandom`** — declared pure, actually performs `@dvala.random.item`. Fix requires effect-polymorphic handler types (type-system Phase C).
-2. **`test.test` / `test.describe` / `test.skip`** — declared pure, actually mutate a shared `TestCollector`. Should carry a `@test.register` (or similar) effect declaration. Must be addressed before fold is enabled for test-file typecheck.
+2. ~~**`test.test` / `test.describe` / `test.skip`** — declared pure, actually mutate a shared `TestCollector`. Should carry a `@test.register` (or similar) effect declaration. Must be addressed before fold is enabled for test-file typecheck.~~ **Fixed** (commit after C9 landed): all three now declare `@{test.register}` in their `type` field. Fold's single effect-set gate now bails on these builtins, so test-file typecheck won't fold-execute `test(...)` / `describe(...)` against the live `TestCollector`.
 3. **`time/` module** — missing type annotations entirely on `epochToIsoDate`, `isoDateToEpoch`. Both are pure-deterministic-by-input; just add annotations.
 
 **All three issues are non-critical for folding correctness** because the fold sandbox catches runtime effects regardless of declared signature. They are **correctness-of-declaration issues** that will improve IDE experience and enable sharper inference.
