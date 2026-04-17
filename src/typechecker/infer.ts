@@ -695,13 +695,24 @@ export function inferExpr(
         const [cond, thenNode, elseNode] = payload as [AstNode, AstNode, AstNode | undefined]
         const condType = inferExpr(cond, ctx, env, typeMap)
         constrain(ctx, condType, BooleanType)
+        // Always infer both branches so type errors in dead code still
+        // surface (design doc §If narrowing). With fold enabled and the
+        // condition reducing to a literal boolean, narrow the result to
+        // the live branch only — decision #8 / C8 of the folding design.
         const thenType = inferExpr(thenNode, ctx, env, typeMap)
-        if (elseNode) {
-          const elseType = inferExpr(elseNode, ctx, env, typeMap)
-          result = union(thenType, elseType)
-        } else {
-          result = union(thenType, NullType)
+        const elseType = elseNode ? inferExpr(elseNode, ctx, env, typeMap) : NullType
+        if (FOLD_ENABLED) {
+          const expandedCond = expandType(condType)
+          if (expandedCond.tag === 'Literal' && expandedCond.value === true) {
+            result = thenType
+            break
+          }
+          if (expandedCond.tag === 'Literal' && expandedCond.value === false) {
+            result = elseType
+            break
+          }
         }
+        result = union(thenType, elseType)
         break
       }
 
@@ -1006,8 +1017,38 @@ export function inferExpr(
       case NodeTypes.And:
       case NodeTypes.Or: {
         const operands = payload as AstNode[]
-        // Both operands contribute to the result type
         const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
+        // C7 / decision #9: narrow on literal-boolean operands. For &&,
+        // a literal(false) short-circuits to literal(false); for ||, a
+        // literal(true) short-circuits to literal(true). If every operand
+        // is a literal boolean without a short-circuit, the result is the
+        // last operand's type. A non-literal-boolean operand bails to the
+        // union behaviour below. Restricted to literal booleans in v1;
+        // truthiness narrowing on other literal values (0, "", null) is
+        // a follow-up.
+        if (FOLD_ENABLED && types.length > 0) {
+          const shortCircuitValue = nodeType === NodeTypes.And ? false : true
+          let narrowed: Type | undefined
+          let allLiteralBool = true
+          for (let i = 0; i < types.length; i++) {
+            const expanded = expandType(types[i]!)
+            if (expanded.tag === 'Literal' && expanded.value === shortCircuitValue) {
+              narrowed = literal(shortCircuitValue)
+              break
+            }
+            if (expanded.tag === 'Literal' && typeof expanded.value === 'boolean') {
+              // Non-short-circuiting literal boolean — keep scanning.
+              if (i === types.length - 1) narrowed = types[i]
+              continue
+            }
+            allLiteralBool = false
+            break
+          }
+          if (narrowed && allLiteralBool) {
+            result = narrowed
+            break
+          }
+        }
         result = union(...types)
         break
       }

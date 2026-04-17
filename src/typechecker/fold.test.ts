@@ -108,4 +108,87 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
     const t = await inferLastTypeString('count([1, 2, 3])')
     expect(t).toBe('Number')
   })
+
+  // --- C8: if-literal narrowing ---
+  describe('if-literal narrowing (C8)', () => {
+    it('narrows to then-branch when condition folds to true', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('if 1 == 1 then "yes" else "no" end')
+      expect(t).toBe('"yes"')
+    })
+
+    it('narrows to else-branch when condition folds to false', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('if 1 == 2 then "yes" else "no" end')
+      expect(t).toBe('"no"')
+    })
+
+    it('narrows nested records — the motivating example from the design doc', async () => {
+      stubFoldOn()
+      // From design doc §Goal: the else branch is the only reachable one.
+      const t = await inferLastTypeString(
+        'if 1 == 2 then { type: "click", x: 3, y: 4 } else { type: "keydown", key: "Enter" } end',
+      )
+      expect(t).toBe('{type: "keydown", key: "Enter"}')
+    })
+
+    it('falls back to union when condition is non-literal', async () => {
+      stubFoldOn()
+      // The condition involves a parameter, so fold can't reduce it.
+      const t = await inferLastTypeString('(b) -> if b then 1 else 2 end')
+      expect(t).toContain('1 | 2')
+    })
+
+    it('widens to union when fold is off', async () => {
+      stubFoldOff()
+      const t = await inferLastTypeString('if 1 == 2 then "yes" else "no" end')
+      expect(t).toBe('"yes" | "no"')
+    })
+  })
+
+  // --- C7: && / || narrowing ---
+  describe('&& / || narrowing (C7)', () => {
+    it('short-circuits && on literal(false)', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('false && true')
+      expect(t).toBe('false')
+    })
+
+    it('passes through && when all operands are literal(true)', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('true && true')
+      expect(t).toBe('true')
+    })
+
+    it('short-circuits || on literal(true)', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('true || false')
+      expect(t).toBe('true')
+    })
+
+    it('passes through || when all operands are literal(false)', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('false || false')
+      expect(t).toBe('false')
+    })
+
+    it('narrows multi-operand && with first literal(false)', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('true && false && true')
+      expect(t).toBe('false')
+    })
+
+    it('respects fold-off default — union of booleans', async () => {
+      stubFoldOff()
+      const t = await inferLastTypeString('true && false')
+      expect(t).toBe('true | false')
+    })
+
+    it('bails to union on non-literal operands even with fold on', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('(b) -> b && true')
+      // Function type — the body returns a union.
+      expect(t).toContain('true')
+    })
+  })
 })
