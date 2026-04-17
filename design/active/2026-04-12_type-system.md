@@ -974,6 +974,61 @@ Collection functions like `filter`, `map`, `reduce` work on objects too: `filter
 
 `case [x, y]` and `case {name, age}` in match expressions should bind `x`, `y`, `name`, `age` as typed variables in the body. Currently only `case n when isNumber(n)` (guard-based) narrowing works.
 
+### Flow-sensitive narrowing in `if`/`else`
+
+Today, type-guard narrowing (decision #20) only fires inside `match` guards. The typing rule for `if` is `return = union of a and b` (see the construct-to-operation table) with no refinement of the condition expression in either branch:
+
+```dvala
+let describe = (x) -> if isString(x) then count(x) else x + 1 end
+describe("hi")
+// Current: the else branch constrains x + 1, so x is inferred as Number.
+//          The call site then errors: "hi" is not a subtype of Number.
+// Desired: x: String | Number, narrowed per branch; both calls check.
+```
+
+Design sketch:
+
+- Extend the inference walker for `if` so that when the condition is a call to a type-guard function `(x: T) -> x is U`, the then branch types `x` as `x_type & U` and the else branch as `x_type & !U`.
+- Chain through `&&` / `||` the same way TS does (guards compose via intersection/union of refinements).
+- Narrow on atom/literal equality too (`if x == :ok then ... else ... end` → atom refinement).
+
+No change to the core algebra — purely an inference-time refinement, reusing the existing guard machinery. Biggest day-to-day win for users coming from TS; second only to match in practical importance.
+
+### Optional record fields in type syntax
+
+Grammar only permits `?` on function params (`identifier ["?"] ":" Type`). Records have no surface syntax for optionality:
+
+```dvala
+type User = { name: String, age?: Number }
+let u: User = {name: "Alice"}                // TypeParseError when the alias is used
+```
+
+Two semantic options:
+
+1. **Sugar over union with missing field**: `age?: Number` ≡ the field may be absent, and when present is `Number`. Needs a notion of "field present/absent" distinct from `age: Number | Null`.
+2. **Sugar over nullable**: `age?: Number` ≡ `age: Number | Null`. Simpler, but conflates "absent key" with "present and null" — at odds with closed-record precision.
+
+Option 1 is the right long-term answer (matches TS and avoids widening access to `Number | Null` unnecessarily) but requires a new record-field presence bit in the type. Option 2 is a two-line parser change if we want the ergonomics quickly.
+
+### Indexed-access types and `keyof`
+
+`obj[key]` currently widens: the typechecker cannot express "the type of the field named by this key". Example:
+
+```dvala
+let pick = (obj, key) -> obj[key]
+let r = pick({a: 1, b: "hi"}, "b")
+r + 1
+// Current: passes typecheck, fails at runtime.
+// TS:      <T, K extends keyof T>(obj: T, key: K) => T[K] — caught statically.
+```
+
+Needed primitives:
+
+- `keyof T` — a type denoting the union of literal-string keys of a record type. Fits set-theoretic directly: `keyof {a: Number, b: String}` = `"a" | "b"`.
+- `T[K]` indexed access — when `K` is a singleton key type, resolve to the field type; when `K` is a union, resolve to the union of field types.
+
+This pairs with literal types (already in Phase A) and unlocks typed `pick`, `get`, record-walking library functions. No core-algebra change — two new `Type` tags (`Keyof` and `Index`) that simplify away once the record is concrete.
+
 ### Template string types
 
 Types describing string shape: `` `Hello ${String}` ``. A new type constructor:
