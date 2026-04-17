@@ -349,4 +349,47 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
       expect(t).toBe('Number')
     })
   })
+
+  // --- Per-call `fold` option (takes precedence over env default) ---
+  describe('TypecheckOptions.fold — per-call override', () => {
+    it('fold:true folds even when env default is off', async () => {
+      stubFoldOff()
+      const { createDvala } = await import('../createDvala')
+      const { expandType } = await import('./infer')
+      const { simplify } = await import('./simplify')
+      const { typeToString } = await import('./types')
+      const dvala = createDvala()
+      const result = dvala.typecheck('2 + 3', { fold: true })
+      const lastIndex = Math.max(...result.typeMap.keys())
+      const t = typeToString(simplify(expandType(result.typeMap.get(lastIndex)!)))
+      expect(t).toBe('5')
+    })
+
+    it('fold:false suppresses folding even when env default is on', async () => {
+      stubFoldOn()
+      const { createDvala } = await import('../createDvala')
+      const { expandType } = await import('./infer')
+      const { simplify } = await import('./simplify')
+      const { typeToString } = await import('./types')
+      const dvala = createDvala()
+      const result = dvala.typecheck('2 + 3', { fold: false })
+      const lastIndex = Math.max(...result.typeMap.keys())
+      const t = typeToString(simplify(expandType(result.typeMap.get(lastIndex)!)))
+      expect(t).toBe('Number')
+    })
+
+    it('undefined option falls back to env default', async () => {
+      stubFoldOn()
+      const { createDvala } = await import('../createDvala')
+      const { expandType } = await import('./infer')
+      const { simplify } = await import('./simplify')
+      const { typeToString } = await import('./types')
+      const dvala = createDvala()
+      // No `fold` key — env default (on) applies.
+      const result = dvala.typecheck('2 + 3')
+      const lastIndex = Math.max(...result.typeMap.keys())
+      const t = typeToString(simplify(expandType(result.typeMap.get(lastIndex)!)))
+      expect(t).toBe('5')
+    })
+  })
 })

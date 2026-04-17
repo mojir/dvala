@@ -91,6 +91,12 @@ export class InferenceContext {
   typeAnnotations = new Map<number, string>()
   /** Resolves file imports for cross-file type checking. */
   resolveFileType?: (importPath: string) => Type
+  /**
+   * Whether constant folding runs during this inference pass. Defaults to
+   * the `FOLD_ENABLED` env-var value; callers (typecheck entry points)
+   * may override via the `fold` option on TypecheckOptions.
+   */
+  foldEnabled: boolean = FOLD_ENABLED
   /** Stack of effect sets — each function body pushes a new set. */
   private effectStack: EffectSet[] = [{ effects: new Set(), open: false }]
   /** Stack of active handler clause resume contexts. */
@@ -723,7 +729,7 @@ export function inferExpr(
         // the live branch only — decision #8 / C8 of the folding design.
         const thenType = inferExpr(thenNode, ctx, env, typeMap)
         const elseType = elseNode ? inferExpr(elseNode, ctx, env, typeMap) : NullType
-        if (FOLD_ENABLED) {
+        if (ctx.foldEnabled) {
           const expandedCond = expandType(condType)
           if (expandedCond.tag === 'Literal' && expandedCond.value === true) {
             result = thenType
@@ -945,7 +951,7 @@ export function inferExpr(
         // division-by-zero the compiler can prove) become severity:'warning'
         // diagnostics — decision #2 of the folding design. See
         // design/active/2026-04-16_constant-folding-in-types.md.
-        if (FOLD_ENABLED
+        if (ctx.foldEnabled
           && functionAlternatives.length > 0
           && functionAlternatives.every(alt => alt.effects.effects.size === 0 && !alt.effects.open)) {
           let foldOutcome = tryFoldBuiltinCall(calleeNode, argTypes)
@@ -1097,7 +1103,7 @@ export function inferExpr(
         // union behaviour below. Restricted to literal booleans in v1;
         // truthiness narrowing on other literal values (0, "", null) is
         // a follow-up.
-        if (FOLD_ENABLED && types.length > 0) {
+        if (ctx.foldEnabled && types.length > 0) {
           const shortCircuitValue = nodeType === NodeTypes.And ? false : true
           let narrowed: Type | undefined
           let allLiteralBool = true
@@ -1189,7 +1195,7 @@ export function inferExpr(
             // the pattern shape is still unhandled, so exhaustiveness
             // correctly fires if no other case covers it. Symmetric to the
             // existing redundant-pattern warning (decision #6).
-            if (FOLD_ENABLED) {
+            if (ctx.foldEnabled) {
               const expandedGuard = expandType(guardType)
               if (expandedGuard.tag === 'Literal' && expandedGuard.value === false) {
                 ctx.deferError(new TypeInferenceError(
