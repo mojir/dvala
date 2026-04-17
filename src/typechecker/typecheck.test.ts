@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '../allModules'
-import { createDvala } from '../createDvala'
+import { createDvala as createDvalaRaw } from '../createDvala'
 import { parseToAst } from '../parser'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
@@ -10,6 +10,30 @@ import { simplify } from './simplify'
 import type { TypeDiagnostic } from './typecheck'
 import { typecheckExpr } from './typecheck'
 import { typeToString } from './types'
+
+/**
+ * Rewrite literal-if fixture conditions to an effectful opaque so C8
+ * (if-literal narrowing) doesn't reduce union-construction fixtures to one
+ * branch under DVALA_FOLD=1. Declares `@__fold_opaque` inline so each
+ * typecheck pass (which resets user effects) sees it fresh.
+ */
+function fixtureWithOpaqueIfCond(source: string): string {
+  if (!/if (true|false)\b/.test(source)) return source
+  const rewritten = source
+    .replace(/if true\b/g, 'if perform(@__fold_opaque, null)')
+    .replace(/if false\b/g, 'if perform(@__fold_opaque, null)')
+  return `effect @__fold_opaque(Null) -> Boolean; ${rewritten}`
+}
+
+/** Test-local `createDvala` that auto-applies `fixtureWithOpaqueIfCond`. */
+function createDvala(options?: Parameters<typeof createDvalaRaw>[0]) {
+  const d = createDvalaRaw(options)
+  const origTypecheck = d.typecheck.bind(d)
+  return Object.assign(d, {
+    typecheck: (source: string, opts?: { fileResolverBaseDir?: string; filePath?: string }) =>
+      origTypecheck(fixtureWithOpaqueIfCond(source), opts),
+  })
+}
 
 // ---------------------------------------------------------------------------
 // End-to-end: typecheck() method on DvalaRunner
