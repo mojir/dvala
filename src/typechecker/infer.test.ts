@@ -373,14 +373,19 @@ describe('inference — functions', () => {
 // ---------------------------------------------------------------------------
 
 describe('inference — if expressions', () => {
-  it('if true then 42 else "hello" end → Number | String', () => {
+  // These tests cover the "both branches contribute to the result type"
+  // invariant of `if`. Under the default (fold on) C8 would narrow
+  // `if true` to its live branch, so `inferAndExpand` routes through
+  // `fixtureWithOpaqueIfCond` — the literal cond is rewritten to an
+  // opaque effectful boolean. The C8 literal-narrowing path is covered
+  // separately in src/typechecker/fold.test.ts.
+  it('if-cond with two distinct-typed branches → union of both', () => {
     const t = inferAndExpand('if true then 42 else "hello" end')
-    // Result is a union of the two branches
     expect(isSubtype(literal(42), t)).toBe(true)
     expect(isSubtype(literal('hello'), t)).toBe(true)
   })
 
-  it('if true then 42 else 43 end → both are numbers', () => {
+  it('if-cond with two number branches → subtype of Number', () => {
     const t = inferAndExpand('if true then 42 else 43 end')
     expect(isSubtype(t, NumberType)).toBe(true)
   })

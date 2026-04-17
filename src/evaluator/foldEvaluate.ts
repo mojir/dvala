@@ -18,7 +18,7 @@ import type { AstNode } from '../parser/types'
 import type { Any } from '../interface'
 import type { ContextStack } from './ContextStack'
 import type { Step } from './step'
-import { DvalaError, ReferenceError } from '../errors'
+import { DvalaError, MacroError, ReferenceError } from '../errors'
 import { tick } from './trampoline-evaluator'
 
 export type FoldResult =
@@ -62,12 +62,13 @@ export function evaluateNodeForFold(
     try {
       step = tick(step)
     } catch (error) {
-      // ReferenceError inside a fold means a free variable the fold
-      // sandbox can't resolve (typically a closure capture the caller
-      // didn't reconstruct). That's a "fold doesn't apply here" signal,
-      // not a "your code is broken at runtime" signal — return silent
-      // fallback so the caller doesn't emit a spurious warning.
-      if (error instanceof ReferenceError) {
+      // ReferenceError means a free variable the fold sandbox couldn't
+      // resolve (typically a closure capture the caller didn't
+      // reconstruct); MacroError means macro expansion failed in the
+      // sandbox context. Both are "fold doesn't apply here" signals, not
+      // "your code is broken at runtime" signals — return silent fallback
+      // so the caller doesn't emit a spurious warning.
+      if (error instanceof ReferenceError || error instanceof MacroError) {
         return { ok: false, reason: 'error' }
       }
       // Other unhandled DvalaErrors (division-by-zero,

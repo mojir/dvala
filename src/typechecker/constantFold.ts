@@ -197,38 +197,125 @@ export function tryFoldBuiltinCall(
 }
 
 /**
- * Recursively collect all symbol references (`NodeTypes.Sym`) reachable
- * from an AST subtree. Used by C6a to enumerate potential closure
- * captures; the caller then decides which of those references correspond
- * to outer let-bindings (versus params, builtins, or local lets).
+ * Recursively collect free symbol references (`NodeTypes.Sym`) reachable
+ * from an AST subtree — i.e. references that are NOT bound by a
+ * containing parameter or `let` within the same AST. Used by C6a to
+ * enumerate closure-capture candidates.
  *
- * Implementation note: a universal walker that descends into every array
- * / object value in the payload. The AST's uniformly `[type, payload, id]`
- * shape means we can recognise Sym nodes by their first element.
+ * Why filter locals out: if the function body shadows an outer name via
+ * `let x = …`, including `x` in the capture set would make
+ * `infer.ts`'s capture loop query the outer type — and if that type
+ * happens to be non-literal, the whole fold bails. The body wouldn't
+ * actually use the outer value (the inner `let` shadows it), so
+ * dropping the reference keeps more programs foldable without loss of
+ * correctness. Same reasoning applies to function parameters and to
+ * names bound by enclosing `let`s inside the function body.
+ *
+ * Implementation note: a single-pass walker that tracks a running set
+ * of locally-bound names. Descends into `Let` bindings and `Function`
+ * nodes with the appropriate scope introduction. The AST's uniformly
+ * `[type, payload, id]` shape lets us recognise Sym nodes by their
+ * first element.
  */
 export function collectSymRefs(ast: AstNode): Set<string> {
   const refs = new Set<string>()
-  walkForSymRefs(ast, refs)
+  walkForFreeSymRefs(ast, new Set<string>(), refs)
   return refs
 }
 
-function walkForSymRefs(value: unknown, into: Set<string>): void {
+function walkForFreeSymRefs(value: unknown, bound: Set<string>, into: Set<string>): void {
   if (!Array.isArray(value)) return
-  // Node shape: [type, payload, nodeId]. Any Sym ref has `type === 'Sym'`
-  // and a string payload.
+  // Sym reference — record if not shadowed by a local binding.
   if (value[0] === NodeTypes.Sym && typeof value[1] === 'string') {
-    into.add(value[1])
+    if (!bound.has(value[1])) into.add(value[1])
     return
   }
-  // Recurse into payload. For node-like values the payload is at index 1;
-  // for inner arrays (e.g. params, body-statement lists) every element
-  // is itself a node.
+  // Function node introduces parameter bindings for its body. The params
+  // appear in payload[0] (as BindingTarget[]) and the body in payload[1]
+  // as a sequence of statements (the `do ... end` form flattens into
+  // this array directly rather than nesting a Block node). Statements
+  // are evaluated in order, so names from earlier `let`s are in scope
+  // for later statements.
+  if (value[0] === NodeTypes.Function && Array.isArray(value[1])) {
+    const [params, body] = value[1] as [unknown, unknown]
+    const nestedBound = new Set(bound)
+    collectBindingTargetNames(params, nestedBound)
+    if (Array.isArray(body)) {
+      for (const stmt of body) {
+        walkForFreeSymRefs(stmt, nestedBound, into)
+        if (Array.isArray(stmt) && stmt[0] === NodeTypes.Let && Array.isArray(stmt[1])) {
+          const [target] = stmt[1] as [unknown, unknown]
+          collectBindingTargetNames(target, nestedBound)
+        }
+      }
+    }
+    return
+  }
+  // Let binding — its target introduces a name visible to subsequent
+  // statements. We don't have access to sibling statements from here
+  // (that's the enclosing walker's job); just descend into the value
+  // expression. The enclosing Block/body walker extends `bound` before
+  // recursing into later statements.
+  if (value[0] === NodeTypes.Let && Array.isArray(value[1])) {
+    const [, valueNode] = value[1] as [unknown, unknown]
+    if (Array.isArray(valueNode)) walkForFreeSymRefs(valueNode, bound, into)
+    return
+  }
+  // Block node evaluates statements in order; extend `bound` as we
+  // cross each `Let`.
+  if (value[0] === NodeTypes.Block && Array.isArray(value[1])) {
+    const nestedBound = new Set(bound)
+    for (const stmt of value[1] as unknown[]) {
+      walkForFreeSymRefs(stmt, nestedBound, into)
+      if (Array.isArray(stmt) && stmt[0] === NodeTypes.Let && Array.isArray(stmt[1])) {
+        const [target] = stmt[1] as [unknown, unknown]
+        collectBindingTargetNames(target, nestedBound)
+      }
+    }
+    return
+  }
+  // Generic recursion for every other node kind.
   for (const child of value) {
-    if (Array.isArray(child)) walkForSymRefs(child, into)
+    if (Array.isArray(child)) walkForFreeSymRefs(child, bound, into)
     else if (child && typeof child === 'object') {
-      for (const v of Object.values(child)) walkForSymRefs(v, into)
+      for (const v of Object.values(child)) walkForFreeSymRefs(v, bound, into)
     }
   }
+}
+
+/** Extract names bound by a BindingTarget (or array thereof), mutating `into`. */
+function collectBindingTargetNames(target: unknown, into: Set<string>): void {
+  if (!Array.isArray(target)) return
+  // Array of targets (e.g. function params).
+  if (target.length > 0 && !(typeof target[0] === 'string')) {
+    for (const t of target) collectBindingTargetNames(t, into)
+    return
+  }
+  // Single BindingTarget: [kind, payload, nodeId].
+  const [kind, payload] = target
+  if (kind === 'symbol' && Array.isArray(payload)) {
+    // payload = [SymbolNode, default?]
+    const symNode = payload[0]
+    if (Array.isArray(symNode) && typeof symNode[1] === 'string') {
+      into.add(symNode[1])
+    }
+  } else if (kind === 'rest' && Array.isArray(payload)) {
+    // payload = [name, default?]
+    if (typeof payload[0] === 'string') into.add(payload[0])
+  } else if (kind === 'object' && Array.isArray(payload)) {
+    // payload = [fieldsObj, default?]
+    const fieldsObj = payload[0]
+    if (fieldsObj && typeof fieldsObj === 'object') {
+      for (const t of Object.values(fieldsObj)) collectBindingTargetNames(t, into)
+    }
+  } else if (kind === 'array' && Array.isArray(payload)) {
+    // payload = [items, default?]
+    const items = payload[0]
+    if (Array.isArray(items)) {
+      for (const t of items) if (t !== null) collectBindingTargetNames(t, into)
+    }
+  }
+  // `literal` and `wildcard` bind no names.
 }
 
 /**

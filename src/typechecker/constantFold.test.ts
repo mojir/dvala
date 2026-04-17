@@ -142,3 +142,93 @@ describe('tryFoldBuiltinCall', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// collectSymRefs — scope-aware free-variable collection
+// ---------------------------------------------------------------------------
+
+import { collectSymRefs } from './constantFold'
+import { parse } from '../parser'
+import { tokenize } from '../tokenizer/tokenize'
+import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
+
+/**
+ * Helper: parse a Dvala source string, pull out the first Function node
+ * found (directly at top level, or as the value of a `let` binding), and
+ * hand to `collectSymRefs`.
+ */
+function collectSymRefsFromFunction(source: string): Set<string> {
+  const ast = parse(
+    minifyTokenStream(tokenize(source, false, undefined), { removeWhiteSpace: true }),
+  )
+  for (const node of ast) {
+    if (!Array.isArray(node)) continue
+    if (node[0] === 'Let' && Array.isArray(node[1])) {
+      const valueNode = (node[1] as unknown[])[1]
+      if (Array.isArray(valueNode) && valueNode[0] === 'Function') {
+        return collectSymRefs(valueNode as AstNode)
+      }
+    }
+    if (node[0] === 'Function') {
+      return collectSymRefs(node as AstNode)
+    }
+  }
+  throw new Error(`No Function node found in: ${source}`)
+}
+
+describe('collectSymRefs — free variable collection', () => {
+  it('excludes function parameters', () => {
+    // `x` is a param → not free; `+` is Builtin (not Sym) → not collected.
+    const refs = collectSymRefsFromFunction('let f = (x) -> x + 1; f')
+    expect(refs.has('x')).toBe(false)
+  })
+
+  it('includes free outer references', () => {
+    const refs = collectSymRefsFromFunction('let f = (x) -> x + base; f')
+    expect(refs.has('base')).toBe(true)
+    expect(refs.has('x')).toBe(false)
+  })
+
+  it('excludes names bound by let inside the body', () => {
+    // `y` is locally bound via `let y = x + 1` — not free.
+    // Only `base` should be collected as free.
+    const refs = collectSymRefsFromFunction(
+      'let f = (x) -> do let y = x + 1; y + base end; f',
+    )
+    expect(refs.has('y')).toBe(false)
+    expect(refs.has('base')).toBe(true)
+    expect(refs.has('x')).toBe(false)
+  })
+
+  it('excludes names shadowed by an inner let even when referenced before the let', () => {
+    // `y` shadowed by the let (in Dvala the let extends for the rest of
+    // the block). Uses of y in the let's rhs refer to the outer scope;
+    // since there is no outer `y` in this expression, this is a free
+    // reference — but uses AFTER the let are local.
+    const refs = collectSymRefsFromFunction(
+      'let f = () -> do let y = 1; y + 2 end; f',
+    )
+    // `y` is bound via the let by the time `y + 2` runs.
+    expect(refs.has('y')).toBe(false)
+  })
+
+  it('does not leak inner function params to the outer scope', () => {
+    // The inner `(y) -> y + 1` binds `y` within that function, not in
+    // the outer function's body.
+    const refs = collectSymRefsFromFunction(
+      'let outer = (x) -> do let inner = (y) -> y + 1; inner(x) end; outer',
+    )
+    expect(refs.has('y')).toBe(false)
+    expect(refs.has('x')).toBe(false)
+    expect(refs.has('inner')).toBe(false)
+  })
+
+  it('treats destructuring params as bound', () => {
+    const refs = collectSymRefsFromFunction(
+      'let f = ({ a, b }) -> a + b + outerThing; f',
+    )
+    expect(refs.has('a')).toBe(false)
+    expect(refs.has('b')).toBe(false)
+    expect(refs.has('outerThing')).toBe(true)
+  })
+})
