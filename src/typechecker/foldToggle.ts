@@ -19,4 +19,6 @@
  * before importing the typechecker, or use the `fold` option on
  * `TypecheckOptions` for per-call control.
  */
-export const FOLD_ENABLED: boolean = process.env.DVALA_FOLD !== '0'
+export const FOLD_ENABLED: boolean = typeof process === 'undefined'
+	|| !process.env
+	|| process.env.DVALA_FOLD !== '0'
