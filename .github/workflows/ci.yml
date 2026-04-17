@@ -11,8 +11,18 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Run the full check pipeline under both DVALA_FOLD=0 (env default, fold
+    # disabled) and DVALA_FOLD=1 (fold enabled). Both must pass identically —
+    # any test that behaves differently under the two settings is either a
+    # bug in folding or a test that implicitly depends on non-folded
+    # behaviour (decision #13 + Phase B design doc).
+    strategy:
+      matrix:
+        fold: ['0', '1']
+      fail-fast: false
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      DVALA_FOLD: ${{ matrix.fold }}
     steps:
       - uses: actions/checkout@v5
 
