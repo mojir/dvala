@@ -18,7 +18,7 @@ import type { AstNode } from '../parser/types'
 import type { Any } from '../interface'
 import type { ContextStack } from './ContextStack'
 import type { Step } from './step'
-import { DvalaError } from '../errors'
+import { DvalaError, ReferenceError } from '../errors'
 import { tick } from './trampoline-evaluator'
 
 export type FoldResult =
@@ -62,9 +62,18 @@ export function evaluateNodeForFold(
     try {
       step = tick(step)
     } catch (error) {
-      // An unhandled DvalaError (e.g. division-by-zero, index-out-of-range)
-      // corresponds to a `@dvala.error` effect that no `try/with` handler
-      // intercepted. Report it so the caller can emit a warning.
+      // ReferenceError inside a fold means a free variable the fold
+      // sandbox can't resolve (typically a closure capture the caller
+      // didn't reconstruct). That's a "fold doesn't apply here" signal,
+      // not a "your code is broken at runtime" signal — return silent
+      // fallback so the caller doesn't emit a spurious warning.
+      if (error instanceof ReferenceError) {
+        return { ok: false, reason: 'error' }
+      }
+      // Other unhandled DvalaErrors (division-by-zero,
+      // index-out-of-range, assertion failure) correspond to a
+      // `@dvala.error` effect that no `try/with` handler intercepted.
+      // Report it so the caller can emit a warning.
       if (error instanceof DvalaError) {
         return { ok: false, reason: 'effect', effectName: 'dvala.error' }
       }

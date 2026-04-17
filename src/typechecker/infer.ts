@@ -23,7 +23,7 @@ import {
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
-import { tryFoldBuiltinCall } from './constantFold'
+import { tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
 import { FOLD_ENABLED } from './foldToggle'
 import { parseTypeAnnotation } from './parseType'
 import { getEffectDeclaration } from './effectTypes'
@@ -583,9 +583,17 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 export class TypeEnv {
   private bindings: Map<string, Type>
   private parent: TypeEnv | null
+  /**
+   * Side map: function-value ASTs associated with `let` bindings whose RHS
+   * is a `Function` node. Used by C6 (user-function fold) to reconstruct a
+   * Call AST whose callee is the function body directly. Captured via
+   * `bindFunctionAst` alongside the normal type binding.
+   */
+  private functionAsts: Map<string, AstNode>
 
   constructor(parent: TypeEnv | null = null) {
     this.bindings = new Map()
+    this.functionAsts = new Map()
     this.parent = parent
   }
 
@@ -594,9 +602,23 @@ export class TypeEnv {
     return this.bindings.get(name) ?? this.parent?.lookup(name)
   }
 
+  /**
+   * Look up a function AST associated with a binding. Returns the
+   * Function-node AST that was bound via `let name = (...) -> ...` or
+   * undefined if the binding isn't a direct function-literal.
+   */
+  lookupFunctionAst(name: string): AstNode | undefined {
+    return this.functionAsts.get(name) ?? this.parent?.lookupFunctionAst(name)
+  }
+
   /** Bind a variable in the current scope. */
   bind(name: string, type: Type): void {
     this.bindings.set(name, type)
+  }
+
+  /** Record that `name` was bound to a Function-node AST (C6). */
+  bindFunctionAst(name: string, ast: AstNode): void {
+    this.functionAsts.set(name, ast)
   }
 
   /** Create a child scope. */
@@ -768,6 +790,14 @@ export function inferExpr(
         bindPattern(binding, valueType, env, ctx, typeMap)
         recordConcretePatternTypes(binding, valueType, typeMap)
         recordLiteralPatternTypes(binding, valueNode, typeMap)
+        // C6: when `let name = (…) -> …`, stash the function AST so a later
+        // Call to `name` can fold through the body. Only fires for direct
+        // `symbol`-pattern bindings of `Function` nodes; destructuring and
+        // non-function RHSs are ignored.
+        if (valueNode[0] === NodeTypes.Function && (binding[0] as string) === 'symbol') {
+          const [nameNode] = binding[1] as [AstNode, AstNode | undefined]
+          env.bindFunctionAst(nameNode[1] as string, valueNode)
+        }
         result = valueType
         break
       }
@@ -897,17 +927,34 @@ export function inferExpr(
 
         result = retVar
 
-        // Constant folding: if enabled and the callee is a direct Builtin
-        // with all-primitive-literal args and an empty inferred effect set,
-        // run the call through the fold sandbox and use the result as the
-        // inferred type. Effects surfaced during fold (typically
-        // @dvala.error from partial builtins like `/` on zero) become
-        // `severity: 'warning'` diagnostics — decision #2 of the folding
-        // design. See design/active/2026-04-16_constant-folding-in-types.md.
+        // Constant folding: when the callee's effect set is empty and the
+        // args are all reconstructible literals, run the call through the
+        // fold sandbox and use the result as the inferred type. The gate
+        // is the single effect-set check — no whitelist (decision #13).
+        //
+        // Two entry points:
+        //  - `tryFoldBuiltinCall` for direct NodeTypes.Builtin callees.
+        //  - `tryFoldUserFunctionCall` for NodeTypes.Sym callees that
+        //    resolve to a user-defined function bound via
+        //    `let name = (…) -> …`. The function AST is stashed on the
+        //    TypeEnv at bind time (C6). Closure capture reconstruction is
+        //    out of scope for v1 — functions that reference outer lets
+        //    bail inside the sandbox and surface `@dvala.error`.
+        //
+        // Effects surfaced during fold (e.g. `@dvala.error` from a
+        // division-by-zero the compiler can prove) become severity:'warning'
+        // diagnostics — decision #2 of the folding design. See
+        // design/active/2026-04-16_constant-folding-in-types.md.
         if (FOLD_ENABLED
           && functionAlternatives.length > 0
           && functionAlternatives.every(alt => alt.effects.effects.size === 0 && !alt.effects.open)) {
-          const foldOutcome = tryFoldBuiltinCall(calleeNode, argTypes)
+          let foldOutcome = tryFoldBuiltinCall(calleeNode, argTypes)
+          if (!foldOutcome && calleeNode[0] === NodeTypes.Sym) {
+            const functionAst = env.lookupFunctionAst(calleeNode[1] as string)
+            if (functionAst) {
+              foldOutcome = tryFoldUserFunctionCall(functionAst, argTypes)
+            }
+          }
           if (foldOutcome?.type) {
             result = foldOutcome.type
           } else if (foldOutcome?.effectName !== undefined) {

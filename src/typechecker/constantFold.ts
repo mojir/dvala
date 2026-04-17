@@ -126,6 +126,37 @@ export interface FoldOutcome {
 }
 
 /**
+ * Build the list of arg AST nodes for a fold call, or return null if any
+ * argument isn't a reconstructible literal type.
+ */
+function reconstructArgAsts(argTypes: Type[]): AstNode[] | null {
+  const argAsts: AstNode[] = []
+  for (const argType of argTypes) {
+    const litNode = literalTypeToAstNode(argType)
+    if (!litNode) return null
+    argAsts.push(litNode)
+  }
+  return argAsts
+}
+
+/**
+ * Run a synthesized Call through the fold sandbox and translate the result
+ * into a FoldOutcome. Shared by the builtin and user-function entry points.
+ */
+function runFold(syntheticCall: AstNode): FoldOutcome | null {
+  const contextStack = createContextStack()
+  const result = evaluateNodeForFold(syntheticCall, contextStack)
+  if (result.ok) {
+    const type = valueToLiteralType(result.value)
+    return type ? { type } : null
+  }
+  if (result.reason === 'effect') {
+    return { effectName: result.effectName }
+  }
+  return null
+}
+
+/**
  * Attempt to fold a direct builtin Call with all-primitive-literal args.
  *
  * @param calleeNode   The AST node of the callee (must be a Builtin node).
@@ -144,16 +175,11 @@ export function tryFoldBuiltinCall(
 ): FoldOutcome | null {
   // Phase C v1: only direct Builtin references. Module-imported functions
   // enter by symbol lookup and arrive here as `NodeTypes.Sym` — not folded
-  // yet. User-defined functions are also `Sym`.
+  // yet. User-defined functions route through `tryFoldUserFunctionCall`.
   if (calleeNode[0] !== NodeTypes.Builtin) return null
 
-  // Every argument must be a reconstructible primitive literal.
-  const argAsts: AstNode[] = []
-  for (const argType of argTypes) {
-    const litNode = literalTypeToAstNode(argType)
-    if (!litNode) return null
-    argAsts.push(litNode)
-  }
+  const argAsts = reconstructArgAsts(argTypes)
+  if (!argAsts) return null
 
   // Synthesize a Call AST: [Call, [builtinNode, args, hints], nodeId].
   // nodeId=0 because this node is ephemeral and never surfaced.
@@ -164,18 +190,47 @@ export function tryFoldBuiltinCall(
     0,
   ] as unknown as AstNode
 
-  // Phase C v1 only folds direct Builtin calls — these don't need the
-  // module registry. A future commit that folds module-imported or
-  // user-defined functions will need to plumb a module map through here.
-  const contextStack = createContextStack()
-  const result = evaluateNodeForFold(syntheticCall, contextStack)
+  return runFold(syntheticCall)
+}
 
-  if (result.ok) {
-    const type = valueToLiteralType(result.value)
-    return type ? { type } : null
-  }
-  if (result.reason === 'effect') {
-    return { effectName: result.effectName }
-  }
-  return null
+/**
+ * Attempt to fold a Call to a user-defined function (C6).
+ *
+ * @param functionAst  The Function-node AST that the caller's binding
+ *                     resolves to (captured via `env.bindFunctionAst`).
+ * @param argTypes     The inferred types of each argument.
+ * @returns Same contract as `tryFoldBuiltinCall`.
+ *
+ * How it works: we synthesize a Call whose callee is the function AST
+ * itself (not a Sym lookup), so the sandbox evaluates the function
+ * literal and immediately applies it to the reconstructed literal args.
+ * Free variables in the body that aren't builtins will fail lookup in
+ * the empty fresh ContextStack — the evaluator raises a `DvalaError`,
+ * the sandbox intercepts that as `@dvala.error`, and we return
+ * `{ effectName: 'dvala.error' }`. Callers treat that as a warning (a
+ * conservative signal that the function references something the
+ * typechecker can't reconstruct, not a true runtime failure).
+ *
+ * Out of scope for v1: closure-capture reconstruction for functions
+ * that close over top-level let-bindings. Those currently bail.
+ */
+export function tryFoldUserFunctionCall(
+  functionAst: AstNode,
+  argTypes: Type[],
+): FoldOutcome | null {
+  if (functionAst[0] !== NodeTypes.Function) return null
+
+  const argAsts = reconstructArgAsts(argTypes)
+  if (!argAsts) return null
+
+  // Synthesize `[Call, [<FunctionAst>, args, null], 0]`. The evaluator
+  // treats the callee as a literal function expression, creates a value,
+  // and immediately applies it to the args.
+  const syntheticCall: AstNode = [
+    NodeTypes.Call,
+    [functionAst, argAsts, null],
+    0,
+  ] as unknown as AstNode
+
+  return runFold(syntheticCall)
 }

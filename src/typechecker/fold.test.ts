@@ -259,4 +259,60 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
       expect(warnings.some(w => /guard is always false/.test(w.message))).toBe(false)
     })
   })
+
+  // --- C6: user-defined function folding ---
+  describe('user-defined function folding (C6)', () => {
+    it('folds a pure user function with primitive args', async () => {
+      stubFoldOn()
+      // `double` references no outer bindings, just the builtin `+`.
+      const t = await inferLastTypeString('let double = (x) -> x + x; double(21)')
+      expect(t).toBe('42')
+    })
+
+    it('folds a multi-arg user function', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('let hypot = (a, b) -> sqrt(a * a + b * b); hypot(3, 4)')
+      expect(t).toBe('5')
+    })
+
+    it('folds a user function returning a composite', async () => {
+      stubFoldOn()
+      const t = await inferLastTypeString('let pair = (x, y) -> [x, y]; pair(1, "two")')
+      expect(t).toBe('[1, "two"]')
+    })
+
+    it('silently bails (no warning) when user function captures an outer binding', async () => {
+      stubFoldOn()
+      const { createDvala } = await import('../createDvala')
+      const dvala = createDvala()
+      // `addBase` captures `base` from the outer scope. The fold sandbox
+      // runs the function in an empty ContextStack, fails to resolve
+      // `base`, and bails with reason:'error' — no spurious warning.
+      const result = dvala.typecheck(`
+        let base = 10;
+        let addBase = (x) -> x + base;
+        addBase(5)
+      `)
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+      expect(result.diagnostics.filter(d => d.severity === 'warning')).toHaveLength(0)
+    })
+
+    it('still surfaces @dvala.error when a user function provably fails', async () => {
+      stubFoldOn()
+      const { createDvala } = await import('../createDvala')
+      const dvala = createDvala()
+      const result = dvala.typecheck(`
+        let reciprocal = (x) -> 1 / x;
+        reciprocal(0)
+      `)
+      const warnings = result.diagnostics.filter(d => d.severity === 'warning')
+      expect(warnings.some(w => /@dvala\.error/.test(w.message))).toBe(true)
+    })
+
+    it('widens to declared return type when fold is off', async () => {
+      stubFoldOff()
+      const t = await inferLastTypeString('let double = (x) -> x + x; double(21)')
+      expect(t).toBe('Number')
+    })
+  })
 })
