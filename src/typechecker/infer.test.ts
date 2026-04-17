@@ -3,10 +3,26 @@ import { parse } from '../parser'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { builtin } from '../builtin'
-import { createDvala } from '../createDvala'
+import { createDvala as createDvalaRaw } from '../createDvala'
+
+/**
+ * Test-local `createDvala` that transparently rewrites `if true`/`if false`
+ * fixture conditions to an effectful opaque (see `fixtureWithOpaqueIfCond`).
+ * This keeps the many fixture-style fake unions in this file working when
+ * DVALA_FOLD=1 is set — tests that rely on `if true then X else Y` as a way
+ * to construct a union of X and Y would otherwise see C8 narrowing to X.
+ */
+function createDvala(options?: Parameters<typeof createDvalaRaw>[0]) {
+  const d = createDvalaRaw(options)
+  const origTypecheck = d.typecheck.bind(d)
+  return Object.assign(d, {
+    typecheck: (source: string, opts?: { fileResolverBaseDir?: string; filePath?: string }) =>
+      origTypecheck(fixtureWithOpaqueIfCond(source), opts),
+  })
+}
 import type { Type } from './types'
 import {
-  NumberType, StringType, NullType,
+  NumberType, StringType, NullType, BooleanType,
   Unknown, Never,
   atom, literal, fn, record, array, tuple, sequence, union, inter, neg, handlerType,
   effectSet, typeToString,
@@ -33,6 +49,9 @@ beforeAll(() => {
   declareEffect('log', Unknown, Unknown)
   declareEffect('fetch', Unknown, Unknown)
   declareEffect('other.eff', Unknown, Unknown)
+  // Opaque effect used by `fixtureWithOpaqueIfCond` to keep `if true/false`
+  // fixture conds from narrowing under C8 when DVALA_FOLD=1.
+  declareEffect('__fold_opaque', NullType, BooleanType)
 })
 
 // ---------------------------------------------------------------------------
@@ -48,7 +67,18 @@ function parseToAst(source: string) {
 
 /** Infer the type of a Dvala expression string. */
 function inferType(source: string): Type {
-  const ast = parseToAst(source)
+  // Apply the fold-safe fixture rewrite so tests that use `if true`/`if false`
+  // as a union-construction fixture continue to work under DVALA_FOLD=1.
+  // The helper no-ops when the source doesn't contain those patterns.
+  const rewritten = fixtureWithOpaqueIfCond(source)
+  // The rewrite prepends `effect @__fold_opaque(Null) -> Boolean;` to the
+  // source. When inferring via `parseToAst` + `inferExpr`, effect
+  // declarations need to be registered out-of-band. Do it unconditionally —
+  // re-declaring an effect is a no-op idempotent operation.
+  if (rewritten !== source) {
+    declareEffect('__fold_opaque', NullType, BooleanType)
+  }
+  const ast = parseToAst(rewritten)
   const ctx = new InferenceContext()
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()
@@ -60,8 +90,38 @@ function inferType(source: string): Type {
   return result
 }
 
+/**
+ * Prepare the source so that any `if true` / `if false` patterns embedded in
+ * test fixtures don't narrow under C8 (if-literal fold). Replaces literal
+ * conds with an effectful boolean — `perform` calls carry an effect set,
+ * so the return type is the declared `Boolean` (not a narrowed literal),
+ * and the If case in `inferExpr` sees a non-Literal cond and skips C8.
+ *
+ * Simple-sub's `expandType` in positive polarity uses the lower bound of a
+ * variable, so wrappings like `(b: Boolean) -> b` applied to `true` still
+ * expose `Literal(true)` when the result is later used as an if-cond.
+ * Effect-based opaques don't have that problem — the effect declaration
+ * is the single source of truth for the return type.
+ *
+ * Tests that specifically want to assert C8 narrowing live in
+ * `src/typechecker/fold.test.ts` and don't use `inferAndExpand`.
+ */
+function fixtureWithOpaqueIfCond(source: string): string {
+  if (!/if (true|false)\b/.test(source)) return source
+  // A `perform` call carries an effect set, so the return type is the
+  // declared `Boolean`. The If case in `inferExpr` then sees a non-Literal
+  // cond and skips C8 narrowing. Declare the effect inline in the source
+  // so each `dvala.typecheck(...)` pass (which calls `resetUserEffects`)
+  // sees it fresh.
+  const rewritten = source
+    .replace(/if true\b/g, 'if perform(@__fold_opaque, null)')
+    .replace(/if false\b/g, 'if perform(@__fold_opaque, null)')
+  return `effect @__fold_opaque(Null) -> Boolean; ${rewritten}`
+}
+
 /** Infer and expand (resolve variables to concrete types). */
 function inferAndExpand(source: string): Type {
+  // `inferType` already applies the fixture rewrite.
   const result = inferType(source)
   return simplify(expandType(result))
 }
@@ -313,14 +373,19 @@ describe('inference — functions', () => {
 // ---------------------------------------------------------------------------
 
 describe('inference — if expressions', () => {
-  it('if true then 42 else "hello" end → Number | String', () => {
+  // These tests cover the "both branches contribute to the result type"
+  // invariant of `if`. Under the default (fold on) C8 would narrow
+  // `if true` to its live branch, so `inferAndExpand` routes through
+  // `fixtureWithOpaqueIfCond` — the literal cond is rewritten to an
+  // opaque effectful boolean. The C8 literal-narrowing path is covered
+  // separately in src/typechecker/fold.test.ts.
+  it('if-cond with two distinct-typed branches → union of both', () => {
     const t = inferAndExpand('if true then 42 else "hello" end')
-    // Result is a union of the two branches
     expect(isSubtype(literal(42), t)).toBe(true)
     expect(isSubtype(literal('hello'), t)).toBe(true)
   })
 
-  it('if true then 42 else 43 end → both are numbers', () => {
+  it('if-cond with two number branches → subtype of Number', () => {
     const t = inferAndExpand('if true then 42 else 43 end')
     expect(isSubtype(t, NumberType)).toBe(true)
   })
@@ -929,8 +994,12 @@ describe('inference — effect declarations and handler typing', () => {
     declareEffect('test.common', StringType, NullType)
     declareEffect('test.extra', StringType, NullType)
 
+    // `useExtra` must be a genuinely dynamic Boolean — hard-coding `true`
+    // would let C8 narrow to the then-branch under DVALA_FOLD=1 and the
+    // test loses the "dynamic choice" intent. Route through the opaque
+    // effect the fixture helper also uses.
     const t = inferAndExpand(`
-      let useExtra = true;
+      let useExtra = if true then true else false end;
       let h =
         if useExtra then
           handler
@@ -987,8 +1056,11 @@ describe('inference — effect declarations and handler typing', () => {
     declareEffect('test.callCommon', StringType, NullType)
     declareEffect('test.callExtra', StringType, NullType)
 
+    // See sibling test — `useExtra` must be genuinely dynamic Boolean under
+    // DVALA_FOLD=1. The wrapping `if true then true else false end` passes
+    // through `fixtureWithOpaqueIfCond` and widens to `true | false`.
     const t = inferAndExpand(`
-      let useExtra = true;
+      let useExtra = if true then true else false end;
       let h =
         if useExtra then
           handler
@@ -2672,7 +2744,10 @@ describe('inference — match array pattern against union of arrays', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [a, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 })
 
@@ -2773,7 +2848,10 @@ describe('inference — match array rest against union of arrays', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [first, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 
   it('array element + rest pattern against union with compatible members', () => {
@@ -2785,7 +2863,10 @@ describe('inference — match array rest against union of arrays', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [a, b, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 })
 
@@ -2973,12 +3054,17 @@ describe('inference — match narrowing edge cases', () => {
 
   it('match boolean patterns on conditional', () => {
     const dvala = createDvala()
+    // Take the value from a parameter so fold can't reduce it to true/false;
+    // the point of this test is matching the full Boolean domain.
     const result = dvala.typecheck(`
-      let b = isNumber(42);
-      match b
-        case true then 1
-        case false then 0
-      end
+      let check = (v) -> do
+        let b = isNumber(v);
+        match b
+          case true then 1
+          case false then 0
+        end;
+      end;
+      check(42)
     `)
     expect(result.diagnostics).toHaveLength(0)
   })

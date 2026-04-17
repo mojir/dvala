@@ -57,7 +57,7 @@ end;
 
 let chooseClick = isOdd(count("xy"));
 let event =
-  if chooseClick then
+  if false then
     { type: "click", x: 3, y: 4 }
   else
     { type: "keydown", key: "Enter" }

@@ -53,6 +53,15 @@ export interface TypecheckOptions {
   fileResolverBaseDir?: string
   /** Modules available to import during type checking. */
   modules?: DvalaModule[]
+  /**
+   * Enable constant folding during inference. When `true`, pure calls with
+   * all-literal arguments produce Literal types; literal-cond branches prune
+   * unreachable arms; etc. Takes precedence over the `DVALA_FOLD` env var.
+   * If omitted, the env var default is used.
+   *
+   * See design/active/2026-04-16_constant-folding-in-types.md.
+   */
+  fold?: boolean
 }
 
 interface CachedFileTypeResult {
@@ -100,6 +109,8 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   const fileTypeCache = new Map<string, CachedFileTypeResult>()
 
   const ctx = new InferenceContext()
+  // Per-call fold override. Omitted → use env-var default (FOLD_ENABLED).
+  if (options?.fold !== undefined) ctx.foldEnabled = options.fold
   // Wire file import resolution if a file resolver is provided
   if (resolver) {
     // Build a resolveFileType closure for a given base directory.
@@ -216,6 +227,7 @@ export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap, options?:
   initTypeSystem()
 
   const ctx = new InferenceContext()
+  if (options?.fold !== undefined) ctx.foldEnabled = options.fold
   resetUserEffects()
   resetTypeAliases()
   resetModuleTypeCache()

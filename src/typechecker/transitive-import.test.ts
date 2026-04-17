@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createDvala } from '../createDvala'
 import { allBuiltinModules } from '../allModules'
+import { FOLD_ENABLED } from './foldToggle'
 import { expandType, expandTypeForDisplay, sanitizeDisplayType } from './infer'
 import { simplify } from './simplify'
 import { typeToString } from './types'
@@ -84,7 +85,10 @@ describe('typecheck — file imports', () => {
     expect(lastNodeType).toBeDefined()
     const expanded = expandType(lastNodeType!, 'positive')
     const simplified = simplify(expanded)
-    expect(typeToString(simplified)).toBe('Number')
+    // With constant folding enabled, pure arithmetic on the literal pi
+    // constant folds to a Literal type; otherwise it widens to Number.
+    const expected = FOLD_ENABLED ? '3.14159265358979' : 'Number'
+    expect(typeToString(simplified)).toBe(expected)
   })
 
   it('hover on destructured imported pi shows Number', () => {
@@ -92,14 +96,16 @@ describe('typecheck — file imports', () => {
     const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
     const bindingCol = source.indexOf('pi')
 
-    expect(getHoverTypeStringAt(result, 0, bindingCol)).toBe('Number')
+    const expected = FOLD_ENABLED ? '3.14159265358979' : 'Number'
+    expect(getHoverTypeStringAt(result, 0, bindingCol)).toBe(expected)
   })
 
   it('hover on pi in examples/project/main.dvala shows Number', () => {
     const source = fs.readFileSync(path.join(projectDir, 'main.dvala'), 'utf-8')
     const result = dvala.typecheck(source, { fileResolverBaseDir: projectDir })
 
-    expect(getHoverTypeStringAt(result, 2, 6)).toBe('Number')
+    const expected = FOLD_ENABLED ? '3.14159265358979' : 'Number'
+    expect(getHoverTypeStringAt(result, 2, 6)).toBe(expected)
   })
 
   it('hover on destructured imported withLogging is available', () => {

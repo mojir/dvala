@@ -1,14 +1,39 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '../allModules'
-import { createDvala } from '../createDvala'
+import { createDvala as createDvalaRaw } from '../createDvala'
 import { parseToAst } from '../parser'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
+import { FOLD_ENABLED } from './foldToggle'
 import { expandType } from './infer'
 import { simplify } from './simplify'
 import type { TypeDiagnostic } from './typecheck'
 import { typecheckExpr } from './typecheck'
 import { typeToString } from './types'
+
+/**
+ * Rewrite literal-if fixture conditions to an effectful opaque so C8
+ * (if-literal narrowing) doesn't reduce union-construction fixtures to one
+ * branch under DVALA_FOLD=1. Declares `@__fold_opaque` inline so each
+ * typecheck pass (which resets user effects) sees it fresh.
+ */
+function fixtureWithOpaqueIfCond(source: string): string {
+  if (!/if (true|false)\b/.test(source)) return source
+  const rewritten = source
+    .replace(/if true\b/g, 'if perform(@__fold_opaque, null)')
+    .replace(/if false\b/g, 'if perform(@__fold_opaque, null)')
+  return `effect @__fold_opaque(Null) -> Boolean; ${rewritten}`
+}
+
+/** Test-local `createDvala` that auto-applies `fixtureWithOpaqueIfCond`. */
+function createDvala(options?: Parameters<typeof createDvalaRaw>[0]) {
+  const d = createDvalaRaw(options)
+  const origTypecheck = d.typecheck.bind(d)
+  return Object.assign(d, {
+    typecheck: (source: string, opts?: { fileResolverBaseDir?: string; filePath?: string }) =>
+      origTypecheck(fixtureWithOpaqueIfCond(source), opts),
+  })
+}
 
 // ---------------------------------------------------------------------------
 // End-to-end: typecheck() method on DvalaRunner
@@ -155,7 +180,10 @@ describe('typecheck — end-to-end', () => {
 
   it('accepts rest bindings in match array destructuring', () => {
     const result = dvala.typecheck('let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then count(rest) case _ then 0 end')
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [1, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 
   it('accepts rest bindings in let array destructuring', () => {
@@ -181,7 +209,9 @@ describe('typecheck — end-to-end', () => {
   })
 
   it('rejects non-exhaustive matches over Boolean values', () => {
-    const result = dvala.typecheck('let x = isNumber(42); match x case true then 1 end')
+    // Force x to be a full Boolean (not a literal): take the value from a
+    // function parameter so fold can't reduce it to true/false.
+    const result = dvala.typecheck('let check = (v) -> match isNumber(v) case true then 1 end; check(42)')
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('Non-exhaustive match')
     expect(result.diagnostics[0]?.severity).toBe('error')
@@ -394,7 +424,10 @@ describe('typecheck — sequence exhaustiveness', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [1, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 })
 
@@ -564,7 +597,10 @@ describe('typecheck — complex match narrowing', () => {
         case _ then 0
       end
     `)
-    expect(result.diagnostics).toHaveLength(0)
+    // With tuple inference, [1, ...rest] covers all fixed-length tuple members,
+    // so the wildcard is correctly flagged as redundant
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]!.message).toContain('unreachable')
   })
 
   it('exhaustive match on tuple of atoms succeeds', () => {
@@ -1622,7 +1658,10 @@ describe('typecheckExpr', () => {
 
     expect(result.diagnostics).toHaveLength(0)
     const expanded = simplify(expandType(result.type))
-    expect(typeToString(expanded)).toBe('Number')
+    // With constant folding enabled, `1 + 2` collapses to a Literal type;
+    // otherwise it widens to Number.
+    const expected = FOLD_ENABLED ? '3' : 'Number'
+    expect(typeToString(expanded)).toBe(expected)
   })
 
   it('reports type diagnostics for mismatched expressions', () => {

@@ -23,6 +23,8 @@ import {
 import type { AstNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
+import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
+import { FOLD_ENABLED } from './foldToggle'
 import { parseTypeAnnotation } from './parseType'
 import { getEffectDeclaration } from './effectTypes'
 import { simplify } from './simplify'
@@ -89,6 +91,12 @@ export class InferenceContext {
   typeAnnotations = new Map<number, string>()
   /** Resolves file imports for cross-file type checking. */
   resolveFileType?: (importPath: string) => Type
+  /**
+   * Whether constant folding runs during this inference pass. Defaults to
+   * the `FOLD_ENABLED` env-var value; callers (typecheck entry points)
+   * may override via the `fold` option on TypecheckOptions.
+   */
+  foldEnabled: boolean = FOLD_ENABLED
   /** Stack of effect sets — each function body pushes a new set. */
   private effectStack: EffectSet[] = [{ effects: new Set(), open: false }]
   /** Stack of active handler clause resume contexts. */
@@ -581,9 +589,17 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 export class TypeEnv {
   private bindings: Map<string, Type>
   private parent: TypeEnv | null
+  /**
+   * Side map: function-value ASTs associated with `let` bindings whose RHS
+   * is a `Function` node. Used by C6 (user-function fold) to reconstruct a
+   * Call AST whose callee is the function body directly. Captured via
+   * `bindFunctionAst` alongside the normal type binding.
+   */
+  private functionAsts: Map<string, AstNode>
 
   constructor(parent: TypeEnv | null = null) {
     this.bindings = new Map()
+    this.functionAsts = new Map()
     this.parent = parent
   }
 
@@ -592,9 +608,23 @@ export class TypeEnv {
     return this.bindings.get(name) ?? this.parent?.lookup(name)
   }
 
+  /**
+   * Look up a function AST associated with a binding. Returns the
+   * Function-node AST that was bound via `let name = (...) -> ...` or
+   * undefined if the binding isn't a direct function-literal.
+   */
+  lookupFunctionAst(name: string): AstNode | undefined {
+    return this.functionAsts.get(name) ?? this.parent?.lookupFunctionAst(name)
+  }
+
   /** Bind a variable in the current scope. */
   bind(name: string, type: Type): void {
     this.bindings.set(name, type)
+  }
+
+  /** Record that `name` was bound to a Function-node AST (C6). */
+  bindFunctionAst(name: string, ast: AstNode): void {
+    this.functionAsts.set(name, ast)
   }
 
   /** Create a child scope. */
@@ -693,13 +723,24 @@ export function inferExpr(
         const [cond, thenNode, elseNode] = payload as [AstNode, AstNode, AstNode | undefined]
         const condType = inferExpr(cond, ctx, env, typeMap)
         constrain(ctx, condType, BooleanType)
+        // Always infer both branches so type errors in dead code still
+        // surface (design doc §If narrowing). With fold enabled and the
+        // condition reducing to a literal boolean, narrow the result to
+        // the live branch only — decision #8 / C8 of the folding design.
         const thenType = inferExpr(thenNode, ctx, env, typeMap)
-        if (elseNode) {
-          const elseType = inferExpr(elseNode, ctx, env, typeMap)
-          result = union(thenType, elseType)
-        } else {
-          result = union(thenType, NullType)
+        const elseType = elseNode ? inferExpr(elseNode, ctx, env, typeMap) : NullType
+        if (ctx.foldEnabled) {
+          const expandedCond = expandType(condType)
+          if (expandedCond.tag === 'Literal' && expandedCond.value === true) {
+            result = thenType
+            break
+          }
+          if (expandedCond.tag === 'Literal' && expandedCond.value === false) {
+            result = elseType
+            break
+          }
         }
+        result = union(thenType, elseType)
         break
       }
 
@@ -755,6 +796,14 @@ export function inferExpr(
         bindPattern(binding, valueType, env, ctx, typeMap)
         recordConcretePatternTypes(binding, valueType, typeMap)
         recordLiteralPatternTypes(binding, valueNode, typeMap)
+        // C6: when `let name = (…) -> …`, stash the function AST so a later
+        // Call to `name` can fold through the body. Only fires for direct
+        // `symbol`-pattern bindings of `Function` nodes; destructuring and
+        // non-function RHSs are ignored.
+        if (valueNode[0] === NodeTypes.Function && (binding[0] as string) === 'symbol') {
+          const [nameNode] = binding[1] as [AstNode, AstNode | undefined]
+          env.bindFunctionAst(nameNode[1] as string, valueNode)
+        }
         result = valueType
         break
       }
@@ -883,6 +932,69 @@ export function inferExpr(
         recordSpecializedCalleeType(calleeNode, selectedAlternative, typeMap)
 
         result = retVar
+
+        // Constant folding: when the callee's effect set is empty and the
+        // args are all reconstructible literals, run the call through the
+        // fold sandbox and use the result as the inferred type. The gate
+        // is the single effect-set check — no whitelist (decision #13).
+        //
+        // Two entry points:
+        //  - `tryFoldBuiltinCall` for direct NodeTypes.Builtin callees.
+        //  - `tryFoldUserFunctionCall` for NodeTypes.Sym callees that
+        //    resolve to a user-defined function bound via
+        //    `let name = (…) -> …`. The function AST is stashed on the
+        //    TypeEnv at bind time (C6). Closure capture reconstruction is
+        //    out of scope for v1 — functions that reference outer lets
+        //    bail inside the sandbox and surface `@dvala.error`.
+        //
+        // Effects surfaced during fold (e.g. `@dvala.error` from a
+        // division-by-zero the compiler can prove) become severity:'warning'
+        // diagnostics — decision #2 of the folding design. See
+        // design/active/2026-04-16_constant-folding-in-types.md.
+        if (ctx.foldEnabled
+          && functionAlternatives.length > 0
+          && functionAlternatives.every(alt => alt.effects.effects.size === 0 && !alt.effects.open)) {
+          let foldOutcome = tryFoldBuiltinCall(calleeNode, argTypes)
+          if (!foldOutcome && calleeNode[0] === NodeTypes.Sym) {
+            const functionAst = env.lookupFunctionAst(calleeNode[1] as string)
+            if (functionAst) {
+              // C6a: reconstruct literal-typed closure captures so the
+              // fold sandbox can resolve free vars. For each symbol
+              // reference in the function body that resolves through the
+              // outer TypeEnv, expand the type and convert to a literal
+              // AST. If any capture's type isn't reconstructible, bail
+              // silently — the function may still be called at runtime.
+              // References that don't resolve in the TypeEnv are assumed
+              // to be builtins (resolved globally by the sandbox) or
+              // locally bound inside the function body.
+              const captures = new Map<string, AstNode>()
+              let capturesReconstructible = true
+              for (const name of collectSymRefs(functionAst)) {
+                const captureType = env.lookup(name)
+                if (!captureType) continue
+                const expanded = expandType(captureType)
+                const valueAst = literalTypeToAstNode(expanded)
+                if (!valueAst) {
+                  capturesReconstructible = false
+                  break
+                }
+                captures.set(name, valueAst)
+              }
+              if (capturesReconstructible) {
+                foldOutcome = tryFoldUserFunctionCall(functionAst, argTypes, captures)
+              }
+            }
+          }
+          if (foldOutcome?.type) {
+            result = foldOutcome.type
+          } else if (foldOutcome?.effectName !== undefined) {
+            ctx.deferError(new TypeInferenceError(
+              `This expression will perform \`@${foldOutcome.effectName}\` at runtime`,
+              nodeId,
+              'warning',
+            ))
+          }
+        }
         break
       }
 
@@ -892,13 +1004,19 @@ export function inferExpr(
         if (elements.length === 0) {
           result = array(ctx.freshVar())
         } else {
+          // Check if any element is a spread — if so, fall back to homogeneous Array
+          const hasSpread = elements.some(e => e[0] === NodeTypes.Spread)
           const elemTypes = elements.map(e => inferExpr(e, ctx, env, typeMap))
-          // All elements contribute to a union of the element type
-          const elemVar = ctx.freshVar()
-          for (const et of elemTypes) {
-            constrain(ctx, et, elemVar)
+          if (hasSpread) {
+            const elemVar = ctx.freshVar()
+            for (const et of elemTypes) {
+              constrain(ctx, et, elemVar)
+            }
+            result = array(elemVar)
+          } else {
+            // Fixed-length literal: infer as Tuple to preserve positional types
+            result = tuple(elemTypes)
           }
-          result = array(elemVar)
         }
         break
       }
@@ -918,6 +1036,11 @@ export function inferExpr(
                 : String(keyNode[1])
             const valueType = inferExpr(valueNode, ctx, env, typeMap)
             fields.set(keyName, valueType)
+            // Record value type on the key node so hovering on the key shows the field type
+            const keyNodeId = keyNode[2]
+            if (keyNodeId > 0) {
+              typeMap.set(keyNodeId, valueType)
+            }
           }
         // Spread entries are handled at a later step
         }
@@ -971,8 +1094,38 @@ export function inferExpr(
       case NodeTypes.And:
       case NodeTypes.Or: {
         const operands = payload as AstNode[]
-        // Both operands contribute to the result type
         const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
+        // C7 / decision #9: narrow on literal-boolean operands. For &&,
+        // a literal(false) short-circuits to literal(false); for ||, a
+        // literal(true) short-circuits to literal(true). If every operand
+        // is a literal boolean without a short-circuit, the result is the
+        // last operand's type. A non-literal-boolean operand bails to the
+        // union behaviour below. Restricted to literal booleans in v1;
+        // truthiness narrowing on other literal values (0, "", null) is
+        // a follow-up.
+        if (ctx.foldEnabled && types.length > 0) {
+          const shortCircuitValue = nodeType === NodeTypes.And ? false : true
+          let narrowed: Type | undefined
+          let allLiteralBool = true
+          for (let i = 0; i < types.length; i++) {
+            const expanded = expandType(types[i]!)
+            if (expanded.tag === 'Literal' && expanded.value === shortCircuitValue) {
+              narrowed = literal(shortCircuitValue)
+              break
+            }
+            if (expanded.tag === 'Literal' && typeof expanded.value === 'boolean') {
+              // Non-short-circuiting literal boolean — keep scanning.
+              if (i === types.length - 1) narrowed = types[i]
+              continue
+            }
+            allLiteralBool = false
+            break
+          }
+          if (narrowed && allLiteralBool) {
+            result = narrowed
+            break
+          }
+        }
         result = union(...types)
         break
       }
@@ -1036,6 +1189,23 @@ export function inferExpr(
           if (guard) {
             const guardType = inferExpr(guard, ctx, caseEnv, typeMap)
             constrain(ctx, guardType, BooleanType)
+            // C9: a guard that folds to literal(false) makes this case
+            // unreachable. Skip the body so its type doesn't contribute to
+            // the result, and do NOT subtract consumedType from remaining —
+            // the pattern shape is still unhandled, so exhaustiveness
+            // correctly fires if no other case covers it. Symmetric to the
+            // existing redundant-pattern warning (decision #6).
+            if (ctx.foldEnabled) {
+              const expandedGuard = expandType(guardType)
+              if (expandedGuard.tag === 'Literal' && expandedGuard.value === false) {
+                ctx.deferError(new TypeInferenceError(
+                  'Redundant match case — guard is always false',
+                  pattern[2],
+                  'warning',
+                ))
+                continue
+              }
+            }
           }
 
           // Infer body type in the case scope
@@ -3617,25 +3787,36 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
 function normalizeDisplayUnion(members: Type[]): Type {
   if (members.length === 0) return Never
   if (members.every(member => member.tag === 'Record')) {
-    const open = members.some(member => member.open)
-    const fieldNames = new Set<string>()
-    for (const member of members) {
-      for (const fieldName of member.fields.keys()) fieldNames.add(fieldName)
-    }
+    // Merging records in a union is only sound when at most one field varies
+    // across branches. Otherwise the merge loses per-branch field correlation,
+    // widening e.g. `{a:1,b:1} | {a:2,b:2}` to allow `{a:1,b:2}` — a discriminated
+    // union like `{type:"click", x, y} | {type:"keydown", key}` must stay a union.
+    const first = members[0]!
+    const firstKeys = [...first.fields.keys()]
+    const sameKeys = members.every(m =>
+      m.fields.size === firstKeys.length
+      && firstKeys.every(k => m.fields.has(k)),
+    )
 
-    const mergedFields = new Map<string, Type>()
-    for (const fieldName of fieldNames) {
-      const candidates: Type[] = []
-      for (const member of members) {
-        const fieldType = member.fields.get(fieldName)
-        if (fieldType) candidates.push(fieldType)
+    if (sameKeys) {
+      let varyingFields = 0
+      for (const key of firstKeys) {
+        const firstType = first.fields.get(key)!
+        if (members.some(m => !typeEquals(m.fields.get(key)!, firstType))) {
+          varyingFields++
+        }
       }
-      if (candidates.length > 0) {
-        mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
+
+      if (varyingFields <= 1) {
+        const open = members.some(member => member.open)
+        const mergedFields = new Map<string, Type>()
+        for (const fieldName of firstKeys) {
+          const candidates = members.map(m => m.fields.get(fieldName)!)
+          mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
+        }
+        return { tag: 'Record', fields: mergedFields, open }
       }
     }
-
-    return { tag: 'Record', fields: mergedFields, open }
   }
 
   if (members.every(member => member.tag === 'Array')) {
