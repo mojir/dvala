@@ -1112,6 +1112,23 @@ export function inferExpr(
           if (guard) {
             const guardType = inferExpr(guard, ctx, caseEnv, typeMap)
             constrain(ctx, guardType, BooleanType)
+            // C9: a guard that folds to literal(false) makes this case
+            // unreachable. Skip the body so its type doesn't contribute to
+            // the result, and do NOT subtract consumedType from remaining —
+            // the pattern shape is still unhandled, so exhaustiveness
+            // correctly fires if no other case covers it. Symmetric to the
+            // existing redundant-pattern warning (decision #6).
+            if (FOLD_ENABLED) {
+              const expandedGuard = expandType(guardType)
+              if (expandedGuard.tag === 'Literal' && expandedGuard.value === false) {
+                ctx.deferError(new TypeInferenceError(
+                  'Redundant match case — guard is always false',
+                  pattern[2],
+                  'warning',
+                ))
+                continue
+              }
+            }
           }
 
           // Infer body type in the case scope

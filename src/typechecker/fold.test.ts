@@ -191,4 +191,72 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
       expect(t).toContain('true')
     })
   })
+
+  // --- C9: match guard-literal pruning ---
+  describe('match guard-literal pruning (C9)', () => {
+    it('skips a case whose guard folds to literal(false) and emits a redundant warning', async () => {
+      stubFoldOn()
+      const { createDvala } = await import('../createDvala')
+      const dvala = createDvala()
+      const result = dvala.typecheck(`
+        match 42
+          case n when 1 == 2 then "dead"
+          case _ then "live"
+        end
+      `)
+      const warnings = result.diagnostics.filter(d => d.severity === 'warning')
+      expect(warnings.some(w => /Redundant match case — guard is always false/.test(w.message))).toBe(true)
+      // Not a type error — the dead arm is pruned, not fatal.
+      const errors = result.diagnostics.filter(d => d.severity === 'error')
+      expect(errors).toHaveLength(0)
+    })
+
+    it('does not prune a case whose guard folds to literal(true)', async () => {
+      stubFoldOn()
+      const { createDvala } = await import('../createDvala')
+      const dvala = createDvala()
+      const result = dvala.typecheck(`
+        match 42
+          case n when 1 == 1 then "taken"
+          case _ then "fallback"
+        end
+      `)
+      // No diagnostics: the true-guard arm is kept, the wildcard is still
+      // reachable under non-matching scrutinees, so no warnings either.
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+    })
+
+    it('a false-guard case leaves the remainder unhandled — exhaustiveness can fail', async () => {
+      stubFoldOn()
+      const { createDvala } = await import('../createDvala')
+      const dvala = createDvala()
+      // The `case :a` arm is pruned (false guard), leaving :a | :b
+      // unhandled with no wildcard fallback. Non-exhaustive match.
+      const result = dvala.typecheck(`
+        let x: :a | :b = :a;
+        match x
+          case :a when 1 == 2 then 1
+          case :b then 2
+        end
+      `)
+      const errors = result.diagnostics.filter(d => d.severity === 'error')
+      expect(errors.some(d => /Non-exhaustive match/.test(d.message))).toBe(true)
+    })
+
+    it('does not prune when fold is off — dead guards only warned via existing redundancy machinery', async () => {
+      stubFoldOff()
+      const { createDvala } = await import('../createDvala')
+      const dvala = createDvala()
+      const result = dvala.typecheck(`
+        match 42
+          case n when 1 == 2 then "dead"
+          case _ then "live"
+        end
+      `)
+      // Without fold, the guard is not reduced to literal(false), so C9
+      // doesn't fire — no redundant-guard warning.
+      const warnings = result.diagnostics.filter(d => d.severity === 'warning')
+      expect(warnings.some(w => /guard is always false/.test(w.message))).toBe(false)
+    })
+  })
 })
