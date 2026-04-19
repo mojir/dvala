@@ -4,7 +4,16 @@ import handlerModuleSource from './effectHandler.dvala'
 
 const handlerDocs: Record<string, FunctionDocs> = {
   'retry': {
-    type: '(Number, (() -> Unknown)) -> Unknown',
+    // Thunk declared with an open-tailed effect set so effectful thunks
+    // can be passed. Return type uses type-var A so the thunk's result
+    // type propagates to the caller — declaring Unknown would short-
+    // circuit constrain (lhs-Unknown is a no-op) and leave the call
+    // result as Never. The wrapper metadata below tells the typechecker
+    // how the caught/introduced effects recombine at the call site.
+    type: '(Number, (() -> @{dvala.error, ...} A)) -> A',
+    // retry catches @dvala.error but re-performs it on final failure, so
+    // the error effect still escapes — handled + introduced cancel out.
+    wrapper: { paramIndex: 1, handled: ['dvala.error'], introduced: ['dvala.error'] },
     category: 'effectHandler',
     returns: { type: 'any' },
     args: {
@@ -18,7 +27,11 @@ const handlerDocs: Record<string, FunctionDocs> = {
     ],
   },
   'fallback': {
-    type: '(Unknown) -> (((() -> Unknown)) -> Unknown)',
+    // Returns a Handler value; the user applies it via `h(-> body)` or
+    // `with h`. The handler-as-callable path (Phase 4-B) then does the
+    // application-law arithmetic. Introduced = @{} (the clause just
+    // returns the fallback value; no effects performed).
+    type: '(Unknown) -> Handler<Unknown, Unknown, @{dvala.error}>',
     category: 'effectHandler',
     returns: { type: 'function' },
     args: { value: { type: 'any' } },
@@ -33,7 +46,9 @@ const handlerDocs: Record<string, FunctionDocs> = {
 
 const chooseDocs: Record<string, FunctionDocs> = {
   'chooseAll': {
-    type: '((() -> Unknown)) -> Unknown[]',
+    type: '((() -> @{choose, ...} A)) -> A[]',
+    // Catches @choose and resumes per option. Introduces nothing.
+    wrapper: { paramIndex: 0, handled: ['choose'], introduced: [] },
     category: 'effectHandler',
     returns: { type: 'array' },
     args: { bodyFn: { type: 'function' } },
@@ -45,7 +60,9 @@ const chooseDocs: Record<string, FunctionDocs> = {
     ],
   },
   'chooseFirst': {
-    type: '((() -> Unknown)) -> Unknown',
+    type: '((() -> @{choose, ...} A)) -> A',
+    // Catches @choose and resumes with the first option. Introduces nothing.
+    wrapper: { paramIndex: 0, handled: ['choose'], introduced: [] },
     category: 'effectHandler',
     returns: { type: 'any' },
     args: { bodyFn: { type: 'function' } },
@@ -56,7 +73,12 @@ const chooseDocs: Record<string, FunctionDocs> = {
     ],
   },
   'chooseRandom': {
-    type: '((() -> Unknown)) -> Unknown',
+    type: '((() -> @{choose, ...} A)) -> A',
+    // Catches @choose and resumes with a random option — selection itself
+    // performs @dvala.random.item, which the wrapper introduces into the
+    // outer effect set. Closes the Phase A audit follow-up (audit item
+    // #effecthandler-chooserandom).
+    wrapper: { paramIndex: 0, handled: ['choose'], introduced: ['dvala.random.item'] },
     category: 'effectHandler',
     returns: { type: 'any' },
     args: { bodyFn: { type: 'function' } },
@@ -67,7 +89,10 @@ const chooseDocs: Record<string, FunctionDocs> = {
     ],
   },
   'chooseTake': {
-    type: '(Number, (() -> Unknown)) -> Unknown[]',
+    type: '(Number, (() -> @{choose, ...} A)) -> A[]',
+    // Like chooseAll but capped at n results. Still catches @choose with
+    // nothing introduced.
+    wrapper: { paramIndex: 1, handled: ['choose'], introduced: [] },
     category: 'effectHandler',
     returns: { type: 'array' },
     args: {

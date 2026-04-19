@@ -135,6 +135,39 @@ export interface FunctionDocs {
   /** Type annotation in Dvala syntax, parsed by the typechecker.
    * e.g. "(Number, Number) -> Number" or "(x: Unknown) -> x is Number" */
   type?: string
+  /**
+   * Handler-wrapper metadata. When set, the declared function is a
+   * wrapper that installs a handler over its thunk argument. The
+   * typechecker attaches a `HandlerWrapperInfo` to the parsed function
+   * type so call sites apply the handler-typing application law:
+   * `(thunk_effects \ handled) ∪ introduced`.
+   *
+   * - `paramIndex`: zero-based index of the thunk parameter.
+   * - `handled`: names of effects the wrapper catches.
+   * - `introduced`: names of effects the wrapper's inner handler
+   *   clauses or transform perform (which become visible in the
+   *   outer effect set).
+   *
+   * Effect names must be declared (either as builtin effects or via
+   * `effect @name(T) -> U`) before the module is registered — the
+   * typechecker looks up each name's arg/ret signatures in the effect
+   * registry.
+   *
+   * Note: `handled` and `introduced` do not cancel in degenerate
+   * cases. `retry` declares both as `[dvala.error]` because on final
+   * retry exhaustion it re-performs the error, so calling `retry(n, pureBody)`
+   * conservatively surfaces `@dvala.error` in the caller's effect set
+   * even when the body never performs it. This is a sound
+   * over-approximation — at runtime the effect may or may not occur
+   * depending on control flow, and the type system picks the upper
+   * bound. Concrete cancellation would require conditional typing
+   * that Dvala's effect system does not (and probably shouldn't) model.
+   */
+  wrapper?: {
+    paramIndex: number
+    handled: string[]
+    introduced: string[]
+  }
 }
 
 export interface CustomDocs {
