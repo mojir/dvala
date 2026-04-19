@@ -258,9 +258,9 @@ Shipped on branch `feat/effecthandler-signatures` (commit `dd469ca6`).
 - **5.3 ✅** Full suite passes under both `DVALA_FOLD=0` and `DVALA_FOLD=1` (35,898 tests).
 - **5.4 ✅** Closes the Phase A audit follow-up on `effectHandler.chooseRandom` in [design/archive/2026-04-16_builtin-effect-audit.md](../archive/2026-04-16_builtin-effect-audit.md).
 
-**Note on return-type polymorphism.** Declarations use a type variable `A` instead of `Unknown` because `constrain` treats `lhs.tag === 'Unknown'` as a no-op ([src/typechecker/infer.ts:271](../../src/typechecker/infer.ts#L271)) — an `Unknown` return would never flow into the call-site `retVar`, leaving it as `Never`. `A` is a proper MLsub type variable that propagates the thunk's return type. `chooseRandom(-> 42) : literal(42)` works correctly.
+**Note on return-type polymorphism.** Declarations use a type variable `A` instead of `Unknown` to propagate the thunk's return type through the call — `chooseRandom(-> 42) : literal(42)` works correctly.
 
-**Caveat**: when the thunk's body performs an effect whose declared `retType` in the effect registry is itself `Unknown` (e.g. `@choose`), the return-type propagation still lands on `Unknown` and hits the short-circuit. The surrounding call result is `Never` in that case. This is pre-existing behavior around `Unknown`'s role in the type system — worth revisiting but independent of handler typing.
+**Constrain lhs-Unknown fix (same branch).** Previously, `constrain(Unknown, rhs)` was a blanket no-op — meaning even when `rhs` was a Var, Unknown never reached the Var's `lowerBounds`. So a declared-`Unknown` return type left the caller's `retVar` empty and positive expansion produced `Never`. The fix is a narrow special case: when `lhs = Unknown` and `rhs` is a Var, push Unknown to its lowerBounds; otherwise still a no-op. This makes `Unknown` an accurate upper approximation at call sites — when a thunk performs `@choose` (declared `Unknown -> Unknown`), the wrapping call returns `Unknown` instead of `Never`. All 35,898 existing tests still pass with the fix in place.
 
 ### Phase 6 — Effect propagation at function-call sites (✅ shipped in #56)
 

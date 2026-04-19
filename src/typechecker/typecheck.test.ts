@@ -1765,6 +1765,25 @@ describe('typecheck — effectHandler signatures propagate wrapper effects', () 
     expect(t.tag).toBe('Literal')
     if (t.tag === 'Literal') expect(t.value).toBe(42)
   })
+
+  // With the lhs-Unknown fix in `constrain`, an effect performed inside the
+  // thunk whose declared retType is `Unknown` (like `@choose`) no longer
+  // short-circuits to `Never` in the wrapping call's return type. Effects
+  // still propagate correctly, and the return is `Unknown` — the accurate
+  // upper approximation.
+  it('effectful thunk returns Unknown (not Never) at the outer call', () => {
+    const result = dvala.typecheck(`
+      let { chooseRandom } = import("effectHandler");
+      let outer = () -> chooseRandom(-> perform(@choose, [1, 2, 3]));
+      outer
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    expect(t.ret.tag).toBe('Unknown')
+    expect(t.effects.effects.has('dvala.random.item')).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------

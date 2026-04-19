@@ -268,7 +268,18 @@ function varKey(t: Type): string {
 export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Trivial cases
   if (lhs === rhs) return
-  if (lhs.tag === 'Never' || lhs.tag === 'Unknown' || rhs.tag === 'Unknown') return
+  if (lhs.tag === 'Never' || rhs.tag === 'Unknown') return
+  // `Unknown <: rhs` is a trivial no-op in most places (it's top, so the
+  // subtype claim is as weak as possible). The one case that cannot be a
+  // no-op is when `rhs` is a type variable: we need Unknown to reach the
+  // Var's lowerBounds so that positive expansion produces `Unknown` rather
+  // than `Never`. Without this, a declared-Unknown return type leaves the
+  // call-site retVar empty and the caller sees `Never`. See the
+  // chooseRandom Phase 5 return-type case for the motivating example.
+  if (lhs.tag === 'Unknown') {
+    if (rhs.tag === 'Var') rhs.lowerBounds.push(lhs)
+    return
+  }
 
   // Cycle guard
   if (ctx.checkAndAddConstraint(lhs, rhs)) return
