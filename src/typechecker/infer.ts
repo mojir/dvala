@@ -1260,6 +1260,15 @@ export function inferExpr(
         const bodyType = ctx.freshVar()
         const answerType = ctx.freshVar()
         const handled = new Map<string, { argType: Type; retType: Type }>()
+        // Collect effects performed by clause bodies + the transform clause.
+        // These are the effects that the handler will surface when applied —
+        // not the effects it *catches*. Per Decision 2 of the handler-typing
+        // design, a clause does not re-catch its own perform: the perform
+        // escapes past this handler to the next outer one. So we DO NOT
+        // subtract `handled` from `introduced`. Constructing a handler value
+        // is itself pure; per-clause pushEffects/popEffects keeps the
+        // recorded clause effects out of the surrounding context.
+        const introducedSets: EffectSet[] = []
 
         for (const clause of clauses) {
         // When a handler clause lacks a source-level effect declaration, infer
@@ -1284,10 +1293,12 @@ export function inferExpr(
           }
 
           ctx.pushResume(declaredRetType, answerType)
+          ctx.pushEffects()
           let clauseBodyType: Type = NullType
           for (const bodyNode of clause.body) {
             clauseBodyType = inferExpr(bodyNode, ctx, clauseEnv, typeMap)
           }
+          introducedSets.push(ctx.popEffects())
           ctx.popResume()
           constrain(ctx, clauseBodyType, answerType)
         }
@@ -1296,10 +1307,12 @@ export function inferExpr(
           const [transformParam, transformBody] = transform
           const transformEnv = env.child()
           bindPattern(transformParam, bodyType, transformEnv, ctx, typeMap)
+          ctx.pushEffects()
           let transformResult: Type = NullType
           for (const bodyNode of transformBody) {
             transformResult = inferExpr(bodyNode, ctx, transformEnv, typeMap)
           }
+          introducedSets.push(ctx.popEffects())
           constrain(ctx, transformResult, answerType)
           constrain(ctx, answerType, transformResult)
         } else {
@@ -1307,7 +1320,12 @@ export function inferExpr(
           constrain(ctx, answerType, bodyType)
         }
 
-        result = handlerType(bodyType, answerType, finalizeHandledSignatures(handled))
+        result = handlerType(
+          bodyType,
+          answerType,
+          finalizeHandledSignatures(handled),
+          unionEffectSets(introducedSets),
+        )
         break
       }
 
@@ -1464,6 +1482,7 @@ function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<string, Typ
         freshenAllVars(ctx, t.body, mapping),
         freshenAllVars(ctx, t.output, mapping),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {
@@ -1539,6 +1558,7 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeV
         freshenInner(ctx, t.body, mapping),
         freshenInner(ctx, t.output, mapping),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {
@@ -1655,7 +1675,7 @@ function generalizeInner(t: Type, level: number, mapping: Map<string, TypeVar>):
         handled.set(name, { argType, retType })
       }
       if (body === t.body && output === t.output && !handledChanged) return t
-      return handlerType(body, output, handled)
+      return handlerType(body, output, handled, t.introduced)
     }
     case 'Record': {
       let changed = false
@@ -3504,6 +3524,7 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
         expandTypeForMatchAnalysis(t.body, new Set(visited)),
         expandTypeForMatchAnalysis(t.output, new Set(visited)),
         handled,
+        t.introduced,
       )
     }
 
@@ -3592,6 +3613,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
         expandType(t.body, 'positive', new Set(visited)),
         expandType(t.output, 'positive', new Set(visited)),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {
@@ -3690,6 +3712,7 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
         expandTypeForDisplay(t.body, 'positive', new Set(visited)),
         expandTypeForDisplay(t.output, 'positive', new Set(visited)),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {
@@ -3749,6 +3772,7 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
         sanitizeDisplayType(t.body, true),
         sanitizeDisplayType(t.output, true),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {

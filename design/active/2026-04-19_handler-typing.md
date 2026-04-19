@@ -115,7 +115,7 @@ end
 Inference rule:
 
 1. `body`, `output`, and `handled` are inferred today — clause typing, `resume` typing via `pushResume/popResume`, and transform are all wired.
-2. **NEW:** Let `introduced = union of effect sets inferred from each clauseBody_i and from transformBody, minus @{e1, e2, …}`. Per Decision 2, a clause does not re-catch its own effect via the same handler, so we subtract the caught set from the introduced set. Per Decision 4, transform-clause effects contribute to `introduced` too.
+2. **NEW:** Let `introduced = union of effect sets inferred from each clauseBody_i and from transformBody`. **No subtraction of `handled`.** Per Decision 2, a clause that performs one of the caught effects is NOT re-caught by the same handler — that perform escapes past this handler to the next outer one. So if the `@choose` clause body itself performs `@choose`, `@choose` belongs in `introduced` (the handler still surfaces it to the caller). Per Decision 4, transform-clause effects contribute to `introduced` too. Constructing a handler value is itself pure — the per-clause `pushEffects`/`popEffects` discipline keeps these recorded clause effects out of the surrounding context where the `handler … end` expression appears.
 3. Return `{ tag: 'Handler', body, output, handled, introduced }`.
 
 ### Inference for `do with h; body end`
