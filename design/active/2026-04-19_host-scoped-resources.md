@@ -43,7 +43,7 @@ A mechanism where the host registers cleanup at the moment of acquisition (not i
 
 ### What's unresolved in the general problem
 
-No mechanism, in any language, fully solves "resource that travels across distributed continuations." The honest design is to *prevent* that combination rather than pretend it works. The restrictions described below make the impossible case a loud runtime error rather than a silent leak.
+There is no general mechanism that solves "resource that travels across distributed continuations." Related systems — Orleans actor lifetimes, Erlang/OTP supervision trees — handle adjacent problems (per-activation teardown, supervised process death) but none of them address the exact case of a serialized continuation holding live host-side resources and being resumed on a different host. The honest design is to *prevent* that combination rather than pretend it works. The restrictions described below make the impossible case a loud runtime error rather than a silent leak.
 
 ---
 
@@ -85,38 +85,48 @@ interface EffectHandlerContext {
 
 ### Part 2 — Scope attribution
 
-A registered callback is attached to the **nearest enclosing handler frame** at the moment of the effect call. That handler frame becomes "resource-holding."
+A registered callback is attached to the **nearest enclosing handler frame instance** at the moment of the effect call. That handler frame becomes "resource-holding." Frame identity is per-instance: each `do with h; … end` execution creates a fresh frame-instance; the restriction semantics below reason about frame instances, not source locations.
 
-- When the handler frame exits (normal completion, abort via non-resuming clause, uncaught-effect pass-through), callbacks fire in LIFO.
+Callbacks fire when the frame instance terminally exits. A terminal exit is one of:
+- **Normal completion** — the handled body returns a value.
+- **Abort via a non-resuming clause** — a handler clause returns without calling `resume`.
+- **Snapshot discard** — a snapshot holding the frame is garbage-collected or explicitly discarded.
+
+**Non-terminal events (frame stays alive, cleanups do NOT fire):**
+- **Uncaught-effect pass-through.** An effect the frame doesn't catch propagates to an outer handler. The frame is logically still alive — it's suspended waiting for the `perform` to return. If the outer handler resumes, execution continues inside this frame; cleanups fire later when the frame reaches a true terminal exit.
+- **Async effect boundary.** An `await` inside a host effect handler keeps the frame alive across the suspension.
+
 - Nested scopes nest naturally: inner handlers' cleanups fire before outer handlers' cleanups.
 - "The nearest enclosing handler" is unambiguous because effect dispatch already walks the handler stack to find who catches the effect.
 
 ### Part 3 — Runtime restrictions
 
-While a handler frame is resource-holding, certain operations are refused at runtime:
+While a handler frame-instance is resource-holding, certain operations are refused at runtime:
 
 | Operation | Behavior when resource-holding |
 |---|---|
-| Snapshot capture (explicit or via effect) | Runtime error: `cannot snapshot: resource-holding handler 'X' has N live cleanups` |
-| Multi-shot resume *across* the resource-holding frame | Runtime error: `cannot resume multiple times: intervening handler 'X' holds live resources` |
-| Escape of the continuation (captured, returned) | Runtime error (same class) |
-| Abort via non-resuming clause | Allowed — scope exits cleanly, callbacks fire |
-| Uncaught effect propagating past the frame | Allowed — the frame still exits, callbacks fire before unwinding further |
+| Snapshot capture (explicit or via effect) | Runtime error: `cannot snapshot: handler 'X' at <source loc> holds N live cleanups (2 × file.open, 1 × db.connect)` |
+| Continuation invocation that would re-enter a discharged frame | Runtime error: `cannot resume: continuation refers to a resource-holding handler 'X' that has already exited` |
+| Abort via non-resuming clause | Allowed — frame exits, callbacks fire |
+| Uncaught effect propagating past the frame | Allowed — frame stays alive (Part 2); callbacks fire later on terminal exit |
 | Host effect-handler throwing mid-scope | Allowed — callbacks fire during unwinding, host errors aggregate and surface |
 
-"Across the resource-holding frame" means a resume that would re-enter the frame with callbacks still pending. Multi-shot of a handler *inside* a resource-holding scope is fine as long as each inner resume completes before the outer frame exits.
+**Continuation tracking for the multi-shot restriction.** When a continuation is captured (during an effect that may be resumed multiple times), the runtime records the set of resource-holding frame instances currently live. When that continuation is invoked, the runtime checks: are all of those frame instances still alive (not yet discharged)? If any has already had its cleanups fire, the invocation is refused. This makes "multi-shot across a resource-holding frame" precise: the second, third, … Nth invocation is refused once the frame has discharged after an earlier invocation.
+
+Multi-shot of a handler *inside* a resource-holding scope — where the multi-shot handler is nested below the resource-holding one — is fine, because each resume is contained within the outer frame's single lifetime.
 
 ### Part 4 — Callback execution semantics
 
-1. **Ordering.** LIFO within a frame. Across nested frames, inner frame's callbacks fire before outer frame's — natural from scope nesting.
+1. **Ordering.** LIFO within a frame — each `onScopeExit` registration goes on top of that frame's cleanup stack and fires first. Across nested frames, inner frame's callbacks fire before outer frame's, which is just the natural consequence of inner frames terminally exiting first. "Sibling handlers at the same nesting depth" can never share a cleanup stack: scope attribution is always the single nearest frame, so each registration lands on exactly one frame's stack.
 2. **Errors in callbacks.** A callback that throws does not block subsequent callbacks. Errors are collected and surfaced once cleanup completes, as a single aggregate error associated with the scope exit.
 3. **Async callbacks.** Allowed. The runtime awaits each callback sequentially. Ordering is preserved.
-4. **Callbacks cannot perform Dvala effects.** We are past the Dvala-execution window by the time cleanup runs. Re-entering would create arbitrarily complex re-entrancy. Cleanups are pure host side-effects.
-5. **Idempotency is the host's responsibility.** The runtime guarantees at-most-once execution per registration. It does not guarantee that *a given resource* is cleaned up once if the host registers multiple callbacks for the same handle.
+4. **No cleanup timeout.** Async callbacks run to completion; hosts writing async cleanup are responsible for bounding their own operations. A hung cleanup hangs the enclosing Dvala computation — same as any unbounded host operation. If this becomes a real problem in practice, add `{ timeoutMs }` as a follow-up with actual evidence of the right defaults and failure mode.
+5. **Callbacks cannot perform Dvala effects.** We are past the Dvala-execution window by the time cleanup runs. Re-entering would create arbitrarily complex re-entrancy. Cleanups are pure host side-effects.
+6. **Idempotency is the host's responsibility.** The runtime guarantees at-most-once execution per registration. It does not guarantee that *a given resource* is cleaned up once if the host registers multiple callbacks for the same handle.
 
 ### Part 5 — What happens to `finally`?
 
-The proposed handler `finally` clause is **dropped** for this release. Its motivating use case (resource cleanup) is handled strictly better here. Pure-Dvala-side "run on exit" logic (log-once, restore-ref, emit-metric) can be expressed via library `bracket` patterns that don't need first-class syntax:
+The proposed handler `finally` clause is **dropped** for this release. Its motivating use case (resource cleanup) is handled strictly better here. Pure-Dvala-side "run on exit" logic (log-once, restore-ref, emit-metric) is *less* covered; it can be partially expressed via library `bracket` patterns:
 
 ```
 let bracket = (acquire, release, use) -> do
@@ -127,7 +137,7 @@ let bracket = (acquire, release, use) -> do
 end;
 ```
 
-Users who want bullet-proof pure-Dvala side-effects can reach for future mechanisms once a concrete need emerges. For now, one cleanup primitive is enough.
+**Caveat:** this naive `bracket` is abort-safe only on the normal return path. If `use(r)` performs an uncaught effect and an outer handler aborts, `release(r)` is never reached. Writing an abort-safe `bracket` in pure Dvala requires either a `finally`-like primitive (which we've dropped) or an `onScopeExit`-based handler wrapper, which exists only host-side. For now, Dvala has no bullet-proof pure-Dvala-side exit hook; that's an acknowledged gap. If a real use case appears that can't be solved by moving the cleanup into a host-side effect, we can design a purpose-built primitive at that point — but not before then.
 
 ### Part 6 — Resource-type registry (optional)
 
@@ -167,18 +177,21 @@ This lets the runtime's error messages be specific: `cannot snapshot: 3 resource
 
 ## Implementation plan
 
+**Phases 1 and 2 ship as one bundle.** The phase split is an engineering convenience for structured review, not two separately-shippable products: `onScopeExit` without the restrictions leaves a footgun where snapshots silently drop cleanup callbacks. Treat the bundle as the minimum viable first release.
+
 ### Phase 1 — Runtime bookkeeping
 
 1. Add a `cleanups: Array<() => void | Promise<void>>` field to handler-frame records in the evaluator.
 2. Expose `ctx.onScopeExit(cb)` in the effect-handler call interface. Internally: push to the active frame's cleanups.
-3. Hook handler-frame exit paths (normal completion, abort, uncaught-effect pass-through) to drain cleanups in LIFO, collecting errors, and surfacing aggregate.
+3. Hook handler-frame **terminal exit** paths (normal completion, abort via non-resuming clause, snapshot discard) to drain cleanups in LIFO, collecting errors, and surfacing aggregate. Note: uncaught-effect pass-through is NOT a terminal exit — the frame stays alive and cleanups fire only on the eventual terminal exit (see Part 2).
 
 ### Phase 2 — Restrictions
 
 1. Add a `resourceHolding: boolean` flag derived from `cleanups.length > 0` (or explicit, if we need independent control).
 2. At snapshot-capture sites: walk the handler stack; if any frame has live cleanups, throw a scope-aware error.
-3. At multi-shot resume sites (second+ invocation of the same continuation): same check.
-4. At continuation-escape sites (storing a continuation in a ref, returning from a handler clause): same check.
+3. At continuation capture: record the set of resource-holding frame instances live at that moment.
+4. At continuation invocation: check that all recorded frame instances are still alive. If any has discharged, refuse the invocation with the "cannot resume …" error.
+5. At continuation-escape sites (storing a continuation in a ref, returning from a handler clause): same check as invocation — the escape itself is fine, but invocation after a tracked frame has discharged is refused.
 
 ### Phase 3 — Error messages
 
@@ -196,14 +209,16 @@ This lets the runtime's error messages be specific: `cannot snapshot: 3 resource
 
 1. Happy path: normal completion runs cleanups.
 2. Abort path: aborting clause runs cleanups.
-3. Uncaught effect: pass-through runs cleanups.
+3. Uncaught-effect pass-through: frame STAYS alive; cleanups do NOT fire until the frame terminally exits. Round-trip through an outer handler's `resume` keeps the same frame instance.
 4. Callback error: aggregates without blocking.
 5. LIFO ordering: verified with a counter.
 6. Nested frames: inner cleanups fire before outer.
-7. Restriction — snapshot while resource-held: error, with right error message.
-8. Restriction — multi-shot across resource-holding frame: error.
-9. Restriction — captured continuation escape: error.
-10. Async cleanup: sequential awaiting, ordering preserved.
+7. Restriction — snapshot while resource-held: error, with effect-name breakdown in the message.
+8. Restriction — continuation invoked after its tracked resource-holding frame has discharged: error.
+9. Restriction — snapshot during active cleanup: error.
+10. Per-instance isolation: two `createDvala` instances' cleanup stacks don't interact.
+11. Async cleanup: sequential awaiting, ordering preserved.
+12. Multi-shot *inside* a resource-holding scope (allowed): each inner resume returns to the same outer frame; cleanups fire once when outer frame terminally exits.
 
 ---
 
