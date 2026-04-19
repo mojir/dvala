@@ -44,7 +44,7 @@ Phase 1 calibration (2026-04-19) found that the scaffolding for handler typing i
 2. **Handler application law doesn't add back introduced effects.** `do with h; body end` currently produces handler.output with the caught effects subtracted — but doesn't union in the introduced set (because `introduced` doesn't exist yet).
 3. **Annotation syntax doesn't carry an introduced set.** `Handler<B, O, @{caught}>` has three slots; extending to `Handler<B, O, @{caught}, @{introduced}>` (or keeping three slots with introduced defaulting to `@{}`) requires a parser update.
 4. **`effectHandler/` module signatures still use `((() -> Unknown)) -> Unknown`.** They don't reference `HandlerType` or effect polymorphism at all. This is the tracked Phase A follow-up — `chooseRandom` needs `((() -> @{choose | Σ} A)) -> @{dvala.random.item | Σ} A` and the other five need analogous sigs.
-5. **No effect-set variable binders on function signatures.** Even with `@{choose, ...}` open-tail syntax designed, the signature-level binder that ties the two tails together positionally needs to land. (The type-system doc says unnamed positional; confirm the implementation.)
+5. **No row-variable identity on effect sets.** `EffectSet` is `{ effects: Set<string>, open: boolean }` — a single openness bit, not a variable with identity. Two `@{e, ...}` tails in the same signature do not unify; body-extras passed through `(() -> @{choose, ...} A) -> @{dvala.random.item, ...} A` silently disappear from the result. The value-type system uses MLsub-style `Var` nodes with `id`/`level`/bounds — the same mechanism needs to extend to effect rows for `effectHandler/` signatures to be sound. (Phase 1 calibration 2026-04-19 confirmed this is genuinely missing.)
 
 ### Why this is hard (and why a design doc is warranted)
 
@@ -201,13 +201,21 @@ Inline findings — see "What exists today" and "What's missing" above. Net: `Ha
 - **3.2** Same for `h(body)` direct-call form (`fallback(v)(-> …)`).
 - **3.3** Tests: `do with chooseRandom-handler; perform(@choose, [1,2]) end` → effect set `@{dvala.random.item}`, result type inherited from body.
 
-### Phase 4 — Effect polymorphism in function signatures
+### Phase 4 — Row-variable effect polymorphism
 
-This is the step that lets the six `effectHandler/` wrappers *propagate* the body's extra effects.
+Phase 1 calibration (2026-04-19) established that the current `EffectSet` representation is `{ effects: Set<string>, open: boolean }` — a flat set plus a single "openness" bit. `isEffectSubset` treats `open: true` as "accepts any extras" structurally ([src/typechecker/types.ts:467-477](../../src/typechecker/types.ts#L467-L477)). **There is no row-variable identity**, so two `@{e, ...}` tails in the same signature do not unify — body-extras passed through a signature like `(() -> @{choose, ...} A) -> @{dvala.random.item, ...} A` silently disappear from the result type.
 
-- **4.1** Verify / extend the existing open-effect-set machinery `@{e, ...}` so that a single function signature unifies its two (or more) `@{...}` tails positionally per type-system decision #12. If already working, add tests; otherwise land the binding rule.
-- **4.2** Parse and print polymorphic tails in annotations.
-- **4.3** Tests: `(() -> @{choose, ...} A) -> @{dvala.random.item, ...} A` must refuse to unify `...` with conflicting tails across instantiations.
+The value-type system uses MLsub-style bisubtyping with `Var` nodes carrying `id`, `level`, `lowerBounds`, and `upperBounds` ([src/typechecker/types.ts:84](../../src/typechecker/types.ts#L84)). `(A) -> A` already works for value types: fresh `Var` per call-site instantiation propagates information. This step introduces the analogous machinery for effect sets.
+
+- **4.1** Extend `EffectSet` to carry an optional row variable: `{ effects: Set<string>, tail: EffectRowVar | 'closed' | 'open' }`, where `EffectRowVar` has `id`, `level`, `lowerBounds`, `upperBounds` mirroring the value `Var`. The existing `open: boolean` maps to `'open'` (anonymous-wildcard) vs. `'closed'`. `EffectRowVar` is the new case.
+- **4.2** At signature-instantiation time, replace each named row variable (e.g. `ρ` or the implicit tail attached to a signature) with a fresh `EffectRowVar`. Mirrors the existing fresh-`Var` mechanism for value types.
+- **4.3** Extend `isEffectSubset`, `mergeEffects`, and `subtractEffects` to handle row vars — unify row-var tails across two sides, generate bounds on the row var, etc.
+- **4.4** Parse per-signature implicit tail identity: within a single signature, all unnamed `@{..., ...}` tails bind to one shared row variable (the per-signature implicit one). Different signatures get different implicit variables. (Per Q5 Decision 5 — unnamed tails.)
+- **4.5** Tests: `(() -> @{choose, ...} A) -> @{dvala.random.item, ...} A` called with a body performing `@{choose, log}` must produce a result type with effect set `@{dvala.random.item, log}`. Explicit row-var test: `log` propagates.
+- **4.6** Tests: signatures with two open-tailed positions that should NOT share — verify separation works if we decide to allow it (e.g. via named rows `@{e | ρ}` deferred from Q5; if still out of scope, this is a non-goal).
+- **4.7** Subtyping rules for the `EffectRowVar` case in [src/typechecker/subtype.ts](../../src/typechecker/subtype.ts).
+
+**Open sub-decision (defer to implementation):** within a single signature, when there are ≥2 open tails, do they all share one implicit row variable by default? Q5 ("unnamed open tail") implicitly suggested yes — the implementation commits to this interpretation. If a future case needs independent tails, reopen Q5 for named rows (Option B).
 
 ### Phase 5 — Wire `effectHandler/` signatures
 
