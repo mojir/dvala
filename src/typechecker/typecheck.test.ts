@@ -867,6 +867,54 @@ describe('typecheck — handler application effect arithmetic', () => {
 })
 
 // ---------------------------------------------------------------------------
+// typecheck — function-call effect propagation
+// ---------------------------------------------------------------------------
+
+// A callee that declares effects (e.g. `() -> @{io} Number`) performs those
+// effects when called — they must flow into the surrounding effect context.
+// Previously the call-site dropped them silently, making `outer = () -> f()`
+// infer as pure even when f had effects.
+describe('typecheck — function call propagates callee effects', () => {
+  const dvala = createDvala()
+
+  function outerEffects(source: string) {
+    const result = dvala.typecheck(source)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    return t.effects
+  }
+
+  it('inline perform and wrapped call agree on the effect set', () => {
+    const inline = outerEffects(`
+      effect @test.fcp_a(Null) -> Null;
+      let outer = () -> do perform(@test.fcp_a, null); 1 end;
+      outer
+    `)
+    const wrapped = outerEffects(`
+      effect @test.fcp_b(Null) -> Null;
+      let f: () -> @{test.fcp_b} Number = () -> do perform(@test.fcp_b, null); 1 end;
+      let outer = () -> f();
+      outer
+    `)
+    expect(inline.effects.has('test.fcp_a')).toBe(true)
+    expect(wrapped.effects.has('test.fcp_b')).toBe(true)
+  })
+
+  it('chained calls propagate through multiple layers', () => {
+    const effects = outerEffects(`
+      effect @test.fcp_chain(Null) -> Null;
+      let a: () -> @{test.fcp_chain} Number = () -> do perform(@test.fcp_chain, null); 1 end;
+      let b = () -> a();
+      let c = () -> b();
+      c
+    `)
+    expect(effects.effects.has('test.fcp_chain')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // typecheck — handler-as-callable + user-defined wrapper introduced
 // effect propagation (Phase 4-B)
 // ---------------------------------------------------------------------------

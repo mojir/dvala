@@ -974,6 +974,18 @@ export function inferExpr(
         constrain(ctx, calleeType, fn(argTypes, retVar))
         recordSpecializedCalleeType(calleeNode, selectedAlternative, typeMap)
 
+        // Function-call effect propagation: a callee that declares effects
+        // (e.g. `() -> @{io} Number`) performs those effects when called, so
+        // they must flow into the surrounding effect context. Without this,
+        // effects silently disappear across function-call boundaries —
+        // `outer = () -> f()` where f performs @{io} would infer as pure.
+        // Selects the matching alternative's effects when overload-resolved,
+        // otherwise unions across alternatives as a conservative upper bound.
+        const calledEffects = selectedAlternative
+          ? selectedAlternative.effects
+          : unionEffectSets(functionAlternatives.map(alt => alt.effects))
+        ctx.addEffects(calledEffects)
+
         result = retVar
 
         // Constant folding: when the callee's effect set is empty and the
