@@ -142,6 +142,22 @@ export interface SnapshotState {
    * For coverage, record `node[2]` (the node ID) and return without calling `getContinuation()`.
    */
   onNodeEval?: (node: AstNode, getContinuation: () => Continuation) => void | Promise<void>
+
+  /**
+   * Program-level cleanup callbacks — registered by host effect handlers
+   * via `ctx.onScopeExit` when there is no enclosing Dvala handler frame
+   * to attach to. Fires at program completion (completed / halted / error)
+   * in LIFO. Each entry records its source effect name for error messages.
+   *
+   * Treated exactly like frame-level cleanups for snapshot/suspend
+   * restrictions — the runtime refuses capture while any program-level
+   * cleanup is live, because a serialized continuation that outlives the
+   * process cannot be followed by the cleanup.
+   *
+   * Lazily initialized — undefined until `onScopeExit` without an
+   * enclosing frame needs it.
+   */
+  programCleanups?: { callback: () => void | Promise<void>; effectName: string }[]
 }
 
 // ---------------------------------------------------------------------------
@@ -216,6 +232,33 @@ export interface EffectContext {
    * If `value` is omitted, defaults to `null`.
    */
   halt: (value?: unknown) => void
+
+  /**
+   * Register a cleanup callback tied to the nearest enclosing Dvala handler
+   * frame at the moment of this effect call. The callback fires (in LIFO
+   * order with other registrations on the same frame) when that frame
+   * terminally exits — normal completion, abort via a non-resuming clause,
+   * or snapshot discard.
+   *
+   * Use this for host-side resource cleanup (closing files, releasing
+   * connections). While any registered callback is live, snapshot capture
+   * and continuation multi-shot are refused with a runtime error — the
+   * runtime cannot guarantee cleanup if the computation is allowed to
+   * serialize or re-enter a torn-down frame.
+   *
+   * Callbacks may be async; they are awaited sequentially during scope
+   * exit. They may not perform Dvala effects (they run after the Dvala
+   * execution window for that scope). Errors thrown by one callback do
+   * not block subsequent callbacks; they aggregate and surface once all
+   * cleanups have run.
+   *
+   * If no enclosing Dvala handler frame exists (the effect was performed
+   * at top level with no wrapping handler), the callback is registered
+   * on a program-level list that fires at program completion or halt.
+   *
+   * See design doc: `design/active/2026-04-19_host-scoped-resources.md`.
+   */
+  onScopeExit: (callback: () => void | Promise<void>) => void
 }
 
 /** A function that handles an effect by calling `resume`, `suspend`, `fail`, `halt`, or `next`. */

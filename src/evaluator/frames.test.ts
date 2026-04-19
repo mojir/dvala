@@ -98,12 +98,13 @@ describe('frame types', () => {
       AlgebraicHandle: true,
       HandlerTransform: true,
       HandlerClause: true,
+      HandlerCleanup: true,
       ResumeCall: true,
       WithHandlerSetup: true,
       MacroEval: true,
       CodeTemplateBuild: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(48)
+    expect(Object.keys(frameTypes)).toHaveLength(49)
   })
 
   it('should support ContinuationStack as null (empty persistent list)', () => {
@@ -160,6 +161,7 @@ describe('frame types', () => {
         case 'AlgebraicHandle': return 'effect'
         case 'HandlerTransform': return 'effect'
         case 'HandlerClause': return 'effect'
+        case 'HandlerCleanup': return 'effect'
         case 'ResumeCall': return 'effect'
         case 'WithHandlerSetup': return 'effect'
         case 'MacroEval': return 'macro'
