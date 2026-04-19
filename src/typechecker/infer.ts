@@ -1438,7 +1438,7 @@ export function inferExpr(
           // union back in the effects that the handler's own clauses
           // perform. Across multiple alternatives we conservatively take
           // the union — any of them could be the active one at runtime.
-          // See design/active/2026-04-19_handler-typing.md.
+          // See design/archive/2026-04-19_handler-typing.md.
           ctx.addEffects(unionEffectSets(handlerAlternatives.map(handler => handler.introduced)))
 
           result = handlerAlternatives.length === 1
