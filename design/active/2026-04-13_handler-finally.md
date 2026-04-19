@@ -1,8 +1,10 @@
 # Handler Finally Clause
 
-**Status:** Draft
+**Status:** Superseded by [2026-04-19_host-scoped-resources.md](2026-04-19_host-scoped-resources.md)
 **Created:** 2026-04-13
 **References:** `2026-04-12_type-system.md`
+
+> **Supersession note (2026-04-19):** A design discussion rejected `finally` as a handler clause in favor of host-side `onScopeExit` callbacks. The core argument: resources live in the host, and Dvala-land `finally` cannot survive snapshot serialization or discarded continuations. See the replacement design doc for the full reasoning. This doc is kept for context — some of its local analysis (per-clause semantics, visibility rules) may still inform the future decision about pure-Dvala-side "run on exit" hooks if they ever become necessary.
 
 ## Goal
 
