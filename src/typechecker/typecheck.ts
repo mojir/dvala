@@ -194,7 +194,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   resetTypeAliases()
   resetModuleTypeCache()
   for (const mod of options?.modules ?? []) {
-    registerModuleType(mod.name, mod.functions)
+    registerModuleType(mod.name, mod.functions, mod.docs)
   }
   // Pass type annotations from the parser to the inference engine
   if (ast.typeAnnotations) {
@@ -232,7 +232,7 @@ export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap, options?:
   resetTypeAliases()
   resetModuleTypeCache()
   for (const mod of options?.modules ?? []) {
-    registerModuleType(mod.name, mod.functions)
+    registerModuleType(mod.name, mod.functions, mod.docs)
   }
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()

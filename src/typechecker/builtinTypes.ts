@@ -6,7 +6,7 @@
 import type { Type } from './types'
 import { Unknown } from './types'
 import { parseFunctionTypeAnnotation, type ParsedFunctionType } from './parseType'
-import type { BuiltinNormalExpressions } from '../builtin/interface'
+import type { BuiltinNormalExpressions, FunctionDocs } from '../builtin/interface'
 
 // ---------------------------------------------------------------------------
 // Parsed builtin type cache
@@ -83,11 +83,21 @@ const moduleTypeCache = new Map<string, Type>()
 /**
  * Register a module's exports as a record type.
  * Called during initialization for each registered module.
+ *
+ * `functions` covers TS-implemented entries with inline `docs`. `docs` covers
+ * source-implemented entries (where the `.dvala` source provides the impl and
+ * the docs map provides the declared type) and overrides anything in
+ * `functions` for the same name. Without the second argument, source-impl
+ * module functions are invisible to the typechecker — `import("effectHandler")`
+ * would yield a record with no `chooseRandom` etc.
  */
-export function registerModuleType(moduleName: string, functions: BuiltinNormalExpressions): void {
+export function registerModuleType(
+  moduleName: string,
+  functions: BuiltinNormalExpressions,
+  docs?: Record<string, FunctionDocs>,
+): void {
   const fields = new Map<string, Type>()
-  for (const [name, expr] of Object.entries(functions)) {
-    const typeStr = expr.docs?.type
+  const setFromTypeStr = (name: string, typeStr: string | undefined): void => {
     if (typeStr) {
       try {
         const parsed = parseFunctionTypeAnnotation(typeStr)
@@ -97,6 +107,17 @@ export function registerModuleType(moduleName: string, functions: BuiltinNormalE
       }
     } else {
       fields.set(name, Unknown)
+    }
+  }
+  for (const [name, expr] of Object.entries(functions)) {
+    setFromTypeStr(name, expr.docs?.type)
+  }
+  if (docs) {
+    for (const [name, doc] of Object.entries(docs)) {
+      // Skip names already covered by `functions` — those took their type
+      // from the inline docs, which is canonical for TS-impls.
+      if (fields.has(name)) continue
+      setFromTypeStr(name, doc.type)
     }
   }
   // Module type is a closed record of its exports

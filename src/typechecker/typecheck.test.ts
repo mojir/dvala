@@ -1576,6 +1576,52 @@ describe('typecheck — type aliases', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// typecheck — source-implemented module function type registration (Phase 0)
+// ---------------------------------------------------------------------------
+
+// Modules like `effectHandler` keep their implementations in a `.dvala`
+// source file; types are declared in the module's `docs` map rather than
+// inline on each TS function. Before this work, `registerModuleType` only
+// iterated `mod.functions`, so source-impl entries were invisible to the
+// typechecker — `import("effectHandler").chooseRandom` produced a
+// "missing field" type error even though the runtime worked.
+describe('typecheck — source-impl module functions are visible', () => {
+  const dvala = createDvala()
+
+  it('effectHandler.chooseRandom is visible to the typechecker', () => {
+    const result = dvala.typecheck(`
+      let { chooseRandom } = import("effectHandler");
+      chooseRandom(-> 5)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('effectHandler.retry is visible to the typechecker', () => {
+    const result = dvala.typecheck(`
+      let { retry } = import("effectHandler");
+      retry(3, -> 0)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('effectHandler.fallback is visible to the typechecker', () => {
+    const result = dvala.typecheck(`
+      let { fallback } = import("effectHandler");
+      fallback(0)(-> 1)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('collection.filter is visible to the typechecker (Dvala-impl)', () => {
+    const result = dvala.typecheck(`
+      let { filter } = import("collection");
+      filter([1, 2, 3], (x) -> x > 1)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
 describe('typecheck — imported diagnostics', () => {
   it('surfaces type errors from imported files with imported file paths', () => {
     const files = new Map([

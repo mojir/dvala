@@ -42,7 +42,7 @@ import { allBuiltinModules } from '../allModules'
 beforeAll(() => {
   initBuiltinTypes(builtin.normalExpressions)
   for (const mod of allBuiltinModules) {
-    registerModuleType(mod.name, mod.functions)
+    registerModuleType(mod.name, mod.functions, mod.docs)
   }
   // Declare test effects used in effect set and handler tests
   declareEffect('my.eff', Unknown, Unknown)
@@ -3269,7 +3269,7 @@ describe('builtinTypes', () => {
     // Re-initialize so other tests are not affected
     initBuiltinTypes(builtin.normalExpressions)
     for (const mod of allBuiltinModules) {
-      registerModuleType(mod.name, mod.functions)
+      registerModuleType(mod.name, mod.functions, mod.docs)
     }
 
     // Verify re-initialization worked
