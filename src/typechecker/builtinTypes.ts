@@ -103,9 +103,17 @@ export function registerModuleType(
         const parsed = parseFunctionTypeAnnotation(typeStr)
         fields.set(name, parsed.type)
       } catch {
+        // Intentional: a malformed type string degrades to Unknown rather
+        // than failing module registration. The function still works at
+        // runtime; the typechecker just loses precision for it. Audit
+        // parsing failures by watching for widening inference across
+        // callers of the affected module function.
         fields.set(name, Unknown)
       }
     } else {
+      // Intentional: entries without a declared type are Unknown. Common
+      // for docs entries that haven't been annotated yet; callers should
+      // audit via the `type` field on each FunctionDocs to see gaps.
       fields.set(name, Unknown)
     }
   }

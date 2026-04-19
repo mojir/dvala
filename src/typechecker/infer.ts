@@ -893,6 +893,7 @@ export function inferExpr(
         // captured on its FunctionType.effects but otherwise wouldn't
         // propagate through the generic constrain path below — the thunk
         // is passed by value, not invoked here.
+        let wrapperBranchFired = false
         if (wrapperInfo) {
           const wrapperThunkType = argTypes[wrapperInfo.paramIndex]
           if (wrapperThunkType) {
@@ -902,6 +903,7 @@ export function inferExpr(
               const residual = subtractEffects(thunkEffects, new Set(wrapperInfo.handled.keys()))
               ctx.addEffects(residual)
               ctx.addEffects(wrapperInfo.introduced)
+              wrapperBranchFired = true
             }
           }
         }
@@ -979,12 +981,24 @@ export function inferExpr(
         // they must flow into the surrounding effect context. Without this,
         // effects silently disappear across function-call boundaries —
         // `outer = () -> f()` where f performs @{io} would infer as pure.
-        // Selects the matching alternative's effects when overload-resolved,
-        // otherwise unions across alternatives as a conservative upper bound.
-        const calledEffects = selectedAlternative
-          ? selectedAlternative.effects
-          : unionEffectSets(functionAlternatives.map(alt => alt.effects))
-        ctx.addEffects(calledEffects)
+        //
+        // For a wrapper-typed callee, the wrapper branch above already
+        // performed the application-law arithmetic and `FunctionType.effects`
+        // of that callee equals its `introduced` by construction — so
+        // skipping here avoids double-adding (addEffects into a Set is
+        // idempotent today, but the overlap is conceptually redundant).
+        //
+        // The `selectedAlternative` path fires only for overload-resolved
+        // callees with >1 alternative; single-alternative and unresolved
+        // (Var) callees fall through to the union, which reduces to the
+        // single element or the empty set respectively — a no-op for
+        // recursion and polymorphic identity calls.
+        if (!wrapperBranchFired) {
+          const calledEffects = selectedAlternative
+            ? selectedAlternative.effects
+            : unionEffectSets(functionAlternatives.map(alt => alt.effects))
+          ctx.addEffects(calledEffects)
+        }
 
         result = retVar
 
