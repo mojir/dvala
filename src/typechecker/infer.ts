@@ -11,7 +11,7 @@
  * - inferExpr(node, ctx, env): infers a type for an AST node
  */
 
-import type { Type, EffectSet, SequenceType } from './types'
+import type { Type, EffectSet, HandlerWrapperInfo, SequenceType } from './types'
 import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
@@ -103,8 +103,10 @@ export class InferenceContext {
   private resumeStack: ResumeContext[] = []
   /** Active handled signatures available to direct perform() sites. */
   private handledSignatureStack: HandledSignatureMap[] = []
-  /** Parameter vars proven to feed directly into a handler thunk call. */
-  private wrappedThunkVarHandled = new Map<number, HandledSignatureMap>()
+  /** Parameter vars proven to feed directly into a handler thunk call.
+   * Stores both the handled signatures (for subtraction) and the introduced
+   * effect set (for the application law's union). */
+  private wrappedThunkVarHandled = new Map<number, { handled: HandledSignatureMap; introduced: EffectSet }>()
   /** Recoverable inference errors collected while continuing analysis. */
   private deferredErrors: TypeInferenceError[] = []
 
@@ -143,11 +145,11 @@ export class InferenceContext {
     this.handledSignatureStack.pop()
   }
 
-  noteWrappedThunkVar(varId: number, signatures: HandledSignatureMap): void {
-    this.wrappedThunkVarHandled.set(varId, signatures)
+  noteWrappedThunkVar(varId: number, signatures: HandledSignatureMap, introduced: EffectSet): void {
+    this.wrappedThunkVarHandled.set(varId, { handled: signatures, introduced })
   }
 
-  getWrappedThunkVar(varId: number): HandledSignatureMap | undefined {
+  getWrappedThunkVar(varId: number): { handled: HandledSignatureMap; introduced: EffectSet } | undefined {
     return this.wrappedThunkVarHandled.get(varId)
   }
 
@@ -855,11 +857,10 @@ export function inferExpr(
               new Set(guaranteedHandled.keys()),
             )
             ctx.addEffects(residualEffects)
-            // TODO Phase 4-B: also union in `handlerAlternatives.map(h => h.introduced)`
-            // to mirror the do-with-h wiring at line 1362. The application law
-            // (Σ_body \ handled) ∪ introduced is currently only enforced at
-            // do-with-h sites; the direct-call h(-> body) form below
-            // under-reports effects until 4-B lands.
+            // Phase 4-B: union the handler's introduced effects back in,
+            // mirroring the do-with-h application law. Union across
+            // alternatives — any could be the active runtime handler.
+            ctx.addEffects(unionEffectSets(handlerAlternatives.map(h => h.introduced)))
 
             result = handlerAlternatives.length === 1
               ? handlerAlternatives[0]!.output
@@ -884,6 +885,28 @@ export function inferExpr(
         const thunkAlternatives = argTypes.length === 1
           ? getFunctionAlternatives(argTypes[0]!)
           : []
+
+        // Phase 4-B application law for handler-wrapper functions: when the
+        // callee carries HandlerWrapperInfo and the wrapper-arg is a thunk,
+        // apply (thunk_effects \ wrapper.handled) ∪ wrapper.introduced to
+        // the surrounding effect context. The thunk's own effects are
+        // captured on its FunctionType.effects but otherwise wouldn't
+        // propagate through the generic constrain path below — the thunk
+        // is passed by value, not invoked here.
+        let wrapperBranchFired = false
+        if (wrapperInfo) {
+          const wrapperThunkType = argTypes[wrapperInfo.paramIndex]
+          if (wrapperThunkType) {
+            const innerAlts = getFunctionAlternatives(wrapperThunkType)
+            if (innerAlts.length > 0) {
+              const thunkEffects = unionEffectSets(innerAlts.map(t => t.effects))
+              const residual = subtractEffects(thunkEffects, new Set(wrapperInfo.handled.keys()))
+              ctx.addEffects(residual)
+              ctx.addEffects(wrapperInfo.introduced)
+              wrapperBranchFired = true
+            }
+          }
+        }
 
         const runtimeAlignedCollectionResult = inferCollectionCall(
           calleeNode,
@@ -911,9 +934,9 @@ export function inferExpr(
             new Set(guaranteedHandled.keys()),
           )
           ctx.addEffects(residualEffects)
-          // TODO Phase 4-B: also union `handlerAlternatives.map(h => h.introduced)`
-          // here. Same gap as the zero-arg branch above and the wrapper branch
-          // below — only do-with-h is wired today.
+          // Phase 4-B: union the handler's introduced effects, same as the
+          // zero-arg branch above.
+          ctx.addEffects(unionEffectSets(handlerAlternatives.map(h => h.introduced)))
 
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
@@ -929,13 +952,12 @@ export function inferExpr(
 
           constrain(ctx, argTypes[0]!, fn([], requiredBodyType))
           if (argTypes[0]!.tag === 'Var') {
-            ctx.noteWrappedThunkVar(argTypes[0].id, guaranteedHandled)
+            // Capture both subtraction (handled) and union (introduced)
+            // sides of the application law. Conservative across alternatives:
+            // any alternative might be active, so introduced is unioned.
+            const introduced = unionEffectSets(handlerAlternatives.map(h => h.introduced))
+            ctx.noteWrappedThunkVar(argTypes[0].id, guaranteedHandled, introduced)
           }
-          // TODO Phase 4-B: this branch defers thunk-effect handling via
-          // `noteWrappedThunkVar`, which records `handled` against the var so
-          // a downstream subtype check can subtract. `introduced` propagation
-          // through that deferred path is not yet wired — extend
-          // HandlerWrapperInfo with `introduced` and forward it here.
 
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
@@ -953,6 +975,30 @@ export function inferExpr(
         // this as property access (see Record <: Function case in constrain).
         constrain(ctx, calleeType, fn(argTypes, retVar))
         recordSpecializedCalleeType(calleeNode, selectedAlternative, typeMap)
+
+        // Function-call effect propagation: a callee that declares effects
+        // (e.g. `() -> @{io} Number`) performs those effects when called, so
+        // they must flow into the surrounding effect context. Without this,
+        // effects silently disappear across function-call boundaries —
+        // `outer = () -> f()` where f performs @{io} would infer as pure.
+        //
+        // For a wrapper-typed callee, the wrapper branch above already
+        // performed the application-law arithmetic and `FunctionType.effects`
+        // of that callee equals its `introduced` by construction — so
+        // skipping here avoids double-adding (addEffects into a Set is
+        // idempotent today, but the overlap is conceptually redundant).
+        //
+        // The `selectedAlternative` path fires only for overload-resolved
+        // callees with >1 alternative; single-alternative and unresolved
+        // (Var) callees fall through to the union, which reduces to the
+        // single element or the empty set respectively — a no-op for
+        // recursion and polymorphic identity calls.
+        if (!wrapperBranchFired) {
+          const calledEffects = selectedAlternative
+            ? selectedAlternative.effects
+            : unionEffectSets(functionAlternatives.map(alt => alt.effects))
+          ctx.addEffects(calledEffects)
+        }
 
         result = retVar
 
@@ -1960,7 +2006,7 @@ function intersectHandledSignatures(
 
 function intersectFunctionWrapperInfo(
   functions: Extract<Type, { tag: 'Function' }>[],
-): { paramIndex: number; handled: HandledSignatureMap } | undefined {
+): HandlerWrapperInfo | undefined {
   if (functions.length === 0) return undefined
   const first = functions[0]!.handlerWrapper
   if (!first) return undefined
@@ -1979,7 +2025,14 @@ function intersectFunctionWrapperInfo(
     return true
   })
 
-  return compatible ? first : undefined
+  if (!compatible) return undefined
+  // Conservative across alternatives: take the union of introduced sets.
+  // Any alternative could be the actual function called at runtime.
+  return {
+    paramIndex: first.paramIndex,
+    handled: first.handled,
+    introduced: unionEffectSets(functions.map(f => f.handlerWrapper?.introduced ?? PureEffects)),
+  }
 }
 
 function finalizeHandledSignatures(handled: HandledSignatureMap): HandledSignatureMap {
@@ -2122,7 +2175,7 @@ function synthesizeFunctionOverloads(
   params: Type[],
   ret: Type,
   effects: EffectSet,
-  handlerWrapper?: { paramIndex: number; handled: HandledSignatureMap },
+  handlerWrapper?: HandlerWrapperInfo,
 ): Extract<Type, { tag: 'Function' }>[] | undefined {
   const paramAlternatives = params.map(getDisplayUpperAlternatives)
   const retAlternatives = getDisplayLowerAlternatives(ret)
@@ -2157,12 +2210,12 @@ function getDisplayLowerAlternatives(type: Type): Type[] | undefined {
 function inferFunctionWrapperInfo(
   params: Type[],
   ctx: InferenceContext,
-): { paramIndex: number; handled: HandledSignatureMap } | undefined {
+): HandlerWrapperInfo | undefined {
   for (let index = 0; index < params.length; index++) {
     const param = params[index]!
     if (param.tag !== 'Var') continue
-    const handled = ctx.getWrappedThunkVar(param.id)
-    if (handled) return { paramIndex: index, handled }
+    const captured = ctx.getWrappedThunkVar(param.id)
+    if (captured) return { paramIndex: index, handled: captured.handled, introduced: captured.introduced }
   }
   return undefined
 }

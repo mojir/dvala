@@ -194,7 +194,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   resetTypeAliases()
   resetModuleTypeCache()
   for (const mod of options?.modules ?? []) {
-    registerModuleType(mod.name, mod.functions)
+    registerModuleType(mod.name, mod.functions, mod.docs)
   }
   // Pass type annotations from the parser to the inference engine
   if (ast.typeAnnotations) {
@@ -232,7 +232,7 @@ export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap, options?:
   resetTypeAliases()
   resetModuleTypeCache()
   for (const mod of options?.modules ?? []) {
-    registerModuleType(mod.name, mod.functions)
+    registerModuleType(mod.name, mod.functions, mod.docs)
   }
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()
@@ -366,6 +366,7 @@ function normalizeImportedExportType(type: Type): Type {
         ? {
           paramIndex: type.handlerWrapper.paramIndex,
           handled: normalizeHandledSignatures(type.handlerWrapper.handled),
+          introduced: type.handlerWrapper.introduced,
         }
         : undefined
       return {
@@ -382,6 +383,13 @@ function normalizeImportedExportType(type: Type): Type {
         body: normalizeImportedExportType(type.body),
         output: normalizeImportedExportType(type.output),
         handled: normalizeHandledSignatures(type.handled),
+        // `introduced` is carried through via the `...type` spread. It's
+        // an EffectSet of string names with no nested Type references,
+        // so nothing inside it needs recursive normalization — listing
+        // it here explicitly to keep the Handler-shape audit uniform
+        // with the Function case above, which now forwards `introduced`
+        // on its handlerWrapper.
+        introduced: type.introduced,
       }
     case 'Record':
       return {

@@ -867,6 +867,126 @@ describe('typecheck — handler application effect arithmetic', () => {
 })
 
 // ---------------------------------------------------------------------------
+// typecheck — function-call effect propagation
+// ---------------------------------------------------------------------------
+
+// A callee that declares effects (e.g. `() -> @{io} Number`) performs those
+// effects when called — they must flow into the surrounding effect context.
+// Previously the call-site dropped them silently, making `outer = () -> f()`
+// infer as pure even when f had effects.
+describe('typecheck — function call propagates callee effects', () => {
+  const dvala = createDvala()
+
+  function outerEffects(source: string) {
+    const result = dvala.typecheck(source)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    return t.effects
+  }
+
+  it('inline perform and wrapped call agree on the effect set', () => {
+    const inline = outerEffects(`
+      effect @test.fcp_a(Null) -> Null;
+      let outer = () -> do perform(@test.fcp_a, null); 1 end;
+      outer
+    `)
+    const wrapped = outerEffects(`
+      effect @test.fcp_b(Null) -> Null;
+      let f: () -> @{test.fcp_b} Number = () -> do perform(@test.fcp_b, null); 1 end;
+      let outer = () -> f();
+      outer
+    `)
+    expect(inline.effects.has('test.fcp_a')).toBe(true)
+    expect(wrapped.effects.has('test.fcp_b')).toBe(true)
+  })
+
+  it('chained calls propagate through multiple layers', () => {
+    const effects = outerEffects(`
+      effect @test.fcp_chain(Null) -> Null;
+      let a: () -> @{test.fcp_chain} Number = () -> do perform(@test.fcp_chain, null); 1 end;
+      let b = () -> a();
+      let c = () -> b();
+      c
+    `)
+    expect(effects.effects.has('test.fcp_chain')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// typecheck — handler-as-callable + user-defined wrapper introduced
+// effect propagation (Phase 4-B)
+// ---------------------------------------------------------------------------
+
+describe('typecheck — handler-as-callable propagates introduced effects', () => {
+  const dvala = createDvala()
+
+  function effectsOfWrappedBlock(letBindings: string, blockBody: string) {
+    const result = dvala.typecheck(`
+      ${letBindings}
+      let f = () -> do
+        ${blockBody}
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    return t.effects
+  }
+
+  // Direct h(-> body) form (the line 901-923 branch). Mirror of the
+  // do-with-h test in the application-arithmetic block above.
+  it('h(-> body) form unions handler.introduced into the result effect set', () => {
+    const effects = effectsOfWrappedBlock(
+      `
+        effect @test.cdc(Number) -> Number;
+        effect @test.cdi(String) -> Null;
+      `,
+      `
+        let h = handler
+          @test.cdc(x) -> do
+            perform(@test.cdi, "log");
+            resume(x)
+          end
+        end;
+        h(-> perform(@test.cdc, 5))
+      `,
+    )
+    expect(effects.effects.has('test.cdi')).toBe(true)
+    expect(effects.effects.has('test.cdc')).toBe(false)
+  })
+
+  // User-defined wrapper: a function that internally constructs a handler
+  // and applies it to its thunk arg. Phase 4-B's noteWrappedThunkVar
+  // captures both `handled` and `introduced`. When the wrapper is called
+  // with an effectful body, the residual effects (after subtraction) plus
+  // the wrapper's introduced should reach the surrounding context.
+  it('user-defined wrapper propagates introduced effects of inner handler', () => {
+    const effects = effectsOfWrappedBlock(
+      `
+        effect @test.uwc(Number) -> Number;
+        effect @test.uwi(String) -> Null;
+        let withChooser = (thunk) -> do
+          let h = handler
+            @test.uwc(x) -> do
+              perform(@test.uwi, "wrapper-introduced");
+              resume(x)
+            end
+          end;
+          h(thunk)
+        end;
+      `,
+      'withChooser(-> perform(@test.uwc, 5))',
+    )
+    expect(effects.effects.has('test.uwi')).toBe(true) // wrapper's introduced
+    expect(effects.effects.has('test.uwc')).toBe(false) // caught
+  })
+})
+
+// ---------------------------------------------------------------------------
 // typecheck — type display and expansion for complex types
 // ---------------------------------------------------------------------------
 
@@ -1572,6 +1692,52 @@ describe('typecheck — type aliases', () => {
   it('type does not interfere with variable named type', () => {
     // 'type' is not a reserved word — can be used as a variable when not followed by uppercase
     const result = dvala.typecheck('let type = 42; type + 1')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// typecheck — source-implemented module function type registration (Phase 0)
+// ---------------------------------------------------------------------------
+
+// Modules like `effectHandler` keep their implementations in a `.dvala`
+// source file; types are declared in the module's `docs` map rather than
+// inline on each TS function. Before this work, `registerModuleType` only
+// iterated `mod.functions`, so source-impl entries were invisible to the
+// typechecker — `import("effectHandler").chooseRandom` produced a
+// "missing field" type error even though the runtime worked.
+describe('typecheck — source-impl module functions are visible', () => {
+  const dvala = createDvala()
+
+  it('effectHandler.chooseRandom is visible to the typechecker', () => {
+    const result = dvala.typecheck(`
+      let { chooseRandom } = import("effectHandler");
+      chooseRandom(-> 5)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('effectHandler.retry is visible to the typechecker', () => {
+    const result = dvala.typecheck(`
+      let { retry } = import("effectHandler");
+      retry(3, -> 0)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('effectHandler.fallback is visible to the typechecker', () => {
+    const result = dvala.typecheck(`
+      let { fallback } = import("effectHandler");
+      fallback(0)(-> 1)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('collection.filter is visible to the typechecker (Dvala-impl)', () => {
+    const result = dvala.typecheck(`
+      let { filter } = import("collection");
+      filter([1, 2, 3], (x) -> x > 1)
+    `)
     expect(result.diagnostics).toHaveLength(0)
   })
 })
