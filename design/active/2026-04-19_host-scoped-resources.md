@@ -1,7 +1,8 @@
 # Host-scoped resources — `onScopeExit` callbacks
 
-**Status:** Draft
+**Status:** Decisions resolved — ready to implement
 **Created:** 2026-04-19
+**Decisions resolved:** 2026-04-19
 **Supersedes:** [2026-04-13_handler-finally.md](2026-04-13_handler-finally.md) (proposes dropping `finally` as a handler clause in favor of this mechanism).
 
 ## Goal
@@ -152,15 +153,17 @@ This lets the runtime's error messages be specific: `cannot snapshot: 3 resource
 6. **Cleanup callbacks cannot perform Dvala effects.** Side-effect only.
 7. **Callback errors aggregate; do not block each other.** All cleanups run; errors surface as an aggregate.
 
-## Open Questions
+## Resolved decisions (continued)
 
-- **Exact shape of `EffectHandlerContext`.** Is `onScopeExit` the only method, or do we group it with other potential callbacks (e.g. progress reporting, cancellation tokens)? Start minimal; grow if needed.
-- **Escape hatch for "I really don't care about strictness."** Proposed: `onScopeExit(cb, { noRestrict: true })`. Callback still runs on scope exit; the scope is not marked resource-holding. Covers genuinely idempotent cleanups (e.g. debounced metric flush) that shouldn't block snapshots. **Ship without this and add if users ask.**
-- **Error messages when restriction is triggered.** How specific? Do we include the registration site (host TypeScript source file + line)? The effect name? The user-supplied resource name? Goal: the user sees a message they can act on.
-- **Interaction with `dvala.run()` async boundaries.** When Dvala returns to the host (awaiting an async effect result), is that a scope exit? Probably not — the handler frame is still alive, awaiting. But clarify.
-- **Snapshot-during-cleanup.** Cleanup runs synchronously after the scope exits. Is it possible for something to try snapshotting from within a cleanup callback? The callback can't perform Dvala effects (Decision 6), so it can't trigger snapshot-via-effect. Host-side snapshot APIs should also refuse during active cleanup.
-- **Multiple runtime instances.** If a process has multiple `createDvala()` instances, cleanups are scoped to their originating instance. Confirm no cross-instance callback invocation.
-- **Resume-on-different-host** is explicitly out of scope. The restrictions prevent snapshot-while-resource-held, so this case cannot arise via the supported API. Document it.
+(Design review 2026-04-19 settled the originally-open questions.)
+
+8. **`EffectHandlerContext` is minimal.** Exactly one method: `{ onScopeExit(cb): void }`. No grouping under `ctx.cleanup.*` or other subspaces. Speculative shape invites speculative APIs; we add methods only when concrete use cases appear.
+9. **No escape hatch.** Every `onScopeExit` registration marks the enclosing handler frame resource-holding. Users who want non-blocking side-effects (idempotent logging, debounced metric flushes) handle those outside the Dvala runtime via their own scheduling — those aren't resources and shouldn't use this mechanism. Starting strict has a clean upgrade path; starting permissive doesn't.
+10. **Error messages include effect-name breakdown.** Minimum required detail: "cannot snapshot: handler at line X holds N live resources (2 × file.open, 1 × db.connect)". Effect names are free (the runtime already knows which handler-call registered the cleanup). Host-side TS stack traces and user-supplied resource labels deferred — can be opt-in via a debug flag if demand appears.
+11. **Async effect boundaries are transparent.** An `await` inside a host effect handler is NOT a scope exit. The Dvala handler frame remains alive through the await; cleanups fire only on genuine frame exit (normal completion, abort, uncaught-effect pass-through). Users can hold a file handle across `perform(@http.get, …)` naturally, like in any other async language.
+12. **Snapshot-during-cleanup is refused.** Runtime tracks a "currently running cleanups" flag; any snapshot API called during that window throws. Snapshotting mid-teardown is semantically incoherent, and the check is cheap.
+13. **Cleanups are strictly per-instance.** Multiple `createDvala()` instances in the same process have independent cleanup stacks. One instance's snapshot is never blocked by another instance's pending cleanups.
+14. **Cross-host resume is made impossible by the other restrictions.** Snapshot-while-resource-held is refused, so a resource-holding computation cannot be serialized. Documented with a single paragraph in the "Background" section.
 
 ## Implementation plan
 
