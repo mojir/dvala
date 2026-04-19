@@ -1,9 +1,19 @@
 # Handler typing — effect-polymorphic handler types
 
-**Status:** Decisions resolved — ready for Phase 1
+**Status:** Shipped (PRs #55, #56, #57, 2026-04-19)
 **Created:** 2026-04-19
 **Decisions resolved:** 2026-04-19
-**Supersedes scope of:** [2026-04-12_type-system.md](2026-04-12_type-system.md) Step 7 (previously a 6-bullet sketch).
+**Supersedes scope of:** [../active/2026-04-12_type-system.md](../active/2026-04-12_type-system.md) Step 7 (previously a 6-bullet sketch).
+
+> **Ship note (2026-04-19):** Phases 1–6 all shipped in three PRs over one session. Phase 4-A (full row-variable effect polymorphism) remains deferred as future work — the MLsub machinery for value types is the template; extending it to effect rows becomes relevant once user-defined effect-polymorphic helpers are needed. Plausibly a 0.6.0 item. The foundational work for 0.5.0+ landed here:
+> - `HandlerType.introduced` field carrying what the handler's own clauses perform
+> - do-with-h application law `(Σ_body \ handled) ∪ introduced`
+> - `HandlerWrapperInfo.introduced` for functions that internally install handlers
+> - Source-impl module function types (effectHandler.* now visible to the typechecker)
+> - Function-call effect propagation fix (effects now flow across function boundaries)
+> - `constrain(Unknown, Var)` fix so declared-Unknown returns produce Unknown not Never
+> - All six `effectHandler/` signatures with `FunctionDocs.wrapper` metadata
+> - Phase A audit follow-up on `chooseRandom` fully closed ([../archive/2026-04-16_builtin-effect-audit.md](./2026-04-16_builtin-effect-audit.md)).
 
 ## Goal
 
