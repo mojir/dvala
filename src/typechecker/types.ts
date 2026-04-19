@@ -63,7 +63,7 @@ export type Type =
   | { tag: 'Atom'; name: string } // Singleton: {:ok}
   | { tag: 'Literal'; value: string | number | boolean } // Singleton: {42}
   | FunctionType
-  | { tag: 'Handler'; body: Type; output: Type; handled: Map<string, HandlerEffectSignature> }
+  | { tag: 'Handler'; body: Type; output: Type; handled: Map<string, HandlerEffectSignature>; introduced: EffectSet }
   | { tag: 'AnyFunction' } // Supertype of all function types (any arity)
   | { tag: 'Tuple'; elements: Type[] }
   | { tag: 'Record'; fields: Map<string, Type>; open: boolean }
@@ -147,8 +147,13 @@ export function functionArityLabel(t: FunctionType): string {
   return t.restParam !== undefined ? `at least ${t.params.length}` : `${t.params.length}`
 }
 
-export function handlerType(body: Type, output: Type, handled: Map<string, HandlerEffectSignature>): Type {
-  return { tag: 'Handler', body, output, handled }
+export function handlerType(
+  body: Type,
+  output: Type,
+  handled: Map<string, HandlerEffectSignature>,
+  introduced: EffectSet = PureEffects,
+): Type {
+  return { tag: 'Handler', body, output, handled, introduced }
 }
 
 export function tuple(elements: Type[]): Type {
@@ -293,7 +298,17 @@ export function typeToString(t: Type): string {
     }
     case 'Handler': {
       const handledEffects = effectSetToString(effectSet([...t.handled.keys()]))
-      return `Handler<${typeToString(t.body)}, ${typeToString(t.output)}, ${handledEffects || '@{}'}>`
+      // Render the optional `introduced` slot only when non-empty — keeps the
+      // 3-slot form (which is a common case and what existing annotations use)
+      // visually identical to the legacy syntax.
+      const introducedStr = effectSetToString(t.introduced)
+      const slots = [
+        typeToString(t.body),
+        typeToString(t.output),
+        handledEffects || '@{}',
+        ...(introducedStr ? [introducedStr] : []),
+      ]
+      return `Handler<${slots.join(', ')}>`
     }
     case 'Tuple': return `[${t.elements.map(typeToString).join(', ')}]`
     case 'Record': {
@@ -381,6 +396,7 @@ export function typeEquals(a: Type, b: Type): boolean {
           return false
         }
       }
+      if (!effectSetEquals(a.introduced, bh.introduced)) return false
       return true
     }
     case 'Tuple': {
