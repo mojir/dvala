@@ -112,10 +112,12 @@ import type {
   ForLetBindFrame,
   ForLoopFrame,
   Frame,
+  HandlerCleanupFrame,
   HandlerClauseFrame,
   HandlerTransformFrame,
   ResumeCallFrame,
   WithHandlerSetupFrame,
+  CleanupEntry,
   IfBranchFrame,
   FileResolveFrame,
   ImportMergeFrame,
@@ -1093,6 +1095,11 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       const resumeValue = (params.size > 0 ? params.get(0)! : null) as Any
       const performK = fn.performK as ContinuationStack
       const handler = fn.handler
+      // Multi-shot restriction: if any resource-holding AlgebraicHandleFrame
+      // in the captured continuation has already had its cleanups fire,
+      // the continuation is no longer valid — re-entering would violate
+      // the resource-holding invariant.
+      assertContinuationValid(performK, sourceCodeInfo)
 
       // Strip the old AlgebraicHandleFrame from performK (it's always the last frame).
       const innerFrames = listTake(performK, listSize(performK) - 1)
@@ -1544,6 +1551,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyCodeTemplateBuild(frame, value, k)
     case 'MacroEval':
       return applyMacroEval(frame, value, k)
+    case 'HandlerCleanup':
+      return applyHandlerCleanup(frame, value, k)
     /* v8 ignore next 2 */
     default: {
       const _exhaustive: never = frame
@@ -2467,8 +2476,105 @@ function applyWithHandlerSetup(frame: WithHandlerSetupFrame, value: Any, k: Cont
  * If no transform, pass through (identity). Transform does NOT apply to abort values.
  */
 function applyAlgebraicHandleNormalCompletion(frame: AlgebraicHandleFrame, value: Any, k: ContinuationStack): Step {
-  const { handler } = frame
-  return applyHandlerTransform(handler, value, frame.env, frame.sourceCodeInfo, k)
+  const { handler, cleanups } = frame
+  // If the frame accumulated host-registered cleanups, schedule them to
+  // run AFTER the transform clause completes (the user-visible result is
+  // shaped by transform; cleanups are pure side-effects tied to the
+  // scope, not the value). We inject a HandlerCleanupFrame that holds
+  // the cleanups — when it pops, the cleanups fire in LIFO.
+  const outerK = cleanups && cleanups.length > 0
+    ? cons({
+      type: 'HandlerCleanup',
+      cleanups,
+      handleFrame: frame,
+      value,
+      sourceCodeInfo: frame.sourceCodeInfo,
+    } satisfies HandlerCleanupFrame, k)
+    : k
+  return applyHandlerTransform(handler, value, frame.env, frame.sourceCodeInfo, outerK)
+}
+
+/**
+ * Fire host-registered cleanup callbacks attached to a handler frame
+ * that just exited. Callbacks run in LIFO; errors from individual
+ * callbacks are collected and surfaced as a single aggregate after
+ * all cleanups have attempted to run. The saved `value` is restored
+ * as the scope result unchanged.
+ *
+ * If any callback returns a Promise, the whole chain is awaited and
+ * the result is a Promise<Step>. Sync callbacks (the common case)
+ * stay on the sync path.
+ */
+function applyHandlerCleanup(frame: HandlerCleanupFrame, _value: Any, k: ContinuationStack): Step | Promise<Step> {
+  const cleanups = frame.cleanups
+  const sourceCodeInfo = frame.sourceCodeInfo
+  // Mark the associated handle frame as discharged so continuation
+  // invocations that would re-enter it can detect and refuse (the
+  // multi-shot restriction described in the design doc).
+  frame.handleFrame.cleanupsFired = true
+  // LIFO: iterate in reverse.
+  const errors: unknown[] = []
+  let i = cleanups.length - 1
+  // Try each cleanup synchronously; if one returns a Promise we switch
+  // to the async path and await the rest there.
+  while (i >= 0) {
+    const entry = cleanups[i]!
+    try {
+      const result = entry.callback()
+      if (result && typeof (result).then === 'function') {
+        // Async: hand off to a promise chain that awaits this one and
+        // continues draining sync or async.
+        return (result)
+          .catch(e => { errors.push(e) })
+          .then(() => drainCleanupsAsync(cleanups, i - 1, errors))
+          .then(() => finalizeCleanup(frame.value, k, errors, sourceCodeInfo))
+      }
+    } catch (e) {
+      errors.push(e)
+    }
+    i--
+  }
+  return finalizeCleanup(frame.value, k, errors, sourceCodeInfo)
+}
+
+/** Async continuation of applyHandlerCleanup from a given index. */
+async function drainCleanupsAsync(
+  cleanups: readonly CleanupEntry[],
+  startIndex: number,
+  errors: unknown[],
+): Promise<void> {
+  for (let i = startIndex; i >= 0; i--) {
+    const entry = cleanups[i]!
+    try {
+      await entry.callback()
+    } catch (e) {
+      errors.push(e)
+    }
+  }
+}
+
+/**
+ * After all cleanups have run, either propagate the saved value forward
+ * or surface an aggregate error. Aggregation is simple today — we
+ * re-throw the first error; additional errors are logged to the debug
+ * channel so they're not silently lost. Proper AggregateError surfacing
+ * is a follow-up.
+ */
+function finalizeCleanup(value: Any, k: ContinuationStack, errors: unknown[], sourceCodeInfo: SourceCodeInfo | undefined): Step {
+  if (errors.length === 0) {
+    return { type: 'Value', value, k }
+  }
+  // Aggregate: re-throw the first error as a Dvala error; log any
+  // additional ones so we don't silently drop them.
+  const first = errors[0]!
+  if (errors.length > 1) {
+    // eslint-disable-next-line no-console
+    console.error(`[dvala] ${errors.length - 1} additional error(s) occurred during handler cleanup:`, errors.slice(1))
+  }
+  const err = first instanceof DvalaError
+    ? first
+    : new DvalaError(first instanceof Error ? first : `${first}`, sourceCodeInfo)
+  return { type: 'Error', error: err, k }
 }
 
 /**
@@ -2551,6 +2657,13 @@ function applyHandlerClauseAbort(frame: HandlerClauseFrame, value: Any, k: Conti
   void frame // frame fields unused at this point — clause is complete
   // Clause body completed. Whether or not resume was called, the clause's return
   // value propagates past the enclosing AlgebraicHandleFrame (bypassing its transform).
+  //
+  // Note: cleanups for the exiting handler frame are NOT attached to `k`
+  // here — by the time this apply function fires, the AlgebraicHandleFrame
+  // has already been popped from the continuation (it lives in performK,
+  // not outerK). Instead, cleanup injection for the abort path happens
+  // at dispatch time in `dispatchAlgebraicHandler` when the clause's
+  // continuation is being assembled. See that function for details.
   let _node = k
   while (_node !== null) {
     if (_node.head.type === 'AlgebraicHandle') {
@@ -2618,8 +2731,23 @@ function dispatchAlgebraicHandler(
   // performK = continuation from perform call site up to and including the AlgebraicHandleFrame
   const performK = listTake(k, frameIndex + 1)
 
-  // outerK = continuation past the AlgebraicHandleFrame (clause runs outside handler scope)
-  const outerK = listDrop(k, frameIndex + 1)
+  // outerK = continuation past the AlgebraicHandleFrame (clause runs outside handler scope).
+  // If this handler frame accumulated host-registered cleanups, inject a
+  // HandlerCleanupFrame at the front of outerK so cleanups fire after the
+  // clause body's value is computed but before control flows to whatever
+  // was past the handler. Normal-completion and transform paths still
+  // handle their own cleanup injection via applyAlgebraicHandleNormalCompletion
+  // and applyHandlerTransform.
+  const rawOuterK = listDrop(k, frameIndex + 1)
+  const outerK: ContinuationStack = frame.cleanups && frame.cleanups.length > 0
+    ? cons<Frame>({
+      type: 'HandlerCleanup',
+      cleanups: frame.cleanups,
+      handleFrame: frame,
+      value: null,
+      sourceCodeInfo,
+    }, rawOuterK)
+    : rawOuterK
 
   // Create the HandlerClauseFrame — bridges clause result back
   const clauseFrame: HandlerClauseFrame = {
@@ -2749,6 +2877,82 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
   // Evaluate next arg
   const newFrame: PerformArgsFrame = { ...frame, index: index + 1, params: newParams }
   return { type: 'Eval', node: argNodes[index]!, env, k: cons<Frame>(newFrame, k) }
+}
+
+/**
+ * Walk the continuation stack looking for handler frames with live
+ * host-registered cleanups. If any are found, throw a RuntimeError
+ * describing the operation that was refused and listing the held
+ * resources by effect name (e.g. "2 × file.open, 1 × db.connect").
+ *
+ * Called at snapshot-capture sites and at suspend. The runtime refuses
+ * these operations while resources are held because the host callback
+ * for cleanup cannot follow a continuation that's been serialized or
+ * discarded. See `design/archive/2026-04-19_host-scoped-resources.md`
+ * Part 3.
+ */
+/**
+ * Check that no AlgebraicHandleFrame in a captured continuation has
+ * had its cleanups discharged. Used when invoking a resume function —
+ * multi-shot is fine in general, but re-entering a frame whose
+ * cleanups have already fired is forbidden (the runtime can no
+ * longer guarantee resource-holding invariants).
+ *
+ * See `design/archive/2026-04-19_host-scoped-resources.md` Part 3,
+ * "Continuation tracking for the multi-shot restriction."
+ */
+function assertContinuationValid(performK: ContinuationStack, sourceCodeInfo: SourceCodeInfo | undefined): void {
+  let node = performK
+  while (node !== null) {
+    if (node.head.type === 'AlgebraicHandle' && node.head.cleanupsFired) {
+      throw new RuntimeError(
+        'cannot resume: continuation refers to a resource-holding handler that has already exited. '
+        + 'This happens when a multi-shot resume would re-enter a handler whose cleanups have already fired.',
+        sourceCodeInfo,
+      )
+    }
+    node = node.tail
+  }
+}
+
+/**
+ * Silent predicate: true iff any AlgebraicHandleFrame in `k` has live
+ * host-registered cleanups. Used by auto-checkpoint to skip snapshot
+ * capture when resources are held (explicit user-initiated checkpoints
+ * still error via `assertNoLiveCleanups`).
+ */
+function hasLiveCleanups(k: ContinuationStack): boolean {
+  let node = k
+  while (node !== null) {
+    if (node.head.type === 'AlgebraicHandle' && node.head.cleanups && node.head.cleanups.length > 0) {
+      return true
+    }
+    node = node.tail
+  }
+  return false
+}
+
+function assertNoLiveCleanups(k: ContinuationStack, operation: string, sourceCodeInfo: SourceCodeInfo | undefined): void {
+  // Aggregate counts per effect name across all resource-holding frames.
+  const counts = new Map<string, number>()
+  let total = 0
+  let node = k
+  while (node !== null) {
+    if (node.head.type === 'AlgebraicHandle' && node.head.cleanups && node.head.cleanups.length > 0) {
+      for (const entry of node.head.cleanups) {
+        counts.set(entry.effectName, (counts.get(entry.effectName) ?? 0) + 1)
+        total++
+      }
+    }
+    node = node.tail
+  }
+  if (total === 0) return
+  const breakdown = [...counts.entries()].map(([name, n]) => `${n} × ${name}`).join(', ')
+  throw new RuntimeError(
+    `cannot ${operation}: ${total} live cleanup(s) held by resource-holding handler(s) (${breakdown}). `
+    + 'Close resources before exiting the scope.',
+    sourceCodeInfo,
+  )
 }
 
 /**
@@ -2902,6 +3106,7 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   // The snapshot is always captured regardless of whether any handler intercepts.
   // Skipped when re-dispatching from an algebraic handler fallthrough (already captured upstream).
   if (effect.name === 'dvala.checkpoint' && snapshotState) {
+    assertNoLiveCleanups(k, 'snapshot (via perform @dvala.checkpoint)', sourceCodeInfo)
     const message = arg as string
     // Replace BarrierFrames with ReRunParallelFrames so the checkpoint
     // is a full-program continuation (not a branch-local one).
@@ -3080,7 +3285,13 @@ function dispatchHostHandler(
         // Capture a post-effect snapshot so time travel can rewind to right after this effect.
         // Snapshot after (not before) so the effect result is baked in — re-execution from here
         // is pure and needs no effect-result replay.
-        if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint') {
+        if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint' && !hasLiveCleanups(k)) {
+          // Auto-checkpoint silently skips when resource-holding handlers
+          // are in the stack — a captured checkpoint couldn't be resumed
+          // without re-acquiring the resources, which the host-cleanup
+          // model doesn't support. Explicit user-initiated checkpoints
+          // (ctx.checkpoint, perform @dvala.checkpoint) still error loudly
+          // because the user asked for them.
           const continuation = serializeToObject(composeCheckpointContinuation(k))
           const snapshot = createSnapshot({
             continuation,
@@ -3109,6 +3320,7 @@ function dispatchHostHandler(
       },
       suspend: (meta?: unknown) => {
         assertNotSettled('suspend')
+        assertNoLiveCleanups(k, 'suspend (via ctx.suspend)', sourceCodeInfo)
         // Validate meta is serializable (it goes into snapshots) but don't convert to Dvala types
         if (meta !== undefined)
           assertValidHostValue(meta, `suspend() meta in handler for '${effectName}'`)
@@ -3134,6 +3346,7 @@ function dispatchHostHandler(
         if (!snapshotState) {
           throw new RuntimeError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
         }
+        assertNoLiveCleanups(k, 'checkpoint (via ctx.checkpoint)', sourceCodeInfo)
         // Validate meta is serializable (it gets stored in snapshot) but don't convert to Dvala types
         if (meta !== undefined)
           assertValidHostValue(meta, `checkpoint() meta in handler for '${effectName}'`)
@@ -3185,6 +3398,31 @@ function dispatchHostHandler(
             snapshotState ? snapshotState.nextSnapshotIndex : 0,
           ),
         }
+      },
+      onScopeExit: callback => {
+        // Attach the callback to the nearest enclosing AlgebraicHandleFrame
+        // in the continuation stack. That frame becomes "resource-holding"
+        // and its cleanups will fire on terminal exit (normal completion,
+        // abort, or snapshot discard). If there is no enclosing Dvala
+        // handler frame (effect performed at top level with no wrapping
+        // `do with`), the callback attaches to the program-level scope
+        // exit list (TODO: implement program-level scope). For now we
+        // defer that case by throwing, so the limitation is explicit.
+        let node = k
+        while (node !== null) {
+          if (node.head.type === 'AlgebraicHandle') {
+            const frame = node.head
+            if (!frame.cleanups) frame.cleanups = []
+            frame.cleanups.push({ callback, effectName })
+            return
+          }
+          node = node.tail
+        }
+        throw new RuntimeError(
+          `onScopeExit called from '${effectName}' handler with no enclosing Dvala handler frame — `
+          + 'wrap the computation in a `do with handler; ... end` to scope the cleanup',
+          sourceCodeInfo,
+        )
       },
     }
 

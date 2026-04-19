@@ -418,10 +418,71 @@ export interface RecurLoopRebindFrame {
  * On normal body completion, the transform clause is applied (if present).
  * On abort (clause returns without calling resume), transform is bypassed.
  */
+/**
+ * Cleanup callback registered by a host effect handler via
+ * `ctx.onScopeExit`. Fires in LIFO order when the enclosing
+ * `AlgebraicHandleFrame` terminally exits.
+ *
+ * `effectName` records which host effect registered this cleanup,
+ * so the runtime's restriction error messages can say which
+ * resources are held (e.g. "2 × file.open, 1 × db.connect").
+ */
+export interface CleanupEntry {
+  callback: () => void | Promise<void>
+  effectName: string
+}
+
+/** Legacy callback type alias — internal cleanup code may use either shape. */
+export type CleanupCallback = () => void | Promise<void>
+
 export interface AlgebraicHandleFrame {
   type: 'AlgebraicHandle'
   handler: HandlerFunction
   env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+  /**
+   * Host-registered cleanup callbacks. Accumulated via
+   * `ctx.onScopeExit` inside host effect handlers whose effect
+   * propagated into this frame's scope. Fires in LIFO on
+   * terminal exit (normal completion, abort, or snapshot discard).
+   *
+   * When non-empty, the frame is "resource-holding" and the
+   * runtime refuses snapshot capture (see design doc
+   * `design/active/2026-04-19_host-scoped-resources.md`).
+   *
+   * Stored as a mutable array deliberately — `onScopeExit` pushes
+   * to this list from the host-handler's synchronous call path,
+   * and per-frame identity is preserved because `AlgebraicHandleFrame`
+   * values are never deeply copied during normal evaluation (only
+   * referenced from the continuation stack).
+   */
+  cleanups?: CleanupEntry[]
+  /**
+   * Set to true once this frame's cleanups have fired (via
+   * HandlerCleanupFrame discharge). Continuations captured from
+   * within this frame become invalid at that point — attempting to
+   * invoke them after discharge is the multi-shot restriction
+   * described in the design doc.
+   */
+  cleanupsFired?: boolean
+}
+
+/**
+ * Runs `cleanups` in LIFO after a handler frame has terminally
+ * exited. Inserted into the continuation by
+ * `applyAlgebraicHandleNormalCompletion` and `applyHandlerClauseAbort`
+ * so the cleanups fire after the user-visible result is computed
+ * (post-transform for normal completion; post-abort-value for
+ * abort paths).
+ */
+export interface HandlerCleanupFrame {
+  type: 'HandlerCleanup'
+  cleanups: CleanupEntry[]
+  /** The AlgebraicHandleFrame these cleanups belong to; marked `cleanupsFired`
+   *  once this frame's callbacks have drained so the multi-shot restriction
+   *  can detect continuations re-entering a discharged frame. */
+  handleFrame: AlgebraicHandleFrame
+  value: Any
   sourceCodeInfo?: SourceCodeInfo
 }
 
@@ -1027,6 +1088,7 @@ export type Frame =
   | AlgebraicHandleFrame
   | HandlerTransformFrame
   | HandlerClauseFrame
+  | HandlerCleanupFrame
   | ResumeCallFrame
   | WithHandlerSetupFrame
   // Compound function wrappers
