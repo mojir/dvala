@@ -117,7 +117,6 @@ import type {
   HandlerTransformFrame,
   ResumeCallFrame,
   WithHandlerSetupFrame,
-  CleanupEntry,
   IfBranchFrame,
   FileResolveFrame,
   ImportMergeFrame,
@@ -127,6 +126,7 @@ import type {
   LoopBindCompleteFrame,
   LoopBindFrame,
   LoopIterateFrame,
+  CleanupEntry,
   CodeTemplateBuildFrame,
   MacroEvalFrame,
   MatchFrame,
@@ -2481,13 +2481,14 @@ function applyAlgebraicHandleNormalCompletion(frame: AlgebraicHandleFrame, value
   // run AFTER the transform clause completes (the user-visible result is
   // shaped by transform; cleanups are pure side-effects tied to the
   // scope, not the value). We inject a HandlerCleanupFrame that holds
-  // the cleanups — when it pops, the cleanups fire in LIFO.
+  // the cleanups — when it pops, the cleanups fire in LIFO. The
+  // post-transform value flows through the cleanup frame unchanged
+  // (the frame takes it via its _value parameter).
   const outerK = cleanups && cleanups.length > 0
     ? cons({
       type: 'HandlerCleanup',
       cleanups,
       handleFrame: frame,
-      value,
       sourceCodeInfo: frame.sourceCodeInfo,
     } satisfies HandlerCleanupFrame, k)
     : k
@@ -2505,7 +2506,7 @@ function applyAlgebraicHandleNormalCompletion(frame: AlgebraicHandleFrame, value
  * the result is a Promise<Step>. Sync callbacks (the common case)
  * stay on the sync path.
  */
-function applyHandlerCleanup(frame: HandlerCleanupFrame, _value: Any, k: ContinuationStack): Step | Promise<Step> {
+function applyHandlerCleanup(frame: HandlerCleanupFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
   const cleanups = frame.cleanups
   const sourceCodeInfo = frame.sourceCodeInfo
   // Mark the associated handle frame as discharged so continuation
@@ -2535,26 +2536,33 @@ function applyHandlerCleanup(frame: HandlerCleanupFrame, _value: Any, k: Continu
         return (result)
           .catch(e => { errors.push(e) })
           .then(() => drainCleanupsAsync(cleanups, i - 1, errors))
-          .then(() => finalizeCleanup(frame.value, k, errors, sourceCodeInfo))
+          .then(() => finalizeCleanup(value, k, errors, sourceCodeInfo))
       }
     } catch (e) {
       errors.push(e)
     }
     i--
   }
-  return finalizeCleanup(frame.value, k, errors, sourceCodeInfo)
+  return finalizeCleanup(value, k, errors, sourceCodeInfo)
 }
 
 /**
  * Drain program-level cleanups (registered by `onScopeExit` when no
- * Dvala handler frame was in scope). Fires in LIFO with the same
- * error-aggregation rules as frame-level cleanups. Called from the
+ * Dvala handler frame was in scope). Fires in LIFO. Called from the
  * runEffectLoop terminal paths (completed / halted / error).
+ *
+ * `primaryOutcomeInFlight` controls error handling: when true (the
+ * halted or error terminal paths), cleanup errors are logged to
+ * stderr and do NOT re-throw — the in-flight primary outcome must
+ * not be clobbered by a cleanup failure that happened during its
+ * unwind. When false (the completed path), cleanup errors are
+ * treated as the primary outcome and re-thrown so the runtime
+ * reports them instead of a misleading "completed."
  *
  * Returns a Promise because cleanups may be async; for a fully
  * synchronous batch the promise resolves on the next tick.
  */
-async function drainProgramCleanups(snapshotState: SnapshotState | undefined): Promise<void> {
+async function drainProgramCleanups(snapshotState: SnapshotState | undefined, primaryOutcomeInFlight = false): Promise<void> {
   if (!snapshotState?.programCleanups || snapshotState.programCleanups.length === 0) return
   const cleanups = snapshotState.programCleanups
   snapshotState.programCleanups = undefined
@@ -2567,14 +2575,22 @@ async function drainProgramCleanups(snapshotState: SnapshotState | undefined): P
       errors.push(e)
     }
   }
-  if (errors.length > 0) {
-    const first = errors[0]!
-    if (errors.length > 1) {
-      // eslint-disable-next-line no-console
-      console.error(`[dvala] ${errors.length - 1} additional error(s) during program-level cleanup:`, errors.slice(1))
-    }
-    throw first instanceof Error ? first : new DvalaError(`${first}`, undefined)
+  if (errors.length === 0) return
+  if (primaryOutcomeInFlight) {
+    // Primary outcome (halted or errored) is already flowing — log
+    // all cleanup errors and let the primary outcome propagate.
+    // eslint-disable-next-line no-console
+    console.error(`[dvala] ${errors.length} error(s) during program-level cleanup (primary outcome preserved):`, errors)
+    return
   }
+  // Completed path: no primary outcome yet, so cleanup errors ARE the
+  // primary outcome. Re-throw the first; log any additional ones.
+  const first = errors[0]!
+  if (errors.length > 1) {
+    // eslint-disable-next-line no-console
+    console.error(`[dvala] ${errors.length - 1} additional error(s) during program-level cleanup:`, errors.slice(1))
+  }
+  throw first instanceof Error ? first : new DvalaError(`${first}`, undefined)
 }
 
 /** Async continuation of applyHandlerCleanup from a given index. */
@@ -2775,16 +2791,24 @@ function dispatchAlgebraicHandler(
   // If this handler frame accumulated host-registered cleanups, inject a
   // HandlerCleanupFrame at the front of outerK so cleanups fire after the
   // clause body's value is computed but before control flows to whatever
-  // was past the handler. Normal-completion and transform paths still
-  // handle their own cleanup injection via applyAlgebraicHandleNormalCompletion
-  // and applyHandlerTransform.
+  // was past the handler. The clause's return value flows through the
+  // injected frame unchanged — HandlerCleanupFrame takes it via its
+  // `value` parameter. Normal-completion and transform paths handle
+  // their own cleanup injection via applyAlgebraicHandleNormalCompletion.
+  //
+  // Multi-shot note: inline multi-shot (`resume(n) + resume(n * 10)` in
+  // one clause body) injects this HandlerCleanupFrame once. The first
+  // resume's eventual unwind pops the frame, firing cleanups and
+  // setting `cleanupsFired = true`. Any second resume through the same
+  // performK then fails `assertContinuationValid` with the multi-shot
+  // restriction error. Escaped-continuation multi-shot (storing resume
+  // and invoking after scope exit) is the intended target of that check.
   const rawOuterK = listDrop(k, frameIndex + 1)
   const outerK: ContinuationStack = frame.cleanups && frame.cleanups.length > 0
     ? cons<Frame>({
       type: 'HandlerCleanup',
       cleanups: frame.cleanups,
       handleFrame: frame,
-      value: null,
       sourceCodeInfo,
     }, rawOuterK)
     : rawOuterK
@@ -2920,18 +2944,6 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
 }
 
 /**
- * Walk the continuation stack looking for handler frames with live
- * host-registered cleanups. If any are found, throw a RuntimeError
- * describing the operation that was refused and listing the held
- * resources by effect name (e.g. "2 × file.open, 1 × db.connect").
- *
- * Called at snapshot-capture sites and at suspend. The runtime refuses
- * these operations while resources are held because the host callback
- * for cleanup cannot follow a continuation that's been serialized or
- * discarded. See `design/archive/2026-04-19_host-scoped-resources.md`
- * Part 3.
- */
-/**
  * Check that no AlgebraicHandleFrame in a captured continuation has
  * had its cleanups discharged. Used when invoking a resume function —
  * multi-shot is fine in general, but re-entering a frame whose
@@ -2983,6 +2995,18 @@ function hasLiveCleanups(k: ContinuationStack, snapshotState?: SnapshotState): b
   return false
 }
 
+/**
+ * Walk the continuation stack and program-level cleanup list looking
+ * for live host-registered cleanups. If any are found, throw a
+ * RuntimeError describing the operation that was refused and listing
+ * the held resources by effect name (e.g. "2 × file.open, 1 × db.connect").
+ *
+ * Called at snapshot-capture sites and at suspend. The runtime refuses
+ * these operations while resources are held because the host callback
+ * for cleanup cannot follow a continuation that's been serialized or
+ * discarded. See `design/archive/2026-04-19_host-scoped-resources.md`
+ * Part 3.
+ */
 function assertNoLiveCleanups(k: ContinuationStack, operation: string, sourceCodeInfo: SourceCodeInfo | undefined, snapshotState?: SnapshotState): void {
   // Aggregate counts per effect name across all resource-holding frames.
   const counts = new Map<string, number>()
@@ -2999,16 +3023,23 @@ function assertNoLiveCleanups(k: ContinuationStack, operation: string, sourceCod
   }
   // Program-level cleanups count too — capturing a continuation that
   // escapes the runtime process would orphan them.
+  let programLevelCount = 0
   if (snapshotState?.programCleanups) {
     for (const entry of snapshotState.programCleanups) {
       counts.set(entry.effectName, (counts.get(entry.effectName) ?? 0) + 1)
       total++
+      programLevelCount++
     }
   }
   if (total === 0) return
   const breakdown = [...counts.entries()].map(([name, n]) => `${n} × ${name}`).join(', ')
+  const scopeNote = programLevelCount > 0
+    ? total === programLevelCount
+      ? ' (all at program scope)'
+      : ` (includes ${programLevelCount} at program scope)`
+    : ''
   throw new RuntimeError(
-    `cannot ${operation}: ${total} live cleanup(s) held by resource-holding handler(s) (${breakdown}). `
+    `cannot ${operation}: ${total} live cleanup(s) held by resource-holding handler(s)${scopeNote} (${breakdown}). `
     + 'Close resources before exiting the scope.',
     sourceCodeInfo,
   )
@@ -6099,20 +6130,20 @@ async function runEffectLoop(
         return { type: 'suspended', snapshot, _rawSuspension }
       }
       if (isHaltSignal(error)) {
-        await drainProgramCleanups(snapshotState)
+        await drainProgramCleanups(snapshotState, true)
         const snapshot = createTerminalSnapshot({ result: error.value, halted: true })
         return snapshot
           ? { type: 'halted', value: error.value, snapshot }
           : { type: 'halted', value: error.value }
       }
       if (error instanceof DvalaError) {
-        await drainProgramCleanups(snapshotState)
+        await drainProgramCleanups(snapshotState, true)
         const snapshot = createTerminalSnapshot({ error })
         return snapshot
           ? { type: 'error', error, snapshot }
           : { type: 'error', error }
       }
-      await drainProgramCleanups(snapshotState)
+      await drainProgramCleanups(snapshotState, true)
       const snapshot = createTerminalSnapshot()
       const dvalaError = new DvalaError(`${error}`, undefined)
       return snapshot

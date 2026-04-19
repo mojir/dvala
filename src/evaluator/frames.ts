@@ -432,9 +432,6 @@ export interface CleanupEntry {
   effectName: string
 }
 
-/** Legacy callback type alias — internal cleanup code may use either shape. */
-export type CleanupCallback = () => void | Promise<void>
-
 export interface AlgebraicHandleFrame {
   type: 'AlgebraicHandle'
   handler: HandlerFunction
@@ -482,7 +479,6 @@ export interface HandlerCleanupFrame {
    *  once this frame's callbacks have drained so the multi-shot restriction
    *  can detect continuations re-entering a discharged frame. */
   handleFrame: AlgebraicHandleFrame
-  value: Any
   sourceCodeInfo?: SourceCodeInfo
 }
 
