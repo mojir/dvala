@@ -59,7 +59,7 @@ export interface TypecheckOptions {
    * unreachable arms; etc. Takes precedence over the `DVALA_FOLD` env var.
    * If omitted, the env var default is used.
    *
-   * See design/active/2026-04-16_constant-folding-in-types.md.
+   * See design/archive/2026-04-16_constant-folding-in-types.md.
    */
   fold?: boolean
 }

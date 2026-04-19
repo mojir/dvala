@@ -1,8 +1,8 @@
 /**
  * Typechecker fold toggle. Gates whether `inferExpr` invokes the fold
  * sandbox for pure `Call` nodes. See design docs:
- *  - design/active/2026-04-16_constant-folding-in-types.md
- *  - design/active/2026-04-16_fold-toggle-and-differential-tests.md
+ *  - design/archive/2026-04-16_constant-folding-in-types.md
+ *  - design/archive/2026-04-16_fold-toggle-and-differential-tests.md
  *
  * Default: **on**. Set `DVALA_FOLD=0` to opt out. Per-call override is
  * available via `TypecheckOptions.fold`.

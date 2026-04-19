@@ -1,8 +1,10 @@
 # Builtin Effect Declaration Audit
 
-**Status:** In progress
+**Status:** Complete (2026-04-17)
 **Created:** 2026-04-16
 **Depends on:** [2026-04-16_constant-folding-in-types.md](2026-04-16_constant-folding-in-types.md) (Phase A prerequisite)
+
+> **Completion note (2026-04-19):** 3/4 follow-ups resolved — `test.*` effect declarations before PR #53, `raise` effect + `time/` annotations in commit `40d5e7eb`. The remaining item, `effectHandler.chooseRandom`, is blocked on effect-polymorphic handler types (a dedicated type-system track, not a builtin-audit item). Phase A as scoped here is done.
 
 ## Goal
 
@@ -96,7 +98,7 @@ For each module we also note:
 | `sequence` | ✅ Audited | 20 TS + Dvala source | Pure; some higher-order. |
 | `string` | ✅ Audited | 14 TS + Dvala source | Pure. Module-level `/\$\$/g` regex used only with `String.replace` (stateless despite `g` flag). See [Per-module audit results](#string-module). |
 | `test` | ✅ Audited | 2 TS + Dvala source | ⚠ **`TestCollector` has mutable state**; factory-per-file isolation. See [Per-module audit results](#test). |
-| `time` | ⚠ Needs annotation | No `type` fields | `epochToIsoDate(ms)` / `isoDateToEpoch(iso)` — pure, deterministic by input. No wall-clock read. Missing type annotations block folding. |
+| `time` | ✅ Audited | 2, both annotated (`40d5e7eb`) | `epochToIsoDate(ms)` / `isoDateToEpoch(iso)` — pure, deterministic by input. No wall-clock read. Type annotations added. |
 | `vector` | ✅ Audited | 33, all annotated | Pure vector math. |
 
 ### Special Expressions (`src/builtin/specialExpressions/`)
@@ -350,13 +352,7 @@ After Phase A, Phase B (differential test matrix) can start.
 - `macroexpand` — TS stub throws ("handled by the evaluator"). Not called through this path during fold — fold would attempt it and silently fall back on the thrown non-DvalaError.
 - `raise` — TS stub throws ("implemented in Dvala"). Actual Dvala implementation performs `@dvala.error`.
 
-**Declaration issue — `raise`:**
-
-The type signature is `((String) -> Never) & ((String, Unknown) -> Never)` with an **empty effect set**, but the runtime implementation performs `@dvala.error`. In the rigorous set-theoretic model (type-system design decision #12 and the folding design's decision #13) this is a misdeclaration — `raise` should carry an `@{dvala.error}` effect.
-
-**Fold impact:** Low. The sandbox intercepts `@dvala.error` via the `DvalaError` catch branch and surfaces as a warning (decision #2) regardless of what the declared signature says. So fold behavior is correct in practice — the declaration just isn't as informative as it could be.
-
-**Recommendation:** Once effect-set annotations are added (separate from this audit), retype `raise` as `(String) -> @{dvala.error} Never` (and similarly for the 2-arg variant). Track as a follow-up, not a blocker for Phase C.
+**Declaration issue — `raise`:** ~~declared pure, actually performs `@dvala.error`~~ **Fixed in commit `40d5e7eb`.** `raise` now declares `((String) -> @{dvala.error} Never) & ((String, Unknown) -> @{dvala.error} Never)`.
 
 **Key observations:**
 
@@ -365,7 +361,7 @@ The type signature is `((String) -> Never) & ((String, Unknown) -> Never)` with 
 
 **Fold eligibility:** 13 TS-impl eligible. `macroexpand` is not exercised through the fold path (TS stub is a no-op that throws; Dvala-side macroexpansion happens at a different evaluator phase). `raise` is eligible — fold correctly surfaces a warning via the `@dvala.error` path.
 
-**Declaration bugs:** `raise`'s empty effect declaration is the one documented issue in core/. Non-blocking.
+**Declaration bugs:** `raise`'s empty effect declaration was the one documented issue in core/. Fixed in `40d5e7eb`.
 
 **Missing annotations:** None.
 
@@ -395,7 +391,7 @@ Once effect polymorphism lands, these signatures should be upgraded. Not part of
 **Summary:** 13/13 core files audited. 127 builtins classified. Every TS-impl builtin is pure (pure-deterministic or pure-partial). Every thrown error descends from `DvalaError` and is caught by the fold sandbox.
 
 **Declaration issues found:**
-1. `raise` (misc.ts) — should declare `@{dvala.error}` effect but declares pure. Non-blocking for folding. Flag for follow-up once effect annotations are applied across builtins.
+1. ~~`raise` (misc.ts) — should declare `@{dvala.error}` effect but declares pure.~~ **Fixed in `40d5e7eb`.**
 
 **Missing annotations in core/:** None.
 
@@ -470,7 +466,7 @@ Inside `applyPlaceholders`, there's also `new RegExp(..., 'g')` used with `.test
 
 ### time
 
-Already noted in the tracking table. Two pure functions (`epochToIsoDate`, `isoDateToEpoch`) that lack type annotations entirely. Add `type: '(Number) -> String'` and `type: '(String) -> Number'` respectively. No behavior change.
+~~Two pure functions (`epochToIsoDate`, `isoDateToEpoch`) that lack type annotations entirely. Add `type: '(Number) -> String'` and `type: '(String) -> Number'` respectively.~~ **Fixed in commit `40d5e7eb`** — both annotations added. No behavior change.
 
 ### Other modules (ast, bitwise, collection, convert, functional, grid, json, linear-algebra, math, matrix, number-theory, sequence, vector)
 
@@ -498,21 +494,23 @@ Concise details:
 
 **Date:** 2026-04-16.
 
-**Summary:** 20/20 modules audited. Roughly 340+ additional builtins classified across modules. Every TS-impl is pure. Three declaration issues found (all non-blocking):
+**Summary:** 20/20 modules audited. Roughly 340+ additional builtins classified across modules. Every TS-impl is pure. Three declaration issues found:
 
-1. **`effectHandler.chooseRandom`** — declared pure, actually performs `@dvala.random.item`. Fix requires effect-polymorphic handler types (type-system Phase C).
-2. ~~**`test.test` / `test.describe` / `test.skip`** — declared pure, actually mutate a shared `TestCollector`. Should carry a `@test.register` (or similar) effect declaration. Must be addressed before fold is enabled for test-file typecheck.~~ **Fixed** (commit after C9 landed): all three now declare `@{test.register}` in their `type` field. Fold's single effect-set gate now bails on these builtins, so test-file typecheck won't fold-execute `test(...)` / `describe(...)` against the live `TestCollector`.
-3. **`time/` module** — missing type annotations entirely on `epochToIsoDate`, `isoDateToEpoch`. Both are pure-deterministic-by-input; just add annotations.
+1. **`effectHandler.chooseRandom`** — declared pure, actually performs `@dvala.random.item`. Fix requires effect-polymorphic handler types (tracked separately from the builtin audit).
+2. ~~**`test.test` / `test.describe` / `test.skip`**~~ **Fixed** (before PR #53): all three now declare `@{test.register}` in their `type` field. Fold's single effect-set gate bails on these builtins, so test-file typecheck won't fold-execute `test(...)` / `describe(...)` against the live `TestCollector`.
+3. ~~**`time/` module** — missing type annotations entirely on `epochToIsoDate`, `isoDateToEpoch`.~~ **Fixed in `40d5e7eb`:** both annotated as `(Number) -> String` and `(String) -> Number`.
 
-**All three issues are non-critical for folding correctness** because the fold sandbox catches runtime effects regardless of declared signature. They are **correctness-of-declaration issues** that will improve IDE experience and enable sharper inference.
+**All three issues were non-critical for folding correctness** because the fold sandbox catches runtime effects regardless of declared signature. They are **correctness-of-declaration issues** that improve IDE experience and enable sharper inference.
 
 ## Phase A final summary
 
-- **Core (13 files, 127 builtins):** all pure. 1 declaration issue (`core/misc.ts::raise`).
-- **Modules (20 modules, ~340 builtins):** all pure. 3 declaration issues (effectHandler.chooseRandom, test.*, time/ annotations).
-- **Total declaration fixes needed:** 4 items, tracked as Phase A follow-ups.
+- **Core (13 files, 127 builtins):** all pure. 1 declaration issue (`core/misc.ts::raise`) — fixed in `40d5e7eb`.
+- **Modules (20 modules, ~340 builtins):** all pure. 3 declaration issues (effectHandler.chooseRandom, test.*, time/ annotations) — 2 fixed (`test.*`, `time/`), `chooseRandom` deferred to the effect-polymorphic handler types track.
+- **Total declaration fixes needed:** 4 items.
+- **Resolved:** 3 (raise, test.*, time/).
+- **Deferred:** 1 (chooseRandom — gated on effect-polymorphic handler types).
 - **Total critical blockers:** 0.
 
-**Phase A can be declared complete** once the four follow-ups are tracked as issues. Fold sandbox catches every effect at runtime, so none of the declaration imperfections risk unsound folding.
+**Phase A is complete.** The single open item is a type-system capability gap, not an audit gap.
 
-**Next:** Phase B — `DVALA_FOLD` toggle and differential test matrix.
+**What shipped next:** Phase B (`DVALA_FOLD` toggle + differential test matrix) and Phase C (folding implementation in `inferExpr`) landed together in PR #53.

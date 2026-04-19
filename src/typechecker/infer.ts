@@ -950,7 +950,7 @@ export function inferExpr(
         // Effects surfaced during fold (e.g. `@dvala.error` from a
         // division-by-zero the compiler can prove) become severity:'warning'
         // diagnostics — decision #2 of the folding design. See
-        // design/active/2026-04-16_constant-folding-in-types.md.
+        // design/archive/2026-04-16_constant-folding-in-types.md.
         if (ctx.foldEnabled
           && functionAlternatives.length > 0
           && functionAlternatives.every(alt => alt.effects.effects.size === 0 && !alt.effects.open)) {
