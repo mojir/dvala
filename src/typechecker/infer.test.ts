@@ -1542,18 +1542,8 @@ describe('constrain — negation and misc', () => {
 
   it('handler <: handler with missing clause throws', () => {
     const ctx = new InferenceContext()
-    const lhs = {
-      tag: 'Handler' as const,
-      body: NumberType,
-      output: NumberType,
-      handled: new Map(),
-    }
-    const rhs = {
-      tag: 'Handler' as const,
-      body: NumberType,
-      output: NumberType,
-      handled: new Map([['test.eff', { argType: NumberType, retType: StringType }]]),
-    }
+    const lhs = handlerType(NumberType, NumberType, new Map())
+    const rhs = handlerType(NumberType, NumberType, new Map([['test.eff', { argType: NumberType, retType: StringType }]]))
     expect(() => constrain(ctx, lhs, rhs)).toThrow(TypeInferenceError)
   })
 

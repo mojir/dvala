@@ -233,7 +233,12 @@ function varKey(t: Type): string {
   if (t.tag === 'Atom') return `A:${t.name}`
   if (t.tag === 'Literal') return `L:${String(t.value)}`
   if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}`
-  if (t.tag === 'Handler') return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}`
+  // The constraint cache uses these keys to skip redundant subtype checks,
+  // so any field that affects subtyping must appear here. `introduced` is
+  // included even though `constrain` for Handler does not yet compare it
+  // (Phase 2.5 deferred) — once it does, two handler types differing only
+  // in `introduced` must produce different cache keys.
+  if (t.tag === 'Handler') return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}:I:${[...t.introduced.effects].sort().join(',')}${t.introduced.open ? ':open' : ''}`
   if (t.tag === 'Record') return `R:${[...t.fields.entries()].map(([k, v]) => `${k}=${varKey(v)}`).join(',')}`
   if (t.tag === 'Array') return `Ar:${varKey(t.element)}`
   if (t.tag === 'Tuple') return `Tu:${t.elements.map(varKey).join(',')}`
@@ -468,6 +473,11 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     }
     constrain(ctx, lhs.body, rhs.body)
     constrain(ctx, lhs.output, rhs.output)
+    // Note: `introduced` is not yet compared here (Phase 2.5 deferred),
+    // even though `typeEquals` does compare it. The asymmetry is
+    // intentional for now — Phase 4-B will add covariant subtyping on
+    // `introduced` (a handler that introduces fewer effects is a
+    // subtype of one that introduces more).
     return
   }
 
@@ -845,6 +855,11 @@ export function inferExpr(
               new Set(guaranteedHandled.keys()),
             )
             ctx.addEffects(residualEffects)
+            // TODO Phase 4-B: also union in `handlerAlternatives.map(h => h.introduced)`
+            // to mirror the do-with-h wiring at line 1362. The application law
+            // (Σ_body \ handled) ∪ introduced is currently only enforced at
+            // do-with-h sites; the direct-call h(-> body) form below
+            // under-reports effects until 4-B lands.
 
             result = handlerAlternatives.length === 1
               ? handlerAlternatives[0]!.output
@@ -896,6 +911,9 @@ export function inferExpr(
             new Set(guaranteedHandled.keys()),
           )
           ctx.addEffects(residualEffects)
+          // TODO Phase 4-B: also union `handlerAlternatives.map(h => h.introduced)`
+          // here. Same gap as the zero-arg branch above and the wrapper branch
+          // below — only do-with-h is wired today.
 
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
@@ -913,6 +931,11 @@ export function inferExpr(
           if (argTypes[0]!.tag === 'Var') {
             ctx.noteWrappedThunkVar(argTypes[0].id, guaranteedHandled)
           }
+          // TODO Phase 4-B: this branch defers thunk-effect handling via
+          // `noteWrappedThunkVar`, which records `handled` against the var so
+          // a downstream subtype check can subtract. `introduced` propagation
+          // through that deferred path is not yet wired — extend
+          // HandlerWrapperInfo with `introduced` and forward it here.
 
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
@@ -1447,6 +1470,9 @@ function containsVars(t: Type): boolean {
       for (const sig of t.handled.values()) {
         if (containsVars(sig.argType) || containsVars(sig.retType)) return true
       }
+      // TODO Phase 4-A: when EffectSet gains row-variable identity, also
+      // traverse `t.introduced`. Today EffectSet carries only string names
+      // (no type vars), so this is a no-op.
       return false
     }
     case 'Record': return [...t.fields.values()].some(containsVars)
@@ -1609,6 +1635,8 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
           return true
         }
       }
+      // TODO Phase 4-A: same as containsVars — traverse `t.introduced`
+      // once EffectSet carries row-variable identity. No-op today.
       return false
     }
     case 'Record': return [...t.fields.values()].some(v => containsVarsAboveLevel(v, level))
