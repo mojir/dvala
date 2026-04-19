@@ -366,6 +366,7 @@ function normalizeImportedExportType(type: Type): Type {
         ? {
           paramIndex: type.handlerWrapper.paramIndex,
           handled: normalizeHandledSignatures(type.handlerWrapper.handled),
+          introduced: type.handlerWrapper.introduced,
         }
         : undefined
       return {

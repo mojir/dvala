@@ -867,6 +867,78 @@ describe('typecheck — handler application effect arithmetic', () => {
 })
 
 // ---------------------------------------------------------------------------
+// typecheck — handler-as-callable + user-defined wrapper introduced
+// effect propagation (Phase 4-B)
+// ---------------------------------------------------------------------------
+
+describe('typecheck — handler-as-callable propagates introduced effects', () => {
+  const dvala = createDvala()
+
+  function effectsOfWrappedBlock(letBindings: string, blockBody: string) {
+    const result = dvala.typecheck(`
+      ${letBindings}
+      let f = () -> do
+        ${blockBody}
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    return t.effects
+  }
+
+  // Direct h(-> body) form (the line 901-923 branch). Mirror of the
+  // do-with-h test in the application-arithmetic block above.
+  it('h(-> body) form unions handler.introduced into the result effect set', () => {
+    const effects = effectsOfWrappedBlock(
+      `
+        effect @test.cdc(Number) -> Number;
+        effect @test.cdi(String) -> Null;
+      `,
+      `
+        let h = handler
+          @test.cdc(x) -> do
+            perform(@test.cdi, "log");
+            resume(x)
+          end
+        end;
+        h(-> perform(@test.cdc, 5))
+      `,
+    )
+    expect(effects.effects.has('test.cdi')).toBe(true)
+    expect(effects.effects.has('test.cdc')).toBe(false)
+  })
+
+  // User-defined wrapper: a function that internally constructs a handler
+  // and applies it to its thunk arg. Phase 4-B's noteWrappedThunkVar
+  // captures both `handled` and `introduced`. When the wrapper is called
+  // with an effectful body, the residual effects (after subtraction) plus
+  // the wrapper's introduced should reach the surrounding context.
+  it('user-defined wrapper propagates introduced effects of inner handler', () => {
+    const effects = effectsOfWrappedBlock(
+      `
+        effect @test.uwc(Number) -> Number;
+        effect @test.uwi(String) -> Null;
+        let withChooser = (thunk) -> do
+          let h = handler
+            @test.uwc(x) -> do
+              perform(@test.uwi, "wrapper-introduced");
+              resume(x)
+            end
+          end;
+          h(thunk)
+        end;
+      `,
+      'withChooser(-> perform(@test.uwc, 5))',
+    )
+    expect(effects.effects.has('test.uwi')).toBe(true) // wrapper's introduced
+    expect(effects.effects.has('test.uwc')).toBe(false) // caught
+  })
+})
+
+// ---------------------------------------------------------------------------
 // typecheck — type display and expansion for complex types
 // ---------------------------------------------------------------------------
 

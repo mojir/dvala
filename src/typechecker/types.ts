@@ -35,6 +35,13 @@ export interface HandlerEffectSignature {
 export interface HandlerWrapperInfo {
   paramIndex: number
   handled: Map<string, HandlerEffectSignature>
+  /**
+   * Effects the wrapper itself introduces — performed by the inner handler's
+   * clauses or transform clause when the handler runs over the thunk arg.
+   * At call sites, the resulting effect set is `(thunk_effects \ handled) ∪ introduced`,
+   * mirroring the do-with-h application law (see HandlerType.introduced).
+   */
+  introduced: EffectSet
 }
 
 export interface FunctionType {
