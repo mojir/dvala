@@ -28,18 +28,23 @@ The motivating payoff is closing the final Phase A follow-up from the fold audit
 
 ### What exists today
 
+Phase 1 calibration (2026-04-19) found that the scaffolding for handler typing is **already landed**. The earlier draft of this doc assumed otherwise; corrections inline.
+
 - **Effect sets on function types.** `(A) -> @{e1, e2} B` parses, prints, and participates in subtyping. See [src/typechecker/effectTypes.ts](../../src/typechecker/effectTypes.ts).
 - **Effect inference from `perform`.** A body containing `perform(@e, x)` infers with `@{e}` in its effect set (Step 6 of the type-system plan, already landed).
-- **Effect subtraction on `do with handler; …`.** Applying a handler in a `do` block subtracts the caught effect from the body's effect set at the AST level — but only for hand-rolled cases, and the handler itself has no dedicated type.
-- **`handler … end` expressions.** Parsed and evaluated. In the typechecker they most likely flow through as a generic function type, losing the "this catches `@choose`, resumes with an int, and transforms into an array" structure. (TODO during Phase 1 of the impl plan: verify exactly what the typechecker currently produces for `handler @choose(opts) -> resume(first(opts)) end`.)
+- **First-class `HandlerType`.** Defined at [src/typechecker/types.ts:150](../../src/typechecker/types.ts#L150) as `{ tag: 'Handler', body, output, handled }` where `handled : Map<effectName, { argType, retType }>`. Constructable from annotations via `Handler<B, O, @{caught}>` ([src/typechecker/parseType.ts:424](../../src/typechecker/parseType.ts#L424)).
+- **Inference for `handler … end`.** Already produces a `HandlerType` with proper `body`/`output`/`handled` fields ([src/typechecker/infer.ts:1258-1311](../../src/typechecker/infer.ts#L1258-L1311)). Clause typing, `resume` typing via `pushResume/popResume`, and the optional `transform` clause are all wired.
+- **Application `do with h; body end`.** Consumes the handler type via `getHandlerAlternatives` ([src/typechecker/infer.ts:1318](../../src/typechecker/infer.ts#L1318)), checks that the body's result matches the handler's `body` input, and produces the handler's `output`.
+- **Handler subtyping.** Covered by tests in [src/typechecker/typechecker.test.ts:675+](../../src/typechecker/typechecker.test.ts#L675) — variance rules for `body`/`output`/`handled`.
 - **Open effect-set variables `@{e...}`.** Designed (decision #12) but not yet exercised for handler polymorphism. Uses the same subtyping engine as open records.
 
 ### What's missing
 
-1. **A handler type.** There is no `Handler<…>` type node. Handlers appear in source, flow through evaluation correctly, but are typed as plain functions.
-2. **Inference for `handler … end`.** Given handler clauses and an optional `transform` clause, we need a rule that produces the handler type from the clause bodies.
-3. **Application rule for `do with h; body`.** Once a handler has a type, applying it to a body must compute the resulting effect set per the subtraction/introduction formula.
-4. **Polymorphic signatures for the `effectHandler/` builtins.** Currently they're all `((() -> Unknown)) -> Unknown` — no effect structure. The four items above collectively unlock correct signatures for: `retry`, `fallback`, `chooseAll`, `chooseFirst`, `chooseRandom`, `chooseTake`. **`chooseRandom`** is the tracked follow-up; the others are free wins from the same machinery.
+1. **No `introduced` field on `HandlerType`.** The type captures which effects the handler *catches* (`handled`), but not which effects its clause bodies *perform*. This is the exact data needed to say that `chooseRandom`'s handler introduces `@{dvala.random.item}` when it resumes with a random pick.
+2. **Handler application law doesn't add back introduced effects.** `do with h; body end` currently produces handler.output with the caught effects subtracted — but doesn't union in the introduced set (because `introduced` doesn't exist yet).
+3. **Annotation syntax doesn't carry an introduced set.** `Handler<B, O, @{caught}>` has three slots; extending to `Handler<B, O, @{caught}, @{introduced}>` (or keeping three slots with introduced defaulting to `@{}`) requires a parser update.
+4. **`effectHandler/` module signatures still use `((() -> Unknown)) -> Unknown`.** They don't reference `HandlerType` or effect polymorphism at all. This is the tracked Phase A follow-up — `chooseRandom` needs `((() -> @{choose | Σ} A)) -> @{dvala.random.item | Σ} A` and the other five need analogous sigs.
+5. **No effect-set variable binders on function signatures.** Even with `@{choose, ...}` open-tail syntax designed, the signature-level binder that ties the two tails together positionally needs to land. (The type-system doc says unnamed positional; confirm the implementation.)
 
 ### Why this is hard (and why a design doc is warranted)
 
@@ -55,47 +60,46 @@ The motivating payoff is closing the final Phase A follow-up from the fold audit
 
 ### The handler type
 
-Introduce a new type node `Handler`:
+Extend the existing `HandlerType` in [src/typechecker/types.ts:150](../../src/typechecker/types.ts#L150) with one new field, `introduced`:
 
 ```ts
-interface HandlerType {
-  kind: 'Handler'
-  caught: EffectSet         // set of effects this handler matches
-  introduced: EffectSet     // effects the clause bodies perform (may be open)
-  bodyIn: Type              // the type the body is expected to produce
-  bodyOut: Type             // the type the handler produces after transform
+// existing (already shipped):
+// { tag: 'Handler', body, output, handled: Map<effectName, { argType, retType }> }
+// after this change:
+{
+  tag: 'Handler',
+  body,                 // type the body is expected to produce (existing)
+  output,               // type the handler produces after transform (existing)
+  handled,              // caught effects + their arg/ret sigs (existing)
+  introduced: EffectSet // NEW — effects the clause + transform bodies perform
 }
 ```
 
-The corresponding application law (informal):
+The application law:
 
 ```
-if  h : Handler<caught=Σc, introduced=Σi, bodyIn=BIn, bodyOut=BOut>
+if  h : Handler<body=BIn, output=BOut, handled=Σc, introduced=Σi>
 and f : () -> Σ_body Result
-then  do with h; f() end : (Σ_body \ Σc) ∪ Σi  BOut
+then  do with h; f() end : (Σ_body \ domain(Σc)) ∪ Σi  BOut
 ```
 
-with the constraints `Σc ⊆ Σ_body` and `Result <: BIn`. (Strict subset not required — a handler may be installed over a body that performs none of its caught effects; those clauses are simply dead.)
+with `Result <: BIn` as before. (Strict subset of `Σc ⊆ Σ_body` not required — a handler may be installed over a body that performs none of its caught effects; those clauses are simply dead.)
 
-### Syntax for handler types
+### Syntax for handler types in annotations
 
-Two options:
+The existing annotation syntax is `Handler<B, O, @{caught}>` (3 slots). Extend to 4 slots:
 
-**Option A — explicit form with a new keyword:**
 ```
-handler<@{choose}, @{dvala.random.item}> (A) -> A
+Handler<B, O, @{caught}, @{introduced}>
 ```
-where the two angle-brackets sets are `caught` and `introduced`.
 
-**Option B — compound arrow form reusing existing syntax:**
-```
-@{choose} => @{dvala.random.item} (A) -> A
-```
-where `=>` reads as "handler transforming from left-effect-set to right-effect-set".
+Three-slot form stays legal and means `introduced = @{}` (implicit).
 
-**Recommendation: Option A.** New keyword is clearer for the reader, harder to misparse, and `handler` already exists as a keyword in term position so lifting it to type position is a clean analogue. Option B risks confusion with function type `(A) -> B` and bigger parser changes.
+**Alternatives considered but rejected:** a separate keyword (`handler<…>`) or arrow form (`@{caught} => @{introduced} (A) -> A`). Both are bigger changes than extending the existing `Handler<…>` 3-slot syntax by one field, and the 3-slot form is already what the parser, tests, and existing sigs use.
 
 ### Inference for `handler … end`
+
+Most of this already works today — see [src/typechecker/infer.ts:1258-1311](../../src/typechecker/infer.ts#L1258-L1311). The only change is accumulating and populating the new `introduced` field.
 
 Given:
 
@@ -110,28 +114,18 @@ end
 
 Inference rule:
 
-1. Let `Σ_clauses` = union of effect sets inferred from each `clauseBody_i`, **minus** `@{e1, e2, …}` (the handler can't catch its own clause effects unless reinstalled recursively — decision TBD).
-2. Let `BIn` = the unified type of expressions flowing into `resume`:
-   - If `resume(x)` appears with `x : T`, then `BIn = T`.
-   - If a clause aborts (doesn't call `resume`), that clause contributes nothing to `BIn`.
-3. Let `BOut` = the unified result type of all clauses + `transformBody`:
-   - With no transform: `BOut = lub(clauseBody_i.type ∪ BIn)` (bodies that resume return the body-result type; bodies that abort return their own type).
-   - With transform: `BOut = transformBody.type` where `result : BIn` in the transform's scope.
-4. `caught = {e1, e2, …}` (closed set — syntactically listed).
-5. `introduced = Σ_clauses` (may be open if any clauseBody is polymorphic).
+1. `body`, `output`, and `handled` are inferred today — clause typing, `resume` typing via `pushResume/popResume`, and transform are all wired.
+2. **NEW:** Let `introduced = union of effect sets inferred from each clauseBody_i and from transformBody, minus @{e1, e2, …}`. Per Decision 2, a clause does not re-catch its own effect via the same handler, so we subtract the caught set from the introduced set. Per Decision 4, transform-clause effects contribute to `introduced` too.
+3. Return `{ tag: 'Handler', body, output, handled, introduced }`.
 
 ### Inference for `do with h; body end`
 
-Given:
+Today the inference at [src/typechecker/infer.ts:1318+](../../src/typechecker/infer.ts#L1318) consumes `HandlerType` and subtracts `handled` from the body's effect set. Extend it to union `introduced` back in:
 
-```
-do with h; body end
-```
-
-1. Infer `h : Handler<caught=Σc, introduced=Σi, bodyIn=BIn, bodyOut=BOut>`.
-2. Infer `body : Σb Result`.
-3. Constrain `Result <: BIn`.
-4. Produce `(Σb \ Σc) ∪ Σi  BOut`.
+1. Infer `h : Handler<body=BIn, output=BOut, handled=Σc, introduced=Σi>` (existing).
+2. Infer `body : Σb Result` (existing).
+3. Constrain `Result <: BIn` (existing).
+4. **Adjusted:** produce `(Σb \ domain(Σc)) ∪ Σi  BOut` (currently produces `(Σb \ domain(Σc))  BOut`).
 
 ### Effect-polymorphic handler-wrapping functions
 
@@ -186,39 +180,52 @@ The fold gate checks "is the callee's effect set empty?" Once `chooseRandom` dec
 
 ## Implementation Plan
 
-Organized so that each phase is independently reviewable and ships something useful.
+Scope corrected after Phase 1 calibration. The task is no longer "build handler typing from scratch" — most of it exists. The delta is adding the **introduced** dimension and the effect-polymorphic wiring that lets `effectHandler/` signatures be expressed.
 
-### Phase 1 — Verify current state
+### Phase 1 — Calibration (✅ done)
 
-- **1.1** Write a test that typechecks `handler @choose(opts) -> resume(first(opts)) end` and print the inferred type. Document what the typechecker currently produces (likely a generic function type or `Unknown`). This calibrates the delta.
-- **1.2** Same for `do with (handler @choose(opts) -> resume(first(opts)) end); perform(@choose, [1,2]) end`. Observe the inferred effect set and result type.
-- **1.3** Add `HandlerType` to [src/typechecker/types.ts](../../src/typechecker/types.ts) but don't wire it up yet. Stub constructors and printers. Land as a scaffolding commit.
+Inline findings — see "What exists today" and "What's missing" above. Net: `HandlerType` exists; `handled` (caught) is tracked; `introduced` is not; `effectHandler/` sigs use `Unknown` throughout.
 
-### Phase 2 — Handler type inference
+### Phase 2 — Extend `HandlerType` with `introduced`
 
-- **2.1** Parse handler types in annotations (Option A syntax). Parser update in [src/typechecker/parseType.ts](../../src/typechecker/parseType.ts).
-- **2.2** Infer `handler … end` expressions per the rule above. Produce `HandlerType`.
-- **2.3** Printer + `typeToString` for handler types.
-- **2.4** Subtyping rules for `HandlerType` in [src/typechecker/subtype.ts](../../src/typechecker/subtype.ts).
-- **2.5** Tests: every shape from the `effectHandler.dvala` source. Expected types must be exactly the polymorphic signatures in the proposal.
+- **2.1** Add an `introduced: EffectSet` field to `HandlerType` in [src/typechecker/types.ts](../../src/typechecker/types.ts). Default to the empty set in every existing constructor call (6 call sites — no behavior change).
+- **2.2** Update `handler … end` inference at [src/typechecker/infer.ts:1258-1311](../../src/typechecker/infer.ts#L1258-L1311) to accumulate the union of effect sets from each clause body (minus the caught effects per Decision 2 / self-non-catching) and from the `transform` clause (per Decision 4). Populate `introduced`.
+- **2.3** Printer + `typeToString` for the new field. Only render when non-empty to keep displays clean.
+- **2.4** Parser update at [src/typechecker/parseType.ts:424](../../src/typechecker/parseType.ts#L424): accept an optional fourth slot `Handler<B, O, @{caught}, @{introduced}>`. Three-slot form stays legal and implies `@{}` introduced.
+- **2.5** Subtyping: contravariant in `handled`, covariant in `introduced` (a handler that introduces fewer effects is a subtype of one that introduces more), plus existing body/output variance.
+- **2.6** Tests for each `effectHandler.dvala` handler literal — expected `introduced` for `chooseRandom` is `@{dvala.random.item}`, zero for `chooseFirst`, `@{}` for `chooseAll` (since it just resumes — no perform), etc.
 
-### Phase 3 — Handler application
+### Phase 3 — Handler application law
 
-- **3.1** Update `do with h; body end` inference in [src/typechecker/infer.ts](../../src/typechecker/infer.ts) to consume `HandlerType` and apply the subtraction/introduction law.
-- **3.2** Same for `h(body)` direct-call form.
-- **3.3** Tests: body/handler effect-set arithmetic, including the polymorphic case (`chooseRandom(-> perform(@choose, [1,2]))` should infer `@{dvala.random.item}`).
+- **3.1** Update `do with h; body end` inference so the resulting effect set is `(Σ_body \ handled) ∪ introduced`. The subtraction path already exists; add the union. Location: [src/typechecker/infer.ts:1318+](../../src/typechecker/infer.ts#L1318).
+- **3.2** Same for `h(body)` direct-call form (`fallback(v)(-> …)`).
+- **3.3** Tests: `do with chooseRandom-handler; perform(@choose, [1,2]) end` → effect set `@{dvala.random.item}`, result type inherited from body.
 
-### Phase 4 — Wire `effectHandler/` signatures
+### Phase 4 — Effect polymorphism in function signatures
 
-- **4.1** Update the six `effectHandler/` docs to use the new signatures.
-- **4.2** Update [src/builtin/modules/effectHandler/effectHandler.test.ts](../../src/builtin/modules/effectHandler/effectHandler.test.ts) to assert the new signatures end-to-end.
-- **4.3** Re-run `npm run check` under both `DVALA_FOLD=0` and `DVALA_FOLD=1`. Fold should now correctly reject `chooseRandom` as effectful.
-- **4.4** Close the Phase A audit follow-up.
+This is the step that lets the six `effectHandler/` wrappers *propagate* the body's extra effects.
 
-### Phase 5 — Measurement and docs
+- **4.1** Verify / extend the existing open-effect-set machinery `@{e, ...}` so that a single function signature unifies its two (or more) `@{...}` tails positionally per type-system decision #12. If already working, add tests; otherwise land the binding rule.
+- **4.2** Parse and print polymorphic tails in annotations.
+- **4.3** Tests: `(() -> @{choose, ...} A) -> @{dvala.random.item, ...} A` must refuse to unify `...` with conflicting tails across instantiations.
 
-- **5.1** User-facing docs: a handler-types chapter / section in the book.
-- **5.2** Verify no runtime-semantics change (the typechecker is the only thing that shifted).
+### Phase 5 — Wire `effectHandler/` signatures
+
+- **5.1** Update the six `type` strings in [src/builtin/modules/effectHandler/index.ts](../../src/builtin/modules/effectHandler/index.ts):
+  - `retry      : (Number, (() -> @{dvala.error, ...} A)) -> @{dvala.error, ...} A`
+  - `fallback   : (A) -> ((() -> @{dvala.error, ...} A)) -> @{...} A`
+  - `chooseAll  : ((() -> @{choose, ...} A)) -> @{...} A[]`
+  - `chooseFirst: ((() -> @{choose, ...} A)) -> @{...} A`
+  - `chooseRandom: ((() -> @{choose, ...} A)) -> @{dvala.random.item, ...} A`
+  - `chooseTake : (Number, (() -> @{choose, ...} A)) -> @{...} A[]`
+- **5.2** Verify via [src/builtin/modules/effectHandler/effectHandler.test.ts](../../src/builtin/modules/effectHandler/effectHandler.test.ts) that the runtime behavior is unchanged and the new types parse + infer correctly.
+- **5.3** Run `npm run check` under both `DVALA_FOLD=0` and `DVALA_FOLD=1`. Confirm fold correctly rejects `chooseRandom(-> …)` as effectful.
+- **5.4** Close the Phase A audit follow-up in [design/archive/2026-04-16_builtin-effect-audit.md](../archive/2026-04-16_builtin-effect-audit.md).
+
+### Phase 6 — Docs
+
+- **6.1** User-facing: handler-types chapter / section in the book. Focus on the caught/introduced split.
+- **6.2** Inline: doc comment on `HandlerType` explaining all four fields and the application law.
 
 ---
 
