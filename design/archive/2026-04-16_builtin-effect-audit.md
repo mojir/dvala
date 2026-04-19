@@ -6,6 +6,8 @@
 
 > **Completion note (2026-04-19):** 3/4 follow-ups resolved — `test.*` effect declarations before PR #53, `raise` effect + `time/` annotations in commit `40d5e7eb`. The remaining item, `effectHandler.chooseRandom`, is blocked on effect-polymorphic handler types (a dedicated type-system track, not a builtin-audit item). Phase A as scoped here is done.
 
+> **Full closure note (2026-04-19):** All 4/4 follow-ups are now resolved. The `chooseRandom` signature gap was closed along with signatures for the other five `effectHandler/` functions on branch `feat/effecthandler-signatures` (commit `dd469ca6`) — the handler-typing + `HandlerWrapperInfo` machinery that enables it is documented in [../active/2026-04-19_handler-typing.md](../active/2026-04-19_handler-typing.md).
+
 ## Goal
 
 Audit every builtin against two invariants:
@@ -87,7 +89,7 @@ For each module we also note:
 | `bitwise` | ✅ Audited | 6, all annotated | Bit ops on integers — pure. |
 | `collection` | ✅ Audited | 27 TS + Dvala source | Pure. Some entries Dvala-impl, higher-order (see module notes below). |
 | `convert` | ✅ Audited | ~60 generated via unit-matrix helpers | Pure linear / temperature conversions. |
-| `effectHandler` | ✅ Audited | 0 TS; all in `effectHandler.dvala` | ⚠ `chooseRandom` performs `@dvala.random.item`; declared pure. See [Per-module audit results](#effecthandler). |
+| `effectHandler` | ✅ Audited | 0 TS; all in `effectHandler.dvala` | All six signatures now carry `HandlerWrapperInfo` via `FunctionDocs.wrapper` metadata. See [Per-module audit results](#effecthandler). |
 | `functional` | ✅ Audited | 5 + Dvala source | Higher-order. |
 | `grid` | ✅ Audited | 36, all annotated | Pure grid/coordinate math. |
 | `json` | ✅ Audited | 2 (`parse`, `stringify`), all annotated | Pure. `JSON.parse` / `JSON.stringify` are stateless. |
@@ -422,13 +424,9 @@ Once effect polymorphism lands, these signatures should be upgraded. Not part of
 - `chooseRandom(bodyFn)` — handles `@choose` by performing `@dvala.random.item`.
 - `chooseTake(n, bodyFn)` — like `chooseAll` but caps at `n` results.
 
-**Declaration issue — `chooseRandom`:**
+**Declaration issue — `chooseRandom`:** ~~declared pure, actually performs `@dvala.random.item` on every `@choose`~~ **Fixed** on branch `feat/effecthandler-signatures` (commit `dd469ca6`). The fix added a `wrapper` metadata channel to `FunctionDocs` so module-registration can attach `HandlerWrapperInfo` to the parsed type. `chooseRandom` now declares `(() -> @{choose, ...} A) -> A` with wrapper `{ paramIndex: 0, handled: [choose], introduced: [dvala.random.item] }`. At call sites, the Phase 4-B wrapper-call path applies `(thunk_effects \ handled) ∪ introduced` and surfaces `@dvala.random.item` in the outer effect set.
 
-`chooseRandom` is typed `((() -> Unknown)) -> Unknown` with an empty effect set, but the Dvala implementation performs `@dvala.random.item` on every `@choose` the body requests. The correct signature would be `((() -> @{choose} A)) -> @{dvala.random.item} A` (or similar with effect-polymorphic subtraction).
-
-**Fold impact:** Low risk. When folded with a literal argument, the sandbox catches `@dvala.random.item` and surfaces as a warning (decision #2). The declaration is aspirationally wrong but operationally safe.
-
-**Other `choose*` variants:** These *consume* `@choose` from the body (subtractive effect handling). The outer signature shouldn't declare `@choose` unless it re-performs. `chooseAll` and `chooseFirst` are closer to correct — they translate `@choose` into plain values. `retry` and `fallback` are also subtractive on `@dvala.error`.
+**Other `choose*` variants:** Also now carry `HandlerWrapperInfo`. `chooseAll`, `chooseFirst`, `chooseTake` declare `{ choose }` as handled with no introduced. `retry` declares `{ dvala.error }` as both handled and introduced (catches but re-performs). `fallback` returns a `Handler<…, @{dvala.error}>` value; the handler-as-callable path applies the application law when the user invokes it.
 
 **Recommendation:** Declaration upgrades for this module need effect-polymorphic handler types (type-system Phase C — see [2026-04-12_type-system.md](2026-04-12_type-system.md)). Track as a follow-up. Not a blocker.
 
@@ -505,12 +503,9 @@ Concise details:
 ## Phase A final summary
 
 - **Core (13 files, 127 builtins):** all pure. 1 declaration issue (`core/misc.ts::raise`) — fixed in `40d5e7eb`.
-- **Modules (20 modules, ~340 builtins):** all pure. 3 declaration issues (effectHandler.chooseRandom, test.*, time/ annotations) — 2 fixed (`test.*`, `time/`), `chooseRandom` deferred to the effect-polymorphic handler types track.
-- **Total declaration fixes needed:** 4 items.
-- **Resolved:** 3 (raise, test.*, time/).
-- **Deferred:** 1 (chooseRandom — gated on effect-polymorphic handler types).
-- **Total critical blockers:** 0.
+- **Modules (20 modules, ~340 builtins):** all pure. 3 declaration issues (effectHandler.chooseRandom, test.*, time/ annotations) — all resolved: `test.*` before PR #53, `time/` + `raise` in `40d5e7eb`, `chooseRandom` in `dd469ca6`.
+- **Total declaration fixes needed:** 4 items. **All resolved.**
 
-**Phase A is complete.** The single open item is a type-system capability gap, not an audit gap.
+**Phase A is complete.** All four follow-ups closed.
 
 **What shipped next:** Phase B (`DVALA_FOLD` toggle + differential test matrix) and Phase C (folding implementation in `inferExpr`) landed together in PR #53.

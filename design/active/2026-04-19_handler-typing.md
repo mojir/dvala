@@ -243,18 +243,28 @@ Originally scoped here, now deferred. See `2026-04-19 design memo` (in this doc)
 
 See archive of original Phase 4 spec in this commit's history for the row-var design notes if revisited.
 
-### Phase 5 — Wire `effectHandler/` signatures
+### Phase 5 — Wire `effectHandler/` signatures (✅ done)
 
-- **5.1** Update the six `type` strings in [src/builtin/modules/effectHandler/index.ts](../../src/builtin/modules/effectHandler/index.ts):
-  - `retry      : (Number, (() -> @{dvala.error, ...} A)) -> @{dvala.error, ...} A`
-  - `fallback   : (A) -> ((() -> @{dvala.error, ...} A)) -> @{...} A`
-  - `chooseAll  : ((() -> @{choose, ...} A)) -> @{...} A[]`
-  - `chooseFirst: ((() -> @{choose, ...} A)) -> @{...} A`
-  - `chooseRandom: ((() -> @{choose, ...} A)) -> @{dvala.random.item, ...} A`
-  - `chooseTake : (Number, (() -> @{choose, ...} A)) -> @{...} A[]`
-- **5.2** Verify via [src/builtin/modules/effectHandler/effectHandler.test.ts](../../src/builtin/modules/effectHandler/effectHandler.test.ts) that the runtime behavior is unchanged and the new types parse + infer correctly.
-- **5.3** Run `npm run check` under both `DVALA_FOLD=0` and `DVALA_FOLD=1`. Confirm fold correctly rejects `chooseRandom(-> …)` as effectful.
-- **5.4** Close the Phase A audit follow-up in [design/archive/2026-04-16_builtin-effect-audit.md](../archive/2026-04-16_builtin-effect-audit.md).
+Shipped on branch `feat/effecthandler-signatures` (commit `dd469ca6`).
+
+- **5.1 ✅** Signatures declared via two mechanisms: a `type` string giving the shape + a new `wrapper` metadata field on `FunctionDocs` declaring `{ paramIndex, handled: string[], introduced: string[] }`. `registerModuleType` reads the metadata and attaches a `HandlerWrapperInfo` to the parsed function type, resolving each handled effect's arg/ret signatures from the effect registry.
+  - `retry       : (Number, () -> @{dvala.error, ...} A) -> A` — wrapper `{ 1, [dvala.error], [dvala.error] }`
+  - `fallback    : (Unknown) -> Handler<Unknown, Unknown, @{dvala.error}>` — returns a Handler value (no wrapper info needed; handler-as-callable path applies the law at the second call).
+  - `chooseAll   : (() -> @{choose, ...} A) -> A[]` — wrapper `{ 0, [choose], [] }`
+  - `chooseFirst : (() -> @{choose, ...} A) -> A` — wrapper `{ 0, [choose], [] }`
+  - `chooseRandom: (() -> @{choose, ...} A) -> A` — wrapper `{ 0, [choose], [dvala.random.item] }`
+  - `chooseTake  : (Number, () -> @{choose, ...} A) -> A[]` — wrapper `{ 1, [choose], [] }`
+- **5.2 ✅** Runtime behavior unchanged (no code changes to effectHandler.dvala).
+- **5.3 ✅** Full suite passes under both `DVALA_FOLD=0` and `DVALA_FOLD=1` (35,898 tests).
+- **5.4 ✅** Closes the Phase A audit follow-up on `effectHandler.chooseRandom` in [design/archive/2026-04-16_builtin-effect-audit.md](../archive/2026-04-16_builtin-effect-audit.md).
+
+**Note on return-type polymorphism.** Declarations use a type variable `A` instead of `Unknown` because `constrain` treats `lhs.tag === 'Unknown'` as a no-op ([src/typechecker/infer.ts:271](../../src/typechecker/infer.ts#L271)) — an `Unknown` return would never flow into the call-site `retVar`, leaving it as `Never`. `A` is a proper MLsub type variable that propagates the thunk's return type. `chooseRandom(-> 42) : literal(42)` works correctly.
+
+**Caveat**: when the thunk's body performs an effect whose declared `retType` in the effect registry is itself `Unknown` (e.g. `@choose`), the return-type propagation still lands on `Unknown` and hits the short-circuit. The surrounding call result is `Never` in that case. This is pre-existing behavior around `Unknown`'s role in the type system — worth revisiting but independent of handler typing.
+
+### Phase 6 — Effect propagation at function-call sites (✅ shipped in #56)
+
+Previously tracked separately as a bug-fix follow-up; now documented here for completeness. `constrain(ctx, calleeType, fn(argTypes, retVar))` alone does not add the callee's own `effects` to the surrounding effect context — effects were silently dropped across function-call boundaries. Fixed by explicitly adding `calledEffects` to `ctx.addEffects` after the constrain, guarded by `wrapperBranchFired` to avoid double-counting for handler-wrapper callees.
 
 ### Phase 6 — Docs
 
