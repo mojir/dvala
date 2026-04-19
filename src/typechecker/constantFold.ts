@@ -17,9 +17,9 @@
  * knowledge of the toggle — it's pure fold mechanics.
  *
  * See design docs:
- *   - design/active/2026-04-16_constant-folding-in-types.md
- *   - design/active/2026-04-16_builtin-effect-audit.md
- *   - design/active/2026-04-16_fold-toggle-and-differential-tests.md
+ *   - design/archive/2026-04-16_constant-folding-in-types.md
+ *   - design/archive/2026-04-16_builtin-effect-audit.md
+ *   - design/archive/2026-04-16_fold-toggle-and-differential-tests.md
  */
 
 import { NodeTypes } from '../constants/constants'

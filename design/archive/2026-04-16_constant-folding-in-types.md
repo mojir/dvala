@@ -1,8 +1,10 @@
 # Constant folding in type inference via evaluator reuse
 
-**Status:** Ready to implement
+**Status:** Shipped (PR #53, 2026-04-17)
 **Created:** 2026-04-16
 **Decisions resolved:** 2026-04-16
+
+> **Ship note (2026-04-19):** Phases A, B, and C all landed. Phase A documented in [2026-04-16_builtin-effect-audit.md](2026-04-16_builtin-effect-audit.md); Phase B toggle + differential matrix live in [src/typechecker/foldToggle.ts](../../src/typechecker/foldToggle.ts), [src/typechecker/fold.test.ts](../../src/typechecker/fold.test.ts), [src/evaluator/foldEvaluate.test.ts](../../src/evaluator/foldEvaluate.test.ts); Phase C wired into [src/typechecker/infer.ts](../../src/typechecker/infer.ts) via [src/typechecker/constantFold.ts](../../src/typechecker/constantFold.ts). CI runs the matrix under `DVALA_FOLD=0` and `DVALA_FOLD=1`. **Remaining:** Phase D (compile-time delta measurement + user-facing docs) and the standalone follow-up to give `effectHandler.chooseRandom` a correct signature once effect-polymorphic handler types exist.
 
 ## Goal
 

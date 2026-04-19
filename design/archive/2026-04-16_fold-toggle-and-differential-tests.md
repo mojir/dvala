@@ -1,8 +1,10 @@
 # Phase B — `DVALA_FOLD` toggle and differential test matrix
 
-**Status:** Design
+**Status:** Shipped (PR #53, 2026-04-17)
 **Created:** 2026-04-16
 **Depends on:** [2026-04-16_constant-folding-in-types.md](2026-04-16_constant-folding-in-types.md), [2026-04-16_builtin-effect-audit.md](2026-04-16_builtin-effect-audit.md) (Phase A)
+
+> **Ship note (2026-04-19):** Implemented. Toggle lives at [src/typechecker/foldToggle.ts](../../src/typechecker/foldToggle.ts) (env default is **on** — opt out with `DVALA_FOLD=0`). Integration tests in [src/typechecker/fold.test.ts](../../src/typechecker/fold.test.ts); differential matrix against the normal evaluator in [src/evaluator/foldEvaluate.test.ts](../../src/evaluator/foldEvaluate.test.ts) (805 lines). CI runs the full check pipeline as a matrix over `DVALA_FOLD=0` / `DVALA_FOLD=1`.
 
 ## Goal
 
