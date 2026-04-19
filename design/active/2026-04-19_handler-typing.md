@@ -186,36 +186,62 @@ Scope corrected after Phase 1 calibration. The task is no longer "build handler 
 
 Inline findings — see "What exists today" and "What's missing" above. Net: `HandlerType` exists; `handled` (caught) is tracked; `introduced` is not; `effectHandler/` sigs use `Unknown` throughout.
 
-### Phase 2 — Extend `HandlerType` with `introduced`
+### Phase 2 — Extend `HandlerType` with `introduced` (✅ done)
 
-- **2.1** Add an `introduced: EffectSet` field to `HandlerType` in [src/typechecker/types.ts](../../src/typechecker/types.ts). Default to the empty set in every existing constructor call (6 call sites — no behavior change).
-- **2.2** Update `handler … end` inference at [src/typechecker/infer.ts:1258-1311](../../src/typechecker/infer.ts#L1258-L1311) to accumulate the union of effect sets from each clause body (minus the caught effects per Decision 2 / self-non-catching) and from the `transform` clause (per Decision 4). Populate `introduced`.
-- **2.3** Printer + `typeToString` for the new field. Only render when non-empty to keep displays clean.
-- **2.4** Parser update at [src/typechecker/parseType.ts:424](../../src/typechecker/parseType.ts#L424): accept an optional fourth slot `Handler<B, O, @{caught}, @{introduced}>`. Three-slot form stays legal and implies `@{}` introduced.
-- **2.5** Subtyping: contravariant in `handled`, covariant in `introduced` (a handler that introduces fewer effects is a subtype of one that introduces more), plus existing body/output variance.
-- **2.6** Tests for each `effectHandler.dvala` handler literal — expected `introduced` for `chooseRandom` is `@{dvala.random.item}`, zero for `chooseFirst`, `@{}` for `chooseAll` (since it just resumes — no perform), etc.
+Shipped in commits `57bfd8ed` (2.1) and `e38f60d7` (2.2).
 
-### Phase 3 — Handler application law
+- **2.1 ✅** Added `introduced: EffectSet` to `HandlerType` in [src/typechecker/types.ts:66](../../src/typechecker/types.ts#L66). `handlerType()` accepts it as an optional 4th arg defaulting to `PureEffects`. `typeToString` renders the 4th slot only when non-empty (existing 3-slot snapshots unchanged). `typeEquals` compares it. `simplify` and the six other handler-clone sites (`freshenInner`, `freshenAllVars`, `generalize`, `expandType`, `expandTypeForMatchAnalysis`, `expandTypeForDisplay`, `sanitizeDisplayType`) forward the field.
+- **2.2 ✅** Handler-expression inference at [src/typechecker/infer.ts:1258+](../../src/typechecker/infer.ts#L1258) now uses `pushEffects/popEffects` around each clause body and the transform body. Captured sets are union'd into `introduced`. Per Decision 2, `handled` is NOT subtracted: a clause that performs its own effect surfaces it. Constructing a handler value remains pure (push/pop discipline keeps clause effects out of the surrounding context).
+- **2.3 — deferred.** Printer behavior implemented in 2.1 but parser update for the optional 4th slot (`Handler<B, O, @{caught}, @{introduced}>`) is still TODO. Annotating handlers with explicit introduced sets isn't yet possible.
+- **2.4 — deferred.** Same as 2.3.
+- **2.5 — deferred.** Subtyping does not yet consider `introduced`; falls back to existing structural equality. Phase 4-B will revisit.
 
-- **3.1** Update `do with h; body end` inference so the resulting effect set is `(Σ_body \ handled) ∪ introduced`. The subtraction path already exists; add the union. Location: [src/typechecker/infer.ts:1318+](../../src/typechecker/infer.ts#L1318).
-- **3.2** Same for `h(body)` direct-call form (`fallback(v)(-> …)`).
-- **3.3** Tests: `do with chooseRandom-handler; perform(@choose, [1,2]) end` → effect set `@{dvala.random.item}`, result type inherited from body.
+5 tests in [src/typechecker/typecheck.test.ts](../../src/typechecker/typecheck.test.ts) cover: pure handler, unrelated effect in clause, self-effect (no re-catch), transform-clause effects, and non-leakage.
 
-### Phase 4 — Row-variable effect polymorphism
+### Phase 3 — Handler application law (✅ done)
 
-Phase 1 calibration (2026-04-19) established that the current `EffectSet` representation is `{ effects: Set<string>, open: boolean }` — a flat set plus a single "openness" bit. `isEffectSubset` treats `open: true` as "accepts any extras" structurally ([src/typechecker/types.ts:467-477](../../src/typechecker/types.ts#L467-L477)). **There is no row-variable identity**, so two `@{e, ...}` tails in the same signature do not unify — body-extras passed through a signature like `(() -> @{choose, ...} A) -> @{dvala.random.item, ...} A` silently disappear from the result type.
+Shipped in commit `3e6343b5`.
 
-The value-type system uses MLsub-style bisubtyping with `Var` nodes carrying `id`, `level`, `lowerBounds`, and `upperBounds` ([src/typechecker/types.ts:84](../../src/typechecker/types.ts#L84)). `(A) -> A` already works for value types: fresh `Var` per call-site instantiation propagates information. This step introduces the analogous machinery for effect sets.
+- **3.1 ✅** `do with h; body end` at [src/typechecker/infer.ts:1318+](../../src/typechecker/infer.ts#L1318) now adds `unionEffectSets(handlerAlternatives.map(h => h.introduced))` after subtracting caught effects. Multi-alternative case takes the union conservatively.
+- **3.2 — partial.** The `h(body)` direct-call paths at [src/typechecker/infer.ts:820-904](../../src/typechecker/infer.ts#L820-L904) already do effect-subtraction and currently still need the `introduced` union. Will be addressed alongside Phase 4-B since both are call-site work on the same code blocks.
+- **3.3 ✅** 4 tests in `typecheck.test.ts` cover the application-law arithmetic.
 
-- **4.1** Extend `EffectSet` to carry an optional row variable: `{ effects: Set<string>, tail: EffectRowVar | 'closed' | 'open' }`, where `EffectRowVar` has `id`, `level`, `lowerBounds`, `upperBounds` mirroring the value `Var`. The existing `open: boolean` maps to `'open'` (anonymous-wildcard) vs. `'closed'`. `EffectRowVar` is the new case.
-- **4.2** At signature-instantiation time, replace each named row variable (e.g. `ρ` or the implicit tail attached to a signature) with a fresh `EffectRowVar`. Mirrors the existing fresh-`Var` mechanism for value types.
-- **4.3** Extend `isEffectSubset`, `mergeEffects`, and `subtractEffects` to handle row vars — unify row-var tails across two sides, generate bounds on the row var, etc.
-- **4.4** Parse per-signature implicit tail identity: within a single signature, all unnamed `@{..., ...}` tails bind to one shared row variable (the per-signature implicit one). Different signatures get different implicit variables. (Per Q5 Decision 5 — unnamed tails.)
-- **4.5** Tests: `(() -> @{choose, ...} A) -> @{dvala.random.item, ...} A` called with a body performing `@{choose, log}` must produce a result type with effect set `@{dvala.random.item, log}`. Explicit row-var test: `log` propagates.
-- **4.6** Tests: signatures with two open-tailed positions that should NOT share — verify separation works if we decide to allow it (e.g. via named rows `@{e | ρ}` deferred from Q5; if still out of scope, this is a non-goal).
-- **4.7** Subtyping rules for the `EffectRowVar` case in [src/typechecker/subtype.ts](../../src/typechecker/subtype.ts).
+### Phase 0 (NEW prerequisite for Phase 4-B) — register source-impl module function types
 
-**Open sub-decision (defer to implementation):** within a single signature, when there are ≥2 open tails, do they all share one implicit row variable by default? Q5 ("unnamed open tail") implicitly suggested yes — the implementation commits to this interpretation. If a future case needs independent tails, reopen Q5 for named rows (Option B).
+Discovered 2026-04-19. `registerModuleType` in [src/typechecker/builtinTypes.ts:87](../../src/typechecker/builtinTypes.ts#L87) only iterates `mod.functions` (TS-impl entries). Source-implemented module functions (everything in `effectHandler/`, plus `filter`/`map`/`reduce` in `collection`, plus all the `dvala.*` Dvala-defined helpers) declare their types in `mod.docs` but those entries never reach the typechecker. Importing `effectHandler.chooseRandom` currently produces a "missing field" type error even though the runtime works.
+
+This is a pre-existing limitation, independent of handler typing — but it's a hard prerequisite for Phase 4-B and Phase 5: there's no point fixing `chooseRandom`'s declared signature if the typechecker never reads it.
+
+- **0.1** Make `registerModuleType` also iterate `mod.docs` and register entries that aren't already in `mod.functions`. For each, parse the `type` string and store the result.
+- **0.2** Decide what to do for entries with no `type` declared: `Unknown` (current behavior for missing types) is sufficient.
+- **0.3** Verify all source-impl module functions now typecheck on import. Expected wins: `effectHandler.*` (6), `collection.{filter,map,reduce,...}`, plus assertion / sequence / functional Dvala-impl entries.
+- **0.4** Likely will surface a batch of newly-visible type errors in existing code that previously slipped through. Triage and fix or document each.
+
+Best as a standalone PR. Branch is independent.
+
+### Phase 4-B (revised) — Effect-polymorphic handler-wrapper signatures
+
+Original Phase 4 ("full row-variable overhaul") is deferred — see "Phase 4-A (deferred)" below. Phase 4-B is the cheaper path that closes the immediate `chooseRandom` use case using the existing `HandlerWrapperInfo` mechanism.
+
+The typechecker already does direct subtraction at handler-as-callable call sites: when `chooseRandom(-> body)` is type-checked, it computes `body.effects \ handled` and adds the residual to the surrounding effect context. Body-extras like `@{log}` already propagate. The missing piece is: it doesn't add the handler's `introduced` effects.
+
+- **4.1** Add an `introduced: EffectSet` field to `HandlerWrapperInfo` in [src/typechecker/types.ts:35](../../src/typechecker/types.ts#L35).
+- **4.2** At each handler-as-callable call site in [src/typechecker/infer.ts:820-904](../../src/typechecker/infer.ts#L820-L904), after `ctx.addEffects(residualEffects)`, also `ctx.addEffects(wrapperInfo.introduced)` (or analogous for the handler-value paths). Mirrors Phase 3.
+- **4.3** Update `inferFunctionWrapperInfo` in [src/typechecker/infer.ts:2129](../../src/typechecker/infer.ts#L2129) so when a function body internally constructs a handler, the function's `handlerWrapper.introduced` reflects that handler's `introduced` field. This is what makes `chooseRandom` (Dvala-impl) carry the right wrapper info.
+- **4.4** Annotation syntax: extend the `Handler<B, O, @{caught}>` type form parser to accept a 4th slot for `@{introduced}` so users (and `effectHandler/` declarations) can express it directly. Three-slot form stays legal and implies `@{}` introduced.
+- **4.5** Tests: `chooseRandom(-> perform(@choose, [1,2]))` infers effect set `@{dvala.random.item}`. With body `perform(@log, "x"); perform(@choose, [1,2])`, infers `@{dvala.random.item, log}`.
+
+### Phase 4-A (deferred — future work) — Row-variable effect polymorphism
+
+Originally scoped here, now deferred. See `2026-04-19 design memo` (in this doc) for the calibration finding: `EffectSet` has no row-variable identity, so generic effect-polymorphic helpers (e.g. user-defined `let timeIt = (label, thunk) -> do print(label); thunk() end`) cannot propagate their thunk's effects through the type system.
+
+- Phase 4-B unblocks all six `effectHandler/` builtins via the direct-subtraction path.
+- Phase 4-A becomes necessary when:
+  - Users want to write effect-polymorphic helper functions in pure Dvala code, or
+  - Annotation-based effect polymorphism (`let f: (() -> @{e, ...} A) -> @{e, ...} A = …`) needs to actually unify the two `...` tails.
+- Plausibly belongs in 0.6.0 (set-theoretic types Phase A), not 0.4.x. The MLsub `Var` machinery for value types is the template; extending it to effect rows is additive over Phase 4-B.
+
+See archive of original Phase 4 spec in this commit's history for the row-var design notes if revisited.
 
 ### Phase 5 — Wire `effectHandler/` signatures
 
