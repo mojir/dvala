@@ -1354,6 +1354,13 @@ export function inferExpr(
           constrain(ctx, bodyType, requiredBodyType)
           ctx.handleEffects(new Set(guaranteedHandled.keys()))
 
+          // Phase 3 of handler typing: after subtracting caught effects,
+          // union back in the effects that the handler's own clauses
+          // perform. Across multiple alternatives we conservatively take
+          // the union — any of them could be the active one at runtime.
+          // See design/active/2026-04-19_handler-typing.md.
+          ctx.addEffects(unionEffectSets(handlerAlternatives.map(handler => handler.introduced)))
+
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
             : union(...handlerAlternatives.map(handler => handler.output))

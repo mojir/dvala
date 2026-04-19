@@ -768,6 +768,105 @@ describe('typecheck — handler introduced effects', () => {
 })
 
 // ---------------------------------------------------------------------------
+// typecheck — handler application law (Phase 3)
+// ---------------------------------------------------------------------------
+
+describe('typecheck — handler application effect arithmetic', () => {
+  const dvala = createDvala()
+
+  // Helper: wrap source in `let f = () -> do … end; f` so the surrounding
+  // function captures the effects of the do-with-handler block. Returns
+  // the function's effect set.
+  function effectsOfWrappedBlock(letBindings: string, blockBody: string) {
+    const result = dvala.typecheck(`
+      ${letBindings}
+      let f = () -> do
+        ${blockBody}
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    return t.effects
+  }
+
+  it('handler that catches an effect and introduces nothing → result is pure', () => {
+    const effects = effectsOfWrappedBlock(
+      'effect @test.app_caught(Number) -> Number;',
+      `
+        let h = handler @test.app_caught(x) -> resume(x * 2) end;
+        do with h; perform(@test.app_caught, 5) end
+      `,
+    )
+    expect(effects.effects.size).toBe(0)
+    expect(effects.open).toBe(false)
+  })
+
+  it('handler that catches X and introduces Y → result effect set = @{Y}', () => {
+    const effects = effectsOfWrappedBlock(
+      `
+        effect @test.app_c(Number) -> Number;
+        effect @test.app_intro(String) -> Null;
+      `,
+      `
+        let h = handler
+          @test.app_c(x) -> do
+            perform(@test.app_intro, "log");
+            resume(x)
+          end
+        end;
+        do with h; perform(@test.app_c, 5) end
+      `,
+    )
+    expect(effects.effects.has('test.app_intro')).toBe(true)
+    expect(effects.effects.has('test.app_c')).toBe(false)
+  })
+
+  it('body has caught + uncaught effects → result has uncaught + introduced', () => {
+    const effects = effectsOfWrappedBlock(
+      `
+        effect @test.app2_c(Number) -> Number;
+        effect @test.app2_other(Null) -> Null;
+        effect @test.app2_intro(String) -> Null;
+      `,
+      `
+        let h = handler
+          @test.app2_c(x) -> do
+            perform(@test.app2_intro, "log");
+            resume(x)
+          end
+        end;
+        do with h;
+          perform(@test.app2_other, null);
+          perform(@test.app2_c, 5)
+        end
+      `,
+    )
+    expect(effects.effects.has('test.app2_other')).toBe(true) // body's uncaught
+    expect(effects.effects.has('test.app2_intro')).toBe(true) // handler's introduced
+    expect(effects.effects.has('test.app2_c')).toBe(false) // caught
+  })
+
+  // Decision 2 again, now observed via the application law: when the
+  // clause re-performs the caught effect, the outer effect set still
+  // contains it after the do-with-h.
+  it('handler whose clause re-performs its own caught effect → result still has it', () => {
+    const effects = effectsOfWrappedBlock(
+      'effect @test.app_self(Number) -> Number;',
+      `
+        let h = handler
+          @test.app_self(x) -> resume(perform(@test.app_self, x + 1))
+        end;
+        do with h; perform(@test.app_self, 5) end
+      `,
+    )
+    expect(effects.effects.has('test.app_self')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // typecheck — type display and expansion for complex types
 // ---------------------------------------------------------------------------
 
