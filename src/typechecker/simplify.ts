@@ -50,6 +50,7 @@ export function simplify(t: Type): Type {
         body: simplify(t.body),
         output: simplify(t.output),
         handled,
+        introduced: t.introduced,
       }
     }
     case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(simplify) }

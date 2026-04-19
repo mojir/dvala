@@ -669,6 +669,204 @@ describe('typecheck — handler-as-callable patterns', () => {
 })
 
 // ---------------------------------------------------------------------------
+// typecheck — handler introduced effect set (Phase 2.2)
+// ---------------------------------------------------------------------------
+
+describe('typecheck — handler introduced effects', () => {
+  const dvala = createDvala()
+
+  // Helper: typecheck the source, find the last node's inferred Handler type,
+  // and return its introduced effect set. Bails the assertion if the last
+  // node isn't a Handler.
+  function lastHandlerIntroduced(source: string) {
+    const result = dvala.typecheck(source)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Handler') throw new Error(`expected Handler, got ${t.tag}`)
+    return t.introduced
+  }
+
+  it('pure handler has empty introduced set', () => {
+    const introduced = lastHandlerIntroduced(`
+      effect @test.intro_pure(Number) -> Number;
+      let h = handler @test.intro_pure(x) -> resume(x * 2) end;
+      h
+    `)
+    expect(introduced.effects.size).toBe(0)
+    expect(introduced.open).toBe(false)
+  })
+
+  it('clause body performing an unrelated effect surfaces it in introduced', () => {
+    const introduced = lastHandlerIntroduced(`
+      effect @test.intro_caught(Number) -> Number;
+      effect @test.intro_extra(String) -> Null;
+      let h = handler
+        @test.intro_caught(x) -> do
+          perform(@test.intro_extra, "log");
+          resume(x)
+        end
+      end;
+      h
+    `)
+    expect(introduced.effects.has('test.intro_extra')).toBe(true)
+    expect(introduced.effects.has('test.intro_caught')).toBe(false)
+  })
+
+  // Decision 2 of the handler-typing design: a clause that performs the
+  // same effect it catches does NOT re-catch — the perform escapes past
+  // this handler. So `introduced` must include the caught effect when the
+  // clause itself performs it.
+  it('clause performing its own effect surfaces it in introduced (no re-catch)', () => {
+    const introduced = lastHandlerIntroduced(`
+      effect @test.intro_self(Number) -> Number;
+      let h = handler
+        @test.intro_self(x) -> resume(perform(@test.intro_self, x + 1))
+      end;
+      h
+    `)
+    expect(introduced.effects.has('test.intro_self')).toBe(true)
+  })
+
+  it('transform clause effects flow into introduced', () => {
+    const introduced = lastHandlerIntroduced(`
+      effect @test.intro_tc(Number) -> Number;
+      effect @test.intro_tlog(String) -> Null;
+      let h = handler
+        @test.intro_tc(x) -> resume(x)
+      transform
+        v -> do perform(@test.intro_tlog, "done"); v end
+      end;
+      h
+    `)
+    expect(introduced.effects.has('test.intro_tlog')).toBe(true)
+  })
+
+  // Constructing a handler value is itself pure — clause body effects must
+  // not leak into the surrounding context where the `handler … end`
+  // expression is evaluated.
+  it('handler-expression effects do not leak into the enclosing function', () => {
+    const result = dvala.typecheck(`
+      effect @test.intro_caught2(Number) -> Number;
+      effect @test.intro_leak(String) -> Null;
+      let mkHandler = () -> handler
+        @test.intro_caught2(x) -> do
+          perform(@test.intro_leak, "in clause");
+          resume(x)
+        end
+      end;
+      mkHandler
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    // mkHandler returns a Handler value but produces no effects itself.
+    expect(t.effects.effects.size).toBe(0)
+    expect(t.effects.open).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// typecheck — handler application law (Phase 3)
+// ---------------------------------------------------------------------------
+
+describe('typecheck — handler application effect arithmetic', () => {
+  const dvala = createDvala()
+
+  // Helper: wrap source in `let f = () -> do … end; f` so the surrounding
+  // function captures the effects of the do-with-handler block. Returns
+  // the function's effect set.
+  function effectsOfWrappedBlock(letBindings: string, blockBody: string) {
+    const result = dvala.typecheck(`
+      ${letBindings}
+      let f = () -> do
+        ${blockBody}
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    return t.effects
+  }
+
+  it('handler that catches an effect and introduces nothing → result is pure', () => {
+    const effects = effectsOfWrappedBlock(
+      'effect @test.app_caught(Number) -> Number;',
+      `
+        let h = handler @test.app_caught(x) -> resume(x * 2) end;
+        do with h; perform(@test.app_caught, 5) end
+      `,
+    )
+    expect(effects.effects.size).toBe(0)
+    expect(effects.open).toBe(false)
+  })
+
+  it('handler that catches X and introduces Y → result effect set = @{Y}', () => {
+    const effects = effectsOfWrappedBlock(
+      `
+        effect @test.app_c(Number) -> Number;
+        effect @test.app_intro(String) -> Null;
+      `,
+      `
+        let h = handler
+          @test.app_c(x) -> do
+            perform(@test.app_intro, "log");
+            resume(x)
+          end
+        end;
+        do with h; perform(@test.app_c, 5) end
+      `,
+    )
+    expect(effects.effects.has('test.app_intro')).toBe(true)
+    expect(effects.effects.has('test.app_c')).toBe(false)
+  })
+
+  it('body has caught + uncaught effects → result has uncaught + introduced', () => {
+    const effects = effectsOfWrappedBlock(
+      `
+        effect @test.app2_c(Number) -> Number;
+        effect @test.app2_other(Null) -> Null;
+        effect @test.app2_intro(String) -> Null;
+      `,
+      `
+        let h = handler
+          @test.app2_c(x) -> do
+            perform(@test.app2_intro, "log");
+            resume(x)
+          end
+        end;
+        do with h;
+          perform(@test.app2_other, null);
+          perform(@test.app2_c, 5)
+        end
+      `,
+    )
+    expect(effects.effects.has('test.app2_other')).toBe(true) // body's uncaught
+    expect(effects.effects.has('test.app2_intro')).toBe(true) // handler's introduced
+    expect(effects.effects.has('test.app2_c')).toBe(false) // caught
+  })
+
+  // Decision 2 again, now observed via the application law: when the
+  // clause re-performs the caught effect, the outer effect set still
+  // contains it after the do-with-h.
+  it('handler whose clause re-performs its own caught effect → result still has it', () => {
+    const effects = effectsOfWrappedBlock(
+      'effect @test.app_self(Number) -> Number;',
+      `
+        let h = handler
+          @test.app_self(x) -> resume(perform(@test.app_self, x + 1))
+        end;
+        do with h; perform(@test.app_self, 5) end
+      `,
+    )
+    expect(effects.effects.has('test.app_self')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // typecheck — type display and expansion for complex types
 // ---------------------------------------------------------------------------
 

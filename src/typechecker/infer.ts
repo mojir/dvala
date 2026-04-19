@@ -233,7 +233,12 @@ function varKey(t: Type): string {
   if (t.tag === 'Atom') return `A:${t.name}`
   if (t.tag === 'Literal') return `L:${String(t.value)}`
   if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}`
-  if (t.tag === 'Handler') return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}`
+  // The constraint cache uses these keys to skip redundant subtype checks,
+  // so any field that affects subtyping must appear here. `introduced` is
+  // included even though `constrain` for Handler does not yet compare it
+  // (Phase 2.5 deferred) — once it does, two handler types differing only
+  // in `introduced` must produce different cache keys.
+  if (t.tag === 'Handler') return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}:I:${[...t.introduced.effects].sort().join(',')}${t.introduced.open ? ':open' : ''}`
   if (t.tag === 'Record') return `R:${[...t.fields.entries()].map(([k, v]) => `${k}=${varKey(v)}`).join(',')}`
   if (t.tag === 'Array') return `Ar:${varKey(t.element)}`
   if (t.tag === 'Tuple') return `Tu:${t.elements.map(varKey).join(',')}`
@@ -468,6 +473,11 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     }
     constrain(ctx, lhs.body, rhs.body)
     constrain(ctx, lhs.output, rhs.output)
+    // Note: `introduced` is not yet compared here (Phase 2.5 deferred),
+    // even though `typeEquals` does compare it. The asymmetry is
+    // intentional for now — Phase 4-B will add covariant subtyping on
+    // `introduced` (a handler that introduces fewer effects is a
+    // subtype of one that introduces more).
     return
   }
 
@@ -845,6 +855,11 @@ export function inferExpr(
               new Set(guaranteedHandled.keys()),
             )
             ctx.addEffects(residualEffects)
+            // TODO Phase 4-B: also union in `handlerAlternatives.map(h => h.introduced)`
+            // to mirror the do-with-h wiring at line 1362. The application law
+            // (Σ_body \ handled) ∪ introduced is currently only enforced at
+            // do-with-h sites; the direct-call h(-> body) form below
+            // under-reports effects until 4-B lands.
 
             result = handlerAlternatives.length === 1
               ? handlerAlternatives[0]!.output
@@ -896,6 +911,9 @@ export function inferExpr(
             new Set(guaranteedHandled.keys()),
           )
           ctx.addEffects(residualEffects)
+          // TODO Phase 4-B: also union `handlerAlternatives.map(h => h.introduced)`
+          // here. Same gap as the zero-arg branch above and the wrapper branch
+          // below — only do-with-h is wired today.
 
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
@@ -913,6 +931,11 @@ export function inferExpr(
           if (argTypes[0]!.tag === 'Var') {
             ctx.noteWrappedThunkVar(argTypes[0].id, guaranteedHandled)
           }
+          // TODO Phase 4-B: this branch defers thunk-effect handling via
+          // `noteWrappedThunkVar`, which records `handled` against the var so
+          // a downstream subtype check can subtract. `introduced` propagation
+          // through that deferred path is not yet wired — extend
+          // HandlerWrapperInfo with `introduced` and forward it here.
 
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
@@ -1260,6 +1283,15 @@ export function inferExpr(
         const bodyType = ctx.freshVar()
         const answerType = ctx.freshVar()
         const handled = new Map<string, { argType: Type; retType: Type }>()
+        // Collect effects performed by clause bodies + the transform clause.
+        // These are the effects that the handler will surface when applied —
+        // not the effects it *catches*. Per Decision 2 of the handler-typing
+        // design, a clause does not re-catch its own perform: the perform
+        // escapes past this handler to the next outer one. So we DO NOT
+        // subtract `handled` from `introduced`. Constructing a handler value
+        // is itself pure; per-clause pushEffects/popEffects keeps the
+        // recorded clause effects out of the surrounding context.
+        const introducedSets: EffectSet[] = []
 
         for (const clause of clauses) {
         // When a handler clause lacks a source-level effect declaration, infer
@@ -1284,10 +1316,12 @@ export function inferExpr(
           }
 
           ctx.pushResume(declaredRetType, answerType)
+          ctx.pushEffects()
           let clauseBodyType: Type = NullType
           for (const bodyNode of clause.body) {
             clauseBodyType = inferExpr(bodyNode, ctx, clauseEnv, typeMap)
           }
+          introducedSets.push(ctx.popEffects())
           ctx.popResume()
           constrain(ctx, clauseBodyType, answerType)
         }
@@ -1296,10 +1330,12 @@ export function inferExpr(
           const [transformParam, transformBody] = transform
           const transformEnv = env.child()
           bindPattern(transformParam, bodyType, transformEnv, ctx, typeMap)
+          ctx.pushEffects()
           let transformResult: Type = NullType
           for (const bodyNode of transformBody) {
             transformResult = inferExpr(bodyNode, ctx, transformEnv, typeMap)
           }
+          introducedSets.push(ctx.popEffects())
           constrain(ctx, transformResult, answerType)
           constrain(ctx, answerType, transformResult)
         } else {
@@ -1307,7 +1343,12 @@ export function inferExpr(
           constrain(ctx, answerType, bodyType)
         }
 
-        result = handlerType(bodyType, answerType, finalizeHandledSignatures(handled))
+        result = handlerType(
+          bodyType,
+          answerType,
+          finalizeHandledSignatures(handled),
+          unionEffectSets(introducedSets),
+        )
         break
       }
 
@@ -1335,6 +1376,13 @@ export function inferExpr(
           }
           constrain(ctx, bodyType, requiredBodyType)
           ctx.handleEffects(new Set(guaranteedHandled.keys()))
+
+          // Phase 3 of handler typing: after subtracting caught effects,
+          // union back in the effects that the handler's own clauses
+          // perform. Across multiple alternatives we conservatively take
+          // the union — any of them could be the active one at runtime.
+          // See design/active/2026-04-19_handler-typing.md.
+          ctx.addEffects(unionEffectSets(handlerAlternatives.map(handler => handler.introduced)))
 
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
@@ -1422,6 +1470,9 @@ function containsVars(t: Type): boolean {
       for (const sig of t.handled.values()) {
         if (containsVars(sig.argType) || containsVars(sig.retType)) return true
       }
+      // TODO Phase 4-A: when EffectSet gains row-variable identity, also
+      // traverse `t.introduced`. Today EffectSet carries only string names
+      // (no type vars), so this is a no-op.
       return false
     }
     case 'Record': return [...t.fields.values()].some(containsVars)
@@ -1464,6 +1515,7 @@ function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<string, Typ
         freshenAllVars(ctx, t.body, mapping),
         freshenAllVars(ctx, t.output, mapping),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {
@@ -1539,6 +1591,7 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeV
         freshenInner(ctx, t.body, mapping),
         freshenInner(ctx, t.output, mapping),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {
@@ -1582,6 +1635,8 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
           return true
         }
       }
+      // TODO Phase 4-A: same as containsVars — traverse `t.introduced`
+      // once EffectSet carries row-variable identity. No-op today.
       return false
     }
     case 'Record': return [...t.fields.values()].some(v => containsVarsAboveLevel(v, level))
@@ -1655,7 +1710,7 @@ function generalizeInner(t: Type, level: number, mapping: Map<string, TypeVar>):
         handled.set(name, { argType, retType })
       }
       if (body === t.body && output === t.output && !handledChanged) return t
-      return handlerType(body, output, handled)
+      return handlerType(body, output, handled, t.introduced)
     }
     case 'Record': {
       let changed = false
@@ -3504,6 +3559,7 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
         expandTypeForMatchAnalysis(t.body, new Set(visited)),
         expandTypeForMatchAnalysis(t.output, new Set(visited)),
         handled,
+        t.introduced,
       )
     }
 
@@ -3592,6 +3648,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
         expandType(t.body, 'positive', new Set(visited)),
         expandType(t.output, 'positive', new Set(visited)),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {
@@ -3690,6 +3747,7 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
         expandTypeForDisplay(t.body, 'positive', new Set(visited)),
         expandTypeForDisplay(t.output, 'positive', new Set(visited)),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {
@@ -3749,6 +3807,7 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
         sanitizeDisplayType(t.body, true),
         sanitizeDisplayType(t.output, true),
         handled,
+        t.introduced,
       )
     }
     case 'Record': {
