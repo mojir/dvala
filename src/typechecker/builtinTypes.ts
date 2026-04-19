@@ -3,11 +3,11 @@
  * into Type values, cached for lookup during inference.
  */
 
-import type { HandlerEffectSignature, HandlerWrapperInfo, Type } from './types'
-import { PureEffects, Unknown, effectSet } from './types'
+import type { BuiltinNormalExpressions, FunctionDocs } from '../builtin/interface'
 import { getEffectDeclaration } from './effectTypes'
 import { parseFunctionTypeAnnotation, type ParsedFunctionType } from './parseType'
-import type { BuiltinNormalExpressions, FunctionDocs } from '../builtin/interface'
+import type { HandlerEffectSignature, HandlerWrapperInfo, Type } from './types'
+import { PureEffects, Unknown, effectSet } from './types'
 
 // ---------------------------------------------------------------------------
 // Parsed builtin type cache

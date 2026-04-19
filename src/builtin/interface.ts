@@ -152,6 +152,16 @@ export interface FunctionDocs {
    * `effect @name(T) -> U`) before the module is registered — the
    * typechecker looks up each name's arg/ret signatures in the effect
    * registry.
+   *
+   * Note: `handled` and `introduced` do not cancel in degenerate
+   * cases. `retry` declares both as `[dvala.error]` because on final
+   * retry exhaustion it re-performs the error, so calling `retry(n, pureBody)`
+   * conservatively surfaces `@dvala.error` in the caller's effect set
+   * even when the body never performs it. This is a sound
+   * over-approximation — at runtime the effect may or may not occur
+   * depending on control flow, and the type system picks the upper
+   * bound. Concrete cancellation would require conditional typing
+   * that Dvala's effect system does not (and probably shouldn't) model.
    */
   wrapper?: {
     paramIndex: number

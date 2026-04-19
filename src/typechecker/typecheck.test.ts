@@ -1784,6 +1784,36 @@ describe('typecheck — effectHandler signatures propagate wrapper effects', () 
     expect(t.ret.tag).toBe('Unknown')
     expect(t.effects.effects.has('dvala.random.item')).toBe(true)
   })
+
+  // fallback is the one effectHandler function that returns a Handler
+  // VALUE rather than directly wrapping a thunk. Calling it produces a
+  // Handler, which the user then applies via `fallback(v)(-> body)`. The
+  // behavioral claim is that @dvala.error in the body gets consumed by
+  // the handler — only the body's non-caught effects surface to the
+  // caller. Without this test, a regression on the handler-as-callable
+  // path for fallback specifically would be silent.
+  it('fallback(v)(-> effectful body) consumes @dvala.error, surfaces others', () => {
+    const result = dvala.typecheck(`
+      let { fallback } = import("effectHandler");
+      effect @test.fb_other(Null) -> Null;
+      let outer = (n: Number) -> fallback(0)(-> do
+        perform(@test.fb_other, null);
+        n / 0
+      end);
+      outer
+    `)
+    // Fold may emit a severity:'warning' for provable runtime errors —
+    // filter to real errors.
+    const errors = result.diagnostics.filter(d => d.severity === 'error')
+    expect(errors).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    // @dvala.error (from n/0) is caught by fallback's handler; the
+    // unrelated test.fb_other effect still surfaces to the caller.
+    expect(t.effects.effects.has('test.fb_other')).toBe(true)
+    expect(t.effects.effects.has('dvala.error')).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------
