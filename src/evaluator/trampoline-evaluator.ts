@@ -2512,6 +2512,14 @@ function applyHandlerCleanup(frame: HandlerCleanupFrame, _value: Any, k: Continu
   // invocations that would re-enter it can detect and refuse (the
   // multi-shot restriction described in the design doc).
   frame.handleFrame.cleanupsFired = true
+  // Note: snapshot-during-cleanup is not checked here. The design
+  // (Decision 12) refuses it, but the refusal is unreachable by
+  // construction: cleanup callbacks are pure host JS with no access
+  // to `ctx` (the only route to ctx.checkpoint and ctx.suspend) and
+  // they can't perform Dvala effects (Decision 5, they're outside
+  // the Dvala execution window). All four snapshot-capture paths are
+  // therefore unreachable from a cleanup callback, and no runtime
+  // flag is needed to enforce the rule.
   // LIFO: iterate in reverse.
   const errors: unknown[] = []
   let i = cleanups.length - 1
@@ -2535,6 +2543,38 @@ function applyHandlerCleanup(frame: HandlerCleanupFrame, _value: Any, k: Continu
     i--
   }
   return finalizeCleanup(frame.value, k, errors, sourceCodeInfo)
+}
+
+/**
+ * Drain program-level cleanups (registered by `onScopeExit` when no
+ * Dvala handler frame was in scope). Fires in LIFO with the same
+ * error-aggregation rules as frame-level cleanups. Called from the
+ * runEffectLoop terminal paths (completed / halted / error).
+ *
+ * Returns a Promise because cleanups may be async; for a fully
+ * synchronous batch the promise resolves on the next tick.
+ */
+async function drainProgramCleanups(snapshotState: SnapshotState | undefined): Promise<void> {
+  if (!snapshotState?.programCleanups || snapshotState.programCleanups.length === 0) return
+  const cleanups = snapshotState.programCleanups
+  snapshotState.programCleanups = undefined
+  const errors: unknown[] = []
+  for (let i = cleanups.length - 1; i >= 0; i--) {
+    const entry = cleanups[i]!
+    try {
+      await entry.callback()
+    } catch (e) {
+      errors.push(e)
+    }
+  }
+  if (errors.length > 0) {
+    const first = errors[0]!
+    if (errors.length > 1) {
+      // eslint-disable-next-line no-console
+      console.error(`[dvala] ${errors.length - 1} additional error(s) during program-level cleanup:`, errors.slice(1))
+    }
+    throw first instanceof Error ? first : new DvalaError(`${first}`, undefined)
+  }
 }
 
 /** Async continuation of applyHandlerCleanup from a given index. */
@@ -2920,8 +2960,18 @@ function assertContinuationValid(performK: ContinuationStack, sourceCodeInfo: So
  * host-registered cleanups. Used by auto-checkpoint to skip snapshot
  * capture when resources are held (explicit user-initiated checkpoints
  * still error via `assertNoLiveCleanups`).
+ *
+ * Why snapshot-discard does NOT need to fire cleanups: user-initiated
+ * capture is refused by `assertNoLiveCleanups` while cleanups are live,
+ * and auto-checkpoint skips capture via this predicate. So no snapshot
+ * in `snapshotState.snapshots` ever contains a resource-holding frame —
+ * a discard (via `resumeFrom` unwinding, `maxSnapshots` eviction, or
+ * host-side release) cannot leak cleanups that were never captured.
+ * The discard-fire hook described in the design doc's Phase 1 is
+ * therefore a no-op by construction; we intentionally don't implement
+ * it to keep the surface small.
  */
-function hasLiveCleanups(k: ContinuationStack): boolean {
+function hasLiveCleanups(k: ContinuationStack, snapshotState?: SnapshotState): boolean {
   let node = k
   while (node !== null) {
     if (node.head.type === 'AlgebraicHandle' && node.head.cleanups && node.head.cleanups.length > 0) {
@@ -2929,10 +2979,11 @@ function hasLiveCleanups(k: ContinuationStack): boolean {
     }
     node = node.tail
   }
+  if (snapshotState?.programCleanups && snapshotState.programCleanups.length > 0) return true
   return false
 }
 
-function assertNoLiveCleanups(k: ContinuationStack, operation: string, sourceCodeInfo: SourceCodeInfo | undefined): void {
+function assertNoLiveCleanups(k: ContinuationStack, operation: string, sourceCodeInfo: SourceCodeInfo | undefined, snapshotState?: SnapshotState): void {
   // Aggregate counts per effect name across all resource-holding frames.
   const counts = new Map<string, number>()
   let total = 0
@@ -2945,6 +2996,14 @@ function assertNoLiveCleanups(k: ContinuationStack, operation: string, sourceCod
       }
     }
     node = node.tail
+  }
+  // Program-level cleanups count too — capturing a continuation that
+  // escapes the runtime process would orphan them.
+  if (snapshotState?.programCleanups) {
+    for (const entry of snapshotState.programCleanups) {
+      counts.set(entry.effectName, (counts.get(entry.effectName) ?? 0) + 1)
+      total++
+    }
   }
   if (total === 0) return
   const breakdown = [...counts.entries()].map(([name, n]) => `${n} × ${name}`).join(', ')
@@ -3106,7 +3165,7 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   // The snapshot is always captured regardless of whether any handler intercepts.
   // Skipped when re-dispatching from an algebraic handler fallthrough (already captured upstream).
   if (effect.name === 'dvala.checkpoint' && snapshotState) {
-    assertNoLiveCleanups(k, 'snapshot (via perform @dvala.checkpoint)', sourceCodeInfo)
+    assertNoLiveCleanups(k, 'snapshot (via perform @dvala.checkpoint)', sourceCodeInfo, snapshotState)
     const message = arg as string
     // Replace BarrierFrames with ReRunParallelFrames so the checkpoint
     // is a full-program continuation (not a branch-local one).
@@ -3285,7 +3344,7 @@ function dispatchHostHandler(
         // Capture a post-effect snapshot so time travel can rewind to right after this effect.
         // Snapshot after (not before) so the effect result is baked in — re-execution from here
         // is pure and needs no effect-result replay.
-        if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint' && !hasLiveCleanups(k)) {
+        if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint' && !hasLiveCleanups(k, snapshotState)) {
           // Auto-checkpoint silently skips when resource-holding handlers
           // are in the stack — a captured checkpoint couldn't be resumed
           // without re-acquiring the resources, which the host-cleanup
@@ -3320,7 +3379,7 @@ function dispatchHostHandler(
       },
       suspend: (meta?: unknown) => {
         assertNotSettled('suspend')
-        assertNoLiveCleanups(k, 'suspend (via ctx.suspend)', sourceCodeInfo)
+        assertNoLiveCleanups(k, 'suspend (via ctx.suspend)', sourceCodeInfo, snapshotState)
         // Validate meta is serializable (it goes into snapshots) but don't convert to Dvala types
         if (meta !== undefined)
           assertValidHostValue(meta, `suspend() meta in handler for '${effectName}'`)
@@ -3346,7 +3405,7 @@ function dispatchHostHandler(
         if (!snapshotState) {
           throw new RuntimeError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
         }
-        assertNoLiveCleanups(k, 'checkpoint (via ctx.checkpoint)', sourceCodeInfo)
+        assertNoLiveCleanups(k, 'checkpoint (via ctx.checkpoint)', sourceCodeInfo, snapshotState)
         // Validate meta is serializable (it gets stored in snapshot) but don't convert to Dvala types
         if (meta !== undefined)
           assertValidHostValue(meta, `checkpoint() meta in handler for '${effectName}'`)
@@ -3402,12 +3461,10 @@ function dispatchHostHandler(
       onScopeExit: callback => {
         // Attach the callback to the nearest enclosing AlgebraicHandleFrame
         // in the continuation stack. That frame becomes "resource-holding"
-        // and its cleanups will fire on terminal exit (normal completion,
-        // abort, or snapshot discard). If there is no enclosing Dvala
-        // handler frame (effect performed at top level with no wrapping
-        // `do with`), the callback attaches to the program-level scope
-        // exit list (TODO: implement program-level scope). For now we
-        // defer that case by throwing, so the limitation is explicit.
+        // and its cleanups fire on terminal exit (normal completion or
+        // abort). If there is no enclosing Dvala handler frame, fall back
+        // to the program-level list on `snapshotState` — cleanups fire
+        // at program completion (completed / halted / error).
         let node = k
         while (node !== null) {
           if (node.head.type === 'AlgebraicHandle') {
@@ -3418,9 +3475,15 @@ function dispatchHostHandler(
           }
           node = node.tail
         }
+        if (snapshotState) {
+          if (!snapshotState.programCleanups) snapshotState.programCleanups = []
+          snapshotState.programCleanups.push({ callback, effectName })
+          return
+        }
         throw new RuntimeError(
-          `onScopeExit called from '${effectName}' handler with no enclosing Dvala handler frame — `
-          + 'wrap the computation in a `do with handler; ... end` to scope the cleanup',
+          `onScopeExit called from '${effectName}' handler with no enclosing Dvala handler frame `
+          + 'and no program-level scope available (pure-mode evaluation without a snapshot state). '
+          + 'Wrap the computation in a `do with handler; ... end` to scope the cleanup.',
           sourceCodeInfo,
         )
       },
@@ -5954,6 +6017,8 @@ async function runEffectLoop(
           tickCount = 0
         }
         if (step.type === 'Value' && step.k === null) {
+          // Program-level cleanups fire at completion (LIFO, errors aggregated).
+          await drainProgramCleanups(snapshotState)
           const snapshot = createTerminalSnapshot({ result: step.value })
           return snapshot
             ? { type: 'completed', value: step.value, snapshot }
@@ -6034,17 +6099,20 @@ async function runEffectLoop(
         return { type: 'suspended', snapshot, _rawSuspension }
       }
       if (isHaltSignal(error)) {
+        await drainProgramCleanups(snapshotState)
         const snapshot = createTerminalSnapshot({ result: error.value, halted: true })
         return snapshot
           ? { type: 'halted', value: error.value, snapshot }
           : { type: 'halted', value: error.value }
       }
       if (error instanceof DvalaError) {
+        await drainProgramCleanups(snapshotState)
         const snapshot = createTerminalSnapshot({ error })
         return snapshot
           ? { type: 'error', error, snapshot }
           : { type: 'error', error }
       }
+      await drainProgramCleanups(snapshotState)
       const snapshot = createTerminalSnapshot()
       const dvalaError = new DvalaError(`${error}`, undefined)
       return snapshot

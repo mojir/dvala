@@ -142,6 +142,22 @@ export interface SnapshotState {
    * For coverage, record `node[2]` (the node ID) and return without calling `getContinuation()`.
    */
   onNodeEval?: (node: AstNode, getContinuation: () => Continuation) => void | Promise<void>
+
+  /**
+   * Program-level cleanup callbacks — registered by host effect handlers
+   * via `ctx.onScopeExit` when there is no enclosing Dvala handler frame
+   * to attach to. Fires at program completion (completed / halted / error)
+   * in LIFO. Each entry records its source effect name for error messages.
+   *
+   * Treated exactly like frame-level cleanups for snapshot/suspend
+   * restrictions — the runtime refuses capture while any program-level
+   * cleanup is live, because a serialized continuation that outlives the
+   * process cannot be followed by the cleanup.
+   *
+   * Lazily initialized — undefined until `onScopeExit` without an
+   * enclosing frame needs it.
+   */
+  programCleanups?: { callback: () => void | Promise<void>; effectName: string }[]
 }
 
 // ---------------------------------------------------------------------------

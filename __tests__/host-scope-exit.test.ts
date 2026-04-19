@@ -128,23 +128,48 @@ describe('host scope-exit callbacks', () => {
       expect(String(result.error)).toContain('cleanup failure for A')
   })
 
-  it('onScopeExit without an enclosing handler throws a clear runtime error', async () => {
+  it('onScopeExit without an enclosing handler falls back to program-level scope', async () => {
+    // No `do with handler` wrapper — the cleanup attaches to the program
+    // scope and fires at program completion.
+    const cleanupLog: string[] = []
     const result = await dvala.runAsync(`
-      perform(@my.open, "A")
+      perform(@my.open, "A");
+      42
     `, {
       effectHandlers: [
         {
           pattern: 'my.open',
           handler: ({ arg, resume, onScopeExit }) => {
-            onScopeExit(() => { /* never registered */ })
+            onScopeExit(() => { cleanupLog.push(`close-${arg}`) })
             resume(`handle-${arg}`)
           },
         },
       ],
     })
-    expect(result.type).toBe('error')
-    if (result.type === 'error')
-      expect(String(result.error)).toContain('no enclosing Dvala handler frame')
+    if (result.type === 'error') throw result.error
+    expect(result.type).toBe('completed')
+    expect(cleanupLog).toEqual(['close-A'])
+  })
+
+  it('program-level cleanups fire in LIFO on completion', async () => {
+    const cleanupLog: string[] = []
+    const result = await dvala.runAsync(`
+      perform(@my.open, "A");
+      perform(@my.open, "B");
+      perform(@my.open, "C")
+    `, {
+      effectHandlers: [
+        {
+          pattern: 'my.open',
+          handler: ({ arg, resume, onScopeExit }) => {
+            onScopeExit(() => { cleanupLog.push(`close-${arg}`) })
+            resume(`handle-${arg}`)
+          },
+        },
+      ],
+    })
+    if (result.type === 'error') throw result.error
+    expect(cleanupLog).toEqual(['close-C', 'close-B', 'close-A'])
   })
 })
 
@@ -248,6 +273,107 @@ describe('host scope-exit runtime restrictions', () => {
       expect(msg).toContain('2 × my.open')
       expect(msg).toContain('1 × db.connect')
     }
+  })
+
+  it('uncaught-effect pass-through keeps the frame alive; cleanups fire only on terminal exit', async () => {
+    // Inner handler catches @inner.eff only. An @outer.eff is performed
+    // inside `inner`'s scope — it propagates past `inner` to `outer`.
+    // `outer`'s clause resumes, execution continues inside `inner`, and
+    // eventually `inner` terminally exits — that's when inner's cleanup
+    // should fire. If pass-through fired cleanups, we'd see `close-A`
+    // before the execution completed and the second perform would be
+    // operating on a closed handle.
+    const events: string[] = []
+    const result = await dvala.runAsync(`
+      let outer = handler @outer.eff(n) -> resume(n * 10) end;
+      let inner = handler @inner.eff(n) -> resume(n) end;
+      do with outer;
+        do with inner;
+          perform(@my.open, "A");
+          let y = perform(@outer.eff, 3);
+          perform(@my.touch, y)
+        end
+      end
+    `, {
+      effectHandlers: [
+        {
+          pattern: 'my.open',
+          handler: ({ arg, resume, onScopeExit }) => {
+            events.push(`open-${arg}`)
+            onScopeExit(() => { events.push(`close-${arg}`) })
+            resume(`handle-${arg}`)
+          },
+        },
+        {
+          pattern: 'my.touch',
+          handler: ({ arg, resume }) => {
+            events.push(`touch-${arg}`)
+            resume(null)
+          },
+        },
+      ],
+    })
+    if (result.type === 'error') throw result.error
+    // Critical ordering: open, then touch (after pass-through), THEN close.
+    // If cleanup had fired on pass-through, close would sit between open and touch.
+    expect(events).toEqual(['open-A', 'touch-30', 'close-A'])
+  })
+
+  it('nested handlers: inner cleanups fire before outer cleanups', async () => {
+    const events: string[] = []
+    const result = await dvala.runAsync(`
+      let outer = handler @outer.pt(x) -> resume(x) end;
+      let inner = handler @inner.pt(x) -> resume(x) end;
+      do with outer;
+        perform(@my.open, "OUTER");
+        do with inner;
+          perform(@my.open, "INNER")
+        end
+      end
+    `, {
+      effectHandlers: [
+        {
+          pattern: 'my.open',
+          handler: ({ arg, resume, onScopeExit }) => {
+            events.push(`open-${arg}`)
+            onScopeExit(() => { events.push(`close-${arg}`) })
+            resume(`handle-${arg}`)
+          },
+        },
+      ],
+    })
+    if (result.type === 'error') throw result.error
+    // Inner frame closes first when its scope exits; outer closes when outer exits.
+    expect(events).toEqual(['open-OUTER', 'open-INNER', 'close-INNER', 'close-OUTER'])
+  })
+
+  it('cleanups are strictly per-dvala-instance (two instances do not share state)', async () => {
+    const { createDvala: createDvalaLocal } = await import('../src/createDvala')
+    const dvalaA = createDvalaLocal()
+    const dvalaB = createDvalaLocal()
+    const logA: string[] = []
+    const logB: string[] = []
+    const handler = (log: string[]) => ({
+      pattern: 'my.open',
+      handler: ({ arg, resume, onScopeExit }: { arg: unknown; resume: (v: unknown) => void; onScopeExit: (cb: () => void) => void }) => {
+        onScopeExit(() => { log.push(`close-${String(arg)}`) })
+        resume(`handle-${String(arg)}`)
+      },
+    })
+    // Run a computation in instance A; the cleanup callback there must
+    // not be visible to instance B's typical resolution and vice versa.
+    const resultA = await dvalaA.runAsync(`
+      let h = handler @my.pt(x) -> resume(x) end;
+      do with h; perform(@my.open, "A") end
+    `, { effectHandlers: [handler(logA)] })
+    if (resultA.type === 'error') throw resultA.error
+    const resultB = await dvalaB.runAsync(`
+      let h = handler @my.pt(x) -> resume(x) end;
+      do with h; perform(@my.open, "B") end
+    `, { effectHandlers: [handler(logB)] })
+    if (resultB.type === 'error') throw resultB.error
+    expect(logA).toEqual(['close-A'])
+    expect(logB).toEqual(['close-B'])
   })
 
   it('inline multi-shot resume within a single clause body fires cleanup once', async () => {
