@@ -135,6 +135,29 @@ export interface FunctionDocs {
   /** Type annotation in Dvala syntax, parsed by the typechecker.
    * e.g. "(Number, Number) -> Number" or "(x: Unknown) -> x is Number" */
   type?: string
+  /**
+   * Handler-wrapper metadata. When set, the declared function is a
+   * wrapper that installs a handler over its thunk argument. The
+   * typechecker attaches a `HandlerWrapperInfo` to the parsed function
+   * type so call sites apply the handler-typing application law:
+   * `(thunk_effects \ handled) ∪ introduced`.
+   *
+   * - `paramIndex`: zero-based index of the thunk parameter.
+   * - `handled`: names of effects the wrapper catches.
+   * - `introduced`: names of effects the wrapper's inner handler
+   *   clauses or transform perform (which become visible in the
+   *   outer effect set).
+   *
+   * Effect names must be declared (either as builtin effects or via
+   * `effect @name(T) -> U`) before the module is registered — the
+   * typechecker looks up each name's arg/ret signatures in the effect
+   * registry.
+   */
+  wrapper?: {
+    paramIndex: number
+    handled: string[]
+    introduced: string[]
+  }
 }
 
 export interface CustomDocs {

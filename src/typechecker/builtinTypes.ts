@@ -3,8 +3,9 @@
  * into Type values, cached for lookup during inference.
  */
 
-import type { Type } from './types'
-import { Unknown } from './types'
+import type { HandlerEffectSignature, HandlerWrapperInfo, Type } from './types'
+import { PureEffects, Unknown, effectSet } from './types'
+import { getEffectDeclaration } from './effectTypes'
 import { parseFunctionTypeAnnotation, type ParsedFunctionType } from './parseType'
 import type { BuiltinNormalExpressions, FunctionDocs } from '../builtin/interface'
 
@@ -97,35 +98,62 @@ export function registerModuleType(
   docs?: Record<string, FunctionDocs>,
 ): void {
   const fields = new Map<string, Type>()
-  const setFromTypeStr = (name: string, typeStr: string | undefined): void => {
+  const setFromDocs = (name: string, doc: FunctionDocs | undefined): void => {
+    const typeStr = doc?.type
+    let parsedType: Type
     if (typeStr) {
       try {
         const parsed = parseFunctionTypeAnnotation(typeStr)
-        fields.set(name, parsed.type)
+        parsedType = parsed.type
       } catch {
         // Intentional: a malformed type string degrades to Unknown rather
         // than failing module registration. The function still works at
         // runtime; the typechecker just loses precision for it. Audit
         // parsing failures by watching for widening inference across
         // callers of the affected module function.
-        fields.set(name, Unknown)
+        parsedType = Unknown
       }
     } else {
       // Intentional: entries without a declared type are Unknown. Common
       // for docs entries that haven't been annotated yet; callers should
       // audit via the `type` field on each FunctionDocs to see gaps.
-      fields.set(name, Unknown)
+      parsedType = Unknown
     }
+    // Attach HandlerWrapperInfo when the docs declare `wrapper` metadata.
+    // Resolves each handled effect's argType/retType via the effect
+    // registry. Effects that aren't registered fall back to Unknown —
+    // the wrapper still functions; the typechecker just can't prove
+    // the resume arg/ret types.
+    if (doc?.wrapper && parsedType.tag === 'Function') {
+      const handled = new Map<string, HandlerEffectSignature>()
+      for (const effectName of doc.wrapper.handled) {
+        const decl = getEffectDeclaration(effectName)
+        handled.set(effectName, {
+          argType: decl?.argType ?? Unknown,
+          retType: decl?.retType ?? Unknown,
+        })
+      }
+      const introduced = doc.wrapper.introduced.length > 0
+        ? effectSet(doc.wrapper.introduced)
+        : PureEffects
+      const handlerWrapper: HandlerWrapperInfo = {
+        paramIndex: doc.wrapper.paramIndex,
+        handled,
+        introduced,
+      }
+      parsedType = { ...parsedType, handlerWrapper }
+    }
+    fields.set(name, parsedType)
   }
   for (const [name, expr] of Object.entries(functions)) {
-    setFromTypeStr(name, expr.docs?.type)
+    setFromDocs(name, expr.docs)
   }
   if (docs) {
     for (const [name, doc] of Object.entries(docs)) {
       // Skip names already covered by `functions` — those took their type
       // from the inline docs, which is canonical for TS-impls.
       if (fields.has(name)) continue
-      setFromTypeStr(name, doc.type)
+      setFromDocs(name, doc)
     }
   }
   // Module type is a closed record of its exports

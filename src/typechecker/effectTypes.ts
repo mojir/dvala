@@ -100,6 +100,14 @@ export function initBuiltinEffects(): void {
     ['dvala.error', Unknown, Unknown], // error: any arg, aborts (never resumes normally)
     ['dvala.io.print', Unknown, Unknown], // print: any arg, returns null-ish
     ['dvala.io.read', Unknown, Unknown], // read: prompt, returns string
+    // Used by effectHandler's chooseAll/chooseFirst/chooseRandom/chooseTake
+    // to model nondeterministic choice. `@choose` takes a list of options
+    // and resumes with one of them. Registered here so users who import
+    // these functions don't have to redeclare the effect themselves.
+    ['choose', Unknown, Unknown],
+    // Used by chooseRandom to pick a random element from the options list.
+    // Declared here so chooseRandom's declared signature can reference it.
+    ['dvala.random.item', Unknown, Unknown],
   ]
   for (const [name, arg, ret] of builtins) {
     declareEffect(name, arg, ret)

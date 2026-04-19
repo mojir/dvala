@@ -1697,6 +1697,77 @@ describe('typecheck — type aliases', () => {
 })
 
 // ---------------------------------------------------------------------------
+// typecheck — effectHandler signatures carry handler-wrapper info (Phase 5)
+// ---------------------------------------------------------------------------
+
+// Phase 5 wires HandlerWrapperInfo onto the six effectHandler/ functions via
+// TS-side metadata. The typechecker attaches it to the parsed function type
+// at module-registration time. At call sites, the Phase 4-B wrapper-call
+// path then computes `(thunk_effects \ handled) ∪ introduced` correctly.
+//
+// These tests pass modules explicitly so the module type cache is actually
+// populated (the default createDvala wrapper above doesn't — registration
+// happens at typecheck time from the opts.modules list).
+describe('typecheck — effectHandler signatures propagate wrapper effects', () => {
+  const dvala = createDvalaRaw({ modules: allBuiltinModules })
+
+  function outerEffects(source: string) {
+    const result = dvala.typecheck(source)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
+    return t.effects
+  }
+
+  it('chooseRandom introduces @{dvala.random.item} into its caller', () => {
+    const effects = outerEffects(`
+      let { chooseRandom } = import("effectHandler");
+      let outer = () -> chooseRandom(-> perform(@choose, [1, 2, 3]));
+      outer
+    `)
+    expect(effects.effects.has('dvala.random.item')).toBe(true)
+    expect(effects.effects.has('choose')).toBe(false)
+  })
+
+  it('chooseFirst does not introduce any new effect (just catches @choose)', () => {
+    const effects = outerEffects(`
+      let { chooseFirst } = import("effectHandler");
+      let outer = () -> chooseFirst(-> perform(@choose, [1, 2]));
+      outer
+    `)
+    expect(effects.effects.size).toBe(0)
+  })
+
+  it('retry catches @{dvala.error} but re-introduces it — error still surfaces', () => {
+    const effects = outerEffects(`
+      let { retry } = import("effectHandler");
+      let outer = () -> retry(3, -> 1);
+      outer
+    `)
+    // Pure thunk so no initial @dvala.error, and retry's introduced is
+    // @dvala.error — but the wrapperBranchFired guard means calledEffects
+    // is skipped (retry's own FunctionType.effects is empty here). Net:
+    // handled ∪ introduced contributes @dvala.error. Caveat: with a
+    // genuinely pure body, @dvala.error isn't actually performed at
+    // runtime — this is a soundness-preserving over-approximation.
+    expect(effects.effects.has('dvala.error')).toBe(true)
+  })
+
+  it('polymorphic return type: chooseRandom(-> 42) is literal(42)', () => {
+    const result = dvala.typecheck(`
+      let { chooseRandom } = import("effectHandler");
+      chooseRandom(-> 42)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = expandType(result.typeMap.get(lastIndex)!)
+    expect(t.tag).toBe('Literal')
+    if (t.tag === 'Literal') expect(t.value).toBe(42)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // typecheck — source-implemented module function type registration (Phase 0)
 // ---------------------------------------------------------------------------
 
