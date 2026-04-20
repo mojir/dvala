@@ -119,6 +119,17 @@ describe('macros module', () => {
       `)
       expect(prints).toEqual(['ENTER: [3,4]', 'EXIT: 7'])
     })
+
+    it('includes the binding name when used as a #trace let-decorator', async () => {
+      const { prints, value } = await runAndCapturePrints(`
+        let { trace } = import("macros");
+        #trace
+        let greet = (name) -> "hi, " ++ name;
+        greet("Ada")
+      `)
+      expect(value).toBe('hi, Ada')
+      expect(prints).toEqual(['ENTER greet: ["Ada"]', 'EXIT greet: hi, Ada'])
+    })
   })
 
   describe('dbg', () => {

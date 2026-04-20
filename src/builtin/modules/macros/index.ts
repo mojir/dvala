@@ -5,7 +5,7 @@ import macrosModuleSource from './macros.dvala'
 const macroDocs: Record<string, FunctionDocs> = {
   'trace': {
     category: 'macros',
-    description: 'Wraps a function so its arguments are logged on entry and its return value on exit (via `@dvala.io.print`). Useful for debugging call flow without editing the function body. Supports both direct application and `#trace` as a decorator on a `let` binding.',
+    description: 'Wraps a function so its arguments are logged on entry and its return value on exit (via `@dvala.io.print`). Useful for debugging call flow without editing the function body. When used as a `#trace` decorator on a `let` binding, the binding name is included in the log prefix (`ENTER greet: ...`).',
     returns: { type: 'function' },
     args: { fn: { type: 'function' } },
     variants: [{ argumentNames: ['fn'] }],
