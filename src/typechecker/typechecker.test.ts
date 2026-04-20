@@ -975,13 +975,13 @@ describe('subtyping — disjointness', () => {
 describe('subtyping — function effects', () => {
   it('pure function <: effectful function (fewer effects is subtype)', () => {
     const pure = fn([NumberType], NumberType, PureEffects)
-    const effectful = fn([NumberType], NumberType, { effects: new Set(['io']), open: false })
+    const effectful = fn([NumberType], NumberType, { effects: new Set(['io']), tail: { tag: 'Closed' } })
     expect(isSubtype(pure, effectful)).toBe(true)
   })
 
   it('effectful function </: pure function', () => {
     const pure = fn([NumberType], NumberType, PureEffects)
-    const effectful = fn([NumberType], NumberType, { effects: new Set(['io']), open: false })
+    const effectful = fn([NumberType], NumberType, { effects: new Set(['io']), tail: { tag: 'Closed' } })
     expect(isSubtype(effectful, pure)).toBe(false)
   })
 })

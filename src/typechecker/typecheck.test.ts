@@ -694,7 +694,7 @@ describe('typecheck — handler introduced effects', () => {
       h
     `)
     expect(introduced.effects.size).toBe(0)
-    expect(introduced.open).toBe(false)
+    expect(introduced.tail.tag).toBe('Closed')
   })
 
   it('clause body performing an unrelated effect surfaces it in introduced', () => {
@@ -763,7 +763,7 @@ describe('typecheck — handler introduced effects', () => {
     if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
     // mkHandler returns a Handler value but produces no effects itself.
     expect(t.effects.effects.size).toBe(0)
-    expect(t.effects.open).toBe(false)
+    expect(t.effects.tail.tag).toBe('Closed')
   })
 })
 
@@ -801,7 +801,7 @@ describe('typecheck — handler application effect arithmetic', () => {
       `,
     )
     expect(effects.effects.size).toBe(0)
-    expect(effects.open).toBe(false)
+    expect(effects.tail.tag).toBe('Closed')
   })
 
   it('handler that catches X and introduces Y → result effect set = @{Y}', () => {

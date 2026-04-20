@@ -11,10 +11,11 @@
  * - inferExpr(node, ctx, env): infers a type for an AST node
  */
 
-import type { Type, EffectSet, HandlerWrapperInfo, SequenceType } from './types'
+import type { Type, EffectSet, RowVarTail, HandlerWrapperInfo, SequenceType } from './types'
 import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
+  ClosedTail, OpenTail,
   atom, literal, fn, array, tuple, union, inter, neg, handlerType, sequence, sequenceElementAt, sequenceMayHaveIndex, toSequenceType,
   functionAcceptsArity, functionArityLabel, getFunctionParamType,
   typeToString, typeEquals,
@@ -98,7 +99,7 @@ export class InferenceContext {
    */
   foldEnabled: boolean = FOLD_ENABLED
   /** Stack of effect sets — each function body pushes a new set. */
-  private effectStack: EffectSet[] = [{ effects: new Set(), open: false }]
+  private effectStack: EffectSet[] = [{ effects: new Set(), tail: ClosedTail }]
   /** Stack of active handler clause resume contexts. */
   private resumeStack: ResumeContext[] = []
   /** Active handled signatures available to direct perform() sites. */
@@ -116,7 +117,7 @@ export class InferenceContext {
   get currentEffects(): EffectSet { return this.effectStack[this.effectStack.length - 1]! }
 
   /** Push a fresh effect set (entering a function body). */
-  pushEffects(): void { this.effectStack.push({ effects: new Set(), open: false }) }
+  pushEffects(): void { this.effectStack.push({ effects: new Set(), tail: ClosedTail }) }
 
   /** Pop and return the effect set (leaving a function body). */
   popEffects(): EffectSet { return this.effectStack.pop() ?? PureEffects }
@@ -171,7 +172,14 @@ export class InferenceContext {
     for (const effectName of effects.effects) {
       this.currentEffects.effects.add(effectName)
     }
-    this.currentEffects.open = this.currentEffects.open || effects.open
+    // PHASE_4A_REMOVE — currentEffects is closed during Phase A (RowVar never
+    // flows in); Phase B will need to merge row-var tails here too.
+    if (effects.tail.tag === 'RowVar' || this.currentEffects.tail.tag === 'RowVar') {
+      throw new Error('addEffects reached a RowVar tail — Phase 4-A invariant violated.')
+    }
+    if (effects.tail.tag === 'Open') {
+      this.currentEffects.tail = OpenTail
+    }
   }
 
   /** Remove handled effects from the current set. */
@@ -193,6 +201,22 @@ export class InferenceContext {
     }
     return v
   }
+
+  /**
+   * Allocate a fresh effect-row variable at the current level. Id namespace
+   * is separate from `freshVar()` so row-var ids and value-type-var ids don't
+   * collide during display or debugging.
+   */
+  freshRowVar(): RowVarTail {
+    return {
+      tag: 'RowVar',
+      id: this.nextRowVarId++,
+      level: this._level,
+      lowerBounds: [],
+      upperBounds: [],
+    }
+  }
+  private nextRowVarId = 0
 
   /** Enter a new let-binding scope (raises the level). */
   enterLevel(): void { this._level++ }
@@ -240,7 +264,14 @@ function varKey(t: Type): string {
   // included even though `constrain` for Handler does not yet compare it
   // (Phase 2.5 deferred) — once it does, two handler types differing only
   // in `introduced` must produce different cache keys.
-  if (t.tag === 'Handler') return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}:I:${[...t.introduced.effects].sort().join(',')}${t.introduced.open ? ':open' : ''}`
+  if (t.tag === 'Handler') {
+    const tailKey = t.introduced.tail.tag === 'Closed'
+      ? ''
+      : t.introduced.tail.tag === 'Open'
+        ? ':open'
+        : `:rv${t.introduced.tail.id}`
+    return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}:I:${[...t.introduced.effects].sort().join(',')}${tailKey}`
+  }
   if (t.tag === 'Record') return `R:${[...t.fields.entries()].map(([k, v]) => `${k}=${varKey(v)}`).join(',')}`
   if (t.tag === 'Array') return `Ar:${varKey(t.element)}`
   if (t.tag === 'Tuple') return `Tu:${t.elements.map(varKey).join(',')}`
@@ -446,6 +477,14 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 
   // Function: contravariant params, covariant return
   if (lhs.tag === 'Function' && rhs.tag === 'Function') {
+    // PHASE_4A_REMOVE — Phase B biunifies row-var effect tails here via the
+    // flat effect lattice. Phase A guards that no inference path slips a
+    // RowVar into constrain: effect-set subtyping is done via isEffectSubset
+    // in subtype.ts (which throws on RowVar), but the explicit guard here
+    // cements the invariant at the constrain site itself.
+    if (lhs.effects.tail.tag === 'RowVar' || rhs.effects.tail.tag === 'RowVar') {
+      throw new Error('constrain (Function-Function) reached a RowVar tail — Phase 4-A invariant: RowVar must not flow through inference-time constraint solving until Phase B biunification lands.')
+    }
     if (!isConstrainedFunctionArityCompatible(lhs, rhs)) {
       throw new TypeInferenceError(
         `Function arity mismatch: expected ${functionArityLabel(rhs)} params, got ${functionArityLabel(lhs)}`,
@@ -476,6 +515,10 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   }
 
   if (lhs.tag === 'Handler' && rhs.tag === 'Handler') {
+    // PHASE_4A_REMOVE — Phase B biunifies row-var tails on `introduced`.
+    if (lhs.introduced.tail.tag === 'RowVar' || rhs.introduced.tail.tag === 'RowVar') {
+      throw new Error('constrain (Handler-Handler) reached a RowVar tail on `introduced` — Phase 4-A invariant: RowVar must not flow through inference-time constraint solving until Phase B biunification lands.')
+    }
     for (const [name, rhsSig] of rhs.handled) {
       const lhsSig = lhs.handled.get(name)
       if (!lhsSig) {
@@ -1033,7 +1076,7 @@ export function inferExpr(
         // design/archive/2026-04-16_constant-folding-in-types.md.
         if (ctx.foldEnabled
           && functionAlternatives.length > 0
-          && functionAlternatives.every(alt => alt.effects.effects.size === 0 && !alt.effects.open)) {
+          && functionAlternatives.every(alt => alt.effects.effects.size === 0 && alt.effects.tail.tag === 'Closed')) {
           let foldOutcome = tryFoldBuiltinCall(calleeNode, argTypes)
           if (!foldOutcome && calleeNode[0] === NodeTypes.Sym) {
             const functionAst = env.lookupFunctionAst(calleeNode[1] as string)
@@ -1515,21 +1558,32 @@ export function inferExpr(
  */
 function freshenAnnotationVars(ctx: InferenceContext, t: Type): Type {
   if (!containsVars(t)) return t
-  return freshenAllVars(ctx, t, new Map())
+  // Two separate mapping tables — value-type vars and row vars have different
+  // bound shapes (`Type[]` vs `Set<string>[]`), so keeping them apart avoids
+  // a discriminated-union lookup and makes the asymmetry explicit.
+  return freshenAllVars(ctx, t, new Map(), new Map())
+}
+
+function effectSetContainsVars(e: EffectSet): boolean {
+  return e.tail.tag === 'RowVar'
 }
 
 function containsVars(t: Type): boolean {
   switch (t.tag) {
     case 'Var': return true
-    case 'Function': return t.params.some(containsVars) || (t.restParam !== undefined && containsVars(t.restParam)) || containsVars(t.ret)
+    case 'Function': {
+      if (t.params.some(containsVars)) return true
+      if (t.restParam !== undefined && containsVars(t.restParam)) return true
+      if (containsVars(t.ret)) return true
+      if (effectSetContainsVars(t.effects)) return true
+      return false
+    }
     case 'Handler': {
       if (containsVars(t.body) || containsVars(t.output)) return true
       for (const sig of t.handled.values()) {
         if (containsVars(sig.argType) || containsVars(sig.retType)) return true
       }
-      // TODO Phase 4-A: when EffectSet gains row-variable identity, also
-      // traverse `t.introduced`. Today EffectSet carries only string names
-      // (no type vars), so this is a no-op.
+      if (effectSetContainsVars(t.introduced)) return true
       return false
     }
     case 'Record': return [...t.fields.values()].some(containsVars)
@@ -1543,7 +1597,28 @@ function containsVars(t: Type): boolean {
   }
 }
 
-function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<string, TypeVar>): Type {
+/**
+ * Freshen an effect set: if its tail is a RowVar, allocate a fresh RowVar
+ * keyed through `rowMapping` so that multiple occurrences of the same row
+ * var within one annotation map to the same fresh var. Identity-preserving
+ * only — bounds are NOT copied (Phase A doesn't produce RowVars from
+ * inference, so parsed row vars always have empty bounds).
+ */
+function freshenEffectSet(ctx: InferenceContext, e: EffectSet, rowMapping: Map<number, RowVarTail>): EffectSet {
+  if (e.tail.tag !== 'RowVar') return e
+  const existing = rowMapping.get(e.tail.id)
+  if (existing) return { effects: new Set(e.effects), tail: existing }
+  const fresh = ctx.freshRowVar()
+  rowMapping.set(e.tail.id, fresh)
+  return { effects: new Set(e.effects), tail: fresh }
+}
+
+function freshenAllVars(
+  ctx: InferenceContext,
+  t: Type,
+  mapping: Map<string, TypeVar>,
+  rowMapping: Map<number, RowVarTail>,
+): Type {
   switch (t.tag) {
     case 'Var': {
       const existing = mapping.get(typeVarIdentity(t))
@@ -1554,44 +1629,44 @@ function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<string, Typ
     }
     case 'Function':
       return fn(
-        t.params.map(p => freshenAllVars(ctx, p, mapping)),
-        freshenAllVars(ctx, t.ret, mapping),
-        t.effects,
+        t.params.map(p => freshenAllVars(ctx, p, mapping, rowMapping)),
+        freshenAllVars(ctx, t.ret, mapping, rowMapping),
+        freshenEffectSet(ctx, t.effects, rowMapping),
         t.handlerWrapper,
-        t.restParam !== undefined ? freshenAllVars(ctx, t.restParam, mapping) : undefined,
+        t.restParam !== undefined ? freshenAllVars(ctx, t.restParam, mapping, rowMapping) : undefined,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
       for (const [name, sig] of t.handled) {
         handled.set(name, {
-          argType: freshenAllVars(ctx, sig.argType, mapping),
-          retType: freshenAllVars(ctx, sig.retType, mapping),
+          argType: freshenAllVars(ctx, sig.argType, mapping, rowMapping),
+          retType: freshenAllVars(ctx, sig.retType, mapping, rowMapping),
         })
       }
       return handlerType(
-        freshenAllVars(ctx, t.body, mapping),
-        freshenAllVars(ctx, t.output, mapping),
+        freshenAllVars(ctx, t.body, mapping, rowMapping),
+        freshenAllVars(ctx, t.output, mapping, rowMapping),
         handled,
-        t.introduced,
+        freshenEffectSet(ctx, t.introduced, rowMapping),
       )
     }
     case 'Record': {
       const fields = new Map<string, Type>()
-      for (const [k, v] of t.fields) fields.set(k, freshenAllVars(ctx, v, mapping))
+      for (const [k, v] of t.fields) fields.set(k, freshenAllVars(ctx, v, mapping, rowMapping))
       return { tag: 'Record', fields, open: t.open }
     }
-    case 'Array': return array(freshenAllVars(ctx, t.element, mapping))
-    case 'Tuple': return tuple(t.elements.map(e => freshenAllVars(ctx, e, mapping)))
+    case 'Array': return array(freshenAllVars(ctx, t.element, mapping, rowMapping))
+    case 'Tuple': return tuple(t.elements.map(e => freshenAllVars(ctx, e, mapping, rowMapping)))
     case 'Sequence':
       return sequence(
-        t.prefix.map(member => freshenAllVars(ctx, member, mapping)),
-        freshenAllVars(ctx, t.rest, mapping),
+        t.prefix.map(member => freshenAllVars(ctx, member, mapping, rowMapping)),
+        freshenAllVars(ctx, t.rest, mapping, rowMapping),
         t.minLength,
         t.maxLength,
       )
-    case 'Union': return union(...t.members.map(m => freshenAllVars(ctx, m, mapping)))
-    case 'Inter': return { tag: 'Inter', members: t.members.map(m => freshenAllVars(ctx, m, mapping)) }
-    case 'Neg': return { tag: 'Neg', inner: freshenAllVars(ctx, t.inner, mapping) }
+    case 'Union': return union(...t.members.map(m => freshenAllVars(ctx, m, mapping, rowMapping)))
+    case 'Inter': return { tag: 'Inter', members: t.members.map(m => freshenAllVars(ctx, m, mapping, rowMapping)) }
+    case 'Neg': return { tag: 'Neg', inner: freshenAllVars(ctx, t.inner, mapping, rowMapping) }
     default: return t
   }
 }
@@ -1607,10 +1682,17 @@ function freshenAllVars(ctx: InferenceContext, t: Type, mapping: Map<string, Typ
  */
 function freshen(ctx: InferenceContext, t: Type): Type {
   if (t.tag !== 'Var' && !containsVarsAboveLevel(t, ctx.level)) return t
-  return freshenInner(ctx, t, new Map())
+  // Two mapping tables, same rationale as `freshenAnnotationVars`: row vars
+  // carry `Set<string>[]` bounds and value-type vars carry `Type[]` bounds.
+  return freshenInner(ctx, t, new Map(), new Map())
 }
 
-function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeVar>): Type {
+function freshenInner(
+  ctx: InferenceContext,
+  t: Type,
+  mapping: Map<string, TypeVar>,
+  rowMapping: Map<number, RowVarTail>,
+): Type {
   switch (t.tag) {
     case 'Var': {
       if (!isGeneralizedTypeVar(t) && t.level <= ctx.level) return t
@@ -1621,70 +1703,80 @@ function freshenInner(ctx: InferenceContext, t: Type, mapping: Map<string, TypeV
       mapping.set(typeVarIdentity(t), fresh)
       // Copy bounds (freshened recursively)
       for (const lb of t.lowerBounds) {
-        fresh.lowerBounds.push(freshenInner(ctx, lb, mapping))
+        fresh.lowerBounds.push(freshenInner(ctx, lb, mapping, rowMapping))
       }
       for (const ub of t.upperBounds) {
-        fresh.upperBounds.push(freshenInner(ctx, ub, mapping))
+        fresh.upperBounds.push(freshenInner(ctx, ub, mapping, rowMapping))
       }
       return fresh
     }
     case 'Function':
       return fn(
-        t.params.map(p => freshenInner(ctx, p, mapping)),
-        freshenInner(ctx, t.ret, mapping),
-        t.effects,
+        t.params.map(p => freshenInner(ctx, p, mapping, rowMapping)),
+        freshenInner(ctx, t.ret, mapping, rowMapping),
+        freshenEffectSet(ctx, t.effects, rowMapping),
         t.handlerWrapper,
-        t.restParam !== undefined ? freshenInner(ctx, t.restParam, mapping) : undefined,
+        t.restParam !== undefined ? freshenInner(ctx, t.restParam, mapping, rowMapping) : undefined,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
       for (const [name, sig] of t.handled) {
         handled.set(name, {
-          argType: freshenInner(ctx, sig.argType, mapping),
-          retType: freshenInner(ctx, sig.retType, mapping),
+          argType: freshenInner(ctx, sig.argType, mapping, rowMapping),
+          retType: freshenInner(ctx, sig.retType, mapping, rowMapping),
         })
       }
       return handlerType(
-        freshenInner(ctx, t.body, mapping),
-        freshenInner(ctx, t.output, mapping),
+        freshenInner(ctx, t.body, mapping, rowMapping),
+        freshenInner(ctx, t.output, mapping, rowMapping),
         handled,
-        t.introduced,
+        freshenEffectSet(ctx, t.introduced, rowMapping),
       )
     }
     case 'Record': {
       const fields = new Map<string, Type>()
       for (const [k, v] of t.fields) {
-        fields.set(k, freshenInner(ctx, v, mapping))
+        fields.set(k, freshenInner(ctx, v, mapping, rowMapping))
       }
       return { tag: 'Record', fields, open: t.open }
     }
     case 'Array':
-      return array(freshenInner(ctx, t.element, mapping))
+      return array(freshenInner(ctx, t.element, mapping, rowMapping))
     case 'Tuple':
-      return tuple(t.elements.map(e => freshenInner(ctx, e, mapping)))
+      return tuple(t.elements.map(e => freshenInner(ctx, e, mapping, rowMapping)))
     case 'Sequence':
       return sequence(
-        t.prefix.map(member => freshenInner(ctx, member, mapping)),
-        freshenInner(ctx, t.rest, mapping),
+        t.prefix.map(member => freshenInner(ctx, member, mapping, rowMapping)),
+        freshenInner(ctx, t.rest, mapping, rowMapping),
         t.minLength,
         t.maxLength,
       )
     case 'Union':
-      return union(...t.members.map(m => freshenInner(ctx, m, mapping)))
+      return union(...t.members.map(m => freshenInner(ctx, m, mapping, rowMapping)))
     case 'Inter':
-      return { tag: 'Inter', members: t.members.map(m => freshenInner(ctx, m, mapping)) }
+      return { tag: 'Inter', members: t.members.map(m => freshenInner(ctx, m, mapping, rowMapping)) }
     case 'Neg':
-      return { tag: 'Neg', inner: freshenInner(ctx, t.inner, mapping) }
+      return { tag: 'Neg', inner: freshenInner(ctx, t.inner, mapping, rowMapping) }
     default:
       return t
   }
+}
+
+function effectSetContainsVarsAboveLevel(e: EffectSet, level: number): boolean {
+  return e.tail.tag === 'RowVar' && e.tail.level > level
 }
 
 /** Check if a type contains any variables above the given level. */
 function containsVarsAboveLevel(t: Type, level: number): boolean {
   switch (t.tag) {
     case 'Var': return isGeneralizedTypeVar(t) || t.level > level
-    case 'Function': return t.params.some(p => containsVarsAboveLevel(p, level)) || (t.restParam !== undefined && containsVarsAboveLevel(t.restParam, level)) || containsVarsAboveLevel(t.ret, level)
+    case 'Function': {
+      if (t.params.some(p => containsVarsAboveLevel(p, level))) return true
+      if (t.restParam !== undefined && containsVarsAboveLevel(t.restParam, level)) return true
+      if (containsVarsAboveLevel(t.ret, level)) return true
+      if (effectSetContainsVarsAboveLevel(t.effects, level)) return true
+      return false
+    }
     case 'Handler': {
       if (containsVarsAboveLevel(t.body, level) || containsVarsAboveLevel(t.output, level)) return true
       for (const sig of t.handled.values()) {
@@ -1692,8 +1784,7 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
           return true
         }
       }
-      // TODO Phase 4-A: same as containsVars — traverse `t.introduced`
-      // once EffectSet carries row-variable identity. No-op today.
+      if (effectSetContainsVarsAboveLevel(t.introduced, level)) return true
       return false
     }
     case 'Record': return [...t.fields.values()].some(v => containsVarsAboveLevel(v, level))
@@ -2071,13 +2162,17 @@ function unionEffectSets(effectSets: EffectSet[]): EffectSet {
   if (effectSets.length === 0) return PureEffects
 
   const effects = new Set<string>()
-  let open = false
+  let openResult = false
   for (const effectSet of effectSets) {
+    // PHASE_4A_REMOVE — Phase B produces a fresh row-var with union bounds.
+    if (effectSet.tail.tag === 'RowVar') {
+      throw new Error('unionEffectSets reached a RowVar tail — Phase 4-A invariant: RowVar must not flow through inference-time aggregation until Phase B.')
+    }
     for (const effectName of effectSet.effects) effects.add(effectName)
-    open = open || effectSet.open
+    if (effectSet.tail.tag === 'Open') openResult = true
   }
 
-  return { effects, open }
+  return { effects, tail: openResult ? OpenTail : ClosedTail }
 }
 
 function recordSpecializedCalleeType(

@@ -25,7 +25,7 @@
  *   EffectSet  = "@{" [effectName ("," effectName)*] ["," "..."] "}"
  */
 
-import type { Type } from './types'
+import type { RowVarTail, Type } from './types'
 import {
   NumberType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, AnyFunction, PureEffects,
@@ -117,6 +117,17 @@ class TypeParser {
   /** Maps type variable names (A, B, T, etc.) to shared Var nodes within this annotation. */
   private typeVarMap = new Map<string, Type>()
   private nextVarId = 0
+  /**
+   * Maps row-variable names (a, b, …, single lowercase) to shared RowVar tails
+   * within this annotation. Two `@{e | ρ}` occurrences in one signature
+   * reference the same RowVar, enabling positional unification.
+   *
+   * Kept separate from `typeVarMap` by design: value-type vars have `Type[]`
+   * bounds while row vars have `Set<string>[]` bounds. Static dispatch by kind
+   * is cleaner than a discriminated union.
+   */
+  private rowVarMap = new Map<string, RowVarTail>()
+  private nextRowVarId = 0
   private scopedTypeRefs: Map<string, Type>
 
   constructor(input: string, scopedTypeRefs = new Map<string, Type>()) {
@@ -435,11 +446,26 @@ class TypeParser {
     if (!handledEffects) {
       throw this.error('Expected effect set in Handler type')
     }
-    if (handledEffects.open) {
-      throw this.error('Open effect sets are not supported in Handler types')
+    if (handledEffects.tail.tag !== 'Closed') {
+      throw this.error('Open effect sets are not supported in the handled slot of Handler types')
     }
 
+    // Optional 4th slot: @{introduced}. Defaults to @{} (PureEffects) when
+    // omitted, so three-slot Handler<B, O, @{caught}> form stays legal.
+    // Needed for handler-returning functions (e.g. effectHandler.fallback)
+    // to declare their introduced set directly in the type string rather
+    // than via the `wrapper` metadata escape hatch.
     this.skipWhitespace()
+    let introducedEffects = PureEffects
+    if (this.tryConsume(',')) {
+      this.skipWhitespace()
+      const parsed = this.tryParseEffectSet()
+      if (!parsed) {
+        throw this.error('Expected effect set in 4th slot of Handler type (introduced effects)')
+      }
+      introducedEffects = parsed
+      this.skipWhitespace()
+    }
     this.consume('>')
 
     const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -454,7 +480,7 @@ class TypeParser {
       })
     }
 
-    return handlerType(bodyType, outputType, handled)
+    return handlerType(bodyType, outputType, handled, introducedEffects)
   }
 
   private tryParseEffectSet(): ReturnType<typeof effectSet> | null {
@@ -471,8 +497,20 @@ class TypeParser {
     this.skipWhitespace()
     const effects: string[] = []
     let open = false
+    let rowVarName: string | null = null
 
-    while (!this.isAtEnd()) {
+    // Handle leading "| ρ" form: @{| ρ} — no concrete effects, row-var tail.
+    if (this.tryConsume('|')) {
+      this.skipWhitespace()
+      rowVarName = this.readRowVarName()
+      if (!rowVarName) {
+        this.pos = saved
+        return null
+      }
+      this.skipWhitespace()
+    }
+
+    while (!rowVarName && !this.isAtEnd()) {
       if (this.tryConsume('...')) {
         open = true
         this.skipWhitespace()
@@ -489,8 +527,22 @@ class TypeParser {
       effects.push(effectName)
       this.skipWhitespace()
 
-      if (!this.tryConsume(',')) break
-      this.skipWhitespace()
+      if (this.tryConsume(',')) {
+        this.skipWhitespace()
+        continue
+      }
+
+      // "| ρ" — named row-variable tail.
+      if (this.tryConsume('|')) {
+        this.skipWhitespace()
+        rowVarName = this.readRowVarName()
+        if (!rowVarName) {
+          this.pos = saved
+          return null
+        }
+        this.skipWhitespace()
+      }
+      break
     }
 
     if (!this.tryConsume('}')) {
@@ -499,7 +551,48 @@ class TypeParser {
     }
 
     this.skipWhitespace()
+
+    if (rowVarName) {
+      const rowVar = this.resolveRowVar(rowVarName)
+      return { effects: new Set(effects), tail: rowVar }
+    }
     return effectSet(effects, open)
+  }
+
+  /**
+   * Read a row-variable name. Row-var names are a single lowercase Latin
+   * letter (`a`–`z`), staying distinct from value-type vars (single uppercase).
+   * Returns null if the next token isn't a row-var name.
+   */
+  private readRowVarName(): string | null {
+    const c = this.peek()
+    if (!c || c < 'a' || c > 'z') return null
+    // Single letter, not followed by another ident char — so `r` but not
+    // `rho` (avoids accidentally swallowing longer identifiers if we ever
+    // expand the form).
+    const next = this.input[this.pos + 1]
+    if (next && this.isIdentChar(next)) return null
+    this.pos++
+    return c
+  }
+
+  /**
+   * Resolve a row-var name to a shared `RowVar` tail within this annotation's
+   * scope. Repeated uses of the same name return the *same* `RowVar` object,
+   * giving positional unification within one parsed signature.
+   */
+  private resolveRowVar(name: string): RowVarTail {
+    const existing = this.rowVarMap.get(name)
+    if (existing) return existing
+    const rowVar: RowVarTail = {
+      tag: 'RowVar',
+      id: this.nextRowVarId++,
+      level: 0,
+      lowerBounds: [],
+      upperBounds: [],
+    }
+    this.rowVarMap.set(name, rowVar)
+    return rowVar
   }
 
   // --- Function parameter parsing ---

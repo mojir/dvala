@@ -821,7 +821,7 @@ describe('inference — effect sets', () => {
     expect(t.tag).toBe('Function')
     if (t.tag === 'Function') {
       expect(t.effects.effects.size).toBe(0)
-      expect(t.effects.open).toBe(false)
+      expect(t.effects.tail.tag).toBe('Closed')
     }
   })
 
