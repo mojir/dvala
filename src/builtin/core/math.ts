@@ -232,8 +232,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => Math.trunc(a / b)),
     arity: toFixedArity(2),
     docs: {
-      // quot truncates, so the result is always integer-valued regardless of
-      // whether the inputs are Integer or Number.
+      // `quot` truncates (Math.trunc(a/b)) so the result is always integer-
+      // valued regardless of input. `NaN` / `Infinity` inputs are rejected
+      // by `assertNumber` upstream, so the `Integer` return type is sound
+      // for all reachable runtime values.
       type: '((Number, Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },
@@ -383,6 +385,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
     docs: {
+      // 1-arg form returns Integer (Math.round); 2-arg form (round to N
+      // decimals) returns Number. `returns` below reports 'number' as the
+      // broader view — `dvala doc round` readers see the overloaded `type`
+      // field for precision.
       type: '((Number) -> Integer) & ((Number, Integer) -> Number)',
       category: 'math',
       returns: { type: 'number' },
@@ -584,6 +590,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.sign(val)),
     arity: toFixedArity(1),
     docs: {
+      // `Math.sign` returns -1, -0, 0, or 1 — all four are integer-valued
+      // (`Number.isInteger(-0) === true`). NaN / Infinity would also be
+      // returned for those inputs, but `assertNumber` upstream rejects
+      // them, so the `Integer` return type is sound for reachable values.
       type: '((Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },

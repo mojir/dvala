@@ -519,6 +519,27 @@ describe('typecheck — flow-sensitive narrowing in if/else', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('flow narrowing does NOT propagate to optional-field access (documented limitation)', () => {
+    // A natural extension would be: if a record has a status-like field
+    // that, when narrowed, implies another optional field is present,
+    // then strict `.` access to that other field should succeed in the
+    // narrowed branch. Current narrowing only tracks Sym-typed bindings,
+    // not field-access shapes, so this doesn't work — the optional
+    // field-access error fires in both branches. This test pins that
+    // limitation; if future work extends narrowing to field-access
+    // shapes, update or remove it.
+    const result = dvala.typecheck(`
+      effect @get(Null) -> {status: :ok | :err, value?: Number};
+      let f = () -> do
+        let r = perform(@get, null);
+        if r.status == :ok then r.value else 0 end
+      end;
+      f
+    `)
+    // r.value fires the strict-access error regardless of the narrowing.
+    expect(result.diagnostics.some(d => /optional/i.test(d.message) || /\?\./i.test(d.message))).toBe(true)
+  })
+
   it('`!=` narrows the else branch to the matched value', () => {
     const result = dvala.typecheck(`
       let f = (x: :ok | :err) -> if x != :ok then "not ok" else "ok" end;
