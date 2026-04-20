@@ -1598,8 +1598,52 @@ function formatResume(node: UntypedCstNode): Doc {
 
 function formatMacro(node: UntypedCstNode): Doc {
   // Children: macro, [(], params..., [)], ->, body
-  // Same structure as Function but with macro keyword
-  return formatFromChildren(node)
+  // Same shape as Function with a `macro` keyword in front. Mirroring
+  // formatFunction lets a long body break inside the enclosing group
+  // (e.g. `do`/`quote`) the same way function bodies do.
+  const iter = new ChildIterator(node.children)
+  const macroDoc = iter.emitToken('macro')
+
+  // Collect parameter section (everything between `macro` and `->`).
+  // Spacing follows the same rules used by formatFunction so `(`, `)`, `,`,
+  // `:`, `=`, `...` get the canonical layout regardless of original whitespace.
+  const paramParts: Doc[] = [macroDoc]
+  let firstParamToken = true
+  while (!iter.done() && !iter.isToken('->')) {
+    const child = iter.next()
+    if (isToken(child)) {
+      if (child.text === '(' || child.text === ')') {
+        paramParts.push(formatTokenWithTrivia(child))
+      } else if (child.text === ',') {
+        paramParts.push(formatTokenWithTrivia(child))
+        paramParts.push(text(' '))
+      } else if (child.text === ':') {
+        paramParts.push(formatTokenWithTrivia(child))
+      } else if (child.text === '...') {
+        paramParts.push(formatTokenWithTrivia(child))
+      } else if (child.text === '=') {
+        paramParts.push(text(' '), formatTokenWithTrivia(child), text(' '))
+      } else {
+        if (!firstParamToken && !isPunctuation(child.text)) paramParts.push(text(' '))
+        paramParts.push(formatTokenWithTrivia(child))
+      }
+      firstParamToken = false
+    } else {
+      paramParts.push(formatExprChild(child))
+      firstParamToken = false
+    }
+  }
+
+  const arrowDoc = iter.emitToken('->')
+  const body = iter.nextNode()
+
+  return group(concat(
+    ...paramParts,
+    text(' '),
+    arrowDoc,
+    text(' '),
+    formatExprChild(body),
+  ))
 }
 
 function formatMacroCall(node: UntypedCstNode): Doc {
@@ -1617,10 +1661,97 @@ function formatMacroCall(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatQuote(node: UntypedCstNode): Doc {
-  // Children: quote, body tokens/nodes (including Splice nodes)..., end
-  // Quote bodies contain raw Dvala tokens captured as code data.
-  // Splice children are structured nodes formatted by formatSplice.
-  return formatFromChildren(node)
+  // Children: quote, body sub-nodes + `;` separators..., end
+  //
+  // The body comes pre-structured by parseQuote's post-parse pass (see
+  // rebuildQuoteBodyCst): each statement is a single CST sub-node and top-level
+  // statements are separated by `;` tokens that are direct children of Quote.
+  // Nested `;` live inside the sub-nodes, so no depth tracking is needed.
+  const iter = new ChildIterator(node.children)
+  const quoteDoc = iter.emitToken('quote')
+
+  type Child = CstToken | UntypedCstNode
+  const statements: Child[][] = [[]]
+  while (!iter.done()) {
+    const child = iter.peek()!
+    if (isToken(child)) {
+      if (child.text === 'end') break
+      if (child.text === ';') {
+        iter.next()
+        statements.push([])
+        continue
+      }
+    }
+    statements[statements.length - 1]!.push(iter.next())
+  }
+  // Trailing `;` produces an empty trailing statement — drop it.
+  if (statements.length > 1 && statements[statements.length - 1]!.length === 0) statements.pop()
+
+  const endDoc = iter.emitClosing('end')
+
+  // Empty quote body: `quote end`
+  if (statements.length === 1 && statements[0]!.length === 0) {
+    return concat(quoteDoc, text(' '), endDoc)
+  }
+
+  // Single statement: try `quote body end` flat; otherwise expand to
+  // `quote\n  body;\nend`. The trailing `;` only appears in the broken form,
+  // matching how `do`/`Block` formats single-statement bodies.
+  if (statements.length === 1) {
+    const bodyDoc = formatTokenSequence(statements[0]!)
+    return group(concat(
+      quoteDoc,
+      nest(INDENT, concat(line, bodyDoc, ifBreak(text(';'), text('')))),
+      line,
+      endDoc,
+    ))
+  }
+
+  // Multi-statement: always expanded with `;` after each statement.
+  // Mid-body line comments aren't preserved here (the body is raw tokens, not
+  // statement nodes); if that becomes an issue we can attach comments via
+  // formatTokenSequence.
+  const stmtDocs = statements.map(stmt => concat(formatTokenSequence(stmt), text(';')))
+  const inner = concat(...stmtDocs.map(d => concat(hardLine, d)))
+  return concat(quoteDoc, nest(INDENT, inner), hardLine, endDoc)
+}
+
+/**
+ * Format an arbitrary slice of CST children using the same spacing rules as
+ * formatFromChildren. Used by formatQuote to render each split statement
+ * independently while keeping splice/identifier/operator spacing consistent.
+ *
+ * The isFirst handling mirrors formatFromChildren: the first child uses
+ * formatTokenWithTrivia (trailing trivia only), subsequent children use
+ * formatClosingToken (both leading and trailing). This is asymmetric on
+ * purpose — formatFromChildren assumes its container handles leading trivia
+ * at a statement boundary. Here, each split statement IS a statement
+ * boundary, so the first child matches that contract.
+ *
+ * Known limitation: line comments that land between tokens of the same
+ * statement are dropped, because the body was re-parsed from a trivia
+ * stream that only carries block comments and whitespace through to the
+ * rebuilt CstTokens. Mid-body comment preservation would require walking
+ * splice sub-nodes' own trivia or attaching line-comment trivia to
+ * adjacent non-trivia tokens — out of scope for the quote-body rebuild.
+ */
+function formatTokenSequence(children: (CstToken | UntypedCstNode)[]): Doc {
+  const parts: Doc[] = []
+  let prevText = ''
+  let isFirst = true
+  for (const child of children) {
+    if (isToken(child)) {
+      if (prevText && needsSpaceBetween(prevText, child.text)) parts.push(text(' '))
+      parts.push(isFirst ? formatTokenWithTrivia(child) : formatClosingToken(child))
+      prevText = child.text
+    } else {
+      if (prevText && !isOpenBracket(prevText) && prevText !== '.') parts.push(text(' '))
+      parts.push(isFirst ? formatNode(child) : formatExprChild(child))
+      prevText = '_'
+    }
+    isFirst = false
+  }
+  return concat(...parts)
 }
 
 function formatSplice(node: UntypedCstNode): Doc {

@@ -173,6 +173,18 @@ describe('cstFormat — complex constructs', () => {
     expect(fmt('quote x + 1 end').trimEnd()).toBe('quote x + 1 end;')
   })
 
+  // A single-statement quote whose flat form `quote body end` overflows the
+  // 80-col budget must break to `quote\n  body;\nend` — matching how `do`
+  // blocks break their single-statement bodies. Without this, long but
+  // one-statement quote bodies would stay on one line and blow past width.
+  it('breaks a single-statement quote that overflows width', () => {
+    const longSymbol = 'a'.repeat(80) // guarantees flat form exceeds MAX_WIDTH
+    const result = fmt(`quote foo(${longSymbol}) end`).trimEnd()
+    expect(result.split('\n').length).toBeGreaterThan(1)
+    expect(result).toMatch(/^quote\n/)
+    expect(result).toMatch(/\nend;?$/)
+  })
+
   it('formats quote with splice', () => {
     expect(fmt('quote x + $^{y} end').trimEnd()).toBe('quote x + $^{y} end;')
   })

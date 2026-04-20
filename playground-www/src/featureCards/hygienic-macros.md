@@ -9,7 +9,7 @@ double(21);
 
 ```dvala
 let unless =
-  macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end;
+  macro(cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
 
 unless(false, "this runs!");
 ```
@@ -19,7 +19,13 @@ unless(false, "this runs!");
 Bindings inside quotes are automatically gensymed — no name collisions with the caller:
 
 ```dvala
-let withTemp = macro(ast) -> quote do let tmp = $^{ast}; tmp * 2; end; end;
+let withTemp =
+  macro(ast) -> quote
+    do
+      let tmp = $^{ast};
+      tmp * 2;
+    end;
+  end;
 
 let tmp = 999;
 [withTemp(5), tmp];
@@ -33,7 +39,7 @@ Because `|>` is desugared at parse time, macros work with pipes:
 
 ```dvala
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
-let negate = macro(ast) -> quote - $^{ast} end;
+let negate = macro(ast) -> quote -$^{ast} end;
 21 |> double |> negate;
 ```
 

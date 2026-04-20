@@ -109,6 +109,33 @@ export class CstBuilder {
   }
 
   /**
+   * Return the node currently open at the top of the builder's stack.
+   * Used by parseQuote to snapshot the body children emitted during the
+   * token-collection pass before truncating them.
+   */
+  peekCurrent(): UntypedCstNode {
+    return this.current()
+  }
+
+  /**
+   * Truncate children of the current node back to the given checkpoint.
+   * Used by parseQuote to discard the raw body tokens emitted during the
+   * token-collection pass before replacing them with a CST-structured body.
+   */
+  truncateCurrent(checkpoint: number): void {
+    this.current().children.length = checkpoint
+  }
+
+  /**
+   * Append a pre-built child (token or node) to the current node.
+   * Used by parseQuote to attach the structured body CST produced by the
+   * sub-parse pass.
+   */
+  appendChild(child: CstToken | UntypedCstNode): void {
+    this.current().children.push(child)
+  }
+
+  /**
    * Return the completed untyped CST tree.
    * Must be called exactly once after all events have been emitted.
    */

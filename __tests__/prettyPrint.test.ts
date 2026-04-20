@@ -665,6 +665,34 @@ describe('prettyPrint — quote: multi-statement expansion', () => {
     expect(result).toContain('x + 1')
     assertNoMidLineSemicolons(result)
   })
+
+  // When the quote body has internal breaks (e.g. a long Call that wrapped), the
+  // re-render at ind+1 keeps those inner lines aligned with the body indent.
+  // Without this, inner lines ended up one level shallower than the opening statement.
+  it('quote with internally wrapping body keeps internal indentation aligned', () => {
+    // Call with 4 args forces multi-line expansion (allSingleLine guard).
+    // Long enough that the single statement cannot fit on one line — forces
+    // the Call inside the quote to wrap, which is exactly the case the indent
+    // alignment bug affected.
+    const src = 'macro (ast) -> quote myFunctionWithQuiteALongName(someLongArgNameA, someLongArgNameB, someLongArgNameC) end'
+    const result = pp(src)
+    // Opening `quote` sits at 2-space indent (inside the macro body).
+    // Each inner argument of the wrapped call must be at 6-space indent
+    // (macro body 2 + quote body 2 + call arg 2). Before the fix, they
+    // landed at 4 spaces because body parts were printed at ind instead of ind+1.
+    for (const argName of ['someLongArgNameA', 'someLongArgNameB', 'someLongArgNameC']) {
+      expect(result).toMatch(new RegExp(`\\n      ${argName}[,)]`))
+    }
+    // Closing `end` of the quote must align with `quote` (both at 2-space indent).
+    expect(result).toContain('\n  end')
+  })
+
+  // Nested `end` for a quote at non-zero indent must match the quote's indent.
+  it('nested quote closes its `end` at the quote indent', () => {
+    const result = pp('do quote let x = 1; x + 1 end end')
+    // Inside a `do`, the `quote` sits at indent 1 (2 spaces), so its `end` must be 2 spaces.
+    expect(result).toContain('\n  end;')
+  })
 })
 
 describe('prettyPrint — pipe chain: allSingleLine guard', () => {

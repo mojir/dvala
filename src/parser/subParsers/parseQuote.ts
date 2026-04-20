@@ -1,3 +1,6 @@
+import { CstBuilder, type UntypedCstNode } from '../../cst/builder'
+import type { CstToken } from '../../cst/types'
+import { isTrivia } from '../../cst/attachTrivia'
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
 import { isLBraceToken, isOperatorToken, isRBraceToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
@@ -6,7 +9,7 @@ import type { TokenStream } from '../../tokenizer/tokenize'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import type { AstNode } from '../types'
-import { createParserContext, parseExpression } from './parseExpression'
+import { createCstParserContext, createParserContext, parseExpression } from './parseExpression'
 
 export type CodeTemplateNode = AstNode<typeof NodeTypes.CodeTmpl, [AstNode[], AstNode[]]>
 
@@ -28,10 +31,21 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
   const debugInfo = token[2]
   ctx.advance() // consume 'quote'
 
+  // Positions bracketing the body for the optional CST sub-parse pass. We
+  // keep the raw-token index (non-CST mode) and the builder checkpoint (CST
+  // mode) so the sub-parse can read the same token range ctx is walking and
+  // the main Quote node can later swap its flat body children for the
+  // structured sub-CST.
+  const bodyStartRawPos = ctx.getPosition()
+  const bodyStartCstCheckpoint = ctx.builder?.checkpoint()
+
   // Pass 1: Collect all tokens between 'quote' and matching 'end'.
   // Track block depth to find the correct matching 'end'.
   const bodyTokens: Token[] = []
   let depth = 1
+  // Position of the matching outer `end` token in ctx.tokens. Used by the
+  // CST sub-parse to slice the trivia-including body range.
+  let bodyEndRawPos = -1
 
   while (!ctx.isAtEnd() && depth > 0) {
     const t = ctx.peek()
@@ -69,6 +83,9 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
       depth--
       if (depth > 0) {
         bodyTokens.push(t)
+      } else {
+        // Matching outer `end` — capture its position before advancing past it.
+        bodyEndRawPos = ctx.getPosition()
       }
       ctx.advance()
     } else {
@@ -169,6 +186,15 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
   // Pass 4: Walk AST and replace placeholder symbols with Splice nodes
   const processedBody = bodyAst.map(node => replacePlaceholders(node, spliceExprs, 0, templateId))
 
+  // Pass 5 (CST mode only): replace the raw body tokens emitted to the main
+  // Quote node during pass 1 with a CST-structured body produced by a
+  // sub-parse. Without this, the formatter sees quote bodies as flat tokens
+  // and cannot recursively break long constructs (functions, do-blocks, etc.)
+  // inside the quote.
+  if (ctx.builder && bodyEndRawPos >= 0 && bodyStartCstCheckpoint !== undefined) {
+    rebuildQuoteBodyCst(ctx, bodyStartRawPos, bodyEndRawPos, bodyStartCstCheckpoint, templateId)
+  }
+
   const resultNode = withSourceCodeInfo(
     [NodeTypes.CodeTmpl, [processedBody, spliceExprs], 0],
     debugInfo,
@@ -177,6 +203,279 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
   ctx.setNodeEnd(resultNode[2])
   ctx.builder?.endNode()
   return resultNode
+}
+
+/**
+ * Rebuild the main Quote CST node's body children as a properly structured
+ * sub-tree (Function/Block/If/etc. sub-nodes) instead of the flat tokens
+ * emitted by pass 1.
+ *
+ * Approach:
+ *  1. Walk ctx.tokens over the body range, producing a trivia-preserving
+ *     token stream with this-level splices replaced by placeholder Symbol
+ *     tokens. Record, for each placeholder, which Splice CST sub-node from
+ *     the main Quote's body it should be swapped back to.
+ *  2. Sub-parse the stream with a fresh CstBuilder. The sub-CST has full
+ *     structure (Function, Block, ...) built by the normal parseExpression
+ *     path — same machinery that formats any non-quoted expression.
+ *  3. Walk the sub-CST, replacing placeholder Symbol sub-nodes with the
+ *     originals captured in step 1. This preserves their leading/trailing
+ *     trivia (comments around splices survive formatting).
+ *  4. Truncate the main Quote's children back to where the body started and
+ *     append the rebuilt children. The Quote node now contains structured
+ *     body nodes the formatter can recursively wrap.
+ *
+ * Splice placeholders use the template-id from pass 2 so this post-processing
+ * only touches this parseQuote call's splices; nested Quote CST nodes that
+ * pass through have their own templateId and get rebuilt on their own call.
+ */
+function rebuildQuoteBodyCst(
+  ctx: ParserContext,
+  bodyStartPos: number,
+  bodyEndPos: number,
+  bodyStartCheckpoint: number,
+  templateId: number,
+): void {
+  const builder = ctx.builder!
+  // Retrieve the raw body children just emitted by pass 1. The Splice entries
+  // we'll reuse; the rest (raw tokens + the closing `end`) will be truncated
+  // below. We pull `end` out separately and re-append it after the rebuilt body.
+  const mainQuoteNode = builder.peekCurrent()
+  const rawBodyChildren = mainQuoteNode.children.slice(bodyStartCheckpoint)
+  const mainSpliceSubNodes: UntypedCstNode[] = rawBodyChildren.filter(isSpliceCstNode)
+  // Invariant: pass 1 always advances past the outer `end` before reaching here,
+  // so the last raw-body child must be that `end` token. Fail loudly if a
+  // future refactor of pass 1 violates this — without a real `end` token to
+  // re-append, the Quote node would be malformed.
+  const endToken = rawBodyChildren[rawBodyChildren.length - 1]
+  if (!isCstToken(endToken) || endToken.text !== 'end') {
+    throw new Error('parseQuote.rebuildQuoteBodyCst: expected last body child to be the outer `end` token')
+  }
+
+  // Build the sub-parse input. Keeps trivia so sub-CST CstTokens carry the
+  // same leading/trailing trivia (comments) the authored source had.
+  const { subTokens, placeholderToSplice } = buildSubParseStream(
+    ctx, bodyStartPos, bodyEndPos, templateId, mainSpliceSubNodes,
+  )
+
+  // Sub-parse with a fresh builder — yields a CST sub-tree whose root is a
+  // synthetic QuoteBody wrapper. We only care about its children.
+  const subBuilder = new CstBuilder()
+  subBuilder.startNode('QuoteBody')
+  const subCtx = createCstParserContext({ tokens: subTokens }, ctx.allocateId, subBuilder)
+  while (!subCtx.isAtEnd()) {
+    parseExpression(subCtx, 0)
+    if (isOperatorToken(subCtx.tryPeek(), ';')) {
+      subCtx.advance()
+    }
+  }
+  subBuilder.endNode()
+  const subTree = subBuilder.finish()
+
+  // Swap placeholder Symbol sub-nodes with the original Splice sub-nodes.
+  replacePlaceholderSymbolsInCst(subTree, templateId, placeholderToSplice)
+
+  // Patch the first body leaf's leading trivia with the pass-1 value. The sub
+  // stream starts at the first non-trivia body token, so any whitespace/newline
+  // that sat between `quote` and the first body token was captured in pass 1's
+  // first body CstToken but is missing from the sub-CST. Copy it over.
+  // Losslessness check: without this, `quote\n    do end end` prints back as
+  // `quote\ndo end end` because the indent before `do` is orphaned.
+  const pass1FirstLeaf = rawBodyChildren[0] !== undefined && !isCstToken(rawBodyChildren[0])
+    ? findFirstLeafToken(rawBodyChildren[0])
+    : (rawBodyChildren[0] as CstToken | undefined)
+  if (pass1FirstLeaf && pass1FirstLeaf.leadingTrivia && pass1FirstLeaf.leadingTrivia.length > 0
+    && subTree.children.length > 0) {
+    const subFirst = subTree.children[0]!
+    const subFirstLeaf = 'kind' in subFirst ? findFirstLeafToken(subFirst) : (subFirst)
+    if (subFirstLeaf && subFirstLeaf.leadingTrivia.length === 0) {
+      subFirstLeaf.leadingTrivia = pass1FirstLeaf.leadingTrivia
+    }
+  }
+
+  // Replace the raw body tokens in the main Quote with the structured children,
+  // preserving the closing `end` token (which was emitted during pass 1 and
+  // will be removed by the truncate).
+  builder.truncateCurrent(bodyStartCheckpoint)
+  for (const child of subTree.children) {
+    builder.appendChild(child)
+  }
+  builder.appendChild(endToken)
+}
+
+/**
+ * True when a CST child is a leaf token rather than a sub-node. Tokens carry
+ * `text` + trivia arrays; sub-nodes carry `kind` + `children`.
+ */
+function isCstToken(v: unknown): v is CstToken {
+  return typeof v === 'object' && v !== null && 'text' in (v) && !('kind' in (v))
+}
+
+/** Find the first leaf CstToken in a CST sub-tree (pre-order). */
+function findFirstLeafToken(node: UntypedCstNode): CstToken | undefined {
+  for (const child of node.children) {
+    if (isCstToken(child)) return child
+    const nested = findFirstLeafToken(child)
+    if (nested) return nested
+  }
+  return undefined
+}
+
+function isSpliceCstNode(child: unknown): child is UntypedCstNode {
+  return typeof child === 'object' && child !== null
+    && 'kind' in (child)
+    && (child as { kind: string }).kind === 'Splice'
+}
+
+/**
+ * Walk the body range building a trivia-preserving token stream for the sub-parse.
+ * This-level splices (effectiveLevel === 1) become placeholder Symbol tokens so
+ * parseExpression treats them as plain identifiers; nested-level splices pass
+ * through so the recursive parseQuote call on the inner quote handles them.
+ *
+ * The returned placeholderToSplice array is indexed by this-level splice count
+ * and holds the original main-Quote Splice CST sub-node for each placeholder,
+ * so the caller can swap them back after sub-parsing.
+ */
+function buildSubParseStream(
+  ctx: ParserContext,
+  bodyStartPos: number,
+  bodyEndPos: number,
+  templateId: number,
+  mainSpliceSubNodes: UntypedCstNode[],
+): { subTokens: Token[]; placeholderToSplice: UntypedCstNode[] } {
+  const subTokens: Token[] = []
+  const placeholderToSplice: UntypedCstNode[] = []
+  const blockStack: ('quote' | 'other')[] = []
+  // Positional index among all Splice sub-nodes (this-level + nested) so we
+  // can find the main-Quote Splice sub-node corresponding to a given this-level
+  // splice by its position in pass-1 order.
+  let overallSpliceCount = 0
+
+  let i = bodyStartPos
+  while (i < bodyEndPos) {
+    const t = ctx.getTokenAt(i)!
+
+    // Trivia tokens pass through untouched — this is how the sub-CST picks
+    // up comments and whitespace inside the quote body.
+    if (isTrivia(t)) {
+      subTokens.push(t)
+      i++
+      continue
+    }
+
+    // Property access: a symbol following '.' isn't a keyword even if it
+    // shares text with one (e.g. `x.do`). Guard so we don't mis-track depth.
+    if (subTokens.length > 0
+      && isOperatorToken(subTokens[subTokens.length - 1], '.')
+      && isSymbolToken(t)) {
+      subTokens.push(t)
+      i++
+      continue
+    }
+
+    if (isBlockOpener(t)) {
+      blockStack.push(isReservedSymbolToken(t, 'quote') ? 'quote' : 'other')
+      subTokens.push(t)
+      i++
+      continue
+    }
+
+    if (isReservedSymbolToken(t, 'end')) {
+      blockStack.pop()
+      subTokens.push(t)
+      i++
+      continue
+    }
+
+    if (t[0] === 'QuoteSplice') {
+      const level = countCarets(t[1])
+      const innerQuoteDepth = blockStack.filter(b => b === 'quote').length
+      const effectiveLevel = level - innerQuoteDepth
+      const spliceSubNode = mainSpliceSubNodes[overallSpliceCount]
+      overallSpliceCount++
+
+      if (effectiveLevel === 1) {
+        // This-level splice: emit a placeholder symbol that parseExpression
+        // can consume as a normal identifier. We remember the original Splice
+        // CST sub-node so the caller can swap it back after parsing.
+        const placeholderIndex = placeholderToSplice.length
+        const placeholderName = `__splice_${templateId}_${placeholderIndex}__`
+        // Placeholder tokens copy the marker's debug info when available so
+        // later source-map and error-position lookups still make sense.
+        const placeholderToken: Token = t[2]
+          ? ['Symbol', placeholderName, t[2]]
+          : ['Symbol', placeholderName]
+        subTokens.push(placeholderToken)
+        // Splice node is optional at runtime because building the main Quote
+        // CST children is conditional; if it's missing, the swap step simply
+        // leaves the placeholder Symbol in place.
+        if (spliceSubNode) placeholderToSplice.push(spliceSubNode)
+        else placeholderToSplice.push({ kind: 'Symbol', children: [] })
+        // Skip the splice's expression tokens and closing brace.
+        i++
+        let braceDepth = 1
+        while (i < bodyEndPos && braceDepth > 0) {
+          const inner = ctx.getTokenAt(i)!
+          if (isLBraceToken(inner)) braceDepth++
+          else if (isRBraceToken(inner)) braceDepth--
+          i++
+        }
+        continue
+      }
+      // Nested-level splice: pass through — the recursive parseQuote for the
+      // surrounding inner quote will handle it.
+      subTokens.push(t)
+      i++
+      let braceDepth = 1
+      while (i < bodyEndPos && braceDepth > 0) {
+        const inner = ctx.getTokenAt(i)!
+        if (isLBraceToken(inner)) braceDepth++
+        else if (isRBraceToken(inner)) braceDepth--
+        subTokens.push(inner)
+        i++
+      }
+      continue
+    }
+
+    subTokens.push(t)
+    i++
+  }
+
+  return { subTokens, placeholderToSplice }
+}
+
+/**
+ * Walk a CST sub-tree and, wherever a Symbol node wraps a placeholder token
+ * named `__splice_${templateId}_N__`, replace the Symbol node with the
+ * corresponding Splice sub-node supplied by placeholderToSplice[N].
+ *
+ * Uses templateId so this only touches placeholders from this parseQuote call —
+ * nested Quote sub-nodes with their own templateId are left alone.
+ */
+function replacePlaceholderSymbolsInCst(
+  node: UntypedCstNode,
+  templateId: number,
+  placeholderToSplice: UntypedCstNode[],
+): void {
+  for (let i = 0; i < node.children.length; i++) {
+    const child = node.children[i]!
+    if (!('kind' in child)) continue
+    if (child.kind === 'Symbol' && child.children.length === 1) {
+      const inner = child.children[0]
+      if (inner && 'text' in inner) {
+        const match = inner.text.match(/^__splice_(\d+)_(\d+)__$/)
+        if (match && Number(match[1]) === templateId) {
+          const index = Number(match[2])
+          const splice = placeholderToSplice[index]
+          if (splice) node.children[i] = splice
+          continue
+        }
+      }
+    }
+    // Recurse into any non-Symbol sub-node (nested quotes, functions, etc.).
+    replacePlaceholderSymbolsInCst(child, templateId, placeholderToSplice)
+  }
 }
 
 // ---------------------------------------------------------------------------

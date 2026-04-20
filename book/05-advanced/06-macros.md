@@ -141,7 +141,11 @@ The macro receives the AST of `21` (or `inc(5)`), splices it into `$^{ast} + $^{
 Quote blocks can contain multiple statements. The result is an array of AST nodes:
 
 ```dvala
-let twoStatements = quote let x = 1; x + 1; end;
+let twoStatements =
+  quote
+    let x = 1;
+    x + 1;
+  end;
 typeOf(twoStatements);
 ```
 
@@ -171,14 +175,14 @@ Macros can create new control flow constructs that functions cannot:
 ```dvala
 // unless: execute body only if condition is false
 let unless =
-  macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end;
+  macro(cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
 
 unless(false, 42);
 ```
 
 ```dvala
 let unless =
-  macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end;
+  macro(cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
 
 unless(true, 42);
 ```
@@ -214,7 +218,7 @@ Because `a |> b` is desugared to `b(a)` at parse time, macros work naturally wit
 
 ```dvala
 let double = macro(ast) -> quote $^{ast} + $^{ast} end;
-let negate = macro(ast) -> quote - $^{ast} end;
+let negate = macro(ast) -> quote -$^{ast} end;
 21 |> double |> negate;
 ```
 
@@ -304,7 +308,13 @@ Dvala solves this automatically: **literal bindings in quote blocks are auto-gen
 
 ```dvala
 // The macro introduces "tmp" internally
-let withTemp = macro(ast) -> quote do let tmp = $^{ast}; tmp * 2; end; end;
+let withTemp =
+  macro(ast) -> quote
+    do
+      let tmp = $^{ast};
+      tmp * 2;
+    end;
+  end;
 
 // The caller also has "tmp"
 let tmp = 999;
@@ -330,7 +340,7 @@ This is the key rule: **quote block = private, splice = caller's**.
 ```dvala
 // The macro's param "n" is gensymed, but the spliced $^{ast} retains
 // the caller's reference to "n"
-let makeAdder = macro(ast) -> quote(n) -> n + $^{ast} end;
+let makeAdder = macro(ast) -> quote (n) -> n + $^{ast} end;
 let n = 100;
 let f = makeAdder(n);
 f(1);
@@ -381,7 +391,7 @@ prettyPrint(macroexpand(double, quote 21 end));
 ```dvala
 let { prettyPrint } = import("ast");
 let unless =
-  macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end;
+  macro(cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
 prettyPrint(macroexpand(unless, quote x > 10 end, quote 42 end));
 ```
 
@@ -455,7 +465,7 @@ When a splice `$^{expr}` evaluates to an **array of AST nodes** (not a single no
 
 ```dvala
 let args = [["Num", 1, 0], ["Num", 2, 0]];
-quote + ($^{args}) end;
+quote +($^{args}) end;
 ```
 
 Detection is unambiguous: a single AST node starts with a string (`["Num", ...]`), an array of nodes starts with an array (`[["Num", ...], ...]`).
