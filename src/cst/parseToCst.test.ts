@@ -416,20 +416,34 @@ describe('parseToCst — tree structure', () => {
     expect(childNode(tree, 0).kind).toBe('Quote')
   })
 
-  it('splice inside quote produces Splice child node', () => {
+  // Splice CST nodes live inside the structured body (e.g. as an operand of a
+  // BinaryOp) rather than as direct Quote children, because the quote body is
+  // reparsed into a full CST sub-tree after pass 1. Use a recursive walk to
+  // find them.
+  function findSplicesDeep(node: UntypedCstNode): UntypedCstNode[] {
+    const out: UntypedCstNode[] = []
+    for (const c of node.children) {
+      if ('kind' in c) {
+        if ((c as UntypedCstNode).kind === 'Splice') out.push(c as UntypedCstNode)
+        else out.push(...findSplicesDeep(c as UntypedCstNode))
+      }
+    }
+    return out
+  }
+
+  it('splice inside quote produces Splice node', () => {
     const tree = parseTree('quote x + $^{y} end')
     const quote = childNode(tree, 0)
     expect(quote.kind).toBe('Quote')
-    // Find the Splice child
-    const spliceNode = quote.children.find(c => 'kind' in c && (c as UntypedCstNode).kind === 'Splice')
-    expect(spliceNode).toBeDefined()
-    expect((spliceNode as UntypedCstNode).kind).toBe('Splice')
+    const splices = findSplicesDeep(quote)
+    expect(splices).toHaveLength(1)
+    expect(splices[0]!.kind).toBe('Splice')
   })
 
   it('splice node contains marker, expression tokens, and close brace', () => {
     const tree = parseTree('quote $^{42} end')
     const quote = childNode(tree, 0)
-    const splice = quote.children.find(c => 'kind' in c && (c as UntypedCstNode).kind === 'Splice') as UntypedCstNode
+    const splice = findSplicesDeep(quote)[0] as UntypedCstNode
     expect(splice).toBeDefined()
     // First child should be the marker token $^{
     const marker = splice.children[0] as CstToken
@@ -442,18 +456,19 @@ describe('parseToCst — tree structure', () => {
   it('multiple splices produce multiple Splice nodes', () => {
     const tree = parseTree('quote $^{a} + $^{b} end')
     const quote = childNode(tree, 0)
-    const splices = quote.children.filter(c => 'kind' in c && (c as UntypedCstNode).kind === 'Splice')
-    expect(splices).toHaveLength(2)
+    expect(findSplicesDeep(quote)).toHaveLength(2)
   })
 
   it('multi-caret splice ($^^{}) produces Splice node in outer quote', () => {
     const tree = parseTree('quote quote $^^{z} end end')
     const outerQuote = childNode(tree, 0)
     expect(outerQuote.kind).toBe('Quote')
-    // The $^^{z} belongs to the outer quote, so it should be a Splice child
-    const splice = outerQuote.children.find(c => 'kind' in c && (c as UntypedCstNode).kind === 'Splice')
-    expect(splice).toBeDefined()
-    expect((splice as UntypedCstNode).children[0]).toHaveProperty('text', '$^^{')
+    // The $^^{z} belongs to the outer quote — its Splice sub-node is inside
+    // the inner Quote sub-node (structurally), but owned by the outer one (by
+    // caret level). Since it carries the $^^{ marker we can identify it.
+    const allSplices = findSplicesDeep(outerQuote)
+    const doubleCaret = allSplices.find(s => (s.children[0] as CstToken).text === '$^^{')
+    expect(doubleCaret).toBeDefined()
   })
 })
 

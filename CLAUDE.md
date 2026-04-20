@@ -12,6 +12,8 @@
 
 Run `npm run check` after any medium or larger code change.
 
+When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI escape codes don't pollute the captured output (applies to `vitest`, `eslint`, etc.).
+
 ## Project Structure
 
 - Entry: `src/index.ts` (minimal), `src/full.ts` (full with all modules)

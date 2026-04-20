@@ -877,19 +877,23 @@ function printTemplateString(segments: unknown[][]): string {
 
 function printCodeTemplate(payload: [unknown[][], unknown[][]], ind: number): string {
   const [bodyAst, spliceExprs] = payload
-  // Print body nodes, replacing Splice nodes with $^{spliceExpr}.
-  // Each body node is a root slot, so pass isRoot=true for decorator style.
-  const bodyParts = bodyAst.map(node => printNodeWithSplices(node as AstNode, spliceExprs, ind, true))
 
-  // Single statement: try flat
-  if (bodyParts.length === 1 && allSingleLine(bodyParts[0]!)) {
-    const flat = `quote ${bodyParts[0]} end`
-    if (fits(flat, ind)) return flat
+  // Single statement: try flat at current indent
+  if (bodyAst.length === 1) {
+    const flatPart = printNodeWithSplices(bodyAst[0] as AstNode, spliceExprs, ind, true)
+    if (allSingleLine(flatPart)) {
+      const flat = `quote ${flatPart} end`
+      if (fits(flat, ind)) return flat
+    }
   }
 
-  // Multi-statement, multi-line single statement, or too wide: expand.
-  const lines = bodyParts.map(p => `${indent(ind + 1)}${p}`)
-  return `quote\n${formatStatementLines(bodyAst.map(node => (node as AstNode)[2]), lines)}\nend`
+  // Expanded form: re-render body parts at ind + 1 so any internal line breaks
+  // inside a body part (e.g. a long Function or Call that had to wrap) align
+  // with the indent prefix we prepend here.
+  const lines = bodyAst.map(node =>
+    `${indent(ind + 1)}${printNodeWithSplices(node as AstNode, spliceExprs, ind + 1, true)}`,
+  )
+  return `quote\n${formatStatementLines(bodyAst.map(node => (node as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
 /** Print an AST node, but render Splice nodes as $^{expr} using the splice expressions list. */
