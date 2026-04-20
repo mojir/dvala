@@ -1,4 +1,5 @@
 import { CstBuilder, type UntypedCstNode } from '../../cst/builder'
+import type { CstToken } from '../../cst/types'
 import { isTrivia } from '../../cst/attachTrivia'
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
@@ -239,10 +240,17 @@ function rebuildQuoteBodyCst(
   // Retrieve the raw body children just emitted by pass 1. The Splice entries
   // we'll reuse; the rest (raw tokens + the closing `end`) will be truncated
   // below. We pull `end` out separately and re-append it after the rebuilt body.
-  const mainQuoteNode = getCurrentBuilderNode(builder)
+  const mainQuoteNode = builder.peekCurrent()
   const rawBodyChildren = mainQuoteNode.children.slice(bodyStartCheckpoint)
   const mainSpliceSubNodes: UntypedCstNode[] = rawBodyChildren.filter(isSpliceCstNode)
+  // Invariant: pass 1 always advances past the outer `end` before reaching here,
+  // so the last raw-body child must be that `end` token. Fail loudly if a
+  // future refactor of pass 1 violates this — without a real `end` token to
+  // re-append, the Quote node would be malformed.
   const endToken = rawBodyChildren[rawBodyChildren.length - 1]
+  if (!isCstToken(endToken) || endToken.text !== 'end') {
+    throw new Error('parseQuote.rebuildQuoteBodyCst: expected last body child to be the outer `end` token')
+  }
 
   // Build the sub-parse input. Keeps trivia so sub-CST CstTokens carry the
   // same leading/trailing trivia (comments) the authored source had.
@@ -273,13 +281,13 @@ function rebuildQuoteBodyCst(
   // first body CstToken but is missing from the sub-CST. Copy it over.
   // Losslessness check: without this, `quote\n    do end end` prints back as
   // `quote\ndo end end` because the indent before `do` is orphaned.
-  const pass1FirstLeaf = rawBodyChildren[0] !== undefined && !isCstTokenLike(rawBodyChildren[0])
+  const pass1FirstLeaf = rawBodyChildren[0] !== undefined && !isCstToken(rawBodyChildren[0])
     ? findFirstLeafToken(rawBodyChildren[0])
-    : (rawBodyChildren[0] as CstTokenLike | undefined)
+    : (rawBodyChildren[0] as CstToken | undefined)
   if (pass1FirstLeaf && pass1FirstLeaf.leadingTrivia && pass1FirstLeaf.leadingTrivia.length > 0
     && subTree.children.length > 0) {
     const subFirst = subTree.children[0]!
-    const subFirstLeaf = 'kind' in subFirst ? findFirstLeafToken(subFirst) : (subFirst as CstTokenLike)
+    const subFirstLeaf = 'kind' in subFirst ? findFirstLeafToken(subFirst) : (subFirst)
     if (subFirstLeaf && subFirstLeaf.leadingTrivia.length === 0) {
       subFirstLeaf.leadingTrivia = pass1FirstLeaf.leadingTrivia
     }
@@ -292,42 +300,25 @@ function rebuildQuoteBodyCst(
   for (const child of subTree.children) {
     builder.appendChild(child)
   }
-  if (endToken) builder.appendChild(endToken)
+  builder.appendChild(endToken)
 }
 
 /**
- * Duck-typed CstToken — we can't import the CstToken type here without a
- * circular edge, so we match on the structural shape instead (it has `text`
- * and trivia arrays, no `kind`).
+ * True when a CST child is a leaf token rather than a sub-node. Tokens carry
+ * `text` + trivia arrays; sub-nodes carry `kind` + `children`.
  */
-type CstTokenLike = { leadingTrivia: { kind: string; text: string }[]; text: string; trailingTrivia: { kind: string; text: string }[] }
-
-function isCstTokenLike(v: unknown): v is CstTokenLike {
+function isCstToken(v: unknown): v is CstToken {
   return typeof v === 'object' && v !== null && 'text' in (v) && !('kind' in (v))
 }
 
 /** Find the first leaf CstToken in a CST sub-tree (pre-order). */
-function findFirstLeafToken(node: UntypedCstNode): CstTokenLike | undefined {
+function findFirstLeafToken(node: UntypedCstNode): CstToken | undefined {
   for (const child of node.children) {
-    if (isCstTokenLike(child)) return child
+    if (isCstToken(child)) return child
     const nested = findFirstLeafToken(child)
     if (nested) return nested
   }
   return undefined
-}
-
-/**
- * Reach into the builder to inspect the node currently open at the top of
- * its stack. The builder doesn't expose this publicly because most callers
- * shouldn't care, but parseQuote needs it to snapshot the body children
- * emitted during pass 1 before truncating them.
- */
-function getCurrentBuilderNode(builder: CstBuilder): UntypedCstNode {
-  // Accessing the builder's private stack via an any-cast is intentional —
-  // it's the least invasive way to read the open node without adding a
-  // public API that invites misuse.
-  const stack = (builder as unknown as { stack: UntypedCstNode[] }).stack
-  return stack[stack.length - 1]!
 }
 
 function isSpliceCstNode(child: unknown): child is UntypedCstNode {

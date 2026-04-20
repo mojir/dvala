@@ -1720,6 +1720,20 @@ function formatQuote(node: UntypedCstNode): Doc {
  * Format an arbitrary slice of CST children using the same spacing rules as
  * formatFromChildren. Used by formatQuote to render each split statement
  * independently while keeping splice/identifier/operator spacing consistent.
+ *
+ * The isFirst handling mirrors formatFromChildren: the first child uses
+ * formatTokenWithTrivia (trailing trivia only), subsequent children use
+ * formatClosingToken (both leading and trailing). This is asymmetric on
+ * purpose — formatFromChildren assumes its container handles leading trivia
+ * at a statement boundary. Here, each split statement IS a statement
+ * boundary, so the first child matches that contract.
+ *
+ * Known limitation: line comments that land between tokens of the same
+ * statement are dropped, because the body was re-parsed from a trivia
+ * stream that only carries block comments and whitespace through to the
+ * rebuilt CstTokens. Mid-body comment preservation would require walking
+ * splice sub-nodes' own trivia or attaching line-comment trivia to
+ * adjacent non-trivia tokens — out of scope for the quote-body rebuild.
  */
 function formatTokenSequence(children: (CstToken | UntypedCstNode)[]): Doc {
   const parts: Doc[] = []
