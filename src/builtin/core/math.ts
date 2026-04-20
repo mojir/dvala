@@ -233,9 +233,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
     docs: {
       // `quot` truncates (Math.trunc(a/b)) so the result is always integer-
-      // valued regardless of input. `NaN` / `Infinity` inputs are rejected
-      // by `assertNumber` upstream, so the `Integer` return type is sound
-      // for all reachable runtime values.
+      // valued when the inputs are finite. NaN inputs are rejected by the
+      // `isNumber` input guard; Infinity inputs (and any non-finite result
+      // like `quot(1, 0)`) are rejected by `checkedFn`'s non-finite result
+      // check. Together this means every reachable return value is an integer.
       type: '((Number, Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },
@@ -591,9 +592,9 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(1),
     docs: {
       // `Math.sign` returns -1, -0, 0, or 1 — all four are integer-valued
-      // (`Number.isInteger(-0) === true`). NaN / Infinity would also be
-      // returned for those inputs, but `assertNumber` upstream rejects
-      // them, so the `Integer` return type is sound for reachable values.
+      // (`Number.isInteger(-0) === true`). NaN input is rejected by the
+      // `isNumber` input guard; Infinity input returns ±1, also integer.
+      // So the `Integer` return type is sound for every reachable value.
       type: '((Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },

@@ -646,6 +646,24 @@ describe('typecheck — optional record fields', () => {
     expect(result.diagnostics.some(d => /optional/i.test(d.message) || /\?\./i.test(d.message))).toBe(true)
   })
 
+  it('biunification rejects assigning an optional-field record to a required-field annotation', () => {
+    // Regression: `constrain` used to recurse into the field's lhs/rhs types
+    // without checking the optional-sidecar, so `let u: {b: Number} = v` was
+    // silently accepted when `v: {b?: Number}`. `subtype.ts checkStructural`
+    // already rejected this on the covariant path; the biunification path
+    // (typed `let` annotations) needs the same guard.
+    const result = dvala.typecheck(`
+      effect @get(Null) -> {a: String, b?: Number};
+      let f = () -> do
+        let v = perform(@get, null);
+        let u: {a: String, b: Number} = v;
+        u
+      end;
+      f
+    `)
+    expect(result.diagnostics.some(d => /optional/i.test(d.message))).toBe(true)
+  })
+
   it('typeToString displays the `?` marker for optional fields', async () => {
     // Exercise the display path through a parse-roundtrip check.
     const { parseTypeAnnotation } = await import('./parseType')

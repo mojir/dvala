@@ -706,6 +706,15 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
         if (rhs.optionalFields?.has(name)) continue
         throw new TypeInferenceError(`Missing field '${name}' in ${typeToString(lhs)}`)
       }
+      // Reject "optional in LHS, required in RHS" — LHS only sometimes has the
+      // field, but RHS promises it's always present. Subtype.ts enforces this
+      // for covariant checks; the biunification path (`let u: T = …`) needs
+      // the same guard or typed annotations silently accept missing fields.
+      if (lhs.optionalFields?.has(name) && !rhs.optionalFields?.has(name)) {
+        throw new TypeInferenceError(
+          `Field '${name}' is optional in ${typeToString(lhs)} but required in ${typeToString(rhs)}`,
+        )
+      }
       constrain(ctx, lhsType, rhsType)
     }
 
@@ -2278,6 +2287,9 @@ function getFunctionAlternatives(type: Type): Extract<Type, { tag: 'Function' }>
   return []
 }
 
+// `env` only holds user bindings — builtins live in a separate registry
+// looked up by name. So any hit here means the user has `let`-bound `name`,
+// shadowing the builtin. Call sites use this to skip the builtin branch.
 function lookupShadowedBuiltin(env: TypeEnv, name: string): Type | undefined {
   return env.lookup(name)
 }
@@ -4489,6 +4501,9 @@ function normalizeDisplayUnion(members: Type[]): Type {
           const candidates = members.map(m => m.fields.get(fieldName)!)
           mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
         }
+        // Display-only merge — multiple source records with no single "owner"
+        // to pass to `rebuildRecord`, so `optionalFields` is intentionally not
+        // carried over. This path is only reached by hover/display code.
         return { tag: 'Record', fields: mergedFields, open }
       }
     }
@@ -4595,6 +4610,9 @@ function synthesizeRecordDisplayType(t: TypeVar, visited: Set<string>): Type | u
     mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
   }
 
+  // Display-only reconstruction from accumulated upper-bound signatures —
+  // no single source Record to pass to `rebuildRecord`, so `optionalFields`
+  // is intentionally dropped here.
   return { tag: 'Record', fields: mergedFields, open }
 }
 
