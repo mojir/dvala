@@ -507,6 +507,18 @@ describe('typecheck — flow-sensitive narrowing in if/else', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  it('isInteger guard narrows to Integer (not Number) — passes to nth index', () => {
+    // Regression: before, `isInteger`'s declared guard was `x is Number`,
+    // which meant narrowing left `x` as a Number and `nth(arr, x)` would
+    // still fail (nth wants Integer). Fixed — the guard now declares
+    // `x is Integer`.
+    const result = dvala.typecheck(`
+      let f = (x: String | Number) -> if isInteger(x) then nth([10, 20], x) else 0 end;
+      f(1)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   it('`!=` narrows the else branch to the matched value', () => {
     const result = dvala.typecheck(`
       let f = (x: :ok | :err) -> if x != :ok then "not ok" else "ok" end;
@@ -590,6 +602,27 @@ describe('typecheck — optional record fields', () => {
       f
     `)
     expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('optional-field sidecar survives polymorphic freshening', () => {
+    // Regression: before the rebuildRecord helper, Record reconstruction
+    // in freshenAllVars / freshenInner / generalizeInner / narrowing paths
+    // silently dropped `optionalFields`. That meant a polymorphic function
+    // returning an optional-field record would lose the sidecar — the
+    // next dot-access wouldn't be flagged, and assigning a record without
+    // the optional field to it would spuriously fail.
+    const result = dvala.typecheck(`
+      effect @getUser(Null) -> {name: String, age?: Number};
+      let identity = (x: A) -> x;
+      let f = () -> do
+        let u = identity(perform(@getUser, null));
+        u.age
+      end;
+      f
+    `)
+    // Strict .age on the optional field should still error after
+    // freshening through identity.
+    expect(result.diagnostics.some(d => /optional/i.test(d.message) || /\?\./i.test(d.message))).toBe(true)
   })
 
   it('typeToString displays the `?` marker for optional fields', async () => {

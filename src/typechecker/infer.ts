@@ -1788,6 +1788,22 @@ function containsVars(t: Type): boolean {
  * empty bounds at parse time (bounds accumulate via biunification at call
  * sites), so there's nothing to copy.
  */
+/**
+ * Reconstruct a Record type, preserving the `optionalFields` sidecar from
+ * the source. Used by freshening, generalization, narrowing, expansion —
+ * every path that produces a new Record from an existing one.
+ */
+function rebuildRecord(
+  src: Extract<Type, { tag: 'Record' }>,
+  fields: Map<string, Type>,
+): Type {
+  const rec: Extract<Type, { tag: 'Record' }> = { tag: 'Record', fields, open: src.open }
+  if (src.optionalFields && src.optionalFields.size > 0) {
+    rec.optionalFields = new Set(src.optionalFields)
+  }
+  return rec
+}
+
 function freshenEffectSet(ctx: InferenceContext, e: EffectSet, rowMapping: Map<number, RowVarTail>): EffectSet {
   if (e.tail.tag !== 'RowVar') return e
   const existing = rowMapping.get(e.tail.id)
@@ -1844,7 +1860,7 @@ function freshenAllVars(
     case 'Record': {
       const fields = new Map<string, Type>()
       for (const [k, v] of t.fields) fields.set(k, freshenAllVars(ctx, v, mapping, rowMapping))
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array': return array(freshenAllVars(ctx, t.element, mapping, rowMapping))
     case 'Tuple': return tuple(t.elements.map(e => freshenAllVars(ctx, e, mapping, rowMapping)))
@@ -1929,7 +1945,7 @@ function freshenInner(
       for (const [k, v] of t.fields) {
         fields.set(k, freshenInner(ctx, v, mapping, rowMapping))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array':
       return array(freshenInner(ctx, t.element, mapping, rowMapping))
@@ -2060,7 +2076,7 @@ function generalizeInner(t: Type, level: number, mapping: Map<string, TypeVar>):
         fields.set(k, gv)
       }
       if (!changed) return t
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array': {
       const element = generalizeInner(t.element, level, mapping)
@@ -2878,7 +2894,7 @@ function narrowRecordFieldTypes(type: Type, fieldNarrowings: Map<string, Type>):
     if (narrowed.tag === 'Never') return Never
     narrowedFields.set(fieldName, narrowed)
   }
-  return { tag: 'Record', fields: narrowedFields, open: type.open }
+  return rebuildRecord(type, narrowedFields)
 }
 
 function matchedTypeForPattern(pattern: AstNode, candidateType: Type): Type {
@@ -3034,7 +3050,7 @@ function narrowRecordTypeForMatchPattern(
     narrowedFields.set(fieldName, narrowedFieldType)
   }
 
-  return { tag: 'Record', fields: narrowedFields, open: type.open }
+  return rebuildRecord(type, narrowedFields)
 }
 
 function narrowArrayLikeTypeForMatchPattern(
@@ -3271,7 +3287,7 @@ function subtractRecordProductType(
         branchFields.set(prefixKey, prefixType)
       }
       branchFields.set(key, remainderField)
-      branches.push({ tag: 'Record', fields: branchFields, open: from.open })
+      branches.push(rebuildRecord(from, branchFields))
     }
 
     if (exactField.tag === 'Never') {
@@ -4073,7 +4089,7 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
       for (const [key, value] of t.fields) {
         fields.set(key, expandTypeForMatchAnalysis(value, new Set(visited)))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
 
     case 'Array':
@@ -4250,7 +4266,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
       for (const [k, v] of t.fields) {
         fields.set(k, expandType(v, polarity, new Set(visited)))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array':
       return array(expandType(t.element, polarity, new Set(visited)))
@@ -4349,7 +4365,7 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
       for (const [name, fieldType] of t.fields) {
         fields.set(name, expandTypeForDisplay(fieldType, 'positive', new Set(visited)))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array':
       return array(expandTypeForDisplay(t.element, 'positive', new Set(visited)))
@@ -4409,7 +4425,7 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
       for (const [name, fieldType] of t.fields) {
         fields.set(name, sanitizeDisplayType(fieldType, true))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array':
       return array(sanitizeDisplayType(t.element, true))
