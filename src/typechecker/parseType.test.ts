@@ -435,14 +435,12 @@ describe('parseType — row-variable tails (Phase 4-A)', () => {
     expect(t.effects.tail.tag).toBe('Closed')
   })
 
-  // PHASE_4A_ENABLE — biunification lands in Phase B; unskip when constrain
-  // on effect-set RowVar tails is wired up.
-  it.skip('row-var subtyping: same row var unifies positionally in one signature', () => {
-    // Goal when enabled: constraining @{choose | r} <: @{choose | r} should
-    // succeed without leaving r with useless bounds; constraining
-    // @{choose} <: @{choose | r} should leave r's lowerBounds empty but
-    // the relation holds; constraining @{choose, log} <: @{choose | r}
-    // should push `log` into r's lowerBounds.
+  it('row-var subtyping: identical row-var signatures are subtypes of each other', () => {
+    // Two annotations produce independent row vars (fresh per parse),
+    // but the concrete parts match and isSubtype treats row-var tails
+    // conservatively — this confirms the wire-up, not the propagation.
+    // End-to-end propagation tests live in infer.test.ts under
+    // "effect row variables (Phase 4-A Phase B)".
     const tA = parseTypeAnnotation('(() -> @{choose | r} Null) -> @{dvala.random.item | r} Null')
     const tB = parseTypeAnnotation('(() -> @{choose | r} Null) -> @{dvala.random.item | r} Null')
     expect(isSubtype(tA, tB)).toBe(true)

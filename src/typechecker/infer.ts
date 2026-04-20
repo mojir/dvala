@@ -172,13 +172,24 @@ export class InferenceContext {
     for (const effectName of effects.effects) {
       this.currentEffects.effects.add(effectName)
     }
-    // PHASE_4A_REMOVE — currentEffects is closed during Phase A (RowVar never
-    // flows in); Phase B will need to merge row-var tails here too.
-    if (effects.tail.tag === 'RowVar' || this.currentEffects.tail.tag === 'RowVar') {
-      throw new Error('addEffects reached a RowVar tail — Phase 4-A invariant violated.')
-    }
-    if (effects.tail.tag === 'Open') {
+    // Promote currentEffects's tail to the "most open" of the two:
+    // - Open wins over Closed.
+    // - RowVar flowing in: if currentEffects is still Closed, promote to the
+    //   row var; if it's already a (different) RowVar, edge them together.
+    //   Real biunification across function boundaries happens at constrain
+    //   sites — addEffects just accumulates leaked effects for the current
+    //   body's inferred effect set.
+    const cur = this.currentEffects.tail
+    const incoming = effects.tail
+    if (incoming.tag === 'Open' && cur.tag === 'Closed') {
       this.currentEffects.tail = OpenTail
+    } else if (incoming.tag === 'RowVar' && cur.tag === 'Closed') {
+      this.currentEffects.tail = incoming
+    } else if (incoming.tag === 'RowVar' && cur.tag === 'RowVar' && incoming.id !== cur.id) {
+      // Two distinct row vars meet via union (neither is a subtype of the
+      // other). Link them symmetrically so bounds propagate both ways.
+      addRowVarEdge(incoming, cur)
+      addRowVarEdge(cur, incoming)
     }
   }
 
@@ -214,6 +225,8 @@ export class InferenceContext {
       level: this._level,
       lowerBounds: [],
       upperBounds: [],
+      lowerVarBounds: [],
+      upperVarBounds: [],
     }
   }
   private nextRowVarId = 0
@@ -287,6 +300,143 @@ function varKey(t: Type): string {
 // ---------------------------------------------------------------------------
 // Constrain (biunification)
 // ---------------------------------------------------------------------------
+
+/**
+ * Biunification over effect rows — **propagation only**. Runs at `constrain`
+ * sites to accumulate bounds on row-var tails. Does not gate or throw on
+ * concrete effect-set mismatches; the boolean subtype decision lives in
+ * `subtype.ts:isSubtype` / `types.ts:isEffectSubset` and is invoked for
+ * error reporting, not constraint propagation.
+ *
+ * Why split the two: `constrain` is run throughout inference to wire up
+ * variables, including speculatively during overload resolution and type
+ * guards. Throwing on every concrete mismatch would break those flows.
+ * The historical Phase A behaviour did not touch effect sets here at all;
+ * this function preserves that for non-row-var cases and adds row-var
+ * propagation on top.
+ *
+ * The effect lattice is flat: `union = join`, `∅ = bottom`, `subset = order`.
+ * MLsub rules specialize cleanly to the flat lattice.
+ */
+export function constrainEffectSet(sub: EffectSet, sup: EffectSet): void {
+  if (sub === sup) return
+
+  const subTail = sub.tail
+  const supTail = sup.tail
+
+  // Fast path: no row vars anywhere — no constraint to record.
+  if (subTail.tag !== 'RowVar' && supTail.tag !== 'RowVar') return
+
+  // sup is RowVar(ρ): accumulate on ρ's lower bounds.
+  if (supTail.tag === 'RowVar') {
+    const ρ = supTail
+    // Push sub.effects \ sup.effects into ρ's lower bounds. Effects already
+    // in sup.effects are intentionally excluded: they're on the concrete
+    // side of the sup annotation, not inside ρ. Pushing them into ρ would
+    // over-constrain — ρ represents the *remainder* beyond sup.effects.
+    const extras = new Set<string>()
+    for (const e of sub.effects) {
+      if (!sup.effects.has(e)) extras.add(e)
+    }
+    if (extras.size > 0) addRowVarLowerBound(ρ, extras)
+    if (subTail.tag === 'RowVar' && subTail.id !== ρ.id) {
+      addRowVarEdge(subTail, ρ)
+    }
+    return
+  }
+
+  // sub is RowVar(σ), sup is concrete (Closed or Open).
+  if (subTail.tag === 'RowVar') {
+    if (supTail.tag === 'Closed') {
+      // σ's value is constrained to ⊆ sup.effects.
+      addRowVarUpperBound(subTail, sup.effects)
+    }
+    // Open sup: no tightening — Open accepts any extras.
+  }
+}
+
+/**
+ * Push a concrete lower-bound set into a row var, propagating:
+ * - Each concrete upperBound of ρ must contain all new effects (fail otherwise).
+ * - Each ρ' in upperVarBounds receives the new set as a lower bound.
+ *
+ * `visited` guards against cycles in the var graph (bidirectional edges
+ * from `addEffects` union merging, or transitive var-to-var constraints).
+ */
+function addRowVarLowerBound(ρ: RowVarTail, effects: Set<string>, visited = new Set<number>()): void {
+  if (visited.has(ρ.id)) return
+  visited.add(ρ.id)
+  // Dedup: don't add the exact same bound twice.
+  let duplicate = false
+  for (const existing of ρ.lowerBounds) {
+    if (setsEqual(existing, effects)) {
+      duplicate = true
+      break
+    }
+  }
+  if (!duplicate) ρ.lowerBounds.push(effects)
+  // Propagate upward against each concrete upperBound: effects ⊆ upperBound.
+  for (const ub of ρ.upperBounds) {
+    for (const e of effects) {
+      if (!ub.has(e)) {
+        throw new TypeInferenceError(`Row-var ρ${ρ.id} lower bound '${e}' violates upper bound @{${[...ub].sort().join(', ')}}`)
+      }
+    }
+  }
+  // Propagate along upperVarBounds: ρ ⊆ ρ' means effects ⊆ ρ' too.
+  for (const uv of ρ.upperVarBounds) {
+    addRowVarLowerBound(uv, effects, visited)
+  }
+}
+
+/**
+ * Push a concrete upper-bound set into a row var, propagating symmetrically.
+ * `visited` guards against cycles.
+ */
+function addRowVarUpperBound(ρ: RowVarTail, effects: Set<string>, visited = new Set<number>()): void {
+  if (visited.has(ρ.id)) return
+  visited.add(ρ.id)
+  let duplicate = false
+  for (const existing of ρ.upperBounds) {
+    if (setsEqual(existing, effects)) {
+      duplicate = true
+      break
+    }
+  }
+  if (!duplicate) ρ.upperBounds.push(effects)
+  // Propagate: each existing concrete lowerBound must be ⊆ effects.
+  for (const lb of ρ.lowerBounds) {
+    for (const e of lb) {
+      if (!effects.has(e)) {
+        throw new TypeInferenceError(`Row-var ρ${ρ.id} upper bound rejects existing lower-bound effect '${e}'`)
+      }
+    }
+  }
+  // Propagate along lowerVarBounds: ρ' ⊆ ρ means ρ' ⊆ effects too.
+  for (const lv of ρ.lowerVarBounds) {
+    addRowVarUpperBound(lv, effects, visited)
+  }
+}
+
+/**
+ * Add a var-to-var edge σ <: ρ, propagating bounds across it.
+ * Idempotent — repeated calls are no-ops.
+ */
+function addRowVarEdge(σ: RowVarTail, ρ: RowVarTail): void {
+  if (σ.upperVarBounds.some(v => v.id === ρ.id)) return
+  σ.upperVarBounds.push(ρ)
+  ρ.lowerVarBounds.push(σ)
+  // Propagate: σ's existing concrete lower bounds flow into ρ's lower bounds.
+  for (const lb of σ.lowerBounds) addRowVarLowerBound(ρ, lb)
+  // Propagate: ρ's existing concrete upper bounds flow into σ's upper bounds.
+  for (const ub of ρ.upperBounds) addRowVarUpperBound(σ, ub)
+}
+
+function setsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false
+  for (const x of a) if (!b.has(x)) return false
+  return true
+}
 
 /**
  * The core of Simple-sub: propagate `lhs <: rhs` until everything
@@ -477,14 +627,10 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 
   // Function: contravariant params, covariant return
   if (lhs.tag === 'Function' && rhs.tag === 'Function') {
-    // PHASE_4A_REMOVE — Phase B biunifies row-var effect tails here via the
-    // flat effect lattice. Phase A guards that no inference path slips a
-    // RowVar into constrain: effect-set subtyping is done via isEffectSubset
-    // in subtype.ts (which throws on RowVar), but the explicit guard here
-    // cements the invariant at the constrain site itself.
-    if (lhs.effects.tail.tag === 'RowVar' || rhs.effects.tail.tag === 'RowVar') {
-      throw new Error('constrain (Function-Function) reached a RowVar tail — Phase 4-A invariant: RowVar must not flow through inference-time constraint solving until Phase B biunification lands.')
-    }
+    // Effect sets: contravariance-of-covariance direction is covariant here
+    // (caller's effects ⊆ callee's declared effects), matching the existing
+    // subtype check in subtype.ts.
+    constrainEffectSet(lhs.effects, rhs.effects)
     if (!isConstrainedFunctionArityCompatible(lhs, rhs)) {
       throw new TypeInferenceError(
         `Function arity mismatch: expected ${functionArityLabel(rhs)} params, got ${functionArityLabel(lhs)}`,
@@ -515,10 +661,12 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   }
 
   if (lhs.tag === 'Handler' && rhs.tag === 'Handler') {
-    // PHASE_4A_REMOVE — Phase B biunifies row-var tails on `introduced`.
-    if (lhs.introduced.tail.tag === 'RowVar' || rhs.introduced.tail.tag === 'RowVar') {
-      throw new Error('constrain (Handler-Handler) reached a RowVar tail on `introduced` — Phase 4-A invariant: RowVar must not flow through inference-time constraint solving until Phase B biunification lands.')
-    }
+    // Biunify `introduced` row-var tails (covariant: fewer introduced
+    // effects is a subtype). Phase 2.5 deferred the structural subtyping
+    // of introduced, but the row-var tail participates in constraint
+    // propagation so the ρ bound shared between `handler e end` and a
+    // `Handler<>` annotation wires up correctly.
+    constrainEffectSet(lhs.introduced, rhs.introduced)
     for (const [name, rhsSig] of rhs.handled) {
       const lhsSig = lhs.handled.get(name)
       if (!lhsSig) {
@@ -907,14 +1055,14 @@ export function inferExpr(
             constrain(ctx, thunkType, fn([], requiredBodyType))
 
             const residualEffects = subtractEffects(
-              unionEffectSets(thunkAlternatives.map(thunk => thunk.effects)),
+              unionEffectSets(thunkAlternatives.map(thunk => thunk.effects), ctx),
               new Set(guaranteedHandled.keys()),
             )
             ctx.addEffects(residualEffects)
             // Phase 4-B: union the handler's introduced effects back in,
             // mirroring the do-with-h application law. Union across
             // alternatives — any could be the active runtime handler.
-            ctx.addEffects(unionEffectSets(handlerAlternatives.map(h => h.introduced)))
+            ctx.addEffects(unionEffectSets(handlerAlternatives.map(h => h.introduced), ctx))
 
             result = handlerAlternatives.length === 1
               ? handlerAlternatives[0]!.output
@@ -953,7 +1101,7 @@ export function inferExpr(
           if (wrapperThunkType) {
             const innerAlts = getFunctionAlternatives(wrapperThunkType)
             if (innerAlts.length > 0) {
-              const thunkEffects = unionEffectSets(innerAlts.map(t => t.effects))
+              const thunkEffects = unionEffectSets(innerAlts.map(t => t.effects), ctx)
               const residual = subtractEffects(thunkEffects, new Set(wrapperInfo.handled.keys()))
               ctx.addEffects(residual)
               ctx.addEffects(wrapperInfo.introduced)
@@ -984,13 +1132,13 @@ export function inferExpr(
 
           const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
           const residualEffects = subtractEffects(
-            unionEffectSets(thunkAlternatives.map(thunk => thunk.effects)),
+            unionEffectSets(thunkAlternatives.map(thunk => thunk.effects), ctx),
             new Set(guaranteedHandled.keys()),
           )
           ctx.addEffects(residualEffects)
           // Phase 4-B: union the handler's introduced effects, same as the
           // zero-arg branch above.
-          ctx.addEffects(unionEffectSets(handlerAlternatives.map(h => h.introduced)))
+          ctx.addEffects(unionEffectSets(handlerAlternatives.map(h => h.introduced), ctx))
 
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
@@ -1009,7 +1157,7 @@ export function inferExpr(
             // Capture both subtraction (handled) and union (introduced)
             // sides of the application law. Conservative across alternatives:
             // any alternative might be active, so introduced is unioned.
-            const introduced = unionEffectSets(handlerAlternatives.map(h => h.introduced))
+            const introduced = unionEffectSets(handlerAlternatives.map(h => h.introduced), ctx)
             ctx.noteWrappedThunkVar(argTypes[0].id, guaranteedHandled, introduced)
           }
 
@@ -1050,7 +1198,7 @@ export function inferExpr(
         if (!wrapperBranchFired) {
           const calledEffects = selectedAlternative
             ? selectedAlternative.effects
-            : unionEffectSets(functionAlternatives.map(alt => alt.effects))
+            : unionEffectSets(functionAlternatives.map(alt => alt.effects), ctx)
           ctx.addEffects(calledEffects)
         }
 
@@ -1447,7 +1595,7 @@ export function inferExpr(
           bodyType,
           answerType,
           finalizeHandledSignatures(handled),
-          unionEffectSets(introducedSets),
+          unionEffectSets(introducedSets, ctx),
         )
         break
       }
@@ -1482,7 +1630,7 @@ export function inferExpr(
           // perform. Across multiple alternatives we conservatively take
           // the union — any of them could be the active one at runtime.
           // See design/archive/2026-04-19_handler-typing.md.
-          ctx.addEffects(unionEffectSets(handlerAlternatives.map(handler => handler.introduced)))
+          ctx.addEffects(unionEffectSets(handlerAlternatives.map(handler => handler.introduced), ctx))
 
           result = handlerAlternatives.length === 1
             ? handlerAlternatives[0]!.output
@@ -1556,7 +1704,7 @@ export function inferExpr(
  * needs its own set of type variables so constraints from one call don't
  * leak into another.
  */
-function freshenAnnotationVars(ctx: InferenceContext, t: Type): Type {
+export function freshenAnnotationVars(ctx: InferenceContext, t: Type): Type {
   if (!containsVars(t)) return t
   // Two separate mapping tables — value-type vars and row vars have different
   // bound shapes (`Type[]` vs `Set<string>[]`), so keeping them apart avoids
@@ -2158,21 +2306,75 @@ function finalizeInferredHandledType(type: Type, polarity: 'positive' | 'negativ
   return expandType(type, polarity)
 }
 
-function unionEffectSets(effectSets: EffectSet[]): EffectSet {
+/**
+ * Aggregate multiple effect sets into their least upper bound.
+ *
+ * - All Closed/Open inputs: union the effect names, pick Open if any input
+ *   is Open, else Closed.
+ * - Any RowVar inputs (with a `ctx` available): allocate a fresh row var
+ *   `ρ_new` and constrain each input as its lower bound — MLsub-style union
+ *   over the flat effect lattice. The concrete side is also unioned.
+ *   Result: `{ effects: union-of-all-concrete, tail: RowVar(ρ_new) }`.
+ * - RowVar inputs without a `ctx`: conservatively fall back to Open tail.
+ *   Callers pass `ctx` whenever they care about row-var propagation.
+ */
+function unionEffectSets(effectSets: EffectSet[], ctx?: InferenceContext): EffectSet {
   if (effectSets.length === 0) return PureEffects
 
   const effects = new Set<string>()
   let openResult = false
+  const rowVars: RowVarTail[] = []
+  const rowVarConcreteContributions: Set<string>[] = []
   for (const effectSet of effectSets) {
-    // PHASE_4A_REMOVE — Phase B produces a fresh row-var with union bounds.
-    if (effectSet.tail.tag === 'RowVar') {
-      throw new Error('unionEffectSets reached a RowVar tail — Phase 4-A invariant: RowVar must not flow through inference-time aggregation until Phase B.')
-    }
     for (const effectName of effectSet.effects) effects.add(effectName)
     if (effectSet.tail.tag === 'Open') openResult = true
+    if (effectSet.tail.tag === 'RowVar') {
+      // Track both the row var itself AND the concrete effects that were
+      // alongside it — those need to flow into the fresh var's lower bounds
+      // alongside the var edge, since `ρ_new ⊇ {concrete_i} ∪ ρ_i` for each
+      // input i, not `ρ_new ⊇ ρ_i` alone.
+      rowVars.push(effectSet.tail)
+      if (effectSet.effects.size > 0) {
+        rowVarConcreteContributions.push(new Set(effectSet.effects))
+      }
+    }
   }
 
-  return { effects, tail: openResult ? OpenTail : ClosedTail }
+  if (rowVars.length === 0) {
+    return { effects, tail: openResult ? OpenTail : ClosedTail }
+  }
+
+  // Row-var case.
+  if (openResult) {
+    // Open subsumes anything — no point allocating a fresh var.
+    return { effects, tail: OpenTail }
+  }
+  if (!ctx) {
+    // No biunification context available; caller didn't opt in. Conservative.
+    return { effects, tail: OpenTail }
+  }
+
+  // If every input points at the same row var, don't allocate — reuse it.
+  // Common case: aggregating multiple alternatives of the same signature.
+  // Still push concrete contributions as lower bounds on that row var so
+  // callers who later expand the row var directly (not via this returned
+  // struct) see them.
+  const sharedId = rowVars[0]!.id
+  if (rowVars.every(ρ => ρ.id === sharedId)) {
+    const shared = rowVars[0]!
+    for (const concrete of rowVarConcreteContributions) {
+      addRowVarLowerBound(shared, concrete)
+    }
+    return { effects, tail: shared }
+  }
+
+  // Allocate fresh ρ_new and union all inputs as its lower bound.
+  const ρNew = ctx.freshRowVar()
+  for (const ρ of rowVars) addRowVarEdge(ρ, ρNew)
+  for (const concrete of rowVarConcreteContributions) {
+    addRowVarLowerBound(ρNew, concrete)
+  }
+  return { effects, tail: ρNew }
 }
 
 function recordSpecializedCalleeType(
@@ -3765,11 +3967,96 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
 // Expand type variables to concrete types
 // ---------------------------------------------------------------------------
 
+// `expandType` (below) resolves a type by expanding all type variables to
+// their bounds. Positive polarity: vars expand to their lower bounds (union);
+// negative polarity: upper bounds (intersection). The effect-set helpers
+// above handle row-var tails analogously at the effect-lattice level.
+
 /**
- * Resolve a type by expanding all type variables to their bounds.
- * Positive polarity: variables expand to their lower bounds (union).
- * Negative polarity: variables expand to their upper bounds (intersection).
+ * Expand an effect set at a given polarity: fold any row-var tail's
+ * concrete bounds into the effect name set.
+ *
+ * - Positive polarity: union all transitive lowerBounds (the minimum that
+ *   the row var must contain). If nothing is known, the tail stays as the
+ *   row var — preserving polymorphism for display of generalized types.
+ * - Negative polarity: intersect transitive upperBounds (the maximum). If
+ *   no upper bound is known, tail becomes Open (any extras allowed).
+ *
+ * `visited` tracks row-var ids to prevent infinite recursion through
+ * var-to-var edges.
  */
+export function expandEffectSet(e: EffectSet, polarity: 'positive' | 'negative'): EffectSet {
+  if (e.tail.tag !== 'RowVar') return e
+  const ρ = e.tail
+  const visited = new Set<number>()
+  const accumulated = new Set<string>(e.effects)
+
+  if (polarity === 'positive') {
+    collectRowVarLowerBounds(ρ, accumulated, visited)
+    // If ρ has no concrete contribution but participates in var edges that
+    // eventually surface concrete bounds, we've collected them. If nothing
+    // was added beyond e.effects, preserve the row-var tail for display
+    // so generalized polymorphic sigs still show `ρN`.
+    if (accumulated.size === e.effects.size && ρ.lowerBounds.length === 0 && ρ.lowerVarBounds.length === 0) {
+      return e
+    }
+    return { effects: accumulated, tail: ClosedTail }
+  }
+
+  // negative polarity
+  const upper = collectRowVarUpperBounds(ρ, visited)
+  if (upper === null) {
+    // No upper bound known; anything extra is allowed at this position.
+    return { effects: new Set(e.effects), tail: OpenTail }
+  }
+  // Upper bound is the intersection; only those extras may appear.
+  const result = new Set<string>(e.effects)
+  for (const u of upper) result.add(u)
+  return { effects: result, tail: ClosedTail }
+}
+
+function collectRowVarLowerBounds(ρ: RowVarTail, out: Set<string>, visited: Set<number>): void {
+  if (visited.has(ρ.id)) return
+  visited.add(ρ.id)
+  for (const lb of ρ.lowerBounds) {
+    for (const e of lb) out.add(e)
+  }
+  for (const lv of ρ.lowerVarBounds) collectRowVarLowerBounds(lv, out, visited)
+}
+
+/**
+ * Two-pass intersection: first collect every concrete upper-bound set
+ * reachable from ρ via the upper-var-bound graph, then intersect them all.
+ * Splitting the traversal from the folding side-steps the prior ambiguity
+ * where "cycle-visited" and "no-constraint-contributed" both returned null
+ * and became indistinguishable to the caller.
+ *
+ * Returns null if the transitive closure has no concrete upper bounds at
+ * all (unconstrained) — this is genuine "no upper bound known" and is
+ * distinct from "already visited in cycle" (which simply doesn't contribute
+ * but also doesn't preempt bounds from other paths).
+ */
+function collectRowVarUpperBounds(ρ: RowVarTail, visited: Set<number>): Set<string> | null {
+  const bounds: Set<string>[] = []
+  gatherRowVarUpperBounds(ρ, visited, bounds)
+  if (bounds.length === 0) return null
+  const intersection = new Set(bounds[0])
+  for (let i = 1; i < bounds.length; i++) {
+    const next = bounds[i]!
+    for (const e of intersection) {
+      if (!next.has(e)) intersection.delete(e)
+    }
+  }
+  return intersection
+}
+
+function gatherRowVarUpperBounds(ρ: RowVarTail, visited: Set<number>, out: Set<string>[]): void {
+  if (visited.has(ρ.id)) return
+  visited.add(ρ.id)
+  for (const ub of ρ.upperBounds) out.push(ub)
+  for (const uv of ρ.upperVarBounds) gatherRowVarUpperBounds(uv, visited, out)
+}
+
 export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positive', visited = new Set<string>()): Type {
   switch (t.tag) {
     case 'Var': {
@@ -3789,7 +4076,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
       return fn(
         t.params.map(p => expandType(p, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))),
         expandType(t.ret, polarity, new Set(visited)),
-        t.effects,
+        expandEffectSet(t.effects, polarity),
         t.handlerWrapper,
         t.restParam !== undefined
           ? expandType(t.restParam, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))
@@ -3807,7 +4094,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
         expandType(t.body, 'positive', new Set(visited)),
         expandType(t.output, 'positive', new Set(visited)),
         handled,
-        t.introduced,
+        expandEffectSet(t.introduced, polarity),
       )
     }
     case 'Record': {
@@ -3888,7 +4175,7 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
       return fn(
         t.params.map(p => expandTypeForDisplay(p, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))),
         expandTypeForDisplay(t.ret, polarity, new Set(visited)),
-        t.effects,
+        expandEffectSet(t.effects, polarity),
         t.handlerWrapper,
         t.restParam !== undefined
           ? expandTypeForDisplay(t.restParam, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))
@@ -3906,7 +4193,7 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
         expandTypeForDisplay(t.body, 'positive', new Set(visited)),
         expandTypeForDisplay(t.output, 'positive', new Set(visited)),
         handled,
-        t.introduced,
+        expandEffectSet(t.introduced, polarity),
       )
     }
     case 'Record': {

@@ -590,6 +590,8 @@ class TypeParser {
       level: 0,
       lowerBounds: [],
       upperBounds: [],
+      lowerVarBounds: [],
+      upperVarBounds: [],
     }
     this.rowVarMap.set(name, rowVar)
     return rowVar

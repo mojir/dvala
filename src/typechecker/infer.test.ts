@@ -20,7 +20,7 @@ function createDvala(options?: Parameters<typeof createDvalaRaw>[0]) {
       origTypecheck(fixtureWithOpaqueIfCond(source), opts),
   })
 }
-import type { Type } from './types'
+import type { EffectSet, Type } from './types'
 import {
   NumberType, StringType, NullType, BooleanType,
   Unknown, Never,
@@ -29,9 +29,10 @@ import {
 } from './types'
 import {
   InferenceContext, TypeEnv,
-  inferExpr, constrain, expandType, expandTypeForDisplay, sanitizeDisplayType,
+  inferExpr, constrain, constrainEffectSet, expandEffectSet, expandType, expandTypeForDisplay, freshenAnnotationVars, sanitizeDisplayType,
   TypeInferenceError,
 } from './infer'
+import { parseTypeAnnotation } from './parseType'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
 import { getBuiltinType, initBuiltinTypes, isTypeGuard, registerModuleType, resetBuiltinTypeCache } from './builtinTypes'
@@ -882,6 +883,182 @@ describe('inference — effect sets', () => {
     const fewer = fn([NumberType], NumberType, effectSet(['log']))
     const more = fn([NumberType], NumberType, effectSet(['log', 'fetch']))
     expect(isSubtype(more, fewer)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 4-A Phase B: row-variable biunification — end-to-end checks.
+// Exercises the four row-polymorphic patterns from the design doc Goal
+// section via direct constrain + expandType calls.
+// ---------------------------------------------------------------------------
+
+describe('inference — effect row variables (Phase 4-A Phase B)', () => {
+  // Helper: freshen a row-polymorphic annotation and return the result as a
+  // FunctionType. Matches the code path builtin-signature users take.
+  function freshSigFn(annotation: string): Extract<Type, { tag: 'Function' }> {
+    const parsed = parseTypeAnnotation(annotation)
+    const ctx = new InferenceContext()
+    const freshened = freshenAnnotationVars(ctx, parsed)
+    if (freshened.tag !== 'Function') throw new Error('expected Function')
+    return freshened
+  }
+
+  it('concrete thunk effects flow into shared row var', () => {
+    // Simulating a call `chooseRandom(() -> do perform(@log, "x"); perform(@choose, xs) end)`.
+    // The sig is (() -> @{choose | r} A) -> @{dvala.random.item | r} A.
+    // The thunk's actual effect set is @{choose, log}, closed.
+    const sig = freshSigFn('(() -> @{choose | r} String) -> @{dvala.random.item | r} String')
+    const thunkEffects = effectSet(['choose', 'log'])
+    const thunkArg = fn([], StringType, thunkEffects)
+    const ctx = new InferenceContext()
+    const declaredParam = sig.params[0]!
+    // Covariant effects — sub = actual, sup = declared.
+    constrain(ctx, thunkArg, declaredParam)
+    // Now the result type's effect set should expand to @{dvala.random.item, log}.
+    const expanded = expandType(sig.ret, 'positive')
+    expect(expanded).toBe(StringType)
+    const expandedEffects = expandType(sig, 'positive')
+    if (expandedEffects.tag !== 'Function') throw new Error('expected Function')
+    expect(expandedEffects.effects.tail.tag).toBe('Closed')
+    expect(expandedEffects.effects.effects.has('dvala.random.item')).toBe(true)
+    expect(expandedEffects.effects.effects.has('log')).toBe(true)
+  })
+
+  it('pure thunk leaves row-var tail empty; expansion preserves only concrete side', () => {
+    const sig = freshSigFn('(() -> @{choose | r} String) -> @{dvala.random.item | r} String')
+    const pureThunk = fn([], StringType) // no effects
+    const ctx = new InferenceContext()
+    constrain(ctx, pureThunk, sig.params[0]!)
+    const expanded = expandType(sig, 'positive')
+    if (expanded.tag !== 'Function') throw new Error('expected Function')
+    // No lower bounds on r → tail preserved as row var (for generalized display).
+    // What matters: no spurious effects leaked in.
+    expect(expanded.effects.effects.has('dvala.random.item')).toBe(true)
+    expect(expanded.effects.effects.has('choose')).toBe(false)
+    expect(expanded.effects.effects.has('log')).toBe(false)
+  })
+
+  it('timeIt pattern: thunk effects union with introduced @{dvala.io.print}', () => {
+    // timeIt : (String, () -> @{r} A) -> @{r, dvala.io.print} A
+    const sig = freshSigFn('(String, () -> @{| r} A) -> @{dvala.io.print | r} A')
+    const thunkEffects = effectSet(['foo.a', 'foo.b'])
+    const thunkArg = fn([], NumberType, thunkEffects)
+    const ctx = new InferenceContext()
+    constrain(ctx, thunkArg, sig.params[1]!)
+    const expanded = expandType(sig, 'positive')
+    if (expanded.tag !== 'Function') throw new Error('expected Function')
+    expect(expanded.effects.effects.has('dvala.io.print')).toBe(true)
+    expect(expanded.effects.effects.has('foo.a')).toBe(true)
+    expect(expanded.effects.effects.has('foo.b')).toBe(true)
+  })
+
+  it('row vars from independent annotations do not leak into each other', () => {
+    // Two independently-freshened sigs each have their own r. Constraining
+    // one must not affect the other's expanded result.
+    const sigA = freshSigFn('(() -> @{choose | r} Null) -> @{| r} Null')
+    const sigB = freshSigFn('(() -> @{choose | r} Null) -> @{| r} Null')
+    const ctx = new InferenceContext()
+    constrain(ctx, fn([], NullType, effectSet(['leaked'])), sigA.params[0]!)
+    // sigB untouched — its r should remain empty.
+    const expandedB = expandType(sigB, 'positive')
+    if (expandedB.tag !== 'Function') throw new Error('expected Function')
+    expect(expandedB.effects.effects.has('leaked')).toBe(false)
+  })
+
+  it('B.4 let-polymorphism: each use of a row-polymorphic annotation gets fresh row vars', () => {
+    // Two successive freshenings of the same annotation must produce
+    // independent row-var ids — otherwise constraints from one use leak
+    // into the other, which defeats polymorphism.
+    const annotation = '(() -> @{choose | r} String) -> @{dvala.random.item | r} String'
+    const parsed = parseTypeAnnotation(annotation)
+    const ctx = new InferenceContext()
+    const use1 = freshenAnnotationVars(ctx, parsed)
+    const use2 = freshenAnnotationVars(ctx, parsed)
+    if (use1.tag !== 'Function' || use2.tag !== 'Function') throw new Error('expected Function')
+    // Tails should be distinct RowVar ids.
+    if (use1.effects.tail.tag !== 'RowVar' || use2.effects.tail.tag !== 'RowVar') {
+      throw new Error('expected RowVar tails')
+    }
+    expect(use1.effects.tail.id).not.toBe(use2.effects.tail.id)
+    // Constrain use1 with a thunk that leaks {log} — it must not affect use2.
+    constrain(ctx, fn([], StringType, effectSet(['choose', 'log'])), use1.params[0]!)
+    const expandedUse2 = expandType(use2, 'positive')
+    if (expandedUse2.tag !== 'Function') throw new Error('expected Function')
+    expect(expandedUse2.effects.effects.has('log')).toBe(false)
+  })
+
+  it('B.5 well-formedness: wrapper sig with handled effect missing from thunk concrete set is rejected', () => {
+    // Malformed: sig says "() -> @{| r} A" (thunk has no concrete effects)
+    // but wrapper metadata says it handles @choose. Subtraction at the
+    // call site would silently under-subtract because @choose lives only
+    // in ρ's lower bounds, not on the concrete side. Registration must
+    // reject this with a clear error.
+    const malformedDocs = {
+      bogusChoose: {
+        type: '((() -> @{| r} A)) -> A',
+        wrapper: { paramIndex: 0, handled: ['choose'], introduced: [] as string[] },
+        category: 'misc' as const,
+        description: 'malformed test sig',
+        returns: { type: 'any' as const },
+        args: { thunk: { type: 'function' as const } },
+        variants: [{ argumentNames: ['thunk'] }],
+        examples: [] as [],
+      },
+    }
+    expect(() => registerModuleType('test.phase4a.malformed', {}, malformedDocs)).toThrow(/Malformed wrapper signature/)
+  })
+
+  it('nested var-to-var edge propagates concrete lower bounds transitively', () => {
+    // If σ <: ρ (edge) and σ gains lower bound {a}, then ρ should also see {a}.
+    // Use one ctx so σ and ρ have distinct ids.
+    const ctx = new InferenceContext()
+    const σ = ctx.freshRowVar()
+    const ρ = ctx.freshRowVar()
+    const fromSet: EffectSet = { effects: new Set(), tail: σ }
+    const toSet: EffectSet = { effects: new Set(), tail: ρ }
+    constrainEffectSet(fromSet, toSet)
+    // Push concrete {a} into σ via another constrain.
+    const pushSet = effectSet(['a'])
+    constrainEffectSet(pushSet, { effects: new Set(), tail: σ })
+    // ρ's expansion should include {a}.
+    const expanded = expandEffectSet({ effects: new Set(), tail: ρ }, 'positive')
+    expect(expanded.effects.has('a')).toBe(true)
+  })
+
+  it('bidirectional var-to-var edges terminate; both ends see each other\'s bounds', () => {
+    // Create a cycle σ ⇄ ρ (same semantic as a union at `addEffects`).
+    // Bounds pushed into one must reach the other without infinite recursion.
+    const ctx = new InferenceContext()
+    const σ = ctx.freshRowVar()
+    const ρ = ctx.freshRowVar()
+    constrainEffectSet({ effects: new Set(), tail: σ }, { effects: new Set(), tail: ρ })
+    constrainEffectSet({ effects: new Set(), tail: ρ }, { effects: new Set(), tail: σ })
+    // Now push {a} into σ; ρ must see it (via the edge), and the propagation
+    // must terminate (visited guards in addRowVarLowerBound).
+    constrainEffectSet(effectSet(['a']), { effects: new Set(), tail: σ })
+    expect(expandEffectSet({ effects: new Set(), tail: ρ }, 'positive').effects.has('a')).toBe(true)
+    expect(expandEffectSet({ effects: new Set(), tail: σ }, 'positive').effects.has('a')).toBe(true)
+  })
+
+  it('upper-bound cycle intersects tightly, not loosely', () => {
+    // A ⇄ B with A.upper = {a}, B.upper = {b}. Cyclic unification means
+    // both must equal the intersection of their direct bounds = ∅.
+    const ctx = new InferenceContext()
+    const A = ctx.freshRowVar()
+    const B = ctx.freshRowVar()
+    // Push concrete upper bounds via Closed sup constraints.
+    constrainEffectSet({ effects: new Set(), tail: A }, effectSet(['a']))
+    constrainEffectSet({ effects: new Set(), tail: B }, effectSet(['b']))
+    // Link bidirectionally.
+    constrainEffectSet({ effects: new Set(), tail: A }, { effects: new Set(), tail: B })
+    constrainEffectSet({ effects: new Set(), tail: B }, { effects: new Set(), tail: A })
+    // Negative-polarity expansion: intersection of reachable upper bounds.
+    // Must be empty (no effect is in both {a} and {b}), not widened to union.
+    const expandedA = expandEffectSet({ effects: new Set(), tail: A }, 'negative')
+    // Tail is Closed after expansion when bounds exist; effects is the
+    // intersection — here, empty.
+    expect(expandedA.tail.tag).toBe('Closed')
+    expect(expandedA.effects.size).toBe(0)
   })
 })
 

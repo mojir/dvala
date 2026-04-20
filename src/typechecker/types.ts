@@ -42,9 +42,19 @@ export type EffectTail =
   | RowVarTail
 
 /**
- * Row-variable tail on an effect set. Bounds are `Set<string>[]` (sets of
- * effect names) because the effect lattice is flat: union = join, ∅ = bottom,
- * subset = order. Lower/upper bounds accumulate during biunification.
+ * Row-variable tail on an effect set. Bounds separate "concrete" sets of
+ * effect names (the flat lattice — union = join, ∅ = bottom, subset = order)
+ * from "var" references to other row vars (var-to-var edges in the
+ * biunification graph, directly mirroring how value-type `Var` stores
+ * `Type[]` bounds which can themselves be Vars).
+ *
+ * - `lowerBounds` / `upperBounds` — concrete effect-name sets; during
+ *   biunification, lower bounds accumulate via union in positive positions
+ *   and upper bounds via intersection in negative positions.
+ * - `lowerVarBounds` / `upperVarBounds` — other row vars that must be
+ *   ≤ / ≥ this var respectively. Used to propagate constraints across
+ *   var-to-var edges at expansion time.
+ *
  * `id` gives identity across positions within one signature so positional
  * unification works; `level` supports let-polymorphism generalization.
  */
@@ -54,6 +64,8 @@ export interface RowVarTail {
   level: number
   lowerBounds: Set<string>[]
   upperBounds: Set<string>[]
+  lowerVarBounds: RowVarTail[]
+  upperVarBounds: RowVarTail[]
 }
 
 export interface EffectSet {
@@ -535,40 +547,52 @@ export function effectSetWithRowVar(effects: string[], rowVar: EffectTail & { ta
   return { effects: new Set(effects), tail: rowVar }
 }
 
-/** Merge two effect sets (union of effects). Phase A: throws on RowVar. */
-export function mergeEffects(a: EffectSet, b: EffectSet): EffectSet {
-  // PHASE_4A_REMOVE — Phase B extends mergeEffects to row-var-aware union.
-  if (a.tail.tag === 'RowVar' || b.tail.tag === 'RowVar') {
-    throw new Error('mergeEffects reached a RowVar tail — Phase 4-A invariant: RowVar must not flow through inference-time helpers until Phase B biunification lands.')
-  }
-  const merged = new Set([...a.effects, ...b.effects])
-  const openResult = a.tail.tag === 'Open' || b.tail.tag === 'Open'
-  return { effects: merged, tail: openResult ? OpenTail : ClosedTail }
-}
-
-/** Subtract handled effects from an effect set. Phase A: throws on RowVar. */
+/**
+ * Subtract handled effects from an effect set. Works across all tail shapes:
+ * - Closed/Open: concrete subtraction, tail passes through.
+ * - RowVar: subtract from the concrete side; the row var's lower bounds are
+ *   NOT touched here. The well-formedness check on wrapper signatures
+ *   (see `checkWrapperSigWellFormed` in infer.ts) guarantees that handled
+ *   effects never appear in a row var's lower bounds at subtraction time,
+ *   so ignoring the tail is correct by construction.
+ */
 export function subtractEffects(from: EffectSet, handled: Set<string>): EffectSet {
-  // PHASE_4A_REMOVE — Phase B handles RowVar tails via biunification.
-  if (from.tail.tag === 'RowVar') {
-    throw new Error('subtractEffects reached a RowVar tail — Phase 4-A invariant: RowVar must not flow through inference-time helpers until Phase B biunification lands.')
-  }
   const remaining = new Set([...from.effects].filter(e => !handled.has(e)))
   return { effects: remaining, tail: from.tail }
 }
 
 /**
  * Check if an effect set is a subset of another (fewer effects = subtype).
- * Phase A: throws on RowVar on either side.
+ * Phase B: row vars use their known bounds for a decision; when bounds are
+ * insufficient the check is side-effect-free and returns `false` conservatively.
+ * Real constraint propagation runs through `constrainEffectSet` in infer.ts.
  */
 export function isEffectSubset(sub: EffectSet, sup: EffectSet): boolean {
-  // PHASE_4A_REMOVE — Phase B constrains RowVar bounds via biunification.
-  if (sub.tail.tag === 'RowVar' || sup.tail.tag === 'RowVar') {
-    throw new Error('isEffectSubset reached a RowVar tail — Phase 4-A invariant: RowVar must not flow through inference-time helpers until Phase B biunification lands.')
-  }
-  // If sup is open, any sub is a subset (sup accepts more)
+  // Open sup accepts anything — even a RowVar or Open sub.
   if (sup.tail.tag === 'Open') return true
-  // If sub is open but sup is closed, sub might have more effects
+  // Closed/RowVar sub vs Open sup already handled above.
   if (sub.tail.tag === 'Open') return false
+
+  // With row vars on either side, `isEffectSubset` is only a structural
+  // check. Proper subtyping with bound propagation flows through
+  // `constrainEffectSet` (infer.ts). Treat RowVars here as "accepts bounded
+  // contents" — the tail must match or the sup-side tail must be permissive.
+  if (sub.tail.tag === 'RowVar' || sup.tail.tag === 'RowVar') {
+    // Concrete-side check: every effect in sub.effects must be in sup.effects
+    // (or flow into sup's row-var, which `constrainEffectSet` handles).
+    for (const e of sub.effects) {
+      if (!sup.effects.has(e)) return false
+    }
+    // If both sides have a row-var tail with the same id, they unify.
+    if (sub.tail.tag === 'RowVar' && sup.tail.tag === 'RowVar'
+        && sub.tail.id === sup.tail.id) return true
+    // Sup has a row-var tail: any extras on sub's side would have to flow
+    // into sup's row var; that's a constraint, not a pure structural check.
+    if (sup.tail.tag === 'RowVar' && sub.tail.tag === 'Closed') return true
+    // Conservative fallback.
+    return false
+  }
+
   // Both closed: every effect in sub must be in sup
   for (const e of sub.effects) {
     if (!sup.effects.has(e)) return false
