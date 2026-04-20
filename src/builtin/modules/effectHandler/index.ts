@@ -4,15 +4,14 @@ import handlerModuleSource from './effectHandler.dvala'
 
 const handlerDocs: Record<string, FunctionDocs> = {
   'retry': {
-    // Thunk declared with an open-tailed effect set so effectful thunks
-    // can be passed. Return type uses type-var A so the thunk's result
-    // type propagates to the caller — declaring Unknown would short-
-    // circuit constrain (lhs-Unknown is a no-op) and leave the call
-    // result as Never. The wrapper metadata below tells the typechecker
-    // how the caught/introduced effects recombine at the call site.
-    type: '(Number, (() -> @{dvala.error, ...} A)) -> A',
-    // retry catches @dvala.error but re-performs it on final failure, so
-    // the error effect still escapes — handled + introduced cancel out.
+    // Row-polymorphic signature: the thunk's remainder effects (ρ) flow
+    // through to the caller. retry catches @dvala.error internally but
+    // re-performs it on final failure — the concrete effect stays in both
+    // the thunk's declared effect set and the return's, so they cancel.
+    // The wrapper metadata below is kept as a fast-path for the existing
+    // HandlerWrapperInfo application-law branch at call sites; row-var
+    // propagation yields the equivalent result via biunification.
+    type: '(Number, (() -> @{dvala.error | r} A)) -> @{dvala.error | r} A',
     wrapper: { paramIndex: 1, handled: ['dvala.error'], introduced: ['dvala.error'] },
     category: 'effectHandler',
     returns: { type: 'any' },
@@ -46,7 +45,11 @@ const handlerDocs: Record<string, FunctionDocs> = {
 
 const chooseDocs: Record<string, FunctionDocs> = {
   'chooseAll': {
-    type: '((() -> @{choose, ...} A)) -> A[]',
+    // Row-polymorphic: thunk's remainder effects (ρ) flow through to the caller.
+    // The `@{| r}` return annotation is required (not omittable) — an omitted
+    // annotation parses as `PureEffects` (Closed empty), which would declare
+    // chooseAll as pure and cut off row-var propagation at the call site.
+    type: '((() -> @{choose | r} A)) -> @{| r} A[]',
     // Catches @choose and resumes per option. Introduces nothing.
     wrapper: { paramIndex: 0, handled: ['choose'], introduced: [] },
     category: 'effectHandler',
@@ -60,7 +63,8 @@ const chooseDocs: Record<string, FunctionDocs> = {
     ],
   },
   'chooseFirst': {
-    type: '((() -> @{choose, ...} A)) -> A',
+    // Row-polymorphic: thunk's remainder effects (ρ) flow through to the caller.
+    type: '((() -> @{choose | r} A)) -> @{| r} A',
     // Catches @choose and resumes with the first option. Introduces nothing.
     wrapper: { paramIndex: 0, handled: ['choose'], introduced: [] },
     category: 'effectHandler',
@@ -73,11 +77,15 @@ const chooseDocs: Record<string, FunctionDocs> = {
     ],
   },
   'chooseRandom': {
-    type: '((() -> @{choose, ...} A)) -> A',
-    // Catches @choose and resumes with a random option — selection itself
-    // performs @dvala.random.item, which the wrapper introduces into the
-    // outer effect set. Closes the Phase A audit follow-up (audit item
-    // #effecthandler-chooserandom).
+    // Row-polymorphic payoff case: thunk's remainder effects flow through ρ
+    // into the result, alongside the introduced @dvala.random.item. With
+    // biunification, the result type is exactly `@{dvala.random.item | ρ} A`
+    // where ρ expands to whatever extras the thunk performed — no more
+    // HandlerWrapperInfo escape hatch required to produce this.
+    type: '((() -> @{choose | r} A)) -> @{dvala.random.item | r} A',
+    // Kept as a fast-path: at call sites, the HandlerWrapperInfo branch
+    // applies the same application law directly. Row-var biunification
+    // yields the equivalent result via `constrain`.
     wrapper: { paramIndex: 0, handled: ['choose'], introduced: ['dvala.random.item'] },
     category: 'effectHandler',
     returns: { type: 'any' },
@@ -89,7 +97,8 @@ const chooseDocs: Record<string, FunctionDocs> = {
     ],
   },
   'chooseTake': {
-    type: '(Number, (() -> @{choose, ...} A)) -> A[]',
+    // Row-polymorphic: thunk's remainder effects (ρ) flow through to the caller.
+    type: '(Number, (() -> @{choose | r} A)) -> @{| r} A[]',
     // Like chooseAll but capped at n results. Still catches @choose with
     // nothing introduced.
     wrapper: { paramIndex: 1, handled: ['choose'], introduced: [] },

@@ -1175,7 +1175,15 @@ export function inferExpr(
         // Constrain: callee <: (argTypes...) -> retVar
         // If the callee is a record and arg is a string, constrain() handles
         // this as property access (see Record <: Function case in constrain).
-        constrain(ctx, calleeType, fn(argTypes, retVar))
+        //
+        // Effects: the expected type uses an Open tail so the call-site
+        // constraint is permissive about the callee's effects. The callee's
+        // actual effects are propagated separately via `ctx.addEffects`
+        // below. Using `PureEffects` (Closed empty) here would over-constrain
+        // row-polymorphic callees — `constrainEffectSet(calleeEffects, {})`
+        // would pin any RowVar sub tail to an upper bound of @{}, rejecting
+        // any thunk extras.
+        constrain(ctx, calleeType, fn(argTypes, retVar, { effects: new Set(), tail: OpenTail }))
         recordSpecializedCalleeType(calleeNode, selectedAlternative, typeMap)
 
         // Function-call effect propagation: a callee that declares effects
@@ -1780,6 +1788,13 @@ function freshenAllVars(
         t.params.map(p => freshenAllVars(ctx, p, mapping, rowMapping)),
         freshenAllVars(ctx, t.ret, mapping, rowMapping),
         freshenEffectSet(ctx, t.effects, rowMapping),
+        // handlerWrapper is passed through unchanged — its HandlerEffectSignature
+        // argType/retType fields use the effect registry's types which are
+        // globally shared (not per-instance). If a future wrapper declares
+        // generic types inside its handled clauses, freshening those fields
+        // would need to thread `mapping`/`rowMapping` through the map.
+        // All current `effectHandler/` wrappers use concrete arg/ret types
+        // (Unknown or specific primitives), so this is latent — not broken.
         t.handlerWrapper,
         t.restParam !== undefined ? freshenAllVars(ctx, t.restParam, mapping, rowMapping) : undefined,
       )

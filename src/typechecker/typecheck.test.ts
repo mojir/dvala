@@ -1713,7 +1713,9 @@ describe('typecheck — effectHandler signatures propagate wrapper effects', () 
 
   function outerEffects(source: string) {
     const result = dvala.typecheck(source)
-    expect(result.diagnostics).toHaveLength(0)
+    if (result.diagnostics.length > 0) {
+      throw new Error(`unexpected diagnostics: ${JSON.stringify(result.diagnostics, null, 2)}`)
+    }
     const lastIndex = Math.max(...result.typeMap.keys())
     const t = expandType(result.typeMap.get(lastIndex)!)
     if (t.tag !== 'Function') throw new Error(`expected Function, got ${t.tag}`)
@@ -1728,6 +1730,93 @@ describe('typecheck — effectHandler signatures propagate wrapper effects', () 
     `)
     expect(effects.effects.has('dvala.random.item')).toBe(true)
     expect(effects.effects.has('choose')).toBe(false)
+  })
+
+  // Phase 4-A Phase C: row-var propagation. The thunk performs an extra
+  // effect beyond @choose — that extra effect must surface in the outer
+  // caller's effect set through ρ. Pre-row-var, this worked via the
+  // HandlerWrapperInfo fast-path (subtraction of handled from thunk effects
+  // leaves the extras); row-var sigs now produce the equivalent result via
+  // biunification. Both paths run at the call site; either alone suffices.
+  it('chooseRandom: thunk extras flow through ρ to the caller', () => {
+    const effects = outerEffects(`
+      effect @my.ext(Null) -> Null;
+      let { chooseRandom } = import("effectHandler");
+      let outer = () -> chooseRandom(-> do
+        perform(@my.ext, null);
+        perform(@choose, [1, 2, 3])
+      end);
+      outer
+    `)
+    expect(effects.effects.has('dvala.random.item')).toBe(true)
+    expect(effects.effects.has('my.ext')).toBe(true)
+    // @choose was caught — should not surface.
+    expect(effects.effects.has('choose')).toBe(false)
+  })
+
+  it('chooseAll: thunk extras flow through ρ (no introduced effect of its own)', () => {
+    const effects = outerEffects(`
+      effect @my.logx(Null) -> Null;
+      let { chooseAll } = import("effectHandler");
+      let outer = () -> chooseAll(-> do
+        perform(@my.logx, null);
+        perform(@choose, [1, 2])
+      end);
+      outer
+    `)
+    expect(effects.effects.has('my.logx')).toBe(true)
+    expect(effects.effects.has('choose')).toBe(false)
+    // chooseAll introduces nothing.
+    expect(effects.effects.has('dvala.random.item')).toBe(false)
+  })
+
+  // Phase 4-A Phase C blocker probe: two calls to the same row-polymorphic
+  // wrapper must NOT share the same freshened row var. If freshening isn't
+  // applied per-use, the FIRST call's row var would accumulate lower bounds
+  // from both calls' thunks, and isolated sub-expressions (like just one
+  // wrapper-call in a let binding) would reflect effects from the OTHER
+  // call. The probe: two independent let-bound wrapper calls, assert each
+  // has its own ρ's effects — no cross-contamination.
+  it('two chooseRandom calls get independent row vars (no cross-contamination)', () => {
+    const result = dvala.typecheck(`
+      effect @my.a(Null) -> Null;
+      effect @my.b(Null) -> Null;
+      let { chooseRandom } = import("effectHandler");
+      let f = () -> chooseRandom(-> do perform(@my.a, null); perform(@choose, [1]) end);
+      let g = () -> chooseRandom(-> do perform(@my.b, null); perform(@choose, [2]) end);
+      [f, g]
+    `)
+    if (result.diagnostics.length > 0) {
+      throw new Error(`unexpected diagnostics: ${JSON.stringify(result.diagnostics, null, 2)}`)
+    }
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const tuple = expandType(result.typeMap.get(lastIndex)!)
+    if (tuple.tag !== 'Tuple') throw new Error(`expected Tuple, got ${tuple.tag}`)
+    const [f, g] = tuple.elements
+    if (f?.tag !== 'Function' || g?.tag !== 'Function') throw new Error('expected Function elements')
+    // f's effects: @{dvala.random.item, my.a} ONLY. If ρ leaked, @my.b
+    // would also appear here.
+    expect(f.effects.effects.has('dvala.random.item')).toBe(true)
+    expect(f.effects.effects.has('my.a')).toBe(true)
+    expect(f.effects.effects.has('my.b')).toBe(false)
+    // g's effects: @{dvala.random.item, my.b} ONLY.
+    expect(g.effects.effects.has('dvala.random.item')).toBe(true)
+    expect(g.effects.effects.has('my.b')).toBe(true)
+    expect(g.effects.effects.has('my.a')).toBe(false)
+  })
+
+  it('retry: thunk extras flow through ρ (and @dvala.error persists)', () => {
+    const effects = outerEffects(`
+      effect @my.telemetry(Null) -> Null;
+      let { retry } = import("effectHandler");
+      let outer = () -> retry(3, -> do
+        perform(@my.telemetry, null);
+        perform(@dvala.error, "boom")
+      end);
+      outer
+    `)
+    expect(effects.effects.has('dvala.error')).toBe(true)
+    expect(effects.effects.has('my.telemetry')).toBe(true)
   })
 
   it('chooseFirst does not introduce any new effect (just catches @choose)', () => {
