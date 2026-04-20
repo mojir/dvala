@@ -702,6 +702,8 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
           // In inference, this means we can't constrain further.
           continue
         }
+        // Optional field on the RHS may be absent in LHS — that's fine.
+        if (rhs.optionalFields?.has(name)) continue
         throw new TypeInferenceError(`Missing field '${name}' in ${typeToString(lhs)}`)
       }
       constrain(ctx, lhsType, rhsType)
@@ -771,6 +773,14 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
       const fieldName = paramType.value
       const fieldType = lhs.fields.get(fieldName)
       if (fieldType) {
+        // Strict `.` access rejects optional fields — the field may be
+        // absent at runtime, which `.` treats as KeyError. Callers must
+        // use `?.` (safe access, returns `T | Null`) for optional fields.
+        if (lhs.optionalFields?.has(fieldName)) {
+          throw new TypeInferenceError(
+            `Field '${fieldName}' is optional in ${typeToString(lhs)} and may be absent; use '?.${fieldName}' for safe access`,
+          )
+        }
         constrain(ctx, fieldType, rhs.ret)
         return
       }

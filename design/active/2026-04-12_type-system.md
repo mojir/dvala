@@ -976,6 +976,8 @@ Collection functions like `filter`, `map`, `reduce` work on objects too: `filter
 
 ### Match pattern destructuring bindings
 
+**Status (2026-04-20):** Shipped. `case [x, y]` binds by position from a tuple scrutinee; `case {name, age}` binds by key from a record scrutinee. Nested destructure, default values (`{age = 0}`), and guard-based narrowing on the destructured names all work. Rename syntax (`{name: n}`) is a non-feature in Dvala — only shorthand destructure is supported. See `describe('typecheck — match pattern destructuring binds typed variables')` in `src/typechecker/typecheck.test.ts` for the lock-in tests.
+
 `case [x, y]` and `case {name, age}` in match expressions should bind `x`, `y`, `name`, `age` as typed variables in the body. Currently only `case n when isNumber(n)` (guard-based) narrowing works.
 
 ### Flow-sensitive narrowing in `if`/`else`
@@ -999,6 +1001,16 @@ Design sketch:
 No change to the core algebra — purely an inference-time refinement, reusing the existing guard machinery. Biggest day-to-day win for users coming from TS; second only to match in practical importance.
 
 ### Optional record fields in type syntax
+
+**Status (2026-04-20):** Shipped with Option 1 semantics (presence bit, not sugar over nullable).
+
+- `{a: A, b?: B}` — field `b` may be absent from actual values; when present, is `B`. Distinct from `{a: A, b: B | Null}` (key present, value may be null).
+- Record type stores a sidecar `optionalFields?: Set<string>` — existing code paths that read `fields` continue to work; optional-aware paths check the set.
+- Subtyping: `{a: "x"} <: {a: String, b?: Number}` holds (optional field absent in S is OK). Closed records reject unknown fields as before.
+- Strict access (`obj.b`) on an optional field is a type error; the message suggests `?.b` for safe access. Safe access (`obj?.b`) desugars to `get(obj, "b")` which returns `Unknown` today — tightening to `T | Null` requires `T[K]` (indexed-access types, still pending).
+- Function-param `name?: T` keeps its existing Option-2 sugar (`T | Null`) — function params have runtime auto-fill so the sugar works there.
+
+See `describe('typecheck — optional record fields')` in `src/typechecker/typecheck.test.ts` for the test suite.
 
 Grammar only permits `?` on function params (`identifier ["?"] ":" Type`). Records have no surface syntax for optionality:
 

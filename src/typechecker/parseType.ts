@@ -365,6 +365,7 @@ class TypeParser {
     this.consume('{')
     this.skipWhitespace()
     const fields = new Map<string, Type>()
+    const optionalFields = new Set<string>()
     let open = false
 
     if (this.peek() !== '}') {
@@ -373,9 +374,10 @@ class TypeParser {
         open = true
         this.skipWhitespace()
       } else {
-        // Parse fields: name: Type
-        const { name, type: fieldType } = this.parseRecordField()
-        fields.set(name, fieldType)
+        // Parse fields: name: Type or name?: Type
+        const field = this.parseRecordField()
+        fields.set(field.name, field.type)
+        if (field.optional) optionalFields.add(field.name)
         this.skipWhitespace()
 
         while (this.tryConsume(',')) {
@@ -385,24 +387,33 @@ class TypeParser {
             this.skipWhitespace()
             break
           }
-          const field = this.parseRecordField()
-          fields.set(field.name, field.type)
+          const next = this.parseRecordField()
+          fields.set(next.name, next.type)
+          if (next.optional) optionalFields.add(next.name)
           this.skipWhitespace()
         }
       }
     }
     this.consume('}')
-    return { tag: 'Record', fields, open }
+    // Keep optionalFields sidecar undefined when empty so typeEquals and
+    // display paths that didn't opt in still see the original shape.
+    const record: Type = { tag: 'Record', fields, open }
+    if (optionalFields.size > 0) {
+      (record).optionalFields = optionalFields
+    }
+    return record
   }
 
-  private parseRecordField(): { name: string; type: Type } {
+  private parseRecordField(): { name: string; type: Type; optional: boolean } {
     const name = this.readIdentifier()
     if (!name) throw this.error('Expected field name')
+    this.skipWhitespace()
+    const optional = this.tryConsume('?')
     this.skipWhitespace()
     this.consume(':')
     this.skipWhitespace()
     const type = this.parseType()
-    return { name, type }
+    return { name, type, optional }
   }
 
   private parseStringLiteral(): Type {

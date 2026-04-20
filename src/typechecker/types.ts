@@ -136,7 +136,7 @@ export type Type =
   | { tag: 'Handler'; body: Type; output: Type; handled: Map<string, HandlerEffectSignature>; introduced: EffectSet }
   | { tag: 'AnyFunction' } // Supertype of all function types (any arity)
   | { tag: 'Tuple'; elements: Type[] }
-  | { tag: 'Record'; fields: Map<string, Type>; open: boolean }
+  | { tag: 'Record'; fields: Map<string, Type>; open: boolean; optionalFields?: Set<string> }
   | { tag: 'Array'; element: Type }
   | SequenceType
   | { tag: 'Regex' }
@@ -383,7 +383,10 @@ export function typeToString(t: Type): string {
     }
     case 'Tuple': return `[${t.elements.map(typeToString).join(', ')}]`
     case 'Record': {
-      const entries = [...t.fields.entries()].map(([k, v]) => `${k}: ${typeToString(v)}`)
+      const entries = [...t.fields.entries()].map(([k, v]) => {
+        const optional = t.optionalFields?.has(k) ? '?' : ''
+        return `${k}${optional}: ${typeToString(v)}`
+      })
       return t.open
         ? `{${entries.join(', ')}, ...}`
         : `{${entries.join(', ')}}`
@@ -488,6 +491,12 @@ export function typeEquals(a: Type, b: Type): boolean {
         const bv = br.fields.get(k)
         if (!bv || !typeEquals(v, bv)) return false
       }
+      // Optional-field sets must match — `{a: Number}` and `{a?: Number}`
+      // are distinct types.
+      const aOpt = a.optionalFields ?? new Set<string>()
+      const bOpt = br.optionalFields ?? new Set<string>()
+      if (aOpt.size !== bOpt.size) return false
+      for (const k of aOpt) if (!bOpt.has(k)) return false
       return true
     }
     case 'Array': return typeEquals(a.element, (b as typeof a).element)

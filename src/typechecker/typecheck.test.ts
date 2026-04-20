@@ -432,6 +432,168 @@ describe('typecheck — filter/map/reduce on records', () => {
   })
 })
 
+// Optional record fields: `{a: A, b?: B}` — field `b` may be absent from
+// actual record values. Distinct from `b: B | Null` (key present, value
+// may be null). Only Option 1 (presence bit) works for records, because
+// Dvala has no runtime auto-fill for missing object keys.
+describe('typecheck — optional record fields', () => {
+  const dvala = createDvala()
+
+  it('record literal without optional field is a subtype of the typed annotation', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {name: "Alice"}; u')
+    if (result.diagnostics.length > 0) {
+      throw new Error(`diagnostics: ${JSON.stringify(result.diagnostics)}`)
+    }
+  })
+
+  it('record literal with optional field present is also a subtype', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {name: "Alice", age: 30}; u')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('record literal with optional field present but wrong type fails', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {name: "Alice", age: "thirty"}; u')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('record literal missing a required field fails', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {age: 30}; u')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('record literal with extra field fails (closed record)', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {name: "Alice", age: 30, extra: "bad"}; u')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('strict `.` access on an optional field is rejected', () => {
+    // Use an opaque source (effect return) — otherwise `u` would be
+    // inferred as the tight literal type which doesn't have the optional
+    // field at all. The annotation is a constraint, not a widening.
+    const result = dvala.typecheck(`
+      effect @getUser(Null) -> {name: String, age?: Number};
+      let f = () -> do
+        let u = perform(@getUser, null);
+        u.age
+      end;
+      f
+    `)
+    expect(result.diagnostics.some(d => /optional/i.test(d.message) || /\?\./i.test(d.message))).toBe(true)
+  })
+
+  it('strict `.` access on a required field of an optional-field record works', () => {
+    const result = dvala.typecheck(`
+      effect @getUser(Null) -> {name: String, age?: Number};
+      let f = () -> do
+        let u = perform(@getUser, null);
+        u.name
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('safe `?.` access on an optional field is accepted', () => {
+    // `?.` desugars to `get(...)`; current `get` sig returns Unknown,
+    // which is widely compatible. Tightening to `T | Null` requires `T[K]`
+    // (#8) — future work.
+    const result = dvala.typecheck(`
+      effect @getUser(Null) -> {name: String, age?: Number};
+      let f = () -> do
+        let u = perform(@getUser, null);
+        u?.age
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('typeToString displays the `?` marker for optional fields', async () => {
+    // Exercise the display path through a parse-roundtrip check.
+    const { parseTypeAnnotation } = await import('./parseType')
+    const t = parseTypeAnnotation('{name: String, age?: Number}')
+    expect(typeToString(t)).toBe('{name: String, age?: Number}')
+  })
+})
+
+// Match-pattern destructure bindings. `case [x, y]` and `case {name, age}`
+// bind the inner names as typed vars inferred from the scrutinee's type.
+// The design-doc entry for this feature was out of date; these lock in
+// the shipped behaviour.
+describe('typecheck — match pattern destructuring binds typed variables', () => {
+  const dvala = createDvala()
+
+  it('array pattern binds by position from a tuple scrutinee', () => {
+    const result = dvala.typecheck(`
+      effect @tpl(Null) -> [String, Number];
+      let f = () -> match perform(@tpl, null)
+        case [s, n] then s ++ str(n)
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('object pattern binds by key from a record scrutinee', () => {
+    const result = dvala.typecheck(`
+      effect @rec(Null) -> {name: String, age: Number};
+      let f = () -> match perform(@rec, null)
+        case {name, age} then age + 1
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('object pattern with default value — `{age = 0}`', () => {
+    const result = dvala.typecheck(`
+      effect @rec(Null) -> {name: String, age: Number};
+      let f = () -> match perform(@rec, null)
+        case {name, age = 0} then name ++ str(age)
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('destructure bindings interact with guard narrowing', () => {
+    const result = dvala.typecheck(`
+      effect @rec(Null) -> {a: Number, b: Number};
+      let f = () -> match perform(@rec, null)
+        case {a, b} when a > b then a
+        case {a, b} then b
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('nested destructure — record inside record', () => {
+    const result = dvala.typecheck(`
+      effect @nested(Null) -> {outer: {inner: Number}};
+      let f = () -> match perform(@nested, null)
+        case {outer: {inner}} then inner + 1
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('destructure bindings are TYPED — wrong use fails typecheck', () => {
+    // If destructure bindings were untyped (Unknown), adding a Number to a
+    // String-bound var would not error. Test confirms the field types flow.
+    const result = dvala.typecheck(`
+      effect @rec(Null) -> {name: String, age: Number};
+      let f = () -> match perform(@rec, null)
+        case {name, age} then name + age
+      end;
+      f
+    `)
+    // name is String, age is Number — `name + age` (string + number) fails.
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+})
+
 // Typed matrices via tuple-alias form. The design doc's "typed matrices"
 // future extension is already fully expressible today — tuple types plus
 // type aliases give fixed-size vectors and matrices with full element typing.
