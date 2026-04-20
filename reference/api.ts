@@ -1092,6 +1092,13 @@ export const api = {
     'ast.payload',
     'ast.prettyPrint',
   ] as const,
+  macros: [
+    'macros.trace',
+    'macros.unless',
+    'macros.tap',
+    'macros.dbg',
+    'macros.cond',
+  ] as const,
   shorthand: [
     '-short-regexp',
     '-short-fn',
@@ -1150,6 +1157,7 @@ export type JsonApiName = typeof api.json[number]
 export type TimeApiName = typeof api.time[number]
 export type HandlerApiName = typeof api.handler[number]
 export type AstApiName = typeof api.ast[number]
+export type MacrosApiName = typeof api.macros[number]
 
 // Core functions - always available without import
 export type CoreNormalExpressionName
@@ -1186,6 +1194,7 @@ export type ModuleExpressionName
     | TimeApiName
     | HandlerApiName
     | AstApiName
+    | MacrosApiName
 export type NormalExpressionName
   = | CoreNormalExpressionName
     | ModuleExpressionName

@@ -66,6 +66,7 @@ export const categoryRecord = {
   'json': true,
   'time': true,
   'effectHandler': true,
+  'macros': true,
   'shorthand': true,
   'datatype': true,
   'effect': true,
@@ -79,7 +80,7 @@ export type Category = keyof typeof categoryRecord
 export const categories = Object.keys(categoryRecord) as Category[]
 
 // Categories that are modules (require import)
-export const moduleCategories: Category[] = ['assertion', 'ast', 'bitwise', 'collection', 'convert', 'functional', 'grid', 'effectHandler', 'json', 'linearAlgebra', 'math', 'matrix', 'numberTheory', 'sequence', 'string', 'test', 'time', 'vector']
+export const moduleCategories: Category[] = ['assertion', 'ast', 'bitwise', 'collection', 'convert', 'functional', 'grid', 'effectHandler', 'json', 'linearAlgebra', 'macros', 'math', 'matrix', 'numberTheory', 'sequence', 'string', 'test', 'time', 'vector']
 
 // Core categories (always available) — special-expression first, rest alphabetical
 export const coreCategories: Category[] = ['special-expression', 'array', 'assertion', 'bitwise', 'collection', 'datatype', 'functional', 'math', 'meta', 'misc', 'object', 'predicate', 'regular-expression', 'sequence', 'shorthand', 'string']

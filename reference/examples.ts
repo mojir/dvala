@@ -746,6 +746,62 @@ let negate = macro (ast) -> quote 0 - $^{ast} end;
 perform(@dvala.io.print, 21 |> double |> negate);   // -42`,
   },
   {
+    id: 'macros-module',
+    name: 'Macros — Standard Library',
+    description: 'The macros module ships ready-to-use macros: trace, unless, tap, dbg, and cond. All implemented in pure Dvala.',
+    category: 'Macros',
+    code: dvala`
+// Dvala's macros module provides a small set of practical macros —
+// no need to reinvent them in every project.
+
+let { trace, unless, tap, dbg, cond } = import("macros");
+
+
+// --- trace — log entry args and exit value of a function ---
+let add = trace((a, b) -> a + b);
+perform(@dvala.io.print, "-- trace --");
+perform(@dvala.io.print, "result: " ++ str(add(3, 4)));
+
+
+// --- unless — evaluate body only when condition is falsy ---
+perform(@dvala.io.print, "-- unless --");
+perform(@dvala.io.print, unless(false, "condition was false → ran"));
+perform(@dvala.io.print, str(unless(true, "condition was true → skipped")));
+
+
+// --- tap — peek at a value mid-pipeline, then let it through ---
+// tap(value, sideEffect) runs the side effect and returns value unchanged.
+// Wrap in a lambda when slotting into a |> chain — \`_\` placeholders
+// rewrite for functions, but macros receive raw AST.
+perform(@dvala.io.print, "-- tap --");
+let oddSquareSum = range(5)
+  |> map(_, -> $ * $)
+  |> (-> tap($, perform(@dvala.io.print, "squares mid-pipeline: " ++ str($))))
+  |> filter(_, isOdd)
+  |> reduce(_, +, 0);
+perform(@dvala.io.print, "odd-square sum: " ++ str(oddSquareSum));
+
+
+// --- dbg — print "<source> => <value>" and return the value ---
+// The source text is captured at macro-expansion time.
+perform(@dvala.io.print, "-- dbg --");
+let x = dbg(1 + 2 * 3);
+perform(@dvala.io.print, "x (unchanged): " ++ str(x));
+
+
+// --- cond — Scheme/Clojure-style multi-branch conditional ---
+// Odd number of args: the last one is the default (else) branch.
+// Non-matching branches are NOT evaluated.
+let describe = (n) -> cond(
+  n < 0, "negative",
+  n == 0, "zero",
+  "positive"
+);
+perform(@dvala.io.print, "-- cond --");
+for (n in [-5, 0, 7]) ->
+  perform(@dvala.io.print, str(n) ++ " → " ++ describe(n))`,
+  },
+  {
     id: 'macros-advanced',
     name: 'Macros — Advanced',
     description: 'macroexpand for debugging, hygiene (auto-gensym), and the ast module for programmatic inspection.',

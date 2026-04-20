@@ -24,6 +24,7 @@ export { mathUtilsModule } from './builtin/modules/math'
 export { functionalUtilsModule } from './builtin/modules/functional'
 export { bitwiseUtilsModule } from './builtin/modules/bitwise'
 export { jsonModule } from './builtin/modules/json'
+export { macrosModule } from './builtin/modules/macros'
 export { timeModule } from './builtin/modules/time'
 
 // Reference data and types
