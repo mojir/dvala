@@ -103,10 +103,11 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
     expect(t).toBe('[3, 2, 1]')
   })
 
-  it('widens composite-producing builtins to Number when fold is off', async () => {
+  it('widens composite-producing builtins to Integer when fold is off', async () => {
+    // `count` always returns an integer count — safe to declare as Integer.
     stubFoldOff()
     const t = await inferLastTypeString('count([1, 2, 3])')
-    expect(t).toBe('Number')
+    expect(t).toBe('Integer')
   })
 
   // --- C8: if-literal narrowing ---

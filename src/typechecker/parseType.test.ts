@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { parseTypeAnnotation, parseFunctionTypeAnnotation, registerTypeAlias, resetTypeAliases, TypeParseError } from './parseType'
 import {
-  NumberType, StringType, BooleanType, NullType,
+  NumberType, IntegerType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType,
   atom, literal, fn, array, tuple, neg, union, effectSet, effectSetToString, handlerType, typeToString,
   typeEquals,
@@ -21,6 +21,10 @@ afterEach(() => {
 describe('parseType — primitives', () => {
   it('Number', () => {
     expect(parseTypeAnnotation('Number')).toBe(NumberType)
+  })
+
+  it('Integer', () => {
+    expect(parseTypeAnnotation('Integer')).toBe(IntegerType)
   })
 
   it('String', () => {

@@ -97,7 +97,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first]): boolean => typeof first === 'number' && isNumber(first, { integer: true }),
     arity: toFixedArity(1),
     docs: {
-      type: '(x: Unknown) -> x is Number',
+      type: '(x: Unknown) -> x is Integer',
       category: 'predicate',
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },

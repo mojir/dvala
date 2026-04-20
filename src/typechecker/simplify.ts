@@ -139,15 +139,26 @@ function simplifyIntersection(members: Type[]): Type {
   return { tag: 'Inter', members: narrowed }
 }
 
-/** Check if the intersection contains disjoint primitive types. */
+/** Check if the intersection contains disjoint primitive types.
+ * Integer and Number are NOT disjoint (Integer ⊂ Number) — the pair-wise
+ * check below exempts them; `narrowSupertypes` then collapses the pair
+ * to Integer. */
 function hasDisjointPrimitives(members: Type[]): boolean {
-  const primitiveNames = new Set<PrimitiveName>()
+  const names: PrimitiveName[] = []
   for (const m of members) {
-    if (m.tag === 'Primitive') {
-      primitiveNames.add(m.name)
+    if (m.tag === 'Primitive') names.push(m.name)
+  }
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      const a = names[i]!
+      const b = names[j]!
+      if (a === b) continue
+      // Integer ⊂ Number — their intersection is Integer, not empty.
+      if ((a === 'Integer' && b === 'Number') || (a === 'Number' && b === 'Integer')) continue
+      return true
     }
   }
-  return primitiveNames.size > 1
+  return false
 }
 
 /**

@@ -132,7 +132,11 @@ function check(s: Type, t: Type, visited: Set<string>): boolean {
 function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
   // Primitive <: Primitive
   if (s.tag === 'Primitive' && t.tag === 'Primitive') {
-    return s.name === t.name
+    if (s.name === t.name) return true
+    // Integer <: Number (shared float64 representation; Integer is the
+    // subset where Number.isInteger holds).
+    if (s.name === 'Integer' && t.name === 'Number') return true
+    return false
   }
 
   // Atom <: Atom (singletons — only equal atoms are subtypes)
@@ -198,18 +202,27 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
   // Record: width + depth subtyping
   // {name: String, age: Number} <: {name: String} (more fields is subtype)
   if (s.tag === 'Record' && t.tag === 'Record') {
-    // Every field in T must exist in S with a subtype value
+    // Every required field in T must exist in S with a subtype value.
+    // Optional fields in T are allowed to be absent in S, or present with a subtype.
     for (const [key, tType] of t.fields) {
       const sType = s.fields.get(key)
+      const tIsOptional = t.optionalFields?.has(key) ?? false
       if (!sType) {
-        // Missing field in S. If S is open, the field might exist → not provably subtype.
-        // If S is closed, the field definitely doesn't exist → not a subtype.
+        if (tIsOptional) continue // optional field absent in S — OK
+        // Required field missing in S:
+        // - If S is open, the field MIGHT exist → not provably a subtype.
+        // - If S is closed, the field definitely doesn't exist → not a subtype.
         return false
       }
       if (!check(sType, tType, visited)) return false
     }
-    // If T is closed, S must not have extra fields (unless S is also closed with same fields)
-    if (!t.open && s.fields.size > t.fields.size) return false
+    // If T is closed, S must not have fields that aren't declared in T.
+    // Optional fields in T DO count as declared (they just may be absent).
+    if (!t.open) {
+      for (const key of s.fields.keys()) {
+        if (!t.fields.has(key)) return false
+      }
+    }
     return true
   }
 
@@ -249,9 +262,14 @@ function areDisjoint(s: Type, t: Type, visited: Set<string>): boolean {
   // Unknown is never disjoint with a non-Never type
   if (s.tag === 'Unknown' || t.tag === 'Unknown') return false
 
-  // Different primitive types are disjoint
+  // Different primitive types are disjoint, with one exception:
+  // Integer ⊂ Number, so they share all integer-valued numbers.
   if (s.tag === 'Primitive' && t.tag === 'Primitive') {
-    return s.name !== t.name
+    if (s.name === t.name) return false
+    if ((s.name === 'Integer' && t.name === 'Number') || (s.name === 'Number' && t.name === 'Integer')) {
+      return false
+    }
+    return true
   }
 
   // Primitive and Atom are disjoint (atoms are not primitives)
@@ -321,6 +339,9 @@ function isLengthIntervalContained(source: SequenceType, target: SequenceType): 
 function literalMatchesPrimitive(value: string | number | boolean, name: PrimitiveName): boolean {
   switch (name) {
     case 'Number': return typeof value === 'number'
+    // Integer refines Number to integer-valued literals only.
+    // Literal(42) <: Integer holds; Literal(3.14) <: Integer does not.
+    case 'Integer': return typeof value === 'number' && Number.isInteger(value)
     case 'String': return typeof value === 'string'
     case 'Boolean': return typeof value === 'boolean'
     case 'Null': return false // null is not a literal

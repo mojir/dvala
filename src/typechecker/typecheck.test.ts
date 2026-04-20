@@ -360,6 +360,467 @@ describe('typecheck — effect annotation on function types', () => {
 // typecheck — template strings, and/or, nullish coalescing
 // ---------------------------------------------------------------------------
 
+// Exercises Integer-typed builtin params end-to-end. `nth`'s index is the
+// proof migration; `count` returns Integer and round-trips through it.
+describe('typecheck — Integer primitive in builtin signatures', () => {
+  const dvala = createDvala()
+
+  it('accepts integer literal as nth index', () => {
+    const result = dvala.typecheck('nth([10, 20, 30], 1)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects fractional literal as nth index', () => {
+    // The intersection overload resolution throws the LAST overload's error,
+    // which ends up being a cross-overload arity mismatch rather than a
+    // direct "Integer expected" message — a known limitation of the
+    // first-success-wins resolver. What matters: typecheck fails.
+    const result = dvala.typecheck('nth([10, 20, 30], 1.5)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('accepts Integer-annotated variable as nth index', () => {
+    const result = dvala.typecheck('let i: Integer = 2; nth([10, 20, 30], i)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects a non-literal Number value as nth index (Number is not a subtype of Integer)', () => {
+    // A Number might be fractional at runtime, so passing it where Integer is
+    // required must fail. Use an effect result to get an opaque Number — a
+    // literal would fold to Literal(N), which IS Integer-compatible if N is
+    // integer-valued, masking the soundness case.
+    const result = dvala.typecheck(`
+      effect @rand(Null) -> Number;
+      let f = () -> nth([10, 20, 30], perform(@rand, null));
+      f
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('count returns Integer, flows into Integer-typed position', () => {
+    // count → Integer; nth index accepts Integer. This round-trips cleanly.
+    const result = dvala.typecheck('let arr = [10, 20, 30]; nth(arr, count(arr))')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
+// Object-type variants for filter/map/reduce. These lock in that the
+// record-shaped overloads in collection.ts accept object inputs and
+// preserve the open-record return shape.
+describe('typecheck — filter/map/reduce on records', () => {
+  const dvala = createDvala()
+
+  it('filter accepts a record with a value-typed predicate', () => {
+    const result = dvala.typecheck('filter({a: 1, b: 2, c: 3}, (v) -> v > 1)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('map accepts a record and a value transformer', () => {
+    const result = dvala.typecheck('map({a: 1, b: 2}, (v) -> str(v))')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('reduce accepts a record', () => {
+    const result = dvala.typecheck('reduce({a: 1, b: 2}, (acc, v) -> acc + v, 0)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('filter result on a record is usable as a record', () => {
+    // Open-record output — subsequent record operations still typecheck.
+    const result = dvala.typecheck('let r = filter({a: 1, b: 2}, (v) -> v > 0); r.a')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
+// Flow-sensitive narrowing in `if`/`else`. When the condition is a type-guard
+// call (`isX(sym)`) or an equality test (`sym == literal/atom`), the then and
+// else branches see `sym` narrowed to the appropriate type.
+//
+// This is the doc's "biggest day-to-day win" item — previously only `match`
+// guards narrowed. Without it, `if isString(x) then count(x) else x + 1 end`
+// on `x: String | Number` would fail because the else branch constrains x
+// to Number but the outer type keeps String | Number, breaking the call site.
+describe('typecheck — flow-sensitive narrowing in if/else', () => {
+  const dvala = createDvala()
+
+  it('isString guard narrows a union-typed parameter in if/else', () => {
+    const result = dvala.typecheck(`
+      let describe = (x: String | Number) -> if isString(x) then count(x) else x + 1 end;
+      describe("hi")
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('isNumber guard — else branch is String', () => {
+    const result = dvala.typecheck(`
+      let describe = (x: String | Number) -> if isNumber(x) then x + 1 else count(x) end;
+      describe("hi")
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('narrowing lets the else branch use string-only operations', () => {
+    // Without narrowing, `x ++ "!"` in the else branch would fail because
+    // `x` would still be typed as `String | Number`.
+    const result = dvala.typecheck(`
+      let f = (x: String | Number) -> if isNumber(x) then x + 1 else x ++ "!" end;
+      f(42)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('atom-equality narrowing in if/else', () => {
+    const result = dvala.typecheck(`
+      let f = (x: :ok | :err) -> if x == :ok then "success" else "failure" end;
+      f(:ok)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('atom-equality narrowing — else branch drops the matched atom', () => {
+    // In the else branch, `x` is `:ok | :err` minus `:ok` = `:err`.
+    // Then branch would incorrectly typecheck if narrowing didn't drop `:ok`.
+    const result = dvala.typecheck(`
+      effect @raise(Null) -> Null;
+      let f = (x: :ok | :err) -> if x == :ok then null else perform(@raise, null) end;
+      f(:ok)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('literal-equality narrowing (single level)', () => {
+    const result = dvala.typecheck(`
+      let f = (x: 1 | 2) -> if x == 1 then "one" else "two" end;
+      f(1)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('non-narrowing condition leaves the branches typed normally', () => {
+    // A condition that isn't a recognised narrowing shape (here: a
+    // Boolean-typed variable) doesn't narrow anything; the branches see
+    // the outer env unchanged.
+    const result = dvala.typecheck(`
+      let f = (flag: Boolean, x: Number) -> if flag then x + 1 else x - 1 end;
+      f(true, 42)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('isInteger guard narrows to Integer (not Number) — passes to nth index', () => {
+    // Regression: before, `isInteger`'s declared guard was `x is Number`,
+    // which meant narrowing left `x` as a Number and `nth(arr, x)` would
+    // still fail (nth wants Integer). Fixed — the guard now declares
+    // `x is Integer`.
+    const result = dvala.typecheck(`
+      let f = (x: String | Number) -> if isInteger(x) then nth([10, 20], x) else 0 end;
+      f(1)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('flow narrowing does NOT propagate to optional-field access (documented limitation)', () => {
+    // A natural extension would be: if a record has a status-like field
+    // that, when narrowed, implies another optional field is present,
+    // then strict `.` access to that other field should succeed in the
+    // narrowed branch. Current narrowing only tracks Sym-typed bindings,
+    // not field-access shapes, so this doesn't work — the optional
+    // field-access error fires in both branches. This test pins that
+    // limitation; if future work extends narrowing to field-access
+    // shapes, update or remove it.
+    const result = dvala.typecheck(`
+      effect @get(Null) -> {status: :ok | :err, value?: Number};
+      let f = () -> do
+        let r = perform(@get, null);
+        if r.status == :ok then r.value else 0 end
+      end;
+      f
+    `)
+    // r.value fires the strict-access error regardless of the narrowing.
+    expect(result.diagnostics.some(d => /optional/i.test(d.message) || /\?\./i.test(d.message))).toBe(true)
+  })
+
+  it('`!=` narrows the else branch to the matched value', () => {
+    const result = dvala.typecheck(`
+      let f = (x: :ok | :err) -> if x != :ok then "not ok" else "ok" end;
+      f(:err)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
+// Optional record fields: `{a: A, b?: B}` — field `b` may be absent from
+// actual record values. Distinct from `b: B | Null` (key present, value
+// may be null). Only Option 1 (presence bit) works for records, because
+// Dvala has no runtime auto-fill for missing object keys.
+describe('typecheck — optional record fields', () => {
+  const dvala = createDvala()
+
+  it('record literal without optional field is a subtype of the typed annotation', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {name: "Alice"}; u')
+    if (result.diagnostics.length > 0) {
+      throw new Error(`diagnostics: ${JSON.stringify(result.diagnostics)}`)
+    }
+  })
+
+  it('record literal with optional field present is also a subtype', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {name: "Alice", age: 30}; u')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('record literal with optional field present but wrong type fails', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {name: "Alice", age: "thirty"}; u')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('record literal missing a required field fails', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {age: 30}; u')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('record literal with extra field fails (closed record)', () => {
+    const result = dvala.typecheck('let u: {name: String, age?: Number} = {name: "Alice", age: 30, extra: "bad"}; u')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('strict `.` access on an optional field is rejected', () => {
+    // Use an opaque source (effect return) — otherwise `u` would be
+    // inferred as the tight literal type which doesn't have the optional
+    // field at all. The annotation is a constraint, not a widening.
+    const result = dvala.typecheck(`
+      effect @getUser(Null) -> {name: String, age?: Number};
+      let f = () -> do
+        let u = perform(@getUser, null);
+        u.age
+      end;
+      f
+    `)
+    expect(result.diagnostics.some(d => /optional/i.test(d.message) || /\?\./i.test(d.message))).toBe(true)
+  })
+
+  it('strict `.` access on a required field of an optional-field record works', () => {
+    const result = dvala.typecheck(`
+      effect @getUser(Null) -> {name: String, age?: Number};
+      let f = () -> do
+        let u = perform(@getUser, null);
+        u.name
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('safe `?.` access on an optional field is accepted', () => {
+    // `?.` desugars to `get(...)`; current `get` sig returns Unknown,
+    // which is widely compatible. Tightening to `T | Null` requires `T[K]`
+    // (#8) — future work.
+    const result = dvala.typecheck(`
+      effect @getUser(Null) -> {name: String, age?: Number};
+      let f = () -> do
+        let u = perform(@getUser, null);
+        u?.age
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('optional-field sidecar survives polymorphic freshening', () => {
+    // Regression: before the rebuildRecord helper, Record reconstruction
+    // in freshenAllVars / freshenInner / generalizeInner / narrowing paths
+    // silently dropped `optionalFields`. That meant a polymorphic function
+    // returning an optional-field record would lose the sidecar — the
+    // next dot-access wouldn't be flagged, and assigning a record without
+    // the optional field to it would spuriously fail.
+    const result = dvala.typecheck(`
+      effect @getUser(Null) -> {name: String, age?: Number};
+      let identity = (x: A) -> x;
+      let f = () -> do
+        let u = identity(perform(@getUser, null));
+        u.age
+      end;
+      f
+    `)
+    // Strict .age on the optional field should still error after
+    // freshening through identity.
+    expect(result.diagnostics.some(d => /optional/i.test(d.message) || /\?\./i.test(d.message))).toBe(true)
+  })
+
+  it('biunification rejects assigning an optional-field record to a required-field annotation', () => {
+    // Regression: `constrain` used to recurse into the field's lhs/rhs types
+    // without checking the optional-sidecar, so `let u: {b: Number} = v` was
+    // silently accepted when `v: {b?: Number}`. `subtype.ts checkStructural`
+    // already rejected this on the covariant path; the biunification path
+    // (typed `let` annotations) needs the same guard.
+    const result = dvala.typecheck(`
+      effect @get(Null) -> {a: String, b?: Number};
+      let f = () -> do
+        let v = perform(@get, null);
+        let u: {a: String, b: Number} = v;
+        u
+      end;
+      f
+    `)
+    expect(result.diagnostics.some(d => /optional/i.test(d.message))).toBe(true)
+  })
+
+  it('typeToString displays the `?` marker for optional fields', async () => {
+    // Exercise the display path through a parse-roundtrip check.
+    const { parseTypeAnnotation } = await import('./parseType')
+    const t = parseTypeAnnotation('{name: String, age?: Number}')
+    expect(typeToString(t)).toBe('{name: String, age?: Number}')
+  })
+})
+
+// Match-pattern destructure bindings. `case [x, y]` and `case {name, age}`
+// bind the inner names as typed vars inferred from the scrutinee's type.
+// The design-doc entry for this feature was out of date; these lock in
+// the shipped behaviour.
+describe('typecheck — match pattern destructuring binds typed variables', () => {
+  const dvala = createDvala()
+
+  it('array pattern binds by position from a tuple scrutinee', () => {
+    const result = dvala.typecheck(`
+      effect @tpl(Null) -> [String, Number];
+      let f = () -> match perform(@tpl, null)
+        case [s, n] then s ++ str(n)
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('object pattern binds by key from a record scrutinee', () => {
+    const result = dvala.typecheck(`
+      effect @rec(Null) -> {name: String, age: Number};
+      let f = () -> match perform(@rec, null)
+        case {name, age} then age + 1
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('object pattern with default value — `{age = 0}`', () => {
+    const result = dvala.typecheck(`
+      effect @rec(Null) -> {name: String, age: Number};
+      let f = () -> match perform(@rec, null)
+        case {name, age = 0} then name ++ str(age)
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('destructure bindings interact with guard narrowing', () => {
+    const result = dvala.typecheck(`
+      effect @rec(Null) -> {a: Number, b: Number};
+      let f = () -> match perform(@rec, null)
+        case {a, b} when a > b then a
+        case {a, b} then b
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('nested destructure — record inside record', () => {
+    const result = dvala.typecheck(`
+      effect @nested(Null) -> {outer: {inner: Number}};
+      let f = () -> match perform(@nested, null)
+        case {outer: {inner}} then inner + 1
+      end;
+      f
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('destructure bindings are TYPED — wrong use fails typecheck', () => {
+    // If destructure bindings were untyped (Unknown), adding a Number to a
+    // String-bound var would not error. Test confirms the field types flow.
+    const result = dvala.typecheck(`
+      effect @rec(Null) -> {name: String, age: Number};
+      let f = () -> match perform(@rec, null)
+        case {name, age} then name + age
+      end;
+      f
+    `)
+    // name is String, age is Number — `name + age` (string + number) fails.
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+})
+
+// Typed matrices via tuple-alias form. The design doc's "typed matrices"
+// future extension is already fully expressible today — tuple types plus
+// type aliases give fixed-size vectors and matrices with full element typing.
+// These tests lock in that support.
+describe('typecheck — typed matrices via tuple aliases', () => {
+  const dvala = createDvala()
+
+  it('fixed-size vector via tuple type annotation', () => {
+    const result = dvala.typecheck('let v: [Number, Number, Number] = [1, 2, 3]; v')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('tuple alias for a 3D vector', () => {
+    const result = dvala.typecheck('type Vec3 = [Number, Number, Number]; let v: Vec3 = [1, 2, 3]; v')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('nested tuple aliases for a matrix', () => {
+    const result = dvala.typecheck(`
+      type Vec3 = [Number, Number, Number];
+      type Mat3x3 = [Vec3, Vec3, Vec3];
+      let m: Mat3x3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+      m
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects wrong-length vector literal', () => {
+    const result = dvala.typecheck('let v: [Number, Number, Number] = [1, 2]; v')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('accepts fully-typed function on tuple aliases', () => {
+    const result = dvala.typecheck(`
+      type Vec3 = [Number, Number, Number];
+      let dot: (Vec3, Vec3) -> Number = (a, b) -> a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      dot([1, 0, 0], [0, 1, 0])
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
+// Meta-function typing: `withDoc(fn, str) -> fn` uses the `Function`
+// supertype to accept any function type. This keeps the sig tight (rejects
+// non-function first args) without having to enumerate each function shape.
+// `doc` and `arity` intentionally stay `(Unknown) -> …` because they also
+// accept effect references at runtime (see meta.ts for rationale).
+describe('typecheck — meta-function typing (Function supertype)', () => {
+  const dvala = createDvala()
+
+  it('withDoc accepts a user-defined function', () => {
+    const result = dvala.typecheck('((x, y) -> x + y) withDoc "sum"')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('withDoc accepts a let-bound function variable', () => {
+    const result = dvala.typecheck('let add = (x, y) -> x + y; withDoc(add, "sum")')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('withDoc rejects a non-function first argument', () => {
+    const result = dvala.typecheck('withDoc(42, "bad")')
+    expect(result.diagnostics.some(d => /function/i.test(d.message))).toBe(true)
+  })
+
+  it('withDoc rejects a non-string second argument', () => {
+    const result = dvala.typecheck('let add = (x, y) -> x + y; withDoc(add, 42)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+})
+
 describe('typecheck — misc expression types', () => {
   const dvala = createDvala()
 

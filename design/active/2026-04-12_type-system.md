@@ -966,15 +966,30 @@ Status: core math builtins are now scalar-only in both the runtime and the type 
 
 Collection functions like `filter`, `map`, `reduce` work on objects too: `filter({a: 1, b: 2}, isOdd)`. Currently typed with array-only generics `(A[], (A) -> Boolean) -> A[]`. Need object variants: `({...}, (Unknown) -> Boolean) -> {...}` with structural subtyping.
 
+**Status (2026-04-20):** Record overloads are shipped on `filter`, `map`, `reduce` in `src/builtin/core/collection.ts`. Callbacks receive `Unknown` for the element type because the record's field-value union can't be expressed without a `ValueOf<R>` type constructor (pairs with `keyof` / indexed-access types — still pending). That tightening is a follow-up for when indexed-access lands.
+
 ### Meta-function typing
 
 `arity(fn)`, `doc(fn)`, `withDoc(fn, str)` take function values as arguments. The typechecker needs to accept any function type as an argument to these builtins — requires a `Function` supertype or similar.
 
+**Status (2026-04-20):** The `Function` supertype exists as `AnyFunction` and is exposed as the `Function` keyword in type annotations. `withDoc` uses it: `(Function, String) -> Function`, tight — rejects non-function first args. `doc` and `arity` deliberately stay `(Unknown) -> …` because they also accept effect references at runtime (`doc(@dvala.io.print)`); tightening would require a first-class effect-reference type that doesn't exist yet. Revisit when/if that type lands.
+
 ### Match pattern destructuring bindings
+
+**Status (2026-04-20):** Shipped. `case [x, y]` binds by position from a tuple scrutinee; `case {name, age}` binds by key from a record scrutinee. Nested destructure, default values (`{age = 0}`), and guard-based narrowing on the destructured names all work. Rename syntax (`{name: n}`) is a non-feature in Dvala — only shorthand destructure is supported. See `describe('typecheck — match pattern destructuring binds typed variables')` in `src/typechecker/typecheck.test.ts` for the lock-in tests.
 
 `case [x, y]` and `case {name, age}` in match expressions should bind `x`, `y`, `name`, `age` as typed variables in the body. Currently only `case n when isNumber(n)` (guard-based) narrowing works.
 
 ### Flow-sensitive narrowing in `if`/`else`
+
+**Status (2026-04-20):** Shipped for the two most common shapes.
+
+- Type-guard calls: `if isX(sym) then … else … end` — then branch narrows `sym` to `X`, else to `!X`.
+- Equality tests: `if sym == literal/atom then … else … end` — then branch narrows to the literal/atom, else drops it. `!=` is the flipped form.
+
+Non-supported shapes (fall through to no narrowing; branches still infer correctly): `&&`/`||` composition of guards, `not(...)` negation, narrowing on non-Sym arguments (e.g. `isX(obj.field)`). These can be added when they appear in practice without changing core algebra.
+
+Implementation: `extractIfNarrowings` + `narrowEnv` in `src/typechecker/infer.ts`, reusing `intersectMatchTypes` from the match-guard path. See `describe('typecheck — flow-sensitive narrowing in if/else')` for the suite.
 
 Today, type-guard narrowing (decision #20) only fires inside `match` guards. The typing rule for `if` is `return = union of a and b` (see the construct-to-operation table) with no refinement of the condition expression in either branch:
 
@@ -995,6 +1010,16 @@ Design sketch:
 No change to the core algebra — purely an inference-time refinement, reusing the existing guard machinery. Biggest day-to-day win for users coming from TS; second only to match in practical importance.
 
 ### Optional record fields in type syntax
+
+**Status (2026-04-20):** Shipped with Option 1 semantics (presence bit, not sugar over nullable).
+
+- `{a: A, b?: B}` — field `b` may be absent from actual values; when present, is `B`. Distinct from `{a: A, b: B | Null}` (key present, value may be null).
+- Record type stores a sidecar `optionalFields?: Set<string>` — existing code paths that read `fields` continue to work; optional-aware paths check the set.
+- Subtyping: `{a: "x"} <: {a: String, b?: Number}` holds (optional field absent in S is OK). Closed records reject unknown fields as before.
+- Strict access (`obj.b`) on an optional field is a type error; the message suggests `?.b` for safe access. Safe access (`obj?.b`) desugars to `get(obj, "b")` which returns `Unknown` today — tightening to `T | Null` requires `T[K]` (indexed-access types, still pending).
+- Function-param `name?: T` keeps its existing Option-2 sugar (`T | Null`) — function params have runtime auto-fill so the sugar works there.
+
+See `describe('typecheck — optional record fields')` in `src/typechecker/typecheck.test.ts` for the test suite.
 
 Grammar only permits `?` on function params (`identifier ["?"] ":" Type`). Records have no surface syntax for optionality:
 
@@ -1052,6 +1077,8 @@ These are *type-level* distinctions on the same float64 runtime representation. 
 Full numeric tower (`Rational`, etc.) requires new runtime representations — deferred until the runtime supports them.
 
 ### Typed matrices / fixed-size arrays
+
+**Status (2026-04-20):** The Phase A tuple-alias approach is shipped and lock-in tested — no new machinery required. See `describe('typecheck — typed matrices via tuple aliases')` in `src/typechecker/typecheck.test.ts`. The Phase D literal-length form (`Number[4]`) remains future work.
 
 Phase A approach — tuple aliases, no new machinery:
 

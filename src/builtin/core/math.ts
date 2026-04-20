@@ -232,9 +232,14 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => Math.trunc(a / b)),
     arity: toFixedArity(2),
     docs: {
-      type: '((Number, Number) -> Number)',
+      // `quot` truncates (Math.trunc(a/b)) so the result is always integer-
+      // valued when the inputs are finite. NaN inputs are rejected by the
+      // `isNumber` input guard; Infinity inputs (and any non-finite result
+      // like `quot(1, 0)`) are rejected by `checkedFn`'s non-finite result
+      // check. Together this means every reachable return value is an integer.
+      type: '((Number, Number) -> Integer)',
       category: 'math',
-      returns: { type: 'number' },
+      returns: { type: 'integer' },
       args: {
         a: { type: 'number' },
         b: { type: 'number' },
@@ -381,7 +386,11 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '((Number) -> Number) & ((Number, Number) -> Number)',
+      // 1-arg form returns Integer (Math.round); 2-arg form (round to N
+      // decimals) returns Number. `returns` below reports 'number' as the
+      // broader view — `dvala doc round` readers see the overloaded `type`
+      // field for precision.
+      type: '((Number) -> Integer) & ((Number, Integer) -> Number)',
       category: 'math',
       returns: { type: 'number' },
       args: {
@@ -411,7 +420,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.trunc(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '((Number) -> Number)',
+      type: '((Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },
       args: {
@@ -435,7 +444,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.floor(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '((Number) -> Number)',
+      type: '((Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },
       args: {
@@ -459,7 +468,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.ceil(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '((Number) -> Number)',
+      type: '((Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },
       args: {
@@ -582,9 +591,13 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.sign(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '((Number) -> Number)',
+      // `Math.sign` returns -1, -0, 0, or 1 — all four are integer-valued
+      // (`Number.isInteger(-0) === true`). NaN input is rejected by the
+      // `isNumber` input guard; Infinity input returns ±1, also integer.
+      // So the `Integer` return type is sound for every reachable value.
+      type: '((Number) -> Integer)',
       category: 'math',
-      returns: { type: 'number' },
+      returns: { type: 'integer' },
       args: {
         x: { type: 'number' },
       },

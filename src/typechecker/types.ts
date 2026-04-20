@@ -14,7 +14,18 @@
 // Type algebra
 // ---------------------------------------------------------------------------
 
-export type PrimitiveName = 'Number' | 'String' | 'Boolean' | 'Null'
+/**
+ * Primitive type names.
+ *
+ * `Integer` is a proper subtype of `Number` — both share the same float64
+ * runtime representation, but `Integer` denotes the subset `{n : Number |
+ * Number.isInteger(n)}`. Useful for array indexing, count-like parameters,
+ * and match patterns that only care about whole numbers. Subtyping is
+ * asymmetric: any `Integer` is a `Number`, but a `Number` is only an
+ * `Integer` if its literal value is one (`Literal(42) <: Integer` holds;
+ * `Literal(3.14) <: Integer` does not).
+ */
+export type PrimitiveName = 'Number' | 'Integer' | 'String' | 'Boolean' | 'Null'
 
 /**
  * Effect set: a set of effect names plus a tail describing the "remainder"
@@ -125,7 +136,7 @@ export type Type =
   | { tag: 'Handler'; body: Type; output: Type; handled: Map<string, HandlerEffectSignature>; introduced: EffectSet }
   | { tag: 'AnyFunction' } // Supertype of all function types (any arity)
   | { tag: 'Tuple'; elements: Type[] }
-  | { tag: 'Record'; fields: Map<string, Type>; open: boolean }
+  | { tag: 'Record'; fields: Map<string, Type>; open: boolean; optionalFields?: Set<string> }
   | { tag: 'Array'; element: Type }
   | SequenceType
   | { tag: 'Regex' }
@@ -152,6 +163,7 @@ export type Type =
 
 // Primitives
 export const NumberType: Type = { tag: 'Primitive', name: 'Number' }
+export const IntegerType: Type = { tag: 'Primitive', name: 'Integer' }
 export const StringType: Type = { tag: 'Primitive', name: 'String' }
 export const BooleanType: Type = { tag: 'Primitive', name: 'Boolean' }
 export const NullType: Type = { tag: 'Primitive', name: 'Null' }
@@ -371,7 +383,10 @@ export function typeToString(t: Type): string {
     }
     case 'Tuple': return `[${t.elements.map(typeToString).join(', ')}]`
     case 'Record': {
-      const entries = [...t.fields.entries()].map(([k, v]) => `${k}: ${typeToString(v)}`)
+      const entries = [...t.fields.entries()].map(([k, v]) => {
+        const optional = t.optionalFields?.has(k) ? '?' : ''
+        return `${k}${optional}: ${typeToString(v)}`
+      })
       return t.open
         ? `{${entries.join(', ')}, ...}`
         : `{${entries.join(', ')}}`
@@ -476,6 +491,12 @@ export function typeEquals(a: Type, b: Type): boolean {
         const bv = br.fields.get(k)
         if (!bv || !typeEquals(v, bv)) return false
       }
+      // Optional-field sets must match — `{a: Number}` and `{a?: Number}`
+      // are distinct types.
+      const aOpt = a.optionalFields ?? new Set<string>()
+      const bOpt = br.optionalFields ?? new Set<string>()
+      if (aOpt.size !== bOpt.size) return false
+      for (const k of aOpt) if (!bOpt.has(k)) return false
       return true
     }
     case 'Array': return typeEquals(a.element, (b as typeof a).element)

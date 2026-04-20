@@ -581,17 +581,20 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 
   // --- Same-tag structural constraints ---
 
-  // Primitives: same name is ok, different name is an error
+  // Primitives: same name is ok, or Integer <: Number (the only proper
+  // primitive-subtyping relation today). Anything else is an error.
   if (lhs.tag === 'Primitive' && rhs.tag === 'Primitive') {
-    if (lhs.name !== rhs.name) {
-      throw new TypeInferenceError(`${lhs.name} is not a subtype of ${rhs.name}`)
-    }
-    return
+    if (lhs.name === rhs.name) return
+    if (lhs.name === 'Integer' && rhs.name === 'Number') return
+    throw new TypeInferenceError(`${lhs.name} is not a subtype of ${rhs.name}`)
   }
 
-  // Literal <: Primitive: check the match
+  // Literal <: Primitive: check the match.
+  // Number literals are also Integer when their value is integer-valued
+  // (mirrors subtype.ts:literalMatchesPrimitive).
   if (lhs.tag === 'Literal' && rhs.tag === 'Primitive') {
     const ok = (typeof lhs.value === 'number' && rhs.name === 'Number')
+      || (typeof lhs.value === 'number' && rhs.name === 'Integer' && Number.isInteger(lhs.value))
       || (typeof lhs.value === 'string' && rhs.name === 'String')
       || (typeof lhs.value === 'boolean' && rhs.name === 'Boolean')
     if (!ok) {
@@ -699,7 +702,18 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
           // In inference, this means we can't constrain further.
           continue
         }
+        // Optional field on the RHS may be absent in LHS — that's fine.
+        if (rhs.optionalFields?.has(name)) continue
         throw new TypeInferenceError(`Missing field '${name}' in ${typeToString(lhs)}`)
+      }
+      // Reject "optional in LHS, required in RHS" — LHS only sometimes has the
+      // field, but RHS promises it's always present. Subtype.ts enforces this
+      // for covariant checks; the biunification path (`let u: T = …`) needs
+      // the same guard or typed annotations silently accept missing fields.
+      if (lhs.optionalFields?.has(name) && !rhs.optionalFields?.has(name)) {
+        throw new TypeInferenceError(
+          `Field '${name}' is optional in ${typeToString(lhs)} but required in ${typeToString(rhs)}`,
+        )
       }
       constrain(ctx, lhsType, rhsType)
     }
@@ -768,6 +782,14 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
       const fieldName = paramType.value
       const fieldType = lhs.fields.get(fieldName)
       if (fieldType) {
+        // Strict `.` access rejects optional fields — the field may be
+        // absent at runtime, which `.` treats as KeyError. Callers must
+        // use `?.` (safe access, returns `T | Null`) for optional fields.
+        if (lhs.optionalFields?.has(fieldName)) {
+          throw new TypeInferenceError(
+            `Field '${fieldName}' is optional in ${typeToString(lhs)} and may be absent; use '?.${fieldName}' for safe access`,
+          )
+        }
         constrain(ctx, fieldType, rhs.ret)
         return
       }
@@ -941,12 +963,25 @@ export function inferExpr(
         const [cond, thenNode, elseNode] = payload as [AstNode, AstNode, AstNode | undefined]
         const condType = inferExpr(cond, ctx, env, typeMap)
         constrain(ctx, condType, BooleanType)
+        // Flow-sensitive narrowing: if the condition is a type guard
+        // (`isX(sym)`) or equality test (`sym == literal/atom`), narrow
+        // `sym` in each branch. Fall back to the outer env if no
+        // narrowing shape is recognised.
+        // Extension points (when adding): `&&` / `||` composition of
+        // guards (TS-style — then branch = intersection, else = union
+        // of complements); `not(cond)` swap; narrowing on non-Sym
+        // arguments like `isX(obj.field)` which would propagate the
+        // refinement into the record's field type. See
+        // `extractIfNarrowings` for the current shape.
+        const narrowings = extractIfNarrowings(cond, env)
+        const thenEnv = narrowings ? narrowEnv(env, narrowings.whenTrue) : env
+        const elseEnv = narrowings ? narrowEnv(env, narrowings.whenFalse) : env
         // Always infer both branches so type errors in dead code still
         // surface (design doc §If narrowing). With fold enabled and the
         // condition reducing to a literal boolean, narrow the result to
         // the live branch only — decision #8 / C8 of the folding design.
-        const thenType = inferExpr(thenNode, ctx, env, typeMap)
-        const elseType = elseNode ? inferExpr(elseNode, ctx, env, typeMap) : NullType
+        const thenType = inferExpr(thenNode, ctx, thenEnv, typeMap)
+        const elseType = elseNode ? inferExpr(elseNode, ctx, elseEnv, typeMap) : NullType
         if (ctx.foldEnabled) {
           const expandedCond = expandType(condType)
           if (expandedCond.tag === 'Literal' && expandedCond.value === true) {
@@ -1768,6 +1803,22 @@ function containsVars(t: Type): boolean {
  * empty bounds at parse time (bounds accumulate via biunification at call
  * sites), so there's nothing to copy.
  */
+/**
+ * Reconstruct a Record type, preserving the `optionalFields` sidecar from
+ * the source. Used by freshening, generalization, narrowing, expansion —
+ * every path that produces a new Record from an existing one.
+ */
+function rebuildRecord(
+  src: Extract<Type, { tag: 'Record' }>,
+  fields: Map<string, Type>,
+): Type {
+  const rec: Extract<Type, { tag: 'Record' }> = { tag: 'Record', fields, open: src.open }
+  if (src.optionalFields && src.optionalFields.size > 0) {
+    rec.optionalFields = new Set(src.optionalFields)
+  }
+  return rec
+}
+
 function freshenEffectSet(ctx: InferenceContext, e: EffectSet, rowMapping: Map<number, RowVarTail>): EffectSet {
   if (e.tail.tag !== 'RowVar') return e
   const existing = rowMapping.get(e.tail.id)
@@ -1824,7 +1875,7 @@ function freshenAllVars(
     case 'Record': {
       const fields = new Map<string, Type>()
       for (const [k, v] of t.fields) fields.set(k, freshenAllVars(ctx, v, mapping, rowMapping))
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array': return array(freshenAllVars(ctx, t.element, mapping, rowMapping))
     case 'Tuple': return tuple(t.elements.map(e => freshenAllVars(ctx, e, mapping, rowMapping)))
@@ -1909,7 +1960,7 @@ function freshenInner(
       for (const [k, v] of t.fields) {
         fields.set(k, freshenInner(ctx, v, mapping, rowMapping))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array':
       return array(freshenInner(ctx, t.element, mapping, rowMapping))
@@ -2040,7 +2091,7 @@ function generalizeInner(t: Type, level: number, mapping: Map<string, TypeVar>):
         fields.set(k, gv)
       }
       if (!changed) return t
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array': {
       const element = generalizeInner(t.element, level, mapping)
@@ -2236,6 +2287,9 @@ function getFunctionAlternatives(type: Type): Extract<Type, { tag: 'Function' }>
   return []
 }
 
+// `env` only holds user bindings — builtins live in a separate registry
+// looked up by name. So any hit here means the user has `let`-bound `name`,
+// shadowing the builtin. Call sites use this to skip the builtin branch.
 function lookupShadowedBuiltin(env: TypeEnv, name: string): Type | undefined {
   return env.lookup(name)
 }
@@ -2570,6 +2624,107 @@ function isConstrainedFunctionArityCompatible(
  * Recognizes patterns like `isNumber(n)` → returns NumberType.
  * Uses the builtin type guard info from the type registry.
  */
+/**
+ * Flow-sensitive narrowing for `if` conditions. Analyzes the condition AST
+ * and returns the refinements that should apply in the then and else branches.
+ *
+ * Recognised shapes:
+ * - `isX(sym)` — builtin type guard. Then: sym & X. Else: sym & !X.
+ * - `sym == atomOrLiteral` — equality test. Then: sym & atomOrLiteral.
+ *   Else: sym & !atomOrLiteral.
+ *
+ * Returns undefined if the condition isn't a recognised narrowing shape,
+ * in which case the If case falls back to normal inference of both branches.
+ *
+ * Not yet supported: `&&`/`||` composition, `not(...)` negation,
+ * narrowing on non-Sym arguments like `isX(obj.field)`.
+ */
+function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
+  whenTrue: Map<string, Type>
+  whenFalse: Map<string, Type>
+} | undefined {
+  if (cond[0] !== NodeTypes.Call) return undefined
+  const [calleeNode, argNodes] = cond[1] as [AstNode, AstNode[]]
+  if (calleeNode[0] !== NodeTypes.Builtin) return undefined
+  const builtinName = calleeNode[1] as string
+  if (lookupShadowedBuiltin(env, builtinName)) return undefined
+
+  // Type-guard builtin: isX(sym) — single Sym arg, callee has a guardType.
+  if (argNodes.length === 1) {
+    const argNode = argNodes[0]!
+    if (argNode[0] !== NodeTypes.Sym) return undefined
+    const symName = argNode[1] as string
+    const info = getBuiltinType(builtinName)
+    if (info.guardType) {
+      return {
+        whenTrue: new Map([[symName, info.guardType]]),
+        whenFalse: new Map([[symName, neg(info.guardType)]]),
+      }
+    }
+    return undefined
+  }
+
+  // Equality narrowing: sym == literalOrAtom (or reversed).
+  if (argNodes.length === 2 && (builtinName === '==' || builtinName === '!=')) {
+    const [leftNode, rightNode] = argNodes as [AstNode, AstNode]
+    const narrow = extractEqualityNarrowing(leftNode, rightNode)
+      ?? extractEqualityNarrowing(rightNode, leftNode)
+    if (!narrow) return undefined
+    // For `!=`, positive-branch narrowing is the complement.
+    const negated = builtinName === '!='
+    return {
+      whenTrue: new Map([[narrow.symName, negated ? neg(narrow.value) : narrow.value]]),
+      whenFalse: new Map([[narrow.symName, negated ? narrow.value : neg(narrow.value)]]),
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * If `symNode` is a `Sym` reference and `valueNode` is a literal/atom, return
+ * the narrowing. Used by equality-based flow narrowing.
+ */
+function extractEqualityNarrowing(symNode: AstNode, valueNode: AstNode): { symName: string; value: Type } | null {
+  if (symNode[0] !== NodeTypes.Sym) return null
+  const symName = symNode[1] as string
+  const kind = valueNode[0]
+  if (kind === NodeTypes.Atom) {
+    return { symName, value: atom(valueNode[1] as string) }
+  }
+  if (kind === NodeTypes.Num || kind === NodeTypes.Str) {
+    return { symName, value: literal(valueNode[1] as string | number) }
+  }
+  if (kind === NodeTypes.Reserved) {
+    const lit = valueNode[1] as string
+    if (lit === 'true') return { symName, value: literal(true) }
+    if (lit === 'false') return { symName, value: literal(false) }
+    // 'null' has no Literal type — leave unnarrowed.
+  }
+  return null
+}
+
+/**
+ * Create a child env where each entry in `narrowings` intersects the
+ * outer type with the narrowing type. Used to thread flow-narrowed types
+ * into branch inference.
+ */
+function narrowEnv(env: TypeEnv, narrowings: Map<string, Type>): TypeEnv {
+  if (narrowings.size === 0) return env
+  const narrowed = env.child()
+  for (const [name, narrow] of narrowings) {
+    const outer = env.lookup(name)
+    if (!outer) continue
+    const intersected = intersectMatchTypes(outer, narrow)
+    // Avoid re-binding to the outer type if narrowing yielded nothing
+    // tighter — keeps hover/debug output cleaner.
+    if (!typeEquals(intersected, outer)) {
+      narrowed.bind(name, intersected)
+    }
+  }
+  return narrowed
+}
+
 function extractGuardNarrowing(guard: AstNode, boundName: string, env: TypeEnv): Type | null {
   // Guard must be a Call to a builtin: ["Call", [["Builtin", name, id], [["Sym", boundName, id]]], id]
   if (guard[0] !== NodeTypes.Call) return null
@@ -2757,7 +2912,7 @@ function narrowRecordFieldTypes(type: Type, fieldNarrowings: Map<string, Type>):
     if (narrowed.tag === 'Never') return Never
     narrowedFields.set(fieldName, narrowed)
   }
-  return { tag: 'Record', fields: narrowedFields, open: type.open }
+  return rebuildRecord(type, narrowedFields)
 }
 
 function matchedTypeForPattern(pattern: AstNode, candidateType: Type): Type {
@@ -2913,7 +3068,7 @@ function narrowRecordTypeForMatchPattern(
     narrowedFields.set(fieldName, narrowedFieldType)
   }
 
-  return { tag: 'Record', fields: narrowedFields, open: type.open }
+  return rebuildRecord(type, narrowedFields)
 }
 
 function narrowArrayLikeTypeForMatchPattern(
@@ -3150,7 +3305,7 @@ function subtractRecordProductType(
         branchFields.set(prefixKey, prefixType)
       }
       branchFields.set(key, remainderField)
-      branches.push({ tag: 'Record', fields: branchFields, open: from.open })
+      branches.push(rebuildRecord(from, branchFields))
     }
 
     if (exactField.tag === 'Never') {
@@ -3952,7 +4107,7 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
       for (const [key, value] of t.fields) {
         fields.set(key, expandTypeForMatchAnalysis(value, new Set(visited)))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
 
     case 'Array':
@@ -4129,7 +4284,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
       for (const [k, v] of t.fields) {
         fields.set(k, expandType(v, polarity, new Set(visited)))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array':
       return array(expandType(t.element, polarity, new Set(visited)))
@@ -4228,7 +4383,7 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
       for (const [name, fieldType] of t.fields) {
         fields.set(name, expandTypeForDisplay(fieldType, 'positive', new Set(visited)))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array':
       return array(expandTypeForDisplay(t.element, 'positive', new Set(visited)))
@@ -4288,7 +4443,7 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
       for (const [name, fieldType] of t.fields) {
         fields.set(name, sanitizeDisplayType(fieldType, true))
       }
-      return { tag: 'Record', fields, open: t.open }
+      return rebuildRecord(t, fields)
     }
     case 'Array':
       return array(sanitizeDisplayType(t.element, true))
@@ -4346,6 +4501,9 @@ function normalizeDisplayUnion(members: Type[]): Type {
           const candidates = members.map(m => m.fields.get(fieldName)!)
           mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
         }
+        // Display-only merge — multiple source records with no single "owner"
+        // to pass to `rebuildRecord`, so `optionalFields` is intentionally not
+        // carried over. This path is only reached by hover/display code.
         return { tag: 'Record', fields: mergedFields, open }
       }
     }
@@ -4452,6 +4610,9 @@ function synthesizeRecordDisplayType(t: TypeVar, visited: Set<string>): Type | u
     mergedFields.set(fieldName, normalizeDisplayCandidates(candidates))
   }
 
+  // Display-only reconstruction from accumulated upper-bound signatures —
+  // no single source Record to pass to `rebuildRecord`, so `optionalFields`
+  // is intentionally dropped here.
   return { tag: 'Record', fields: mergedFields, open }
 }
 

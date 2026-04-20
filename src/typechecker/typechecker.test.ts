@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  NumberType, StringType, BooleanType, NullType,
+  NumberType, IntegerType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, PureEffects,
   atom, literal, fn, tuple, record, array, sequence, toSequenceType, union, inter, neg, handlerType,
   typeToString, typeEquals,
@@ -236,13 +236,60 @@ describe('subtyping — primitives', () => {
     }
   })
 
-  it('no primitive is subtype of another', () => {
+  it('no primitive is subtype of another (except Integer <: Number)', () => {
     const prims = [NumberType, StringType, BooleanType, NullType]
     for (const a of prims) {
       for (const b of prims) {
         if (a !== b) expect(isSubtype(a, b)).toBe(false)
       }
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subtyping — Integer (subtype of Number)
+// ---------------------------------------------------------------------------
+
+describe('subtyping — Integer refines Number', () => {
+  it('Integer <: Number', () => {
+    expect(isSubtype(IntegerType, NumberType)).toBe(true)
+  })
+
+  it('Number </: Integer', () => {
+    // Not every Number is an Integer (e.g. 3.14).
+    expect(isSubtype(NumberType, IntegerType)).toBe(false)
+  })
+
+  it('Integer <: Integer', () => {
+    expect(isSubtype(IntegerType, IntegerType)).toBe(true)
+  })
+
+  it('integer literal <: Integer', () => {
+    expect(isSubtype(literal(42), IntegerType)).toBe(true)
+    expect(isSubtype(literal(-7), IntegerType)).toBe(true)
+    expect(isSubtype(literal(0), IntegerType)).toBe(true)
+  })
+
+  it('float literal </: Integer', () => {
+    expect(isSubtype(literal(3.14), IntegerType)).toBe(false)
+    expect(isSubtype(literal(0.5), IntegerType)).toBe(false)
+  })
+
+  it('integer literal <: Number (transitively via Integer)', () => {
+    expect(isSubtype(literal(42), NumberType)).toBe(true)
+  })
+
+  it('Integer and String are disjoint', () => {
+    expect(isSubtype(IntegerType, StringType)).toBe(false)
+    expect(isSubtype(StringType, IntegerType)).toBe(false)
+  })
+
+  it('Integer is not disjoint with Number (shares all integer values)', () => {
+    // This is the negation-subtyping facet: Integer is NOT <: !Number,
+    // and Number is NOT <: !Integer — because their intersection is
+    // non-empty (every integer is in both).
+    expect(isSubtype(IntegerType, neg(NumberType))).toBe(false)
+    expect(isSubtype(NumberType, neg(IntegerType))).toBe(false)
   })
 })
 
@@ -1014,6 +1061,21 @@ describe('simplify', () => {
   it('Number & String → Never (disjoint primitives)', () => {
     const t = simplify(inter(NumberType, StringType))
     expect(typeEquals(t, Never)).toBe(true)
+  })
+
+  it('Number & Integer → Integer (not disjoint; narrow to subtype)', () => {
+    const t = simplify(inter(NumberType, IntegerType))
+    expect(typeEquals(t, IntegerType)).toBe(true)
+  })
+
+  it('Integer & Number → Integer (order independent)', () => {
+    const t = simplify(inter(IntegerType, NumberType))
+    expect(typeEquals(t, IntegerType)).toBe(true)
+  })
+
+  it('Number | Integer → Number (absorb subtype)', () => {
+    const t = simplify(union(NumberType, IntegerType))
+    expect(typeEquals(t, NumberType)).toBe(true)
   })
 
   it('Number & !String → Number (trivial negation collapse)', () => {

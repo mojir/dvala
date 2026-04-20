@@ -231,9 +231,9 @@ get(
     },
     arity: toFixedArity(1),
     docs: {
-      type: '(String | Unknown[] | {...} | Null) -> Number',
+      type: '(String | Unknown[] | {...} | Null) -> Integer',
       category: 'collection',
-      returns: { type: 'number' },
+      returns: { type: 'integer' },
       args: {
         coll: { type: ['collection', 'null'] },
       },
