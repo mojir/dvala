@@ -28,7 +28,7 @@ const CACHE_HASH_FILE = join(CACHE_DIR, 'last-hash.txt')
 // Earliest commit with a demo block — scans from here to HEAD
 const EARLIEST_DEMO_COMMIT = '7c504278'
 
-const baseUrl = 'http://localhost:9901'
+const baseUrl = 'http://localhost:22230'
 
 // Parse CLI args
 const args = process.argv.slice(2)

@@ -80,10 +80,10 @@ npm run demo abc123   # from hash
 Always show the user a playground demo link before committing. Generate it with:
 
 ```bash
-node -e "const code = 'let x = 42; x + 1'; console.log('http://localhost:9901/?state=' + btoa(encodeURIComponent(JSON.stringify({'dvala-code': code}))))"
+node -e "const code = 'let x = 42; x + 1'; console.log('http://localhost:22230/?state=' + btoa(encodeURIComponent(JSON.stringify({'dvala-code': code}))))"
 ```
 
-The playground runs on `http://localhost:9901/` (start with `npm run dev`).
+The playground runs on `http://localhost:22230/` (start with `npm run dev`).
 
 ## Creating design documents and plans
 I encurage you to structurize bigger tasks by creating .md plans.

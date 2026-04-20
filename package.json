@@ -145,7 +145,7 @@
     "demo": "node scripts/demo-link.mjs",
     "format-snippets": "npx tsx scripts/format-sources.ts",
     "pdf": "node scripts/generate-pdf.mjs",
-    "dev": "npx serve docs -p 9901 --single",
+    "dev": "npx serve docs -p 22230 --single",
     "test:e2e": "npx playwright test",
     "test:e2e:prod": "E2E_BASE_URL=https://mojir.github.io/dvala npx playwright test",
     "test:e2e:headed": "npx playwright test --headed",

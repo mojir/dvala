@@ -502,6 +502,38 @@ export function toggleTocMenu(event: Event): void {
   })
 }
 
+// The book PDF is generated at release time and may be absent in dev builds.
+// A plain <a download> would silently save the SPA's index.html fallback with
+// a .pdf name, so we HEAD-check the URL first and show an explanatory modal
+// when the file isn't really there.
+export async function downloadBookPdf(event: Event): Promise<void> {
+  event.preventDefault()
+  const anchor = event.currentTarget as HTMLAnchorElement
+  const url = anchor.href
+  const filename = anchor.getAttribute('download') ?? 'the-dvala-book.pdf'
+  try {
+    const resp = await fetch(url, { method: 'HEAD' })
+    const contentType = resp.headers.get('content-type') ?? ''
+    if (resp.ok && contentType.includes('application/pdf')) {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      return
+    }
+  } catch {
+    // Network-level failure — fall through to the unavailable modal.
+  }
+  const { panel } = createModalPanel({
+    size: 'small',
+    markdown: '# PDF not available\n\nThe book PDF is built at release time and isn\'t present in this environment. Run `npm run pdf` locally to generate it, or grab the latest from the [releases page](https://github.com/mojir/dvala/releases).',
+    onClose: () => popModal(),
+  })
+  pushPanel(panel, 'PDF not available')
+}
+
 // Build a flat search index from all chapters, h2 headings, prose paragraphs, and code blocks.
 // This is computed once lazily so it doesn't block startup.
 interface BookSearchEntry {
