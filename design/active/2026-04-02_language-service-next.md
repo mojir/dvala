@@ -1,11 +1,21 @@
 # Language Service — Next Features
 
-**Status:** Draft
+**Status:** Ready to implement (refreshed 2026-04-20)
 **Created:** 2026-04-02
 
 ## Goal
 
 Continue building out the Dvala language service with features that build on the existing symbol table, workspace index, and scope tracking infrastructure.
+
+## First milestone
+
+Start with **cross-file rename**. It's the smallest self-contained feature, builds directly on existing `findAllOccurrences`, and has the highest user-value-per-effort ratio. After it lands, pick the next item off the "Suggested Order" section based on how much time is available.
+
+Second milestone options (any order):
+- **Semantic tokens** — visual polish; lets the editor distinguish functions from variables from macros using the symbol table's kind info rather than the text-grammar heuristic.
+- **Inlay hints** — good complement to signature help.
+
+The heavier items (code actions, call hierarchy) should wait until after the lighter three ship, because they need more plumbing and the lighter three may surface issues with the symbol table that affect design choices there.
 
 ---
 
