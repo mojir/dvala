@@ -125,6 +125,35 @@ export function registerModuleType(
     // the wrapper still functions; the typechecker just can't prove
     // the resume arg/ret types.
     if (doc?.wrapper && parsedType.tag === 'Function') {
+      // Phase 4-A Phase B B.5: well-formedness check. Each handled effect
+      // must appear on the concrete side of the thunk param's effect set.
+      // If it only appeared in a row-var's tail, subtraction at the call
+      // site would silently under-subtract (the row-var's bounds aren't
+      // touched by `subtractEffects`). Reject malformed sigs loudly rather
+      // than produce wrong answers.
+      //
+      // Handles both plain Function thunks and Union of Function thunks
+      // (overloaded wrappers). Every alternative must declare the handled
+      // effect explicitly.
+      const thunkParam = parsedType.params[doc.wrapper.paramIndex]
+      const thunkAlternatives = thunkParam
+        ? thunkParam.tag === 'Function'
+          ? [thunkParam]
+          : thunkParam.tag === 'Union'
+            ? thunkParam.members.filter((m): m is Extract<Type, { tag: 'Function' }> => m.tag === 'Function')
+            : []
+        : []
+      if (thunkAlternatives.length > 0) {
+        for (const alt of thunkAlternatives) {
+          for (const effectName of doc.wrapper.handled) {
+            if (!alt.effects.effects.has(effectName)) {
+              throw new Error(
+                `Malformed wrapper signature for ${moduleName}.${name}: handled effect '${effectName}' does not appear on the concrete side of the thunk parameter's effect set (${[...alt.effects.effects].sort().join(', ') || '∅'}). Each handled effect must be declared explicitly in the thunk's \`@{...}\` — hiding it inside a row-var tail causes under-subtraction at call sites.`,
+              )
+            }
+          }
+        }
+      }
       const handled = new Map<string, HandlerEffectSignature>()
       for (const effectName of doc.wrapper.handled) {
         const decl = getEffectDeclaration(effectName)

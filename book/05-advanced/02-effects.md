@@ -756,6 +756,74 @@ applyHandler(h, -> 0 / 0);
 
 ---
 
+## Effect Polymorphism
+
+Handler-wrapper functions like `chooseAll` or `retry` take a thunk that may perform **its own** effects (beyond the ones the wrapper catches), and those effects must still surface to the caller. Without the right machinery, a signature like `(() -> @{choose} A) -> A[]` would force the thunk to be pure-except-for-`@choose` — useless in practice, since real thunks log, read configuration, call other functions with their own effects.
+
+Dvala solves this with **row-polymorphic effect sets**: a signature can name a tail variable that stands for "whatever extra effects the thunk has" and thread it through the result type.
+
+### Row variables
+
+Write `@{e | r}` to mean "the effect set contains `e` plus whatever `r` stands for." Within a single type annotation, two occurrences of `r` refer to the *same* row variable — its contents are determined at each call site by the effects of the thunk that was passed in.
+
+```dvala
+// chooseAll's signature declares that extra effects flow through r:
+//   (() -> @{choose | r} A) -> @{| r} A[]
+//
+// Reading it:
+//   "Takes a thunk performing `@choose` plus any remainder r.
+//    Returns A[] with that same remainder r surfacing to the caller."
+let { chooseAll } = import("effectHandler");
+// The thunk performs @dvala.io.print in addition to @choose. Row
+// polymorphism propagates the print effect through to the caller —
+// chooseAll neither catches nor introduces it; it just flows through.
+let collectLogs = () -> chooseAll(
+  -> do
+    perform(@dvala.io.print, "picking...");
+    perform(@choose, [1, 2, 3]);
+  end
+);
+// collectLogs has inferred effect set @{dvala.io.print} — @choose is
+// caught by chooseAll, the print effect flows through via the row var.
+collectLogs;
+```
+
+The three tail forms in annotations:
+
+| Form | Meaning |
+|---|---|
+| `@{a, b}` | Exactly these effects (closed). |
+| `@{a, ...}` | These effects plus anonymous remainder (open tail). |
+| `@{a | r}` | These effects plus named remainder — unifies with other `r` in the same annotation. |
+
+The first form is what you write for concrete cases. The third is what every handler-wrapper signature uses so thunk extras propagate correctly.
+
+### Effects that *are* introduced still appear
+
+When a wrapper installs a handler whose clauses themselves perform effects, the signature lists those on the concrete side of the *return* type. `chooseRandom` is the canonical example — its handler picks a random option via `@dvala.random.item`, which the wrapper introduces:
+
+```dvala
+// chooseRandom : (() -> @{choose | r} A) -> @{dvala.random.item | r} A
+//
+// The @choose the thunk performs is caught; @dvala.random.item is
+// introduced by the wrapper's internal handler and surfaces to the
+// caller. Any thunk extras flow through r.
+let { chooseRandom } = import("effectHandler");
+let pick = () -> chooseRandom(
+  -> do
+    perform(@dvala.io.print, "rolling dice");
+    perform(@choose, ["heads", "tails"]);
+  end
+);
+// pick has effect set @{dvala.random.item, dvala.io.print}:
+//   @choose was caught (vanished).
+//   @dvala.random.item was introduced by the wrapper.
+//   @dvala.io.print flowed through r from the thunk.
+pick;
+```
+
+---
+
 ## Handler Module
 
 The `effectHandler` module provides reusable handlers for common patterns.
@@ -765,6 +833,10 @@ let { retry, fallback } = import("effectHandler");
 ```
 
 ### `fallback(value)`
+
+```text
+fallback : (Unknown) -> Handler<Unknown, Unknown, @{dvala.error}>
+```
 
 Returns a handler that catches `@dvala.error` and aborts with `value`:
 
@@ -785,7 +857,11 @@ fallback(0)(-> 0 / 0);
 
 ### `retry(n, bodyFn)`
 
-Retries `bodyFn()` up to `n` times on `@dvala.error`. On final failure, propagates the error:
+```text
+retry : (Number, (() -> @{dvala.error | r} A)) -> @{dvala.error | r} A
+```
+
+Retries `bodyFn()` up to `n` times on `@dvala.error`. On final failure, re-performs the error — so `@dvala.error` stays in the result effect set. Any other effects the thunk performs flow through `r`:
 
 ```dvala
 let { retry, fallback } = import("effectHandler");
@@ -803,7 +879,11 @@ These handlers interpret the `@choose` effect — a computation that "picks" a v
 
 #### `chooseAll(bodyFn)`
 
-Explores **every** branch. Returns an array of all results. Uses multi-shot continuations — `resume` is called once per option.
+```text
+chooseAll : (() -> @{choose | r} A) -> @{| r} A[]
+```
+
+Explores **every** branch. Returns an array of all results. Uses multi-shot continuations — `resume` is called once per option. Thunk extras flow through `r`.
 
 ```dvala
 let { chooseAll } = import("effectHandler");
@@ -825,7 +905,11 @@ chooseAll(
 
 #### `chooseFirst(bodyFn)`
 
-Always picks the **first** option. Deterministic — equivalent to replacing every `@choose` with `first(options)`.
+```text
+chooseFirst : (() -> @{choose | r} A) -> @{| r} A
+```
+
+Always picks the **first** option. Deterministic — equivalent to replacing every `@choose` with `first(options)`. Thunk extras flow through `r`.
 
 ```dvala
 let { chooseFirst } = import("effectHandler");
@@ -834,7 +918,11 @@ chooseFirst(-> perform(@choose, ["a", "b", "c"]));
 
 #### `chooseRandom(bodyFn)`
 
-Picks one option **at random** at each `@choose`. Uses `@dvala.random.item` internally.
+```text
+chooseRandom : (() -> @{choose | r} A) -> @{dvala.random.item | r} A
+```
+
+Picks one option **at random** at each `@choose`. Uses `@dvala.random.item` internally — which the wrapper introduces into the result effect set alongside any thunk extras that flow through `r`.
 
 ```dvala
 let { chooseRandom } = import("effectHandler");
@@ -843,7 +931,11 @@ chooseRandom(-> perform(@choose, [1, 2, 3, 4, 5]));
 
 #### `chooseTake(n, bodyFn)`
 
-Like `chooseAll` but stops after collecting `n` results. Branches beyond the limit are not explored.
+```text
+chooseTake : (Number, (() -> @{choose | r} A)) -> @{| r} A[]
+```
+
+Like `chooseAll` but stops after collecting `n` results. Branches beyond the limit are not explored. Thunk extras flow through `r`.
 
 ```dvala
 let { chooseTake } = import("effectHandler");

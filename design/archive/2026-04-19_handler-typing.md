@@ -5,7 +5,7 @@
 **Decisions resolved:** 2026-04-19
 **Supersedes scope of:** [../active/2026-04-12_type-system.md](../active/2026-04-12_type-system.md) Step 7 (previously a 6-bullet sketch).
 
-> **Ship note (2026-04-19):** Phases 1–6 all shipped in three PRs over one session. Phase 4-A (full row-variable effect polymorphism) remains deferred as future work — the MLsub machinery for value types is the template; extending it to effect rows becomes relevant once user-defined effect-polymorphic helpers are needed. Plausibly a 0.6.0 item. The foundational work for 0.5.0+ landed here:
+> **Ship note (2026-04-19):** Phases 1–6 all shipped in three PRs over one session. Phase 4-A (full row-variable effect polymorphism) deferred here — **shipped 2026-04-20**, see [2026-04-20_effect-row-variables.md](./2026-04-20_effect-row-variables.md). The foundational work for 0.5.0+ landed here:
 > - `HandlerType.introduced` field carrying what the handler's own clauses perform
 > - do-with-h application law `(Σ_body \ handled) ∪ introduced`
 > - `HandlerWrapperInfo.introduced` for functions that internally install handlers

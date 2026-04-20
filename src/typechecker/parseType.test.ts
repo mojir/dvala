@@ -3,7 +3,7 @@ import { parseTypeAnnotation, parseFunctionTypeAnnotation, registerTypeAlias, re
 import {
   NumberType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType,
-  atom, literal, fn, array, tuple, neg, union, effectSet, handlerType,
+  atom, literal, fn, array, tuple, neg, union, effectSet, effectSetToString, handlerType, typeToString,
   typeEquals,
 } from './types'
 import { declareEffect, resetEffectRegistry } from './effectTypes'
@@ -335,9 +335,154 @@ describe('parseType — functions', () => {
     ])))).toBe(true)
   })
 
+  // --- Phase 4-A: Handler<…> 4-slot form with @{introduced} ---
+
+  it('Handler<Number, Number, @{test.log}, @{}> — explicit empty introduced equals 3-slot form', () => {
+    declareEffect('test.log', StringType, NullType)
+    const t4 = parseTypeAnnotation('Handler<Number, Number, @{test.log}, @{}>')
+    const t3 = parseTypeAnnotation('Handler<Number, Number, @{test.log}>')
+    expect(typeEquals(t4, t3)).toBe(true)
+  })
+
+  it('Handler<Number, Number, @{test.log}, @{io.print}> — 4-slot form with real introduced set', () => {
+    declareEffect('test.log', StringType, NullType)
+    const t = parseTypeAnnotation('Handler<Number, Number, @{test.log}, @{io.print}>')
+    if (t.tag !== 'Handler') throw new Error('expected Handler')
+    expect(t.introduced.effects.has('io.print')).toBe(true)
+    expect(t.introduced.tail.tag).toBe('Closed')
+  })
+
   it('union of function types (overloads)', () => {
     const t = parseTypeAnnotation('((Number, Number) -> Number) | ((String, String) -> String)')
     expect(t.tag).toBe('Union')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 4-A: row-variable effect polymorphism — parser + data model only.
+// Biunification behaviour (subtyping, constrain) is enabled in Phase B.
+// ---------------------------------------------------------------------------
+
+describe('parseType — row-variable tails (Phase 4-A)', () => {
+  it('@{e | r} — single row-var tail produces RowVar with identity', () => {
+    const t = parseTypeAnnotation('() -> @{log | r} Null')
+    if (t.tag !== 'Function') throw new Error('expected Function')
+    expect(t.effects.effects.has('log')).toBe(true)
+    expect(t.effects.tail.tag).toBe('RowVar')
+  })
+
+  it('@{| r} — row-var-only tail (empty effects)', () => {
+    const t = parseTypeAnnotation('() -> @{| r} Null')
+    if (t.tag !== 'Function') throw new Error('expected Function')
+    expect(t.effects.effects.size).toBe(0)
+    expect(t.effects.tail.tag).toBe('RowVar')
+  })
+
+  it('same row-var name within one annotation → shared RowVar identity', () => {
+    // Same `r` in thunk arg and return position must reference the same row var.
+    const t = parseTypeAnnotation('(() -> @{choose | r} String) -> @{dvala.random.item | r} String')
+    if (t.tag !== 'Function') throw new Error('expected Function')
+    const arg = t.params[0]
+    if (!arg || arg.tag !== 'Function') throw new Error('expected Function arg')
+    if (arg.effects.tail.tag !== 'RowVar' || t.effects.tail.tag !== 'RowVar') {
+      throw new Error('expected RowVar tails')
+    }
+    expect(arg.effects.tail.id).toBe(t.effects.tail.id)
+  })
+
+  it('different row-var names within one annotation → distinct RowVars', () => {
+    const t = parseTypeAnnotation('(() -> @{a | r} String) -> @{b | s} String')
+    if (t.tag !== 'Function') throw new Error('expected Function')
+    const arg = t.params[0]
+    if (!arg || arg.tag !== 'Function') throw new Error('expected Function arg')
+    if (arg.effects.tail.tag !== 'RowVar' || t.effects.tail.tag !== 'RowVar') {
+      throw new Error('expected RowVar tails')
+    }
+    expect(arg.effects.tail.id).not.toBe(t.effects.tail.id)
+  })
+
+  it('independent annotations do not share row-var ids across parses', () => {
+    // Each parseTypeAnnotation call uses its own counter, so two unrelated
+    // parses producing "r" tails result in independent identities.
+    const t1 = parseTypeAnnotation('() -> @{| r} Null')
+    const t2 = parseTypeAnnotation('() -> @{| r} Null')
+    if (t1.tag !== 'Function' || t2.tag !== 'Function') throw new Error('expected Function')
+    if (t1.effects.tail.tag !== 'RowVar' || t2.effects.tail.tag !== 'RowVar') throw new Error('expected RowVar')
+    // Not checking id equality — what matters is each call gets a fresh
+    // counter, so these are structurally distinct even if they happen to
+    // share an id number.
+    expect(t1.effects.tail.id).toBe(0)
+    expect(t2.effects.tail.id).toBe(0)
+    expect(t1.effects.tail).not.toBe(t2.effects.tail)
+  })
+
+  it('row-var and open-tail forms are distinct shapes', () => {
+    const tRow = parseTypeAnnotation('() -> @{| r} Null')
+    const tOpen = parseTypeAnnotation('() -> @{...} Null')
+    if (tRow.tag !== 'Function' || tOpen.tag !== 'Function') throw new Error('expected Function')
+    expect(tRow.effects.tail.tag).toBe('RowVar')
+    expect(tOpen.effects.tail.tag).toBe('Open')
+  })
+
+  it('@{r} — single lowercase-letter name without | prefix parses as an effect name, not a row var', () => {
+    // "r" alone is ambiguous with a short effect name. The `|` separator is
+    // the only signal for a row-var tail. Guards against parser restructure
+    // regressions (e.g. if someone were to reorder the branches and try to
+    // interpret a single lowercase letter as a row-var name).
+    const t = parseTypeAnnotation('() -> @{r} Null')
+    if (t.tag !== 'Function') throw new Error('expected Function')
+    expect(t.effects.effects.has('r')).toBe(true)
+    expect(t.effects.tail.tag).toBe('Closed')
+  })
+
+  it('row-var subtyping: identical row-var signatures are subtypes of each other', () => {
+    // Two annotations produce independent row vars (fresh per parse),
+    // but the concrete parts match and isSubtype treats row-var tails
+    // conservatively — this confirms the wire-up, not the propagation.
+    // End-to-end propagation tests live in infer.test.ts under
+    // "effect row variables (Phase 4-A Phase B)".
+    const tA = parseTypeAnnotation('(() -> @{choose | r} Null) -> @{dvala.random.item | r} Null')
+    const tB = parseTypeAnnotation('(() -> @{choose | r} Null) -> @{dvala.random.item | r} Null')
+    expect(isSubtype(tA, tB)).toBe(true)
+  })
+})
+
+describe('effectSetToString — display policy for row-var tails (Phase 4-A)', () => {
+  it('Closed tail prints as @{effects}', () => {
+    expect(effectSetToString(effectSet(['log']))).toBe('@{log}')
+  })
+
+  it('empty Closed tail prints as empty string (pure)', () => {
+    expect(effectSetToString(effectSet([]))).toBe('')
+  })
+
+  it('Open tail prints as @{effects, ...}', () => {
+    expect(effectSetToString(effectSet(['log'], true))).toBe('@{log, ...}')
+  })
+
+  it('empty Open tail prints as @{...}', () => {
+    expect(effectSetToString(effectSet([], true))).toBe('@{...}')
+  })
+
+  it('RowVar tail prints as @{effects | ρN}', () => {
+    const t = parseTypeAnnotation('() -> @{log | r} Null')
+    if (t.tag !== 'Function') throw new Error('expected Function')
+    // First row var allocated during parse is id=0 → ρ0.
+    expect(effectSetToString(t.effects)).toBe('@{log | ρ0}')
+  })
+
+  it('empty RowVar tail prints as @{ρN}', () => {
+    const t = parseTypeAnnotation('() -> @{| r} Null')
+    if (t.tag !== 'Function') throw new Error('expected Function')
+    expect(effectSetToString(t.effects)).toBe('@{ρ0}')
+  })
+
+  it('round-trip: shared row var in thunk arg and return type', () => {
+    const t = parseTypeAnnotation('(() -> @{choose | r} String) -> @{dvala.random.item | r} String')
+    // Printed form uses the same ρ id for both — confirms shared identity.
+    const rendered = typeToString(t)
+    expect(rendered).toContain('@{choose | ρ0}')
+    expect(rendered).toContain('@{dvala.random.item | ρ0}')
   })
 })
 
