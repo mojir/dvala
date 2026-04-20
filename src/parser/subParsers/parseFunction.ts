@@ -15,6 +15,38 @@ import { parseSymbol } from './parseSymbol'
 const placeholderRegexp = /^\$([1-9]\d?)?$/
 const maxShorthandLambdaArity = 20
 
+/**
+ * Reserved symbols that can NEVER start an expression — they are
+ * purely syntactic block-terminators or continuation keywords
+ * (`end` closes do/if/match/handler, `else`/`then` continue an `if`,
+ * `case` opens a match arm, etc.).
+ *
+ * Any of these appearing immediately after `->` means the user wrote
+ * an empty function body (the most common scenario is forgetting
+ * to supply a body before closing the enclosing construct). Runtime
+ * strictness Step 0a: reject this at parse time with a clear message
+ * rather than a later TypeError about "Reserved symbol cannot be
+ * evaluated." See `design/active/2026-04-12_type-system.md` § Step 0.
+ */
+// Note: `quote`, `do`, `when`, `while`, `with` start their own block
+// expressions and ARE valid as body starters. The list below is only the
+// reserved symbols that are purely terminators or mid-construct
+// continuations.
+const nonExpressionReservedSymbols = new Set([
+  'end', 'else', 'then', 'case', 'in', 'as', '_',
+])
+
+function assertNonEmptyFunctionBody(ctx: ParserContext): void {
+  const token = ctx.peek()
+  if (isReservedSymbolToken(token) && nonExpressionReservedSymbols.has(token[1])) {
+    throw new ParseError(
+      `Empty function body — '${token[1]}' cannot start an expression. `
+      + 'Provide a body expression or use `do ... end` for an explicit block.',
+      ctx.peekSourceCodeInfo(),
+    )
+  }
+}
+
 // Called after lookahead has confirmed a `->` follows the parameter list.
 export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
   ctx.builder?.startNode('Function')
@@ -32,6 +64,8 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
     throw new ParseError('Expected ->', ctx.peekSourceCodeInfo())
   }
   ctx.advance()
+
+  assertNonEmptyFunctionBody(ctx)
 
   let nodes: AstNode[] | undefined
   if (isReservedSymbolToken(ctx.peek(), 'do')) {
@@ -111,6 +145,8 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   ctx.advance()
   // TODO, do not like this...
   const startPos = ctx.getPosition()
+
+  assertNonEmptyFunctionBody(ctx)
 
   let nodes: AstNode[] | undefined
   if (isReservedSymbolToken(ctx.peek(), 'do')) {
