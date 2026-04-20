@@ -232,9 +232,11 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: binaryMathOp((a, b) => Math.trunc(a / b)),
     arity: toFixedArity(2),
     docs: {
-      type: '((Number, Number) -> Number)',
+      // quot truncates, so the result is always integer-valued regardless of
+      // whether the inputs are Integer or Number.
+      type: '((Number, Number) -> Integer)',
       category: 'math',
-      returns: { type: 'number' },
+      returns: { type: 'integer' },
       args: {
         a: { type: 'number' },
         b: { type: 'number' },
@@ -381,7 +383,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '((Number) -> Number) & ((Number, Number) -> Number)',
+      type: '((Number) -> Integer) & ((Number, Integer) -> Number)',
       category: 'math',
       returns: { type: 'number' },
       args: {
@@ -411,7 +413,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.trunc(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '((Number) -> Number)',
+      type: '((Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },
       args: {
@@ -435,7 +437,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.floor(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '((Number) -> Number)',
+      type: '((Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },
       args: {
@@ -459,7 +461,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.ceil(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '((Number) -> Number)',
+      type: '((Number) -> Integer)',
       category: 'math',
       returns: { type: 'integer' },
       args: {
@@ -582,9 +584,9 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     evaluate: unaryMathOp(val => Math.sign(val)),
     arity: toFixedArity(1),
     docs: {
-      type: '((Number) -> Number)',
+      type: '((Number) -> Integer)',
       category: 'math',
-      returns: { type: 'number' },
+      returns: { type: 'integer' },
       args: {
         x: { type: 'number' },
       },

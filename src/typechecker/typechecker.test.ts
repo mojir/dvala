@@ -1063,6 +1063,21 @@ describe('simplify', () => {
     expect(typeEquals(t, Never)).toBe(true)
   })
 
+  it('Number & Integer → Integer (not disjoint; narrow to subtype)', () => {
+    const t = simplify(inter(NumberType, IntegerType))
+    expect(typeEquals(t, IntegerType)).toBe(true)
+  })
+
+  it('Integer & Number → Integer (order independent)', () => {
+    const t = simplify(inter(IntegerType, NumberType))
+    expect(typeEquals(t, IntegerType)).toBe(true)
+  })
+
+  it('Number | Integer → Number (absorb subtype)', () => {
+    const t = simplify(union(NumberType, IntegerType))
+    expect(typeEquals(t, NumberType)).toBe(true)
+  })
+
   it('Number & !String → Number (trivial negation collapse)', () => {
     const t = simplify(inter(NumberType, neg(StringType)))
     expect(typeEquals(t, NumberType)).toBe(true)

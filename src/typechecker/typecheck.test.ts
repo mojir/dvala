@@ -360,6 +360,50 @@ describe('typecheck — effect annotation on function types', () => {
 // typecheck — template strings, and/or, nullish coalescing
 // ---------------------------------------------------------------------------
 
+// Exercises Integer-typed builtin params end-to-end. `nth`'s index is the
+// proof migration; `count` returns Integer and round-trips through it.
+describe('typecheck — Integer primitive in builtin signatures', () => {
+  const dvala = createDvala()
+
+  it('accepts integer literal as nth index', () => {
+    const result = dvala.typecheck('nth([10, 20, 30], 1)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects fractional literal as nth index', () => {
+    // The intersection overload resolution throws the LAST overload's error,
+    // which ends up being a cross-overload arity mismatch rather than a
+    // direct "Integer expected" message — a known limitation of the
+    // first-success-wins resolver. What matters: typecheck fails.
+    const result = dvala.typecheck('nth([10, 20, 30], 1.5)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('accepts Integer-annotated variable as nth index', () => {
+    const result = dvala.typecheck('let i: Integer = 2; nth([10, 20, 30], i)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects a non-literal Number value as nth index (Number is not a subtype of Integer)', () => {
+    // A Number might be fractional at runtime, so passing it where Integer is
+    // required must fail. Use an effect result to get an opaque Number — a
+    // literal would fold to Literal(N), which IS Integer-compatible if N is
+    // integer-valued, masking the soundness case.
+    const result = dvala.typecheck(`
+      effect @rand(Null) -> Number;
+      let f = () -> nth([10, 20, 30], perform(@rand, null));
+      f
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('count returns Integer, flows into Integer-typed position', () => {
+    // count → Integer; nth index accepts Integer. This round-trips cleanly.
+    const result = dvala.typecheck('let arr = [10, 20, 30]; nth(arr, count(arr))')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
 describe('typecheck — misc expression types', () => {
   const dvala = createDvala()
 
