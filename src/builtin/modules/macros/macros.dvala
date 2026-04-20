@@ -1,19 +1,15 @@
 do
-  let { prettyPrint } = import("ast");
+  let { prettyPrint, decorate, letBindingName } = import("ast");
   {
     trace: macro(ast) -> do
-      // Detect `#trace let name = ...` so we can include the binding name
-      // in the log output. Anonymous form keeps the plain "ENTER:" prefix.
-      let isLet = first(ast) == "Let";
-      let target = if isLet then first(second(ast)) else null end;
-      let hasSymTarget = isLet && first(target) == "symbol";
-      let name =
-        if hasSymTarget then second(first(second(target))) else null end;
+      // `#trace let name = ...` captures the binding name so log lines read
+      // as `ENTER greet: ...`; anonymous forms keep the plain "ENTER:" prefix.
+      let name = letBindingName(ast);
       let prefix = if isNull(name) then "" else " " ++ name end;
-      let valueAst = if isLet then second(second(ast)) else ast end;
-      let wrapped =
-        quote(... args) -> do perform(@dvala.io.print, $^{["Str", "ENTER" ++ prefix ++ ": ", 0]} ++ str(args)); let result = apply($^{valueAst}, args); perform(@dvala.io.print, $^{["Str", "EXIT" ++ prefix ++ ": ", 0]} ++ str(result)); result end end;
-      if isLet then ["Let", [target, wrapped], 0] else wrapped end;
+      decorate(
+        ast,
+        (fn) -> quote(... args) -> do perform(@dvala.io.print, $^{["Str", "ENTER" ++ prefix ++ ": ", 0]} ++ str(args)); let result = apply($^{fn}, args); perform(@dvala.io.print, $^{["Str", "EXIT" ++ prefix ++ ": ", 0]} ++ str(result)); result end end
+      );
     end,
     unless: macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end,
     tap: macro(value, sideEffect) -> quote do let __tapValue = $^{value}; $^{sideEffect}; __tapValue end end,

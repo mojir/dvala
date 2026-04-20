@@ -68,8 +68,8 @@ describe('macros module', () => {
     })
 
     it('does not evaluate non-matching branches', async () => {
-      // chooseAll on only the matching branch's side effect — the other
-      // branches must not fire. We use print as a proxy for "evaluated".
+      // Only the matching branch should fire its side effect — we use print
+      // as a proxy for "evaluated".
       const { value, prints } = await runAndCapturePrints(`
         let { cond } = import("macros");
         cond(

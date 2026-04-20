@@ -5,10 +5,10 @@ import macrosModuleSource from './macros.dvala'
 const macroDocs: Record<string, FunctionDocs> = {
   'trace': {
     category: 'macros',
-    description: 'Wraps a function so its arguments are logged on entry and its return value on exit (via `@dvala.io.print`). Useful for debugging call flow without editing the function body. When used as a `#trace` decorator on a `let` binding, the binding name is included in the log prefix (`ENTER greet: ...`).',
-    returns: { type: 'function' },
-    args: { fn: { type: 'function' } },
-    variants: [{ argumentNames: ['fn'] }],
+    description: 'Wraps a function so its arguments are logged on entry and its return value on exit (via `@dvala.io.print`). Useful for debugging call flow without editing the function body. Accepts either a function expression (direct call or `#trace fn`) or a `let` binding (`#trace let name = fn`); in the let-decorator form the binding name is included in the log prefix (`ENTER greet: ...`).',
+    returns: { type: 'any' },
+    args: { target: { type: 'any', description: 'A function expression, or a `let` binding when used as `#trace let x = ...`.' } },
+    variants: [{ argumentNames: ['target'] }],
     examples: [
       'let { trace } = import("macros");\nlet add = trace((a, b) -> a + b);\nadd(3, 4)',
       'let { trace } = import("macros");\nlet greet = #trace (name) -> "hello, " ++ name;\n[greet("Ada"), greet("Grace")]',
@@ -25,7 +25,7 @@ const macroDocs: Record<string, FunctionDocs> = {
     },
     variants: [{ argumentNames: ['cond', 'body'] }],
     examples: [
-      'let { unless } = import("macros");\nunless(isEmpty([1, 2, 3]), "processing items")',
+      'let { unless } = import("macros");\n[unless(false, "ran"), unless(true, "skipped")]',
       'let { unless } = import("macros");\nlet safeDivide = (a, b) -> unless(b == 0, a / b);\n[safeDivide(10, 2), safeDivide(10, 0)]',
     ],
   },
@@ -56,7 +56,7 @@ const macroDocs: Record<string, FunctionDocs> = {
   },
   'cond': {
     category: 'macros',
-    description: 'Scheme/Clojure-style multi-branch conditional. Arguments alternate as predicate/value pairs; a trailing odd-numbered argument is the default. Non-matching branches are never evaluated. Expands to nested `if/else if`.',
+    description: 'Scheme/Clojure-style multi-branch conditional. Arguments alternate as predicate/value pairs; a trailing odd-numbered argument is the default. Non-matching branches are never evaluated. Expands to nested `if/else if`. Returns `null` when no predicate matches and no default is given (including when called with no arguments).',
     returns: { type: 'any' },
     args: { clauses: { type: 'any', rest: true } },
     variants: [{ argumentNames: ['clauses'] }],

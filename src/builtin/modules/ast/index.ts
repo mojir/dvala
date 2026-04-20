@@ -506,6 +506,22 @@ const astSource = `{
       ["Let", [first(second(ast)), transform(second(second(ast)))], 0]
     else
       transform(ast)
+    end,
+  // Returns the binding name for \`#macro let name = ...\`, or null otherwise.
+  // Lets decorator macros add contextual info (logs, errors) without teaching
+  // each macro the Let-target AST shape.
+  letBindingName: (ast) ->
+    if first(ast) == "Let" then
+      do
+        let target = first(second(ast));
+        if first(target) == "symbol" then
+          second(first(second(target)))
+        else
+          null
+        end;
+      end
+    else
+      null
     end
 }`
 
@@ -522,6 +538,19 @@ const additionalDocs: Record<string, FunctionDocs> = {
     description: 'Decorator helper for macros: extracts the value from a let-binding (or uses the node directly), passes it to `transform`, and rewraps the result in the let. Use inside a macro to support both `#myMacro expr` and `#myMacro let x = expr` with the same transform logic.',
     examples: [
       'let { decorate, num } = import("ast");\ndecorate(num(1), (value) -> ["Call", [["Builtin", "+", 0], [value, value]], 0])',
+    ],
+  },
+  'letBindingName': {
+    category: 'ast',
+    returns: { type: 'any' },
+    args: {
+      ast: { type: 'array', description: 'An AST node — typically the argument a decorator macro receives.' },
+    },
+    variants: [{ argumentNames: ['ast'] }],
+    description: 'Returns the binding name when `ast` is `let <name> = <value>` with a symbol target, otherwise `null`. Pairs with `decorate` so decorator macros can include the binding name in messages (logs, error prefixes) without reaching into the Let AST shape themselves.',
+    examples: [
+      'let { letBindingName } = import("ast");\nletBindingName(["Let", [["symbol", [["Sym", "greet", 0], null], 0], ["Str", "hi", 0]], 0])',
+      'let { letBindingName, num } = import("ast");\nletBindingName(num(42))',
     ],
   },
 }
