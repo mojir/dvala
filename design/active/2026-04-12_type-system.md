@@ -970,6 +970,8 @@ Collection functions like `filter`, `map`, `reduce` work on objects too: `filter
 
 `arity(fn)`, `doc(fn)`, `withDoc(fn, str)` take function values as arguments. The typechecker needs to accept any function type as an argument to these builtins — requires a `Function` supertype or similar.
 
+**Status (2026-04-20):** The `Function` supertype exists as `AnyFunction` and is exposed as the `Function` keyword in type annotations. `withDoc` uses it: `(Function, String) -> Function`, tight — rejects non-function first args. `doc` and `arity` deliberately stay `(Unknown) -> …` because they also accept effect references at runtime (`doc(@dvala.io.print)`); tightening would require a first-class effect-reference type that doesn't exist yet. Revisit when/if that type lands.
+
 ### Match pattern destructuring bindings
 
 `case [x, y]` and `case {name, age}` in match expressions should bind `x`, `y`, `name`, `age` as typed variables in the body. Currently only `case n when isNumber(n)` (guard-based) narrowing works.

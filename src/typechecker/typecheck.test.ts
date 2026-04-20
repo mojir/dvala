@@ -404,6 +404,35 @@ describe('typecheck — Integer primitive in builtin signatures', () => {
   })
 })
 
+// Meta-function typing: `withDoc(fn, str) -> fn` uses the `Function`
+// supertype to accept any function type. This keeps the sig tight (rejects
+// non-function first args) without having to enumerate each function shape.
+// `doc` and `arity` intentionally stay `(Unknown) -> …` because they also
+// accept effect references at runtime (see meta.ts for rationale).
+describe('typecheck — meta-function typing (Function supertype)', () => {
+  const dvala = createDvala()
+
+  it('withDoc accepts a user-defined function', () => {
+    const result = dvala.typecheck('((x, y) -> x + y) withDoc "sum"')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('withDoc accepts a let-bound function variable', () => {
+    const result = dvala.typecheck('let add = (x, y) -> x + y; withDoc(add, "sum")')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('withDoc rejects a non-function first argument', () => {
+    const result = dvala.typecheck('withDoc(42, "bad")')
+    expect(result.diagnostics.some(d => /function/i.test(d.message))).toBe(true)
+  })
+
+  it('withDoc rejects a non-string second argument', () => {
+    const result = dvala.typecheck('let add = (x, y) -> x + y; withDoc(add, 42)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+})
+
 describe('typecheck — misc expression types', () => {
   const dvala = createDvala()
 

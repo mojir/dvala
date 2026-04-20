@@ -42,6 +42,11 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(1),
       docs: {
+        // Stays `Unknown` rather than tightening to `Function` because `doc`
+        // also accepts effect references (`doc(@dvala.io.print)`) at runtime.
+        // First-class effect-reference types aren't in the type system yet,
+        // so we can't express `Function | EffectRef` here. Revisit when/if
+        // that type is added.
         type: '(Unknown) -> String',
         category: 'meta',
         returns: { type: 'string' },
@@ -116,6 +121,9 @@ export function getMetaNormalExpression(
       },
       arity: toFixedArity(1),
       docs: {
+        // Stays `Unknown` rather than tightening to `Function`: `arity` also
+        // accepts effect references at runtime. Same reasoning as `doc` above
+        // — revisit when first-class effect-reference types are added.
         type: '(Unknown) -> {min: Number, max: Number}',
         category: 'meta',
         returns: { type: 'object' },
