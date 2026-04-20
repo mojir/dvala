@@ -982,6 +982,15 @@ Collection functions like `filter`, `map`, `reduce` work on objects too: `filter
 
 ### Flow-sensitive narrowing in `if`/`else`
 
+**Status (2026-04-20):** Shipped for the two most common shapes.
+
+- Type-guard calls: `if isX(sym) then … else … end` — then branch narrows `sym` to `X`, else to `!X`.
+- Equality tests: `if sym == literal/atom then … else … end` — then branch narrows to the literal/atom, else drops it. `!=` is the flipped form.
+
+Non-supported shapes (fall through to no narrowing; branches still infer correctly): `&&`/`||` composition of guards, `not(...)` negation, narrowing on non-Sym arguments (e.g. `isX(obj.field)`). These can be added when they appear in practice without changing core algebra.
+
+Implementation: `extractIfNarrowings` + `narrowEnv` in `src/typechecker/infer.ts`, reusing `intersectMatchTypes` from the match-guard path. See `describe('typecheck — flow-sensitive narrowing in if/else')` for the suite.
+
 Today, type-guard narrowing (decision #20) only fires inside `match` guards. The typing rule for `if` is `return = union of a and b` (see the construct-to-operation table) with no refinement of the condition expression in either branch:
 
 ```dvala

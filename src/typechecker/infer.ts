@@ -954,12 +954,19 @@ export function inferExpr(
         const [cond, thenNode, elseNode] = payload as [AstNode, AstNode, AstNode | undefined]
         const condType = inferExpr(cond, ctx, env, typeMap)
         constrain(ctx, condType, BooleanType)
+        // Flow-sensitive narrowing: if the condition is a type guard
+        // (`isX(sym)`) or equality test (`sym == literal/atom`), narrow
+        // `sym` in each branch. Fall back to the outer env if no
+        // narrowing shape is recognised.
+        const narrowings = extractIfNarrowings(cond, env)
+        const thenEnv = narrowings ? narrowEnv(env, narrowings.whenTrue) : env
+        const elseEnv = narrowings ? narrowEnv(env, narrowings.whenFalse) : env
         // Always infer both branches so type errors in dead code still
         // surface (design doc §If narrowing). With fold enabled and the
         // condition reducing to a literal boolean, narrow the result to
         // the live branch only — decision #8 / C8 of the folding design.
-        const thenType = inferExpr(thenNode, ctx, env, typeMap)
-        const elseType = elseNode ? inferExpr(elseNode, ctx, env, typeMap) : NullType
+        const thenType = inferExpr(thenNode, ctx, thenEnv, typeMap)
+        const elseType = elseNode ? inferExpr(elseNode, ctx, elseEnv, typeMap) : NullType
         if (ctx.foldEnabled) {
           const expandedCond = expandType(condType)
           if (expandedCond.tag === 'Literal' && expandedCond.value === true) {
@@ -2583,6 +2590,107 @@ function isConstrainedFunctionArityCompatible(
  * Recognizes patterns like `isNumber(n)` → returns NumberType.
  * Uses the builtin type guard info from the type registry.
  */
+/**
+ * Flow-sensitive narrowing for `if` conditions. Analyzes the condition AST
+ * and returns the refinements that should apply in the then and else branches.
+ *
+ * Recognised shapes:
+ * - `isX(sym)` — builtin type guard. Then: sym & X. Else: sym & !X.
+ * - `sym == atomOrLiteral` — equality test. Then: sym & atomOrLiteral.
+ *   Else: sym & !atomOrLiteral.
+ *
+ * Returns undefined if the condition isn't a recognised narrowing shape,
+ * in which case the If case falls back to normal inference of both branches.
+ *
+ * Not yet supported: `&&`/`||` composition, `not(...)` negation,
+ * narrowing on non-Sym arguments like `isX(obj.field)`.
+ */
+function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
+  whenTrue: Map<string, Type>
+  whenFalse: Map<string, Type>
+} | undefined {
+  if (cond[0] !== NodeTypes.Call) return undefined
+  const [calleeNode, argNodes] = cond[1] as [AstNode, AstNode[]]
+  if (calleeNode[0] !== NodeTypes.Builtin) return undefined
+  const builtinName = calleeNode[1] as string
+  if (lookupShadowedBuiltin(env, builtinName)) return undefined
+
+  // Type-guard builtin: isX(sym) — single Sym arg, callee has a guardType.
+  if (argNodes.length === 1) {
+    const argNode = argNodes[0]!
+    if (argNode[0] !== NodeTypes.Sym) return undefined
+    const symName = argNode[1] as string
+    const info = getBuiltinType(builtinName)
+    if (info.guardType) {
+      return {
+        whenTrue: new Map([[symName, info.guardType]]),
+        whenFalse: new Map([[symName, neg(info.guardType)]]),
+      }
+    }
+    return undefined
+  }
+
+  // Equality narrowing: sym == literalOrAtom (or reversed).
+  if (argNodes.length === 2 && (builtinName === '==' || builtinName === '!=')) {
+    const [leftNode, rightNode] = argNodes as [AstNode, AstNode]
+    const narrow = extractEqualityNarrowing(leftNode, rightNode)
+      ?? extractEqualityNarrowing(rightNode, leftNode)
+    if (!narrow) return undefined
+    // For `!=`, positive-branch narrowing is the complement.
+    const negated = builtinName === '!='
+    return {
+      whenTrue: new Map([[narrow.symName, negated ? neg(narrow.value) : narrow.value]]),
+      whenFalse: new Map([[narrow.symName, negated ? narrow.value : neg(narrow.value)]]),
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * If `symNode` is a `Sym` reference and `valueNode` is a literal/atom, return
+ * the narrowing. Used by equality-based flow narrowing.
+ */
+function extractEqualityNarrowing(symNode: AstNode, valueNode: AstNode): { symName: string; value: Type } | null {
+  if (symNode[0] !== NodeTypes.Sym) return null
+  const symName = symNode[1] as string
+  const kind = valueNode[0]
+  if (kind === NodeTypes.Atom) {
+    return { symName, value: atom(valueNode[1] as string) }
+  }
+  if (kind === NodeTypes.Num || kind === NodeTypes.Str) {
+    return { symName, value: literal(valueNode[1] as string | number) }
+  }
+  if (kind === NodeTypes.Reserved) {
+    const lit = valueNode[1] as string
+    if (lit === 'true') return { symName, value: literal(true) }
+    if (lit === 'false') return { symName, value: literal(false) }
+    // 'null' has no Literal type — leave unnarrowed.
+  }
+  return null
+}
+
+/**
+ * Create a child env where each entry in `narrowings` intersects the
+ * outer type with the narrowing type. Used to thread flow-narrowed types
+ * into branch inference.
+ */
+function narrowEnv(env: TypeEnv, narrowings: Map<string, Type>): TypeEnv {
+  if (narrowings.size === 0) return env
+  const narrowed = env.child()
+  for (const [name, narrow] of narrowings) {
+    const outer = env.lookup(name)
+    if (!outer) continue
+    const intersected = intersectMatchTypes(outer, narrow)
+    // Avoid re-binding to the outer type if narrowing yielded nothing
+    // tighter — keeps hover/debug output cleaner.
+    if (!typeEquals(intersected, outer)) {
+      narrowed.bind(name, intersected)
+    }
+  }
+  return narrowed
+}
+
 function extractGuardNarrowing(guard: AstNode, boundName: string, env: TypeEnv): Type | null {
   // Guard must be a Call to a builtin: ["Call", [["Builtin", name, id], [["Sym", boundName, id]]], id]
   if (guard[0] !== NodeTypes.Call) return null

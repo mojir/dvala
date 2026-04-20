@@ -432,6 +432,90 @@ describe('typecheck — filter/map/reduce on records', () => {
   })
 })
 
+// Flow-sensitive narrowing in `if`/`else`. When the condition is a type-guard
+// call (`isX(sym)`) or an equality test (`sym == literal/atom`), the then and
+// else branches see `sym` narrowed to the appropriate type.
+//
+// This is the doc's "biggest day-to-day win" item — previously only `match`
+// guards narrowed. Without it, `if isString(x) then count(x) else x + 1 end`
+// on `x: String | Number` would fail because the else branch constrains x
+// to Number but the outer type keeps String | Number, breaking the call site.
+describe('typecheck — flow-sensitive narrowing in if/else', () => {
+  const dvala = createDvala()
+
+  it('isString guard narrows a union-typed parameter in if/else', () => {
+    const result = dvala.typecheck(`
+      let describe = (x: String | Number) -> if isString(x) then count(x) else x + 1 end;
+      describe("hi")
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('isNumber guard — else branch is String', () => {
+    const result = dvala.typecheck(`
+      let describe = (x: String | Number) -> if isNumber(x) then x + 1 else count(x) end;
+      describe("hi")
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('narrowing lets the else branch use string-only operations', () => {
+    // Without narrowing, `x ++ "!"` in the else branch would fail because
+    // `x` would still be typed as `String | Number`.
+    const result = dvala.typecheck(`
+      let f = (x: String | Number) -> if isNumber(x) then x + 1 else x ++ "!" end;
+      f(42)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('atom-equality narrowing in if/else', () => {
+    const result = dvala.typecheck(`
+      let f = (x: :ok | :err) -> if x == :ok then "success" else "failure" end;
+      f(:ok)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('atom-equality narrowing — else branch drops the matched atom', () => {
+    // In the else branch, `x` is `:ok | :err` minus `:ok` = `:err`.
+    // Then branch would incorrectly typecheck if narrowing didn't drop `:ok`.
+    const result = dvala.typecheck(`
+      effect @raise(Null) -> Null;
+      let f = (x: :ok | :err) -> if x == :ok then null else perform(@raise, null) end;
+      f(:ok)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('literal-equality narrowing (single level)', () => {
+    const result = dvala.typecheck(`
+      let f = (x: 1 | 2) -> if x == 1 then "one" else "two" end;
+      f(1)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('non-narrowing condition leaves the branches typed normally', () => {
+    // A condition that isn't a recognised narrowing shape (here: a
+    // Boolean-typed variable) doesn't narrow anything; the branches see
+    // the outer env unchanged.
+    const result = dvala.typecheck(`
+      let f = (flag: Boolean, x: Number) -> if flag then x + 1 else x - 1 end;
+      f(true, 42)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('`!=` narrows the else branch to the matched value', () => {
+    const result = dvala.typecheck(`
+      let f = (x: :ok | :err) -> if x != :ok then "not ok" else "ok" end;
+      f(:err)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
 // Optional record fields: `{a: A, b?: B}` — field `b` may be absent from
 // actual record values. Distinct from `b: B | Null` (key present, value
 // may be null). Only Option 1 (presence bit) works for records, because
