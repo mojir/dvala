@@ -1,11 +1,14 @@
 # Effect Row Variables — Phase 4-A
 
-**Status:** Draft
+**Status:** Shipped (Phases A, B, C, D)
 **Created:** 2026-04-20
-**Supersedes scope of:** [2026-04-19_handler-typing.md § Phase 4-A](../archive/2026-04-19_handler-typing.md#L244-L254)
+**Archived:** 2026-04-20
+**Supersedes scope of:** [2026-04-19_handler-typing.md § Phase 4-A](./2026-04-19_handler-typing.md#L244-L254)
 **References:**
-- [2026-04-12_type-system.md § Decision #12](2026-04-12_type-system.md#L33) — open effect sets with variable `@{e...}`
-- [2026-04-12_type-system.md § Open Q3 (settled)](2026-04-12_type-system.md#L1174-L1182) — biunification over the effect lattice preserves principal types
+- [2026-04-12_type-system.md § Decision #12](../active/2026-04-12_type-system.md#L33) — open effect sets with variable `@{e...}`
+- [2026-04-12_type-system.md § Open Q3 (settled)](../active/2026-04-12_type-system.md#L1174-L1182) — biunification over the effect lattice preserves principal types
+
+> **Ship note (2026-04-20):** All four phases shipped. Row-variable effect polymorphism is live: the six `effectHandler/` signatures carry row-polymorphic types (`(() -> @{choose | r} A) -> @{dvala.random.item | r} A` etc.), and thunk extras propagate through `ρ` into the caller's effect set via biunification over the flat effect-name lattice. `HandlerWrapperInfo` retained as a fast-path alongside row-var inference. Book chapter on Effect Polymorphism shipped at [book/05-advanced/02-effects.md § Effect Polymorphism](../../book/05-advanced/02-effects.md).
 - [src/typechecker/effectTypes.ts](../../src/typechecker/effectTypes.ts)
 - [src/typechecker/types.ts:25-28](../../src/typechecker/types.ts#L25-L28) — current `EffectSet`
 - [src/typechecker/types.ts:91](../../src/typechecker/types.ts#L91) — MLsub `Var` (template for effect rows)
