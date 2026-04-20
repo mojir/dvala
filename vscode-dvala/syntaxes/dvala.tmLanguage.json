@@ -303,18 +303,18 @@
           "match": "(?<=[\\s(\\[{,;]|^)null(?=[\\s)\\]},;]|$)"
         },
         {
-          "comment": "Control-flow reserved words: do, else, case, each, in, when, while, function, as, then, end, with, _",
+          "comment": "Control-flow reserved words: do, else, case, each, in, when, while, function, as, then, end, with, quote, _",
           "name": "keyword.control.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:do|else|case|each|in|when|while|function|as|then|end|with|_)(?=[\\s)\\]},;]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:do|else|case|each|in|when|while|function|as|then|end|with|quote|_)(?=[\\s)\\]},;]|$)"
         }
       ]
     },
     "special-expressions": {
       "patterns": [
         {
-          "comment": "Special expressions: if, let, for, match, loop, block, import, perform, effect, with, parallel, race, recur, self, handler, transform, resume",
+          "comment": "Special expressions: if, let, for, match, loop, block, import, perform, effect, with, parallel, race, recur, self, handler, shallow, transform, resume, macro, type",
           "name": "keyword.control.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|match|loop|block|import|perform|effect|with|parallel|race|recur|self|handler|transform|resume)(?=[\\s(\\[{)\\]},;]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|match|loop|block|import|perform|effect|with|parallel|race|recur|self|handler|shallow|transform|resume|macro|type)(?=[\\s(\\[{)\\]},;]|$)"
         }
       ]
     },
