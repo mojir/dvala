@@ -445,7 +445,7 @@ export interface AlgebraicHandleFrame {
    *
    * When non-empty, the frame is "resource-holding" and the
    * runtime refuses snapshot capture (see design doc
-   * `design/active/2026-04-19_host-scoped-resources.md`).
+   * `design/archive/2026-04-19_host-scoped-resources.md`).
    *
    * Stored as a mutable array deliberately — `onScopeExit` pushes
    * to this list from the host-handler's synchronous call path,

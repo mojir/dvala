@@ -256,7 +256,7 @@ export interface EffectContext {
    * at top level with no wrapping handler), the callback is registered
    * on a program-level list that fires at program completion or halt.
    *
-   * See design doc: `design/active/2026-04-19_host-scoped-resources.md`.
+   * See design doc: `design/archive/2026-04-19_host-scoped-resources.md`.
    */
   onScopeExit: (callback: () => void | Promise<void>) => void
 }

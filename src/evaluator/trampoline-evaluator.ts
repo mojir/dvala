@@ -2950,7 +2950,7 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
  * cleanups have already fired is forbidden (the runtime can no
  * longer guarantee resource-holding invariants).
  *
- * See `design/active/2026-04-19_host-scoped-resources.md` Part 3,
+ * See `design/archive/2026-04-19_host-scoped-resources.md` Part 3,
  * "Continuation tracking for the multi-shot restriction."
  */
 function assertContinuationValid(performK: ContinuationStack, sourceCodeInfo: SourceCodeInfo | undefined): void {
@@ -3004,7 +3004,7 @@ function hasLiveCleanups(k: ContinuationStack, snapshotState?: SnapshotState): b
  * Called at snapshot-capture sites and at suspend. The runtime refuses
  * these operations while resources are held because the host callback
  * for cleanup cannot follow a continuation that's been serialized or
- * discarded. See `design/active/2026-04-19_host-scoped-resources.md`
+ * discarded. See `design/archive/2026-04-19_host-scoped-resources.md`
  * Part 3.
  */
 function assertNoLiveCleanups(k: ContinuationStack, operation: string, sourceCodeInfo: SourceCodeInfo | undefined, snapshotState?: SnapshotState): void {
