@@ -1,7 +1,10 @@
 do
-  let { prettyPrint } = import("ast");
+  let { prettyPrint, decorate } = import("ast");
   {
-    trace: macro(fn) -> quote(... args) -> do perform(@dvala.io.print, "ENTER: " ++ str(args)); let result = apply($^{fn}, args); perform(@dvala.io.print, "EXIT: " ++ str(result)); result end end,
+    trace: macro(ast) -> decorate(
+      ast,
+      (fn) -> quote(... args) -> do perform(@dvala.io.print, "ENTER: " ++ str(args)); let result = apply($^{fn}, args); perform(@dvala.io.print, "EXIT: " ++ str(result)); result end end
+    ),
     unless: macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end,
     tap: macro(value, sideEffect) -> quote do let __tapValue = $^{value}; $^{sideEffect}; __tapValue end end,
     dbg: macro(ast) -> do

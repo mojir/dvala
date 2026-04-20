@@ -5,13 +5,14 @@ import macrosModuleSource from './macros.dvala'
 const macroDocs: Record<string, FunctionDocs> = {
   'trace': {
     category: 'macros',
-    description: 'Wraps a function so its arguments are logged on entry and its return value on exit (via `@dvala.io.print`). Useful for debugging call flow without editing the function body.',
+    description: 'Wraps a function so its arguments are logged on entry and its return value on exit (via `@dvala.io.print`). Useful for debugging call flow without editing the function body. Supports both direct application and `#trace` as a decorator on a `let` binding.',
     returns: { type: 'function' },
     args: { fn: { type: 'function' } },
     variants: [{ argumentNames: ['fn'] }],
     examples: [
       'let { trace } = import("macros");\nlet add = trace((a, b) -> a + b);\nadd(3, 4)',
-      'let { trace } = import("macros");\nlet greet = trace((name) -> "hello, " ++ name);\n[greet("Ada"), greet("Grace")]',
+      'let { trace } = import("macros");\nlet greet = #trace (name) -> "hello, " ++ name;\n[greet("Ada"), greet("Grace")]',
+      'let { trace } = import("macros");\n#trace\nlet greet = (name) -> "hello, " ++ name;\n[greet("Ada"), greet("Grace")]',
     ],
   },
   'unless': {
