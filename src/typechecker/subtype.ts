@@ -132,7 +132,11 @@ function check(s: Type, t: Type, visited: Set<string>): boolean {
 function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
   // Primitive <: Primitive
   if (s.tag === 'Primitive' && t.tag === 'Primitive') {
-    return s.name === t.name
+    if (s.name === t.name) return true
+    // Integer <: Number (shared float64 representation; Integer is the
+    // subset where Number.isInteger holds).
+    if (s.name === 'Integer' && t.name === 'Number') return true
+    return false
   }
 
   // Atom <: Atom (singletons — only equal atoms are subtypes)
@@ -249,9 +253,14 @@ function areDisjoint(s: Type, t: Type, visited: Set<string>): boolean {
   // Unknown is never disjoint with a non-Never type
   if (s.tag === 'Unknown' || t.tag === 'Unknown') return false
 
-  // Different primitive types are disjoint
+  // Different primitive types are disjoint, with one exception:
+  // Integer ⊂ Number, so they share all integer-valued numbers.
   if (s.tag === 'Primitive' && t.tag === 'Primitive') {
-    return s.name !== t.name
+    if (s.name === t.name) return false
+    if ((s.name === 'Integer' && t.name === 'Number') || (s.name === 'Number' && t.name === 'Integer')) {
+      return false
+    }
+    return true
   }
 
   // Primitive and Atom are disjoint (atoms are not primitives)
@@ -321,6 +330,9 @@ function isLengthIntervalContained(source: SequenceType, target: SequenceType): 
 function literalMatchesPrimitive(value: string | number | boolean, name: PrimitiveName): boolean {
   switch (name) {
     case 'Number': return typeof value === 'number'
+    // Integer refines Number to integer-valued literals only.
+    // Literal(42) <: Integer holds; Literal(3.14) <: Integer does not.
+    case 'Integer': return typeof value === 'number' && Number.isInteger(value)
     case 'String': return typeof value === 'string'
     case 'Boolean': return typeof value === 'boolean'
     case 'Null': return false // null is not a literal

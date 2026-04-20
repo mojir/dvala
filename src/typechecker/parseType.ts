@@ -27,7 +27,7 @@
 
 import type { RowVarTail, Type } from './types'
 import {
-  NumberType, StringType, BooleanType, NullType,
+  NumberType, IntegerType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, AnyFunction, PureEffects,
   atom, literal, fn, array, tuple, union, inter, neg, effectSet, handlerType,
 } from './types'
@@ -282,6 +282,7 @@ class TypeParser {
 
     switch (name) {
       case 'Number': return NumberType
+      case 'Integer': return IntegerType
       case 'String': return StringType
       case 'Boolean': return BooleanType
       case 'Null': return NullType

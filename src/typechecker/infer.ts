@@ -581,17 +581,20 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 
   // --- Same-tag structural constraints ---
 
-  // Primitives: same name is ok, different name is an error
+  // Primitives: same name is ok, or Integer <: Number (the only proper
+  // primitive-subtyping relation today). Anything else is an error.
   if (lhs.tag === 'Primitive' && rhs.tag === 'Primitive') {
-    if (lhs.name !== rhs.name) {
-      throw new TypeInferenceError(`${lhs.name} is not a subtype of ${rhs.name}`)
-    }
-    return
+    if (lhs.name === rhs.name) return
+    if (lhs.name === 'Integer' && rhs.name === 'Number') return
+    throw new TypeInferenceError(`${lhs.name} is not a subtype of ${rhs.name}`)
   }
 
-  // Literal <: Primitive: check the match
+  // Literal <: Primitive: check the match.
+  // Number literals are also Integer when their value is integer-valued
+  // (mirrors subtype.ts:literalMatchesPrimitive).
   if (lhs.tag === 'Literal' && rhs.tag === 'Primitive') {
     const ok = (typeof lhs.value === 'number' && rhs.name === 'Number')
+      || (typeof lhs.value === 'number' && rhs.name === 'Integer' && Number.isInteger(lhs.value))
       || (typeof lhs.value === 'string' && rhs.name === 'String')
       || (typeof lhs.value === 'boolean' && rhs.name === 'Boolean')
     if (!ok) {

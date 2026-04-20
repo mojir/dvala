@@ -14,7 +14,18 @@
 // Type algebra
 // ---------------------------------------------------------------------------
 
-export type PrimitiveName = 'Number' | 'String' | 'Boolean' | 'Null'
+/**
+ * Primitive type names.
+ *
+ * `Integer` is a proper subtype of `Number` — both share the same float64
+ * runtime representation, but `Integer` denotes the subset `{n : Number |
+ * Number.isInteger(n)}`. Useful for array indexing, count-like parameters,
+ * and match patterns that only care about whole numbers. Subtyping is
+ * asymmetric: any `Integer` is a `Number`, but a `Number` is only an
+ * `Integer` if its literal value is one (`Literal(42) <: Integer` holds;
+ * `Literal(3.14) <: Integer` does not).
+ */
+export type PrimitiveName = 'Number' | 'Integer' | 'String' | 'Boolean' | 'Null'
 
 /**
  * Effect set: a set of effect names plus a tail describing the "remainder"
@@ -152,6 +163,7 @@ export type Type =
 
 // Primitives
 export const NumberType: Type = { tag: 'Primitive', name: 'Number' }
+export const IntegerType: Type = { tag: 'Primitive', name: 'Integer' }
 export const StringType: Type = { tag: 'Primitive', name: 'String' }
 export const BooleanType: Type = { tag: 'Primitive', name: 'Boolean' }
 export const NullType: Type = { tag: 'Primitive', name: 'Null' }

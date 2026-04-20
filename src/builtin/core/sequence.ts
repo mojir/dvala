@@ -34,7 +34,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
     docs: {
-      type: '((String | Unknown[] | Null, Number) -> Unknown) & ((String | Unknown[] | Null, Number, Unknown) -> Unknown)',
+      type: '((String | Unknown[] | Null, Integer) -> Unknown) & ((String | Unknown[] | Null, Integer, Unknown) -> Unknown)',
       category: 'sequence',
       returns: { type: 'any' },
       args: {
