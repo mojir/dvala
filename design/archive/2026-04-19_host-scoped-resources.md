@@ -1,9 +1,11 @@
 # Host-scoped resources — `onScopeExit` callbacks
 
-**Status:** Decisions resolved — ready to implement
+**Status:** Shipped (core implementation in PR #60, 2026-04-20)
 **Created:** 2026-04-19
 **Decisions resolved:** 2026-04-19
-**Supersedes:** [2026-04-13_handler-finally.md](2026-04-13_handler-finally.md) (proposes dropping `finally` as a handler clause in favor of this mechanism).
+**Supersedes:** [2026-04-13_handler-finally.md](./2026-04-13_handler-finally.md) (dropped `finally` as a handler clause in favor of this mechanism).
+
+> **Ship note (2026-04-20):** Core runtime (Phases 1–2) and tests (Phase 5) shipped in PR #60. Phase 3 error-message polish is partially done (effect-name breakdown in restriction errors; source-location debug flag deferred). Phase 4 user-facing docs (effect-handler writing guide section + "Resources and Dvala" chapter) is tracked as a documentation follow-up; no runtime work remains. Multi-shot restriction (`assertContinuationValid`) is in place as defensive code since Dvala doesn't expose a continuation-escape vector today.
 
 ## Goal
 

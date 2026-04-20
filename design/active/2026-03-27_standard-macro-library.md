@@ -1,4 +1,11 @@
-# Phase 8 — Standard Macro Library
+# Standard Macro Library
+
+**Status:** Ready to implement (refreshed 2026-04-20)
+**Created:** 2026-03-27
+
+## First milestone
+
+Ship `trace`, `unless`, `tap`, `dbg`, `cond` as the initial batch. These exercise three distinct macro patterns (function-wrap, condition-wrap, variadic conditional) and have no external dependencies. `assert`, `curry`, `time`, `lazy` follow in a second commit once the module scaffolding exists.
 
 ## Overview
 
@@ -175,8 +182,8 @@ These two from the original Phase 8 design are **deferred**:
 4. Tests in `__tests__/macros-module.test.ts`
 5. `time` macro depends on `@dvala.time.now` — implement or defer
 
-## Open Questions
+## Resolved questions (refreshed 2026-04-20)
 
-1. **Should these be named macros?** E.g., `macro@dvala.macros.trace (...)` — would let the host intercept/customize expansion. Or keep them anonymous for simplicity?
-2. **Module loading mechanism** — how do Dvala-implemented macros get registered as a module? Are they compiled from source at module init time, or stored as pre-parsed AST?
-3. **`time` effect** — does `@dvala.time.now` exist? If not, should we add it or defer the `time` macro?
+1. **Named vs. anonymous.** Anonymous. No use case for host-customizable expansion yet. Revisit if one appears.
+2. **Module loading.** Use the existing `DvalaModule.source` mechanism — same pattern as `effectHandler.dvala` / `collection.dvala`. Source is evaluated at module-load time; each exported binding becomes a module function. No new registration path needed.
+3. **`@dvala.time.now`.** Already exists as a standard effect (`src/evaluator/standardEffects.ts:543`). `time` macro can use it directly without deferral.

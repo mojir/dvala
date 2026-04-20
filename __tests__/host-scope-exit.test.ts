@@ -5,7 +5,7 @@ const dvala = createDvala()
 
 // Host scope-exit callbacks land in Phase 1+2. These tests anchor the
 // runtime behavior described in
-// `design/active/2026-04-19_host-scoped-resources.md`. Keep them small
+// `design/archive/2026-04-19_host-scoped-resources.md`. Keep them small
 // and focused; the design evolves quickly and large tests are hard to
 // update in lockstep.
 describe('host scope-exit callbacks', () => {
