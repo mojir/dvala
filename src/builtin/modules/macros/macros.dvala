@@ -1,0 +1,41 @@
+do
+  let { prettyPrint, decorate, letBindingName } = import("ast");
+  {
+    trace: macro(ast) -> do
+      // `#trace let name = ...` captures the binding name so log lines read
+      // as `ENTER greet: ...`; anonymous forms keep the plain "ENTER:" prefix.
+      let name = letBindingName(ast);
+      let prefix = if isNull(name) then "" else " " ++ name end;
+      decorate(
+        ast,
+        (fn) -> quote(... args) -> do perform(@dvala.io.print, $^{["Str", "ENTER" ++ prefix ++ ": ", 0]} ++ str(args)); let result = apply($^{fn}, args); perform(@dvala.io.print, $^{["Str", "EXIT" ++ prefix ++ ": ", 0]} ++ str(result)); result end end
+      );
+    end,
+    unless: macro(cond, body) -> quote if not ($^{cond}) then $^{body} else null end end,
+    tap: macro(value, sideEffect) -> quote do let __tapValue = $^{value}; $^{sideEffect}; __tapValue end end,
+    dbg: macro(ast) -> do
+      // Capture source text at expansion time so the debug print shows the
+      // original expression alongside its runtime value.
+      let exprStr = prettyPrint(ast);
+      quote do let __dbgValue = $^{ast}; perform(@dvala.io.print, $^{["Str", exprStr, 0]} ++ " => " ++ str(__dbgValue)); __dbgValue end end;
+    end,
+    cond: macro(... clauses) -> do
+      // Odd clause count means the last arg is the default (else branch).
+      // Build nested If AST nodes from the inside out via loop/recur.
+      let n = count(clauses);
+      let hasDefault = (n mod 2) == 1;
+      let pairsEnd = if hasDefault then n - 1 else n end;
+      let elseBranch =
+        if hasDefault then clauses[n - 1] else ["Reserved", "null", 0] end;
+      loop(i = pairsEnd, acc = elseBranch) -> if i == 0 then
+        acc
+      else
+        do
+          let c = clauses[i - 2];
+          let v = clauses[i - 1];
+          recur(i - 2, ["If", [c, v, acc], 0]);
+        end
+      end;
+    end,
+  };
+end;

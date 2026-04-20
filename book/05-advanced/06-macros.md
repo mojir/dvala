@@ -516,6 +516,76 @@ let bad = macro (ast) -> quote let x = $^{ast} end;
 
 ---
 
+## The `macros` module — ready-to-use macros
+
+Dvala ships a small `macros` module so you don't have to write the common
+macros from scratch. Each entry below is implemented in pure Dvala and lives
+in [`src/builtin/modules/macros/`](https://github.com/mojir/dvala/tree/main/src/builtin/modules/macros).
+
+```dvala
+let { trace, unless, tap, dbg, cond } = import("macros");
+```
+
+### `trace` — log entry/exit of a function
+
+Wraps a function so its arguments are printed on entry and its return value on exit (via `@dvala.io.print`).
+
+```dvala
+let { trace } = import("macros");
+let add = trace((a, b) -> a + b);
+add(3, 4);
+// prints: ENTER: [3,4]
+// prints: EXIT: 7
+// returns: 7
+```
+
+### `unless` — negated `if`
+
+Evaluates the body only when the condition is falsy. Returns `null` otherwise.
+
+```dvala
+let { unless } = import("macros");
+[unless(false, "ran"), unless(true, "skipped")];
+```
+
+### `tap` — side effect then return
+
+Evaluates a value, then runs a side-effect expression, and returns the
+**original value**. Great for threading logging through intermediate
+computations without changing the data.
+
+```dvala
+let { tap } = import("macros");
+let sum = reduce([1, 2, 3], +, 0);
+tap(sum, perform(@dvala.io.print, "checkpoint"));
+// prints "checkpoint", returns 6
+```
+
+### `dbg` — print expression and value
+
+Prints `"<source> => <value>"` using the original source text captured at
+macro-expansion time, then returns the value unchanged. Drop it into any
+expression without breaking anything.
+
+```dvala
+let { dbg } = import("macros");
+dbg(1 + 2 * 3); // prints: "1 + 2 * 3 => 7"
+```
+
+### `cond` — multi-branch conditional
+
+Scheme/Clojure-style conditional. Arguments are alternating predicate/value
+pairs; an odd trailing argument is the default branch. Non-matching branches
+are **not** evaluated.
+
+```dvala
+let { cond } = import("macros");
+let describe = (x) -> cond(x < 0, "negative", x == 0, "zero", "positive");
+[describe(-1), describe(0), describe(5)];
+```
+
+---
+
 ## Summary
 
 | Concept | Description |

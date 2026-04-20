@@ -13,8 +13,12 @@ import { renderPageHeader } from './pageHeader'
 
 // Shared header actions for all book pages (index + chapters)
 function bookHeaderActions(): string {
+  // Stamp the current Dvala version into the suggested filename so downloaded
+  // PDFs stay self-identifying even after multiple releases.
+  const version = window.referenceData?.version
+  const downloadName = version ? `the-dvala-book-v${version}.pdf` : 'the-dvala-book.pdf'
   return `
-      <a class="chapter-header__toc-btn example-header__load-btn book-header__download" href="${href('/the-dvala-book.pdf')}" download="the-dvala-book.pdf" aria-label="Download PDF" title="Download PDF">${downloadIcon} <span class="book-header__download-label">Download</span></a>
+      <a class="chapter-header__toc-btn example-header__load-btn book-header__download" href="${href('/the-dvala-book.pdf')}" download="${downloadName}" aria-label="Download PDF" title="Download PDF">${downloadIcon} <span class="book-header__download-label">Download</span></a>
       <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>`
 }
 

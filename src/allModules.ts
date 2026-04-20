@@ -16,6 +16,7 @@ import { jsonModule } from './builtin/modules/json'
 import { timeModule } from './builtin/modules/time'
 import { astModule } from './builtin/modules/ast'
 import { handlerModule } from './builtin/modules/effectHandler'
+import { macrosModule } from './builtin/modules/macros'
 
 export const allBuiltinModules: DvalaModule[] = [
   assertModule,
@@ -35,4 +36,5 @@ export const allBuiltinModules: DvalaModule[] = [
   timeModule,
   handlerModule,
   astModule,
+  macrosModule,
 ]
