@@ -966,6 +966,8 @@ Status: core math builtins are now scalar-only in both the runtime and the type 
 
 Collection functions like `filter`, `map`, `reduce` work on objects too: `filter({a: 1, b: 2}, isOdd)`. Currently typed with array-only generics `(A[], (A) -> Boolean) -> A[]`. Need object variants: `({...}, (Unknown) -> Boolean) -> {...}` with structural subtyping.
 
+**Status (2026-04-20):** Record overloads are shipped on `filter`, `map`, `reduce` in `src/builtin/core/collection.ts`. Callbacks receive `Unknown` for the element type because the record's field-value union can't be expressed without a `ValueOf<R>` type constructor (pairs with `keyof` / indexed-access types — still pending). That tightening is a follow-up for when indexed-access lands.
+
 ### Meta-function typing
 
 `arity(fn)`, `doc(fn)`, `withDoc(fn, str)` take function values as arguments. The typechecker needs to accept any function type as an argument to these builtins — requires a `Function` supertype or similar.
@@ -1054,6 +1056,8 @@ These are *type-level* distinctions on the same float64 runtime representation. 
 Full numeric tower (`Rational`, etc.) requires new runtime representations — deferred until the runtime supports them.
 
 ### Typed matrices / fixed-size arrays
+
+**Status (2026-04-20):** The Phase A tuple-alias approach is shipped and lock-in tested — no new machinery required. See `describe('typecheck — typed matrices via tuple aliases')` in `src/typechecker/typecheck.test.ts`. The Phase D literal-length form (`Number[4]`) remains future work.
 
 Phase A approach — tuple aliases, no new machinery:
 

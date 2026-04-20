@@ -404,6 +404,76 @@ describe('typecheck — Integer primitive in builtin signatures', () => {
   })
 })
 
+// Object-type variants for filter/map/reduce. These lock in that the
+// record-shaped overloads in collection.ts accept object inputs and
+// preserve the open-record return shape.
+describe('typecheck — filter/map/reduce on records', () => {
+  const dvala = createDvala()
+
+  it('filter accepts a record with a value-typed predicate', () => {
+    const result = dvala.typecheck('filter({a: 1, b: 2, c: 3}, (v) -> v > 1)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('map accepts a record and a value transformer', () => {
+    const result = dvala.typecheck('map({a: 1, b: 2}, (v) -> str(v))')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('reduce accepts a record', () => {
+    const result = dvala.typecheck('reduce({a: 1, b: 2}, (acc, v) -> acc + v, 0)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('filter result on a record is usable as a record', () => {
+    // Open-record output — subsequent record operations still typecheck.
+    const result = dvala.typecheck('let r = filter({a: 1, b: 2}, (v) -> v > 0); r.a')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
+// Typed matrices via tuple-alias form. The design doc's "typed matrices"
+// future extension is already fully expressible today — tuple types plus
+// type aliases give fixed-size vectors and matrices with full element typing.
+// These tests lock in that support.
+describe('typecheck — typed matrices via tuple aliases', () => {
+  const dvala = createDvala()
+
+  it('fixed-size vector via tuple type annotation', () => {
+    const result = dvala.typecheck('let v: [Number, Number, Number] = [1, 2, 3]; v')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('tuple alias for a 3D vector', () => {
+    const result = dvala.typecheck('type Vec3 = [Number, Number, Number]; let v: Vec3 = [1, 2, 3]; v')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('nested tuple aliases for a matrix', () => {
+    const result = dvala.typecheck(`
+      type Vec3 = [Number, Number, Number];
+      type Mat3x3 = [Vec3, Vec3, Vec3];
+      let m: Mat3x3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+      m
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects wrong-length vector literal', () => {
+    const result = dvala.typecheck('let v: [Number, Number, Number] = [1, 2]; v')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('accepts fully-typed function on tuple aliases', () => {
+    const result = dvala.typecheck(`
+      type Vec3 = [Number, Number, Number];
+      let dot: (Vec3, Vec3) -> Number = (a, b) -> a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      dot([1, 0, 0], [0, 1, 0])
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
 // Meta-function typing: `withDoc(fn, str) -> fn` uses the `Function`
 // supertype to accept any function type. This keeps the sig tight (rejects
 // non-function first args) without having to enumerate each function shape.
