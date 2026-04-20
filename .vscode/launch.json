@@ -5,7 +5,7 @@
       "name": "Debug Playground (Chrome)",
       "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:9901",
+      "url": "http://localhost:22230",
       "webRoot": "${workspaceFolder}/docs",
       "sourceMaps": true,
       "sourceMapPathOverrides": {

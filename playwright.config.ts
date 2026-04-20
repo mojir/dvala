@@ -8,7 +8,7 @@ export default defineConfig({
   timeout: 10_000,
   retries: 0,
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:4173',
+    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:22231',
     headless: true,
     viewport: { width: 1280, height: 720 },
   },
@@ -17,8 +17,8 @@ export default defineConfig({
   ],
   ...(isProduction ? {} : {
     webServer: {
-      command: 'npx serve docs -l 4173 -s',
-      port: 4173,
+      command: 'npx serve docs -l 22231 -s',
+      port: 22231,
       reuseExistingServer: !process.env.CI,
     },
   }),
