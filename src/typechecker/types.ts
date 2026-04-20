@@ -31,10 +31,12 @@ export type PrimitiveName = 'Number' | 'String' | 'Boolean' | 'Null'
  *           sets of effect names — the effect lattice is the flat free
  *           distributive lattice over effect names.
  *
- * Phase 4-A invariant: `RowVar` is produced only by the `@{e | ρ}` parser
- * path and structural operations that preserve it (freshening, equality,
- * printing). Inference-time sites (constrain, subtract, merge, union,
- * isEffectSubset) throw on `RowVar` until Phase B wires biunification.
+ * `RowVar` participates in MLsub-style biunification at constrain sites:
+ * concrete lower/upper bounds accumulate directly; var-to-var edges
+ * propagate bounds across the graph. Display folds bounds back into
+ * concrete effect names; unconstrained row vars stay as `ρ` to preserve
+ * polymorphism in generalized signatures. See `constrainEffectSet` and
+ * `expandEffectSet` in `infer.ts` for the propagation and display logic.
  */
 export type EffectTail =
   | { tag: 'Closed' }

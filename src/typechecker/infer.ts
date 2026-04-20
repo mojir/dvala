@@ -317,6 +317,10 @@ function varKey(t: Type): string {
  *
  * The effect lattice is flat: `union = join`, `∅ = bottom`, `subset = order`.
  * MLsub rules specialize cleanly to the flat lattice.
+ *
+ * @internal Exported for tests that exercise effect-row biunification in
+ * isolation. Not part of the public typechecker API — callers in source
+ * should go through `constrain`.
  */
 export function constrainEffectSet(sub: EffectSet, sup: EffectSet): void {
   if (sub === sup) return
@@ -1711,6 +1715,9 @@ export function inferExpr(
  * Each call to a polymorphic builtin like filter(A[], (A)->Boolean) -> A[]
  * needs its own set of type variables so constraints from one call don't
  * leak into another.
+ *
+ * @internal Exported for tests that build annotation types via
+ * `parseTypeAnnotation` and need fresh instances. Not a public API.
  */
 export function freshenAnnotationVars(ctx: InferenceContext, t: Type): Type {
   if (!containsVars(t)) return t
@@ -1757,8 +1764,9 @@ function containsVars(t: Type): boolean {
  * Freshen an effect set: if its tail is a RowVar, allocate a fresh RowVar
  * keyed through `rowMapping` so that multiple occurrences of the same row
  * var within one annotation map to the same fresh var. Identity-preserving
- * only — bounds are NOT copied (Phase A doesn't produce RowVars from
- * inference, so parsed row vars always have empty bounds).
+ * only — bounds are NOT copied. Annotation-parsed row vars always have
+ * empty bounds at parse time (bounds accumulate via biunification at call
+ * sites), so there's nothing to copy.
  */
 function freshenEffectSet(ctx: InferenceContext, e: EffectSet, rowMapping: Map<number, RowVarTail>): EffectSet {
   if (e.tail.tag !== 'RowVar') return e
@@ -3999,6 +4007,10 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
  *
  * `visited` tracks row-var ids to prevent infinite recursion through
  * var-to-var edges.
+ *
+ * @internal Exported for tests that verify row-var expansion behaviour
+ * directly. Callers in source should use `expandType` which handles the
+ * effect sets on Function and Handler nodes automatically.
  */
 export function expandEffectSet(e: EffectSet, polarity: 'positive' | 'negative'): EffectSet {
   if (e.tail.tag !== 'RowVar') return e

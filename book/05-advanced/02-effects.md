@@ -774,18 +774,18 @@ Write `@{e | r}` to mean "the effect set contains `e` plus whatever `r` stands f
 //   "Takes a thunk performing `@choose` plus any remainder r.
 //    Returns A[] with that same remainder r surfacing to the caller."
 let { chooseAll } = import("effectHandler");
-
-effect @log(String) -> Null;
-
-// The thunk performs @log in addition to @choose. Row polymorphism
-// propagates @log through to the caller — chooseAll neither catches
-// nor introduces it; it just flows through.
-let collectLogs = () -> chooseAll(-> do
-  perform(@log, "picking...");
-  perform(@choose, [1, 2, 3])
-end);
-// collectLogs has inferred effect set @{log} — @choose is caught by
-// chooseAll, @log flows through via the row variable.
+// The thunk performs @dvala.io.print in addition to @choose. Row
+// polymorphism propagates the print effect through to the caller —
+// chooseAll neither catches nor introduces it; it just flows through.
+let collectLogs = () -> chooseAll(
+  -> do
+    perform(@dvala.io.print, "picking...");
+    perform(@choose, [1, 2, 3]);
+  end
+);
+// collectLogs has inferred effect set @{dvala.io.print} — @choose is
+// caught by chooseAll, the print effect flows through via the row var.
+collectLogs;
 ```
 
 The three tail forms in annotations:
@@ -809,17 +809,17 @@ When a wrapper installs a handler whose clauses themselves perform effects, the 
 // introduced by the wrapper's internal handler and surfaces to the
 // caller. Any thunk extras flow through r.
 let { chooseRandom } = import("effectHandler");
-
-effect @telemetry(String) -> Null;
-
-let pick = () -> chooseRandom(-> do
-  perform(@telemetry, "rolling dice");
-  perform(@choose, ["heads", "tails"])
-end);
-// pick has effect set @{dvala.random.item, telemetry}:
+let pick = () -> chooseRandom(
+  -> do
+    perform(@dvala.io.print, "rolling dice");
+    perform(@choose, ["heads", "tails"]);
+  end
+);
+// pick has effect set @{dvala.random.item, dvala.io.print}:
 //   @choose was caught (vanished).
 //   @dvala.random.item was introduced by the wrapper.
-//   @telemetry flowed through r from the thunk.
+//   @dvala.io.print flowed through r from the thunk.
+pick;
 ```
 
 ---
@@ -834,7 +834,7 @@ let { retry, fallback } = import("effectHandler");
 
 ### `fallback(value)`
 
-```
+```text
 fallback : (Unknown) -> Handler<Unknown, Unknown, @{dvala.error}>
 ```
 
@@ -857,7 +857,7 @@ fallback(0)(-> 0 / 0);
 
 ### `retry(n, bodyFn)`
 
-```
+```text
 retry : (Number, (() -> @{dvala.error | r} A)) -> @{dvala.error | r} A
 ```
 
@@ -879,7 +879,7 @@ These handlers interpret the `@choose` effect — a computation that "picks" a v
 
 #### `chooseAll(bodyFn)`
 
-```
+```text
 chooseAll : (() -> @{choose | r} A) -> @{| r} A[]
 ```
 
@@ -905,7 +905,7 @@ chooseAll(
 
 #### `chooseFirst(bodyFn)`
 
-```
+```text
 chooseFirst : (() -> @{choose | r} A) -> @{| r} A
 ```
 
@@ -918,7 +918,7 @@ chooseFirst(-> perform(@choose, ["a", "b", "c"]));
 
 #### `chooseRandom(bodyFn)`
 
-```
+```text
 chooseRandom : (() -> @{choose | r} A) -> @{dvala.random.item | r} A
 ```
 
@@ -931,7 +931,7 @@ chooseRandom(-> perform(@choose, [1, 2, 3, 4, 5]));
 
 #### `chooseTake(n, bodyFn)`
 
-```
+```text
 chooseTake : (Number, (() -> @{choose | r} A)) -> @{| r} A[]
 ```
 
