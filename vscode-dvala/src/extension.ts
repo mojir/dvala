@@ -797,6 +797,25 @@ export function activate(context: vscode.ExtensionContext): void {
     indexDocument(doc)
   }
 
+  // Lazy full-workspace scan — ensures every .dvala file on disk is in the
+  // index, not just the ones the user has opened. Required for cross-file
+  // rename / find-references to reach files that have never been opened.
+  // Fires at most once per session; subsequent calls are no-ops behind the
+  // `fullyIndexed` flag, and the filesystem watcher below keeps the index
+  // current from then on. Reads from disk (source omitted); open documents
+  // that already have dirty buffer content stay authoritative because
+  // `WorkspaceIndex` caches by content hash and skips re-parsing unchanged
+  // input.
+  let fullyIndexed = false
+  async function ensureWorkspaceIndexed(): Promise<void> {
+    if (fullyIndexed) return
+    const uris = await vscode.workspace.findFiles('**/*.dvala', '**/node_modules/**')
+    for (const uri of uris) {
+      workspaceIndex.updateFile(uri.fsPath)
+    }
+    fullyIndexed = true
+  }
+
   // Re-index on document change (debounced)
   const onDidChange = vscode.workspace.onDidChangeTextDocument(event => {
     if (event.document.languageId !== 'dvala') return
@@ -816,18 +835,39 @@ export function activate(context: vscode.ExtensionContext): void {
     typecheckCache.delete(doc.uri.toString())
   })
 
+  // Keep the index live for files that are never opened in an editor. The
+  // watcher complements `onDidOpen` / `onDidChangeTextDocument`, which only
+  // fire for open documents — without it, renaming a saved-but-never-opened
+  // file on disk would leave stale `reverseImports` entries pointing at an
+  // outdated version.
+  const dvalaWatcher = vscode.workspace.createFileSystemWatcher('**/*.dvala')
+  const onFsCreate = dvalaWatcher.onDidCreate(uri => workspaceIndex.updateFile(uri.fsPath))
+  const onFsChange = dvalaWatcher.onDidChange(uri => {
+    // Open documents carry their authoritative content through
+    // onDidChangeTextDocument — skip the disk read so we don't clobber a
+    // dirty buffer with the saved-on-disk version.
+    const openDoc = vscode.workspace.textDocuments.find(d => d.uri.fsPath === uri.fsPath)
+    if (openDoc) return
+    workspaceIndex.updateFile(uri.fsPath)
+  })
+  const onFsDelete = dvalaWatcher.onDidDelete(uri => workspaceIndex.invalidateFile(uri.fsPath))
+
   // Reference provider — Find All References (Shift+F12)
   const referenceProvider = vscode.languages.registerReferenceProvider('dvala', {
-    provideReferences(document, position) {
+    async provideReferences(document, position) {
       indexDocument(document)
-      const symbol = workspaceIndex.getSymbolAtPosition(
+      // Populate the index from disk so references reach files the user
+      // hasn't opened yet. First invocation pays the scan; subsequent ones
+      // are no-ops.
+      await ensureWorkspaceIndexed()
+      const target = workspaceIndex.resolveCanonicalFile(
         document.uri.fsPath,
         position.line + 1,
         position.character + 1,
       )
-      if (!symbol) return []
+      if (!target) return []
 
-      const occurrences = workspaceIndex.findAllOccurrences(document.uri.fsPath, symbol.name)
+      const occurrences = workspaceIndex.findAllOccurrences(target.file, target.name)
       return occurrences.map(occ => new vscode.Location(
         vscode.Uri.file(occ.file),
         new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1)),
@@ -835,7 +875,7 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
-  // Rename provider — F2 to rename a symbol across the file
+  // Rename provider — F2 to rename a symbol across the workspace
   const renameProvider = vscode.languages.registerRenameProvider('dvala', {
     prepareRename(document, position) {
       indexDocument(document)
@@ -853,21 +893,35 @@ export function activate(context: vscode.ExtensionContext): void {
       return { range, placeholder: symbol.name }
     },
 
-    provideRenameEdits(document, position, newName) {
+    async provideRenameEdits(document, position, newName) {
       // Validate that newName is a valid Dvala identifier
       if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(newName)) {
         throw new Error(`'${newName}' is not a valid identifier`)
       }
 
       indexDocument(document)
-      const symbol = workspaceIndex.getSymbolAtPosition(
+      // Populate the index from disk so the rename reaches files the user
+      // hasn't opened yet. First invocation pays the scan; subsequent ones
+      // are no-ops.
+      await ensureWorkspaceIndexed()
+      const target = workspaceIndex.resolveCanonicalFile(
         document.uri.fsPath,
         position.line + 1,
         position.character + 1,
       )
-      if (!symbol) return undefined
+      if (!target) return undefined
 
-      const occurrences = workspaceIndex.findAllOccurrences(document.uri.fsPath, symbol.name)
+      // The cursor is on an import-kind binding whose source module isn't in
+      // the index — rename will only cover the current file instead of the
+      // full workspace. Surface this so the user doesn't silently ship a
+      // half-renamed symbol.
+      if (target.unresolvedImport) {
+        void vscode.window.showWarningMessage(
+          `Rename scoped to this file only: import "${target.unresolvedImport}" isn't indexed. Open the target file or check the path, then retry for a cross-file rename.`,
+        )
+      }
+
+      const occurrences = workspaceIndex.findAllOccurrences(target.file, target.name)
       const edit = new vscode.WorkspaceEdit()
 
       for (const occ of occurrences) {
@@ -946,6 +1000,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     runFile, runBlock, runSelection, completionProvider, signatureHelpProvider, hoverProvider, definitionProvider, goToSource,
     referenceProvider, renameProvider, documentSymbolProvider, workspaceSymbolProvider, lsDiagnostics, typeDiagnostics, onDidChange, onDidOpen, onDidClose,
+    dvalaWatcher, onFsCreate, onFsChange, onFsDelete,
     formattingProvider,
   )
 }

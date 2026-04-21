@@ -18,6 +18,13 @@ export interface SymbolDef {
   scope: number // depth in scope chain (0 = top-level)
   /** Parameter names for function/macro definitions (e.g. ['a', 'b'] for `let add = (a, b) -> ...`) */
   params?: string[]
+  /**
+   * For kind === 'import' definitions, the raw import-path string from the RHS
+   * `import("...")` call (e.g. "./lib"). Resolve to an absolute file path via
+   * the owning file's `imports` map. Used by cross-file rename to link a
+   * destructuring binding back to its source module.
+   */
+  importPath?: string
 }
 
 export interface SymbolRef {

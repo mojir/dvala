@@ -267,8 +267,14 @@ describe('WorkspaceIndex', () => {
       index.updateFile(libPath)
       index.updateFile(mainPath)
       const occurrences = index.findAllOccurrences(libPath, 'pi')
-      // Should have occurrences from lib (definition + export ref) and from main
-      expect(occurrences.length).toBeGreaterThanOrEqual(2)
+      // lib: `let pi` definition + shorthand `{ pi }` (Str key + Sym value share
+      // the same source position, dedup to one). main: `let { pi }` destructuring
+      // binding + `pi * 2` reference. Total: 4 unique locations.
+      expect(occurrences).toHaveLength(4)
+      const libOccs = occurrences.filter(o => o.file === libPath)
+      const mainOccs = occurrences.filter(o => o.file === mainPath)
+      expect(libOccs).toHaveLength(2)
+      expect(mainOccs).toHaveLength(2)
     })
 
     it('resolves .dvala extension automatically', () => {
@@ -301,6 +307,175 @@ describe('WorkspaceIndex', () => {
       index.invalidateFile(libPath)
       expect(index.getFileSymbols(libPath)).toBeNull()
       expect(index.getFileSymbols(mainPath)).toBeNull()
+    })
+  })
+
+  describe('cross-file rename (findAllOccurrences edge cases)', () => {
+    let tmpDir: string
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dvala-ws-rename-'))
+    })
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    })
+
+    function writeFile(name: string, content: string): string {
+      const filePath = path.join(tmpDir, name)
+      fs.writeFileSync(filePath, content)
+      return filePath
+    }
+
+    it('excludes unrelated locals in importer', () => {
+      // main has a local `pi` shadowed inside `f`. Its reference chain
+      // resolves to a different SymbolDef than the import-kind destructuring
+      // def, so the resolvedDef-identity filter keeps it out of the result.
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); let f = () -> do let pi = 99; pi end; pi * 2')
+      index.updateFile(libPath)
+      index.updateFile(mainPath)
+      const occurrences = index.findAllOccurrences(libPath, 'pi')
+      // lib: let + export (deduped) = 2. main: destructuring + `pi * 2` = 2.
+      // The local `let pi = 99` and its inner reference stay out.
+      expect(occurrences).toHaveLength(4)
+      expect(occurrences.filter(o => o.file === mainPath)).toHaveLength(2)
+    })
+
+    it('propagates rename across multiple importers', () => {
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const aPath = writeFile('a.dvala', 'let { pi } = import("./lib"); pi')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./lib"); pi + 1')
+      index.updateFile(libPath)
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      const occurrences = index.findAllOccurrences(libPath, 'pi')
+      // lib: 2 (let + export shorthand deduped).
+      // each importer: 2 (destructuring + use). 2 + 4 = 6.
+      expect(occurrences).toHaveLength(6)
+      expect(occurrences.filter(o => o.file === aPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === bPath)).toHaveLength(2)
+    })
+
+    it('does not touch unrelated imports with the same symbol name', () => {
+      // main imports `pi` from lib AND has a different same-named local —
+      // separately covered — but also: a different file exports `pi` too.
+      // Renaming lib's `pi` must not reach the other module.
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const otherPath = writeFile('other.dvala', 'let pi = 99; { pi }')
+      const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi')
+      index.updateFile(libPath)
+      index.updateFile(otherPath)
+      index.updateFile(mainPath)
+      const occurrences = index.findAllOccurrences(libPath, 'pi')
+      // Only lib + main should appear (2 + 2). other.dvala isn't imported
+      // by anyone here, but crucially its definitions don't leak into
+      // lib's occurrence set.
+      expect(occurrences.some(o => o.file === otherPath)).toBe(false)
+      expect(occurrences).toHaveLength(4)
+    })
+
+    it('handles explicit key:value export without renaming the value binding', () => {
+      // `{ pi: somePi }` — the export key is "pi" but the underlying
+      // definition is `somePi`. Renaming "somePi" must rename the let
+      // binding + the object value ref, but not the export key "pi".
+      const libPath = writeFile('lib.dvala', 'let somePi = 3.14; { pi: somePi }')
+      index.updateFile(libPath)
+      const occurrences = index.findAllOccurrences(libPath, 'somePi')
+      // let somePi + Sym reference inside the export object = 2.
+      expect(occurrences).toHaveLength(2)
+      const piOccurrences = index.findAllOccurrences(libPath, 'pi')
+      // Only the export key "pi" — no `let` binding, no ref anywhere else.
+      expect(piOccurrences).toHaveLength(1)
+    })
+  })
+
+  describe('resolveCanonicalFile', () => {
+    let tmpDir: string
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dvala-ws-canonical-'))
+    })
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    })
+
+    function writeFile(name: string, content: string): string {
+      const filePath = path.join(tmpDir, name)
+      fs.writeFileSync(filePath, content)
+      return filePath
+    }
+
+    it('returns the current file when cursor is on a local definition', () => {
+      // `let pi = 3.14; { pi }` — `pi` at the `let` site (col 5, 1-based).
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      index.updateFile(libPath)
+      const result = index.resolveCanonicalFile(libPath, 1, 5)
+      expect(result).toEqual({ file: libPath, name: 'pi' })
+    })
+
+    it('follows importPath when cursor is on a destructuring binding', () => {
+      // `let { pi } = import("./lib"); pi * 2` — cursor on the `pi` inside
+      // the destructuring braces (col 7). The local binding is a
+      // kind='import' def; resolveCanonicalFile should follow its
+      // importPath back to lib.dvala.
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi * 2')
+      index.updateFile(libPath)
+      index.updateFile(mainPath)
+      const result = index.resolveCanonicalFile(mainPath, 1, 7)
+      expect(result).toEqual({ file: libPath, name: 'pi' })
+    })
+
+    it('follows importPath when cursor is on a use-site referencing an import', () => {
+      // Cursor on `pi` in `pi * 2` (col 31) — the reference resolves to
+      // main's destructuring def, which in turn points at lib via importPath.
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi * 2')
+      index.updateFile(libPath)
+      index.updateFile(mainPath)
+      const result = index.resolveCanonicalFile(mainPath, 1, 31)
+      expect(result).toEqual({ file: libPath, name: 'pi' })
+    })
+
+    it('returns null when the cursor is not on any symbol', () => {
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      index.updateFile(libPath)
+      // Column 1 is the `l` in `let` — a keyword, not a symbol.
+      expect(index.resolveCanonicalFile(libPath, 1, 1)).toBeNull()
+    })
+
+    it('falls back to the current file when a reference is unresolved', () => {
+      // `undef * 2` references `undef` which has no binding — resolvedDef is null.
+      const filePath = writeFile('orphan.dvala', 'undef * 2')
+      index.updateFile(filePath)
+      const result = index.resolveCanonicalFile(filePath, 1, 1)
+      expect(result).toEqual({ file: filePath, name: 'undef' })
+    })
+
+    it('flags unresolved imports so the caller can warn', () => {
+      // main imports a file that was never indexed — `resolveCanonicalFile`
+      // falls back to the current file AND reports the raw import path so
+      // the VS Code layer can surface a warning before performing the rename.
+      const mainPath = writeFile('main.dvala', 'let { pi } = import("./missing"); pi')
+      index.updateFile(mainPath)
+      const result = index.resolveCanonicalFile(mainPath, 1, 7)
+      expect(result).not.toBeNull()
+      expect(result!.file).toBe(mainPath)
+      expect(result!.name).toBe('pi')
+      expect(result!.unresolvedImport).toBe('./missing')
+    })
+
+    it('finds the export key in an explicit `{ key: value }` export', () => {
+      // The Str key in `{ pi: somePi }` has no matching definition or ref,
+      // so before we taught getSymbolAtPosition to walk exports the cursor
+      // on the key returned null — F2 on an explicit export key did nothing.
+      // `{ pi: somePi }` places `pi` at col 22 (1-based).
+      const libPath = writeFile('lib.dvala', 'let somePi = 3.14; { pi: somePi }')
+      index.updateFile(libPath)
+      const result = index.resolveCanonicalFile(libPath, 1, 22)
+      expect(result).toEqual({ file: libPath, name: 'pi' })
     })
   })
 
