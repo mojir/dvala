@@ -820,14 +820,14 @@ export function activate(context: vscode.ExtensionContext): void {
   const referenceProvider = vscode.languages.registerReferenceProvider('dvala', {
     provideReferences(document, position) {
       indexDocument(document)
-      const symbol = workspaceIndex.getSymbolAtPosition(
+      const target = workspaceIndex.resolveCanonicalFile(
         document.uri.fsPath,
         position.line + 1,
         position.character + 1,
       )
-      if (!symbol) return []
+      if (!target) return []
 
-      const occurrences = workspaceIndex.findAllOccurrences(document.uri.fsPath, symbol.name)
+      const occurrences = workspaceIndex.findAllOccurrences(target.file, target.name)
       return occurrences.map(occ => new vscode.Location(
         vscode.Uri.file(occ.file),
         new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1)),
@@ -835,7 +835,7 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
-  // Rename provider — F2 to rename a symbol across the file
+  // Rename provider — F2 to rename a symbol across the workspace
   const renameProvider = vscode.languages.registerRenameProvider('dvala', {
     prepareRename(document, position) {
       indexDocument(document)
@@ -860,14 +860,14 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       indexDocument(document)
-      const symbol = workspaceIndex.getSymbolAtPosition(
+      const target = workspaceIndex.resolveCanonicalFile(
         document.uri.fsPath,
         position.line + 1,
         position.character + 1,
       )
-      if (!symbol) return undefined
+      if (!target) return undefined
 
-      const occurrences = workspaceIndex.findAllOccurrences(document.uri.fsPath, symbol.name)
+      const occurrences = workspaceIndex.findAllOccurrences(target.file, target.name)
       const edit = new vscode.WorkspaceEdit()
 
       for (const occ of occurrences) {

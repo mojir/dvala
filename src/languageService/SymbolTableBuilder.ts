@@ -412,6 +412,15 @@ function registerBindingTarget(
       }
     }
   }
+
+  // For import destructuring, stamp the raw import path on every binding so
+  // cross-file rename can link each binding back to its source module.
+  if (rhsNode && kind === 'import' && rhsNode[0] === NodeTypes.Import) {
+    const importPath = rhsNode[1] as string
+    for (let i = defsBefore; i < state.definitions.length; i++) {
+      state.definitions[i]!.importPath = importPath
+    }
+  }
 }
 
 /** Extract parameter names from a Function or Macro AST node. */

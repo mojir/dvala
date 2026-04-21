@@ -204,40 +204,99 @@ export class WorkspaceIndex {
   }
 
   /**
-   * Find all locations of a symbol: the definition site + all reference sites.
-   * Used by "Find All References" which should include the declaration.
+   * Resolve the cursor's symbol to the file that owns its canonical definition.
+   *
+   * When the cursor sits on an import-kind binding (either the destructuring
+   * site `let { pi } = import("./lib")` or a use-site like `pi * 2` that
+   * resolves to it), this returns the imported module's path so that
+   * `findAllOccurrences` starts from there and picks up the original `let pi`
+   * and the `{ pi }` export key.
+   *
+   * Returns the current file when the symbol is defined locally or when the
+   * reference is unresolved.
+   */
+  resolveCanonicalFile(filePath: string, line: number, column: number): { file: string; name: string } | null {
+    const symbol = this.getSymbolAtPosition(filePath, line, column)
+    if (!symbol) return null
+    let canonicalFile = symbol.def?.location.file ?? path.resolve(filePath)
+    if (symbol.def?.kind === 'import' && symbol.def.importPath) {
+      const importerSymbols = this.getFileSymbols(symbol.def.location.file)
+      const resolved = importerSymbols?.imports.get(symbol.def.importPath)
+      if (resolved) canonicalFile = resolved
+    }
+    return { file: canonicalFile, name: symbol.name }
+  }
+
+  /**
+   * Find all locations of a symbol: the definition site + all reference sites
+   * + export-object keys + destructuring bindings in importing files.
+   * Used by "Find All References" and cross-file Rename.
+   *
+   * `filePath` should be the file that *owns* the definition (i.e. the
+   * canonical source). For rename, the provider resolves the cursor's symbol
+   * first and passes `resolvedDef.location.file` so that starting from either
+   * the defining file or an importer yields the same result set.
+   *
+   * Occurrences are deduplicated by (file, line, column) because Dvala's
+   * shorthand `{ pi }` produces two AST nodes (Str key + Sym value) at the
+   * same source position.
    */
   findAllOccurrences(filePath: string, symbolName: string): { file: string; line: number; column: number; nameLength: number }[] {
     const absolutePath = path.resolve(filePath)
     const results: { file: string; line: number; column: number; nameLength: number }[] = []
+    const seen = new Set<string>()
+    const push = (loc: { file: string; line: number; column: number }, nameLength: number): void => {
+      const key = `${loc.file}:${loc.line}:${loc.column}`
+      if (seen.has(key)) return
+      seen.add(key)
+      results.push({ ...loc, nameLength })
+    }
 
-    // Collect from current file
+    // Collect from the defining file.
     const fileSymbols = this.cache.get(absolutePath)?.symbols
     if (fileSymbols) {
-      // Definition sites
       for (const def of fileSymbols.definitions) {
-        if (def.name === symbolName) {
-          results.push({ ...def.location, nameLength: def.name.length })
-        }
+        if (def.name === symbolName) push(def.location, def.name.length)
       }
-      // Reference sites
       for (const ref of fileSymbols.references) {
-        if (ref.name === symbolName) {
-          results.push({ ...ref.location, nameLength: ref.name.length })
-        }
+        if (ref.name === symbolName) push(ref.location, ref.name.length)
+      }
+      // Export-object keys like `{ pi }` live in a separate list — each
+      // entry's location points at the key token, which for shorthand is
+      // the same token that also appears as a Sym reference (deduped above).
+      for (const exp of fileSymbols.exports) {
+        if (exp.name === symbolName) push(exp.location, exp.name.length)
       }
     }
 
-    // Collect from files that import this file
+    // Collect from files that import the defining file.
     const importers = this.reverseImports.get(absolutePath)
     if (importers) {
       for (const importerPath of importers) {
         const importerSymbols = this.cache.get(importerPath)?.symbols
-        if (importerSymbols) {
-          for (const ref of importerSymbols.references) {
-            if (ref.name === symbolName) {
-              results.push({ ...ref.location, nameLength: ref.name.length })
-            }
+        if (!importerSymbols) continue
+
+        // Import-kind destructuring bindings matching the name whose RHS
+        // import path resolves to our target file. `importPath` on the def is
+        // the raw string (e.g. "./lib"); the importer's `imports` map
+        // resolves it to an absolute path.
+        const matchingImportDefs = new Set<SymbolDef>()
+        for (const def of importerSymbols.definitions) {
+          if (def.kind !== 'import' || def.name !== symbolName || !def.importPath) continue
+          const resolved = importerSymbols.imports.get(def.importPath)
+          if (resolved === absolutePath) {
+            matchingImportDefs.add(def)
+            push(def.location, def.name.length)
+          }
+        }
+
+        // Only include references that resolve back to one of those
+        // destructuring bindings. This filters out unrelated locals — e.g.
+        // a second `let pi = 42` elsewhere in the same importer.
+        for (const ref of importerSymbols.references) {
+          if (ref.name !== symbolName) continue
+          if (ref.resolvedDef && matchingImportDefs.has(ref.resolvedDef)) {
+            push(ref.location, ref.name.length)
           }
         }
       }
