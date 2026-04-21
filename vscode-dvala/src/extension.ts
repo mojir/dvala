@@ -867,6 +867,16 @@ export function activate(context: vscode.ExtensionContext): void {
       )
       if (!target) return undefined
 
+      // The cursor is on an import-kind binding whose source module isn't in
+      // the index — rename will only cover the current file instead of the
+      // full workspace. Surface this so the user doesn't silently ship a
+      // half-renamed symbol.
+      if (target.unresolvedImport) {
+        void vscode.window.showWarningMessage(
+          `Rename scoped to this file only: import "${target.unresolvedImport}" isn't indexed. Open the target file or check the path, then retry for a cross-file rename.`,
+        )
+      }
+
       const occurrences = workspaceIndex.findAllOccurrences(target.file, target.name)
       const edit = new vscode.WorkspaceEdit()
 

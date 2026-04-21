@@ -157,7 +157,14 @@ export class WorkspaceIndex {
 
   /**
    * Find all references to a symbol.
-   * Searches the current file and all files that import it.
+   *
+   * @deprecated Prefer `findAllOccurrences` for any user-facing workflow.
+   * This method matches importer references by name only and so includes
+   * unrelated locals that happen to share the name (e.g. a local `let pi`
+   * in an importer that doesn't come from the target file). It also does
+   * not walk `exports`, so the export-object key `{ pi }` is missed.
+   * Retained for existing callers and tests; do not wire new features
+   * through it.
    */
   findReferences(filePath: string, symbolName: string): SymbolRef[] {
     const absolutePath = path.resolve(filePath)
@@ -200,6 +207,15 @@ export class WorkspaceIndex {
     const refAtPos = findRefAtPosition(fileSymbols.references, line, column)
     if (refAtPos) return { name: refAtPos.name, def: refAtPos.resolvedDef }
 
+    // Finally, check export-object keys. For shorthand `{ pi }` the Str key
+    // shares its position with the Sym value (already returned above as a
+    // reference); this branch only fires for explicit `{ pi: somePi }` where
+    // the key token has no matching def or ref. Returning the export's own
+    // SymbolDef is enough for rename — `findAllOccurrences` will include the
+    // same entry via its exports walk.
+    const exportAtPos = findDefAtPosition(fileSymbols.exports, line, column)
+    if (exportAtPos) return { name: exportAtPos.name, def: exportAtPos }
+
     return null
   }
 
@@ -213,18 +229,36 @@ export class WorkspaceIndex {
    * and the `{ pi }` export key.
    *
    * Returns the current file when the symbol is defined locally or when the
-   * reference is unresolved.
+   * reference is unresolved. When the cursor is on an import-kind binding
+   * whose module path isn't resolvable (e.g. the imported file is missing or
+   * not yet indexed), `unresolvedImport` carries the raw path string so the
+   * caller can warn the user that the rename is about to be scoped to a
+   * single file instead of the full workspace.
+   *
+   * Invariant (for the `kind === 'import'` branch): when the cursor lands on
+   * a reference, `SymbolTableBuilder` always resolves references against the
+   * same file's scope chain, so `symbol.def.location.file` equals
+   * `path.resolve(filePath)`. We still use the def's location to read the
+   * imports map because it's the same map and it documents the intent.
    */
-  resolveCanonicalFile(filePath: string, line: number, column: number): { file: string; name: string } | null {
+  resolveCanonicalFile(
+    filePath: string,
+    line: number,
+    column: number,
+  ): { file: string; name: string; unresolvedImport?: string } | null {
     const symbol = this.getSymbolAtPosition(filePath, line, column)
     if (!symbol) return null
     let canonicalFile = symbol.def?.location.file ?? path.resolve(filePath)
+    let unresolvedImport: string | undefined
     if (symbol.def?.kind === 'import' && symbol.def.importPath) {
       const importerSymbols = this.getFileSymbols(symbol.def.location.file)
       const resolved = importerSymbols?.imports.get(symbol.def.importPath)
       if (resolved) canonicalFile = resolved
+      else unresolvedImport = symbol.def.importPath
     }
-    return { file: canonicalFile, name: symbol.name }
+    return unresolvedImport
+      ? { file: canonicalFile, name: symbol.name, unresolvedImport }
+      : { file: canonicalFile, name: symbol.name }
   }
 
   /**

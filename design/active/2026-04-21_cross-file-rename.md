@@ -78,5 +78,6 @@ Add to `WorkspaceIndex.test.ts`:
 
 ## Open follow-ups (explicit non-goals)
 
-- Transitive re-exports → separate design.
-- `dvala parse` reports that `let { pi: p } = import(...)` is not accepted; if aliased destructuring is added later, this doc needs an update.
+- Transitive re-exports → separate design (`2026-04-21_transitive-reexports.md`).
+- `dvala parse` reports that `let { pi: p } = import(...)` is not accepted; if aliased destructuring is added later, this doc needs an update (`2026-04-21_aliased-destructuring.md`).
+- The older `WorkspaceIndex.findReferences` method still has the pre-fix locality bug and is left in place with a `@deprecated` tag. Callers should use `findAllOccurrences`. Clean-up tracked alongside the transitive re-exports work, where `findReferences` will be rewritten on top of the same BFS machinery.

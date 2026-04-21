@@ -328,29 +328,18 @@ describe('WorkspaceIndex', () => {
     }
 
     it('excludes unrelated locals in importer', () => {
-      // main has a local `pi` that shadows nothing from lib — the local
-      // binding sits in its own scope with its own def, so its reference
-      // chain is independent and should be excluded.
+      // main has a local `pi` shadowed inside `f`. Its reference chain
+      // resolves to a different SymbolDef than the import-kind destructuring
+      // def, so the resolvedDef-identity filter keeps it out of the result.
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); let f = () -> do let pi = 99; pi end; pi * 2')
       index.updateFile(libPath)
       index.updateFile(mainPath)
       const occurrences = index.findAllOccurrences(libPath, 'pi')
       // lib: let + export (deduped) = 2. main: destructuring + `pi * 2` = 2.
-      // The local `let pi = 99` and its reference inside `f` must NOT appear.
+      // The local `let pi = 99` and its inner reference stay out.
       expect(occurrences).toHaveLength(4)
-      // Sanity: verify the local `pi = 99` line is absent from the result.
-      const mainContent = fs.readFileSync(mainPath, 'utf-8')
-      const localPiLine = mainContent.indexOf('pi = 99')
-      const localPiCol = localPiLine + 1 // 1-based column guesstimate — we just check nothing matched that substring range
-      for (const occ of occurrences.filter(o => o.file === mainPath)) {
-        // None of the occurrences should be at the local shadowed `pi = 99`
-        // position. Rather than compute exact columns, assert the count stays
-        // at 2 main-file occurrences (asserted above) — locality is covered.
-        expect(typeof occ.column).toBe('number')
-      }
-      // Unused-var guard so the lint doesn't flag the indexOf above.
-      expect(localPiCol).toBeGreaterThan(0)
+      expect(occurrences.filter(o => o.file === mainPath)).toHaveLength(2)
     })
 
     it('propagates rename across multiple importers', () => {
@@ -463,6 +452,30 @@ describe('WorkspaceIndex', () => {
       index.updateFile(filePath)
       const result = index.resolveCanonicalFile(filePath, 1, 1)
       expect(result).toEqual({ file: filePath, name: 'undef' })
+    })
+
+    it('flags unresolved imports so the caller can warn', () => {
+      // main imports a file that was never indexed — `resolveCanonicalFile`
+      // falls back to the current file AND reports the raw import path so
+      // the VS Code layer can surface a warning before performing the rename.
+      const mainPath = writeFile('main.dvala', 'let { pi } = import("./missing"); pi')
+      index.updateFile(mainPath)
+      const result = index.resolveCanonicalFile(mainPath, 1, 7)
+      expect(result).not.toBeNull()
+      expect(result!.file).toBe(mainPath)
+      expect(result!.name).toBe('pi')
+      expect(result!.unresolvedImport).toBe('./missing')
+    })
+
+    it('finds the export key in an explicit `{ key: value }` export', () => {
+      // The Str key in `{ pi: somePi }` has no matching definition or ref,
+      // so before we taught getSymbolAtPosition to walk exports the cursor
+      // on the key returned null — F2 on an explicit export key did nothing.
+      // `{ pi: somePi }` places `pi` at col 22 (1-based).
+      const libPath = writeFile('lib.dvala', 'let somePi = 3.14; { pi: somePi }')
+      index.updateFile(libPath)
+      const result = index.resolveCanonicalFile(libPath, 1, 22)
+      expect(result).toEqual({ file: libPath, name: 'pi' })
     })
   })
 
