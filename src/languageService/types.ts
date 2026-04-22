@@ -25,6 +25,15 @@ export interface SymbolDef {
    * destructuring binding back to its source module.
    */
   importPath?: string
+  /**
+   * For exports extracted from a file's trailing `{ key: value }` object,
+   * the nodeId of the value-side expression (only set when the value is a
+   * single Sym node — either shorthand `{ pi }` or explicit `{ pi: localSym }`).
+   * Used by cross-file rename to verify that a named export actually
+   * re-exports an imported binding (vs. exporting an unrelated local under
+   * a colliding name).
+   */
+  valueNodeId?: number
 }
 
 export interface SymbolRef {

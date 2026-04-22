@@ -479,6 +479,229 @@ describe('WorkspaceIndex', () => {
     })
   })
 
+  describe('transitive re-exports', () => {
+    let tmpDir: string
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dvala-ws-reexport-'))
+    })
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    })
+
+    function writeFile(name: string, content: string): string {
+      const filePath = path.join(tmpDir, name)
+      fs.writeFileSync(filePath, content)
+      return filePath
+    }
+
+    it('propagates rename through a linear chain A → B → C', () => {
+      // A defines pi. B re-exports from A. C imports from B and uses pi.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
+      const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi * 2')
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      index.updateFile(cPath)
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      // A: `let pi` + shorthand `{ pi }` (deduped to 2).
+      // B: destructuring `let { pi }` + shorthand export `{ pi }` — the
+      //    shorthand contributes the Str key and the Sym value at the same
+      //    source position (deduped). Destructuring binding is separate. = 2
+      // C: destructuring `let { pi }` + `pi * 2` use. = 2
+      expect(occurrences.filter(o => o.file === aPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === bPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === cPath)).toHaveLength(2)
+      expect(occurrences).toHaveLength(6)
+    })
+
+    it('covers fanout A → {B1, B2}, each with its own importer', () => {
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const b1Path = writeFile('b1.dvala', 'let { pi } = import("./a"); { pi }')
+      const b2Path = writeFile('b2.dvala', 'let { pi } = import("./a"); { pi }')
+      const c1Path = writeFile('c1.dvala', 'let { pi } = import("./b1"); pi')
+      const c2Path = writeFile('c2.dvala', 'let { pi } = import("./b2"); pi')
+      index.updateFile(aPath)
+      index.updateFile(b1Path)
+      index.updateFile(b2Path)
+      index.updateFile(c1Path)
+      index.updateFile(c2Path)
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      // 2 per file × 5 files = 10.
+      expect(occurrences).toHaveLength(10)
+      for (const file of [aPath, b1Path, b2Path, c1Path, c2Path]) {
+        expect(occurrences.filter(o => o.file === file)).toHaveLength(2)
+      }
+    })
+
+    it('stops propagating when a file imports but does not re-export', () => {
+      // A → B (re-exports) → C (imports but doesn't re-export) → D (imports from C).
+      // Renaming pi in A hits A, B, C but not D.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
+      const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); let result = pi * 2; { result }')
+      const dPath = writeFile('d.dvala', 'let { result } = import("./c"); result')
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      index.updateFile(cPath)
+      index.updateFile(dPath)
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      expect(occurrences.filter(o => o.file === aPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === bPath)).toHaveLength(2)
+      // C has destructuring `let { pi }` + use-site `pi * 2` = 2.
+      expect(occurrences.filter(o => o.file === cPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === dPath)).toHaveLength(0)
+    })
+
+    it('resolveCanonicalFile walks to the ultimate origin through a chain', () => {
+      // Cursor on C's `pi` use-site must resolve to A (not B).
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
+      const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi * 2')
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      index.updateFile(cPath)
+      // `pi * 2` starts at col 29 in C (after `let { pi } = import("./b"); `
+      // — note the shorter path makes this 2 cols earlier than `"./lib"`).
+      const result = index.resolveCanonicalFile(cPath, 1, 29)
+      expect(result).toEqual({ file: aPath, name: 'pi' })
+    })
+
+    it('terminates on a re-export cycle without infinite looping', () => {
+      // A imports from B, B imports from A, both re-export pi. The BFS's
+      // visitedFiles guard must break the cycle and the test just asserts
+      // termination + expected totals.
+      const aPath = writeFile('a.dvala', 'let { pi } = import("./b"); { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      // Both files have unresolved external chains, but each is a valid
+      // destructuring binding on its own. Starting from A, BFS visits B
+      // through reverseImports, B enqueues A as a re-exporter, visited guard
+      // stops the loop. The search must terminate.
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      // Each file has destructuring + shorthand export = 2. Total = 4.
+      expect(occurrences).toHaveLength(4)
+    })
+
+    it('filters out unrelated locals in a re-exporter', () => {
+      // B re-exports pi from A, but also has an unrelated `let pi = 99`
+      // inside a nested scope. The locality filter (ref must resolve to
+      // the import def) keeps the inner `pi` out.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); let f = () -> do let pi = 99; pi end; { pi }')
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      // A: 2. B: destructuring + export shorthand = 2. Inner `let pi = 99`
+      // and its ref do NOT count — they resolve to a different def.
+      expect(occurrences).toHaveLength(4)
+      expect(occurrences.filter(o => o.file === bPath)).toHaveLength(2)
+    })
+
+    it('treats explicit { pi: pi } as a re-export when the value resolves to the import def', () => {
+      // Explicit key-value form where the value IS the imported binding.
+      // isReexport's value-resolution check uses nodeId identity, not
+      // position, so the explicit and shorthand forms behave identically.
+      // B is a valid re-exporter; C imports from B and must be reached.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi: pi }')
+      const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi * 2')
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      index.updateFile(cPath)
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      // A: 2. B: destructuring + Str key at explicit form + Sym value = 3
+      //   (all three are distinct source positions in the explicit form,
+      //   unlike shorthand where key and value coincide). C: 2.
+      expect(occurrences.filter(o => o.file === aPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === bPath)).toHaveLength(3)
+      expect(occurrences.filter(o => o.file === cPath)).toHaveLength(2)
+    })
+
+    it('covers diamond topology: C imports from both A and B where B re-exports A', () => {
+      // When C imports pi from BOTH A (directly) and B (via re-export), C has
+      // two distinct destructuring sites at different source positions. A's
+      // pass records the A-import via `resolved === A`; B's pass records the
+      // B-import via `resolved === B`. Pins the decision to NOT skip
+      // already-seen importers in the inner loop — skipping would drop C's
+      // B-import when its A-import was already collected.
+      // Dvala has no aliased destructuring, so scope-shadow via do-blocks
+      // to let `pi` be rebound twice in one file.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
+      const cPath = writeFile('c.dvala', [
+        'let piFromA = do let { pi } = import("./a"); pi end;',
+        'let piFromB = do let { pi } = import("./b"); pi end;',
+        'piFromA + piFromB',
+      ].join('\n'))
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      index.updateFile(cPath)
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      // A: let pi + shorthand export (deduped) = 2.
+      // B: destructuring + shorthand export (deduped) = 2.
+      // C: A-import destructuring + use inside first do-block + B-import
+      //    destructuring + use inside second do-block = 4.
+      expect(occurrences.filter(o => o.file === aPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === bPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === cPath)).toHaveLength(4)
+    })
+
+    it('does not treat explicit { pi: unrelatedLocal } as a re-export', () => {
+      // Step-3 value-resolution check: B imports pi from A but exports
+      // `{ pi: pi2 }` where `pi2` is an unrelated local. B must NOT be
+      // flagged as a re-exporter; renaming pi in A must not touch B's key.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); let pi2 = 99; { pi: pi2 }')
+      const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi')
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      index.updateFile(cPath)
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      // A: 2. B: destructuring binding + nothing else (pi2 is unrelated). = 1
+      // C: imports from B — but B is NOT a re-exporter, so nothing in C
+      //   resolves back to A's pi. C's import-def resolves to B, not A, so
+      //   the BFS doesn't enqueue C's occurrences under A's rename. = 0
+      expect(occurrences.filter(o => o.file === aPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === bPath)).toHaveLength(1)
+      expect(occurrences.filter(o => o.file === cPath)).toHaveLength(0)
+    })
+
+    it('indexWorkspace eagerly scans files that have never been updated', () => {
+      // Only A is explicitly updated — B and C exist on disk but haven't
+      // been indexed. Without indexWorkspace, BFS sees no importers of A.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
+      const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi * 2')
+      index.updateFile(aPath)
+      // Before eager scan: BFS only finds A's own occurrences.
+      const before = index.findAllOccurrences(aPath, 'pi')
+      expect(before).toHaveLength(2)
+      // After eager scan: full chain is indexed.
+      index.indexWorkspace(tmpDir)
+      const after = index.findAllOccurrences(aPath, 'pi')
+      expect(after).toHaveLength(6)
+      expect(after.filter(o => o.file === bPath)).toHaveLength(2)
+      expect(after.filter(o => o.file === cPath)).toHaveLength(2)
+    })
+
+    it('indexWorkspace is a one-shot per root', () => {
+      // Second call must be a no-op — a newly-added file after the initial
+      // scan is NOT picked up by a second indexWorkspace call. Watcher /
+      // explicit updateFile is the caller's responsibility past that point.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      index.indexWorkspace(tmpDir)
+      expect(index.getFileSymbols(aPath)).not.toBeNull()
+
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); pi')
+      index.indexWorkspace(tmpDir)
+      // B exists on disk but wasn't re-scanned.
+      expect(index.getFileSymbols(bPath)).toBeNull()
+    })
+  })
+
   describe('extractExports', () => {
     it('extracts exported names from trailing object literal', () => {
       index.updateFile('test.dvala', 'let pi = 3.14; let e = 2.71; { pi, e }')

@@ -2,7 +2,7 @@
 
 **Status:** Draft — needs language-design review
 **Created:** 2026-04-21
-**Related:** `design/active/2026-04-21_cross-file-rename.md`, `design/active/2026-04-21_transitive-reexports.md`
+**Related:** `design/archive/2026-04-21_cross-file-rename.md` (shipped PR #70), `design/archive/2026-04-21_transitive-reexports.md` (shipped PR #72)
 
 ## Goal
 

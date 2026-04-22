@@ -40,6 +40,33 @@ export class WorkspaceIndex {
   private cache = new Map<string, CachedFile>()
   /** Reverse import graph: file → set of files that import it */
   private reverseImports = new Map<string, Set<string>>()
+  /** Workspace roots that have already been eagerly scanned (one-shot per root) */
+  private indexedRoots = new Set<string>()
+
+  /**
+   * Eagerly index every `.dvala` file under `rootPath` (recursively). Required
+   * by transitive-rename correctness: without this, a rename initiated from a
+   * file whose re-export chain includes files never opened in the editor
+   * would silently drop the un-indexed subtree.
+   *
+   * One-shot per root — subsequent calls with the same root return
+   * immediately. Only files not already in the cache are parsed; files
+   * that were indexed previously are left alone, so **stale disk content
+   * for a pre-cached file is NOT refreshed here**. Callers that care about
+   * freshness past the initial scan should rely on the filesystem watcher
+   * (or call `invalidateFile` / `updateFile`).
+   *
+   * Skips `node_modules`, `.git`, and dotfile directories. Does not honour
+   * `.gitignore` today; if that becomes important we can plug in a matcher.
+   */
+  indexWorkspace(rootPath: string): void {
+    const absoluteRoot = path.resolve(rootPath)
+    if (this.indexedRoots.has(absoluteRoot)) return
+    this.indexedRoots.add(absoluteRoot)
+    walkDvalaFiles(absoluteRoot, filePath => {
+      if (!this.cache.has(filePath)) this.updateFile(filePath)
+    })
+  }
 
   /**
    * Update the index for a single file.
@@ -224,9 +251,13 @@ export class WorkspaceIndex {
    *
    * When the cursor sits on an import-kind binding (either the destructuring
    * site `let { pi } = import("./lib")` or a use-site like `pi * 2` that
-   * resolves to it), this returns the imported module's path so that
-   * `findAllOccurrences` starts from there and picks up the original `let pi`
-   * and the `{ pi }` export key.
+   * resolves to it), this walks the import chain to the ultimate origin so
+   * that `findAllOccurrences` starts from the top of the re-export graph and
+   * can cover every file in the chain via `reverseImports` traversal.
+   *
+   * For chains like C → B → A (C imports from B, which re-exports from A),
+   * walking one hop at a time wouldn't reach A: `reverseImports[B]` doesn't
+   * list A because A doesn't import from B. Hence the iterative walk here.
    *
    * Returns the current file when the symbol is defined locally or when the
    * reference is unresolved. When the cursor is on an import-kind binding
@@ -234,12 +265,6 @@ export class WorkspaceIndex {
    * not yet indexed), `unresolvedImport` carries the raw path string so the
    * caller can warn the user that the rename is about to be scoped to a
    * single file instead of the full workspace.
-   *
-   * Invariant (for the `kind === 'import'` branch): when the cursor lands on
-   * a reference, `SymbolTableBuilder` always resolves references against the
-   * same file's scope chain, so `symbol.def.location.file` equals
-   * `path.resolve(filePath)`. We still use the def's location to read the
-   * imports map because it's the same map and it documents the intent.
    */
   resolveCanonicalFile(
     filePath: string,
@@ -248,28 +273,58 @@ export class WorkspaceIndex {
   ): { file: string; name: string; unresolvedImport?: string } | null {
     const symbol = this.getSymbolAtPosition(filePath, line, column)
     if (!symbol) return null
-    let canonicalFile = symbol.def?.location.file ?? path.resolve(filePath)
-    let unresolvedImport: string | undefined
-    if (symbol.def?.kind === 'import' && symbol.def.importPath) {
-      const importerSymbols = this.getFileSymbols(symbol.def.location.file)
-      const resolved = importerSymbols?.imports.get(symbol.def.importPath)
-      if (resolved) canonicalFile = resolved
-      else unresolvedImport = symbol.def.importPath
+
+    // Follow the import chain upward until we reach a non-import definition
+    // (the ultimate origin) or can't resolve a hop. Cycle-guarded via visited.
+    let currentDef = symbol.def
+    const visited = new Set<string>()
+    while (currentDef?.kind === 'import' && currentDef.importPath) {
+      // File that owns the current link in the chain — the one whose
+      // `imports` map resolves `currentDef.importPath` to the next hop.
+      const currentFile = currentDef.location.file
+      if (visited.has(currentFile)) break // cycle — stop here
+      visited.add(currentFile)
+
+      const currentSymbols = this.getFileSymbols(currentFile)
+      const resolvedPath = currentSymbols?.imports.get(currentDef.importPath)
+      if (!resolvedPath) {
+        return { file: currentFile, name: symbol.name, unresolvedImport: currentDef.importPath }
+      }
+
+      // Look for a top-level def of the same name in the next file up.
+      // If it's another import-kind def, the loop continues; otherwise
+      // we've reached the origin.
+      const nextSymbols = this.getFileSymbols(resolvedPath)
+      const nextDef = nextSymbols?.definitions.find(d => d.name === symbol.name && d.scope === 0)
+      if (!nextDef) {
+        // Next file has no matching top-level def (perhaps not indexed, or
+        // malformed). Return the resolved path anyway so `findAllOccurrences`
+        // at least searches the next file in the chain.
+        return { file: resolvedPath, name: symbol.name }
+      }
+      currentDef = nextDef
     }
-    return unresolvedImport
-      ? { file: canonicalFile, name: symbol.name, unresolvedImport }
-      : { file: canonicalFile, name: symbol.name }
+
+    const canonicalFile = currentDef?.location.file ?? path.resolve(filePath)
+    return { file: canonicalFile, name: symbol.name }
   }
 
   /**
    * Find all locations of a symbol: the definition site + all reference sites
-   * + export-object keys + destructuring bindings in importing files.
+   * + export-object keys + destructuring bindings in importing files, and
+   * recursively in files that re-export through the chain.
    * Used by "Find All References" and cross-file Rename.
    *
    * `filePath` should be the file that *owns* the definition (i.e. the
    * canonical source). For rename, the provider resolves the cursor's symbol
-   * first and passes `resolvedDef.location.file` so that starting from either
-   * the defining file or an importer yields the same result set.
+   * first via `resolveCanonicalFile` and passes that file so the BFS starts
+   * from the top of the re-export chain.
+   *
+   * The BFS walks files that import (directly or transitively via re-exports)
+   * the canonical file. An importer B is treated as a re-exporter — and
+   * enqueued as a new BFS root — when B has a matching import-kind binding
+   * from the current file AND B's trailing object exports the same name
+   * with the value-side Sym resolving back to that import-kind binding.
    *
    * Occurrences are deduplicated by (file, line, column) because Dvala's
    * shorthand `{ pi }` produces two AST nodes (Str key + Sym value) at the
@@ -286,51 +341,79 @@ export class WorkspaceIndex {
       results.push({ ...loc, nameLength })
     }
 
-    // Collect from the defining file.
-    const fileSymbols = this.cache.get(absolutePath)?.symbols
-    if (fileSymbols) {
-      for (const def of fileSymbols.definitions) {
+    // Collect from the origin file broadly (all defs/refs/exports matching
+    // by name). This is the canonical binding's home — any same-named
+    // occurrence in the origin is treated as the same rename target.
+    const originSymbols = this.cache.get(absolutePath)?.symbols
+    if (originSymbols) {
+      for (const def of originSymbols.definitions) {
         if (def.name === symbolName) push(def.location, def.name.length)
       }
-      for (const ref of fileSymbols.references) {
+      for (const ref of originSymbols.references) {
         if (ref.name === symbolName) push(ref.location, ref.name.length)
       }
-      // Export-object keys like `{ pi }` live in a separate list — each
-      // entry's location points at the key token, which for shorthand is
-      // the same token that also appears as a Sym reference (deduped above).
-      for (const exp of fileSymbols.exports) {
+      for (const exp of originSymbols.exports) {
         if (exp.name === symbolName) push(exp.location, exp.name.length)
       }
     }
 
-    // Collect from files that import the defining file.
-    const importers = this.reverseImports.get(absolutePath)
-    if (importers) {
+    // BFS over the re-export graph. Each worklist entry is a file whose
+    // importers we haven't yet walked. Re-exporters enqueue themselves so
+    // their own importers are reached in the next round.
+    //
+    // Unlike the origin, re-exporters are walked NARROWLY: only the import-
+    // kind defs pointing back at the current BFS parent + refs resolving to
+    // those defs + the exported key. Walking them broadly would pick up
+    // unrelated same-named locals nested in the re-exporter.
+    const worklist: string[] = [absolutePath]
+    const visited = new Set<string>([absolutePath])
+
+    while (worklist.length > 0) {
+      const current = worklist.shift()!
+      const importers = this.reverseImports.get(current)
+      if (!importers) continue
+
       for (const importerPath of importers) {
         const importerSymbols = this.cache.get(importerPath)?.symbols
         if (!importerSymbols) continue
+        // Note: we do NOT skip importers already in `visited`. In diamond
+        // topologies — say C imports from both A and B where B re-exports
+        // from A — C has two separate destructuring sites. A's pass sees
+        // one via `resolved === A`, B's pass sees the other via
+        // `resolved === B`. Skipping on revisit would drop real occurrences.
 
-        // Import-kind destructuring bindings matching the name whose RHS
-        // import path resolves to our target file. `importPath` on the def is
-        // the raw string (e.g. "./lib"); the importer's `imports` map
-        // resolves it to an absolute path.
+        // Matching import-kind defs: `let { pi } = import("./current")`.
         const matchingImportDefs = new Set<SymbolDef>()
         for (const def of importerSymbols.definitions) {
           if (def.kind !== 'import' || def.name !== symbolName || !def.importPath) continue
           const resolved = importerSymbols.imports.get(def.importPath)
-          if (resolved === absolutePath) {
+          if (resolved === current) {
             matchingImportDefs.add(def)
             push(def.location, def.name.length)
           }
         }
 
-        // Only include references that resolve back to one of those
-        // destructuring bindings. This filters out unrelated locals — e.g.
-        // a second `let pi = 42` elsewhere in the same importer.
+        // References resolving back to those import-kind defs. Filtering by
+        // resolvedDef identity excludes unrelated locals with the same name.
         for (const ref of importerSymbols.references) {
           if (ref.name !== symbolName) continue
           if (ref.resolvedDef && matchingImportDefs.has(ref.resolvedDef)) {
             push(ref.location, ref.name.length)
+          }
+        }
+
+        // If this importer re-exports the name, include its export-object
+        // key (for shorthand `{ pi }` this dedups with the Sym value already
+        // recorded; for explicit `{ pi: localSym }` the key is a distinct
+        // token that needs its own occurrence), then enqueue the importer
+        // so its own importers are walked next round.
+        if (matchingImportDefs.size > 0 && isReexport(importerSymbols, symbolName, matchingImportDefs)) {
+          for (const exp of importerSymbols.exports) {
+            if (exp.name === symbolName) push(exp.location, exp.name.length)
+          }
+          if (!visited.has(importerPath)) {
+            visited.add(importerPath)
+            worklist.push(importerPath)
           }
         }
       }
@@ -483,12 +566,19 @@ function extractExports(nodes: AstNode[], sourceMap: SourceMap | undefined, file
   for (const entry of entries) {
     // Key-value pair: [keyNode, valueNode] where keyNode is a Str node
     if (Array.isArray(entry) && Array.isArray(entry[0])) {
-      const keyNode = (entry as [AstNode, AstNode])[0]
+      const [keyNode, valueNode] = entry as [AstNode, AstNode]
       if (keyNode[0] === NodeTypes.Str) {
         const name = keyNode[1] as string
         const nodeId = keyNode[2]
         const location = resolveLocation(nodeId, sourceMap, filePath)
-        exports.push({ name, kind: 'variable', nodeId, location, scope: 0 })
+        const exportDef: SymbolDef = { name, kind: 'variable', nodeId, location, scope: 0 }
+        // Capture the value-side nodeId when the value is a single Sym so that
+        // re-export detection can verify the export actually points at the
+        // imported binding (vs. an unrelated local under a colliding name).
+        if (valueNode && valueNode[0] === NodeTypes.Sym) {
+          exportDef.valueNodeId = valueNode[2]
+        }
+        exports.push(exportDef)
       }
     }
   }
@@ -576,6 +666,63 @@ function positionInRange(line: number, column: number, range: ScopeRange): boole
 /** Approximate area of a scope range (for sorting inner-before-outer). */
 function rangeArea(range: ScopeRange): number {
   return (range.endLine - range.startLine) * 100000 + (range.endColumn - range.startColumn)
+}
+
+/**
+ * Decide whether `file` re-exports `name` from one of the given import defs.
+ *
+ * A re-export requires:
+ *  1. An entry in `file.exports` with matching name (the trailing object
+ *     has `{ name, ... }` or `{ name: ... }`).
+ *  2. The value-side expression of that export entry is a Sym whose ref
+ *     resolves back to one of the import defs (i.e., the exported value
+ *     really is the imported binding, not an unrelated same-named local).
+ *
+ * Without (2), a file that imports `pi` from A but exports an unrelated
+ * local under the name `pi` (`{ pi: pi2 }`) would be misclassified as a
+ * re-exporter, dragging A's rename into it.
+ *
+ * The Sym lookup uses the export's `valueNodeId`, captured during
+ * `extractExports`. When the export value is a non-Sym expression
+ * (`{ pi: 1 + 1 }`), `valueNodeId` is undefined and this check returns false.
+ */
+function isReexport(
+  fileSymbols: FileSymbols,
+  name: string,
+  matchingImportDefs: Set<SymbolDef>,
+): boolean {
+  for (const exp of fileSymbols.exports) {
+    if (exp.name !== name) continue
+    if (exp.valueNodeId === undefined) continue
+    const valueRef = fileSymbols.references.find(r => r.nodeId === exp.valueNodeId)
+    if (valueRef?.resolvedDef && matchingImportDefs.has(valueRef.resolvedDef)) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Recursively visit every `.dvala` file under `dir`, invoking `visit(filePath)`
+ * for each. Skips `node_modules`, `.git`, and dotfile directories.
+ */
+function walkDvalaFiles(dir: string, visit: (filePath: string) => void): void {
+  let entries: fs.Dirent[]
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue
+    if (entry.name === 'node_modules') continue
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      walkDvalaFiles(full, visit)
+    } else if (entry.isFile() && entry.name.endsWith('.dvala')) {
+      visit(full)
+    }
+  }
 }
 
 /** Simple string hash for change detection. */

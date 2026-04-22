@@ -1,6 +1,6 @@
 # Cross-File Rename
 
-**Status:** In Progress
+**Status:** Shipped in PR #70
 **Created:** 2026-04-21
 **Branch:** `ls-cross-file-rename`
 
