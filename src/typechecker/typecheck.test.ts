@@ -625,6 +625,20 @@ describe('typecheck — flow-sensitive narrowing in if/else', () => {
     `)
     expect(result.diagnostics).toHaveLength(0)
   })
+
+  // Equality narrowing against a literal that doesn't intersect with the
+  // declared field type collapses the then-branch to Never. The match-case
+  // redundancy machinery doesn't fire on `if`, but the narrowing should at
+  // least not produce surprising side effects.
+  it('field equality with disjoint literal does not crash inference', () => {
+    const result = dvala.typecheck(`
+      let f = (r: {status: :ok}) -> if r.status == :error then 1 else 2 end;
+      f({status: :ok})
+    `)
+    // Ensure no inference exception bubbled up; warnings/errors are
+    // acceptable, hard exceptions are not.
+    expect(Array.isArray(result.diagnostics)).toBe(true)
+  })
 })
 
 // Optional record fields: `{a: A, b?: B}` — field `b` may be absent from

@@ -3283,24 +3283,38 @@ function intersectRecords(
   for (const k of allKeys) {
     const av = a.fields.get(k)
     const bv = b.fields.get(k)
+    const aOpt = a.optionalFields?.has(k) ?? false
+    const bOpt = b.optionalFields?.has(k) ?? false
     if (av && bv) {
       const intersected = intersectMatchTypes(av, bv)
-      if (intersected.tag === 'Never') return Never
+      if (intersected.tag === 'Never') {
+        // If both sides allow the field to be absent, the intersection
+        // still contains values that simply omit the field. Only when
+        // at least one side requires the field is the empty
+        // intersection a contradiction.
+        if (aOpt && bOpt) continue
+        return Never
+      }
       fields.set(k, intersected)
       // Field is optional in the combined type iff both sides agree.
-      if ((a.optionalFields?.has(k) ?? false) && (b.optionalFields?.has(k) ?? false)) {
-        optionalFields.add(k)
-      }
+      if (aOpt && bOpt) optionalFields.add(k)
     } else if (av) {
-      // Field only in `a`. If `b` is closed, that's a contradiction —
-      // unless `a` marks it optional (the value can simply be absent).
-      if (!b.open && !a.optionalFields?.has(k)) return Never
+      // Field only in `a`. A closed `b` says values have no such field, so:
+      //   - `a` optional → field is simply absent in the intersection.
+      //   - `a` required → contradiction.
+      if (!b.open) {
+        if (aOpt) continue
+        return Never
+      }
       fields.set(k, av)
-      if (a.optionalFields?.has(k)) optionalFields.add(k)
+      if (aOpt) optionalFields.add(k)
     } else if (bv) {
-      if (!a.open && !b.optionalFields?.has(k)) return Never
+      if (!a.open) {
+        if (bOpt) continue
+        return Never
+      }
       fields.set(k, bv)
-      if (b.optionalFields?.has(k)) optionalFields.add(k)
+      if (bOpt) optionalFields.add(k)
     }
   }
   const open = a.open && b.open
