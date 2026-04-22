@@ -986,15 +986,13 @@ export function inferExpr(
         const condType = inferExpr(cond, ctx, env, typeMap)
         constrain(ctx, condType, BooleanType)
         // Flow-sensitive narrowing: if the condition is a type guard
-        // (`isX(sym)`) or equality test (`sym == literal/atom`), narrow
-        // `sym` in each branch. Fall back to the outer env if no
-        // narrowing shape is recognised.
-        // Extension points (when adding): `&&` / `||` composition of
-        // guards (TS-style — then branch = intersection, else = union
-        // of complements); `not(cond)` swap; narrowing on non-Sym
-        // arguments like `isX(obj.field)` which would propagate the
-        // refinement into the record's field type. See
-        // `extractIfNarrowings` for the current shape.
+        // (`isX(sym)`), equality test (`sym == literal/atom`), `not(...)`
+        // wrapper, or `&&`/`||` composition of any of these, narrow the
+        // referenced symbols in each branch. Fall back to the outer env
+        // if no narrowing shape is recognised. Still unsupported:
+        // narrowing on non-Sym arguments like `isX(obj.field)` (would
+        // propagate the refinement into the record's field type).
+        // See `extractIfNarrowings` for the full list.
         const narrowings = extractIfNarrowings(cond, env)
         const thenEnv = narrowings ? narrowEnv(env, narrowings.whenTrue) : env
         const elseEnv = narrowings ? narrowEnv(env, narrowings.whenFalse) : env

@@ -582,6 +582,17 @@ describe('typecheck — flow-sensitive narrowing in if/else', () => {
     `)
     expect(result.diagnostics).toHaveLength(0)
   })
+
+  // Two negations should compose to identity — same narrowing as the
+  // bare guard. Catches regressions in the swap implementation.
+  it('not(not(guard)) double-negates back to the original narrowing', () => {
+    const result = dvala.typecheck(`
+      let f = (x: String | Number) ->
+        if not(not(isNumber(x))) then x + 1 else count(x) end;
+      f(42)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
 })
 
 // Optional record fields: `{a: A, b?: B}` — field `b` may be absent from
