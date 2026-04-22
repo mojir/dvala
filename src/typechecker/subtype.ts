@@ -494,7 +494,11 @@ function typeId(t: Type): string {
     case 'Never': return '!'
     case 'Var': return `V:${t.id}`
     case 'Alias': return `Al:${t.name}<${t.args.map(typeId).join(',')}>`
-    case 'Recursive': return `Rec:${t.id}`
+    // Include the body — the `id` alone isn't unique across independently
+    // constructed recursive types (multiple generators can pick the same
+    // counter value). The body's Var references terminate in `V:<id>`, so
+    // the recursion bottoms out without visiting the enclosing Recursive.
+    case 'Recursive': return `Rec:${t.id}:${typeId(t.body)}`
   }
 }
 

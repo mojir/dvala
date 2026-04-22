@@ -445,6 +445,13 @@ describe('subtyping — intersections', () => {
     expect(isSubtype(inter(IntegerType, NumberType), Never)).toBe(false)
   })
 
+  it('Integer & Number & String is empty (String is disjoint from Integer and Number)', () => {
+    // With three primitives, the pairwise loop must still flag the two
+    // genuinely disjoint pairs (Integer/String, Number/String) while still
+    // skipping the Integer/Number non-disjoint pair.
+    expect(isSubtype(inter(IntegerType, NumberType, StringType), Never)).toBe(true)
+  })
+
   it('Inter of function types differing only in effects does not poison cache', () => {
     // Same cache-collision shape as the Record case: typeId dropped effects
     // from Function identity, so two functions that differ only in their
