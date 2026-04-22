@@ -36,9 +36,23 @@ A file B re-exports `pi` from A if **all** of the following hold:
 
 1. B has an entry in `fileSymbols.exports` with `name === 'pi'`.
 2. B has a top-level `SymbolDef` with `kind === 'import'`, `name === 'pi'`, and `importPath` that resolves (via B's `imports` map) to A.
-3. *(Implicit via Dvala's shorthand-only destructuring)* The export object's value-side `Sym` at the export's position resolves to that import def. This step is a consistency check; without aliasing, steps 1 and 2 are sufficient.
+3. The export's value-side `Sym` resolves to that import def.
+
+Step 3 is **not** optional: although import-side destructuring is shorthand-only, export-side aliasing is already allowed (`{ pi: pi2 }`). Without this check, a file that imports `pi` from A but exports an unrelated local under the name `pi` — e.g.
+
+```
+let { pi } = import("./A")
+let pi2 = 42
+{ pi: pi2 }
+```
+
+— would be misclassified as a re-exporter and drag A's rename into it.
+
+In practice, step 3 is a lookup: find the `SymbolRef` at the export entry's value position (for shorthand `{ pi }`, same token as the key; for explicit `{ pi: expr }`, the `Sym` at the value's source range) and check that `ref.resolvedDef` is in the matching-import-defs set. When the value is a non-`Sym` expression (`{ pi: 1 + 1 }`), the check fails and B is correctly not a re-exporter.
 
 ### Algorithm
+
+Traversal order (BFS vs DFS) doesn't affect correctness — results are accumulated into a shared dedup set — so we pick whichever is cheapest. A queue (`shift`) avoids revisiting deeply-nested re-export branches before siblings and keeps the worklist shallow in fanout-heavy cases.
 
 ```
 function findAllOccurrencesTransitive(targetFile, symbolName):
@@ -53,7 +67,10 @@ function findAllOccurrencesTransitive(targetFile, symbolName):
   visitedFiles = new Set<string>()
 
   while worklist is not empty:
-    (file, name) = worklist.pop()
+    (file, name) = worklist.shift()
+    # Cycle / duplicate-enqueue guard is applied on pop, not on push:
+    # the same file may be enqueued multiple times (e.g. fanout where two
+    # re-exporters both re-export into a third), but only processed once.
     if file in visitedFiles: continue
     visitedFiles.add(file)
 
@@ -76,8 +93,48 @@ function findAllOccurrencesTransitive(targetFile, symbolName):
   return results
 ```
 
+### `resolveCanonicalFile` — walk to the ultimate origin
+
+Today's `resolveCanonicalFile` (in `src/languageService/WorkspaceIndex.ts`) follows `def.importPath` **exactly one hop**. That was sufficient for PR #70 because direct-importer coverage was the only cross-file edge. With re-export chains it isn't: if the cursor sits on `pi` in C where `C` imports from B and B re-exports from A, the one-hop walk lands on B, and the BFS from B never reaches A (A is an exporter to B, not an importer of B — `reverseImports[B]` doesn't list it).
+
+Fix: iterate until the resolved def is not `kind: 'import'` (or until we'd revisit a file). Pseudocode:
+
+```
+function resolveCanonicalFile(filePath, line, column):
+  symbol = getSymbolAtPosition(filePath, line, column)
+  if not symbol: return null
+
+  current = symbol
+  visited = new Set<string>()
+  while current.def and current.def.kind == 'import' and current.def.importPath:
+    importerFile = current.def.location.file
+    if importerFile in visited: break  # cycle guard
+    visited.add(importerFile)
+
+    importerSymbols = getFileSymbols(importerFile)
+    resolved = importerSymbols?.imports.get(current.def.importPath)
+    if not resolved:
+      # unresolved import (e.g. file missing / not indexed) — stop here
+      return { file: current.def.location.file, name: current.name,
+               unresolvedImport: current.def.importPath }
+
+    # Re-resolve `name` against the next file up the chain. If it is also
+    # destructured there as an import binding, the loop continues; otherwise
+    # we've reached the origin.
+    nextSymbols = getFileSymbols(resolved)
+    nextDef = nextSymbols?.definitions.find(d => d.name == current.name && d.scope == 0)
+    if not nextDef: break
+    current = { name: current.name, def: nextDef }
+
+  return { file: current.def?.location.file ?? path.resolve(filePath),
+           name: current.name }
+```
+
+The BFS then starts from the true origin, so `reverseImports[A]` reaches B, `reverseImports[B]` reaches C, and the full chain is covered regardless of where the rename was initiated.
+
 ### Where this differs from the current implementation
 
+- `resolveCanonicalFile` walks to the ultimate origin instead of one hop.
 - `visitedFiles` guards against cycles (A imports B imports A would otherwise loop).
 - `(c)` is the new hop: when an importer re-exports the name, the importer itself becomes the next search root.
 - The results accumulate across hops and dedup via the shared `seen` set.
@@ -93,7 +150,7 @@ None. `importPath` already exists on import-kind defs (from PR #70), and `revers
 
 ## Rename-provider interaction
 
-No changes required in the VS Code extension. `resolveCanonicalFile` still resolves the cursor's symbol back to the origin file. `findAllOccurrences` silently grows to walk the re-export chain. The rename provider's `WorkspaceEdit` loop already handles multi-file edits.
+No changes required in the VS Code extension. `resolveCanonicalFile` grows internally to walk the full chain back to the origin, but keeps its return shape. `findAllOccurrences` silently grows to walk the re-export chain. The rename provider's `WorkspaceEdit` loop already handles multi-file edits.
 
 ## Testing
 
@@ -105,14 +162,27 @@ Unit tests in `src/languageService/WorkspaceIndex.test.ts`:
 4. **Starting from the middle.** Cursor on `pi` in C's use-site. `resolveCanonicalFile` walks C → B → A; `findAllOccurrences` starting from A covers the full chain.
 5. **Cycle guard.** A imports from B, B imports from A, both re-export `pi`. No infinite loop, results are dedup'd, the test just asserts termination + expected location count.
 6. **Re-exporter has an unrelated local `pi`** in a nested scope. Locality filter (ref must resolve to the import def) continues to exclude it.
+7. **False-positive re-export detection.** B imports `pi` from A but its export object is `{ pi: pi2 }` where `pi2` is an unrelated local. B must NOT be treated as a re-exporter; renaming `pi` in A must not touch B's `{ pi: pi2 }` key. This pins the step-3 value-resolution check.
 
 ## Rollout
 
 - Single PR, stacked on top of PR #70 after merge.
 - Release notes: bullet under "language service" — no user-facing API change beyond behavioral fix.
 
+## Eager workspace indexing (sub-task, lands with this PR)
+
+Lazy indexing — the workspace only knows about files VS Code has opened — was acceptable for PR #70 because a missing importer loses at most one hop of rename coverage. Transitive rename amplifies this: an un-indexed re-exporter silently drops its entire subtree of downstream importers. A user opens A, renames `pi`, and has no way to tell whether the rename is complete or whether three unopened files with `let { pi } = import("./A")` were skipped.
+
+This is no longer a "potential follow-up" — shipping transitive rename without it is a correctness regression in user perception. Scope for this PR:
+
+1. On first invocation of `findAllOccurrences` (or the rename provider), eagerly walk the workspace root (respecting `.gitignore`) and call `updateFile` for every `.dvala` file not already cached.
+2. Gate by a one-shot flag on `WorkspaceIndex` so subsequent renames don't re-scan.
+3. File watcher already keeps the index fresh after the initial scan — no additional invalidation needed.
+4. Test: rename in a workspace where only the origin file has been opened; assert all importers in the chain are updated.
+
+If the workspace is very large (10k+ files), the eager scan will take seconds. Acceptable for a first rename; if it becomes a problem, a future optimisation can parse only the top-level structure (imports + exports) without running the full symbol-table builder.
+
 ## Open questions
 
 - **Partial re-exports**: what if the re-exporter exports under shorthand but the object is malformed (parse error)? `fileSymbols.exports` is empty for broken files; the chain stops silently. Is that the right behavior? Likely yes — broken files shouldn't be mutated by automated rename anyway.
 - **Should `findReferences` (Shift+F12) also follow the chain?** Yes — same fix, same code path, same behavior.
-- **When the workspace index has not yet indexed a file in the chain** (e.g. C hasn't been opened), `reverseImports` won't list it, so C's occurrences are missed. This is an existing limitation of the lazy indexing model, not specific to re-exports. Potential follow-up: eager workspace scan on first rename.
