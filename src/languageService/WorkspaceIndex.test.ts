@@ -600,6 +600,55 @@ describe('WorkspaceIndex', () => {
       expect(occurrences.filter(o => o.file === bPath)).toHaveLength(2)
     })
 
+    it('treats explicit { pi: pi } as a re-export when the value resolves to the import def', () => {
+      // Explicit key-value form where the value IS the imported binding.
+      // isReexport's value-resolution check uses nodeId identity, not
+      // position, so the explicit and shorthand forms behave identically.
+      // B is a valid re-exporter; C imports from B and must be reached.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi: pi }')
+      const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi * 2')
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      index.updateFile(cPath)
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      // A: 2. B: destructuring + Str key at explicit form + Sym value = 3
+      //   (all three are distinct source positions in the explicit form,
+      //   unlike shorthand where key and value coincide). C: 2.
+      expect(occurrences.filter(o => o.file === aPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === bPath)).toHaveLength(3)
+      expect(occurrences.filter(o => o.file === cPath)).toHaveLength(2)
+    })
+
+    it('covers diamond topology: C imports from both A and B where B re-exports A', () => {
+      // When C imports pi from BOTH A (directly) and B (via re-export), C has
+      // two distinct destructuring sites at different source positions. A's
+      // pass records the A-import via `resolved === A`; B's pass records the
+      // B-import via `resolved === B`. Pins the decision to NOT skip
+      // already-seen importers in the inner loop — skipping would drop C's
+      // B-import when its A-import was already collected.
+      // Dvala has no aliased destructuring, so scope-shadow via do-blocks
+      // to let `pi` be rebound twice in one file.
+      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
+      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
+      const cPath = writeFile('c.dvala', [
+        'let piFromA = do let { pi } = import("./a"); pi end;',
+        'let piFromB = do let { pi } = import("./b"); pi end;',
+        'piFromA + piFromB',
+      ].join('\n'))
+      index.updateFile(aPath)
+      index.updateFile(bPath)
+      index.updateFile(cPath)
+      const occurrences = index.findAllOccurrences(aPath, 'pi')
+      // A: let pi + shorthand export (deduped) = 2.
+      // B: destructuring + shorthand export (deduped) = 2.
+      // C: A-import destructuring + use inside first do-block + B-import
+      //    destructuring + use inside second do-block = 4.
+      expect(occurrences.filter(o => o.file === aPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === bPath)).toHaveLength(2)
+      expect(occurrences.filter(o => o.file === cPath)).toHaveLength(4)
+    })
+
     it('does not treat explicit { pi: unrelatedLocal } as a re-export', () => {
       // Step-3 value-resolution check: B imports pi from A but exports
       // `{ pi: pi2 }` where `pi2` is an unrelated local. B must NOT be

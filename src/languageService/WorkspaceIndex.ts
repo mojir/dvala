@@ -50,8 +50,11 @@ export class WorkspaceIndex {
    * would silently drop the un-indexed subtree.
    *
    * One-shot per root — subsequent calls with the same root return
-   * immediately. Callers that care about freshness past the initial scan
-   * should rely on the filesystem watcher (or call `invalidateFile`).
+   * immediately. Only files not already in the cache are parsed; files
+   * that were indexed previously are left alone, so **stale disk content
+   * for a pre-cached file is NOT refreshed here**. Callers that care about
+   * freshness past the initial scan should rely on the filesystem watcher
+   * (or call `invalidateFile` / `updateFile`).
    *
    * Skips `node_modules`, `.git`, and dotfile directories. Does not honour
    * `.gitignore` today; if that becomes important we can plug in a matcher.
@@ -276,14 +279,16 @@ export class WorkspaceIndex {
     let currentDef = symbol.def
     const visited = new Set<string>()
     while (currentDef?.kind === 'import' && currentDef.importPath) {
-      const importerFile = currentDef.location.file
-      if (visited.has(importerFile)) break // cycle — stop here
-      visited.add(importerFile)
+      // File that owns the current link in the chain — the one whose
+      // `imports` map resolves `currentDef.importPath` to the next hop.
+      const currentFile = currentDef.location.file
+      if (visited.has(currentFile)) break // cycle — stop here
+      visited.add(currentFile)
 
-      const importerSymbols = this.getFileSymbols(importerFile)
-      const resolvedPath = importerSymbols?.imports.get(currentDef.importPath)
+      const currentSymbols = this.getFileSymbols(currentFile)
+      const resolvedPath = currentSymbols?.imports.get(currentDef.importPath)
       if (!resolvedPath) {
-        return { file: importerFile, name: symbol.name, unresolvedImport: currentDef.importPath }
+        return { file: currentFile, name: symbol.name, unresolvedImport: currentDef.importPath }
       }
 
       // Look for a top-level def of the same name in the next file up.
@@ -371,6 +376,11 @@ export class WorkspaceIndex {
       for (const importerPath of importers) {
         const importerSymbols = this.cache.get(importerPath)?.symbols
         if (!importerSymbols) continue
+        // Note: we do NOT skip importers already in `visited`. In diamond
+        // topologies — say C imports from both A and B where B re-exports
+        // from A — C has two separate destructuring sites. A's pass sees
+        // one via `resolved === A`, B's pass sees the other via
+        // `resolved === B`. Skipping on revisit would drop real occurrences.
 
         // Matching import-kind defs: `let { pi } = import("./current")`.
         const matchingImportDefs = new Set<SymbolDef>()
