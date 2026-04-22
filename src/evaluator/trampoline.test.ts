@@ -969,6 +969,10 @@ describe('trampoline integration', () => {
     expect(runTrampoline(step)).toBe(5)
   })
 
+  // 100K-iteration trampoline tests are CPU-bound and flake at vitest's
+  // default 5s timeout when CI runs many test files in parallel and
+  // starves the worker. Locally they finish in <1s; the bump is just
+  // headroom against scheduling jitter, not a real perf regression.
   it('should handle deep loop recur without stack overflow (TCE)', () => {
     // 100,000 iterations would overflow a recursive evaluator's call stack.
     // The trampoline handles this via proper tail call elimination:
@@ -977,7 +981,7 @@ describe('trampoline integration', () => {
     const node = parseFirst('loop (n = 100000) -> if n > 0 then recur(n - 1) else n end')
     const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(0)
-  })
+  }, 30000)
 
   it('should handle deep function recur without stack overflow (TCE)', () => {
     // Same principle for user-defined functions: handleRecur finds the
@@ -986,14 +990,14 @@ describe('trampoline integration', () => {
     const node = parseFirst('(n -> if n > 0 then recur(n - 1) else n end)(100000)')
     const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(0)
-  })
+  }, 30000)
 
   it('should handle deep mutual recur accumulating a result', () => {
     // Verify that recur correctly rebinds multiple parameters
     const node = parseFirst('loop (n = 100000, acc = 0) -> if n > 0 then recur(n - 1, acc + 1) else acc end')
     const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(100000)
-  })
+  }, 30000)
 
   it('should handle recur in function with multi-expression body', () => {
     // recur in the last expression of a multi-expression body
