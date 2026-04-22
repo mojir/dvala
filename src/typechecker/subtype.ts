@@ -17,7 +17,7 @@
  */
 
 import type { FunctionType, SequenceType, Type, PrimitiveName } from './types'
-import { functionAcceptsArity, getFunctionParamType, isEffectSubset, sequenceElementAt, sequenceMayHaveIndex, toSequenceType, typeEquals } from './types'
+import { effectSetToString, functionAcceptsArity, getFunctionParamType, isEffectSubset, sequenceElementAt, sequenceMayHaveIndex, toSequenceType, typeEquals } from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -54,11 +54,23 @@ function check(s: Type, t: Type, visited: Set<string>): boolean {
     return false
   }
 
-  // Cycle guard for recursive types
+  // Cycle guard for recursive types. The key is tracked only for the
+  // duration of this call: on return we remove it so that sibling calls
+  // (e.g. successive members of an `Inter` on the left) don't inherit a
+  // "cycle → true" answer from a computation that already returned false.
+  // Coinductive cycle-assumption only applies while the exploration is
+  // actually in progress — after a result is known, it's final.
   const key = cacheKey(s, t)
   if (visited.has(key)) return true // coinductive: assume true for cycles
   visited.add(key)
+  try {
+    return checkBody(s, t, visited)
+  } finally {
+    visited.delete(key)
+  }
+}
 
+function checkBody(s: Type, t: Type, visited: Set<string>): boolean {
   // --- Union on the left: S1|S2 <: T iff every member <: T ---
   if (s.tag === 'Union') {
     return s.members.every(m => check(m, t, visited))
@@ -214,11 +226,18 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
         // - If S is closed, the field definitely doesn't exist → not a subtype.
         return false
       }
+      // Optional in S but required in T: S only sometimes has the field,
+      // but T promises it's always present — not a subtype.
+      const sIsOptional = s.optionalFields?.has(key) ?? false
+      if (sIsOptional && !tIsOptional) return false
       if (!check(sType, tType, visited)) return false
     }
     // If T is closed, S must not have fields that aren't declared in T.
     // Optional fields in T DO count as declared (they just may be absent).
     if (!t.open) {
+      // Open S could have runtime fields beyond what its type declares,
+      // which a closed T forbids — so open S is not a subtype of closed T.
+      if (s.open) return false
       for (const key of s.fields.keys()) {
         if (!t.fields.has(key)) return false
       }
@@ -357,11 +376,19 @@ function isGroundType(t: Type): boolean {
 
 /** Check if an intersection of types is empty (contains disjoint base types). */
 function isEmptyIntersection(members: Type[]): boolean {
-  // If two different primitives are intersected, the result is Never
+  // If two different primitives are intersected, the result is Never —
+  // except for Integer & Number, where Integer ⊂ Number and their
+  // intersection is Integer.
   const primitives = members.filter(m => m.tag === 'Primitive') as { tag: 'Primitive'; name: PrimitiveName }[]
   if (primitives.length >= 2) {
-    const names = new Set(primitives.map(p => p.name))
-    if (names.size > 1) return true
+    const names = [...new Set(primitives.map(p => p.name))]
+    for (let i = 0; i < names.length; i++) {
+      for (let j = i + 1; j < names.length; j++) {
+        const a = names[i]!, b = names[j]!
+        if ((a === 'Integer' && b === 'Number') || (a === 'Number' && b === 'Integer')) continue
+        return true
+      }
+    }
   }
   // A primitive intersected with a non-matching literal is empty
   for (const prim of primitives) {
@@ -407,7 +434,13 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
       for (const [k, v] of t.fields) {
         fields.set(k, substituteVar(v, varId, replacement))
       }
-      return { tag: 'Record', fields, open: t.open }
+      // Carry the optional-fields sidecar through unfolding — dropping it
+      // silently promotes optional fields to required.
+      const rec: Type = { tag: 'Record', fields, open: t.open }
+      if (t.optionalFields && t.optionalFields.size > 0) {
+        rec.optionalFields = new Set(t.optionalFields)
+      }
+      return rec
     }
     case 'Alias': return {
       tag: 'Alias',
@@ -437,13 +470,22 @@ function typeId(t: Type): string {
     case 'Primitive': return `P:${t.name}`
     case 'Atom': return `A:${t.name}`
     case 'Literal': return `L:${t.value}`
-    case 'Function': return `F(${t.params.map(typeId).join(',')}${t.restParam !== undefined ? `|...${typeId(t.restParam)}` : ''})${typeId(t.ret)}${t.handlerWrapper ? `|HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}` : ''}`
+    // Includes effects — two functions that differ only in their effect row
+    // must get distinct cache keys, otherwise a cached "false" from one can
+    // pollute the other via the `visited` set.
+    case 'Function': return `F(${t.params.map(typeId).join(',')}${t.restParam !== undefined ? `|...${typeId(t.restParam)}` : ''})${typeId(t.ret)}${effectSetToString(t.effects)}${t.handlerWrapper ? `|HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}` : ''}`
     case 'Tuple': return `T[${t.elements.map(typeId).join(',')}]`
-    case 'Record': return `R{${[...t.fields.entries()].map(([k, v]) => `${k}:${typeId(v)}`).join(',')}${t.open ? ',..' : ''}}`
+    // Includes optionalFields — records that differ only in which fields are
+    // optional are distinct types and must not share a cache key.
+    case 'Record': {
+      const fieldsStr = [...t.fields.entries()].map(([k, v]) => `${k}${t.optionalFields?.has(k) ? '?' : ''}:${typeId(v)}`).join(',')
+      return `R{${fieldsStr}${t.open ? ',..' : ''}}`
+    }
     case 'Array': return `Ar[${typeId(t.element)}]`
     case 'Sequence': return `Sq[${t.prefix.map(typeId).join(',')}|${typeId(t.rest)}|${t.minLength}|${t.maxLength ?? '*'}]`
     case 'Regex': return 'Rx'
-    case 'Handler': return `H(${typeId(t.body)}=>${typeId(t.output)}|${[...t.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')})`
+    // Includes `introduced` — same cache-key soundness concern as Function.
+    case 'Handler': return `H(${typeId(t.body)}=>${typeId(t.output)}|${[...t.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}|intro:${effectSetToString(t.introduced)})`
     case 'AnyFunction': return 'AF'
     case 'Union': return `U(${t.members.map(typeId).join('|')})`
     case 'Inter': return `I(${t.members.map(typeId).join('&')})`
@@ -452,7 +494,11 @@ function typeId(t: Type): string {
     case 'Never': return '!'
     case 'Var': return `V:${t.id}`
     case 'Alias': return `Al:${t.name}<${t.args.map(typeId).join(',')}>`
-    case 'Recursive': return `Rec:${t.id}`
+    // Include the body — the `id` alone isn't unique across independently
+    // constructed recursive types (multiple generators can pick the same
+    // counter value). The body's Var references terminate in `V:<id>`, so
+    // the recursion bottoms out without visiting the enclosing Recursive.
+    case 'Recursive': return `Rec:${t.id}:${typeId(t.body)}`
   }
 }
 
