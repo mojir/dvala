@@ -519,6 +519,10 @@ function walkBindingTarget(
       if (keyInfo) {
         def.importedName = keyInfo.key
         def.keyNodeId = keyInfo.keyNodeId
+        // `keyLocation` intentionally omitted for rest bindings: the parser
+        // forbids `{ ...rest as x }`, so the key token and the binding
+        // token always coincide — carrying a redundant duplicate would
+        // only mislead rename into treating them as separable.
       }
       registerDef(def, state)
       if (defaultExpr) walkNode(defaultExpr, state)

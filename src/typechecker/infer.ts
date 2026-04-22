@@ -22,6 +22,14 @@ import {
   subtractEffects,
 } from './types'
 import type { AstNode, ObjectBindingEntry } from '../parser/types'
+import { NodeTypes } from '../constants/constants'
+import { getBuiltinType, getModuleType } from './builtinTypes'
+import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
+import { FOLD_ENABLED } from './foldToggle'
+import { parseTypeAnnotation } from './parseType'
+import { getEffectDeclaration } from './effectTypes'
+import { simplify } from './simplify'
+import { isSubtype } from './subtype'
 
 // Adapt an object-binding-target's new `ObjectBindingEntry[]` payload into
 // the legacy `Record<string, AstNode>` shape the typechecker was originally
@@ -36,14 +44,6 @@ function objectBindingFieldsAsRecord(entries: ObjectBindingEntry[]): Record<stri
   }
   return record
 }
-import { NodeTypes } from '../constants/constants'
-import { getBuiltinType, getModuleType } from './builtinTypes'
-import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
-import { FOLD_ENABLED } from './foldToggle'
-import { parseTypeAnnotation } from './parseType'
-import { getEffectDeclaration } from './effectTypes'
-import { simplify } from './simplify'
-import { isSubtype } from './subtype'
 
 interface ResumeContext {
   argType: Type

@@ -293,17 +293,21 @@ export class WorkspaceIndex {
     if (!symbol) return null
 
     // Aliased-local short-circuit: the cursor sits on the LOCAL side of an
-    // aliased destructuring (`p` in `let { pi as p } = import("./m")`), or
-    // on a use-site of that local (`p * 2`). Either way the user's intent
-    // is a local-only rename — not a rename of the imported symbol.
+    // aliased destructuring, or on a use-site of that local. Either way the
+    // user's intent is a local-only rename — the key side is a separate
+    // rename target, never bundled.
     //
-    // Detected by: the resolved def is an import-kind binding with a
-    // distinct keyLocation (i.e. aliased) AND the cursor is NOT on the key
-    // token. The def-side case sets `onKey` explicitly; the ref-side case
-    // leaves it undefined — both are handled by `onKey !== true`.
-    if (symbol.def?.kind === 'import'
-      && symbol.def.keyLocation
-      && symbol.onKey !== true) {
+    // Detected by: the resolved def has a distinct `keyLocation` (i.e. the
+    // binding is aliased) AND the cursor is NOT on the key token. The def-
+    // side cursor sets `onKey` explicitly; a use-site ref leaves it
+    // undefined — both are handled by `onKey !== true`.
+    //
+    // This fires for both import and non-import aliased bindings. For
+    // non-import the loop below would have exited on the first check
+    // (`kind !== 'import'`) and returned the same answer, so the guard is
+    // self-contained and doesn't rely on the chain-walk's fall-through
+    // happening to be right.
+    if (symbol.def?.keyLocation && symbol.onKey !== true) {
       return { file: symbol.def.location.file, name: symbol.name }
     }
 

@@ -68,4 +68,30 @@ describe('rename — non-import destructuring (let + function params)', () => {
     // the key token itself.
     expect(renameAt('let f = ({ pi as p }) -> p + p', 1, 12)).toEqual({ name: 'pi', count: 1 })
   })
+
+  it('origin-file over-match: file has both `let pi` AND aliased key `pi`', () => {
+    // Known limitation pinned here: when the origin file contains both a
+    // direct `let pi` AND a non-import aliased destructuring whose key is
+    // also `pi`, renaming the origin `pi` ALSO hits the aliased key token.
+    // The origin-broad search matches by `importedName` for non-import
+    // aliased bindings, which is the right thing for the isolated
+    // `let { pi as p } = { pi: 3.14 }` case but over-matches when another
+    // unrelated `let pi` shares the same file.
+    //
+    // Dispatching on the cursor's node identity (instead of name matching)
+    // would fix this but requires a larger refactor of findAllOccurrences.
+    // For now we pin the behaviour so future changes are intentional.
+    //
+    // Code: `let pi = 1; let { pi as p } = { pi: 2 }; pi + p`
+    // Counted occurrences:
+    //   - `let pi = 1` def           — 1
+    //   - `pi` in `pi + p` use-site  — 1
+    //   - aliased key `pi`           — 1 (the over-match)
+    // The RHS `{ pi: 2 }` is an Object literal key, not a binding target,
+    // and is not reported.
+    const source = 'let pi = 1; let { pi as p } = { pi: 2 }; pi + p'
+    const result = renameAt(source, 1, 5) // cursor on the first `pi`
+    expect(result.name).toBe('pi')
+    expect(result.count).toBeGreaterThanOrEqual(3)
+  })
 })

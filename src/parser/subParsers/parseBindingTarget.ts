@@ -265,7 +265,9 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
             throw new ParseError('Expected object or array', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
           }
         }
-        assertUniqueKey(token[2] as TokenDebugInfo)
+        // Use the key token for the duplicate-name error site — the `{`/`[`
+        // at `token` is the start of the nested pattern, not the duplicated key.
+        assertUniqueKey(keyTokenDebug)
         elements.push({ key: keyName, keyNodeId, target: parseBindingTarget(ctx, { allowLiteralPatterns }) })
       }
 
