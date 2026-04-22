@@ -1,5 +1,5 @@
 import { ParseError } from '../../errors'
-import type { AstNode, BindingTarget, SymbolNode, UserDefinedSymbolNode } from '../types'
+import type { AstNode, BindingTarget, ObjectBindingEntry, SymbolNode, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import { type Token, assertOperatorToken, isAtomToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
 import { isSpecialSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
@@ -195,7 +195,8 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
   // Object
   if (isLBraceToken(firstToken)) {
     ctx.advance()
-    const elements: Record<string, BindingTarget> = {}
+    const elements: ObjectBindingEntry[] = []
+    const seenKeys = new Set<string>()
     let token = ctx.peek()
     let rest = false
     while (!isRBraceToken(token)) {
@@ -209,27 +210,35 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
       // Parse the key symbol - can be any symbol type (including builtins) when using 'as' alias
       const keySymbol = parseSymbol(ctx)
       const keyName = getSymbolName(keySymbol)
+      const keyNodeId = keySymbol[2] ?? 0
+      // keyDebugInfo / keyTokenDebug used for bind-target source info when there is
+      // no 'as' alias — in that case the key token IS the binding token
+      const keyDebugInfo = keySymbol[2] !== undefined ? ctx.sourceMap?.positions.get(keySymbol[2]) : undefined
+      const keyTokenDebug: TokenDebugInfo | undefined = keyDebugInfo ? [keyDebugInfo.start[0], keyDebugInfo.start[1]] : undefined
       token = ctx.peek()
+
+      // Duplicate detection by external key (the exported/destructured name)
+      const assertUniqueKey = (errToken: TokenDebugInfo | undefined) => {
+        if (seenKeys.has(keyName)) {
+          throw new ParseError(`Duplicate binding name: ${keyName}`, ctx.resolveTokenDebugInfo(errToken))
+        }
+        seenKeys.add(keyName)
+      }
+
       if (isReservedSymbolToken(token, 'as')) {
         if (rest) {
           throw new ParseError('Rest argument can not have alias', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
         }
         ctx.advance()
         const name = toUserDefinedSymbol(parseSymbol(ctx), token[2] as TokenDebugInfo, ctx)
-        if (elements[name[1]]) {
-          throw new ParseError(`Duplicate binding name: ${name}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
-        }
+        assertUniqueKey(token[2] as TokenDebugInfo)
         const symTarget = withSourceCodeInfo([bindingTargetTypes.symbol, [name, parseOptionalDefaulValue(ctx)], 0], token[2] as TokenDebugInfo, ctx)
         ctx.setNodeEnd(symTarget[2])
-        elements[keyName] = symTarget
+        elements.push({ key: keyName, keyNodeId, target: symTarget })
       } else if (isRBraceToken(token) || isOperatorToken(token, ',') || isOperatorToken(token, '=')) {
-        // Without 'as' alias, the key becomes the binding name
-        const keyDebugInfo = keySymbol[2] !== undefined ? ctx.sourceMap?.positions.get(keySymbol[2]) : undefined
-        const keyTokenDebug: TokenDebugInfo | undefined = keyDebugInfo ? [keyDebugInfo.start[0], keyDebugInfo.start[1]] : undefined
+        // Without 'as' alias, the key token becomes the binding name (shorthand)
         const key = toUserDefinedSymbol(keySymbol, keyTokenDebug, ctx)
-        if (elements[key[1]]) {
-          throw new ParseError(`Duplicate binding name: ${key}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
-        }
+        assertUniqueKey(token[2] as TokenDebugInfo)
         if (rest && isOperatorToken(ctx.tryPeek(), '=')) {
           throw new ParseError('Rest argument can not have default value', ctx.peekSourceCodeInfo())
         }
@@ -237,11 +246,11 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
         if (rest) {
           const restTarget = withSourceCodeInfo([bindingTargetTypes.rest, [key[1], parseOptionalDefaulValue(ctx)], 0], keyTokenDebug, ctx)
           ctx.setNodeEnd(restTarget[2])
-          elements[key[1]] = restTarget
+          elements.push({ key: key[1], keyNodeId, target: restTarget })
         } else {
           const symTarget = withSourceCodeInfo([bindingTargetTypes.symbol, [key, parseOptionalDefaulValue(ctx)], 0], keyTokenDebug, ctx)
           ctx.setNodeEnd(symTarget[2])
-          elements[key[1]] = symTarget
+          elements.push({ key: key[1], keyNodeId, target: symTarget })
         }
       } else if (isOperatorToken(token, ':')) {
         ctx.advance()
@@ -256,7 +265,10 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
             throw new ParseError('Expected object or array', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
           }
         }
-        elements[keyName] = parseBindingTarget(ctx, { allowLiteralPatterns })
+        // Use the key token for the duplicate-name error site — the `{`/`[`
+        // at `token` is the start of the nested pattern, not the duplicated key.
+        assertUniqueKey(keyTokenDebug)
+        elements.push({ key: keyName, keyNodeId, target: parseBindingTarget(ctx, { allowLiteralPatterns }) })
       }
 
       if (!isRBraceToken(ctx.peek())) {

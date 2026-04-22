@@ -21,7 +21,7 @@ import {
   typeToString, typeEquals,
   subtractEffects,
 } from './types'
-import type { AstNode } from '../parser/types'
+import type { AstNode, ObjectBindingEntry } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
@@ -30,6 +30,20 @@ import { parseTypeAnnotation } from './parseType'
 import { getEffectDeclaration } from './effectTypes'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
+
+// Adapt an object-binding-target's new `ObjectBindingEntry[]` payload into
+// the legacy `Record<string, AstNode>` shape the typechecker was originally
+// written against. The typechecker only cares about (key, pattern) pairs,
+// never about the key's source position — `keyNodeId` belongs to the
+// rename/language-service layer. This adapter avoids rewriting every
+// `Object.entries(fieldsObj)` site.
+function objectBindingFieldsAsRecord(entries: ObjectBindingEntry[]): Record<string, AstNode> {
+  const record: Record<string, AstNode> = {}
+  for (const { key, target } of entries) {
+    record[key] = target as unknown as AstNode
+  }
+  return record
+}
 
 interface ResumeContext {
   argType: Type
@@ -2796,7 +2810,8 @@ function narrowMatchedTypeByGuard(pattern: AstNode, matchedType: Type, guard: As
     }
 
     case 'object': {
-      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      const [rawEntries] = pattern[1] as [ObjectBindingEntry[], AstNode | undefined]
+      const fieldsObj = objectBindingFieldsAsRecord(rawEntries)
       return narrowObjectMatchTypeByGuard(fieldsObj, matchedType, guard, env)
     }
 
@@ -2950,7 +2965,8 @@ function getLiteralMatchPatternType(pattern: AstNode): Type | null {
 }
 
 function matchedObjectPatternType(pattern: AstNode, candidateType: Type): Type {
-  const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+  const [rawEntries] = pattern[1] as [ObjectBindingEntry[], AstNode | undefined]
+  const fieldsObj = objectBindingFieldsAsRecord(rawEntries)
 
   if (candidateType.tag === 'Unknown' || candidateType.tag === 'Var') {
     return candidateType
@@ -3397,7 +3413,8 @@ function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: Inference
     case 'object': {
       // ["object", [{name: bindingTarget, ...}, default], id]
       // Constrain the value type as an open record with the destructured fields
-      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      const [rawEntries] = pattern[1] as [ObjectBindingEntry[], AstNode | undefined]
+      const fieldsObj = objectBindingFieldsAsRecord(rawEntries)
       for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
         if (ctx) {
           // Create a fresh variable for the field type and constrain
@@ -3649,7 +3666,8 @@ function bindMatchCasePattern(
     }
 
     case 'object': {
-      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      const [rawEntries] = pattern[1] as [ObjectBindingEntry[], AstNode | undefined]
+      const fieldsObj = objectBindingFieldsAsRecord(rawEntries)
 
       if (expandedType.tag === 'Union') {
         const compatibleMembers = expandedType.members.filter(
@@ -3758,7 +3776,8 @@ function bindUnknownPattern(pattern: AstNode, env: TypeEnv, typeMap: Map<number,
     }
 
     case 'object': {
-      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      const [rawEntries] = pattern[1] as [ObjectBindingEntry[], AstNode | undefined]
+      const fieldsObj = objectBindingFieldsAsRecord(rawEntries)
       for (const fieldPattern of Object.values(fieldsObj)) {
         bindUnknownPattern(fieldPattern, env, typeMap)
       }
@@ -3946,7 +3965,8 @@ function recordConcretePatternTypes(pattern: AstNode, type: Type, typeMap: Map<n
 
     case 'object': {
       if (concreteType.tag !== 'Record') return
-      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      const [rawEntries] = pattern[1] as [ObjectBindingEntry[], AstNode | undefined]
+      const fieldsObj = objectBindingFieldsAsRecord(rawEntries)
       for (const [fieldName, fieldPattern] of Object.entries(fieldsObj)) {
         const fieldType = concreteType.fields.get(fieldName)
         if (fieldType) {
@@ -4004,7 +4024,8 @@ function recordLiteralPatternTypes(pattern: AstNode, valueNode: AstNode, typeMap
     case 'object': {
       if (valueNode[0] !== NodeTypes.Object) return
 
-      const [fieldsObj] = pattern[1] as [Record<string, AstNode>, AstNode | undefined]
+      const [rawEntries] = pattern[1] as [ObjectBindingEntry[], AstNode | undefined]
+      const fieldsObj = objectBindingFieldsAsRecord(rawEntries)
       const entries = valueNode[1] as ([AstNode, AstNode] | AstNode)[]
       const fieldNodes = new Map<string, AstNode>()
 

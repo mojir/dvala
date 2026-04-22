@@ -85,6 +85,38 @@ describe('buildSymbolTable', () => {
       expect(definitions.map(d => d.name).sort()).toEqual(['a', 'b'])
     })
 
+    it('populates importedName for shorthand object-destructuring', () => {
+      // For shorthand `{ a }`, importedName equals name. keyLocation is
+      // omitted because the key token and the binding token are the same.
+      const { definitions } = build('let { a, b } = { a: 1, b: 2 }')
+      const a = definitions.find(d => d.name === 'a')
+      expect(a?.importedName).toBe('a')
+      expect(a?.keyLocation).toBeUndefined()
+    })
+
+    it('populates importedName and keyLocation for aliased object-destructuring', () => {
+      // For aliased `{ pi as p }`, the local is `p`, the exported key is `pi`.
+      // keyLocation must point at the key token (distinct from `location`).
+      const { definitions } = build('let { pi as p, e as euler } = { pi: 3.14, e: 2.71 }')
+      const p = definitions.find(d => d.name === 'p')
+      expect(p?.importedName).toBe('pi')
+      expect(p?.keyLocation).toBeDefined()
+      expect(p?.location.column).not.toBe(p?.keyLocation!.column)
+
+      const euler = definitions.find(d => d.name === 'euler')
+      expect(euler?.importedName).toBe('e')
+      expect(euler?.keyLocation).toBeDefined()
+    })
+
+    it('key info does not leak from outer entry into nested destructuring', () => {
+      // `{ outer: { inner } }` — `inner`'s importedName must be 'inner',
+      // NOT 'outer'. The keyInfo describes the immediately-enclosing entry
+      // and does not propagate through a nested object binding target.
+      const { definitions } = build('let { outer: { inner } } = { outer: { inner: 1 } }')
+      const inner = definitions.find(d => d.name === 'inner')
+      expect(inner?.importedName).toBe('inner')
+    })
+
     it('handles array destructuring', () => {
       const { definitions } = build('let [first, ...rest] = [1, 2, 3]')
       const names = definitions.map(d => d.name)

@@ -1001,8 +1001,8 @@ function printBindingTarget(target: unknown[]): string {
       return `[${inner}]`
     }
     case 'object': {
-      const [record, defaultExpr] = targetPayload as [Record<string, unknown[]>, unknown[] | null]
-      const entries = Object.entries(record).map(([key, bt]) => {
+      const [rawEntries, defaultExpr] = targetPayload as [{ key: string; keyNodeId: number; target: unknown[] }[], unknown[] | null]
+      const parts = rawEntries.map(({ key, target: bt }) => {
         // Rest binding: { ...rest }
         if (bt[0] === 'rest') {
           return `...${(bt[1] as unknown[])[0] as string}`
@@ -1021,9 +1021,9 @@ function printBindingTarget(target: unknown[]): string {
         return `${key}: ${btStr}`
       })
       if (defaultExpr) {
-        return `{ ${entries.join(', ')} } = ${printNode(defaultExpr as AstNode, 0)}`
+        return `{ ${parts.join(', ')} } = ${printNode(defaultExpr as AstNode, 0)}`
       }
-      return `{ ${entries.join(', ')} }`
+      return `{ ${parts.join(', ')} }`
     }
     case 'literal': {
       const [expr] = targetPayload as [unknown[]]

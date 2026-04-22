@@ -5113,10 +5113,10 @@ function collectBindingTargetNames(target: unknown[], names: Set<string>): void 
       break
     }
     case 'object': {
-      // ["object", [record, default], id]
-      const record = targetPayload[0] as Record<string, unknown[]>
-      for (const t of Object.values(record)) {
-        collectBindingTargetNames(t, names)
+      // ["object", [ObjectBindingEntry[], default], id]
+      const entries = targetPayload[0] as { key: string; keyNodeId: number; target: unknown[] }[]
+      for (const entry of entries) {
+        collectBindingTargetNames(entry.target, names)
       }
       break
     }
@@ -5305,16 +5305,16 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
     // If it resolved to an Object AST → convert to object binding target
     if (Array.isArray(resolvedName) && resolvedName[0] === NodeTypes.Object) {
       const entries = resolvedName[1] as unknown as Any[][]
-      const record: Record<string, Any> = {}
+      const bindingEntries: Any[] = []
       for (const entry of entries) {
         // Object entries are [keyNode, valueNode] pairs
         const keyNode = entry[0] as unknown as Any[]
         const valNode = entry[1] as Any
         // Key is typically a Str or Sym node — extract the name
         const key = keyNode[1] as string
-        record[key] = expressionAstToBindingTarget(valNode)
+        bindingEntries.push(toAny({ key, keyNodeId: 0, target: expressionAstToBindingTarget(valNode) }))
       }
-      return toAny(['object', [record, convertedDefault], -1])
+      return toAny(['object', [bindingEntries, convertedDefault], -1])
     }
 
     // Fallback: return as-is (will error at evaluation time if invalid)
@@ -5331,15 +5331,19 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
     return toAny(['array', [convertedTargets, convertedDefault], -1])
   }
 
-  // Object binding target: ["object", [record, default], id] — recurse into nested targets
+  // Object binding target: ["object", [ObjectBindingEntry[], default], id] — recurse into nested targets
   if (targetType === 'object' && Array.isArray(targetPayload)) {
-    const [record, defaultNode] = targetPayload as [Record<string, unknown>, AstNode | null | undefined]
-    const convertedRecord: Record<string, Any> = {}
-    for (const [key, value] of Object.entries(record)) {
-      convertedRecord[key] = convertBindingTarget(value as AstNode, spliceValues, renameMap)
+    const [entries, defaultNode] = targetPayload as [{ key: string; keyNodeId: number; target: unknown }[], AstNode | null | undefined]
+    const convertedEntries: Any[] = []
+    for (const entry of entries) {
+      convertedEntries.push(toAny({
+        key: entry.key,
+        keyNodeId: entry.keyNodeId ?? 0,
+        target: convertBindingTarget(entry.target as AstNode, spliceValues, renameMap),
+      }))
     }
     const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
-    return toAny(['object', [convertedRecord, convertedDefault], -1])
+    return toAny(['object', [convertedEntries, convertedDefault], -1])
   }
 
   // Rest, literal, wildcard, or other — convert generically
@@ -5374,14 +5378,14 @@ function expressionAstToBindingTarget(astData: Any): Any {
   // Object → object binding target (recurse into entries)
   if (nodeType === NodeTypes.Object) {
     const entries = node[1] as unknown as Any[][]
-    const record: Record<string, Any> = {}
+    const bindingEntries: Any[] = []
     for (const entry of entries) {
       const keyNode = entry[0] as unknown as Any[]
       const valNode = entry[1] as Any
       const key = keyNode[1] as string
-      record[key] = expressionAstToBindingTarget(valNode)
+      bindingEntries.push(toAny({ key, keyNodeId: 0, target: expressionAstToBindingTarget(valNode) }))
     }
-    return toAny(['object', [record, null], -1])
+    return toAny(['object', [bindingEntries, null], -1])
   }
 
   // Spread → rest binding target

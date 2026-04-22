@@ -896,6 +896,29 @@ foo(1, 2)`)).toBe(3)
         [1, 3, 3],
       ])
     })
+    describe('destructuring — duplicate key detection', () => {
+      // Duplicates are tracked on the EXTERNAL (destructured) key, not the
+      // local binding name. Before this was corrected, `{ pi as p, q as pi }`
+      // erroneously rejected (the second local name `pi` collided with the
+      // first local `p` via a mis-written check) while the reverse case
+      // `{ pi as p, e as p }` passed despite two bindings claiming the same
+      // local name — the wrong invariant being enforced.
+      it('rejects duplicate external keys', () => {
+        expect(() => dvala.run('let { pi, pi } = { pi: 1 }; pi')).toThrow()
+        expect(() => dvala.run('let { pi as p, pi as q } = { pi: 1 }; p')).toThrow()
+      })
+      it('accepts distinct external keys even when they share a local name', () => {
+        // Two different fields aliased to the same local — parser should
+        // accept; the runtime semantics are the user's problem.
+        expect(() => dvala.run('let { pi as p, e as p } = { pi: 1, e: 2 }; p')).not.toThrow()
+      })
+      it('accepts external key that matches another entry\'s local name', () => {
+        // `{ pi as p, q as pi }` — first external key is `pi`, second is `q`.
+        // The second entry's LOCAL is named `pi` but that's not a key, so
+        // the external-key dedup passes. Previously this was falsely rejected.
+        expect(() => dvala.run('let { pi as p, q as pi } = { pi: 1, q: 2 }; p + pi')).not.toThrow()
+      })
+    })
     describe('destructuring', () => {
       const values = {
         'anObject': {

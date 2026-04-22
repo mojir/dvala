@@ -12,7 +12,7 @@
 
 import { NodeTypes } from '../constants/constants'
 import { bindingTargetTypes } from '../parser/types'
-import type { AstNode, BindingTarget, SourceMap, SourceMapPosition } from '../parser/types'
+import type { AstNode, BindingTarget, ObjectBindingEntry, SourceMap, SourceMapPosition } from '../parser/types'
 import type { ScopeRange, SymbolDef, SymbolRef } from './types'
 
 /** Scope entry: maps symbol name → definition */
@@ -465,8 +465,28 @@ function registerDef(def: SymbolDef, state: BuilderState): void {
   }
 }
 
+/**
+ * Info about the immediately-enclosing object-destructuring entry.
+ * Passed to `walkBindingTarget` only when descending directly from
+ * `entry.target` into a name-introducing target (symbol or rest). This is
+ * how `importedName`, `keyLocation`, and `keyNodeId` get attached to the
+ * resulting `SymbolDef` — so that rename can tell the key and the local
+ * apart. It intentionally does NOT propagate through nested object/array
+ * targets: the inner entry's key, not the outer's, is what matters for a
+ * nested binding.
+ */
+interface ObjectEntryKeyInfo {
+  key: string
+  keyNodeId: number
+}
+
 /** Recursively walk a binding target, registering each name as a definition. */
-function walkBindingTarget(target: BindingTarget, state: BuilderState, kind: SymbolDef['kind']): void {
+function walkBindingTarget(
+  target: BindingTarget,
+  state: BuilderState,
+  kind: SymbolDef['kind'],
+  keyInfo?: ObjectEntryKeyInfo,
+): void {
   const [targetType, targetPayload, targetNodeId] = target
 
   switch (targetType) {
@@ -476,6 +496,16 @@ function walkBindingTarget(target: BindingTarget, state: BuilderState, kind: Sym
       const name = symbolNode[1] as string
       const location = nodeLocation(symbolNode[2], state)
       const def: SymbolDef = { name, kind, nodeId: symbolNode[2], location, scope: state.scopeDepth }
+      if (keyInfo) {
+        def.importedName = keyInfo.key
+        def.keyNodeId = keyInfo.keyNodeId
+        const keyLoc = nodeLocation(keyInfo.keyNodeId, state)
+        // Only set keyLocation when it truly differs from `location` — otherwise
+        // shorthand `{ pi }` would carry a redundant duplicate
+        if (keyLoc.line !== location.line || keyLoc.column !== location.column || keyLoc.file !== location.file) {
+          def.keyLocation = keyLoc
+        }
+      }
       registerDef(def, state)
       // Walk default expression if present
       if (defaultExpr) walkNode(defaultExpr, state)
@@ -486,15 +516,23 @@ function walkBindingTarget(target: BindingTarget, state: BuilderState, kind: Sym
       const [name, defaultExpr] = targetPayload as [string, AstNode | undefined]
       const location = nodeLocation(targetNodeId, state)
       const def: SymbolDef = { name, kind, nodeId: targetNodeId, location, scope: state.scopeDepth }
+      if (keyInfo) {
+        def.importedName = keyInfo.key
+        def.keyNodeId = keyInfo.keyNodeId
+        // `keyLocation` intentionally omitted for rest bindings: the parser
+        // forbids `{ ...rest as x }`, so the key token and the binding
+        // token always coincide — carrying a redundant duplicate would
+        // only mislead rename into treating them as separable.
+      }
       registerDef(def, state)
       if (defaultExpr) walkNode(defaultExpr, state)
       break
     }
     case bindingTargetTypes.object: {
-      // [Record<string, BindingTarget>, defaultExpr?]
-      const [targets, defaultExpr] = targetPayload as [Record<string, BindingTarget>, AstNode | undefined]
-      for (const subTarget of Object.values(targets)) {
-        walkBindingTarget(subTarget, state, kind)
+      // [ObjectBindingEntry[], defaultExpr?]
+      const [entries, defaultExpr] = targetPayload as [ObjectBindingEntry[], AstNode | undefined]
+      for (const entry of entries) {
+        walkBindingTarget(entry.target, state, kind, { key: entry.key, keyNodeId: entry.keyNodeId })
       }
       if (defaultExpr) walkNode(defaultExpr, state)
       break

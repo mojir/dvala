@@ -35,10 +35,26 @@ function remapPayload(payload: unknown, offset: number): unknown {
     return payload.map(item => remapPayload(item, offset))
   }
 
-  // Plain object — remap values (e.g. object binding targets)
+  // Plain object — remap values. Today the only plain-object payload that
+  // flows through `remapPayload` is `ObjectBindingEntry` (`{ key, keyNodeId,
+  // target }`) from an object binding target — the runtime otherwise
+  // represents AST nodes as arrays. `keyNodeId` points into the source map
+  // and must be offset like any other node id; generic recursion would
+  // leave it untouched because plain numbers aren't treated as payloads.
+  // Guard by the ObjectBindingEntry shape before offsetting to reduce the
+  // risk of silently re-interpreting an unrelated field named `keyNodeId`
+  // on a future payload type.
+  const obj = payload as Record<string, unknown>
+  const isObjectBindingEntry = typeof obj.key === 'string'
+    && typeof obj.keyNodeId === 'number'
+    && obj.target !== undefined
   const result: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
-    result[key] = remapPayload(value, offset)
+  for (const [key, value] of Object.entries(obj)) {
+    if (isObjectBindingEntry && key === 'keyNodeId' && typeof value === 'number') {
+      result[key] = value === 0 ? 0 : value + offset
+    } else {
+      result[key] = remapPayload(value, offset)
+    }
   }
   return result
 }

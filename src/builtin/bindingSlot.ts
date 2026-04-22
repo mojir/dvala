@@ -139,7 +139,7 @@ function flattenTarget(
       const entries = target[1][0]
       const capturedKeys = new Set<string>()
 
-      for (const [key, element] of Object.entries(entries)) {
+      for (const { key, target: element } of entries) {
         if (element[0] === bindingTargetTypes.rest) {
           // Rest element - add after processing all other keys
           continue
@@ -166,7 +166,7 @@ function flattenTarget(
       }
 
       // Handle rest element if present
-      for (const [_key, element] of Object.entries(entries)) {
+      for (const { target: element } of entries) {
         if (element[0] === bindingTargetTypes.rest) {
           const name = element[1][0]
           slots.push({

@@ -156,7 +156,7 @@ function flattenMatchTarget(
       const capturedKeys = new Set<string>()
       let restElement: BindingTarget | undefined
 
-      for (const [key, element] of Object.entries(entries)) {
+      for (const { key, target: element } of entries) {
         if (element[0] === bindingTargetTypes.rest) {
           restElement = element
           continue

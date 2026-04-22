@@ -137,9 +137,14 @@ function collectImportBindings(nodes: AstNode[], result: { names: string[]; node
     if (!importPath.startsWith('.')) continue
     // Target must be an object destructuring pattern (binding patterns use plain strings, not NodeTypes)
     if (!Array.isArray(target) || (target[0] as string) !== 'object') continue
-    const [fieldsObj] = target[1] as [Record<string, unknown>]
-    if (!fieldsObj || typeof fieldsObj !== 'object') continue
-    const names = Object.keys(fieldsObj)
+    const [entries] = target[1] as [unknown]
+    if (!Array.isArray(entries)) continue
+    const names: string[] = []
+    for (const entry of entries) {
+      if (entry && typeof entry === 'object' && 'key' in entry) {
+        names.push((entry as { key: string }).key)
+      }
+    }
     if (names.length > 0) {
       result.push({ names, node })
     }

@@ -114,10 +114,10 @@ function extractBindingNames(target: unknown): string[] {
       return typeof name === 'string' ? [name] : []
     }
     case 'object': {
-      const record = payload[0] as Record<string, unknown[]>
+      const entries = payload[0] as { key: string; keyNodeId: number; target: unknown[] }[]
       const names: string[] = []
-      for (const bt of Object.values(record)) {
-        names.push(...extractBindingNames(bt))
+      for (const entry of entries) {
+        names.push(...extractBindingNames(entry.target))
       }
       return names
     }
