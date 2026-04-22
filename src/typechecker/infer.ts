@@ -1435,33 +1435,34 @@ export function inferExpr(
       case NodeTypes.Or: {
         const operands = payload as AstNode[]
         const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
-        // C7 / decision #9: narrow on literal-boolean operands. For &&,
-        // a literal(false) short-circuits to literal(false); for ||, a
-        // literal(true) short-circuits to literal(true). If every operand
-        // is a literal boolean without a short-circuit, the result is the
-        // last operand's type. A non-literal-boolean operand bails to the
-        // union behaviour below. Restricted to literal booleans in v1;
-        // truthiness narrowing on other literal values (0, "", null) is
-        // a follow-up.
+        // C7 / decision #9: narrow on literal operands using JS-style
+        // truthiness. For &&, the first falsy operand short-circuits to
+        // its own value; for ||, the first truthy operand does. If every
+        // operand has a known truthiness without a short-circuit, the
+        // result is the last operand's type. Recognised falsy literals:
+        // `false`, `0`, `""`, `null`. All other literals are truthy.
+        // Bails to the union behaviour below on the first non-literal.
         if (ctx.foldEnabled && types.length > 0) {
-          const shortCircuitValue = nodeType === NodeTypes.And ? false : true
+          const wantFalsy = nodeType === NodeTypes.And
           let narrowed: Type | undefined
-          let allLiteralBool = true
+          let allLiteral = true
           for (let i = 0; i < types.length; i++) {
             const expanded = expandType(types[i]!)
-            if (expanded.tag === 'Literal' && expanded.value === shortCircuitValue) {
-              narrowed = literal(shortCircuitValue)
+            const truthy = literalTruthiness(expanded)
+            if (truthy === undefined) {
+              allLiteral = false
               break
             }
-            if (expanded.tag === 'Literal' && typeof expanded.value === 'boolean') {
-              // Non-short-circuiting literal boolean — keep scanning.
-              if (i === types.length - 1) narrowed = types[i]
-              continue
+            const isShortCircuit = wantFalsy ? !truthy : truthy
+            if (isShortCircuit) {
+              narrowed = expanded
+              break
             }
-            allLiteralBool = false
-            break
+            // Operand has the opposite truthiness — keep scanning. The
+            // last operand's type wins if no one short-circuits.
+            if (i === types.length - 1) narrowed = expanded
           }
-          if (narrowed && allLiteralBool) {
+          if (narrowed && allLiteral) {
             result = narrowed
             break
           }
@@ -2654,22 +2655,50 @@ function isConstrainedFunctionArityCompatible(
  * - `isX(sym)` — builtin type guard. Then: sym & X. Else: sym & !X.
  * - `sym == atomOrLiteral` — equality test. Then: sym & atomOrLiteral.
  *   Else: sym & !atomOrLiteral.
+ * - `not(cond)` — swaps then/else from the inner narrowing.
+ * - `a && b` — then branch sees the conjunction of operand narrowings;
+ *   else branch can't be narrowed (`!(a && b)` = `!a || !b`).
+ * - `a || b` — dual: else branch sees the conjunction of operand-false
+ *   narrowings; then branch can't be narrowed.
  *
  * Returns undefined if the condition isn't a recognised narrowing shape,
  * in which case the If case falls back to normal inference of both branches.
  *
- * Not yet supported: `&&`/`||` composition, `not(...)` negation,
- * narrowing on non-Sym arguments like `isX(obj.field)`.
+ * Still unsupported: narrowing on non-Sym arguments like `isX(obj.field)`.
  */
 function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
   whenTrue: Map<string, Type>
   whenFalse: Map<string, Type>
 } | undefined {
+  // `&&`: then-branch narrowing is the conjunction of operand whenTrue
+  // maps (intersect on key collision); else-branch narrowing isn't
+  // expressible as a single env (would need a union of refinement worlds).
+  if (cond[0] === NodeTypes.And) {
+    const operands = cond[1] as AstNode[]
+    const whenTrue = composeNarrowings(operands.map(op => extractIfNarrowings(op, env)?.whenTrue))
+    if (whenTrue.size === 0) return undefined
+    return { whenTrue, whenFalse: new Map() }
+  }
+  // `||`: dual of `&&`.
+  if (cond[0] === NodeTypes.Or) {
+    const operands = cond[1] as AstNode[]
+    const whenFalse = composeNarrowings(operands.map(op => extractIfNarrowings(op, env)?.whenFalse))
+    if (whenFalse.size === 0) return undefined
+    return { whenTrue: new Map(), whenFalse }
+  }
+
   if (cond[0] !== NodeTypes.Call) return undefined
   const [calleeNode, argNodes] = cond[1] as [AstNode, AstNode[]]
   if (calleeNode[0] !== NodeTypes.Builtin) return undefined
   const builtinName = calleeNode[1] as string
   if (lookupShadowedBuiltin(env, builtinName)) return undefined
+
+  // `not(cond)` — invert the inner narrowing.
+  if (builtinName === 'not' && argNodes.length === 1) {
+    const inner = extractIfNarrowings(argNodes[0]!, env)
+    if (!inner) return undefined
+    return { whenTrue: inner.whenFalse, whenFalse: inner.whenTrue }
+  }
 
   // Type-guard builtin: isX(sym) — single Sym arg, callee has a guardType.
   if (argNodes.length === 1) {
@@ -2701,6 +2730,40 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
   }
 
   return undefined
+}
+
+/**
+ * JS-style truthiness for a fully-expanded type. Returns `undefined`
+ * when the truthiness cannot be statically determined (e.g. a non-literal
+ * primitive, a union, or a record). Falsy literals: `false`, `0`, `""`,
+ * `null`. Everything else with a single concrete value is truthy.
+ */
+function literalTruthiness(t: Type): boolean | undefined {
+  if (t.tag === 'Primitive' && t.name === 'Null') return false
+  if (t.tag === 'Literal') {
+    if (typeof t.value === 'boolean') return t.value
+    if (typeof t.value === 'number') return t.value !== 0
+    if (typeof t.value === 'string') return t.value !== ''
+  }
+  return undefined
+}
+
+/**
+ * Combine multiple per-symbol narrowing maps. Each operand may contribute
+ * a refinement for some subset of symbols; on collision, intersect — both
+ * refinements must hold simultaneously. Operands that contributed no
+ * narrowing show up as `undefined` and are skipped.
+ */
+function composeNarrowings(maps: (Map<string, Type> | undefined)[]): Map<string, Type> {
+  const out = new Map<string, Type>()
+  for (const m of maps) {
+    if (!m) continue
+    for (const [sym, narrow] of m) {
+      const existing = out.get(sym)
+      out.set(sym, existing ? inter(existing, narrow) : narrow)
+    }
+  }
+  return out
 }
 
 /**

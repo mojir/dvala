@@ -547,6 +547,41 @@ describe('typecheck — flow-sensitive narrowing in if/else', () => {
     `)
     expect(result.diagnostics).toHaveLength(0)
   })
+
+  // `&&` composition: in the then branch, ALL operand narrowings apply.
+  // Without it, `count(x)` and `count(y)` warn that they may dvala.error
+  // at runtime because their union types include Number, which `count`
+  // doesn't accept.
+  it('&& composes guard narrowings in the then branch', () => {
+    const result = dvala.typecheck(`
+      let f = (x: String | Number, y: String | Number) ->
+        if isString(x) && isString(y) then count(x) + count(y) else 0 end;
+      f("a", "b")
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // `||` composition: dual — in the else branch all operands are false,
+  // so all operand narrowings apply. Without it, `count(x)` warns again.
+  it('|| composes guard narrowings in the else branch', () => {
+    const result = dvala.typecheck(`
+      let f = (x: String | Number, y: String | Number) ->
+        if isNumber(x) || isNumber(y) then 0 else count(x) + count(y) end;
+      f(1, 2)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // `not(...)` swaps then/else narrowings. Without it, the `count(x)`
+  // call in the then branch would still see `x: String | Number`.
+  it('not(guard) swaps then/else narrowings', () => {
+    const result = dvala.typecheck(`
+      let f = (x: String | Number) ->
+        if not(isNumber(x)) then count(x) else x + 1 end;
+      f(42)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
 })
 
 // Optional record fields: `{a: A, b?: B}` — field `b` may be absent from
