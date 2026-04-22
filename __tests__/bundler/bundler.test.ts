@@ -88,6 +88,52 @@ describe('bundle', () => {
     const dvala = createDvala()
     expect(dvala.run(restored!)).toBe(50)
   })
+
+  it('serializes a bundle without a sourceMap', () => {
+    const result = bundle(path.join(fixturesDir, 'no-imports.dvala'), { sourceMap: false })
+    expect(result.ast.sourceMap).toBeUndefined()
+    const json = serializeBundle(result)
+    const parsed = JSON.parse(json)
+    expect(parsed.ast.sourceMap).toBeUndefined()
+    const restored = deserializeBundle(parsed)
+    expect(restored).not.toBeNull()
+    expect(restored!.ast.sourceMap).toBeUndefined()
+  })
+})
+
+describe('deserializeBundle', () => {
+  it('returns null for non-object input', () => {
+    expect(deserializeBundle(null)).toBeNull()
+    expect(deserializeBundle(undefined)).toBeNull()
+    expect(deserializeBundle(42)).toBeNull()
+    expect(deserializeBundle('str')).toBeNull()
+    expect(deserializeBundle(true)).toBeNull()
+  })
+
+  it('returns null for wrong version', () => {
+    expect(deserializeBundle({ version: 2, ast: { body: [] } })).toBeNull()
+    expect(deserializeBundle({ version: 0, ast: { body: [] } })).toBeNull()
+    expect(deserializeBundle({ ast: { body: [] } })).toBeNull()
+  })
+
+  it('returns null when ast or ast.body is invalid', () => {
+    expect(deserializeBundle({ version: 1 })).toBeNull()
+    expect(deserializeBundle({ version: 1, ast: null })).toBeNull()
+    expect(deserializeBundle({ version: 1, ast: {} })).toBeNull()
+    expect(deserializeBundle({ version: 1, ast: { body: 'not-an-array' } })).toBeNull()
+  })
+
+  it('returns a bundle without sourceMap when sourceMap field is missing or malformed', () => {
+    // No sourceMap field at all
+    const bundleNoMap = deserializeBundle({ version: 1, ast: { body: [] } })
+    expect(bundleNoMap).not.toBeNull()
+    expect(bundleNoMap!.ast.sourceMap).toBeUndefined()
+
+    // Malformed sourceMap (missing required arrays) — falls through to no sourceMap
+    const bundleMalformed = deserializeBundle({ version: 1, ast: { body: [], sourceMap: { sources: 'bad' } } })
+    expect(bundleMalformed).not.toBeNull()
+    expect(bundleMalformed!.ast.sourceMap).toBeUndefined()
+  })
 })
 
 describe('isDvalaBundle', () => {

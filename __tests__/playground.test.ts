@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../src/allModules'
-import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../src/tooling'
+import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, parseTokenStreamRecoverable, tokenizeSource, untokenize } from '../src/tooling'
 import { StateHistory } from '../playground-www/src/StateHistory'
 import type { HistoryEntry, HistoryStatus } from '../playground-www/src/StateHistory'
 import { stringifyValue } from '../common/utils'
@@ -227,6 +227,22 @@ describe('playground workflows', () => {
       // Verify the same code evaluates correctly
       const result = runValue(await dvala.runAsync(code))
       expect(result).toBe(25)
+    })
+  })
+
+  describe('parseTokenStreamRecoverable', () => {
+    it('returns a parse result with no errors for valid code', () => {
+      const result = parseTokenStreamRecoverable(tokenizeSource('let x = 1; x + 1'))
+      expect(result.errors).toEqual([])
+      expect(result.body.length).toBe(2)
+    })
+
+    it('returns a partial AST plus errors for broken code', () => {
+      // Middle statement is malformed; the first and last should still parse
+      const result = parseTokenStreamRecoverable(tokenizeSource('let x = 1; let y = ; 42'))
+      expect(result.errors.length).toBeGreaterThan(0)
+      // At least the valid statements survived the recovery
+      expect(result.body.length).toBeGreaterThanOrEqual(2)
     })
   })
 

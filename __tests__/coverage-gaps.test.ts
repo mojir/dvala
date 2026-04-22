@@ -3139,3 +3139,52 @@ describe('getUndefinedSymbols for loop without let', () => {
     expect(result).toEqual(new Set())
   })
 })
+
+// ---------------------------------------------------------------------------
+// parseEffectDeclaration — error branches
+// Syntax: effect @name(ArgType) -> RetType
+// ---------------------------------------------------------------------------
+
+describe('parseEffectDeclaration — error branches', () => {
+  it('throws when "(" is missing after effect name', () => {
+    expect(() => dvala.run('effect @foo Number -> Null')).toThrow('Expected "(" after effect name')
+  })
+
+  it('throws when argument type is missing inside the parens', () => {
+    expect(() => dvala.run('effect @foo() -> Null')).toThrow('Expected argument type in effect declaration')
+  })
+
+  it('throws when ")" is missing after the argument type', () => {
+    // `Number;` ends the annotation (semicolon not consumed), and the next
+    // peek sees `;` instead of `)`, hitting the "Expected )" error path.
+    expect(() => dvala.run('effect @foo(Number; 1')).toThrow('Expected ")" after argument type')
+  })
+
+  it('throws when the return type is missing after "->"', () => {
+    expect(() => dvala.run('effect @foo(Number) ->')).toThrow('Expected return type in effect declaration')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseTypeDeclaration — error branches
+// Syntax: type Name = TypeExpr  (or type Name<A, B> = TypeExpr)
+// ---------------------------------------------------------------------------
+
+describe('parseTypeDeclaration — error branches', () => {
+  it('throws when a type parameter list has a non-identifier element', () => {
+    // After '<' the parser expects a symbol / reserved-symbol name for each parameter
+    expect(() => dvala.run('type Pair<,> = Number')).toThrow('Expected type parameter name')
+  })
+
+  it('throws when ">" is missing at the end of a type parameter list', () => {
+    expect(() => dvala.run('type Pair<A, B = Number')).toThrow('Expected ">" after type parameters')
+  })
+
+  it('throws when "=" is missing after the type name', () => {
+    expect(() => dvala.run('type Foo Number')).toThrow('Expected "=" after type name')
+  })
+
+  it('throws when the type expression after "=" is empty', () => {
+    expect(() => dvala.run('type Foo =')).toThrow('Expected type expression after "="')
+  })
+})

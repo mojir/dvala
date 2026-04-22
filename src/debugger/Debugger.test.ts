@@ -993,4 +993,111 @@ describe('Debugger', () => {
       expect(stopCount).toBe(0)
     })
   })
+
+  describe('extractBindings', () => {
+    it('returns a record of visible bindings at the stop point', async () => {
+      const code = 'let x = 7; let y = 8; x + y'
+      let bindings: Record<string, unknown> | null = null
+
+      const dbg = new Debugger(event => {
+        const vars = Debugger.getVariables(event.continuation)
+        if (vars.some(v => v.name === 'x') && vars.some(v => v.name === 'y')) {
+          bindings = Debugger.extractBindings(event.continuation)
+          dbg.continue()
+        } else {
+          dbg.stepInto()
+        }
+      })
+      dbg.stepInto()
+      await d.runAsync(code, { onNodeEval: dbg.onNodeEval })
+      expect(bindings).not.toBeNull()
+      expect((bindings as unknown as Record<string, unknown>).x).toBe(7)
+      expect((bindings as unknown as Record<string, unknown>).y).toBe(8)
+    })
+  })
+
+  describe('conditional breakpoints without condition evaluator', () => {
+    it('treats a conditional breakpoint as unconditional when no evaluator is wired', async () => {
+      // Breakpoint has a condition string, but the Debugger was created without
+      // passing a ConditionEvaluator — the condition is ignored and the
+      // breakpoint stops unconditionally (exercises the "No evaluator provided"
+      // fallback branch).
+      const code = 'let x = 1 + 2; x'
+      let stopCount = 0
+      const dbg = new Debugger(() => {
+        stopCount++
+        dbg.continue()
+      })
+      // Arm a conditional breakpoint on the first node we see, then wait
+      // for it (or a later one we also arm) to fire through the Debugger hook.
+      let armed = false
+      await d.runAsync(code, {
+        onNodeEval: (node, getContinuation) => {
+          if (!armed) {
+            dbg.setBreakpoint(node[2], 'x > 100')
+            armed = true
+          }
+          return dbg.onNodeEval!(node, getContinuation)
+        },
+      })
+      // No evaluator → condition is ignored → the armed breakpoint stops unconditionally
+      expect(stopCount).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  describe('stepOut from top level', () => {
+    it('stepOut falls through to completion when no deeper call frame exists', async () => {
+      // No function calls — stepOut at depth 0 never drops below the initial
+      // depth, so no further stops happen and execution runs to completion.
+      const code = '1 + 2'
+      let stopCount = 0
+
+      const dbg = new Debugger(() => {
+        stopCount++
+        dbg.stepOut()
+      })
+      dbg.stepInto()
+
+      const result = await d.runAsync(code, { onNodeEval: dbg.onNodeEval })
+      expect(result.type).toBe('completed')
+      // First stepInto lands a stop, then stepOut runs to completion without
+      // further stops
+      expect(stopCount).toBe(1)
+    })
+
+    it('stepOut from inside a function stops after returning to caller', async () => {
+      // Exercises the stepOut "currentDepth < stepDepth" branch: step into a
+      // nested function call until depth > 0, then issue stepOut and expect
+      // the next stop to be at a shallower depth.
+      const code = 'let f = () -> 42; let g = () -> f(); g() + 1'
+      const stopDepths: number[] = []
+
+      const dbg = new Debugger(event => {
+        const depth = Debugger.countCallDepth(event.continuation)
+        stopDepths.push(depth)
+        // As soon as we see a stop at depth > 0, issue stepOut. Otherwise
+        // keep stepping in until we enter a call frame.
+        if (stopDepths.some(prev => prev > 0) && depth === 0) {
+          // stepOut fired and landed us back at depth 0 — we're done.
+          dbg.continue()
+        } else if (depth > 0) {
+          dbg.stepOut()
+        } else {
+          dbg.stepInto()
+        }
+      })
+      dbg.stepInto()
+
+      const result = await d.runAsync(code, { onNodeEval: dbg.onNodeEval })
+      expect(result.type).toBe('completed')
+      // We stopped at some depth > 0 (inside a function), then stepOut
+      // landed us back at depth 0 (after returning).
+      expect(stopDepths.some(depth => depth > 0)).toBe(true)
+      // Find the index of the first depth-0 stop that follows a depth>0 stop —
+      // that is the stepOut landing.
+      const firstDeep = stopDepths.findIndex(depth => depth > 0)
+      const backToZero = stopDepths.slice(firstDeep + 1).find(depth => depth === 0)
+      expect(backToZero).toBe(0)
+    })
+  })
 })
