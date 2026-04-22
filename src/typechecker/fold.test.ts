@@ -191,6 +191,34 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
       // Function type — the body returns a union.
       expect(t).toContain('true')
     })
+
+    // Truthiness narrowing extends C7 from literal booleans to all
+    // statically-known JS-style falsy/truthy values: 0, "", null in
+    // addition to false/true.
+    it('short-circuits && on literal(0) — falsy', async () => {
+      stubFoldOn()
+      expect(await inferLastTypeString('0 && true')).toBe('0')
+    })
+
+    it('short-circuits && on empty-string literal — falsy', async () => {
+      stubFoldOn()
+      expect(await inferLastTypeString('"" && true')).toBe('""')
+    })
+
+    it('short-circuits && on null — falsy', async () => {
+      stubFoldOn()
+      expect(await inferLastTypeString('null && true')).toBe('Null')
+    })
+
+    it('|| skips falsy 0 and yields the truthy alternative', async () => {
+      stubFoldOn()
+      expect(await inferLastTypeString('0 || 42')).toBe('42')
+    })
+
+    it('|| short-circuits on truthy non-zero literal', async () => {
+      stubFoldOn()
+      expect(await inferLastTypeString('42 || 0')).toBe('42')
+    })
   })
 
   // --- C9: match guard-literal pruning ---
