@@ -687,11 +687,16 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     // propagation so the ρ bound shared between `handler e end` and a
     // `Handler<>` annotation wires up correctly.
     constrainEffectSet(lhs.introduced, rhs.introduced)
-    // Phase 4-B: also enforce the concrete-side subset structurally.
-    // `constrainEffectSet` is a no-op when both tails are concrete
-    // (no row vars to propagate into), so without this check two
-    // handlers differing only in `introduced` silently unified.
-    if (!isEffectSubset(lhs.introduced, rhs.introduced)) {
+    // Phase 4-B: enforce the concrete-side subset structurally, but ONLY
+    // when both tails are Closed. `constrainEffectSet` is a no-op in that
+    // case (no row vars to propagate into), so without this check two
+    // handlers differing only in `introduced` silently unified. When
+    // either tail is Open or a RowVar, `constrainEffectSet` has already
+    // recorded the necessary edge — adding a structural throw here would
+    // falsely reject legitimate row-var subtyping where the concrete
+    // sides need the tail to close the gap.
+    if (lhs.introduced.tail.tag === 'Closed' && rhs.introduced.tail.tag === 'Closed'
+        && !isEffectSubset(lhs.introduced, rhs.introduced)) {
       throw new TypeInferenceError(
         `Handler introduces effects ${effectSetToString(lhs.introduced) || '@{}'} not allowed by ${effectSetToString(rhs.introduced) || '@{}'}`,
       )

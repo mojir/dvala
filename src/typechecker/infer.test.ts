@@ -25,7 +25,7 @@ import {
   NumberType, StringType, NullType, BooleanType,
   Unknown, Never,
   atom, literal, fn, record, array, tuple, sequence, union, inter, neg, handlerType,
-  effectSet, typeToString,
+  PureEffects, effectSet, effectSetWithRowVar, typeToString,
 } from './types'
 import {
   InferenceContext, TypeEnv,
@@ -1722,6 +1722,33 @@ describe('constrain — negation and misc', () => {
     const lhs = handlerType(NumberType, NumberType, new Map())
     const rhs = handlerType(NumberType, NumberType, new Map([['test.eff', { argType: NumberType, retType: StringType }]]))
     expect(() => constrain(ctx, lhs, rhs)).toThrow(TypeInferenceError)
+  })
+
+  it('handler introducing more concrete effects than target throws (Phase 4-B)', () => {
+    const ctx = new InferenceContext()
+    const lhs = handlerType(NumberType, NumberType, new Map(), effectSet(['a']))
+    const rhs = handlerType(NumberType, NumberType, new Map(), PureEffects)
+    expect(() => constrain(ctx, lhs, rhs)).toThrow(/introduces effects/)
+  })
+
+  it('handler introducing fewer concrete effects than target succeeds (Phase 4-B)', () => {
+    const ctx = new InferenceContext()
+    const lhs = handlerType(NumberType, NumberType, new Map(), PureEffects)
+    const rhs = handlerType(NumberType, NumberType, new Map(), effectSet(['a']))
+    expect(() => constrain(ctx, lhs, rhs)).not.toThrow()
+  })
+
+  it('handlers with row-var-tailed `introduced` defer to constrainEffectSet (no false reject)', () => {
+    // Two distinct row vars on each side, matching concrete prefixes.
+    // The structural `isEffectSubset` check would return false (different
+    // RowVar ids), but `constrainEffectSet` records the necessary edge —
+    // so we must not throw structurally when either tail carries a row var.
+    const ctx = new InferenceContext()
+    const rho1 = { tag: 'RowVar' as const, id: 1, level: 0, lowerBounds: [], upperBounds: [], lowerVarBounds: [], upperVarBounds: [] }
+    const rho2 = { tag: 'RowVar' as const, id: 2, level: 0, lowerBounds: [], upperBounds: [], lowerVarBounds: [], upperVarBounds: [] }
+    const lhs = handlerType(NumberType, NumberType, new Map(), effectSetWithRowVar(['a'], rho1))
+    const rhs = handlerType(NumberType, NumberType, new Map(), effectSetWithRowVar(['a'], rho2))
+    expect(() => constrain(ctx, lhs, rhs)).not.toThrow()
   })
 
   it('record with open lhs missing field continues without error', () => {
