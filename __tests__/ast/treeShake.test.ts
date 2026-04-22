@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../../src/createDvala'
 import { treeShake } from '../../src/ast/treeShake'
-import { tokenize } from '../../src/tokenizer/tokenize'
+import { NodeTypes } from '../../src/constants/constants'
+import { createDvala } from '../../src/createDvala'
 import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
+import { tokenize } from '../../src/tokenizer/tokenize'
 import { parseToAst } from '../../src/parser'
 import type { Ast } from '../../src/parser/types'
 
@@ -156,13 +157,13 @@ describe('treeShake', () => {
   })
 
   it('keeps an unused binding whose value is a macro call', () => {
-    // MacroCall is deliberately reported as unsafe — keep the binding
+    // MacroCall is deliberately reported as unsafe — the `unused` Let stays.
+    // `m`'s value is a pure Function node, so its Let is removed (the sweep
+    // is syntactic and does not re-walk retained values to mark dependencies).
     const ast = parse('let m = macro (x) -> x; let unused = #m(42); 42')
     const shaken = treeShake(ast)
-    // The macro call is not considered pure → the unused Let is retained.
-    // We only assert the macro-call Let was kept; `m` may or may not be
-    // stripped depending on how the graph resolves macro references.
-    expect(shaken.body.length).toBeGreaterThanOrEqual(2)
+    // Expect the macro-call Let and the trailing expression — and only those.
+    expect(shaken.body.map(n => n[0])).toEqual([NodeTypes.Let, NodeTypes.Num])
   })
 
   it('removes an unused binding that wraps pure code in a nested let-inside-block', () => {

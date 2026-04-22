@@ -2,8 +2,8 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { DvalaError } from '../../src/errors'
 import { runTest, runTestFile, runTestSuite } from '../../src/testFramework'
-import { isSuiteSuccess, isSuccess } from '../../src/testFramework/result'
 import { getErrorYaml } from '../../src/testFramework/formatTap'
+import { isSuccess, isSuiteSuccess } from '../../src/testFramework/result'
 
 describe('testFramework', () => {
   it('expecting .dvala file', async () => {

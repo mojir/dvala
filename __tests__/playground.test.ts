@@ -239,10 +239,10 @@ describe('playground workflows', () => {
 
     it('returns a partial AST plus errors for broken code', () => {
       // Middle statement is malformed; the first and last should still parse
+      // (recovery drops the broken `let y = ;` but keeps `let x = 1` and `42`).
       const result = parseTokenStreamRecoverable(tokenizeSource('let x = 1; let y = ; 42'))
-      expect(result.errors.length).toBeGreaterThan(0)
-      // At least the valid statements survived the recovery
-      expect(result.body.length).toBeGreaterThanOrEqual(2)
+      expect(result.errors.length).toBe(1)
+      expect(result.body.length).toBe(2)
     })
   })
 

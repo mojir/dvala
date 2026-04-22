@@ -997,12 +997,15 @@ describe('Debugger', () => {
   describe('extractBindings', () => {
     it('returns a record of visible bindings at the stop point', async () => {
       const code = 'let x = 7; let y = 8; x + y'
-      let bindings: Record<string, unknown> | null = null
+      // The callback runs asynchronously — TS's CFA won't track assignments
+      // through it, so we type `bindings` via a wrapping object to keep
+      // narrowing from the terminal null-check working.
+      const captured: { value: Record<string, unknown> | null } = { value: null }
 
       const dbg = new Debugger(event => {
         const vars = Debugger.getVariables(event.continuation)
         if (vars.some(v => v.name === 'x') && vars.some(v => v.name === 'y')) {
-          bindings = Debugger.extractBindings(event.continuation)
+          captured.value = Debugger.extractBindings(event.continuation)
           dbg.continue()
         } else {
           dbg.stepInto()
@@ -1010,9 +1013,10 @@ describe('Debugger', () => {
       })
       dbg.stepInto()
       await d.runAsync(code, { onNodeEval: dbg.onNodeEval })
-      expect(bindings).not.toBeNull()
-      expect((bindings as unknown as Record<string, unknown>).x).toBe(7)
-      expect((bindings as unknown as Record<string, unknown>).y).toBe(8)
+      if (captured.value === null)
+        throw new Error('debugger never stopped at a point where x and y were bound')
+      expect(captured.value.x).toBe(7)
+      expect(captured.value.y).toBe(8)
     })
   })
 
