@@ -303,10 +303,14 @@ function collectBindingTargetNames(target: unknown, into: Set<string>): void {
     // payload = [name, default?]
     if (typeof payload[0] === 'string') into.add(payload[0])
   } else if (kind === 'object' && Array.isArray(payload)) {
-    // payload = [fieldsObj, default?]
-    const fieldsObj = payload[0]
-    if (fieldsObj && typeof fieldsObj === 'object') {
-      for (const t of Object.values(fieldsObj)) collectBindingTargetNames(t, into)
+    // payload = [ObjectBindingEntry[], default?]
+    const entries = payload[0]
+    if (Array.isArray(entries)) {
+      for (const entry of entries) {
+        if (entry && typeof entry === 'object' && 'target' in entry) {
+          collectBindingTargetNames((entry as { target: unknown }).target, into)
+        }
+      }
     }
   } else if (kind === 'array' && Array.isArray(payload)) {
     // payload = [items, default?]

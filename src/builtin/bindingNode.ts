@@ -7,7 +7,8 @@ export function walkDefaults(
   onDefault: (Node: AstNode) => void,
 ): void {
   if (bindingTarget[0] === bindingTargetTypes.object) {
-    Object.values(bindingTarget[1][0]).forEach(element => {
+    bindingTarget[1][0].forEach(entry => {
+      const element = entry.target
       if (element[1][1]) {
         onDefault(element[1][1])
       }
@@ -45,8 +46,8 @@ function getNamesFromBindingTarget(target: BindingTarget | null, names: Record<s
       getNamesFromBindingTarget(element, names)
     }
   } else if (target[0] === bindingTargetTypes.object) {
-    for (const element of Object.values(target[1][0])) {
-      getNamesFromBindingTarget(element, names)
+    for (const entry of target[1][0]) {
+      getNamesFromBindingTarget(entry.target, names)
     }
   } else if (target[0] === bindingTargetTypes.rest) {
     if (names[target[1][0]]) {

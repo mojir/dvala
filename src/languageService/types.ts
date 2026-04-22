@@ -34,6 +34,27 @@ export interface SymbolDef {
    * a colliding name).
    */
   valueNodeId?: number
+  /**
+   * For object-destructuring bindings, the external (exported) key this
+   * binding was destructured from. For shorthand `{ pi }` this equals
+   * `name`; for aliased `{ pi as p }` the local `name` is `p` and
+   * `importedName` is `pi`. Used by the rename refactor to identify the
+   * key-side occurrence distinctly from the local-side occurrence.
+   */
+  importedName?: string
+  /**
+   * Source location of the KEY token in an object-destructuring binding.
+   * For shorthand this coincides with `location`; for aliased bindings it
+   * points at the key, while `location` points at the local. Used by
+   * rename to edit the key independently of the local.
+   */
+  keyLocation?: SymbolLocation
+  /**
+   * The key token's nodeId — the same value carried on the parser's
+   * `ObjectBindingEntry.keyNodeId`. Enables rename/go-to-definition on the
+   * key token to find this SymbolDef without walking back through the AST.
+   */
+  keyNodeId?: number
 }
 
 export interface SymbolRef {

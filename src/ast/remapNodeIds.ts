@@ -35,10 +35,17 @@ function remapPayload(payload: unknown, offset: number): unknown {
     return payload.map(item => remapPayload(item, offset))
   }
 
-  // Plain object — remap values (e.g. object binding targets)
+  // Plain object — remap values. ObjectBindingEntry objects carry a
+  // `keyNodeId` number that points into the source map and must be offset
+  // like any other node id; generic recursion would leave it untouched
+  // because numbers aren't treated as payloads.
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
-    result[key] = remapPayload(value, offset)
+    if (key === 'keyNodeId' && typeof value === 'number') {
+      result[key] = value === 0 ? 0 : value + offset
+    } else {
+      result[key] = remapPayload(value, offset)
+    }
   }
   return result
 }

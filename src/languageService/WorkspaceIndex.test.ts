@@ -388,6 +388,47 @@ describe('WorkspaceIndex', () => {
       // Only the export key "pi" — no `let` binding, no ref anywhere else.
       expect(piOccurrences).toHaveLength(1)
     })
+
+    it('aliased import: rename origin updates KEY only, not local or local-refs', () => {
+      // `let pi = ...` in origin. Importer uses `{ pi as p }` and references
+      // `p * 2`. Renaming `pi` at origin must NOT touch `p` or its use-site
+      // — aliasing is an explicit opt-out of origin-rename propagation.
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p * 2')
+      index.updateFile(libPath)
+      index.updateFile(mainPath)
+      const occurrences = index.findAllOccurrences(libPath, 'pi')
+      // Expected:
+      //   lib: let pi + export `pi` (deduped by position) = 2
+      //   main: one occurrence only — the KEY `pi` in `{ pi as p }`
+      // The local `p` and its use `p * 2` must be absent.
+      expect(occurrences).toHaveLength(3)
+      const mainOccurrences = occurrences.filter(o => o.file === mainPath)
+      expect(mainOccurrences).toHaveLength(1)
+      // The one main occurrence must be the KEY position, column-wise
+      // somewhere inside `{ pi as p }` — specifically at the `pi` token.
+      expect(mainOccurrences[0]!.nameLength).toBe(2) // "pi"
+    })
+
+    it('aliased import: never introduces a new `as` — no-alias-insertion invariant', () => {
+      // Guardrail test for the rename propagation rule. Gather all
+      // occurrence positions and verify none of them fall on the alias
+      // local or the `as` keyword itself — only the key token and
+      // origin-side tokens.
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p + p')
+      index.updateFile(libPath)
+      index.updateFile(mainPath)
+      const occurrences = index.findAllOccurrences(libPath, 'pi')
+      const mainContent = fs.readFileSync(mainPath, 'utf-8')
+      for (const occ of occurrences.filter(o => o.file === mainPath)) {
+        const line = mainContent.split('\n')[occ.line - 1]!
+        const snippet = line.slice(occ.column - 1, occ.column - 1 + occ.nameLength)
+        // Every occurrence in main must sit on the literal text `pi` —
+        // never on `p`, never on `as`.
+        expect(snippet).toBe('pi')
+      }
+    })
   })
 
   describe('resolveCanonicalFile', () => {
@@ -476,6 +517,43 @@ describe('WorkspaceIndex', () => {
       index.updateFile(libPath)
       const result = index.resolveCanonicalFile(libPath, 1, 22)
       expect(result).toEqual({ file: libPath, name: 'pi' })
+    })
+
+    it('aliased import, cursor on LOCAL: stays local, does not follow import chain', () => {
+      // `let { pi as p } = import("./lib"); p * 2` — cursor on the `p` in
+      // `{ pi as p }` (the local). Local-only rename: do NOT follow back to
+      // the origin. Returned file must be the importer itself, name=`p`.
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p * 2')
+      index.updateFile(libPath)
+      index.updateFile(mainPath)
+      // Column of `p` in `{ pi as p }` — let=col1, { at col 5, pi at col 7,
+      // ` as ` through col 11, `p` at col 13.
+      const result = index.resolveCanonicalFile(mainPath, 1, 13)
+      expect(result).toEqual({ file: mainPath, name: 'p' })
+    })
+
+    it('aliased import, cursor on KEY: follows import chain to origin', () => {
+      // `let { pi as p } = import("./lib")` — cursor on the KEY `pi` (col 7).
+      // Key-side rename is equivalent to renaming at the origin, so this
+      // must follow the importPath back to lib.
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p * 2')
+      index.updateFile(libPath)
+      index.updateFile(mainPath)
+      const result = index.resolveCanonicalFile(mainPath, 1, 7)
+      expect(result).toEqual({ file: libPath, name: 'pi' })
+    })
+
+    it('aliased import, cursor on local use-site: stays local', () => {
+      // Cursor on `p` in `p * 2` (col 36). The ref resolves to the aliased
+      // def, whose keyLocation distinguishes this as a local rename target.
+      const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
+      const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p * 2')
+      index.updateFile(libPath)
+      index.updateFile(mainPath)
+      const result = index.resolveCanonicalFile(mainPath, 1, 36)
+      expect(result).toEqual({ file: mainPath, name: 'p' })
     })
   })
 

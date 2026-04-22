@@ -239,7 +239,20 @@ type GenericTarget<T extends BindingTargetType, Payload extends unknown[]> = [T,
 
 export type SymbolBindingTarget = GenericTarget<typeof bindingTargetTypes.symbol, [SymbolNode, AstNode | undefined /* default value */]>
 export type RestBindingTarget = GenericTarget<typeof bindingTargetTypes.rest, [string, AstNode | undefined /* default value */]>
-export type ObjectBindingTarget = GenericTarget<typeof bindingTargetTypes.object, [Record<string, BindingTarget>, AstNode | undefined /* default value */]>
+/**
+ * A single entry in an object binding target. `keyNodeId` holds the
+ * source position of the KEY token — distinct from the entry's target
+ * nodeId, which points at the local binding. For shorthand `{ pi }` the
+ * two coincide; for aliased `{ pi as p }` they differ, and the rename
+ * refactor uses `keyNodeId` to locate the key independently of the local.
+ */
+export interface ObjectBindingEntry {
+  key: string
+  keyNodeId: number
+  target: BindingTarget
+}
+
+export type ObjectBindingTarget = GenericTarget<typeof bindingTargetTypes.object, [ObjectBindingEntry[], AstNode | undefined /* default value */]>
 export type ArrayBindingTarget = GenericTarget<typeof bindingTargetTypes.array, [(BindingTarget | null)[], AstNode | undefined /* default value */]>
 export type LiteralBindingTarget = GenericTarget<typeof bindingTargetTypes.literal, [AstNode /* literal expression */]>
 export type WildcardBindingTarget = GenericTarget<typeof bindingTargetTypes.wildcard, []>

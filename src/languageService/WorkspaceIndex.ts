@@ -220,15 +220,33 @@ export class WorkspaceIndex {
   /**
    * Get the symbol name at a given position (could be a definition or reference site).
    * Returns the name and the definition it resolves to (if any).
+   *
+   * For aliased destructuring `let { pi as p } = import("./math")`, the
+   * binding's `location` points at `p` while `keyLocation` points at `pi`.
+   * This method checks both: if the cursor is on the key token, the returned
+   * symbol carries the *imported* name (`pi`) and `onKey: true` — signalling
+   * to `resolveCanonicalFile` that the user is renaming from the key side
+   * (equivalent to originating the rename at the origin). If the cursor is
+   * on the local, the returned symbol carries the local name (`p`) and
+   * `onKey: false` — signalling that this is a local-only rename.
    */
-  getSymbolAtPosition(filePath: string, line: number, column: number): { name: string; def: SymbolDef | null } | null {
+  getSymbolAtPosition(filePath: string, line: number, column: number): { name: string; def: SymbolDef | null; onKey?: boolean } | null {
     const absolutePath = path.resolve(filePath)
     const fileSymbols = this.cache.get(absolutePath)?.symbols
     if (!fileSymbols) return null
 
-    // Check definitions first (cursor on a `let x = ...` definition site)
-    const defAtPos = findDefAtPosition(fileSymbols.definitions, line, column)
-    if (defAtPos) return { name: defAtPos.name, def: defAtPos }
+    // Check definitions first (cursor on a `let x = ...` definition site).
+    // For aliased bindings, also accept a hit on the KEY token — distinguished
+    // by the `onKey` flag so callers can apply key-vs-local rename semantics.
+    for (const def of fileSymbols.definitions) {
+      if (positionMatches(def.location, line, column, def.name.length)) {
+        return { name: def.name, def, onKey: false }
+      }
+      if (def.keyLocation && def.importedName
+        && positionMatches(def.keyLocation, line, column, def.importedName.length)) {
+        return { name: def.importedName, def, onKey: true }
+      }
+    }
 
     // Check references (cursor on a usage site)
     const refAtPos = findRefAtPosition(fileSymbols.references, line, column)
@@ -273,6 +291,21 @@ export class WorkspaceIndex {
   ): { file: string; name: string; unresolvedImport?: string } | null {
     const symbol = this.getSymbolAtPosition(filePath, line, column)
     if (!symbol) return null
+
+    // Aliased-local short-circuit: the cursor sits on the LOCAL side of an
+    // aliased destructuring (`p` in `let { pi as p } = import("./m")`), or
+    // on a use-site of that local (`p * 2`). Either way the user's intent
+    // is a local-only rename — not a rename of the imported symbol.
+    //
+    // Detected by: the resolved def is an import-kind binding with a
+    // distinct keyLocation (i.e. aliased) AND the cursor is NOT on the key
+    // token. The def-side case sets `onKey` explicitly; the ref-side case
+    // leaves it undefined — both are handled by `onKey !== true`.
+    if (symbol.def?.kind === 'import'
+      && symbol.def.keyLocation
+      && symbol.onKey !== true) {
+      return { file: symbol.def.location.file, name: symbol.name }
+    }
 
     // Follow the import chain upward until we reach a non-import definition
     // (the ultimate origin) or can't resolve a hop. Cycle-guarded via visited.
@@ -348,6 +381,17 @@ export class WorkspaceIndex {
     if (originSymbols) {
       for (const def of originSymbols.definitions) {
         if (def.name === symbolName) push(def.location, def.name.length)
+        // Aliased bindings whose IMPORTED key matches `symbolName` contribute
+        // their KEY location too. This covers non-import aliased keys (e.g.
+        // `let { pi as p } = { pi: 3.14 }` with cursor on `pi`) — for these,
+        // `resolveCanonicalFile` returns the current file with name=`pi`,
+        // and we want the rename to at least edit the key token so the
+        // user's F2 isn't a silent no-op. Import aliased bindings don't
+        // land here because their canonical file is the origin (not this
+        // file), which has `let pi = ...` matched via the def.name branch.
+        if (def.keyLocation && def.importedName === symbolName && def.name !== symbolName) {
+          push(def.keyLocation, def.importedName.length)
+        }
       }
       for (const ref of originSymbols.references) {
         if (ref.name === symbolName) push(ref.location, ref.name.length)
@@ -382,19 +426,39 @@ export class WorkspaceIndex {
         // one via `resolved === A`, B's pass sees the other via
         // `resolved === B`. Skipping on revisit would drop real occurrences.
 
-        // Matching import-kind defs: `let { pi } = import("./current")`.
+        // Matching import-kind defs: `let { pi } = import("./current")` or
+        // `let { pi as p } = import("./current")`. For shorthand, `def.name`
+        // is both the imported key and the local. For aliased, `def.name` is
+        // the local and `def.importedName` holds the imported key. Rename of
+        // an origin `pi` must update every importer's KEY occurrence but
+        // must never touch an aliased local or its use-sites.
+        //
+        // `keyLocation` is the discriminator: present ⇔ the binding is
+        // aliased. Absent ⇔ shorthand (key and local share one token).
         const matchingImportDefs = new Set<SymbolDef>()
         for (const def of importerSymbols.definitions) {
-          if (def.kind !== 'import' || def.name !== symbolName || !def.importPath) continue
+          if (def.kind !== 'import' || !def.importPath) continue
           const resolved = importerSymbols.imports.get(def.importPath)
-          if (resolved === current) {
+          if (resolved !== current) continue
+
+          const isAliased = def.keyLocation !== undefined
+          if (!isAliased && def.name === symbolName) {
+            // Shorthand `{ pi }` — rename the whole token.
             matchingImportDefs.add(def)
             push(def.location, def.name.length)
+          } else if (isAliased && def.importedName === symbolName) {
+            // Aliased `{ pi as p }` — rename the KEY only. The local (def.name)
+            // and its use-sites stay as the user authored them.
+            matchingImportDefs.add(def)
+            push(def.keyLocation!, def.importedName.length)
           }
         }
 
         // References resolving back to those import-kind defs. Filtering by
         // resolvedDef identity excludes unrelated locals with the same name.
+        // For aliased imports, use-site refs target the LOCAL name (`p`) not
+        // the imported name (`pi`) — so `ref.name !== symbolName` already
+        // excludes them. No extra gate needed.
         for (const ref of importerSymbols.references) {
           if (ref.name !== symbolName) continue
           if (ref.resolvedDef && matchingImportDefs.has(ref.resolvedDef)) {
@@ -528,10 +592,15 @@ export class WorkspaceIndex {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** True when (line, column) falls within the `nameLength` span starting at `loc`. */
+function positionMatches(loc: { line: number; column: number }, line: number, column: number, nameLength: number): boolean {
+  return loc.line === line && column >= loc.column && column < loc.column + nameLength
+}
+
 /** Find the definition at a given source position. */
 function findDefAtPosition(defs: SymbolDef[], line: number, column: number): SymbolDef | null {
   for (const def of defs) {
-    if (def.location.line === line && column >= def.location.column && column < def.location.column + def.name.length) {
+    if (positionMatches(def.location, line, column, def.name.length)) {
       return def
     }
   }
