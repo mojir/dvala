@@ -19,7 +19,7 @@ import {
   atom, literal, fn, array, tuple, union, inter, neg, handlerType, sequence, sequenceElementAt, sequenceMayHaveIndex, toSequenceType,
   functionAcceptsArity, functionArityLabel, getFunctionParamType,
   typeToString, typeEquals,
-  subtractEffects,
+  effectSetToString, isEffectSubset, subtractEffects,
 } from './types'
 import type { AstNode, ObjectBindingEntry } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
@@ -287,10 +287,10 @@ function varKey(t: Type): string {
   if (t.tag === 'Literal') return `L:${String(t.value)}`
   if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}`
   // The constraint cache uses these keys to skip redundant subtype checks,
-  // so any field that affects subtyping must appear here. `introduced` is
-  // included even though `constrain` for Handler does not yet compare it
-  // (Phase 2.5 deferred) — once it does, two handler types differing only
-  // in `introduced` must produce different cache keys.
+  // so any field that affects subtyping must appear here. `introduced` must
+  // be part of the key — `constrain`/`isSubtype` now compare it covariantly
+  // (Phase 4-B), so two handler types that differ only in `introduced` are
+  // distinct.
   if (t.tag === 'Handler') {
     const tailKey = t.introduced.tail.tag === 'Closed'
       ? ''
@@ -683,11 +683,19 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 
   if (lhs.tag === 'Handler' && rhs.tag === 'Handler') {
     // Biunify `introduced` row-var tails (covariant: fewer introduced
-    // effects is a subtype). Phase 2.5 deferred the structural subtyping
-    // of introduced, but the row-var tail participates in constraint
+    // effects is a subtype). The row-var tail participates in constraint
     // propagation so the ρ bound shared between `handler e end` and a
     // `Handler<>` annotation wires up correctly.
     constrainEffectSet(lhs.introduced, rhs.introduced)
+    // Phase 4-B: also enforce the concrete-side subset structurally.
+    // `constrainEffectSet` is a no-op when both tails are concrete
+    // (no row vars to propagate into), so without this check two
+    // handlers differing only in `introduced` silently unified.
+    if (!isEffectSubset(lhs.introduced, rhs.introduced)) {
+      throw new TypeInferenceError(
+        `Handler introduces effects ${effectSetToString(lhs.introduced) || '@{}'} not allowed by ${effectSetToString(rhs.introduced) || '@{}'}`,
+      )
+    }
     for (const [name, rhsSig] of rhs.handled) {
       const lhsSig = lhs.handled.get(name)
       if (!lhsSig) {
@@ -698,11 +706,6 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     }
     constrain(ctx, lhs.body, rhs.body)
     constrain(ctx, lhs.output, rhs.output)
-    // Note: `introduced` is not yet compared here (Phase 2.5 deferred),
-    // even though `typeEquals` does compare it. The asymmetry is
-    // intentional for now — Phase 4-B will add covariant subtyping on
-    // `introduced` (a handler that introduces fewer effects is a
-    // subtype of one that introduces more).
     return
   }
 

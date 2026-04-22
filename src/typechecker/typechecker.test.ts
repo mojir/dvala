@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   NumberType, IntegerType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, PureEffects,
-  atom, literal, fn, tuple, record, array, sequence, toSequenceType, union, inter, neg, handlerType,
+  atom, literal, fn, tuple, record, array, sequence, toSequenceType, union, inter, neg, handlerType, effectSet,
   typeToString, typeEquals,
 } from './types'
 import type { Type } from './types'
@@ -902,6 +902,36 @@ describe('subtyping — handlers', () => {
   it('handlers with different body types are not subtypes', () => {
     const hDiffBody = handlerType(StringType, StringType, new Map([['eff', { argType: NumberType, retType: StringType }]]))
     expect(isSubtype(h1, hDiffBody)).toBe(false)
+  })
+
+  // Phase 4-B: covariant subtyping on `introduced`. A handler that introduces
+  // fewer effects can stand in for one that introduces more.
+  it('handler introducing fewer effects is a subtype', () => {
+    const hPure = handlerType(NumberType, NumberType, new Map(), PureEffects)
+    const hA = handlerType(NumberType, NumberType, new Map(), effectSet(['a']))
+    expect(isSubtype(hPure, hA)).toBe(true)
+  })
+
+  it('handler introducing more effects is NOT a subtype', () => {
+    const hPure = handlerType(NumberType, NumberType, new Map(), PureEffects)
+    const hA = handlerType(NumberType, NumberType, new Map(), effectSet(['a']))
+    // hA introduces {a}; a target that declares PureEffects (no introduced)
+    // cannot safely accept hA — the caller would not expect `a` to fire.
+    expect(isSubtype(hA, hPure)).toBe(false)
+  })
+
+  it('handler introduced subtyping is covariant across subsets', () => {
+    const hA = handlerType(NumberType, NumberType, new Map(), effectSet(['a']))
+    const hAB = handlerType(NumberType, NumberType, new Map(), effectSet(['a', 'b']))
+    expect(isSubtype(hA, hAB)).toBe(true)
+    expect(isSubtype(hAB, hA)).toBe(false)
+  })
+
+  it('handler introduced with disjoint effects is not a subtype either way', () => {
+    const hA = handlerType(NumberType, NumberType, new Map(), effectSet(['a']))
+    const hB = handlerType(NumberType, NumberType, new Map(), effectSet(['b']))
+    expect(isSubtype(hA, hB)).toBe(false)
+    expect(isSubtype(hB, hA)).toBe(false)
   })
 })
 

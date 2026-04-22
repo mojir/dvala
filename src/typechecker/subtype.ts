@@ -185,6 +185,9 @@ function checkStructural(s: Type, t: Type, visited: Set<string>): boolean {
       if (!check(tSig.argType, sSig.argType, visited)) return false
       if (!check(sSig.retType, tSig.retType, visited)) return false
     }
+    // `introduced` is covariant — a handler that raises fewer effects can
+    // stand in for one that raises more, so S.introduced ⊆ T.introduced.
+    if (!isEffectSubset(s.introduced, t.introduced)) return false
     return check(s.body, t.body, visited) && check(s.output, t.output, visited)
   }
 
