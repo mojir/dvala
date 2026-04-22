@@ -750,6 +750,36 @@ describe('subtyping — records', () => {
     expect(isSubtype(closed, open)).toBe(true)
   })
 
+  it('unfolding a recursive record preserves optionalFields', () => {
+    // `substituteVar` in subtype.ts rebuilt Record values without the
+    // `optionalFields` sidecar — same class as the simplify.ts fix.
+    // That silently promoted optional fields to required whenever a
+    // recursive type was unfolded during subtype checking.
+    const R: Type = {
+      tag: 'Recursive',
+      id: 1,
+      body: {
+        tag: 'Record',
+        fields: new Map<string, Type>([
+          ['a', NumberType],
+          ['next', { tag: 'Var', id: 1, level: 0, lowerBounds: [], upperBounds: [] }],
+        ]),
+        open: false,
+        optionalFields: new Set(['a']),
+      },
+    }
+    const T: Type = {
+      tag: 'Record',
+      fields: new Map<string, Type>([
+        ['a', NumberType],
+        ['next', Unknown],
+      ]),
+      open: false,
+    }
+    // R's `a` may be absent; T requires it — so R is NOT a subtype of T.
+    expect(isSubtype(R, T)).toBe(false)
+  })
+
   it('Inter of two records differing only in optional-field sidecar does not poison the cache', () => {
     // Cache-key collision repro: typeId must distinguish records that differ
     // only in `optionalFields`, otherwise the cycle cache (seeded when the

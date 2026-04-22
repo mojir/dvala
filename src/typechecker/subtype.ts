@@ -434,7 +434,13 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
       for (const [k, v] of t.fields) {
         fields.set(k, substituteVar(v, varId, replacement))
       }
-      return { tag: 'Record', fields, open: t.open }
+      // Carry the optional-fields sidecar through unfolding — dropping it
+      // silently promotes optional fields to required.
+      const rec: Type = { tag: 'Record', fields, open: t.open }
+      if (t.optionalFields && t.optionalFields.size > 0) {
+        rec.optionalFields = new Set(t.optionalFields)
+      }
+      return rec
     }
     case 'Alias': return {
       tag: 'Alias',
