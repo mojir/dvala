@@ -1,8 +1,8 @@
 # Cross-File Rename — Transitive Re-Exports
 
-**Status:** Draft
+**Status:** Shipped in PR #72
 **Created:** 2026-04-21
-**Depends on:** `design/active/2026-04-21_cross-file-rename.md` (PR #70)
+**Depends on:** `2026-04-21_cross-file-rename.md` (PR #70)
 
 ## Goal
 
