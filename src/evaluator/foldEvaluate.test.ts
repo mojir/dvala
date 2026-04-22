@@ -802,4 +802,28 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
     )
     expect(okFold).toEqual({ ok: true, value: 15 })
   })
+
+  // --- Top-level Perform (no handler available in fold sandbox) ---
+  it('reports the effect name for a direct top-level perform', () => {
+    // Performing an unhandled effect surfaces as reason=effect. This hits the
+    // `step.type === 'Perform'` branch (distinct from the DvalaError-wrapped
+    // 'dvala.error' path exercised by division-by-zero etc.).
+    const fold = evaluateNodeForFold(
+      parseExpression('perform(@my.custom, 1)'),
+      createContextStack({}, moduleMap),
+    )
+    expect(fold).toEqual({ ok: false, reason: 'effect', effectName: 'my.custom' })
+  })
+
+  // --- Free variables fall silently into reason=error ---
+  it('fails silently (reason=error) when a free variable cannot be resolved', () => {
+    // `undefinedVar` is not in the fold sandbox's context stack — ReferenceError
+    // is caught and mapped to { ok: false, reason: 'error' } so the caller doesn't
+    // emit a spurious warning.
+    const fold = evaluateNodeForFold(
+      parseExpression('undefinedVar + 1'),
+      createContextStack({}, moduleMap),
+    )
+    expect(fold).toEqual({ ok: false, reason: 'error' })
+  })
 })

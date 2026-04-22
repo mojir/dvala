@@ -20,6 +20,13 @@ describe('build pipeline', () => {
     expect(resolved!.config.entry).toBe('main.dvala')
   })
 
+  it('returns null when no dvala.json exists in the target directory', () => {
+    // tmpdir never contains a dvala.json — exercises the early-return branch
+    const resolved = findConfig(path.resolve(__dirname))
+    // __dirname (the tests folder) has no dvala.json
+    expect(resolved).toBeNull()
+  })
+
   it('bundles example project', () => {
     const resolved = findConfig(exampleProjectDir)!
     const entryPath = path.resolve(resolved.rootDir, resolved.config.entry)

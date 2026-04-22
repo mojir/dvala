@@ -1,0 +1,7 @@
+let { test } = import("test");
+let { assertEqual } = import("assertion");
+// Intentionally imports a path that does not exist — exercises the
+// test-file resolver's "File not found" error branch.
+let _ = import("./__does_not_exist__.dvala");
+
+test("never runs", -> assertEqual(1, 1));

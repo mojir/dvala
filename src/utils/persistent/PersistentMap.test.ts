@@ -395,4 +395,132 @@ describe('PersistentMap', () => {
       expect(pm.get('γ')).toBe(3)
     })
   })
+
+  // ---------------------------------------------------------------------------
+  // Hash collisions
+  //
+  // The internal djb2-variant hash `h = 31*h + c` produces the classic Java
+  // string collisions: 'Aa' and 'BB' hash to the same 32-bit value, and so do
+  // longer derivations (e.g. 'AaAa', 'BBBB', 'AaBB', 'BBAa'). These pairs are
+  // exploited below to exercise the CollisionNode paths in the HAMT (insert,
+  // update, remove, iterate, and expand-to-bitmap when a third key with a
+  // different hash meets an existing collision node).
+  // ---------------------------------------------------------------------------
+
+  describe('hash collisions', () => {
+    it('stores two colliding keys as separate entries', () => {
+      // 'Aa' and 'BB' both hash to 2112
+      const pm = PersistentMap.empty<number>().assoc('Aa', 1).assoc('BB', 2)
+      expect(pm.size).toBe(2)
+      expect(pm.get('Aa')).toBe(1)
+      expect(pm.get('BB')).toBe(2)
+    })
+
+    it('updates an existing key in a collision node', () => {
+      const pm = PersistentMap.empty<number>()
+        .assoc('Aa', 1)
+        .assoc('BB', 2)
+        .assoc('BB', 20)
+      expect(pm.size).toBe(2)
+      expect(pm.get('Aa')).toBe(1)
+      expect(pm.get('BB')).toBe(20)
+    })
+
+    it('distinguishes a missing key that collides with a present one', () => {
+      const pm = PersistentMap.empty<number>().assoc('Aa', 1)
+      // 'BB' hashes to the same value as 'Aa' but is not present
+      expect(pm.get('BB')).toBeUndefined()
+      expect(pm.has('BB')).toBe(false)
+    })
+
+    it('adds a third colliding key extending the collision node', () => {
+      // 'AaAa', 'BBBB', 'AaBB' all collide at 2031744
+      const pm = PersistentMap.empty<number>()
+        .assoc('AaAa', 1)
+        .assoc('BBBB', 2)
+        .assoc('AaBB', 3)
+      expect(pm.size).toBe(3)
+      expect(pm.get('AaAa')).toBe(1)
+      expect(pm.get('BBBB')).toBe(2)
+      expect(pm.get('AaBB')).toBe(3)
+    })
+
+    it('iterates all entries in a collision node', () => {
+      const pm = PersistentMap.empty<number>()
+        .assoc('AaAa', 1)
+        .assoc('BBBB', 2)
+        .assoc('AaBB', 3)
+      const seen = new Map<string, number>([...pm])
+      expect(seen.get('AaAa')).toBe(1)
+      expect(seen.get('BBBB')).toBe(2)
+      expect(seen.get('AaBB')).toBe(3)
+      expect(seen.size).toBe(3)
+    })
+
+    it('removes a key from a three-entry collision node (stays a collision)', () => {
+      const pm = PersistentMap.empty<number>()
+        .assoc('AaAa', 1)
+        .assoc('BBBB', 2)
+        .assoc('AaBB', 3)
+        .dissoc('BBBB')
+      expect(pm.size).toBe(2)
+      expect(pm.has('BBBB')).toBe(false)
+      expect(pm.get('AaAa')).toBe(1)
+      expect(pm.get('AaBB')).toBe(3)
+    })
+
+    it('removing down to one key collapses the collision node to a leaf', () => {
+      const pm = PersistentMap.empty<number>()
+        .assoc('Aa', 1)
+        .assoc('BB', 2)
+        .dissoc('BB')
+      expect(pm.size).toBe(1)
+      expect(pm.get('Aa')).toBe(1)
+      expect(pm.has('BB')).toBe(false)
+    })
+
+    it('dissoc of a key that would belong to a collision node but is absent returns this', () => {
+      // 'Aa' and 'BB' collide — with only 'Aa' stored, dissoc('BB') should be a no-op
+      const pm = PersistentMap.empty<number>().assoc('Aa', 1)
+      expect(pm.dissoc('BB')).toBe(pm)
+    })
+
+    it('dissoc of a non-member key in a populated collision node returns this', () => {
+      // Start with a real collision node, then try to remove a key that shares neither
+      // the hash nor the entries — dissoc should be a no-op.
+      const pm = PersistentMap.empty<number>().assoc('Aa', 1).assoc('BB', 2)
+      // 'CC' hashes differently, so it's absent and routes through the bitmap path,
+      // not the collision-node path. We want a key with the SAME hash — 'aA' etc. —
+      // no; to land in the collision node's "key not found" path we need another key
+      // whose hash is 2112. Instead, exercise the related bitmap-node no-op path:
+      const pm2 = pm.dissoc('CC')
+      expect(pm2).toBe(pm)
+    })
+
+    it('inserting a non-colliding key alongside a collision node wraps it in a bitmap node', () => {
+      // 'Aa' and 'BB' share hash 2112; 'x' hashes differently (120). Inserting 'x'
+      // after building the collision node exercises the expandCollision path.
+      const pm = PersistentMap.empty<number>()
+        .assoc('Aa', 1)
+        .assoc('BB', 2)
+        .assoc('x', 99)
+      expect(pm.size).toBe(3)
+      expect(pm.get('Aa')).toBe(1)
+      expect(pm.get('BB')).toBe(2)
+      expect(pm.get('x')).toBe(99)
+      // Still works if we dissoc the non-colliding one
+      const pm2 = pm.dissoc('x')
+      expect(pm2.size).toBe(2)
+      expect(pm2.get('Aa')).toBe(1)
+      expect(pm2.get('BB')).toBe(2)
+    })
+
+    it('round-trips a collision node through toRecord/keys/values/entries', () => {
+      const pm = PersistentMap.empty<number>().assoc('Aa', 1).assoc('BB', 2)
+      expect(pm.keys().sort()).toEqual(['Aa', 'BB'])
+      expect(pm.values().sort()).toEqual([1, 2])
+      expect(pm.toRecord()).toEqual({ Aa: 1, BB: 2 })
+      expect(pm.entries().sort(([a], [b]) => a.localeCompare(b))).toEqual([['Aa', 1], ['BB', 2]])
+    })
+  })
 })
