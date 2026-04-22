@@ -437,6 +437,39 @@ describe('subtyping — intersections', () => {
     // Number & String <: Never (because Number and String are disjoint)
     expect(isSubtype(inter(NumberType, StringType), Never)).toBe(true)
   })
+
+  it('Integer & Number is NOT empty (Integer <: Number, so the intersection is Integer)', () => {
+    // Regression: isEmptyIntersection treated any pair of distinct primitive
+    // names as disjoint, but Integer refines Number — their intersection is
+    // Integer, not Never.
+    expect(isSubtype(inter(IntegerType, NumberType), Never)).toBe(false)
+  })
+
+  it('Inter of function types differing only in effects does not poison cache', () => {
+    // Same cache-collision shape as the Record case: typeId dropped effects
+    // from Function identity, so two functions that differ only in their
+    // effect row got the same cache key.
+    const pure = fn([NumberType], NumberType, PureEffects)
+    const noisy = fn([NumberType], NumberType, { effects: new Set(['bad']), tail: { tag: 'Closed' } })
+    // Target whose param type neither function matches (String </: Number),
+    // so both direct checks must fail.
+    const target = fn([StringType], NumberType, PureEffects)
+    expect(isSubtype(pure, target)).toBe(false)
+    expect(isSubtype(noisy, target)).toBe(false)
+    const i: Type = { tag: 'Inter', members: [pure, noisy] }
+    expect(isSubtype(i, target)).toBe(false)
+  })
+
+  it('Inter of handlers differing only in introduced does not poison cache', () => {
+    const h1 = handlerType(NumberType, NumberType, new Map(), PureEffects)
+    const h2 = handlerType(NumberType, NumberType, new Map(), { effects: new Set(['bad']), tail: { tag: 'Closed' } })
+    // Both differ from the target's body (String), so both fail individually.
+    const target = handlerType(StringType, NumberType, new Map(), PureEffects)
+    expect(isSubtype(h1, target)).toBe(false)
+    expect(isSubtype(h2, target)).toBe(false)
+    const i: Type = { tag: 'Inter', members: [h1, h2] }
+    expect(isSubtype(i, target)).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -663,6 +696,82 @@ describe('subtyping — records', () => {
       record({ name: StringType }),
       record({ name: StringType }, true),
     )).toBe(true)
+  })
+
+  it('{a?: Number} </: {a: Number} (optional in S, required in T)', () => {
+    // S's `a` may be absent at runtime, but T promises `a` is always present,
+    // so S is NOT a subtype of T.
+    const s: Type = {
+      tag: 'Record',
+      fields: new Map([['a', NumberType]]),
+      open: false,
+      optionalFields: new Set(['a']),
+    }
+    const t = record({ a: NumberType })
+    expect(isSubtype(s, t)).toBe(false)
+  })
+
+  it('{a: Number} <: {a?: Number} (required in S, optional in T)', () => {
+    // S always has `a`; T just requires that when `a` exists it has the right type.
+    const s = record({ a: NumberType })
+    const t: Type = {
+      tag: 'Record',
+      fields: new Map([['a', NumberType]]),
+      open: false,
+      optionalFields: new Set(['a']),
+    }
+    expect(isSubtype(s, t)).toBe(true)
+  })
+
+  it('{a?: Number} <: {a?: Number} (reflexive with optional)', () => {
+    const mkOpt = (): Type => ({
+      tag: 'Record',
+      fields: new Map([['a', NumberType]]),
+      open: false,
+      optionalFields: new Set(['a']),
+    })
+    expect(isSubtype(mkOpt(), mkOpt())).toBe(true)
+  })
+
+  it('{name: String, ...} (open) </: {name: String} (closed)', () => {
+    // Open S may have extra runtime fields that closed T forbids,
+    // so open S is NOT a subtype of closed T — even when every declared
+    // field matches.
+    const open = record({ name: StringType }, true)
+    const closed = record({ name: StringType })
+    expect(isSubtype(open, closed)).toBe(false)
+  })
+
+  it('{name: String} (closed) <: {name: String, ...} (open) still holds', () => {
+    // The other direction is sound: a closed record has no hidden fields,
+    // so it satisfies an open target.
+    const closed = record({ name: StringType })
+    const open = record({ name: StringType }, true)
+    expect(isSubtype(closed, open)).toBe(true)
+  })
+
+  it('Inter of two records differing only in optional-field sidecar does not poison the cache', () => {
+    // Cache-key collision repro: typeId must distinguish records that differ
+    // only in `optionalFields`, otherwise the cycle cache (seeded when the
+    // first Inter member legitimately fails) returns true for the second —
+    // a soundness violation.
+    const A: Type = {
+      tag: 'Record', fields: new Map([['x', NumberType]]), open: false,
+    }
+    const B: Type = {
+      tag: 'Record', fields: new Map([['x', NumberType]]), open: false,
+      optionalFields: new Set(['x']),
+    }
+    const T: Type = {
+      tag: 'Record', fields: new Map([['x', IntegerType]]), open: false,
+    }
+    // Individual members fail:
+    expect(isSubtype(A, T)).toBe(false) // Number </: Integer
+    expect(isSubtype(B, T)).toBe(false) // B.x optional, T.x required
+    // Inter([A, B]) = A (since A <: B), and A </: T, so the intersection is
+    // not <: T either.
+    const intersection: Type = { tag: 'Inter', members: [A, B] }
+    expect(isSubtype(intersection, T)).toBe(false)
   })
 })
 
@@ -1096,6 +1205,23 @@ describe('simplify', () => {
   it('simplifies nested function types', () => {
     const t = simplify(fn([union(NumberType, Never)], inter(StringType, Unknown)))
     expect(typeEquals(t, fn([NumberType], StringType))).toBe(true)
+  })
+
+  it('preserves optionalFields on Record', () => {
+    // Regression: the Record case rebuilt the record without carrying the
+    // `optionalFields` sidecar, turning optional fields into required ones
+    // (unsound — callers would then assume the field is always present).
+    const rec: Type = {
+      tag: 'Record',
+      fields: new Map([['a', NumberType]]),
+      open: false,
+      optionalFields: new Set(['a']),
+    }
+    const simplified = simplify(rec)
+    expect(simplified.tag).toBe('Record')
+    if (simplified.tag !== 'Record') return
+    expect(simplified.optionalFields).toBeDefined()
+    expect([...(simplified.optionalFields ?? [])]).toEqual(['a'])
   })
 
   it('Number & 42 → 42 (narrow supertype in intersection)', () => {

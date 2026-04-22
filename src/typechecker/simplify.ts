@@ -68,7 +68,13 @@ export function simplify(t: Type): Type {
       for (const [k, v] of t.fields) {
         fields.set(k, simplify(v))
       }
-      return { tag: 'Record', fields, open: t.open }
+      const rec: Type = { tag: 'Record', fields, open: t.open }
+      // Preserve the optional-fields sidecar — dropping it would silently
+      // turn optional fields into required ones (unsound).
+      if (t.optionalFields && t.optionalFields.size > 0) {
+        rec.optionalFields = new Set(t.optionalFields)
+      }
+      return rec
     }
     case 'Alias': return {
       tag: 'Alias',
