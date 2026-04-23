@@ -2471,6 +2471,30 @@ describe('typecheck — polymorphic let annotations', () => {
     `)
     expect(result.diagnostics).toHaveLength(0)
   })
+
+  // If the body is incompatible with the polymorphic annotation at
+  // definition time, the existing `constrain` + `isSubtype` checks
+  // catch it BEFORE the generalize-and-bind step. Users can't cheat
+  // by annotating a more-specific contract than the body delivers.
+  it('body incompatible with polymorphic annotation is rejected at definition', () => {
+    const result = dvala.typecheck('let f: (A) -> A = (x) -> 42; f("hi")')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  // Nested polymorphic lets: the inner `B` must be fresh per reference
+  // inside outer's body and not bleed into outer's `A` environment.
+  it('nested polymorphic let does not cross-contaminate outer type vars', () => {
+    const result = dvala.typecheck(`
+      let outer: (A) -> A = (x) -> do
+        let inner: (B) -> B = (y) -> y;
+        inner(x)
+      end;
+      let n: Number = outer(42);
+      let s: String = outer("hi");
+      [n, s]
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
 })
 
 // ---------------------------------------------------------------------------

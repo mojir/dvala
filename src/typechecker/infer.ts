@@ -1132,6 +1132,12 @@ export function inferExpr(
           const [nameNode] = binding[1] as [AstNode, AstNode | undefined]
           env.bindFunctionAst(nameNode[1] as string, valueNode)
         }
+        // Let-expression result is the CONCRETE inferred body type, not
+        // the polymorphic `boundType`. The forall template is only
+        // meaningful when the name is LOOKED UP (via `freshen`); the
+        // `let` expression itself evaluated as a value is whatever the
+        // body computed. Keeping this as `valueType` also matches the
+        // existing fold / destructuring logic above.
         result = valueType
         break
       }
