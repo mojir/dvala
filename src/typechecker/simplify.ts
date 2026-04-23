@@ -289,11 +289,18 @@ function hasDisjointKinds(members: Type[]): boolean {
   return false
 }
 
+/**
+ * Members whose kind alone can drive disjointness via `areDisjoint`.
+ * `Literal` is deliberately excluded: the primitive-pair loop above
+ * already catches literal-vs-mismatching-primitive (via the earlier
+ * `isEmptyIntersection` path and `areDisjoint`'s literal branches),
+ * and `areDisjoint` has no rules for literal vs composite, so a call
+ * there would waste work and always return false.
+ */
 function isConcreteKindMember(t: Type): boolean {
-  return t.tag === 'Primitive' || t.tag === 'Atom' || t.tag === 'Literal'
+  return t.tag === 'Primitive' || t.tag === 'Atom'
     || t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
     || t.tag === 'Regex' || t.tag === 'Function' || t.tag === 'AnyFunction'
-    || t.tag === 'Handler'
 }
 
 /**

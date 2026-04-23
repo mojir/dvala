@@ -1254,34 +1254,46 @@ describe('subtyping — disjointness', () => {
   // Record / Tuple / Array / Sequence are all structurally disjoint
   // from Primitive, Atom, and Regex: no runtime value is at the same
   // time a record and a string, etc.
-  it('Record and Primitive are disjoint', () => {
+  it('record is disjoint from Primitive', () => {
     expect(isSubtype(record({ a: NumberType }), neg(StringType))).toBe(true)
     expect(isSubtype(StringType, neg(record({ a: NumberType })))).toBe(true)
   })
 
-  it('Record and Atom are disjoint', () => {
+  it('record is disjoint from Atom', () => {
     expect(isSubtype(record({ a: NumberType }), neg(atom('ok')))).toBe(true)
     expect(isSubtype(atom('ok'), neg(record({ a: NumberType })))).toBe(true)
   })
 
-  it('Tuple and Primitive are disjoint', () => {
+  it('tuple is disjoint from Primitive', () => {
     expect(isSubtype(tuple([NumberType, StringType]), neg(BooleanType))).toBe(true)
     expect(isSubtype(BooleanType, neg(tuple([NumberType])))).toBe(true)
   })
 
-  it('Array and Primitive are disjoint', () => {
+  it('array is disjoint from Primitive', () => {
     expect(isSubtype(array(NumberType), neg(StringType))).toBe(true)
     expect(isSubtype(StringType, neg(array(NumberType)))).toBe(true)
   })
 
-  it('Record and Regex are disjoint', () => {
+  it('record is disjoint from Regex', () => {
     expect(isSubtype(record({ a: NumberType }), neg(RegexType))).toBe(true)
     expect(isSubtype(RegexType, neg(record({ a: NumberType })))).toBe(true)
   })
 
-  it('Record and Tuple are disjoint (records have keys, tuples are indexed lists)', () => {
+  it('record is disjoint from Tuple (records have keys, tuples are indexed lists)', () => {
     expect(isSubtype(record({ a: NumberType }), neg(tuple([NumberType])))).toBe(true)
     expect(isSubtype(tuple([NumberType]), neg(record({ a: NumberType })))).toBe(true)
+  })
+
+  // Lock in the deliberate NON-disjointness: Tuple/Array/Sequence
+  // may overlap (empty tuple is an empty array; Array IS a
+  // Sequence-shaped subset). A future refactor that overclaims
+  // disjointness would be unsound.
+  it('tuple and Array are NOT disjoint (empty tuple overlaps with empty array)', () => {
+    expect(isSubtype(tuple([]), neg(array(NumberType)))).toBe(false)
+  })
+
+  it('array and Sequence are NOT disjoint (array IS a sequence shape)', () => {
+    expect(isSubtype(array(NumberType), neg(sequence([], NumberType, 0)))).toBe(false)
   })
 
   it('literal false does not match Null', () => {
@@ -1474,6 +1486,13 @@ describe('simplify', () => {
 
   it('record intersected with an atom simplifies to Never', () => {
     expect(simplify(inter(record({ a: NumberType }), atom('ok'))).tag).toBe('Never')
+  })
+
+  it('{a:Number} & {b:String} & Boolean simplifies to Never (merge then disjointness)', () => {
+    // Exercises the two-stage pipeline: `mergeRecordMembers` first
+    // folds the pair of records into `{a:Number, b:String}`, then
+    // `hasDisjointKinds` sees Record × Boolean and returns Never.
+    expect(simplify(inter(record({ a: NumberType }), record({ b: StringType }), BooleanType)).tag).toBe('Never')
   })
 
   it('exact Sequence simplifies to tuple', () => {
