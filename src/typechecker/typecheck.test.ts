@@ -2495,6 +2495,32 @@ describe('typecheck — polymorphic let annotations', () => {
     `)
     expect(result.diagnostics).toHaveLength(0)
   })
+
+  // Regression: before fixing `generalizeInner`'s missing Keyof/Index
+  // cases, the inner Vars of `Index(R, K)` were left at their parsed
+  // level (0) while the surrounding Function's param Vars were
+  // promoted to GENERALIZED_LEVEL. `freshenInner`'s level-check then
+  // returned those Index Vars unchanged on every lookup, so the
+  // polymorphic function's return type was a SHARED `Index(R@0, K@0)`
+  // that never bound to the call-site args. It expanded to `Never`.
+  //
+  // The bug was masked by two things: (1) `Never <: any-annotation`
+  // is vacuously true, so `let x: T = pick(...)` tests silently
+  // passed, and (2) constant folding short-circuits the polymorphic
+  // call to a literal via a different code path. Only `fold: false`
+  // plus inspecting the inferred type catches it.
+  it('polymorphic pick: inferred return type is the concrete field type (fold-off repro)', () => {
+    const source = 'let pick: (R, K) -> R[K] = (r, k) -> get(r, k); pick({name: "Alice"}, "name")'
+    const result = dvala.typecheck(source, { fold: false })
+    expect(result.diagnostics).toHaveLength(0)
+    const lastIndex = Math.max(...result.typeMap.keys())
+    const t = typeToString(simplify(expandType(result.typeMap.get(lastIndex)!)))
+    // With the fix, `Index(R, K)` reduces to the record's field type.
+    // Without the fix it stays stuck and expands to `Never` (see
+    // comment above). `"Alice"` is the literal field type of
+    // `{name: "Alice"}["name"]`.
+    expect(t).toBe('"Alice"')
+  })
 })
 
 // ---------------------------------------------------------------------------
