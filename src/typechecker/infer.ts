@@ -516,6 +516,18 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     if (reduced.tag !== rhs.tag) {
       constrain(ctx, lhs, reduced)
     }
+    // Asymmetry note: the lhs deferral above is caught by the
+    // let-annotation path's follow-up `isSubtype(expandType(...))`
+    // call (line ~1089), so deferred lhs constraints aren't silently
+    // lost. The rhs path does NOT have a universal follow-up —
+    // function-subtyping at line ~695 calls `constrain(rhsParam,
+    // lhsParam)` directly and trusts the result. In practice this is
+    // only reachable when a declared function type has a placeholder
+    // Index/Keyof in a param position (contravariant flow), which is
+    // rare; users don't usually write `(obj: R[K]) -> ...` as a
+    // param annotation. If this becomes a real pain point, replace
+    // the silent defer with a constraint-queue that re-checks once
+    // the inner Vars get bounds.
     return
   }
 

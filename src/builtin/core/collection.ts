@@ -149,13 +149,6 @@ reduce(
     },
     arity: { min: 2, max: 3 },
     docs: {
-      // Record + literal-string-key overload returns the exact field type
-      // via indexed-access (PR #80). Relies on `freshenAnnotationVars`
-      // giving each call-site fresh `R` and `K` so the indexed-access
-      // placeholder `R[K]` resolves at simplify time against the caller's
-      // concrete record and key. Listed FIRST so inference's overload
-      // resolution picks it when applicable; falls through to the wider
-      // collection overloads for arrays, strings, Null, or non-literal keys.
       // Indexed-access overload returns the concrete field / element
       // type via `R[K]` (PR #80). `indexType` handles:
       //   - Record × literal-string-key → field type (+ Null if optional)

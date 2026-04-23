@@ -401,23 +401,26 @@ export function indexType(target: Type, key: Type): Type {
     return field
   }
   // Tuple × integer literal key → positional element type, or Never if
-  // out of bounds. Callers pair this with `| Null` (e.g. in the `get`
-  // builtin overload) to cover the out-of-bounds-returns-null case.
+  // out of bounds (including negative indices — `elements[-1]` is
+  // `undefined` in JS, caught by the `=== undefined` guard).
   if (target.tag === 'Tuple' && key.tag === 'Literal' && typeof key.value === 'number' && Number.isInteger(key.value)) {
     const idx = key.value
+    if (idx < 0) return Never
     const elem = target.elements[idx]
     return elem === undefined ? Never : elem
   }
   // Array × integer literal → element type (arrays are homogeneous;
-  // out-of-bounds still yields the element type, Null gets unioned by
-  // the caller).
+  // the `get` overload deliberately does NOT union Null — see its
+  // docstring for the strict-known-good rationale).
   if (target.tag === 'Array' && key.tag === 'Literal' && typeof key.value === 'number' && Number.isInteger(key.value)) {
+    if (key.value < 0) return Never
     return target.element
   }
-  // Sequence × integer literal → positional lookup via the
-  // prefix/rest shape. Same overall answer as Tuple/Array combined.
+  // Sequence × integer literal → positional lookup via the prefix/rest
+  // shape. Negative index is out of bounds regardless of shape.
   if (target.tag === 'Sequence' && key.tag === 'Literal' && typeof key.value === 'number' && Number.isInteger(key.value)) {
     const idx = key.value
+    if (idx < 0) return Never
     if (idx < target.prefix.length) return target.prefix[idx]!
     // Past the prefix: if maxLength says this index can exist, it's in
     // the `rest` slot; otherwise out of bounds.
