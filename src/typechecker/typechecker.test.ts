@@ -1251,6 +1251,39 @@ describe('subtyping — disjointness', () => {
     expect(isSubtype(record({ x: NumberType }), neg(record({ x: StringType })))).toBe(false)
   })
 
+  // Record / Tuple / Array / Sequence are all structurally disjoint
+  // from Primitive, Atom, and Regex: no runtime value is at the same
+  // time a record and a string, etc.
+  it('Record and Primitive are disjoint', () => {
+    expect(isSubtype(record({ a: NumberType }), neg(StringType))).toBe(true)
+    expect(isSubtype(StringType, neg(record({ a: NumberType })))).toBe(true)
+  })
+
+  it('Record and Atom are disjoint', () => {
+    expect(isSubtype(record({ a: NumberType }), neg(atom('ok')))).toBe(true)
+    expect(isSubtype(atom('ok'), neg(record({ a: NumberType })))).toBe(true)
+  })
+
+  it('Tuple and Primitive are disjoint', () => {
+    expect(isSubtype(tuple([NumberType, StringType]), neg(BooleanType))).toBe(true)
+    expect(isSubtype(BooleanType, neg(tuple([NumberType])))).toBe(true)
+  })
+
+  it('Array and Primitive are disjoint', () => {
+    expect(isSubtype(array(NumberType), neg(StringType))).toBe(true)
+    expect(isSubtype(StringType, neg(array(NumberType)))).toBe(true)
+  })
+
+  it('Record and Regex are disjoint', () => {
+    expect(isSubtype(record({ a: NumberType }), neg(RegexType))).toBe(true)
+    expect(isSubtype(RegexType, neg(record({ a: NumberType })))).toBe(true)
+  })
+
+  it('Record and Tuple are disjoint (records have keys, tuples are indexed lists)', () => {
+    expect(isSubtype(record({ a: NumberType }), neg(tuple([NumberType])))).toBe(true)
+    expect(isSubtype(tuple([NumberType]), neg(record({ a: NumberType })))).toBe(true)
+  })
+
   it('literal false does not match Null', () => {
     // false is Boolean, not Null — exercises literalMatchesPrimitive Null branch
     expect(isSubtype(literal(false), NullType)).toBe(false)
@@ -1424,21 +1457,23 @@ describe('simplify', () => {
     expect(typeEquals(t, record({ a: NumberType, b: StringType, c: BooleanType }))).toBe(true)
   })
 
-  it('record intersected with a non-record keeps both as an Inter', () => {
-    // `{a: Number} & String` — record stays as a single-member record
-    // after the merge, the String tails along. Today's simplify has no
-    // record-vs-primitive disjointness rule, so the Inter is preserved
-    // verbatim. This locks in the `others.length > 0` fallback in
-    // `mergeRecordMembers` — the fix doesn't accidentally collapse a
-    // non-record member. Record-vs-primitive simplification is a
-    // separate follow-up; these two ARE semantically disjoint at the
-    // value level and a future fix should recognize that.
-    const t = simplify(inter(record({ a: NumberType }), StringType))
-    expect(t.tag).toBe('Inter')
-    if (t.tag !== 'Inter') return
-    expect(t.members).toHaveLength(2)
-    expect(t.members.some(m => m.tag === 'Record')).toBe(true)
-    expect(t.members.some(m => m.tag === 'Primitive' && m.name === 'String')).toBe(true)
+  it('record intersected with a disjoint primitive simplifies to Never', () => {
+    // No value is both a record and a string. Issue #83 extended the
+    // simplifier's disjointness check to recognize composite-vs-primitive
+    // pairs via `areDisjoint`.
+    expect(simplify(inter(record({ a: NumberType }), StringType)).tag).toBe('Never')
+  })
+
+  it('tuple intersected with a disjoint primitive simplifies to Never', () => {
+    expect(simplify(inter(tuple([NumberType]), BooleanType)).tag).toBe('Never')
+  })
+
+  it('array intersected with a disjoint primitive simplifies to Never', () => {
+    expect(simplify(inter(array(NumberType), StringType)).tag).toBe('Never')
+  })
+
+  it('record intersected with an atom simplifies to Never', () => {
+    expect(simplify(inter(record({ a: NumberType }), atom('ok'))).tag).toBe('Never')
   })
 
   it('exact Sequence simplifies to tuple', () => {

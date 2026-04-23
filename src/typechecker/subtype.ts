@@ -357,6 +357,22 @@ function areDisjoint(s: Type, t: Type, visited: Set<string>): boolean {
   if (s.tag === 'AnyFunction' && isGroundType(t) && t.tag !== 'Function') return true
   if (t.tag === 'AnyFunction' && isGroundType(s) && s.tag !== 'Function') return true
 
+  // Composite kinds (Record/Tuple/Array/Sequence) are disjoint with
+  // the scalar kinds (Primitive/Atom/Regex). A value is either a
+  // composite (string-keyed object or ordered list) or a scalar —
+  // never both at runtime. This catches the cross-kind cases that
+  // the Function branches above already handle for Functions.
+  if (isCompositeKind(s) && isScalarKind(t)) return true
+  if (isCompositeKind(t) && isScalarKind(s)) return true
+  // Records (string-keyed) and list-kinds (Tuple/Array/Sequence,
+  // index-ordered) are different runtime shapes, so disjoint. We do
+  // NOT claim list-kinds are mutually disjoint — a tuple of length
+  // zero overlaps with an empty array, Tuple IS a Sequence-shaped
+  // subset, Array IS a Sequence-shaped subset. Same-kind pairs
+  // (Record vs Record, Tuple vs Tuple) may overlap and fall through.
+  if (s.tag === 'Record' && isListKind(t)) return true
+  if (t.tag === 'Record' && isListKind(s)) return true
+
   // Union: disjoint with T iff every member is disjoint with T
   if (s.tag === 'Union') return s.members.every(m => areDisjoint(m, t, visited))
   if (t.tag === 'Union') return t.members.every(m => areDisjoint(s, m, visited))
@@ -399,6 +415,27 @@ function isGroundType(t: Type): boolean {
   return t.tag === 'Primitive' || t.tag === 'Atom' || t.tag === 'Literal'
     || t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
     || t.tag === 'Regex' || t.tag === 'Function' || t.tag === 'AnyFunction'
+}
+
+/** Composite kinds — structured values whose runtime shape is an
+ * object or a list. Disjoint with the scalar kinds at the value
+ * level. */
+function isCompositeKind(t: Type): boolean {
+  return t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
+}
+
+/** Scalar kinds — single-value types that aren't composites or
+ * functions. Primitives, atoms, and regex values. Literals are
+ * handled via the earlier literal/primitive branches. */
+function isScalarKind(t: Type): boolean {
+  return t.tag === 'Primitive' || t.tag === 'Atom' || t.tag === 'Regex'
+}
+
+/** List-shaped composite kinds — Tuple/Array/Sequence. Disjoint
+ * with Record (which is string-keyed), but NOT mutually disjoint
+ * among themselves (a tuple IS a sequence, etc.). */
+function isListKind(t: Type): boolean {
+  return t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
 }
 
 /** Check if an intersection of types is empty (contains disjoint base types). */
