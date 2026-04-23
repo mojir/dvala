@@ -160,10 +160,12 @@ function simplifyIntersection(members: Type[]): Type {
 /**
  * Fold all Record members of an intersection into a single Record via
  * pairwise structural merge. Non-record members pass through
- * unchanged. Returns `Never` if the merge is impossible (required
- * field absent from a closed side; disjoint field types on a
- * required field). Returns the original `Inter` shape when there's
- * at most one record to merge.
+ * unchanged. Returns `Never` only when a shared required field's
+ * types have empty intersection. Field-only-on-one-side is ALWAYS
+ * carried through (permissive semantics — the other side's closed
+ * flag does not veto fields it never declared; see the
+ * `intersectRecordPair` JSDoc for the full rationale). Returns the
+ * original `Inter` shape when there's at most one record to merge.
  */
 function mergeRecordMembers(members: Type[]): Type {
   type RecordType = Type & { tag: 'Record' }

@@ -3285,6 +3285,17 @@ function narrowArrayLikeTypeForMatchPattern(
 }
 
 function intersectMatchTypes(left: Type, right: Type): Type {
+  // Note on the narrowing × simplify interaction: `expandType(Var,
+  // 'negative')` returns `inter(...upperBounds)`. If a Var has two
+  // Record upper bounds (two independent `constrain(v, RecA)` calls),
+  // `simplify` would fold them via the PERMISSIVE record merge in
+  // simplify.ts — BEFORE we reach the strict `intersectRecords`
+  // branch below. Today that path is not produced by narrowing
+  // itself (narrowing constrains once per branch, not twice on the
+  // same Var against different records), so the permissive merge
+  // never shadows the strict semantics. If a future narrowing site
+  // accumulates multiple Record upper bounds on a single Var, move
+  // the strict merge ahead of the simplify/expandType pre-pass here.
   const expandedLeft = simplify(expandType(left))
   const expandedRight = simplify(expandType(right))
 
