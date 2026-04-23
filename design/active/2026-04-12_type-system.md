@@ -990,7 +990,15 @@ Collection functions like `filter`, `map`, `reduce` work on objects too: `filter
 - `not(cond)` negation (PR #78) — swaps then/else from the inner narrowing.
 - Field-path narrowing on `isX(obj.field…)` and `obj.field… == lit` (PR #79) — refines the root sym to a record shape that pins `field…` to the matched type. Picks the matching member of a tagged union and tightens single-record union-typed fields.
 
-Still unsupported (defer until they show up in practice): **conditional optionality** — narrowing on a tag field (`r.status == :ok`) does NOT make a sibling optional field (`r.value`) non-optional in the then branch. The `optionalFields` sidecar is per-field and not gated on other fields. Either rewrite as a tagged union, or add a new presence-conditioned-on-tag relationship to the record type — the latter is a non-trivial extension.
+**Not planned — use discriminated unions instead**: **conditional optionality** — narrowing on a tag field (`r.status == :ok`) does NOT make a sibling optional field (`r.value`) non-optional in the then branch. The `optionalFields` sidecar is per-field, not gated on other fields. Users who need this pattern should write a **discriminated union** of full variants:
+
+```dvala
+type Result =
+  {status: :ok, value: Number}
+  | {status: :err, message: String}
+```
+
+Discriminated unions are fully supported today — atom/literal-string/literal-number discriminants, `if`/`match` narrowing, exhaustiveness checking, shared and nested discriminators. See [PR #79](https://github.com/mojir/dvala/pull/79). The verbosity cost of repeating shared fields across variants is acknowledged; if this becomes a real pain point, the answer is a parser-level **tagged-union sugar** (`type Result = #ok { value: Number } | #err { message: String }` desugaring to the expanded form), not an extension to the record type. Decided 2026-04-23.
 
 Implementation: `extractIfNarrowings` + `narrowEnv` in `src/typechecker/infer.ts`, reusing `intersectMatchTypes` from the match-guard path. See `describe('typecheck — flow-sensitive narrowing in if/else')` for the suite.
 
@@ -1185,9 +1193,23 @@ Current status:
 
 ### 1. Recursive types and BDDs
 
-Recursive types interact with set-theoretic subtyping. CDuce and Elixir use Binary Decision Diagrams.
+Recursive types interact with set-theoretic subtyping. CDuce and Elixir use Binary Decision Diagrams — a canonical form over base kinds that makes type equality pointer-comparison and subtyping one emptiness check. BDDs give:
 
-**Mitigation:** Start with simpler representation for Phase A, add BDDs when recursive type complexity demands it.
+- Canonical form (semantic equality = structural identity).
+- Full `S <: T1 | T2 iff S & !(T1|T2) = empty` (vs. the member-wise under-approximation Dvala uses today — see the comment at [src/typechecker/subtype.ts](../../src/typechecker/subtype.ts) union-on-right).
+- Automatic distributivity for `A & (B | C)` and related simplifications.
+
+**Status (2026-04-23): parked as "wontfix until demand".** Today Dvala uses a coinductive cycle-guard algorithm that is sound and complete enough for the types users actually write. The BDD wins are:
+
+- Slightly prettier hover output for intersections-of-unions (cosmetic).
+- Slightly fewer cache misses (minor perf).
+- Occasionally proving `S <: T1|T2` true where the coinductive algorithm returns a conservative false — but no user has reported a case that blocks real code.
+
+The cost is real: BDDs for a language with this many base kinds (Primitive, Atom, Literal, Record, Tuple, Array, Sequence, Regex, Function, Handler, Keyof, Index, plus effect sets and row variables) is 1000+ LOC of careful decision-procedure math, and interacts nontrivially with MLsub's variable-bound representation.
+
+The trigger to reconsider: a concrete user-reachable failure where the current algorithm says "not a subtype" when the correct answer is "yes", and the workaround is not obvious. No such trigger today.
+
+**Mitigation:** Start with simpler representation for Phase A, add BDDs when recursive type complexity demands it. Today's coinductive check continues to serve.
 
 ### 2. Function type subtyping and circularity
 
