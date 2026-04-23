@@ -29,7 +29,7 @@ import type { RowVarTail, Type } from './types'
 import {
   NumberType, IntegerType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, AnyFunction, PureEffects,
-  atom, literal, fn, array, tuple, union, inter, neg, effectSet, handlerType,
+  array, atom, effectSet, fn, handlerType, indexType, inter, keyofType, literal, neg, tuple, union,
 } from './types'
 import { getEffectDeclaration } from './effectTypes'
 
@@ -217,19 +217,47 @@ class TypeParser {
     if (this.tryConsume('!')) {
       return neg(this.parsePrefix())
     }
+    // `keyof T` — must be followed by a space or a bracketed expression
+    // so we don't accidentally match a user-defined alias starting with
+    // "keyof" (e.g. `keyofThing`).
+    if (this.matchKeyword('keyof')) {
+      return keyofType(this.parsePrefix())
+    }
     return this.parsePostfix()
+  }
+
+  /**
+   * Try to match a full keyword (identifier boundary after the match).
+   * Prevents matching `keyof` as a prefix of an alias like `keyofThing`.
+   */
+  private matchKeyword(word: string): boolean {
+    this.skipWhitespace()
+    if (!this.input.startsWith(word, this.pos)) return false
+    const next = this.input[this.pos + word.length]
+    if (next !== undefined && this.isIdentChar(next)) return false
+    this.pos += word.length
+    return true
   }
 
   private parsePostfix(): Type {
     let t = this.parsePrimary()
-    // Postfix operators: [] for arrays, ? for nullable — can chain in any order
-    // Number[]  → array of numbers
-    // Number?   → Number | Null
-    // Number?[] → (Number | Null)[]
-    // Number[]? → Number[] | Null
+    // Postfix operators: [] for arrays, [K] for indexed access,
+    // ? for nullable — can chain in any order.
+    // Number[]    → array of numbers
+    // Number?     → Number | Null
+    // Number?[]   → (Number | Null)[]
+    // Number[]?   → Number[] | Null
+    // R["name"]   → the type of R's "name" field
+    // R[keyof R]  → the union of R's field-value types
     for (;;) {
       if (this.tryConsume('[]')) {
         t = array(t)
+      } else if (this.peek() === '[') {
+        // `[K]` — indexed access. Guaranteed not to be `[]` (matched above).
+        this.consume('[')
+        const keyType = this.parseType()
+        this.consume(']')
+        t = indexType(t, keyType)
       } else if (this.peek() === '?' && this.peekAt(1) !== '.') {
         this.advance()
         t = union(t, NullType)

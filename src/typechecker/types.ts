@@ -157,6 +157,14 @@ export type Type =
   | { tag: 'Alias'; name: string; args: Type[]; expanded: Type }
   | { tag: 'Recursive'; id: number; body: Type } // μα.F(α)
 
+  // Indexed-access types — placeholder nodes that stand in for the
+  // result of `keyof T` / `T[K]` until the inner type is concrete
+  // enough to reduce. Both simplify to something else (a union of
+  // literals, a concrete field type, Unknown, etc.) as soon as the
+  // inner shape is known.
+  | { tag: 'Keyof'; inner: Type } // keyof T
+  | { tag: 'Index'; target: Type; key: Type } // T[K]
+
 // ---------------------------------------------------------------------------
 // Constructors — readable factory functions
 // ---------------------------------------------------------------------------
@@ -347,6 +355,53 @@ export function neg(inner: Type): Type {
   return { tag: 'Neg', inner }
 }
 
+/**
+ * `keyof T` — the union of literal-string keys of `T` when `T` is a
+ * concrete record; a placeholder Keyof node otherwise. Closed records
+ * produce a closed-form union; open records can have additional runtime
+ * keys, so the result is `String` (widened) rather than just the
+ * declared fields — callers relying on full-key enumeration should
+ * constrain the record to closed before using `keyof`.
+ */
+export function keyofType(inner: Type): Type {
+  if (inner.tag === 'Record') {
+    const keys = [...inner.fields.keys()]
+    if (keys.length === 0) return inner.open ? StringType : Never
+    const members = keys.map(k => literal(k))
+    const declared = union(...members)
+    // Open record may carry extra string keys at runtime — widen to String
+    // so `T[keyof T]` etc. stays sound. Closed record gives the exact set.
+    return inner.open ? StringType : declared
+  }
+  if (inner.tag === 'Never') return Never
+  if (inner.tag === 'Unknown') return StringType
+  return { tag: 'Keyof', inner }
+}
+
+/**
+ * `T[K]` — indexed access. When `K` is a concrete literal-string key
+ * (or a union of such keys) and `T` is a concrete record, resolve to
+ * the field type(s). Otherwise return a placeholder Index node.
+ * Missing keys on a closed record → Never; on an open record → Unknown
+ * (the field might exist at runtime). Optional fields are widened to
+ * `T | Null` (mirrors `?.` safe-access semantics).
+ */
+export function indexType(target: Type, key: Type): Type {
+  if (target.tag === 'Never' || key.tag === 'Never') return Never
+  if (target.tag === 'Unknown') return Unknown
+  if (key.tag === 'Union') {
+    return union(...key.members.map(m => indexType(target, m)))
+  }
+  if (target.tag === 'Record' && key.tag === 'Literal' && typeof key.value === 'string') {
+    const name = key.value
+    const field = target.fields.get(name)
+    if (field === undefined) return target.open ? Unknown : Never
+    if (target.optionalFields?.has(name)) return union(field, NullType)
+    return field
+  }
+  return { tag: 'Index', target, key }
+}
+
 // ---------------------------------------------------------------------------
 // Display — human-readable type strings
 // ---------------------------------------------------------------------------
@@ -427,6 +482,8 @@ export function typeToString(t: Type): string {
       ? `${t.name}<${t.args.map(typeToString).join(', ')}>`
       : t.name
     case 'Recursive': return `μ${t.id}.${typeToString(t.body)}`
+    case 'Keyof': return `keyof ${typeToString(t.inner)}`
+    case 'Index': return `${typeToString(t.target)}[${typeToString(t.key)}]`
   }
 }
 
@@ -529,6 +586,11 @@ export function typeEquals(a: Type, b: Type): boolean {
     case 'Recursive': {
       const brec = b as typeof a
       return a.id === brec.id && typeEquals(a.body, brec.body)
+    }
+    case 'Keyof': return typeEquals(a.inner, (b as typeof a).inner)
+    case 'Index': {
+      const bi = b as typeof a
+      return typeEquals(a.target, bi.target) && typeEquals(a.key, bi.key)
     }
   }
 }
