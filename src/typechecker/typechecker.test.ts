@@ -1389,6 +1389,32 @@ describe('simplify', () => {
     expect(typeEquals(t, literal(42))).toBe(true)
   })
 
+  it('{a: Number} & {b: String} → {a: Number, b: String} (disjoint-key record merge)', () => {
+    const t = simplify(inter(record({ a: NumberType }), record({ b: StringType })))
+    expect(typeEquals(t, record({ a: NumberType, b: StringType }))).toBe(true)
+  })
+
+  it('{a: Number} & {a: Integer} → {a: Integer} (shared key narrows via field intersection)', () => {
+    const t = simplify(inter(record({ a: NumberType }), record({ a: IntegerType })))
+    expect(typeEquals(t, record({ a: IntegerType }))).toBe(true)
+  })
+
+  it('closed {a: Number} & closed {b: String} is closed (strictest of both)', () => {
+    const t = simplify(inter(record({ a: NumberType }), record({ b: StringType })))
+    if (t.tag !== 'Record') throw new Error(`expected Record, got ${t.tag}`)
+    expect(t.open).toBe(false)
+  })
+
+  it('open {a: Number, ...} & closed {b: String} → closed {a: Number, b: String}', () => {
+    const t = simplify(inter(record({ a: NumberType }, true), record({ b: StringType })))
+    expect(typeEquals(t, record({ a: NumberType, b: StringType }))).toBe(true)
+  })
+
+  it('{a: Number} & {a: String} → Never (field intersection empty, field required)', () => {
+    const t = simplify(inter(record({ a: NumberType }), record({ a: StringType })))
+    expect(t.tag).toBe('Never')
+  })
+
   it('exact Sequence simplifies to tuple', () => {
     const t = simplify(sequence([NumberType, StringType], Never))
     expect(typeEquals(t, tuple([NumberType, StringType]))).toBe(true)

@@ -1045,7 +1045,12 @@ export function inferExpr(
         const bindingNodeId = binding[2]
         const annotation = ctx.typeAnnotations?.get(bindingNodeId)
         if (annotation) {
-          const declaredType = parseTypeAnnotation(annotation)
+          // Simplify the parsed annotation so surface-level patterns
+          // like `{a: A} & {b: B}` are folded into a single merged
+          // Record before `constrain` sees them — the Inter-on-right
+          // path would otherwise enforce each member separately and
+          // reject legitimate values.
+          const declaredType = simplify(parseTypeAnnotation(annotation))
           try {
             constrain(ctx, valueType, declaredType)
           } catch (error) {
@@ -1623,7 +1628,7 @@ export function inferExpr(
             bindPattern(param, declaredArgType, clauseEnv, ctx, typeMap)
             const paramAnnotation = ctx.typeAnnotations?.get(param[2])
             if (paramAnnotation) {
-              const annotatedType = parseTypeAnnotation(paramAnnotation)
+              const annotatedType = simplify(parseTypeAnnotation(paramAnnotation))
               constrain(ctx, declaredArgType, annotatedType)
               constrain(ctx, annotatedType, declaredArgType)
             }
@@ -2542,7 +2547,7 @@ function inferFunctionNode(
       bindPattern(param, paramVar, funcEnv, ctx, typeMap)
       const paramAnnotation = ctx.typeAnnotations?.get(param[2])
       if (paramAnnotation) {
-        const declaredType = parseTypeAnnotation(paramAnnotation)
+        const declaredType = simplify(parseTypeAnnotation(paramAnnotation))
         try {
           constrain(ctx, paramVar, declaredType)
         } catch (error) {

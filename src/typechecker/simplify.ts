@@ -132,11 +132,21 @@ function simplifyIntersection(members: Type[]): Type {
   const result = inter(...members)
   if (result.tag !== 'Inter') return result
 
+  // Merge Record × Record pairs structurally so that
+  // `{a: Number} & {b: String}` becomes `{a: Number, b: String}` —
+  // one record whose fields are the merged set. Without this, the
+  // intersection stays as an Inter and downstream code (width/depth
+  // subtyping, constrain on records) treats the members as
+  // overload alternatives rather than a single combined shape.
+  const merged = mergeRecordMembers(result.members)
+  if (merged.tag === 'Never') return Never
+  if (merged.tag !== 'Inter') return merged
+
   // Check for disjoint base types → Never
-  if (hasDisjointPrimitives(result.members)) return Never
+  if (hasDisjointPrimitives(merged.members)) return Never
 
   // Collapse trivial negations: Number & !String → Number (already disjoint)
-  const collapsed = collapseTrivialNegations(result.members)
+  const collapsed = collapseTrivialNegations(merged.members)
   if (collapsed.length === 0) return Unknown
   if (collapsed.length === 1) return collapsed[0]!
 
@@ -145,6 +155,93 @@ function simplifyIntersection(members: Type[]): Type {
   if (narrowed.length === 0) return Never
   if (narrowed.length === 1) return narrowed[0]!
   return { tag: 'Inter', members: narrowed }
+}
+
+/**
+ * Fold all Record members of an intersection into a single Record via
+ * pairwise structural merge. Non-record members pass through
+ * unchanged. Returns `Never` if the merge is impossible (required
+ * field absent from a closed side; disjoint field types on a
+ * required field). Returns the original `Inter` shape when there's
+ * at most one record to merge.
+ */
+function mergeRecordMembers(members: Type[]): Type {
+  type RecordType = Type & { tag: 'Record' }
+  const records: RecordType[] = []
+  const others: Type[] = []
+  for (const m of members) {
+    if (m.tag === 'Record') records.push(m)
+    else others.push(m)
+  }
+  if (records.length < 2) return { tag: 'Inter', members }
+  let combined = records[0]!
+  for (let i = 1; i < records.length; i++) {
+    const merged = intersectRecordPair(combined, records[i]!)
+    if (merged.tag === 'Never') return Never
+    if (merged.tag !== 'Record') {
+      // Defensive: shouldn't happen, but fall back to leaving the
+      // intersection unreduced rather than losing members.
+      return { tag: 'Inter', members }
+    }
+    combined = merged
+  }
+  if (others.length === 0) return combined
+  return { tag: 'Inter', members: [combined, ...others] }
+}
+
+/**
+ * Pairwise structural intersection of two record types for the
+ * user-facing simplify path. Semantics follow the TS-ish "shape
+ * merge" convention: `{a: A} & {b: B}` means "has both fields" and
+ * resolves to `{a: A, b: B}`, independent of either side's `open`
+ * flag at the source. The `open` flag combines as `a.open && b.open`
+ * — the result allows extras only if both inputs did.
+ *
+ * This differs from the narrowing path's `intersectRecords` in
+ * `infer.ts`, which uses strict set-theoretic semantics (a closed
+ * record's values have EXACTLY those fields, so the intersection
+ * with a different closed record is `Never`). That strictness is
+ * correct for runtime-value narrowing on tagged unions; it would be
+ * surprising here where users write intersections to combine shapes.
+ */
+function intersectRecordPair(
+  a: Type & { tag: 'Record' },
+  b: Type & { tag: 'Record' },
+): Type {
+  const fields = new Map<string, Type>()
+  const optionalFields = new Set<string>()
+  const allKeys = new Set<string>([...a.fields.keys(), ...b.fields.keys()])
+  for (const k of allKeys) {
+    const av = a.fields.get(k)
+    const bv = b.fields.get(k)
+    const aOpt = a.optionalFields?.has(k) ?? false
+    const bOpt = b.optionalFields?.has(k) ?? false
+    if (av && bv) {
+      const intersected = simplify(inter(av, bv))
+      if (intersected.tag === 'Never') {
+        // If both sides agree the field is optional, values can
+        // simply omit it; the record as a whole still has solutions.
+        if (aOpt && bOpt) continue
+        return Never
+      }
+      fields.set(k, intersected)
+      // Optional only if both sides agree — a required side wins.
+      if (aOpt && bOpt) optionalFields.add(k)
+    } else if (av) {
+      // Field only in `a`. Carry it over with `a`'s optionality.
+      // Permissive semantics: `b`'s closedness doesn't veto a field
+      // it never declared — combining shapes, not narrowing values.
+      fields.set(k, av)
+      if (aOpt) optionalFields.add(k)
+    } else if (bv) {
+      fields.set(k, bv)
+      if (bOpt) optionalFields.add(k)
+    }
+  }
+  const open = a.open && b.open
+  const out: Type = { tag: 'Record', fields, open }
+  if (optionalFields.size > 0) out.optionalFields = optionalFields
+  return out
 }
 
 /** Check if the intersection contains disjoint primitive types.
