@@ -142,8 +142,11 @@ function simplifyIntersection(members: Type[]): Type {
   if (merged.tag === 'Never') return Never
   if (merged.tag !== 'Inter') return merged
 
-  // Check for disjoint base types → Never
-  if (hasDisjointPrimitives(merged.members)) return Never
+  // Check for disjoint base types → Never. Primitive × primitive
+  // pairs handled inline (cheap), cross-kind disjointness (e.g.
+  // Record × String, Tuple × Boolean) via `isSubtype`'s negation
+  // rule (which calls `areDisjoint` internally).
+  if (hasDisjointKinds(merged.members)) return Never
 
   // Collapse trivial negations: Number & !String → Number (already disjoint)
   const collapsed = collapseTrivialNegations(merged.members)
@@ -246,11 +249,18 @@ function intersectRecordPair(
   return out
 }
 
-/** Check if the intersection contains disjoint primitive types.
- * Integer and Number are NOT disjoint (Integer ⊂ Number) — the pair-wise
- * check below exempts them; `narrowSupertypes` then collapses the pair
- * to Integer. */
-function hasDisjointPrimitives(members: Type[]): boolean {
+/** Check if any pair of members in the intersection is disjoint, in
+ * which case the whole intersection is empty (Never). Handles:
+ *  - Primitive × Primitive (with the Integer ⊂ Number exception —
+ *    `narrowSupertypes` then collapses that pair to Integer).
+ *  - Cross-kind pairs (Record × String, Tuple × Boolean, Record ×
+ *    Tuple, etc.) via `isSubtype(a, neg(b))`, which runs the
+ *    `areDisjoint` logic in subtype.ts. Composite-vs-scalar and
+ *    Record-vs-list-kind are the main added cases (see issue #83).
+ * Skips pairs where either side is a Var / Neg / Inter / Union /
+ * Recursive / Alias / Keyof / Index — those don't have a stable
+ * "kind" at this point and could simplify later. */
+function hasDisjointKinds(members: Type[]): boolean {
   const names: PrimitiveName[] = []
   for (const m of members) {
     if (m.tag === 'Primitive') names.push(m.name)
@@ -265,7 +275,32 @@ function hasDisjointPrimitives(members: Type[]): boolean {
       return true
     }
   }
+  // Cross-kind disjointness — leverage the subtype engine's
+  // disjointness via `isSubtype(a, neg(b))`. Only consider concrete
+  // member pairs (records/tuples/arrays/atoms/regex/function types);
+  // skip variables, negations, and other placeholders that may
+  // simplify later.
+  const concrete = members.filter(isConcreteKindMember)
+  for (let i = 0; i < concrete.length; i++) {
+    for (let j = i + 1; j < concrete.length; j++) {
+      if (isSubtype(concrete[i]!, neg(concrete[j]!))) return true
+    }
+  }
   return false
+}
+
+/**
+ * Members whose kind alone can drive disjointness via `areDisjoint`.
+ * `Literal` is deliberately excluded: the primitive-pair loop above
+ * already catches literal-vs-mismatching-primitive (via the earlier
+ * `isEmptyIntersection` path and `areDisjoint`'s literal branches),
+ * and `areDisjoint` has no rules for literal vs composite, so a call
+ * there would waste work and always return false.
+ */
+function isConcreteKindMember(t: Type): boolean {
+  return t.tag === 'Primitive' || t.tag === 'Atom'
+    || t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
+    || t.tag === 'Regex' || t.tag === 'Function' || t.tag === 'AnyFunction'
 }
 
 /**
