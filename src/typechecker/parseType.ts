@@ -253,11 +253,19 @@ class TypeParser {
       if (this.tryConsume('[]')) {
         t = array(t)
       } else if (this.peek() === '[') {
-        // `[K]` — indexed access. Guaranteed not to be `[]` (matched above).
+        // `[K]` or — after the token-stream rebuild puts spaces between
+        // `[` and `]` — a space-separated `[ ]`. Peek past `[` and any
+        // whitespace; if the next char is `]`, it's the array form.
         this.consume('[')
-        const keyType = this.parseType()
-        this.consume(']')
-        t = indexType(t, keyType)
+        this.skipWhitespace()
+        if (this.peek() === ']') {
+          this.consume(']')
+          t = array(t)
+        } else {
+          const keyType = this.parseType()
+          this.consume(']')
+          t = indexType(t, keyType)
+        }
       } else if (this.peek() === '?' && this.peekAt(1) !== '.') {
         this.advance()
         t = union(t, NullType)

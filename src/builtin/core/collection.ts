@@ -149,7 +149,22 @@ reduce(
     },
     arity: { min: 2, max: 3 },
     docs: {
-      type: '((String | Unknown[] | {...} | Null, String | Number) -> Unknown) & ((String | Unknown[] | {...} | Null, String | Number, Unknown) -> Unknown)',
+      // Indexed-access overload returns the concrete field / element
+      // type via `R[K]` (PR #80). `indexType` handles:
+      //   - Record × literal-string-key → field type (+ Null if optional)
+      //   - Tuple × integer-literal → element or Never if out of bounds
+      //   - Array/Sequence/String × integer-literal → element type
+      // `freshenAnnotationVars` gives each call-site fresh R and K so
+      // the placeholder `R[K]` resolves at simplify time. Listed FIRST
+      // so overload resolution picks it when the key is concrete; falls
+      // through to the wider collection overloads for Null, non-literal
+      // keys, or the default-value (3-arg) variant.
+      //
+      // We do NOT union `Null` into the return here: strict-known-good
+      // accesses (`tuple[0]`, `record.field`) should stay tight. The
+      // caller expecting a Null fallback should use the 3-arg variant
+      // with an explicit default or the generic fallback overload.
+      type: '((R, K) -> R[K]) & ((String | Unknown[] | {...} | Null, String | Number) -> Unknown) & ((String | Unknown[] | {...} | Null, String | Number, Unknown) -> Unknown)',
       category: 'collection',
       returns: { type: 'any' },
       args: {
