@@ -176,7 +176,7 @@ reduce(
         { argumentNames: ['a', 'b'] },
         { argumentNames: ['a', 'b', 'notFound'] },
       ],
-      description: 'Returns value in `a` mapped at `b`.',
+      description: 'Returns value in `a` mapped at `b`. When both `a` and `b` are concrete and the key is in bounds, the typechecker resolves the return to the precise element / field type; otherwise widens to `Unknown`.',
       seeAlso: ['collection.getIn', 'contains', 'find', 'nth'],
       examples: [
         '[1, 2, 3] get 1',

@@ -1855,6 +1855,11 @@ function containsVars(t: Type): boolean {
     case 'Neg': return containsVars(t.inner)
     case 'Keyof': return containsVars(t.inner)
     case 'Index': return containsVars(t.target) || containsVars(t.key)
+    // Recurse through `expanded` so a polymorphic alias (e.g. a type
+    // parameterized on A at declaration) is correctly detected as
+    // containing vars — otherwise `let f: MyAlias<A> = ...` would
+    // skip the forall-binding path introduced in PR #87.
+    case 'Alias': return t.args.some(containsVars) || containsVars(t.expanded)
     default: return false
   }
 }
@@ -1958,6 +1963,16 @@ function freshenAllVars(
       freshenAllVars(ctx, t.target, mapping, rowMapping),
       freshenAllVars(ctx, t.key, mapping, rowMapping),
     )
+    // Freshen both args and expanded form — they share identity for
+    // vars via the same `mapping` table, so `type F<A> = (A) -> A`
+    // with `A` appearing in both args[0] and expanded stays
+    // consistent across the expansion after freshening.
+    case 'Alias': return {
+      tag: 'Alias',
+      name: t.name,
+      args: t.args.map(a => freshenAllVars(ctx, a, mapping, rowMapping)),
+      expanded: freshenAllVars(ctx, t.expanded, mapping, rowMapping),
+    }
     default: return t
   }
 }
@@ -2055,6 +2070,13 @@ function freshenInner(
         freshenInner(ctx, t.target, mapping, rowMapping),
         freshenInner(ctx, t.key, mapping, rowMapping),
       )
+    case 'Alias':
+      return {
+        tag: 'Alias',
+        name: t.name,
+        args: t.args.map(a => freshenInner(ctx, a, mapping, rowMapping)),
+        expanded: freshenInner(ctx, t.expanded, mapping, rowMapping),
+      }
     default:
       return t
   }
@@ -2094,6 +2116,8 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Neg': return containsVarsAboveLevel(t.inner, level)
     case 'Keyof': return containsVarsAboveLevel(t.inner, level)
     case 'Index': return containsVarsAboveLevel(t.target, level) || containsVarsAboveLevel(t.key, level)
+    case 'Alias': return t.args.some(a => containsVarsAboveLevel(a, level))
+      || containsVarsAboveLevel(t.expanded, level)
     default: return false
   }
 }

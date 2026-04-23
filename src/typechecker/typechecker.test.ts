@@ -1296,6 +1296,34 @@ describe('subtyping — disjointness', () => {
     expect(isSubtype(array(NumberType), neg(sequence([], NumberType, 0)))).toBe(false)
   })
 
+  // Handlers are their own runtime kind — disjoint with every
+  // non-Handler shape. Previously `areDisjoint` had no Handler
+  // branches and returned false conservatively.
+  it('handler is disjoint from Primitive', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    expect(isSubtype(h, neg(NumberType))).toBe(true)
+    expect(isSubtype(NumberType, neg(h))).toBe(true)
+  })
+
+  it('handler is disjoint from Atom', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    expect(isSubtype(h, neg(atom('ok')))).toBe(true)
+    expect(isSubtype(atom('ok'), neg(h))).toBe(true)
+  })
+
+  it('handler is disjoint from Record', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    expect(isSubtype(h, neg(record({ a: NumberType })))).toBe(true)
+    expect(isSubtype(record({ a: NumberType }), neg(h))).toBe(true)
+  })
+
+  it('handler is disjoint from Function', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    const f = fn([NumberType], NumberType)
+    expect(isSubtype(h, neg(f))).toBe(true)
+    expect(isSubtype(f, neg(h))).toBe(true)
+  })
+
   it('literal false does not match Null', () => {
     // false is Boolean, not Null — exercises literalMatchesPrimitive Null branch
     expect(isSubtype(literal(false), NullType)).toBe(false)
