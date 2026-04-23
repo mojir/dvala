@@ -1296,6 +1296,65 @@ describe('subtyping — disjointness', () => {
     expect(isSubtype(array(NumberType), neg(sequence([], NumberType, 0)))).toBe(false)
   })
 
+  // Handlers are their own runtime kind — disjoint with every
+  // non-Handler shape. Previously `areDisjoint` had no Handler
+  // branches and returned false conservatively.
+  it('handler is disjoint from Primitive', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    expect(isSubtype(h, neg(NumberType))).toBe(true)
+    expect(isSubtype(NumberType, neg(h))).toBe(true)
+  })
+
+  it('handler is disjoint from Atom', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    expect(isSubtype(h, neg(atom('ok')))).toBe(true)
+    expect(isSubtype(atom('ok'), neg(h))).toBe(true)
+  })
+
+  it('handler is disjoint from Record', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    expect(isSubtype(h, neg(record({ a: NumberType })))).toBe(true)
+    expect(isSubtype(record({ a: NumberType }), neg(h))).toBe(true)
+  })
+
+  it('handler is disjoint from Function', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    const f = fn([NumberType], NumberType)
+    expect(isSubtype(h, neg(f))).toBe(true)
+    expect(isSubtype(f, neg(h))).toBe(true)
+  })
+
+  it('handler is disjoint from AnyFunction', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    const anyFn: Type = { tag: 'AnyFunction' }
+    expect(isSubtype(h, neg(anyFn))).toBe(true)
+    expect(isSubtype(anyFn, neg(h))).toBe(true)
+  })
+
+  it('handler is disjoint from Tuple/Array/Sequence', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    expect(isSubtype(h, neg(tuple([NumberType])))).toBe(true)
+    expect(isSubtype(h, neg(array(NumberType)))).toBe(true)
+    expect(isSubtype(h, neg(sequence([], NumberType, 0)))).toBe(true)
+    expect(isSubtype(tuple([NumberType]), neg(h))).toBe(true)
+  })
+
+  // Same-kind Handler × Handler can overlap — two handlers can both
+  // denote the same value when their body/output/handled/introduced
+  // align. Regression guard: the new branches must not over-claim.
+  it('handler and handler are NOT disjoint (same-kind fall-through)', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    expect(isSubtype(h, neg(h))).toBe(false)
+  })
+
+  // Handler inside a union must not be over-claimed as disjoint via
+  // the symmetric branch. `Handler × Union(Handler, Number)` is NOT
+  // fully disjoint because the Handler member overlaps.
+  it('handler and Union containing a handler are NOT disjoint', () => {
+    const h = handlerType(NumberType, NumberType, new Map())
+    expect(isSubtype(h, neg(union(h, NumberType)))).toBe(false)
+  })
+
   it('literal false does not match Null', () => {
     // false is Boolean, not Null — exercises literalMatchesPrimitive Null branch
     expect(isSubtype(literal(false), NullType)).toBe(false)

@@ -373,6 +373,13 @@ function areDisjoint(s: Type, t: Type, visited: Set<string>): boolean {
   if (s.tag === 'Record' && isListKind(t)) return true
   if (t.tag === 'Record' && isListKind(s)) return true
 
+  // Handlers are their own runtime kind — disjoint with every
+  // non-Handler shape. Same-kind Handler × Handler may still overlap
+  // structurally (two handlers can coexist if their handled /
+  // introduced / body / output align), so that case falls through.
+  if (s.tag === 'Handler' && t.tag !== 'Handler' && isGroundOrHandler(t)) return true
+  if (t.tag === 'Handler' && s.tag !== 'Handler' && isGroundOrHandler(s)) return true
+
   // Union: disjoint with T iff every member is disjoint with T
   if (s.tag === 'Union') return s.members.every(m => areDisjoint(m, t, visited))
   if (t.tag === 'Union') return t.members.every(m => areDisjoint(s, m, visited))
@@ -436,6 +443,16 @@ function isScalarKind(t: Type): boolean {
  * among themselves (a tuple IS a sequence, etc.). */
 function isListKind(t: Type): boolean {
   return t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
+}
+
+/** A handler-disjointness partner — any concrete runtime kind.
+ * Same set as `isGroundType` plus `Handler` itself, so the predicate
+ * can be called symmetrically on either side of the Handler branches
+ * in `areDisjoint` without the caller having to add `|| s.tag ===
+ * 'Handler'`. The same-kind Handler × Handler fall-through is
+ * enforced by the `t.tag !== 'Handler'` guard at the call site. */
+function isGroundOrHandler(t: Type): boolean {
+  return isGroundType(t) || t.tag === 'Handler'
 }
 
 /** Check if an intersection of types is empty (contains disjoint base types). */
