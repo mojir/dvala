@@ -2137,6 +2137,29 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 
+  // Regression: `constrain` only adds an upper bound to the body Var;
+  // without a call site, no propagation ever forces the check. Mirror
+  // the let-binding path with an eager `isSubtype` so the violation
+  // surfaces at definition time, not via call.
+  it('lambda return-type annotation violation surfaces without a call site', () => {
+    const result = dvala.typecheck('let f = (x: Number): String -> x; f')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toMatch(/not a subtype of String/)
+  })
+
+  it('lambda return-type error points at the body expression', () => {
+    // The value-side squiggle lands on the returned expression, not
+    // the function header. Use a multi-line source so the position is
+    // observable.
+    const result = dvala.typecheck([
+      'let f = (x: Number): String ->',
+      '  x;',
+      'f(1)',
+    ].join('\n'))
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.sourceCodeInfo?.position.line).toBe(2)
+  })
+
   it('function effect annotation accepts matching inferred effects', () => {
     const result = dvala.typecheck(`
       effect @test.log(Number) -> Null;
