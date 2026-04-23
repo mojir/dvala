@@ -2557,11 +2557,57 @@ function inferFunctionNode(
     ctx.pushEffects()
 
     let retType: Type = NullType
+    let lastBodyNode: AstNode | undefined
     for (const bodyNode of bodyNodes) {
       retType = inferExpr(bodyNode, ctx, funcEnv, typeMap)
+      lastBodyNode = bodyNode
     }
 
     const bodyEffects = ctx.popEffects()
+
+    // Decision #11: when the lambda carries a `: R` return-type
+    // annotation, enforce `retType <: R`. The parser stores the
+    // annotation string keyed by the function node's id with a
+    // `return:` prefix — see parseFunction.ts. When absent, keep the
+    // inferred body type as-is (inference-first).
+    const rawAnnotation = ctx.typeAnnotations?.get(node[2])
+    if (rawAnnotation?.startsWith('return:')) {
+      const declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length))
+      // Eager definition-time check FIRST — before `constrain` adds
+      // declaredType to the body Var's upper bounds (which would
+      // otherwise narrow any subsequent negative-polarity expansion
+      // and hide the violation).
+      //
+      // Prefer positive polarity (union of lower bounds) — that's the
+      // "values that flow out" view, which matches what a caller sees.
+      // It only fails the common case `(x: T): R -> x` where the body
+      // is a param var with no lower bound → Never → trivially passes.
+      // Fall back to negative polarity (intersection of upper bounds)
+      // in that case so the declared-param-type still gets compared
+      // against the annotation.
+      let expandedRet = expandType(retType, 'positive')
+      if (expandedRet.tag === 'Never') {
+        expandedRet = expandType(retType, 'negative')
+      }
+      if (!isSubtype(expandedRet, declaredType)) {
+        throw new TypeInferenceError(
+          `${typeToString(expandedRet)} is not a subtype of ${typeToString(declaredType)}`,
+          lastBodyNode?.[2] ?? node[2],
+        )
+      }
+      try {
+        // Record the constraint for downstream propagation (call-site
+        // refinement, widening, etc.). Separate from the eager check
+        // above — this is about inference flow, not enforcement.
+        constrain(ctx, retType, declaredType)
+      } catch (error) {
+        if (error instanceof TypeInferenceError && error.nodeId === undefined) {
+          error.nodeId = lastBodyNode?.[2] ?? node[2]
+        }
+        throw error
+      }
+    }
+
     const handlerWrapper = inferFunctionWrapperInfo(paramTypes, ctx)
     const overloads = synthesizeFunctionOverloads(paramTypes, retType, bodyEffects, handlerWrapper)
     if (overloads) {

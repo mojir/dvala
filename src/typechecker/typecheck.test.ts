@@ -2099,6 +2099,67 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  // Lambda return-type annotations — per decision #11, the `: R` slot
+  // between `)` and `->` is a load-bearing promise that the body
+  // produces something <: R. Annotations stay optional; when present,
+  // they must be checked.
+  it('lambda return-type annotation accepts a matching body', () => {
+    const result = dvala.typecheck('let f = (x: Number): Number -> x + 1; f(1)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('lambda return-type annotation rejects a mismatching body', () => {
+    // Body returns Number, annotation claims String. Must error.
+    const result = dvala.typecheck('let f = (x: Number): String -> x; f(1)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toMatch(/not a subtype of String/)
+  })
+
+  it('lambda return-type annotation on a zero-arg lambda is enforced', () => {
+    const result = dvala.typecheck('let f = (): Boolean -> 42; f()')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toMatch(/not a subtype of Boolean/)
+  })
+
+  it('lambda return-type annotation accepts a narrower body (subtype)', () => {
+    // Body returns literal `1`; annotation says Number. `1 <: Number` — fine.
+    const result = dvala.typecheck('let f = (): Number -> 1; f()')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('lambda return-type annotation rejects a wider body', () => {
+    // Body returns a union; annotation claims Number.
+    const result = dvala.typecheck(`
+      effect @get(Null) -> Number | String;
+      let f = (): Number -> perform(@get, null);
+      f
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  // Regression: `constrain` only adds an upper bound to the body Var;
+  // without a call site, no propagation ever forces the check. Mirror
+  // the let-binding path with an eager `isSubtype` so the violation
+  // surfaces at definition time, not via call.
+  it('lambda return-type annotation violation surfaces without a call site', () => {
+    const result = dvala.typecheck('let f = (x: Number): String -> x; f')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toMatch(/not a subtype of String/)
+  })
+
+  it('lambda return-type error points at the body expression', () => {
+    // The value-side squiggle lands on the returned expression, not
+    // the function header. Use a multi-line source so the position is
+    // observable.
+    const result = dvala.typecheck([
+      'let f = (x: Number): String ->',
+      '  x;',
+      'f(1)',
+    ].join('\n'))
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.sourceCodeInfo?.position.line).toBe(2)
+  })
+
   it('function effect annotation accepts matching inferred effects', () => {
     const result = dvala.typecheck(`
       effect @test.log(Number) -> Null;
