@@ -828,6 +828,7 @@ effect @llm.complete(String) -> String         // effect signature declaration
 | Type system | Structural | Matches Dvala's existing structural semantics. No runtime tagging cost |
 | Value types ↔ effects | One-way: value types appear *inside* effect signatures | Effects are not value types — they live in the effect dimension of function types |
 | Effect set syntax | `@{...}` | `@` is Dvala's effect marker. Visually distinct from object literals. |
+| Polymorphic let annotations | Annotation with type vars is forall-quantified; authoritative over inferred body | `let pick: (R, K) -> R[K] = (r, k) -> get(r, k)` — each reference to `pick` freshens R and K (same mechanism as builtin polymorphic signatures). Bounds via intersection (`A & Bound`) propagate to callers. Shipped 2026-04-23 (PR #87). |
 
 ### Type grammar
 

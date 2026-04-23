@@ -2396,6 +2396,83 @@ describe('typecheck — type annotations', () => {
   })
 })
 
+// Polymorphic let annotations: when the annotation mentions single-letter
+// uppercase type vars (per decision #22), those vars are forall-quantified.
+// Each reference to the binding freshens them — same mechanism builtins
+// already use. Without this, the annotation is parsed and checked but the
+// binding downstream uses the concrete inferred body type, losing
+// polymorphism.
+describe('typecheck — polymorphic let annotations', () => {
+  const dvala = createDvala()
+
+  it('polymorphic identity: (A) -> A works across calls of different types', () => {
+    const result = dvala.typecheck(`
+      let id: (A) -> A = (x) -> x;
+      let n: Number = id(42);
+      let s: String = id("hello");
+      [n, s]
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('polymorphic identity rejects wrong target type at the call', () => {
+    // id's result for "hello" must be String; annotating it as Number fails.
+    const result = dvala.typecheck(`
+      let id: (A) -> A = (x) -> x;
+      let wrong: Number = id("hello");
+      wrong
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('polymorphic pick: (R, K) -> R[K] returns precise field types', () => {
+    // Body uses `get(r, k)` — NOT `r?.k` — because `?.` takes the
+    // symbol after the dot as a literal string, ignoring the variable.
+    const result = dvala.typecheck(`
+      let pick: (R, K) -> R[K] = (r, k) -> get(r, k);
+      let u = {name: "Alice", age: 30};
+      let name: String = pick(u, "name");
+      let age: Number = pick(u, "age");
+      [name, age]
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('each call to a polymorphic let gets fresh type vars (no cross-call pollution)', () => {
+    // If A leaked across calls, one call would narrow A for the other.
+    // Both should independently instantiate.
+    const result = dvala.typecheck(`
+      let id: (A) -> A = (x) -> x;
+      let firstCallResult = id(42);
+      let secondCallResult: String = id("hello");
+      secondCallResult
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // Without the authoritative-annotation change, the body's inferred
+  // `(α) -> α` would be what callers see — the `& Number` bound in the
+  // annotation would be lost, so calling with a non-Number would
+  // silently pass. With option A, the declared type IS the contract,
+  // so the bound propagates to callers.
+  it('annotation with an intersection bound rejects mismatching args at the call site', () => {
+    const result = dvala.typecheck(`
+      let asNumber: (A & Number) -> A = (x) -> x;
+      asNumber("hi")
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('annotation with an intersection bound accepts matching args', () => {
+    const result = dvala.typecheck(`
+      let asNumber: (A & Number) -> A = (x) -> x;
+      let n = asNumber(42);
+      n
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+})
+
 // ---------------------------------------------------------------------------
 // Type aliases
 // ---------------------------------------------------------------------------

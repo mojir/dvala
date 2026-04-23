@@ -1082,6 +1082,7 @@ export function inferExpr(
         // Check type annotation constraint: let x: T = expr → constrain expr <: T
         const bindingNodeId = binding[2]
         const annotation = ctx.typeAnnotations?.get(bindingNodeId)
+        let boundType: Type = valueType
         if (annotation) {
           // Simplify the parsed annotation so surface-level patterns
           // like `{a: A} & {b: B}` are folded into a single merged
@@ -1104,10 +1105,23 @@ export function inferExpr(
               valueNode[2],
             )
           }
+          // If the annotation mentions type vars (per decision #22 — single
+          // uppercase letters like A, B, T, K), treat it as a forall-quantified
+          // signature: bind the declared type (not the inferred body), with
+          // its vars generalized. Each reference to this binding then gets
+          // freshened via the standard let-polymorphism path — matching the
+          // way builtin polymorphic signatures already work through
+          // `freshenAnnotationVars`. Without this, the user-written
+          // signature is checked at definition time but lost as the contract
+          // downstream, so callers are constrained only by whatever body
+          // inference happened to produce.
+          if (containsVars(declaredType)) {
+            boundType = generalizeTypeVars(declaredType, -1)
+          }
         }
 
         // Bind the variable in the environment
-        bindPattern(binding, valueType, env, ctx, typeMap)
+        bindPattern(binding, boundType, env, ctx, typeMap)
         recordConcretePatternTypes(binding, valueType, typeMap)
         recordLiteralPatternTypes(binding, valueNode, typeMap)
         // C6: when `let name = (…) -> …`, stash the function AST so a later
