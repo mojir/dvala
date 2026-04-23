@@ -2557,11 +2557,34 @@ function inferFunctionNode(
     ctx.pushEffects()
 
     let retType: Type = NullType
+    let lastBodyNode: AstNode | undefined
     for (const bodyNode of bodyNodes) {
       retType = inferExpr(bodyNode, ctx, funcEnv, typeMap)
+      lastBodyNode = bodyNode
     }
 
     const bodyEffects = ctx.popEffects()
+
+    // Decision #11: when the lambda carries a `: R` return-type
+    // annotation, enforce `retType <: R`. The parser stores the
+    // annotation string keyed by the function node's id with a
+    // `return:` prefix — see parseFunction.ts. When absent, keep the
+    // inferred body type as-is (inference-first).
+    const rawAnnotation = ctx.typeAnnotations?.get(node[2])
+    if (rawAnnotation?.startsWith('return:')) {
+      const declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length))
+      try {
+        constrain(ctx, retType, declaredType)
+      } catch (error) {
+        if (error instanceof TypeInferenceError && error.nodeId === undefined) {
+          // Attach to the last body expression so the squiggle lands on
+          // the value the user promised — not the function header.
+          error.nodeId = lastBodyNode?.[2] ?? node[2]
+        }
+        throw error
+      }
+    }
+
     const handlerWrapper = inferFunctionWrapperInfo(paramTypes, ctx)
     const overloads = synthesizeFunctionOverloads(paramTypes, retType, bodyEffects, handlerWrapper)
     if (overloads) {

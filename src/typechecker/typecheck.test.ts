@@ -2099,6 +2099,44 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  // Lambda return-type annotations — per decision #11, the `: R` slot
+  // between `)` and `->` is a load-bearing promise that the body
+  // produces something <: R. Annotations stay optional; when present,
+  // they must be checked.
+  it('lambda return-type annotation accepts a matching body', () => {
+    const result = dvala.typecheck('let f = (x: Number): Number -> x + 1; f(1)')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('lambda return-type annotation rejects a mismatching body', () => {
+    // Body returns Number, annotation claims String. Must error.
+    const result = dvala.typecheck('let f = (x: Number): String -> x; f(1)')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toMatch(/not a subtype of String/)
+  })
+
+  it('lambda return-type annotation on a zero-arg lambda is enforced', () => {
+    const result = dvala.typecheck('let f = (): Boolean -> 42; f()')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toMatch(/not a subtype of Boolean/)
+  })
+
+  it('lambda return-type annotation accepts a narrower body (subtype)', () => {
+    // Body returns literal `1`; annotation says Number. `1 <: Number` — fine.
+    const result = dvala.typecheck('let f = (): Number -> 1; f()')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('lambda return-type annotation rejects a wider body', () => {
+    // Body returns a union; annotation claims Number.
+    const result = dvala.typecheck(`
+      effect @get(Null) -> Number | String;
+      let f = (): Number -> perform(@get, null);
+      f
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
   it('function effect annotation accepts matching inferred effects', () => {
     const result = dvala.typecheck(`
       effect @test.log(Number) -> Null;
