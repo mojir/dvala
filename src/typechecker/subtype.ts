@@ -445,10 +445,12 @@ function isListKind(t: Type): boolean {
   return t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
 }
 
-/** A handler-disjointness partner — anything with a concrete runtime
- * kind that a handler value can never collide with. Same set as
- * `isGroundType` but also includes `Handler` itself for the
- * symmetric-same-kind fall-through check upstream. */
+/** A handler-disjointness partner — any concrete runtime kind.
+ * Same set as `isGroundType` plus `Handler` itself, so the predicate
+ * can be called symmetrically on either side of the Handler branches
+ * in `areDisjoint` without the caller having to add `|| s.tag ===
+ * 'Handler'`. The same-kind Handler × Handler fall-through is
+ * enforced by the `t.tag !== 'Handler'` guard at the call site. */
 function isGroundOrHandler(t: Type): boolean {
   return isGroundType(t) || t.tag === 'Handler'
 }

@@ -2116,8 +2116,7 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Neg': return containsVarsAboveLevel(t.inner, level)
     case 'Keyof': return containsVarsAboveLevel(t.inner, level)
     case 'Index': return containsVarsAboveLevel(t.target, level) || containsVarsAboveLevel(t.key, level)
-    case 'Alias': return t.args.some(a => containsVarsAboveLevel(a, level))
-      || containsVarsAboveLevel(t.expanded, level)
+    case 'Alias': return t.args.some(a => containsVarsAboveLevel(a, level)) || containsVarsAboveLevel(t.expanded, level)
     default: return false
   }
 }
