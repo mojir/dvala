@@ -982,12 +982,15 @@ Collection functions like `filter`, `map`, `reduce` work on objects too: `filter
 
 ### Flow-sensitive narrowing in `if`/`else`
 
-**Status (2026-04-20):** Shipped for the two most common shapes.
+**Status (2026-04-23):** Shipped for the common shapes.
 
 - Type-guard calls: `if isX(sym) then … else … end` — then branch narrows `sym` to `X`, else to `!X`.
 - Equality tests: `if sym == literal/atom then … else … end` — then branch narrows to the literal/atom, else drops it. `!=` is the flipped form.
+- `&&` / `||` composition of guards (PR #78) — then-branch (`&&`) or else-branch (`||`) sees the conjunction of operand refinements.
+- `not(cond)` negation (PR #78) — swaps then/else from the inner narrowing.
+- Field-path narrowing on `isX(obj.field…)` and `obj.field… == lit` (PR #79) — refines the root sym to a record shape that pins `field…` to the matched type. Picks the matching member of a tagged union and tightens single-record union-typed fields.
 
-Non-supported shapes (fall through to no narrowing; branches still infer correctly): `&&`/`||` composition of guards, `not(...)` negation, narrowing on non-Sym arguments (e.g. `isX(obj.field)`). These can be added when they appear in practice without changing core algebra.
+Still unsupported (defer until they show up in practice): **conditional optionality** — narrowing on a tag field (`r.status == :ok`) does NOT make a sibling optional field (`r.value`) non-optional in the then branch. The `optionalFields` sidecar is per-field and not gated on other fields. Either rewrite as a tagged union, or add a new presence-conditioned-on-tag relationship to the record type — the latter is a non-trivial extension.
 
 Implementation: `extractIfNarrowings` + `narrowEnv` in `src/typechecker/infer.ts`, reusing `intersectMatchTypes` from the match-guard path. See `describe('typecheck — flow-sensitive narrowing in if/else')` for the suite.
 

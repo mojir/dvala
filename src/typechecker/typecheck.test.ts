@@ -593,6 +593,52 @@ describe('typecheck — flow-sensitive narrowing in if/else', () => {
     `)
     expect(result.diagnostics).toHaveLength(0)
   })
+
+  // Field-path narrowing: equality on `r.field` narrows the *root sym*
+  // to a refined record shape, picking the matching tagged-union member.
+  it('equality on a field path narrows a tagged union', () => {
+    const result = dvala.typecheck(`
+      let describe = (x: {kind: :a, val: Number} | {kind: :b, val: String}) ->
+        if x.kind == :a then x.val + 1 else x.val ++ "!" end;
+      describe({kind: :a, val: 1})
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // Type guard on a field path narrows the same way.
+  it('isX(obj.field) narrows the root sym', () => {
+    const result = dvala.typecheck(`
+      let describe = (r: {payload: String | Number}) ->
+        if isString(r.payload) then count(r.payload) else r.payload + 1 end;
+      describe({payload: "hi"})
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // Nested field paths compose left-to-right; the narrowing wraps in
+  // open records at every level so it intersects cleanly with the outer.
+  it('nested field path equality narrows the root', () => {
+    const result = dvala.typecheck(`
+      let f = (env: {flags: {debug: :on, level: Number} | {debug: :off}}) ->
+        if env.flags.debug == :on then env.flags.level else 0 end;
+      f({flags: {debug: :on, level: 3}})
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // Equality narrowing against a literal that doesn't intersect with the
+  // declared field type collapses the then-branch to Never. The match-case
+  // redundancy machinery doesn't fire on `if`, but the narrowing should at
+  // least not produce surprising side effects.
+  it('field equality with disjoint literal does not crash inference', () => {
+    const result = dvala.typecheck(`
+      let f = (r: {status: :ok}) -> if r.status == :error then 1 else 2 end;
+      f({status: :ok})
+    `)
+    // Ensure no inference exception bubbled up; warnings/errors are
+    // acceptable, hard exceptions are not.
+    expect(Array.isArray(result.diagnostics)).toBe(true)
+  })
 })
 
 // Optional record fields: `{a: A, b?: B}` — field `b` may be absent from

@@ -16,7 +16,7 @@ import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
   ClosedTail, OpenTail,
-  atom, literal, fn, array, tuple, union, inter, neg, handlerType, sequence, sequenceElementAt, sequenceMayHaveIndex, toSequenceType,
+  atom, literal, fn, array, record as recordType, tuple, union, inter, neg, handlerType, sequence, sequenceElementAt, sequenceMayHaveIndex, toSequenceType,
   functionAcceptsArity, functionArityLabel, getFunctionParamType,
   typeToString, typeEquals,
   effectSetToString, isEffectSubset, subtractEffects,
@@ -986,13 +986,11 @@ export function inferExpr(
         const condType = inferExpr(cond, ctx, env, typeMap)
         constrain(ctx, condType, BooleanType)
         // Flow-sensitive narrowing: if the condition is a type guard
-        // (`isX(sym)`), equality test (`sym == literal/atom`), `not(...)`
-        // wrapper, or `&&`/`||` composition of any of these, narrow the
-        // referenced symbols in each branch. Fall back to the outer env
-        // if no narrowing shape is recognised. Still unsupported:
-        // narrowing on non-Sym arguments like `isX(obj.field)` (would
-        // propagate the refinement into the record's field type).
-        // See `extractIfNarrowings` for the full list.
+        // (`isX(sym)` or `isX(sym.field…)`), equality test (`sym == lit`,
+        // `sym.field == lit`), `not(...)` wrapper, or `&&`/`||`
+        // composition of any of these, narrow the referenced symbols in
+        // each branch. Fall back to the outer env if no narrowing shape
+        // is recognised. See `extractIfNarrowings` for the full list.
         const narrowings = extractIfNarrowings(cond, env)
         const thenEnv = narrowings ? narrowEnv(env, narrowings.whenTrue) : env
         const elseEnv = narrowings ? narrowEnv(env, narrowings.whenFalse) : env
@@ -2651,8 +2649,12 @@ function isConstrainedFunctionArityCompatible(
  *
  * Recognised shapes:
  * - `isX(sym)` — builtin type guard. Then: sym & X. Else: sym & !X.
- * - `sym == atomOrLiteral` — equality test. Then: sym & atomOrLiteral.
- *   Else: sym & !atomOrLiteral.
+ * - `isX(sym.field…)` — same, but the narrowing is wrapped in open
+ *   records along the `.`-access path so it intersects with the outer
+ *   record at the right depth.
+ * - `sym == atomOrLiteral` / `sym.field… == atomOrLiteral` — equality
+ *   test. Then: refines the sym (or root sym) to match the literal at
+ *   that field. Else: refines to its complement.
  * - `not(cond)` — swaps then/else from the inner narrowing.
  * - `a && b` — then branch sees the conjunction of operand narrowings;
  *   else branch can't be narrowed (`!(a && b)` = `!a || !b`).
@@ -2661,8 +2663,6 @@ function isConstrainedFunctionArityCompatible(
  *
  * Returns undefined if the condition isn't a recognised narrowing shape,
  * in which case the If case falls back to normal inference of both branches.
- *
- * Still unsupported: narrowing on non-Sym arguments like `isX(obj.field)`.
  */
 function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
   whenTrue: Map<string, Type>
@@ -2698,16 +2698,19 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
     return { whenTrue: inner.whenFalse, whenFalse: inner.whenTrue }
   }
 
-  // Type-guard builtin: isX(sym) — single Sym arg, callee has a guardType.
+  // Type-guard builtin: isX(sym) or isX(sym.field…) — accepts a single
+  // Sym arg or a `.`-chain rooted in one. The narrowing is keyed on the
+  // root Sym; for field paths the guard's type is wrapped in open
+  // records so it intersects with the outer record at the right depth.
   if (argNodes.length === 1) {
     const argNode = argNodes[0]!
-    if (argNode[0] !== NodeTypes.Sym) return undefined
-    const symName = argNode[1] as string
+    const path = extractFieldPath(argNode)
+    if (!path) return undefined
     const info = getBuiltinType(builtinName)
     if (info.guardType) {
       return {
-        whenTrue: new Map([[symName, info.guardType]]),
-        whenFalse: new Map([[symName, neg(info.guardType)]]),
+        whenTrue: new Map([[path.symName, wrapNarrowingInFieldPath(info.guardType, path.fields)]]),
+        whenFalse: new Map([[path.symName, wrapNarrowingInFieldPath(neg(info.guardType), path.fields)]]),
       }
     }
     return undefined
@@ -2765,26 +2768,64 @@ function composeNarrowings(maps: (Map<string, Type> | undefined)[]): Map<string,
 }
 
 /**
- * If `symNode` is a `Sym` reference and `valueNode` is a literal/atom, return
- * the narrowing. Used by equality-based flow narrowing.
+ * Extract a chain of field names rooted in a Sym from a `.`-access AST.
+ * `r` → `{symName: 'r', fields: []}`. `r.a` → `{symName: 'r', fields: ['a']}`.
+ * `r.a.b` → `{symName: 'r', fields: ['a', 'b']}`. Returns null if the
+ * receiver isn't a Sym at the bottom or if any segment isn't a Str-keyed
+ * single-arg Call (the surface form of `.`-access).
+ */
+function extractFieldPath(node: AstNode): { symName: string; fields: string[] } | null {
+  if (node[0] === NodeTypes.Sym) {
+    return { symName: node[1] as string, fields: [] }
+  }
+  if (node[0] !== NodeTypes.Call) return null
+  const [calleeNode, argNodes] = node[1] as [AstNode, AstNode[]]
+  if (!Array.isArray(argNodes) || argNodes.length !== 1) return null
+  const argNode = argNodes[0]!
+  if (argNode[0] !== NodeTypes.Str) return null
+  const inner = extractFieldPath(calleeNode)
+  if (!inner) return null
+  return { symName: inner.symName, fields: [...inner.fields, argNode[1] as string] }
+}
+
+/**
+ * Wrap a leaf narrowing type in a chain of open records following
+ * `fieldPath`. With an empty path, returns `leaf` unchanged. With path
+ * `['a', 'b']`, wraps to `{a: {b: leaf, ...}, ...}` — open at every
+ * level so the narrowing intersects cleanly with whatever extra fields
+ * the outer record carries.
+ */
+function wrapNarrowingInFieldPath(leaf: Type, fields: string[]): Type {
+  let t: Type = leaf
+  for (let i = fields.length - 1; i >= 0; i--) {
+    t = recordType({ [fields[i]!]: t }, true)
+  }
+  return t
+}
+
+/**
+ * If `symNode` is a Sym reference (or a `.`-chain rooted in one) and
+ * `valueNode` is a literal/atom, return the narrowing keyed on the root
+ * Sym, with the leaf value wrapped in the field path so it intersects
+ * with the outer record at the right depth.
  */
 function extractEqualityNarrowing(symNode: AstNode, valueNode: AstNode): { symName: string; value: Type } | null {
-  if (symNode[0] !== NodeTypes.Sym) return null
-  const symName = symNode[1] as string
+  const path = extractFieldPath(symNode)
+  if (!path) return null
   const kind = valueNode[0]
+  let leaf: Type | null = null
   if (kind === NodeTypes.Atom) {
-    return { symName, value: atom(valueNode[1] as string) }
-  }
-  if (kind === NodeTypes.Num || kind === NodeTypes.Str) {
-    return { symName, value: literal(valueNode[1] as string | number) }
-  }
-  if (kind === NodeTypes.Reserved) {
+    leaf = atom(valueNode[1] as string)
+  } else if (kind === NodeTypes.Num || kind === NodeTypes.Str) {
+    leaf = literal(valueNode[1] as string | number)
+  } else if (kind === NodeTypes.Reserved) {
     const lit = valueNode[1] as string
-    if (lit === 'true') return { symName, value: literal(true) }
-    if (lit === 'false') return { symName, value: literal(false) }
+    if (lit === 'true') leaf = literal(true)
+    else if (lit === 'false') leaf = literal(false)
     // 'null' has no Literal type — leave unnarrowed.
   }
-  return null
+  if (!leaf) return null
+  return { symName: path.symName, value: wrapNarrowingInFieldPath(leaf, path.fields) }
 }
 
 /**
@@ -3211,7 +3252,75 @@ function intersectMatchTypes(left: Type, right: Type): Type {
     return simplify(union(...expandedRight.members.map(member => intersectMatchTypes(expandedLeft, member)).filter(member => member.tag !== 'Never')))
   }
 
+  // Two records: collapse the structural intersection into a single
+  // record so downstream field access sees a Record (not an Inter) and
+  // can read the narrowed field type directly. Without this, field
+  // narrowing on `r.payload` leaves r as `outer & {payload: T, ...}`,
+  // which constrain treats as overload alternatives — unioning instead
+  // of intersecting the field types.
+  if (expandedLeft.tag === 'Record' && expandedRight.tag === 'Record') {
+    return simplify(intersectRecords(expandedLeft, expandedRight))
+  }
+
   return simplify(inter(expandedLeft, expandedRight))
+}
+
+/**
+ * Structural intersection of two record types. Field-by-field: a field
+ * present in both becomes the intersection of its types; a field present
+ * in only one is carried over only if the OTHER record is open. The
+ * result is closed iff at least one input is closed. `optionalFields`
+ * is preserved only when BOTH sides agree the field is optional —
+ * otherwise the side that requires the field wins.
+ */
+function intersectRecords(
+  a: Type & { tag: 'Record' },
+  b: Type & { tag: 'Record' },
+): Type {
+  const fields = new Map<string, Type>()
+  const optionalFields = new Set<string>()
+  const allKeys = new Set<string>([...a.fields.keys(), ...b.fields.keys()])
+  for (const k of allKeys) {
+    const av = a.fields.get(k)
+    const bv = b.fields.get(k)
+    const aOpt = a.optionalFields?.has(k) ?? false
+    const bOpt = b.optionalFields?.has(k) ?? false
+    if (av && bv) {
+      const intersected = intersectMatchTypes(av, bv)
+      if (intersected.tag === 'Never') {
+        // If both sides allow the field to be absent, the intersection
+        // still contains values that simply omit the field. Only when
+        // at least one side requires the field is the empty
+        // intersection a contradiction.
+        if (aOpt && bOpt) continue
+        return Never
+      }
+      fields.set(k, intersected)
+      // Field is optional in the combined type iff both sides agree.
+      if (aOpt && bOpt) optionalFields.add(k)
+    } else if (av) {
+      // Field only in `a`. A closed `b` says values have no such field, so:
+      //   - `a` optional → field is simply absent in the intersection.
+      //   - `a` required → contradiction.
+      if (!b.open) {
+        if (aOpt) continue
+        return Never
+      }
+      fields.set(k, av)
+      if (aOpt) optionalFields.add(k)
+    } else if (bv) {
+      if (!a.open) {
+        if (bOpt) continue
+        return Never
+      }
+      fields.set(k, bv)
+      if (bOpt) optionalFields.add(k)
+    }
+  }
+  const open = a.open && b.open
+  const out: Type = { tag: 'Record', fields, open }
+  if (optionalFields.size > 0) out.optionalFields = optionalFields
+  return out
 }
 
 function areMatchTypesDisjoint(left: Type, right: Type): boolean {
@@ -3640,8 +3749,8 @@ function inferCollectionReduceCall(calleeNode: AstNode, argTypes: Type[], ctx: I
   return accType
 }
 
-function collectionValueType(recordType: Extract<Type, { tag: 'Record' }>): Type {
-  const fieldTypes = [...recordType.fields.values()]
+function collectionValueType(rec: Extract<Type, { tag: 'Record' }>): Type {
+  const fieldTypes = [...rec.fields.values()]
   return fieldTypes.length === 0 ? Unknown : union(...fieldTypes)
 }
 
