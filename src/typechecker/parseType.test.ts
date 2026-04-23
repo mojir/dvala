@@ -554,3 +554,46 @@ describe('parseType — real-world builtin signatures', () => {
     expect(() => parseTypeAnnotation('???')).toThrow(TypeParseError)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Indexed-access types: keyof T and T[K]
+// ---------------------------------------------------------------------------
+
+describe('parseType — keyof and indexed access', () => {
+  it('keyof of a closed record is a union of literal-string keys', () => {
+    expect(typeToString(parseTypeAnnotation('keyof {a: Number, b: String}'))).toBe('"a" | "b"')
+  })
+
+  it('keyof of an open record widens to String', () => {
+    expect(typeToString(parseTypeAnnotation('keyof {a: Number, ...}'))).toBe('String')
+  })
+
+  it('T["name"] resolves to the matching field type', () => {
+    expect(typeToString(parseTypeAnnotation('{a: Number, b: String}["b"]'))).toBe('String')
+  })
+
+  it('T[keyof T] on a closed record is the union of field types', () => {
+    expect(typeToString(parseTypeAnnotation('{a: Number, b: String}[keyof {a: Number, b: String}]')))
+      .toBe('Number | String')
+  })
+
+  it('closed record with missing key is Never', () => {
+    expect(typeToString(parseTypeAnnotation('{a: Number}["missing"]'))).toBe('Never')
+  })
+
+  it('open record with missing key is Unknown', () => {
+    expect(typeToString(parseTypeAnnotation('{a: Number, ...}["missing"]'))).toBe('Unknown')
+  })
+
+  it('identifier starting with "keyof" is not the keyword', () => {
+    // `keyofThing` is an unknown alias (resolves to Unknown), NOT
+    // `keyof Thing` (which would be `keyof Unknown` = `String`). The
+    // keyword boundary check prevents the greedy parse.
+    expect(typeToString(parseTypeAnnotation('keyofThing'))).toBe('Unknown')
+    expect(typeToString(parseTypeAnnotation('keyof Thing'))).toBe('String')
+  })
+
+  it('postfix chain: T["a"][] builds an array of the field type', () => {
+    expect(typeToString(parseTypeAnnotation('{a: Number}["a"][]'))).toBe('Number[]')
+  })
+})

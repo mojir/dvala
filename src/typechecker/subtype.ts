@@ -17,7 +17,7 @@
  */
 
 import type { FunctionType, SequenceType, Type, PrimitiveName } from './types'
-import { effectSetToString, functionAcceptsArity, getFunctionParamType, isEffectSubset, sequenceElementAt, sequenceMayHaveIndex, toSequenceType, typeEquals } from './types'
+import { effectSetToString, functionAcceptsArity, getFunctionParamType, indexType, isEffectSubset, keyofType, sequenceElementAt, sequenceMayHaveIndex, toSequenceType, typeEquals } from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -123,6 +123,30 @@ function checkBody(s: Type, t: Type, visited: Set<string>): boolean {
   // --- Recursive types: unfold one step ---
   if (s.tag === 'Recursive') return check(unfoldRecursive(s), t, visited)
   if (t.tag === 'Recursive') return check(s, unfoldRecursive(t), visited)
+
+  // --- Indexed-access placeholders: try to reduce. If the constructor
+  //     returns the same Keyof/Index shape, the inner isn't concrete
+  //     enough — bail conservatively.
+  if (s.tag === 'Keyof') {
+    const reduced = keyofType(s.inner)
+    if (reduced.tag !== 'Keyof') return check(reduced, t, visited)
+    return false
+  }
+  if (t.tag === 'Keyof') {
+    const reduced = keyofType(t.inner)
+    if (reduced.tag !== 'Keyof') return check(s, reduced, visited)
+    return false
+  }
+  if (s.tag === 'Index') {
+    const reduced = indexType(s.target, s.key)
+    if (reduced.tag !== 'Index') return check(reduced, t, visited)
+    return false
+  }
+  if (t.tag === 'Index') {
+    const reduced = indexType(t.target, t.key)
+    if (reduced.tag !== 'Index') return check(s, reduced, visited)
+    return false
+  }
 
   // --- Type variables: check bounds (Step 2 will extend this) ---
   if (s.tag === 'Var' || t.tag === 'Var') return false
@@ -456,6 +480,12 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
       if (t.id === varId) return t
       return { tag: 'Recursive', id: t.id, body: substituteVar(t.body, varId, replacement) }
     }
+    case 'Keyof': return { tag: 'Keyof', inner: substituteVar(t.inner, varId, replacement) }
+    case 'Index': return {
+      tag: 'Index',
+      target: substituteVar(t.target, varId, replacement),
+      key: substituteVar(t.key, varId, replacement),
+    }
     default: return t // Primitive, Atom, Literal, Regex, Unknown, Never
   }
 }
@@ -502,6 +532,8 @@ function typeId(t: Type): string {
     // counter value). The body's Var references terminate in `V:<id>`, so
     // the recursion bottoms out without visiting the enclosing Recursive.
     case 'Recursive': return `Rec:${t.id}:${typeId(t.body)}`
+    case 'Keyof': return `K:${typeId(t.inner)}`
+    case 'Index': return `X:${typeId(t.target)}|${typeId(t.key)}`
   }
 }
 

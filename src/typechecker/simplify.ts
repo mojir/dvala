@@ -13,7 +13,7 @@
  */
 
 import type { Type, PrimitiveName } from './types'
-import { Never, Unknown, array, normalizeSequenceType, tuple, typeEquals, union, inter, neg } from './types'
+import { Never, Unknown, array, indexType, inter, keyofType, neg, normalizeSequenceType, tuple, typeEquals, union } from './types'
 import { isSubtype } from './subtype'
 
 // ---------------------------------------------------------------------------
@@ -82,6 +82,8 @@ export function simplify(t: Type): Type {
       args: t.args.map(simplify),
       expanded: simplify(t.expanded),
     }
+    case 'Keyof': return keyofType(simplify(t.inner))
+    case 'Index': return indexType(simplify(t.target), simplify(t.key))
     default: return t
   }
 }

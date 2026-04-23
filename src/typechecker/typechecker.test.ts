@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   NumberType, IntegerType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, PureEffects,
-  atom, literal, fn, tuple, record, array, sequence, toSequenceType, union, inter, neg, handlerType, effectSet,
+  atom, literal, fn, tuple, record, array, sequence, toSequenceType, union, inter, neg, handlerType, effectSet, indexType, keyofType,
   typeToString, typeEquals,
 } from './types'
 import type { Type } from './types'
@@ -141,6 +141,17 @@ describe('typeToString', () => {
     expect(typeToString(Unknown)).toBe('Unknown')
     expect(typeToString(Never)).toBe('Never')
   })
+
+  it('keyof placeholder renders with leading keyword', () => {
+    // Stays as a Keyof when the inner isn't concrete (here: a raw Var).
+    const raw: Type = { tag: 'Keyof', inner: NumberType }
+    expect(typeToString(raw)).toBe('keyof Number')
+  })
+
+  it('indexed-access placeholder renders as T[K]', () => {
+    const raw: Type = { tag: 'Index', target: NumberType, key: StringType }
+    expect(typeToString(raw)).toBe('Number[String]')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -184,6 +195,24 @@ describe('typeEquals', () => {
 
   it('sequences with different bounds are not equal', () => {
     expect(typeEquals(sequence([literal(1)], NumberType, 1), sequence([literal(1)], NumberType, 2))).toBe(false)
+  })
+
+  it('Keyof placeholders with same inner are equal', () => {
+    const a: Type = { tag: 'Keyof', inner: NumberType }
+    const b: Type = { tag: 'Keyof', inner: NumberType }
+    expect(typeEquals(a, b)).toBe(true)
+  })
+
+  it('Index placeholders with same target and key are equal', () => {
+    const a: Type = { tag: 'Index', target: NumberType, key: StringType }
+    const b: Type = { tag: 'Index', target: NumberType, key: StringType }
+    expect(typeEquals(a, b)).toBe(true)
+  })
+
+  it('Index placeholders differ on key', () => {
+    const a: Type = { tag: 'Index', target: NumberType, key: StringType }
+    const b: Type = { tag: 'Index', target: NumberType, key: NumberType }
+    expect(typeEquals(a, b)).toBe(false)
   })
 })
 
@@ -1289,6 +1318,33 @@ describe('simplify', () => {
     if (simplified.tag !== 'Record') return
     expect(simplified.optionalFields).toBeDefined()
     expect([...(simplified.optionalFields ?? [])]).toEqual(['a'])
+  })
+
+  it('simplifies keyof of a closed record to a union of key literals', () => {
+    const t = simplify(keyofType(record({ a: NumberType, b: StringType })))
+    expect(typeEquals(t, union(literal('a'), literal('b')))).toBe(true)
+  })
+
+  it('simplifies indexed access with literal key to the field type', () => {
+    const t = simplify(indexType(record({ payload: StringType }), literal('payload')))
+    expect(typeEquals(t, StringType)).toBe(true)
+  })
+
+  it('simplifies indexed access with union of literal keys to union of field types', () => {
+    const r = record({ a: NumberType, b: StringType })
+    const t = simplify(indexType(r, union(literal('a'), literal('b'))))
+    expect(typeEquals(simplify(t), simplify(union(NumberType, StringType)))).toBe(true)
+  })
+
+  it('simplifies T[K] on optional field widens to T | Null', () => {
+    const rOpt: Type = {
+      tag: 'Record',
+      fields: new Map([['age', NumberType]]),
+      open: false,
+      optionalFields: new Set(['age']),
+    }
+    const t = simplify(indexType(rOpt, literal('age')))
+    expect(typeEquals(t, union(NumberType, NullType))).toBe(true)
   })
 
   it('Number & 42 → 42 (narrow supertype in intersection)', () => {

@@ -1016,7 +1016,7 @@ No change to the core algebra — purely an inference-time refinement, reusing t
 - `{a: A, b?: B}` — field `b` may be absent from actual values; when present, is `B`. Distinct from `{a: A, b: B | Null}` (key present, value may be null).
 - Record type stores a sidecar `optionalFields?: Set<string>` — existing code paths that read `fields` continue to work; optional-aware paths check the set.
 - Subtyping: `{a: "x"} <: {a: String, b?: Number}` holds (optional field absent in S is OK). Closed records reject unknown fields as before.
-- Strict access (`obj.b`) on an optional field is a type error; the message suggests `?.b` for safe access. Safe access (`obj?.b`) desugars to `get(obj, "b")` which returns `Unknown` today — tightening to `T | Null` requires `T[K]` (indexed-access types, still pending).
+- Strict access (`obj.b`) on an optional field is a type error; the message suggests `?.b` for safe access. Safe access (`obj?.b`) desugars to `get(obj, "b")` which returns `Unknown` today. The indexed-access primitives shipped in PR #80 make `T["b"] | Null` expressible type-level (see "Indexed-access types and `keyof`" below), but wiring the `get` builtin to return it requires bounded generics in annotation syntax (`<T, K: String>(T, K) -> T[K] | Null`) — still pending.
 - Function-param `name?: T` keeps its existing Option-2 sugar (`T | Null`) — function params have runtime auto-fill so the sugar works there.
 
 See `describe('typecheck — optional record fields')` in `src/typechecker/typecheck.test.ts` for the test suite.
@@ -1037,22 +1037,14 @@ Option 1 is the right long-term answer (matches TS and avoids widening access to
 
 ### Indexed-access types and `keyof`
 
-`obj[key]` currently widens: the typechecker cannot express "the type of the field named by this key". Example:
+**Status (2026-04-23):** Type-level primitives shipped (PR #80).
 
-```dvala
-let pick = (obj, key) -> obj[key]
-let r = pick({a: 1, b: "hi"}, "b")
-r + 1
-// Current: passes typecheck, fails at runtime.
-// TS:      <T, K extends keyof T>(obj: T, key: K) => T[K] — caught statically.
-```
+- `keyof T` — union of literal-string keys of a record. Closed records give the exact set (`keyof {a: Number, b: String}` = `"a" | "b"`); open records widen to `String` (extra runtime keys allowed).
+- `T[K]` — indexed access. When `K` is a literal-string and `T` a concrete record, resolves to the field type. Union-typed `K` distributes. Missing key on closed record = `Never`; missing key on open = `Unknown`. Optional field widens to `T | Null`.
+- Parser accepts both as annotation syntax: `keyof T` (prefix keyword, identifier-bounded) and `T[K]` (postfix, sibling to `T[]`).
+- Two new `Type` tags (`Keyof`, `Index`) that simplify away once the inner record is concrete. Placeholder nodes stay unresolved for generic / type-variable inputs.
 
-Needed primitives:
-
-- `keyof T` — a type denoting the union of literal-string keys of a record type. Fits set-theoretic directly: `keyof {a: Number, b: String}` = `"a" | "b"`.
-- `T[K]` indexed access — when `K` is a singleton key type, resolve to the field type; when `K` is a union, resolve to the union of field types.
-
-This pairs with literal types (already in Phase A) and unlocks typed `pick`, `get`, record-walking library functions. No core-algebra change — two new `Type` tags (`Keyof` and `Index`) that simplify away once the record is concrete.
+Still pending: wiring `get`'s builtin signature to return `T[K] | Null` so `obj?.b` tightens from `Unknown` to `T | Null`. That requires bounded generics on builtin type annotations (`<T, K: String>(T, K) -> T[K] | Null`), which the current annotation grammar doesn't express. Foundation is now in place.
 
 ### Template string types
 
