@@ -2240,6 +2240,23 @@ function generalizeInner(t: Type, level: number, mapping: Map<string, TypeVar>):
       const inner = generalizeInner(t.inner, level, mapping)
       return inner === t.inner ? t : neg(inner)
     }
+    case 'Keyof': {
+      const inner = generalizeInner(t.inner, level, mapping)
+      return inner === t.inner ? t : keyofType(inner)
+    }
+    case 'Index': {
+      // Without this case, vars inside `Index(R, K)` stay un-promoted
+      // while the surrounding Function's param vars ARE generalized —
+      // so later `freshenInner` freshens the params but the shared
+      // Index object keeps the original (un-generalized) Vars. That
+      // manifests as scope bleed across calls: every call to a
+      // polymorphic `(R, K) -> R[K]` returns the SAME unresolved Index
+      // whose inner vars never bind to the call-site args, so the
+      // result expands to `Never`.
+      const target = generalizeInner(t.target, level, mapping)
+      const key = generalizeInner(t.key, level, mapping)
+      return target === t.target && key === t.key ? t : indexType(target, key)
+    }
     case 'Alias': {
       const args = t.args.map(a => generalizeInner(a, level, mapping))
       const expanded = generalizeInner(t.expanded, level, mapping)
