@@ -29,7 +29,7 @@ import type { RowVarTail, Type } from './types'
 import {
   NumberType, IntegerType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, AnyFunction, PureEffects,
-  atom, literal, fn, array, tuple, union, inter, neg, effectSet, handlerType, indexType, keyofType,
+  array, atom, effectSet, fn, handlerType, indexType, inter, keyofType, literal, neg, tuple, union,
 } from './types'
 import { getEffectDeclaration } from './effectTypes'
 
