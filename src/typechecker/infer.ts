@@ -16,7 +16,7 @@ import {
   StringType, BooleanType, NullType,
   Unknown, Never, PureEffects, AnyFunction,
   ClosedTail, OpenTail,
-  atom, literal, fn, array, record as recordType, tuple, union, inter, neg, handlerType, sequence, sequenceElementAt, sequenceMayHaveIndex, toSequenceType,
+  atom, indexType, keyofType, literal, fn, array, record as recordType, tuple, union, inter, neg, handlerType, sequence, sequenceElementAt, sequenceMayHaveIndex, toSequenceType,
   functionAcceptsArity, functionArityLabel, getFunctionParamType,
   typeToString, typeEquals,
   effectSetToString, isEffectSubset, subtractEffects,
@@ -490,6 +490,32 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   }
   if (rhs.tag === 'Alias') {
     constrain(ctx, lhs, rhs.expanded)
+    return
+  }
+
+  // Indexed-access placeholders: try to reduce by expanding the inner
+  // types, then constrain the reduction. If the inner types aren't
+  // concrete enough to collapse (e.g. a Var with no bounds), the
+  // constructor returns the same Keyof/Index shape; in that case we
+  // conservatively defer — adding no constraint rather than throwing.
+  // Deferring is sound: a later expansion call (let-annotation check,
+  // display) gets another chance to reduce once bounds flow in.
+  if (lhs.tag === 'Keyof' || lhs.tag === 'Index') {
+    const reduced = lhs.tag === 'Keyof'
+      ? keyofType(expandType(lhs.inner))
+      : indexType(expandType(lhs.target), expandType(lhs.key))
+    if (reduced.tag !== lhs.tag) {
+      constrain(ctx, reduced, rhs)
+    }
+    return
+  }
+  if (rhs.tag === 'Keyof' || rhs.tag === 'Index') {
+    const reduced = rhs.tag === 'Keyof'
+      ? keyofType(expandType(rhs.inner))
+      : indexType(expandType(rhs.target), expandType(rhs.key))
+    if (reduced.tag !== rhs.tag) {
+      constrain(ctx, lhs, reduced)
+    }
     return
   }
 
@@ -1815,6 +1841,8 @@ function containsVars(t: Type): boolean {
     case 'Union':
     case 'Inter': return t.members.some(containsVars)
     case 'Neg': return containsVars(t.inner)
+    case 'Keyof': return containsVars(t.inner)
+    case 'Index': return containsVars(t.target) || containsVars(t.key)
     default: return false
   }
 }
@@ -1913,6 +1941,11 @@ function freshenAllVars(
     case 'Union': return union(...t.members.map(m => freshenAllVars(ctx, m, mapping, rowMapping)))
     case 'Inter': return { tag: 'Inter', members: t.members.map(m => freshenAllVars(ctx, m, mapping, rowMapping)) }
     case 'Neg': return { tag: 'Neg', inner: freshenAllVars(ctx, t.inner, mapping, rowMapping) }
+    case 'Keyof': return keyofType(freshenAllVars(ctx, t.inner, mapping, rowMapping))
+    case 'Index': return indexType(
+      freshenAllVars(ctx, t.target, mapping, rowMapping),
+      freshenAllVars(ctx, t.key, mapping, rowMapping),
+    )
     default: return t
   }
 }
@@ -2003,6 +2036,13 @@ function freshenInner(
       return { tag: 'Inter', members: t.members.map(m => freshenInner(ctx, m, mapping, rowMapping)) }
     case 'Neg':
       return { tag: 'Neg', inner: freshenInner(ctx, t.inner, mapping, rowMapping) }
+    case 'Keyof':
+      return keyofType(freshenInner(ctx, t.inner, mapping, rowMapping))
+    case 'Index':
+      return indexType(
+        freshenInner(ctx, t.target, mapping, rowMapping),
+        freshenInner(ctx, t.key, mapping, rowMapping),
+      )
     default:
       return t
   }
@@ -2040,6 +2080,8 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Union':
     case 'Inter': return t.members.some(m => containsVarsAboveLevel(m, level))
     case 'Neg': return containsVarsAboveLevel(t.inner, level)
+    case 'Keyof': return containsVarsAboveLevel(t.inner, level)
+    case 'Index': return containsVarsAboveLevel(t.target, level) || containsVarsAboveLevel(t.key, level)
     default: return false
   }
 }
@@ -4562,6 +4604,19 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
       return union(...t.members.map(m => expandType(m, polarity, new Set(visited))))
     case 'Inter':
       return { tag: 'Inter', members: t.members.map(m => expandType(m, polarity, new Set(visited))) }
+    // Expand the inner(s) first, then call the reducing constructor so
+    // the placeholder collapses to a concrete union / field type once
+    // its target and key are known. Without this, an `Index(α, "a")`
+    // where α resolved to `{a: Number}` via its bounds would stay as
+    // a placeholder forever — callers (e.g. the `?.` → `get` tightening)
+    // wouldn't see the reduced `Number | Null`.
+    case 'Keyof':
+      return keyofType(expandType(t.inner, polarity, new Set(visited)))
+    case 'Index':
+      return indexType(
+        expandType(t.target, polarity, new Set(visited)),
+        expandType(t.key, polarity, new Set(visited)),
+      )
     default:
       return t
   }

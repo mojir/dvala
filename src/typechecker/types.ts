@@ -392,12 +392,44 @@ export function indexType(target: Type, key: Type): Type {
   if (key.tag === 'Union') {
     return union(...key.members.map(m => indexType(target, m)))
   }
+  // Record × literal-string key → field type (with optional-widening).
   if (target.tag === 'Record' && key.tag === 'Literal' && typeof key.value === 'string') {
     const name = key.value
     const field = target.fields.get(name)
     if (field === undefined) return target.open ? Unknown : Never
     if (target.optionalFields?.has(name)) return union(field, NullType)
     return field
+  }
+  // Tuple × integer literal key → positional element type, or Never if
+  // out of bounds. Callers pair this with `| Null` (e.g. in the `get`
+  // builtin overload) to cover the out-of-bounds-returns-null case.
+  if (target.tag === 'Tuple' && key.tag === 'Literal' && typeof key.value === 'number' && Number.isInteger(key.value)) {
+    const idx = key.value
+    const elem = target.elements[idx]
+    return elem === undefined ? Never : elem
+  }
+  // Array × integer literal → element type (arrays are homogeneous;
+  // out-of-bounds still yields the element type, Null gets unioned by
+  // the caller).
+  if (target.tag === 'Array' && key.tag === 'Literal' && typeof key.value === 'number' && Number.isInteger(key.value)) {
+    return target.element
+  }
+  // Sequence × integer literal → positional lookup via the
+  // prefix/rest shape. Same overall answer as Tuple/Array combined.
+  if (target.tag === 'Sequence' && key.tag === 'Literal' && typeof key.value === 'number' && Number.isInteger(key.value)) {
+    const idx = key.value
+    if (idx < target.prefix.length) return target.prefix[idx]!
+    // Past the prefix: if maxLength says this index can exist, it's in
+    // the `rest` slot; otherwise out of bounds.
+    if (target.maxLength !== undefined && idx >= target.maxLength) return Never
+    return target.rest
+  }
+  // String × integer literal → String (any index gives a single-char
+  // string at runtime; out of bounds yields Null which the caller
+  // unions in).
+  if (target.tag === 'Primitive' && target.name === 'String'
+      && key.tag === 'Literal' && typeof key.value === 'number' && Number.isInteger(key.value)) {
+    return StringType
   }
   return { tag: 'Index', target, key }
 }

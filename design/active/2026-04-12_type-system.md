@@ -1019,7 +1019,7 @@ No change to the core algebra — purely an inference-time refinement, reusing t
 - `{a: A, b?: B}` — field `b` may be absent from actual values; when present, is `B`. Distinct from `{a: A, b: B | Null}` (key present, value may be null).
 - Record type stores a sidecar `optionalFields?: Set<string>` — existing code paths that read `fields` continue to work; optional-aware paths check the set.
 - Subtyping: `{a: "x"} <: {a: String, b?: Number}` holds (optional field absent in S is OK). Closed records reject unknown fields as before.
-- Strict access (`obj.b`) on an optional field is a type error; the message suggests `?.b` for safe access. Safe access (`obj?.b`) desugars to `get(obj, "b")` which returns `Unknown` today. The indexed-access primitives shipped in PR #80 make `T["b"] | Null` expressible type-level (see "Indexed-access types and `keyof`" below), but wiring the `get` builtin to return it requires bounded generics in annotation syntax (`<T, K: String>(T, K) -> T[K] | Null`) — still pending.
+- Strict access (`obj.b`) on an optional field is a type error; the message suggests `?.b` for safe access. Safe access (`obj?.b`) desugars to `get(obj, "b")` which now returns the precise field type via the indexed-access overload on `get` (PR #80's `T[K]` + PR #86's `get` signature `(R, K) -> R[K]`). Optional fields widen to `T | Null` via `indexType`'s optional-handling. Missing keys on closed records give `Never`; missing on open records give `Unknown`.
 - Function-param `name?: T` keeps its existing Option-2 sugar (`T | Null`) — function params have runtime auto-fill so the sugar works there.
 
 See `describe('typecheck — optional record fields')` in `src/typechecker/typecheck.test.ts` for the test suite.
@@ -1040,14 +1040,15 @@ Option 1 is the right long-term answer (matches TS and avoids widening access to
 
 ### Indexed-access types and `keyof`
 
-**Status (2026-04-23):** Type-level primitives shipped (PR #80).
+**Status (2026-04-23):** Shipped (PR #80 type-level primitives, PR #86 `get` builtin wiring).
 
 - `keyof T` — union of literal-string keys of a record. Closed records give the exact set (`keyof {a: Number, b: String}` = `"a" | "b"`); open records widen to `String` (extra runtime keys allowed).
-- `T[K]` — indexed access. When `K` is a literal-string and `T` a concrete record, resolves to the field type. Union-typed `K` distributes. Missing key on closed record = `Never`; missing key on open = `Unknown`. Optional field widens to `T | Null`.
+- `T[K]` — indexed access. `indexType` handles Record (by field name, with optional-widening to `T | Null`), Tuple/Sequence (by integer literal index, with out-of-bounds = `Never`), Array (by integer literal → element), and String (by integer literal → `String`). Union-typed `K` distributes. Missing key on closed record = `Never`; missing key on open = `Unknown`.
 - Parser accepts both as annotation syntax: `keyof T` (prefix keyword, identifier-bounded) and `T[K]` (postfix, sibling to `T[]`).
-- Two new `Type` tags (`Keyof`, `Index`) that simplify away once the inner record is concrete. Placeholder nodes stay unresolved for generic / type-variable inputs.
+- Two new `Type` tags (`Keyof`, `Index`) that simplify away once the inner is concrete. Placeholder nodes stay unresolved for generic / type-variable inputs.
+- `get`'s builtin signature was tightened to include the polymorphic overload `(R, K) -> R[K]` as its first intersection member. `freshenAnnotationVars` gives each call-site fresh `R` and `K`; `indexType` reduces as soon as the args are concrete. `obj?.b` desugars to `get(obj, "b")` and inherits the tight field type directly (no more widening to `Unknown`).
 
-Still pending: wiring `get`'s builtin signature to return `T[K] | Null` so `obj?.b` tightens from `Unknown` to `T | Null`. That requires bounded generics on builtin type annotations (`<T, K: String>(T, K) -> T[K] | Null`), which the current annotation grammar doesn't express. Foundation is now in place.
+Freshening, generalization, expansion, and constrain all now handle `Keyof`/`Index` — earlier versions missed `containsVars`, `freshenAllVars`, `freshenInner`, `containsVarsAboveLevel`, and constrain's lhs/rhs branches, which meant placeholder Vars on the return-side lost their identity during let-polymorphism and Index placeholders failed constrain by falling through to "not a subtype".
 
 ### Template string types
 

@@ -703,9 +703,8 @@ describe('typecheck — optional record fields', () => {
   })
 
   it('safe `?.` access on an optional field is accepted', () => {
-    // `?.` desugars to `get(...)`; current `get` sig returns Unknown,
-    // which is widely compatible. Tightening to `T | Null` requires `T[K]`
-    // (#8) — future work.
+    // `?.` desugars to `get(...)` whose type is now tightened via
+    // indexed-access (PR #80) + a record overload on the builtin.
     const result = dvala.typecheck(`
       effect @getUser(Null) -> {name: String, age?: Number};
       let f = () -> do
@@ -715,6 +714,53 @@ describe('typecheck — optional record fields', () => {
       f
     `)
     expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // With the `get` record-overload, `?.field` resolves to the field
+  // type `| Null` at the call site instead of widening to `Unknown`.
+  // Use an opaque source so folding doesn't collapse the record to
+  // its call-site concrete value.
+  it('safe `?.` access on a required field narrows to `T | Null`', () => {
+    const r = dvala.typecheck(`
+      effect @u(Null) -> {name: String, age: Number};
+      let f = () -> do
+        let u = perform(@u, null);
+        let n: String | Null = u?.name;
+        n
+      end;
+      f
+    `)
+    expect(r.diagnostics).toHaveLength(0)
+  })
+
+  it('safe `?.` access on an optional field narrows to `T | Null`', () => {
+    const r = dvala.typecheck(`
+      effect @u(Null) -> {name: String, age?: Number};
+      let f = () -> do
+        let u = perform(@u, null);
+        let age: Number | Null = u?.age;
+        age
+      end;
+      f
+    `)
+    expect(r.diagnostics).toHaveLength(0)
+  })
+
+  it('safe `?.` rejects using the field-type as a wrong static type', () => {
+    const r = dvala.typecheck(`
+      effect @u(Null) -> {name: String, age: Number};
+      let f = () -> do
+        let u = perform(@u, null);
+        let wrong: Boolean | Null = u?.name;
+        wrong
+      end;
+      f
+    `)
+    // `u?.name` should be typed `String | Null`, NOT `Boolean | Null`.
+    // After the get-overload tightening, this mismatch surfaces as a
+    // definite diagnostic; before the fix it silently passed because
+    // `Unknown` is compatible with anything.
+    expect(r.diagnostics.length).toBeGreaterThan(0)
   })
 
   it('optional-field sidecar survives polymorphic freshening', () => {
