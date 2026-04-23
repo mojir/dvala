@@ -2082,6 +2082,29 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  // Record × Record intersection in an annotation reads as "has both
+  // shapes" — the simplify pass merges the pair into a single record
+  // before `constrain` sees it, so a literal with both fields is
+  // accepted. Strict set-theoretic semantics would say this is Never,
+  // but that's surprising to users writing annotations; the narrowing
+  // path (infer.ts intersectRecords) still keeps the strict rule.
+  it('record intersection annotation accepts values with fields from both sides', () => {
+    const result = dvala.typecheck('let x: {a: Number} & {b: String} = {a: 1, b: "s"}; x')
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('record intersection annotation rejects missing field from either side', () => {
+    const result = dvala.typecheck('let x: {a: Number} & {b: String} = {a: 1}; x')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('record intersection with conflicting same-field types is Never', () => {
+    // `{a: Number} & {a: String}` has no inhabitants — the required
+    // field `a` is typed both ways. Value-constrain should fail.
+    const result = dvala.typecheck('let x: {a: Number} & {a: String} = {a: 1}; x')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
   it('attaches let annotation errors to the value expression source', () => {
     const result = dvala.typecheck([
       'let x: String =',

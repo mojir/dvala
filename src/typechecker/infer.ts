@@ -1045,7 +1045,12 @@ export function inferExpr(
         const bindingNodeId = binding[2]
         const annotation = ctx.typeAnnotations?.get(bindingNodeId)
         if (annotation) {
-          const declaredType = parseTypeAnnotation(annotation)
+          // Simplify the parsed annotation so surface-level patterns
+          // like `{a: A} & {b: B}` are folded into a single merged
+          // Record before `constrain` sees them — the Inter-on-right
+          // path would otherwise enforce each member separately and
+          // reject legitimate values.
+          const declaredType = simplify(parseTypeAnnotation(annotation))
           try {
             constrain(ctx, valueType, declaredType)
           } catch (error) {
@@ -1623,7 +1628,7 @@ export function inferExpr(
             bindPattern(param, declaredArgType, clauseEnv, ctx, typeMap)
             const paramAnnotation = ctx.typeAnnotations?.get(param[2])
             if (paramAnnotation) {
-              const annotatedType = parseTypeAnnotation(paramAnnotation)
+              const annotatedType = simplify(parseTypeAnnotation(paramAnnotation))
               constrain(ctx, declaredArgType, annotatedType)
               constrain(ctx, annotatedType, declaredArgType)
             }
@@ -2542,7 +2547,7 @@ function inferFunctionNode(
       bindPattern(param, paramVar, funcEnv, ctx, typeMap)
       const paramAnnotation = ctx.typeAnnotations?.get(param[2])
       if (paramAnnotation) {
-        const declaredType = parseTypeAnnotation(paramAnnotation)
+        const declaredType = simplify(parseTypeAnnotation(paramAnnotation))
         try {
           constrain(ctx, paramVar, declaredType)
         } catch (error) {
@@ -3280,6 +3285,17 @@ function narrowArrayLikeTypeForMatchPattern(
 }
 
 function intersectMatchTypes(left: Type, right: Type): Type {
+  // Note on the narrowing × simplify interaction: `expandType(Var,
+  // 'negative')` returns `inter(...upperBounds)`. If a Var has two
+  // Record upper bounds (two independent `constrain(v, RecA)` calls),
+  // `simplify` would fold them via the PERMISSIVE record merge in
+  // simplify.ts — BEFORE we reach the strict `intersectRecords`
+  // branch below. Today that path is not produced by narrowing
+  // itself (narrowing constrains once per branch, not twice on the
+  // same Var against different records), so the permissive merge
+  // never shadows the strict semantics. If a future narrowing site
+  // accumulates multiple Record upper bounds on a single Var, move
+  // the strict merge ahead of the simplify/expandType pre-pass here.
   const expandedLeft = simplify(expandType(left))
   const expandedRight = simplify(expandType(right))
 

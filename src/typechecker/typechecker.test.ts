@@ -1389,6 +1389,58 @@ describe('simplify', () => {
     expect(typeEquals(t, literal(42))).toBe(true)
   })
 
+  it('{a: Number} & {b: String} → {a: Number, b: String} (disjoint-key record merge)', () => {
+    const t = simplify(inter(record({ a: NumberType }), record({ b: StringType })))
+    expect(typeEquals(t, record({ a: NumberType, b: StringType }))).toBe(true)
+  })
+
+  it('{a: Number} & {a: Integer} → {a: Integer} (shared key narrows via field intersection)', () => {
+    const t = simplify(inter(record({ a: NumberType }), record({ a: IntegerType })))
+    expect(typeEquals(t, record({ a: IntegerType }))).toBe(true)
+  })
+
+  it('closed {a: Number} & closed {b: String} is closed (strictest of both)', () => {
+    const t = simplify(inter(record({ a: NumberType }), record({ b: StringType })))
+    if (t.tag !== 'Record') throw new Error(`expected Record, got ${t.tag}`)
+    expect(t.open).toBe(false)
+  })
+
+  it('open {a: Number, ...} & closed {b: String} → closed {a: Number, b: String}', () => {
+    const t = simplify(inter(record({ a: NumberType }, true), record({ b: StringType })))
+    expect(typeEquals(t, record({ a: NumberType, b: StringType }))).toBe(true)
+  })
+
+  it('{a: Number} & {a: String} → Never (field intersection empty, field required)', () => {
+    const t = simplify(inter(record({ a: NumberType }), record({ a: StringType })))
+    expect(t.tag).toBe('Never')
+  })
+
+  it('three records fold left-to-right into a single merged record', () => {
+    const t = simplify(inter(
+      record({ a: NumberType }),
+      record({ b: StringType }),
+      record({ c: BooleanType }),
+    ))
+    expect(typeEquals(t, record({ a: NumberType, b: StringType, c: BooleanType }))).toBe(true)
+  })
+
+  it('record intersected with a non-record keeps both as an Inter', () => {
+    // `{a: Number} & String` — record stays as a single-member record
+    // after the merge, the String tails along. Today's simplify has no
+    // record-vs-primitive disjointness rule, so the Inter is preserved
+    // verbatim. This locks in the `others.length > 0` fallback in
+    // `mergeRecordMembers` — the fix doesn't accidentally collapse a
+    // non-record member. Record-vs-primitive simplification is a
+    // separate follow-up; these two ARE semantically disjoint at the
+    // value level and a future fix should recognize that.
+    const t = simplify(inter(record({ a: NumberType }), StringType))
+    expect(t.tag).toBe('Inter')
+    if (t.tag !== 'Inter') return
+    expect(t.members).toHaveLength(2)
+    expect(t.members.some(m => m.tag === 'Record')).toBe(true)
+    expect(t.members.some(m => m.tag === 'Primitive' && m.name === 'String')).toBe(true)
+  })
+
   it('exact Sequence simplifies to tuple', () => {
     const t = simplify(sequence([NumberType, StringType], Never))
     expect(typeEquals(t, tuple([NumberType, StringType]))).toBe(true)
