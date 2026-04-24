@@ -132,7 +132,13 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       if (isUnary) {
         ctx.builder?.startNode('PrefixOp')
         ctx.advance()
-        const operand = parseOperandPart(ctx)
+        // Parse the full operand chain (accessors, index, calls) so
+        // `-x.a`, `-f(x)`, `-xs[0]` bind as `-(x.a)`, `-(f(x))`,
+        // `-(xs[0])` — matching precedence in every mainstream language.
+        // Previously used `parseOperandPart`, which stopped at the raw
+        // operand and let the outer while-loop chain `.a` onto `(-x)`,
+        // producing the nonsensical `(-x).a`.
+        const operand = parseOperand(ctx)
         const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Num, 0, 0], token[2], ctx)
         const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx) as BuiltinSymbolNode
         const node = withSourceCodeInfo([NodeTypes.Call, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
@@ -147,8 +153,8 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     //   Path B — bare `!` as a value (e.g. `filter(xs, !)`) → `Builtin('!')`.
     // Disambiguate by lookahead: if the next token starts an expression,
     // take Path A; otherwise Path B. Path A uses the full `parseOperand`
-    // so that `!f(x).field` binds as `!(f(x).field)` — more intuitive
-    // than the unary-minus quirk where `-x.a` binds as `(-x).a`.
+    // (same as unary minus above) so that `!f(x).field` binds as
+    // `!(f(x).field)`.
     if (operatorName === '!') {
       const nextToken = ctx.peekAhead(1)
       const nextType = nextToken?.[0]

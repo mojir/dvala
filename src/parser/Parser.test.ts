@@ -186,6 +186,24 @@ describe('parser', () => {
       expect(dvala.run('2 - 3')).toBe(-1)
       expect(dvala.run('2 - 3 - 2')).toBe(-3)
     })
+    // Unary minus precedence: property access, index access, and call
+    // chaining all bind *inside* the negation. Previously the parser
+    // used `parseOperandPart` for the operand and let the outer chaining
+    // loop attach `.a`, `[i]`, `(args)` onto `(-x)` — producing the
+    // nonsensical `(-x).a` instead of the expected `-(x.a)`.
+    test('-x.a binds as -(x.a)', () => {
+      expect(dvala.run('let x = { a: 5 }; -x.a')).toBe(-5)
+      expect(dvala.run('let x = { a: -5 }; -x.a')).toBe(5)
+    })
+    test('-f(x) binds as -(f(x))', () => {
+      expect(dvala.run('let f = (n) -> n + 1; -f(4)')).toBe(-5)
+    })
+    test('-xs[i] binds as -(xs[i])', () => {
+      expect(dvala.run('let xs = [1, 2, 3]; -xs[1]')).toBe(-2)
+    })
+    test('-obj.nested.field chains fully through the negation', () => {
+      expect(dvala.run('let o = { inner: { v: 7 } }; -o.inner.v')).toBe(-7)
+    })
   })
   describe('<<', () => {
     test('samples', () => {
