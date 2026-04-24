@@ -38,16 +38,11 @@ import { isSubtype } from './subtype'
 // Type alias registry
 // ---------------------------------------------------------------------------
 
-/**
- * A generic parameter with optional upper-bound. The bound is stored as
- * source text (parsed on alias expansion) to avoid circular-parse
- * dependencies when a bound references a type alias defined later in the
- * same file — matches how the alias `body` is already stored.
- */
-export interface AliasParam {
-  name: string
-  bound?: string
-}
+// `AliasParam` is defined canonically in the parser layer (the shape
+// flows from parser into AST). Re-export here so typechecker consumers
+// have a single import site and the two declarations can never diverge.
+export type { AliasParam } from '../parser/types'
+import type { AliasParam } from '../parser/types'
 
 /** Registered type aliases: name → { params, body string } */
 const typeAliasRegistry = new Map<string, { params: AliasParam[]; body: string }>()
@@ -173,6 +168,11 @@ class TypeParser {
     this.skipWhitespace()
     if (this.tryConsume('>')) return
 
+    // Track names introduced by THIS prefix so we can reject duplicates.
+    // Two `<T: Number, T: String>` would otherwise push both bounds onto
+    // the same TypeVar and produce a confusing `Number & String = Never`
+    // situation at call sites; a clean error here is friendlier.
+    const seen = new Set<string>()
     for (;;) {
       this.skipWhitespace()
       const name = this.readIdentifier()
@@ -182,9 +182,16 @@ class TypeParser {
       if (!(name.length === 1 && name >= 'A' && name <= 'Z')) {
         throw this.error(`Type parameter '${name}' must be a single uppercase letter (A, B, ..., Z)`)
       }
+      if (seen.has(name)) {
+        throw this.error(`Duplicate type parameter '${name}' in <...> prefix`)
+      }
+      seen.add(name)
+
       // Create the TypeVar up front so it's in scope by the time the
       // bound (if present) is parsed — a bound that references an
       // earlier type variable in the same list will resolve correctly.
+      // Invariant: typeVarMap only stores Var-tagged types (created here
+      // and in makeTypeRef), so the cast below is safe by construction.
       let v = this.typeVarMap.get(name)
       if (!v) {
         v = { tag: 'Var', id: this.nextVarId++, level: 0, lowerBounds: [], upperBounds: [] }
@@ -195,9 +202,7 @@ class TypeParser {
       if (this.tryConsume(':')) {
         this.skipWhitespace()
         const bound = this.parseType()
-        if (v.tag === 'Var') {
-          v.upperBounds.push(bound)
-        }
+        ;(v as Extract<Type, { tag: 'Var' }>).upperBounds.push(bound)
       }
 
       this.skipWhitespace()
@@ -418,6 +423,17 @@ class TypeParser {
       case 'Regex': return RegexType
       case 'Function': return AnyFunction
       case 'Handler': return this.parseHandlerType()
+      // `Sequence` and `Collection` are user-facing type-keyword unions
+      // that match the `isSequence` and `isCollection` builtins. Inlined
+      // here (rather than exported from types.ts) because:
+      //   - the name `SequenceType` is already the internal prefix/rest
+      //     interface used for match narrowing, and
+      //   - the parallel primitive-type exports (NumberType, StringType,
+      //     ...) are all primitives, not unions; adding union-valued
+      //     "*Type" consts would mislead callers about what kind of
+      //     value they're handling.
+      case 'Sequence': return union(array(Unknown), StringType)
+      case 'Collection': return union(array(Unknown), StringType, { tag: 'Record', fields: new Map(), open: true })
       case 'Unknown': return Unknown
       case 'Never': return Never
       case 'true': return literal(true)
@@ -1076,8 +1092,17 @@ interface ParamInfo {
 }
 
 export class TypeParseError extends Error {
+  /**
+   * The original message without the position/input suffix. The
+   * `.message` field carries the decorated form for debug output;
+   * callers that convert this to a user-facing diagnostic (e.g.
+   * `TypeInferenceError`) should prefer `cleanMessage` to avoid
+   * leaking internal parser positions into errors.
+   */
+  public readonly cleanMessage: string
   constructor(message: string, public input: string, public position: number) {
     super(`${message} at position ${position} in "${input}"`)
     this.name = 'TypeParseError'
+    this.cleanMessage = message
   }
 }

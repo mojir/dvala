@@ -10,6 +10,22 @@
 import { isOperatorToken, isRParenToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { ParserContext } from '../ParserContext'
 
+/**
+ * Is the token a right-angle-bracket-family operator (`>`, `>>`, `>>>`)?
+ * The tokenizer emits `>>` and `>>>` as single tokens for the shift
+ * operators, but inside type annotations these characters represent
+ * stacked closers for nested generics (`Box<Array<Number>>` → `>>`).
+ * The collector splits them back into individual `>` characters so
+ * angle-depth tracking and the stopAtGt delimiter behave correctly.
+ */
+function rightAngleRunLength(token: ReturnType<ParserContext['tryPeek']>): number {
+  if (!token) return 0
+  if (isOperatorToken(token, '>')) return 1
+  if (isOperatorToken(token, '>>')) return 2
+  if (isOperatorToken(token, '>>>')) return 3
+  return 0
+}
+
 export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArrow?: boolean; stopAtRParen?: boolean; stopAtGt?: boolean }): string {
   const parts: string[] = []
   let depth = 0 // track balanced parens/brackets/braces
@@ -25,6 +41,36 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
     const token = ctx.tryPeek()
     if (!token) break
 
+    // Right-angle-bracket run: the tokenizer may have fused multiple `>`
+    // into one `>>` or `>>>` token for the shift operators. Inside type
+    // annotations these characters are stacked generic closers. Handle
+    // them as a run — consume one `>` at a time for angle-depth tracking
+    // and stopAtGt, mutating the token in place to "leave behind" any
+    // unconsumed `>`s for the outer parser.
+    const gtRun = rightAngleRunLength(token)
+    if (gtRun > 0) {
+      let consumed = 0
+      while (consumed < gtRun) {
+        if (depth === 0 && angleDepth === 0 && stopAtGt) break
+        if (angleDepth > 0) {
+          angleDepth--
+        }
+        parts.push('>')
+        consumed++
+      }
+      if (consumed === gtRun) {
+        ctx.advance()
+        continue
+      }
+      // Leave behind (gtRun - consumed) `>`s. Mutate the token's text
+      // so the outer parser consumes the residual as a single `>`,
+      // `>>`, etc. The token type stays `Operator`; its position info
+      // is preserved (harmless — only the text changes).
+      const remaining = gtRun - consumed
+      ;(token as unknown as [string, string])[1] = '>'.repeat(remaining)
+      break
+    }
+
     // Stop at delimiters (only at top level — not inside balanced groups)
     if (depth === 0 && angleDepth === 0) {
       if (isOperatorToken(token, '=')) break
@@ -32,7 +78,6 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
       if (stopAtArrow && isOperatorToken(token, '->')) break
       if (isOperatorToken(token, ';')) break
       if (stopAtRParen && isRParenToken(token)) break
-      if (stopAtGt && isOperatorToken(token, '>')) break
       if (isReservedSymbolToken(token, 'end')) break
     }
 
@@ -40,7 +85,6 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
     if (token[0] === 'LParen' || token[0] === 'LBracket' || token[0] === 'LBrace') depth++
     if (token[0] === 'RParen' || token[0] === 'RBracket' || token[0] === 'RBrace') depth--
     if (isOperatorToken(token, '<')) angleDepth++
-    if (isOperatorToken(token, '>') && angleDepth > 0) angleDepth--
 
     // Reconstruct the token text
     if (token[0] === 'Atom') parts.push(`:${token[1]}`)

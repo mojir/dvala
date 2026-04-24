@@ -21,7 +21,7 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { expandType, InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
 import { initBuiltinTypes, registerModuleType, resetModuleTypeCache } from './builtinTypes'
 import { declareEffect, initBuiltinEffects, resetUserEffects, restoreEffectRegistry, snapshotEffectRegistry } from './effectTypes'
-import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases, restoreTypeAliases, snapshotTypeAliases } from './parseType'
+import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases, restoreTypeAliases, snapshotTypeAliases, TypeParseError } from './parseType'
 import { builtin } from '../builtin'
 import { expandMacros } from '../ast/expandMacros'
 
@@ -158,7 +158,22 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
           }
           if (importedAst.effectDeclarations) {
             for (const [name, { argType, retType }] of importedAst.effectDeclarations) {
-              declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
+              // Effect-type annotations can reference bounded aliases; a
+              // bound violation raises TypeParseError. Surface as a
+              // diagnostic on the imported-file side rather than aborting
+              // the outer typecheck.
+              try {
+                declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
+              } catch (error) {
+                if (error instanceof TypeParseError) {
+                  importDiagnostics.push({
+                    message: `Invalid effect type for @${name}: ${error.cleanMessage}`,
+                    severity: 'error',
+                  })
+                } else {
+                  throw error
+                }
+              }
             }
           }
 
@@ -209,7 +224,27 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   // Register effect declarations before inference so perform() can type-check
   if (ast.effectDeclarations) {
     for (const [name, { argType, retType }] of ast.effectDeclarations) {
-      declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
+      // See the imported-file path above for rationale on TypeParseError
+      // handling — bounded aliases in effect types can produce these
+      // during parse.
+      try {
+        declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
+      } catch (error) {
+        if (error instanceof TypeParseError) {
+          // Effect declarations live in the parser's side-table keyed by
+          // name only — no nodeId / source location is retained today.
+          // The error message includes the effect name so users can
+          // grep their source. Adding location info would require
+          // threading the declaration nodeId into `effectDeclarations`,
+          // which is out of scope for Phase 0a.
+          diagnostics.push({
+            message: `Invalid effect type for @${name}: ${error.cleanMessage}`,
+            severity: 'error',
+          })
+        } else {
+          throw error
+        }
+      }
     }
   }
   const env = new TypeEnv()

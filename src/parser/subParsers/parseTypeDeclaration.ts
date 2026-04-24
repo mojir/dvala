@@ -41,6 +41,7 @@ export function parseTypeDeclaration(ctx: ParserContext): AstNode {
 
   // Optional type parameters: <A, B, C> or with bounds <A: Bound1, B: Bound2>
   const params: AliasParam[] = []
+  const seenNames = new Set<string>()
   skipWhitespace(ctx)
   if (isOperatorToken(ctx.tryPeek(), '<')) {
     ctx.advance() // consume '<'
@@ -51,6 +52,10 @@ export function parseTypeDeclaration(ctx: ParserContext): AstNode {
         throw new ParseError('Expected type parameter name', ctx.peekSourceCodeInfo())
       }
       const paramName = paramToken[1]
+      if (seenNames.has(paramName)) {
+        throw new ParseError(`Duplicate type parameter '${paramName}' in generic parameter list`, ctx.peekSourceCodeInfo())
+      }
+      seenNames.add(paramName)
       ctx.advance()
       skipWhitespace(ctx)
       // Optional upper bound: `: BoundType`

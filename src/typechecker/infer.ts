@@ -1100,7 +1100,7 @@ export function inferExpr(
             declaredType = simplify(parseTypeAnnotation(annotation))
           } catch (error) {
             if (error instanceof TypeParseError) {
-              throw new TypeInferenceError(error.message, valueNode[2])
+              throw new TypeInferenceError(error.cleanMessage, valueNode[2])
             }
             throw error
           }
@@ -1705,7 +1705,7 @@ export function inferExpr(
                 annotatedType = simplify(parseTypeAnnotation(paramAnnotation))
               } catch (error) {
                 if (error instanceof TypeParseError) {
-                  throw new TypeInferenceError(error.message, param[2])
+                  throw new TypeInferenceError(error.cleanMessage, param[2])
                 }
                 throw error
               }
@@ -2688,7 +2688,7 @@ function inferFunctionNode(
           declaredType = simplify(parseTypeAnnotation(paramAnnotation))
         } catch (error) {
           if (error instanceof TypeParseError) {
-            throw new TypeInferenceError(error.message, param[2])
+            throw new TypeInferenceError(error.cleanMessage, param[2])
           }
           throw error
         }
@@ -2726,7 +2726,7 @@ function inferFunctionNode(
         declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length))
       } catch (error) {
         if (error instanceof TypeParseError) {
-          throw new TypeInferenceError(error.message, node[2])
+          throw new TypeInferenceError(error.cleanMessage, node[2])
         }
         throw error
       }
