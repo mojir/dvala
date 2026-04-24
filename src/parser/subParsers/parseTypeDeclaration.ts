@@ -13,7 +13,7 @@
 
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
-import type { AstNode } from '../types'
+import type { AliasParam, AstNode } from '../types'
 import { isOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -39,8 +39,8 @@ export function parseTypeDeclaration(ctx: ParserContext): AstNode {
   const name = nameToken[1]
   ctx.advance() // consume name
 
-  // Optional type parameters: <A, B, C>
-  const params: string[] = []
+  // Optional type parameters: <A, B, C> or with bounds <A: Bound1, B: Bound2>
+  const params: AliasParam[] = []
   skipWhitespace(ctx)
   if (isOperatorToken(ctx.tryPeek(), '<')) {
     ctx.advance() // consume '<'
@@ -50,9 +50,24 @@ export function parseTypeDeclaration(ctx: ParserContext): AstNode {
       if (!isSymbolToken(paramToken) && !isReservedSymbolToken(paramToken)) {
         throw new ParseError('Expected type parameter name', ctx.peekSourceCodeInfo())
       }
-      params.push(paramToken[1])
+      const paramName = paramToken[1]
       ctx.advance()
       skipWhitespace(ctx)
+      // Optional upper bound: `: BoundType`
+      // The bound is stored as source text; parsed lazily on alias expansion.
+      // `stopAtGt` ensures the closing `>` of the param list terminates the
+      // bound collection even when the bound itself is a simple type expression.
+      let bound: string | undefined
+      if (isOperatorToken(ctx.tryPeek(), ':')) {
+        ctx.advance() // consume ':'
+        const boundExpr = collectTypeAnnotation(ctx, { stopAtGt: true })
+        if (!boundExpr) {
+          throw new ParseError(`Expected bound type after ":" for parameter "${paramName}"`, ctx.peekSourceCodeInfo())
+        }
+        bound = boundExpr
+        skipWhitespace(ctx)
+      }
+      params.push(bound === undefined ? { name: paramName } : { name: paramName, bound })
       if (isOperatorToken(ctx.tryPeek(), ',')) {
         ctx.advance() // consume ','
       } else {

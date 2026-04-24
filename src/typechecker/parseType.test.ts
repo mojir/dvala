@@ -230,7 +230,7 @@ describe('parseType — type aliases', () => {
   })
 
   it('expands generic aliases with one type argument', () => {
-    registerTypeAlias('Box', ['T'], '{ value: T }')
+    registerTypeAlias('Box', [{ name: 'T' }], '{ value: T }')
 
     const t = parseTypeAnnotation('Box<Number>')
     expect(typeEquals(t, {
@@ -242,7 +242,7 @@ describe('parseType — type aliases', () => {
   })
 
   it('expands generic aliases with multiple type arguments', () => {
-    registerTypeAlias('Result', ['T', 'E'], '{ tag: :ok, value: T } | { tag: :error, error: E }')
+    registerTypeAlias('Result', [{ name: 'T' }, { name: 'E' }], '{ tag: :ok, value: T } | { tag: :error, error: E }')
 
     const t = parseTypeAnnotation('Result<Number, String>')
     expect(typeEquals(t, {
@@ -257,8 +257,8 @@ describe('parseType — type aliases', () => {
   })
 
   it('supports nested generic alias expansion', () => {
-    registerTypeAlias('Box', ['T'], '{ value: T }')
-    registerTypeAlias('MaybeBox', ['T'], 'Box<T> | Null')
+    registerTypeAlias('Box', [{ name: 'T' }], '{ value: T }')
+    registerTypeAlias('MaybeBox', [{ name: 'T' }], 'Box<T> | Null')
 
     const t = parseTypeAnnotation('MaybeBox<Number>')
     expect(typeEquals(t, {
@@ -273,7 +273,7 @@ describe('parseType — type aliases', () => {
   })
 
   it('errors on wrong number of type arguments', () => {
-    registerTypeAlias('Box', ['T'], '{ value: T }')
+    registerTypeAlias('Box', [{ name: 'T' }], '{ value: T }')
 
     expect(() => parseTypeAnnotation('Box')).toThrow(TypeParseError)
     expect(() => parseTypeAnnotation('Box<Number, String>')).toThrow(TypeParseError)

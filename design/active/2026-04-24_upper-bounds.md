@@ -1,8 +1,8 @@
 # Generic Upper Bounds (`T: U`) — Implementation Plan
 
-**Status:** Proposed — implementation plan. Phase 0 prerequisite for bounded refinement types.
+**Status:** **Phase 0a shipped 2026-04-24.** Phase 0b deferred. (Type-alias bounds + annotation-scoped function-type bounds implemented; type-system plan decision #25 reflects the shipped state.)
 **Created:** 2026-04-24
-**Last updated:** 2026-04-24 (reviewer-pass: split into Phase 0a + 0b, registry-schema spec added, nits addressed)
+**Last updated:** 2026-04-24 (reviewer-pass: split into Phase 0a + 0b, registry-schema spec added, nits addressed; then Phase 0a implementation landed)
 **Scope discipline:** Minimum viable upper bounds only. Hard-capped feature list; explicit out-of-scope list below. **If scope creeps beyond what's in this doc, stop and reassess before shipping.**
 **References:** `2026-04-12_type-system.md` (set-theoretic foundation, decision #22 on type-variable syntax), `2026-04-23_refinement-types.md` (primary motivation)
 
@@ -187,7 +187,14 @@ Two phases, **Phase 0a before Phase 0b**. Only 0a blocks refinements.
 
 ### Phase 0a — Type-alias bounds + annotation-scoped function bounds
 
+**Status: shipped 2026-04-24.**
+
 **Target:** 2.5–3.5 weeks, ~250-350 LOC (implementation only; 0a.7 documentation work is in addition).
+**Actual:** ~180 LOC of production changes + ~130 LOC of tests. Completed in a single session.
+
+**Deferred items from the original Phase 0a scope:**
+
+- **0a.6 (Display polish — render `T: Bound` in `typeToString`).** Not required for Ship-gate since bound-violation errors already name the parameter, bound, and supplied argument clearly. The `TypeVar` wire format would need a `declaredBound?: Type` marker field to distinguish explicit annotation bounds from inference-added upper bounds — added in a follow-up if the IDE-hover UX proves weak in practice. Tests confirm the error messages are actionable without it.
 
 Both forms live inside the type-annotation parser. They share the bound-parsing, storage, and enforcement logic. Let-parser is untouched.
 

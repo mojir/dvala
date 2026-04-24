@@ -10,12 +10,16 @@
 import { isOperatorToken, isRParenToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { ParserContext } from '../ParserContext'
 
-export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArrow?: boolean; stopAtRParen?: boolean }): string {
+export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArrow?: boolean; stopAtRParen?: boolean; stopAtGt?: boolean }): string {
   const parts: string[] = []
   let depth = 0 // track balanced parens/brackets/braces
   let angleDepth = 0 // track Handler<...> and future generic type args
   const stopAtArrow = options?.stopAtArrow ?? false
   const stopAtRParen = options?.stopAtRParen ?? true
+  // When set, stop at `>` at the top level (angleDepth === 0). Used when
+  // collecting a type-parameter upper-bound inside a `<T: Bound>` list —
+  // the closing `>` of the param list must terminate the bound collection.
+  const stopAtGt = options?.stopAtGt ?? false
 
   while (!ctx.isAtEnd()) {
     const token = ctx.tryPeek()
@@ -28,6 +32,7 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
       if (stopAtArrow && isOperatorToken(token, '->')) break
       if (isOperatorToken(token, ';')) break
       if (stopAtRParen && isRParenToken(token)) break
+      if (stopAtGt && isOperatorToken(token, '>')) break
       if (isReservedSymbolToken(token, 'end')) break
     }
 

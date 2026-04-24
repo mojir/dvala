@@ -26,7 +26,7 @@ import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
 import { FOLD_ENABLED } from './foldToggle'
-import { parseTypeAnnotation } from './parseType'
+import { parseTypeAnnotation, TypeParseError } from './parseType'
 import { getEffectDeclaration } from './effectTypes'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
@@ -1089,7 +1089,21 @@ export function inferExpr(
           // Record before `constrain` sees them — the Inter-on-right
           // path would otherwise enforce each member separately and
           // reject legitimate values.
-          const declaredType = simplify(parseTypeAnnotation(annotation))
+          //
+          // `parseTypeAnnotation` can throw `TypeParseError` when the
+          // annotation is malformed or, post-Phase-0a, when a generic
+          // alias instantiation violates a declared upper bound. Convert
+          // to a TypeInferenceError anchored at the value node so it
+          // surfaces as a diagnostic instead of aborting the pass.
+          let declaredType: Type
+          try {
+            declaredType = simplify(parseTypeAnnotation(annotation))
+          } catch (error) {
+            if (error instanceof TypeParseError) {
+              throw new TypeInferenceError(error.message, valueNode[2])
+            }
+            throw error
+          }
           try {
             constrain(ctx, valueType, declaredType)
           } catch (error) {
@@ -1686,7 +1700,15 @@ export function inferExpr(
             bindPattern(param, declaredArgType, clauseEnv, ctx, typeMap)
             const paramAnnotation = ctx.typeAnnotations?.get(param[2])
             if (paramAnnotation) {
-              const annotatedType = simplify(parseTypeAnnotation(paramAnnotation))
+              let annotatedType: Type
+              try {
+                annotatedType = simplify(parseTypeAnnotation(paramAnnotation))
+              } catch (error) {
+                if (error instanceof TypeParseError) {
+                  throw new TypeInferenceError(error.message, param[2])
+                }
+                throw error
+              }
               constrain(ctx, declaredArgType, annotatedType)
               constrain(ctx, annotatedType, declaredArgType)
             }
@@ -2661,7 +2683,15 @@ function inferFunctionNode(
       bindPattern(param, paramVar, funcEnv, ctx, typeMap)
       const paramAnnotation = ctx.typeAnnotations?.get(param[2])
       if (paramAnnotation) {
-        const declaredType = simplify(parseTypeAnnotation(paramAnnotation))
+        let declaredType: Type
+        try {
+          declaredType = simplify(parseTypeAnnotation(paramAnnotation))
+        } catch (error) {
+          if (error instanceof TypeParseError) {
+            throw new TypeInferenceError(error.message, param[2])
+          }
+          throw error
+        }
         try {
           constrain(ctx, paramVar, declaredType)
         } catch (error) {
@@ -2691,7 +2721,15 @@ function inferFunctionNode(
     // inferred body type as-is (inference-first).
     const rawAnnotation = ctx.typeAnnotations?.get(node[2])
     if (rawAnnotation?.startsWith('return:')) {
-      const declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length))
+      let declaredType: Type
+      try {
+        declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length))
+      } catch (error) {
+        if (error instanceof TypeParseError) {
+          throw new TypeInferenceError(error.message, node[2])
+        }
+        throw error
+      }
       // Eager definition-time check FIRST — before `constrain` adds
       // declaredType to the body Var's upper bounds (which would
       // otherwise narrow any subsequent negative-polarity expansion
