@@ -1107,82 +1107,90 @@ export function inferExpr(
         // Wrap in try/catch so that a type error in the value still binds the
         // variable as Unknown — this prevents cascading "undefined variable"
         // errors downstream (especially important for file imports).
+        //
+        // The surrounding try/finally restores the outer `activeTypeParams`
+        // scope regardless of how the block exits (normal completion,
+        // deferred TypeInferenceError, or propagated non-TypeInferenceError).
+        // The annotation must be parsed with the Phase-0b bindings still in
+        // scope — e.g. `let f<T: Number>: T = ...` must resolve `T` in the
+        // `: T` annotation to the same bounded TypeVar the RHS used.
         let valueType: Type
-        ctx.enterLevel()
+        let boundType: Type
         try {
-          valueType = inferExpr(valueNode, ctx, env, typeMap)
-        } catch (e) {
-          if (e instanceof TypeInferenceError) {
-            if (e.nodeId === undefined) {
-              e.nodeId = valueNode[2]
-            }
-            ctx.deferError(e)
-            valueType = Unknown
-          } else {
-            throw e
-          }
-        }
-        ctx.leaveLevel()
-
-        // Restore the outer type-params scope. Must happen whether the
-        // RHS inference succeeded or hit a recoverable error above.
-        if (typeParamsSnapshot !== undefined) {
-          ctx.activeTypeParams = typeParamsSnapshot
-        }
-
-        valueType = generalizeTypeVars(valueType, ctx.level)
-
-        // Check type annotation constraint: let x: T = expr → constrain expr <: T
-        const annotation = ctx.typeAnnotations?.get(bindingNodeId)
-        let boundType: Type = valueType
-        if (annotation) {
-          // Simplify the parsed annotation so surface-level patterns
-          // like `{a: A} & {b: B}` are folded into a single merged
-          // Record before `constrain` sees them — the Inter-on-right
-          // path would otherwise enforce each member separately and
-          // reject legitimate values.
-          //
-          // `parseTypeAnnotation` can throw `TypeParseError` when the
-          // annotation is malformed or, post-Phase-0a, when a generic
-          // alias instantiation violates a declared upper bound. Convert
-          // to a TypeInferenceError anchored at the value node so it
-          // surfaces as a diagnostic instead of aborting the pass.
-          let declaredType: Type
+          ctx.enterLevel()
           try {
-            declaredType = simplify(parseTypeAnnotation(annotation, ctx.activeTypeParams))
-          } catch (error) {
-            if (error instanceof TypeParseError) {
-              throw new TypeInferenceError(error.cleanMessage, valueNode[2])
+            valueType = inferExpr(valueNode, ctx, env, typeMap)
+          } catch (e) {
+            if (e instanceof TypeInferenceError) {
+              if (e.nodeId === undefined) {
+                e.nodeId = valueNode[2]
+              }
+              ctx.deferError(e)
+              valueType = Unknown
+            } else {
+              throw e
             }
-            throw error
           }
-          try {
-            constrain(ctx, valueType, declaredType)
-          } catch (error) {
-            if (error instanceof TypeInferenceError && error.nodeId === undefined) {
-              error.nodeId = valueNode[2]
+          ctx.leaveLevel()
+
+          valueType = generalizeTypeVars(valueType, ctx.level)
+
+          // Check type annotation constraint: let x: T = expr → constrain expr <: T
+          const annotation = ctx.typeAnnotations?.get(bindingNodeId)
+          boundType = valueType
+          if (annotation) {
+            // Simplify the parsed annotation so surface-level patterns
+            // like `{a: A} & {b: B}` are folded into a single merged
+            // Record before `constrain` sees them — the Inter-on-right
+            // path would otherwise enforce each member separately and
+            // reject legitimate values.
+            //
+            // `parseTypeAnnotation` can throw `TypeParseError` when the
+            // annotation is malformed or, post-Phase-0a, when a generic
+            // alias instantiation violates a declared upper bound. Convert
+            // to a TypeInferenceError anchored at the value node so it
+            // surfaces as a diagnostic instead of aborting the pass.
+            let declaredType: Type
+            try {
+              declaredType = simplify(parseTypeAnnotation(annotation, ctx.activeTypeParams))
+            } catch (error) {
+              if (error instanceof TypeParseError) {
+                throw new TypeInferenceError(error.cleanMessage, valueNode[2])
+              }
+              throw error
             }
-            throw error
+            try {
+              constrain(ctx, valueType, declaredType)
+            } catch (error) {
+              if (error instanceof TypeInferenceError && error.nodeId === undefined) {
+                error.nodeId = valueNode[2]
+              }
+              throw error
+            }
+            const expandedValueType = expandType(valueType)
+            if (!isSubtype(expandedValueType, declaredType)) {
+              throw new TypeInferenceError(
+                `${typeToString(expandedValueType)} is not a subtype of ${typeToString(declaredType)}`,
+                valueNode[2],
+              )
+            }
+            // If the annotation mentions type vars (per decision #22 — single
+            // uppercase letters like A, B, T, K), treat it as a forall-quantified
+            // signature: bind the declared type (not the inferred body), with
+            // its vars generalized. Each reference to this binding then gets
+            // freshened via the standard let-polymorphism path — matching the
+            // way builtin polymorphic signatures already work through
+            // `freshenAnnotationVars`. Without this, the user-written
+            // signature is checked at definition time but lost as the contract
+            // downstream, so callers are constrained only by whatever body
+            // inference happened to produce.
+            if (containsVars(declaredType)) {
+              boundType = generalizeTypeVars(declaredType, -1)
+            }
           }
-          const expandedValueType = expandType(valueType)
-          if (!isSubtype(expandedValueType, declaredType)) {
-            throw new TypeInferenceError(
-              `${typeToString(expandedValueType)} is not a subtype of ${typeToString(declaredType)}`,
-              valueNode[2],
-            )
-          }
-          // If the annotation mentions type vars (per decision #22 — single
-          // uppercase letters like A, B, T, K), treat it as a forall-quantified
-          // signature: bind the declared type (not the inferred body), with
-          // its vars generalized. Each reference to this binding then gets
-          // freshened via the standard let-polymorphism path — matching the
-          // way builtin polymorphic signatures already work through
-          // `freshenAnnotationVars`. Without this, the user-written
-          // signature is checked at definition time but lost as the contract
-          // downstream, so callers are constrained only by whatever body
-          // inference happened to produce.
-          if (containsVars(declaredType)) {
-            boundType = generalizeTypeVars(declaredType, -1)
+        } finally {
+          if (typeParamsSnapshot !== undefined) {
+            ctx.activeTypeParams = typeParamsSnapshot
           }
         }
 

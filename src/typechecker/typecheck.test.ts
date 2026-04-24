@@ -2467,6 +2467,33 @@ describe('typecheck — let-binding-scoped <T: U> (Phase 0b)', () => {
     `)
     expect(result.diagnostics).toHaveLength(0)
   })
+
+  // Regression: the let's own return-type annotation must see the
+  // 0b-bound type params. Before the try/finally fix, the scope was
+  // restored BEFORE the annotation was parsed, so `T` in `: T` fell
+  // through to a fresh annotation-local var and the bound was silently
+  // dropped from the annotation — the signature and the body then
+  // mentioned two different vars, breaking the contract.
+  it('let f<T: U>: T = ... — annotation sees the same T as the RHS', () => {
+    const result = dvala.typecheck(`
+      let keep<T: Number>: (T) -> T = (x) -> x;
+      let n: Number = keep(5);
+      n
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('let f<T: U>: T = ... still rejects a body that violates the bound', () => {
+    // Body returns "hi" which isn't <: T (T <: Number). The annotation
+    // `(T) -> T` must be checked against the body; restoring the T-scope
+    // before this check would have parsed `: (T) -> T` with a fresh
+    // unrelated var and missed the error.
+    const result = dvala.typecheck(`
+      let bad<T: Number>: (T) -> T = (x) -> "hi";
+      bad(1)
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
 })
 
 // ---------------------------------------------------------------------------
