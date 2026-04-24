@@ -13,9 +13,9 @@
  */
 
 import type { Type, PrimitiveName } from './types'
-import { Never, Unknown, array, indexType, inter, keyofType, neg, normalizeSequenceType, tuple, typeEquals, union } from './types'
 import { mergeRefinementPredicates } from './refinementMerge'
 import { isSubtype } from './subtype'
+import { Never, Unknown, array, indexType, inter, keyofType, neg, normalizeSequenceType, tuple, typeEquals, union } from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point

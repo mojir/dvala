@@ -463,6 +463,62 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       // rename of binder `n` in the second predicate.
       expect(result.source).toContain('"n"')
     })
+
+    it('count-predicate round-trips through prettyPrint during merge', () => {
+      // The merged source is reconstructed via prettyPrint on the new
+      // AST. `count(binder)` is a Call whose callee is a Builtin — cover
+      // its specific shape to pin that prettyPrint round-trips it
+      // correctly rather than stripping or mangling the builtin name.
+      const t = parseTypeAnnotation('String & {s | count(s) > 0} & {s | count(s) < 100}')
+      const result = simplify(t)
+      expect(result.tag).toBe('Refined')
+      if (result.tag !== 'Refined') return
+      expect(result.source).toContain('count(s) > 0')
+      expect(result.source).toContain('count(s) < 100')
+    })
+
+    it('preserves `Or` nodes inside a merged And', () => {
+      // Only `And` gets flattened by the merger; `Or` stays as a single
+      // operand of the outer conjunction. Regression guard: the
+      // `||` must appear unchanged in the merged source.
+      const t = parseTypeAnnotation('Number & {n | n > 0 || n == -1} & {n | n < 100}')
+      const result = simplify(t)
+      expect(result.tag).toBe('Refined')
+      if (result.tag !== 'Refined') return
+      expect(result.source).toContain('||')
+      expect(result.source).toContain('n < 100')
+    })
+
+    it('merges through a Union base', () => {
+      // The base of the inner Refined can be anything, not just a
+      // primitive. Verify merging still works (the base is extracted
+      // correctly and the predicates conjoin) when the base is a Union.
+      const t = parseTypeAnnotation('(Number | String) & {x | isNumber(x)} & {x | !isString(x)}')
+      const result = simplify(t)
+      expect(result.tag).toBe('Refined')
+      if (result.tag !== 'Refined') return
+      // Both predicates appear in the merged source.
+      expect(result.source).toContain('isNumber(x)')
+      expect(result.source).toContain('isString(x)')
+      // The base is the union (simplified — exact tag isn't the point;
+      // what matters is it's NOT a Refined, so merging completed).
+      expect(result.base.tag).not.toBe('Refined')
+    })
+
+    it('merge-order affects `typeEquals` (known limitation for Phase 2.1/2.2)', () => {
+      // typeEquals uses source-text equality (line-level comment in
+      // types.ts). After merging, two semantically equivalent but
+      // differently-ordered inputs produce source strings with
+      // swapped `&&` operands. They compare as distinct. This is a
+      // documented limitation — alpha-aware and commutative-aware
+      // equality is Phase 2.3+'s job (the solver ships with
+      // normalisation that will resolve this). The test pins the
+      // current behaviour so the flip to `true` is visible when it
+      // happens.
+      const a = simplify(parseTypeAnnotation('Number & {n | n > 0} & {n | n < 100}'))
+      const b = simplify(parseTypeAnnotation('Number & {n | n < 100} & {n | n > 0}'))
+      expect(typeEquals(a, b)).toBe(false)
+    })
   })
 
   describe('walker direct-call sanity', () => {
