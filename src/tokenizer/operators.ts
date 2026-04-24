@@ -38,6 +38,15 @@ const binaryOperators = [
   '|>', // pipe
 ] as const
 
+// Unary prefix operators. Kept separate from binaryOperators so the
+// parser's binary-dispatch paths don't accidentally treat them as infix
+// — unary prefix is resolved at the site where an operand is expected.
+// `!=` (2-char) still wins over `!` (1-char) via the longest-match loop
+// in tokenizeOperator, so `a != b` tokenizes unchanged.
+const unaryPrefixOperators = [
+  '!', // logical negation (Boolean) -> Boolean
+] as const
+
 const otherOperators = [
   '@', // effect-set type annotation prefix
   ':', // property assignment
@@ -54,6 +63,7 @@ const otherOperators = [
 
 const symbolicOperators = [
   ...binaryOperators,
+  ...unaryPrefixOperators,
   ...otherOperators,
 ] as const
 
@@ -76,6 +86,7 @@ export function isFunctionOperator(operator: string): boolean {
 }
 
 export type SymbolicBinaryOperator = typeof binaryOperators[number]
+export type SymbolicUnaryPrefixOperator = typeof unaryPrefixOperators[number]
 export type SymbolicOperator = typeof symbolicOperators[number]
 
 const binaryOperatorSet = new Set(binaryOperators)
@@ -90,6 +101,11 @@ export function assertBinaryOperator(operator: string): asserts operator is Symb
 export function asBinaryOperator(operator: string): SymbolicBinaryOperator {
   assertBinaryOperator(operator)
   return operator
+}
+
+const unaryPrefixOperatorSet = new Set(unaryPrefixOperators)
+export function isUnaryPrefixOperator(operator: string): operator is SymbolicUnaryPrefixOperator {
+  return unaryPrefixOperatorSet.has(operator as SymbolicUnaryPrefixOperator)
 }
 
 const symbolicOperatorSet = new Set(symbolicOperators)

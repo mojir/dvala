@@ -28,6 +28,7 @@ const docs: FunctionDocs = {
   As soon as a \`expression\` evaluates to a truthy value, the result is returned.
 
   If all expressions evaluate to falsy values, the value of the last expression is returned.`,
+  seeAlso: ['&&', '!'],
   examples: [
     'false || 1',
     '||(1, 1)',

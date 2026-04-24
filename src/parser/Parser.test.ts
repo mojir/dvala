@@ -252,6 +252,43 @@ describe('parser', () => {
       expect(dvala.run('2 == 1')).toBe(false)
     })
   })
+  // Boolean-surface cleanup: `!` is a unary prefix operator and a
+  // first-class function value. Parser has two paths — `!expr` and
+  // bare `!` (in a value slot). These tests lock in both plus the
+  // tricky precedence / recursion cases.
+  describe('!', () => {
+    test('unary negation on literals', () => {
+      expect(dvala.run('!true')).toBe(false)
+      expect(dvala.run('!false')).toBe(true)
+    })
+    test('double and triple negation', () => {
+      expect(dvala.run('!!true')).toBe(true)
+      expect(dvala.run('!!false')).toBe(false)
+      expect(dvala.run('!!!true')).toBe(false)
+    })
+    test('parenthesized Boolean expression', () => {
+      expect(dvala.run('!(1 == 2)')).toBe(true)
+      expect(dvala.run('!(1 == 1)')).toBe(false)
+    })
+    test('binds tighter than binary operators', () => {
+      // `!a && b` is `(!a) && b`, not `!(a && b)`.
+      expect(dvala.run('!true && true')).toBe(false)
+      expect(dvala.run('!false && true')).toBe(true)
+    })
+    test('call chaining binds inside `!` — `!f(x).field` is `!(f(x).field)`', () => {
+      expect(dvala.run('let o = {ok: true}; let f = (x) -> o; !f(5).ok')).toBe(false)
+      expect(dvala.run('let o = {ok: false}; let f = (x) -> o; !f(5).ok')).toBe(true)
+    })
+    test('bare `!` passable as function value', () => {
+      expect(dvala.run('map([true, false, true], !)')).toEqual([false, true, false])
+      expect(dvala.run('filter([true, false, true], !)')).toEqual([false])
+    })
+    test('user alias `let not = !` works', () => {
+      expect(dvala.run('let not = !; not(true)')).toBe(false)
+      expect(dvala.run('let not = !; not(false)')).toBe(true)
+    })
+  })
+
   describe('!=', () => {
     test('samples', () => {
       expect(dvala.run('2 != 3')).toBe(true)

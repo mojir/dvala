@@ -28,6 +28,7 @@ Computes logical \`and\`. Evaluation of expressions starts from left.
 As soon as an \`expression\` evaluates to a falsy value, the result is returned.
 
 If all expressions evaluate to truthy values, the value of the last expression is returned.`,
+  seeAlso: ['||', '!'],
   examples: [
     'true && 1',
     '&&(1, 1)',

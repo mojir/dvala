@@ -39,6 +39,15 @@ describe('tokenizers', () => {
       expect(tokenizeOperator('<=', 0)).toEqual([2, ['Operator', '<=']])
       expect(tokenizeOperator('...', 4)).toEqual(NO_MATCH)
     })
+    // Boolean-surface cleanup: `!` is a unary prefix operator. Longest-match
+    // ordering must keep `!=` (2-char) winning over `!` (1-char) when both
+    // could apply, so existing `a != b` tokenization is preserved.
+    it('tokenizes `!` as a 1-char operator', () => {
+      expect(tokenizeOperator('!x', 0)).toEqual([1, ['Operator', '!']])
+    })
+    it('still prefers `!=` over `!` via longest-match', () => {
+      expect(tokenizeOperator('!=b', 0)).toEqual([2, ['Operator', '!=']])
+    })
   })
   describe('tokenizeNumber', () => {
     it('should tokenize operator', () => {
