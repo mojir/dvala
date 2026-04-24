@@ -85,7 +85,7 @@ describe('functional functions.', () => {
         expect(dvala.run('comp()({ "a": 10 })')).toEqual({ a: 10 })
         expect(dvala.run('comp()(["x", 10, null])')).toEqual(['x', 10, null])
         expect(dvala.run(`
-let foo = comp(not, isOdd);
+let foo = comp(!, isOdd);
 [2, 3, 4, 5] filter foo`)).toEqual([2, 4])
         expect(() => dvala.run('comp()(1, 2)')).toThrow(DvalaError)
         expect(() => dvala.run('comp(true)()')).toThrow(DvalaError)

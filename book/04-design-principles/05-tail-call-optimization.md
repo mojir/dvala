@@ -97,7 +97,7 @@ end;
 For naturally recursive problems with small depth, `self` provides simple recursion without the loop/recur ceremony:
 
 ```dvala
-let depth = (node) -> if not(isObject(node)) then
+let depth = (node) -> if !isObject(node) then
   0
 else
   1 + max(self(get(node, "left", 0)), self(get(node, "right", 0)))

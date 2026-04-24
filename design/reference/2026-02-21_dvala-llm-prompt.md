@@ -381,8 +381,7 @@ Core math is scalar-only. Use explicit lifting for collections, for example `map
 | `<=(a, b, ...)` | Non-decreasing |
 | `>(a, b, ...)` | Strictly decreasing |
 | `>=(a, b, ...)` | Non-increasing |
-| `!(x)` | Logical NOT |
-| `boolean(x)` | Coerce to boolean |
+| `!x` | Logical NOT (strict: `x : Boolean`) |
 | `compare(a, b)` | Returns -1, 0, or 1 |
 
 ### String

@@ -204,14 +204,11 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
       { src: '2 <= 2', expected: true },
       { src: '3 > 2', expected: true },
       { src: '2 >= 2', expected: true },
-      // not, boolean
+      // `!` — strict Boolean; only `true`/`false`/Boolean expressions are valid
       { src: '!(true)', expected: false },
       { src: '!(false)', expected: true },
-      { src: '!(null)', expected: true },
-      { src: '!(0)', expected: true },
-      { src: 'boolean(1)', expected: true },
-      { src: 'boolean(0)', expected: false },
-      { src: 'boolean("")', expected: false },
+      { src: '!(1 == 2)', expected: true },
+      { src: '!(1 == 1)', expected: false },
       // compare
       { src: 'compare(1, 2)', expected: -1 },
       { src: 'compare(2, 2)', expected: 0 },

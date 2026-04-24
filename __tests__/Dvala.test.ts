@@ -52,7 +52,7 @@ describe('all tests', () => {
 
     it('a variable - again.', () => {
       const scope = dvala.run(`
-    let isZip = (input) -> do boolean(reMatch(input, #"^\\d{5}$")) end;
+    let isZip = (input) -> do reMatch(input, #"^\\d{5}$") != null end;
     let NAME_LENGTH = 100;
     {isZip: isZip, NAME_LENGTH: NAME_LENGTH}
     `) as Record<string, unknown>

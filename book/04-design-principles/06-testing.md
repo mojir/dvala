@@ -47,7 +47,7 @@ assertEqual(zip([1, 2, 3], ["a", "b", "c"]), [[1, "a"], [2, "b"], [3, "c"]]);
 let { assertFails, assertFailsWith } = import("assertion");
 
 let divide = (a, b) -> do
-  assert(not(b == 0), "Division by zero");
+  assert(b != 0, "Division by zero");
   a / b;
 end;
 

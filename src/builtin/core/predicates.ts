@@ -127,7 +127,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a `boolean`, otherwise `false`.',
-      seeAlso: ['isTrue', 'isFalse', 'boolean', '!', 'isString', 'isNumber', 'isAtom', 'isNull', 'isFunction', 'typeOf'],
+      seeAlso: ['isTrue', 'isFalse', '!', 'isString', 'isNumber', 'isAtom', 'isNull', 'isFunction', 'typeOf'],
       examples: [
         'isBoolean(true)',
         'isBoolean(false)',
@@ -452,7 +452,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is `true`, otherwise `false`.',
-      seeAlso: ['isFalse', 'isBoolean', 'boolean'],
+      seeAlso: ['isFalse', 'isBoolean'],
       examples: [
         'isTrue(false)',
         'isTrue(true)',
@@ -474,7 +474,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is `true`, otherwise `false`.',
-      seeAlso: ['isTrue', 'isBoolean', 'boolean'],
+      seeAlso: ['isTrue', 'isBoolean'],
       examples: [
         'isFalse(false)',
         'isFalse(true)',
