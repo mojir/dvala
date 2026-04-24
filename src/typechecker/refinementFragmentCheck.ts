@@ -262,10 +262,24 @@ function checkRelationOperands(
 ): void {
   const lhsKind = classifyRelationLhs(lhs, binder)
   if (lhsKind === 'other') {
+    // Arithmetic on the LHS (e.g. `n * n > 0`, `n + 1 > 0`) gets a
+    // dedicated message — the "rewrite as `n > 0`" advice from the
+    // literal-on-left branch is actively wrong here. Direct users to
+    // Phase 3 (multi-variable linear arithmetic) instead.
+    if (isArithmeticCall(lhs)) {
+      throw new RefinementError(
+        `Refinement predicate: relation '${relName}' has an arithmetic expression on its left-hand side, `
+        + 'which is not in the Phase 1 fragment. Phase 1 accepts only `binder` or `count(binder)` on the LHS. '
+        + 'Arithmetic on refined variables (e.g. `n + 1 > 0`) is solved by Phase 3 (multi-variable linear arithmetic).',
+        'fragment',
+        source,
+        position,
+      )
+    }
     throw new RefinementError(
       `Refinement predicate: relation '${relName}' must have the binder '${binder}' `
       + `(or 'count(${binder})') on its left-hand side. `
-      + 'Literal-on-left forms (e.g. `0 < n`) and sub-expression LHS are deferred to a later phase — rewrite as `n > 0`.',
+      + 'Literal-on-left forms (e.g. `0 < n`) are deferred to a later phase — rewrite as `n > 0`.',
       'fragment',
       source,
       position,
@@ -286,6 +300,14 @@ function checkRelationOperands(
 /** Is `node` a reference to the binder `Sym(binder)`? */
 function isBinderRef(node: AstNode, binder: string): boolean {
   return node[0] === NodeTypes.Sym && (node[1] as string) === binder
+}
+
+/** Is `node` a call to one of the arithmetic builtins? */
+function isArithmeticCall(node: AstNode): boolean {
+  if (node[0] !== NodeTypes.Call) return false
+  const [callee] = node[1] as [AstNode, AstNode[]]
+  if (callee[0] !== NodeTypes.Builtin) return false
+  return ARITHMETIC_BUILTINS.has(callee[1] as string)
 }
 
 /**

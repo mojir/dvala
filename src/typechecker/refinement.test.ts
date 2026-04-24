@@ -45,11 +45,15 @@ describe('refinement types — Phase 1', () => {
       'Number & {n | n != 0}',
       'Number & {n | n == 42}',
       'String & {s | s == "ok"}',
+      // Atom equality — explicit ship-gate example from the design doc.
+      'Atom & {x | x == :ok}',
       'Number & {x | isNumber(x)}',
       'String & {s | isString(s)}',
       'Number & {x | isNumber(x) && isInteger(x)}',
       'Number & {x | isNumber(x) || isString(x)}',
       'Number & {x | !isNumber(x)}',
+      // Double negation — exercises the recursive Call(!) → Call(!) path.
+      'Number & {x | !!isNumber(x)}',
       'String & {s | count(s) > 0}',
       'String & {s | count(s) == 0}',
       'String & {s | count(s) >= 3 && count(s) <= 10}',
@@ -66,9 +70,12 @@ describe('refinement types — Phase 1', () => {
       // Non-Boolean body — predicate-type kind.
       { input: 'Number & {x | x}', kind: 'predicate-type', match: /bare identifier/i },
       { input: 'Number & {x | 42}', kind: 'predicate-type', match: /literal/i },
-      // Arithmetic — fragment kind, with the operator named.
-      { input: 'Number & {n | n * n > 0}', kind: 'fragment', match: /left-hand side|arithmetic/i },
-      { input: 'Number & {n | n + 1 > 0}', kind: 'fragment', match: /left-hand side|arithmetic/i },
+      // Arithmetic — fragment kind, with the operator named. The
+      // LHS-arithmetic message explicitly points at Phase 3 (linear
+      // arithmetic solver) rather than telling the user to "rewrite as
+      // n > 0" (which is wrong guidance when the LHS is `n + 1`).
+      { input: 'Number & {n | n * n > 0}', kind: 'fragment', match: /arithmetic.*left-hand side|Phase 3/i },
+      { input: 'Number & {n | n + 1 > 0}', kind: 'fragment', match: /arithmetic.*left-hand side|Phase 3/i },
       // Unknown / non-guard builtin function call — fragment kind.
       { input: 'Number & {n | someUserFn(n)}', kind: 'fragment', match: /builtin/i },
       // Control flow — fragment kind, named.
@@ -93,19 +100,19 @@ describe('refinement types — Phase 1', () => {
   })
 
   describe('disambiguation', () => {
-    it('Record-literal intersection parses unchanged', () => {
+    it('record-literal intersection parses unchanged', () => {
       expect(() => parseTypeAnnotation('{a: Number} & {b: String}')).not.toThrow()
     })
 
-    it('Open record still works', () => {
+    it('open record still works', () => {
       expect(() => parseTypeAnnotation('{a: Number, ...} & {b: String}')).not.toThrow()
     })
 
-    it('Non-refinement `&` with bracketed operand parses', () => {
+    it('non-refinement `&` with bracketed operand parses', () => {
       expect(() => parseTypeAnnotation('String & [Number]')).not.toThrow()
     })
 
-    it('Refinement brace does not suspend angle tracking outside itself', () => {
+    it('refinement brace does not suspend angle tracking outside itself', () => {
       // Regression guard: the refinement-specific angle suspension
       // only applies inside refinement braces. A subsequent refinement
       // in the same annotation must still have normal relational-op
@@ -132,18 +139,31 @@ describe('refinement types — Phase 1', () => {
   })
 
   describe('syntactic errors route through TypeParseError', () => {
-    it('Unterminated refinement (missing `}`) produces TypeParseError', () => {
+    it('unterminated refinement (missing `}`) produces TypeParseError', () => {
       expect(() => parseTypeAnnotation('Number & {n | n > 0'))
         .toThrow(TypeParseError)
     })
 
-    it('Missing binder produces TypeParseError', () => {
+    it('missing binder produces TypeParseError', () => {
       expect(() => parseTypeAnnotation('Number & {| n > 0}'))
         .toThrow(TypeParseError)
     })
 
-    it('Empty predicate body produces TypeParseError', () => {
+    it('empty predicate body produces TypeParseError', () => {
       expect(() => parseTypeAnnotation('Number & {n | }'))
+        .toThrow(TypeParseError)
+    })
+
+    it('reserved-word binder (`null`/`true`/`false`) produces TypeParseError', () => {
+      // Reserved symbols tokenize as ReservedSymbol, not Sym — the
+      // annotation collector's `isSymbolToken || isReservedSymbolToken`
+      // check accepts them for brace classification (refinement vs.
+      // record). The inner predicate parser then can't bind to `null`,
+      // so the user would get a confusing "binder on LHS" error later.
+      // Reject early with a targeted syntax error instead.
+      expect(() => parseTypeAnnotation('Number & {null | null > 0}'))
+        .toThrow(TypeParseError)
+      expect(() => parseTypeAnnotation('Number & {true | true == true}'))
         .toThrow(TypeParseError)
     })
   })

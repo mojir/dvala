@@ -34,8 +34,8 @@ import {
 import { getEffectDeclaration } from './effectTypes'
 import { isSubtype } from './subtype'
 import { parse } from '../parser'
-import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
+import { tokenize } from '../tokenizer/tokenize'
 import { fragmentCheckPredicate } from './refinementFragmentCheck'
 
 // ---------------------------------------------------------------------------
@@ -365,6 +365,18 @@ class TypeParser {
       throw new TypeParseError('Expected binder identifier before `|`', this.input, this.pos)
     }
     const binder = this.input.slice(binderStart, this.pos)
+    // Reserved-word binders (`null`, `true`, `false`) tokenize as
+    // ReservedSymbol inside the predicate body, never as a plain Sym.
+    // `isBinderRef` only matches `Sym(binder)`, so a reserved-word binder
+    // would be unreferenceable and the user would get a confusing
+    // "binder must be on the LHS" error later. Reject early.
+    if (binder === 'null' || binder === 'true' || binder === 'false') {
+      throw new TypeParseError(
+        `Refinement binder '${binder}' conflicts with a reserved keyword; choose a different name`,
+        this.input,
+        binderStart,
+      )
+    }
     this.skipWhitespace()
     this.consume('|')
     this.skipWhitespace()
