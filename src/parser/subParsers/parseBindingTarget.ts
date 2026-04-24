@@ -1,5 +1,5 @@
 import { ParseError } from '../../errors'
-import type { AstNode, BindingTarget, ObjectBindingEntry, SymbolNode, UserDefinedSymbolNode } from '../types'
+import type { AliasParam, AstNode, BindingTarget, ObjectBindingEntry, SymbolNode, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import { type Token, assertOperatorToken, isAtomToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
 import { isSpecialSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
@@ -35,9 +35,18 @@ export interface ParseBindingTargetOptions {
   noRest?: true
   allowLiteralPatterns?: true
   stopTypeAnnotationAtRParen?: true
+  /**
+   * Phase 0b — `let f<T: U> = ...`. When true, the symbol-binding path
+   * accepts an optional `<T, U: Bound, ...>` generic-param list between
+   * the symbol and its type annotation / default value. The parsed
+   * params are stored in `ctx.typeParams` keyed by the binding-target
+   * nodeId. The typechecker reads them to create binding-scoped
+   * TypeVars whose bounds propagate through any annotation in the RHS.
+   */
+  allowTypeParams?: true
 }
 
-export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, noRest, allowLiteralPatterns, stopTypeAnnotationAtRParen }: ParseBindingTargetOptions = {}): BindingTarget {
+export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, noRest, allowLiteralPatterns, stopTypeAnnotationAtRParen, allowTypeParams }: ParseBindingTargetOptions = {}): BindingTarget {
   const firstToken = ctx.tryPeek()
 
   // Wildcard _ (only in pattern matching context)
@@ -104,6 +113,16 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
   if (isSymbolToken(firstToken)) {
     const symbol = toUserDefinedSymbol(parseSymbol(ctx), firstToken[2], ctx)
 
+    // Phase 0b — optional binding-scoped type-parameter list: `let f<T: U> = ...`.
+    // Parsed here (before the type annotation / default value) when the caller
+    // opted in via `allowTypeParams` (only `let` today). Stored in `ctx.typeParams`
+    // keyed by the binding-target nodeId so the typechecker can register the
+    // bounded type vars for the whole RHS.
+    let typeParams: AliasParam[] | undefined
+    if (allowTypeParams && isOperatorToken(ctx.tryPeek(), '<')) {
+      typeParams = parseBindingTypeParams(ctx)
+    }
+
     // Type annotation: x: Type — stored in side-table, not in the binding target
     let typeAnnotation: string | undefined
     if (isTypeAnnotationColon(ctx)) {
@@ -125,6 +144,9 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     // Store annotation keyed by the binding target's allocated nodeId
     if (typeAnnotation) {
       ctx.typeAnnotations.set(target[2], typeAnnotation)
+    }
+    if (typeParams) {
+      ctx.typeParams.set(target[2], typeParams)
     }
 
     return target
@@ -304,6 +326,61 @@ function parseOptionalDefaulValue(ctx: ParserContext): AstNode | undefined {
     return ctx.parseExpression()
   }
   return undefined
+}
+
+/**
+ * Parse a binding-scoped type-parameter list `<T, U: Bound, ...>` after
+ * the symbol in a `let f<T> = ...` binding. Shares the shape with the
+ * type-alias generic-param parser in `parseTypeDeclaration.ts` — both
+ * emit `AliasParam[]` where each entry has a name and optional bound
+ * source text. The bound source is parsed lazily by the typechecker
+ * (same rationale as for alias bounds: avoid circular-parse dependencies
+ * when a bound references a name defined later in the same file).
+ *
+ * Duplicates (`<T, T>` or `<T: A, T: B>`) are rejected here so the
+ * typechecker downstream never sees an ambiguous type-var map.
+ */
+function parseBindingTypeParams(ctx: ParserContext): AliasParam[] {
+  ctx.advance() // consume '<'
+  const params: AliasParam[] = []
+  const seen = new Set<string>()
+
+  while (!ctx.isAtEnd()) {
+    const paramToken = ctx.peek()
+    if (!isSymbolToken(paramToken) && !isReservedSymbolToken(paramToken)) {
+      throw new ParseError('Expected type parameter name', ctx.peekSourceCodeInfo())
+    }
+    const paramName = paramToken[1]
+    if (seen.has(paramName)) {
+      throw new ParseError(`Duplicate type parameter '${paramName}' in generic parameter list`, ctx.peekSourceCodeInfo())
+    }
+    seen.add(paramName)
+    ctx.advance()
+
+    // Optional upper bound: `: BoundType` — stored as source text, parsed lazily.
+    let bound: string | undefined
+    if (isOperatorToken(ctx.tryPeek(), ':')) {
+      ctx.advance() // consume ':'
+      const boundExpr = collectTypeAnnotation(ctx, { stopAtGt: true })
+      if (!boundExpr) {
+        throw new ParseError(`Expected bound type after ":" for parameter "${paramName}"`, ctx.peekSourceCodeInfo())
+      }
+      bound = boundExpr
+    }
+    params.push(bound === undefined ? { name: paramName } : { name: paramName, bound })
+
+    if (isOperatorToken(ctx.tryPeek(), ',')) {
+      ctx.advance()
+      continue
+    }
+    break
+  }
+
+  if (!isOperatorToken(ctx.tryPeek(), '>')) {
+    throw new ParseError('Expected ">" after type parameters', ctx.peekSourceCodeInfo())
+  }
+  ctx.advance() // consume '>'
+  return params
 }
 
 function isLiteralToken(token: Token | undefined): boolean {

@@ -9,7 +9,7 @@ export function parseLet(ctx: ParserContext, token: SymbolToken): LetNode {
   ctx.builder?.startNode('Let')
   ctx.advance()
 
-  const target = parseBindingTarget(ctx, { requireDefaultValue: true, noRest: true })
+  const target = parseBindingTarget(ctx, { requireDefaultValue: true, noRest: true, allowTypeParams: true })
 
   const value = target[1][1]!
   target[1][1] = undefined

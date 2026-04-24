@@ -27,6 +27,14 @@ export class ParserContext {
   readonly effectDeclarations = new Map<string, { argType: string; retType: string }>()
   /** Type alias declarations: type Name<Params> = TypeExpr */
   readonly typeAliases = new Map<string, { params: AliasParam[]; body: string }>()
+  /**
+   * Binding-scoped type parameters from `let f<T: U> = ...` (Phase 0b).
+   * Keyed by the binding-target nodeId; the typechecker reads this
+   * side-table when inferring a let binding and registers the bounded
+   * type vars for the whole RHS scope. Empty by default — the map only
+   * holds entries for let-bindings that actually declared type params.
+   */
+  readonly typeParams = new Map<number, AliasParam[]>()
 
   // -- CST mode fields --
   /** When present, the parser operates in CST mode on the full token stream. */

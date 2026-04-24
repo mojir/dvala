@@ -21,7 +21,7 @@ import {
   typeToString, typeEquals,
   effectSetToString, isEffectSubset, subtractEffects,
 } from './types'
-import type { AstNode, ObjectBindingEntry } from '../parser/types'
+import type { AliasParam, AstNode, ObjectBindingEntry } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
@@ -104,6 +104,21 @@ export class InferenceContext {
   private constraintCache = new Set<string>()
   /** Type annotations from the parser side-table. Keyed by binding target nodeId. */
   typeAnnotations = new Map<number, string>()
+  /**
+   * Binding-scoped type parameters from `let f<T: U> = ...` (Phase 0b).
+   * Parser side-table — the typechecker reads this when inferring a let
+   * binding, creates TypeVars with the declared bounds, and pushes them
+   * onto `activeTypeParams` for the whole RHS scope.
+   */
+  typeParams?: Map<number, AliasParam[]>
+  /**
+   * The currently-active binding-scoped type params. Maps name (e.g.
+   * "T") → TypeVar so `parseTypeAnnotation` calls during the RHS
+   * resolve the name to the pre-created bounded var rather than a
+   * fresh annotation-local one. Shadowing: nested lets with their own
+   * `<T>` overlay their parents. Restored on scope exit via a snapshot.
+   */
+  activeTypeParams = new Map<string, Type>()
   /** Resolves file imports for cross-file type checking. */
   resolveFileType?: (importPath: string) => Type
   /**
@@ -1056,81 +1071,126 @@ export function inferExpr(
       // --- Let binding ---
       case NodeTypes.Let: {
         const [binding, valueNode] = payload as [AstNode, AstNode]
+        const bindingNodeId = binding[2]
+
+        // Phase 0b — binding-scoped type parameters (`let f<T: U> = ...`).
+        // When the parser recorded any, install them in `activeTypeParams`
+        // before inferring the RHS so that occurrences of `T` inside the
+        // RHS's annotations resolve to pre-created bounded TypeVars.
+        // Snapshot-and-restore lets nested `<T>` lets shadow outer ones
+        // without leaking scope when each completes.
+        const bindingTypeParams = ctx.typeParams?.get(bindingNodeId)
+        const typeParamsSnapshot = bindingTypeParams ? new Map(ctx.activeTypeParams) : undefined
+        if (bindingTypeParams) {
+          for (const param of bindingTypeParams) {
+            const fresh = ctx.freshVar()
+            if (param.bound !== undefined) {
+              try {
+                // Parse the bound against the current outer scope — a
+                // later param's bound can reference earlier params, but
+                // bounds cannot reference themselves or later params.
+                const boundType = parseTypeAnnotation(param.bound, ctx.activeTypeParams)
+                fresh.upperBounds.push(boundType)
+              } catch (error) {
+                if (error instanceof TypeParseError) {
+                  ctx.deferError(new TypeInferenceError(error.cleanMessage, bindingNodeId))
+                } else {
+                  throw error
+                }
+              }
+            }
+            ctx.activeTypeParams.set(param.name, fresh)
+          }
+        }
+
         // Infer the value's type at a higher level for generalization.
         // Wrap in try/catch so that a type error in the value still binds the
         // variable as Unknown — this prevents cascading "undefined variable"
         // errors downstream (especially important for file imports).
+        //
+        // The surrounding try/finally restores the outer `activeTypeParams`
+        // scope regardless of how the block exits (normal completion,
+        // deferred TypeInferenceError, or propagated non-TypeInferenceError).
+        // The annotation must be parsed with the Phase-0b bindings still in
+        // scope — e.g. `let f<T: Number>: T = ...` must resolve `T` in the
+        // `: T` annotation to the same bounded TypeVar the RHS used.
         let valueType: Type
-        ctx.enterLevel()
+        let boundType: Type
         try {
-          valueType = inferExpr(valueNode, ctx, env, typeMap)
-        } catch (e) {
-          if (e instanceof TypeInferenceError) {
-            if (e.nodeId === undefined) {
-              e.nodeId = valueNode[2]
-            }
-            ctx.deferError(e)
-            valueType = Unknown
-          } else {
-            throw e
-          }
-        }
-        ctx.leaveLevel()
-
-        valueType = generalizeTypeVars(valueType, ctx.level)
-
-        // Check type annotation constraint: let x: T = expr → constrain expr <: T
-        const bindingNodeId = binding[2]
-        const annotation = ctx.typeAnnotations?.get(bindingNodeId)
-        let boundType: Type = valueType
-        if (annotation) {
-          // Simplify the parsed annotation so surface-level patterns
-          // like `{a: A} & {b: B}` are folded into a single merged
-          // Record before `constrain` sees them — the Inter-on-right
-          // path would otherwise enforce each member separately and
-          // reject legitimate values.
-          //
-          // `parseTypeAnnotation` can throw `TypeParseError` when the
-          // annotation is malformed or, post-Phase-0a, when a generic
-          // alias instantiation violates a declared upper bound. Convert
-          // to a TypeInferenceError anchored at the value node so it
-          // surfaces as a diagnostic instead of aborting the pass.
-          let declaredType: Type
+          ctx.enterLevel()
           try {
-            declaredType = simplify(parseTypeAnnotation(annotation))
-          } catch (error) {
-            if (error instanceof TypeParseError) {
-              throw new TypeInferenceError(error.cleanMessage, valueNode[2])
+            valueType = inferExpr(valueNode, ctx, env, typeMap)
+          } catch (e) {
+            if (e instanceof TypeInferenceError) {
+              if (e.nodeId === undefined) {
+                e.nodeId = valueNode[2]
+              }
+              ctx.deferError(e)
+              valueType = Unknown
+            } else {
+              throw e
             }
-            throw error
           }
-          try {
-            constrain(ctx, valueType, declaredType)
-          } catch (error) {
-            if (error instanceof TypeInferenceError && error.nodeId === undefined) {
-              error.nodeId = valueNode[2]
+          ctx.leaveLevel()
+
+          valueType = generalizeTypeVars(valueType, ctx.level)
+
+          // Check type annotation constraint: let x: T = expr → constrain expr <: T
+          const annotation = ctx.typeAnnotations?.get(bindingNodeId)
+          boundType = valueType
+          if (annotation) {
+            // Simplify the parsed annotation so surface-level patterns
+            // like `{a: A} & {b: B}` are folded into a single merged
+            // Record before `constrain` sees them — the Inter-on-right
+            // path would otherwise enforce each member separately and
+            // reject legitimate values.
+            //
+            // `parseTypeAnnotation` can throw `TypeParseError` when the
+            // annotation is malformed or, post-Phase-0a, when a generic
+            // alias instantiation violates a declared upper bound. Convert
+            // to a TypeInferenceError anchored at the value node so it
+            // surfaces as a diagnostic instead of aborting the pass.
+            let declaredType: Type
+            try {
+              declaredType = simplify(parseTypeAnnotation(annotation, ctx.activeTypeParams))
+            } catch (error) {
+              if (error instanceof TypeParseError) {
+                throw new TypeInferenceError(error.cleanMessage, valueNode[2])
+              }
+              throw error
             }
-            throw error
+            try {
+              constrain(ctx, valueType, declaredType)
+            } catch (error) {
+              if (error instanceof TypeInferenceError && error.nodeId === undefined) {
+                error.nodeId = valueNode[2]
+              }
+              throw error
+            }
+            const expandedValueType = expandType(valueType)
+            if (!isSubtype(expandedValueType, declaredType)) {
+              throw new TypeInferenceError(
+                `${typeToString(expandedValueType)} is not a subtype of ${typeToString(declaredType)}`,
+                valueNode[2],
+              )
+            }
+            // If the annotation mentions type vars (per decision #22 — single
+            // uppercase letters like A, B, T, K), treat it as a forall-quantified
+            // signature: bind the declared type (not the inferred body), with
+            // its vars generalized. Each reference to this binding then gets
+            // freshened via the standard let-polymorphism path — matching the
+            // way builtin polymorphic signatures already work through
+            // `freshenAnnotationVars`. Without this, the user-written
+            // signature is checked at definition time but lost as the contract
+            // downstream, so callers are constrained only by whatever body
+            // inference happened to produce.
+            if (containsVars(declaredType)) {
+              boundType = generalizeTypeVars(declaredType, -1)
+            }
           }
-          const expandedValueType = expandType(valueType)
-          if (!isSubtype(expandedValueType, declaredType)) {
-            throw new TypeInferenceError(
-              `${typeToString(expandedValueType)} is not a subtype of ${typeToString(declaredType)}`,
-              valueNode[2],
-            )
-          }
-          // If the annotation mentions type vars (per decision #22 — single
-          // uppercase letters like A, B, T, K), treat it as a forall-quantified
-          // signature: bind the declared type (not the inferred body), with
-          // its vars generalized. Each reference to this binding then gets
-          // freshened via the standard let-polymorphism path — matching the
-          // way builtin polymorphic signatures already work through
-          // `freshenAnnotationVars`. Without this, the user-written
-          // signature is checked at definition time but lost as the contract
-          // downstream, so callers are constrained only by whatever body
-          // inference happened to produce.
-          if (containsVars(declaredType)) {
-            boundType = generalizeTypeVars(declaredType, -1)
+        } finally {
+          if (typeParamsSnapshot !== undefined) {
+            ctx.activeTypeParams = typeParamsSnapshot
           }
         }
 
@@ -1702,7 +1762,7 @@ export function inferExpr(
             if (paramAnnotation) {
               let annotatedType: Type
               try {
-                annotatedType = simplify(parseTypeAnnotation(paramAnnotation))
+                annotatedType = simplify(parseTypeAnnotation(paramAnnotation, ctx.activeTypeParams))
               } catch (error) {
                 if (error instanceof TypeParseError) {
                   throw new TypeInferenceError(error.cleanMessage, param[2])
@@ -2685,7 +2745,7 @@ function inferFunctionNode(
       if (paramAnnotation) {
         let declaredType: Type
         try {
-          declaredType = simplify(parseTypeAnnotation(paramAnnotation))
+          declaredType = simplify(parseTypeAnnotation(paramAnnotation, ctx.activeTypeParams))
         } catch (error) {
           if (error instanceof TypeParseError) {
             throw new TypeInferenceError(error.cleanMessage, param[2])
@@ -2723,7 +2783,7 @@ function inferFunctionNode(
     if (rawAnnotation?.startsWith('return:')) {
       let declaredType: Type
       try {
-        declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length))
+        declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length), ctx.activeTypeParams)
       } catch (error) {
         if (error instanceof TypeParseError) {
           throw new TypeInferenceError(error.cleanMessage, node[2])

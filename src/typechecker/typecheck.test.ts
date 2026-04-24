@@ -2336,6 +2336,166 @@ describe('typecheck — annotation-scoped <T: U> on function types', () => {
   })
 })
 
+describe('typecheck — let-binding-scoped <T: U> (Phase 0b)', () => {
+  const dvala = createDvala()
+
+  it('parses and typechecks let f<T>', () => {
+    const result = dvala.typecheck(`
+      let id<T> = (x: T) -> x;
+      let n: Number = id(42);
+      n
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('parses and typechecks let f<T: U> with a bound', () => {
+    const result = dvala.typecheck(`
+      let doubleIt<T: Number> = (x: T) -> x;
+      let n: Number = doubleIt(5);
+      n
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects argument violating the bound', () => {
+    const result = dvala.typecheck(`
+      let doubleIt<T: Number> = (x: T) -> x;
+      doubleIt("hi")
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('T is visible in intermediate let annotations inside the RHS', () => {
+    // This is what 0b adds that 0a's annotation-scoped form can't:
+    // `T` in an inner `let first: T = ...` resolves to the same
+    // bounded TypeVar as the outer `<T: Number>`.
+    const result = dvala.typecheck(`
+      let pickFirst<T: Number> = (xs: T[]) -> do
+        let first: T = get(xs, 0);
+        first
+      end;
+      pickFirst([1, 2, 3])
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('multiple bounded parameters work', () => {
+    const result = dvala.typecheck(`
+      let combine<A: Number, B: String> = (a: A, b: B) -> b;
+      combine(1, "hi")
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('Sequence bound works for let-binding-scoped T', () => {
+    const result = dvala.typecheck(`
+      let sizeOf<T: Sequence> = (s: T) -> count(s);
+      let n: Number = sizeOf([1, 2, 3]);
+      let m: Number = sizeOf("hello");
+      [n, m]
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('rejects duplicate type parameter names (ParseError)', () => {
+    // Duplicate names in the `<...>` list are a syntax error — the
+    // parser throws ParseError immediately rather than the typechecker
+    // producing a diagnostic. Matches how other invalid-syntax cases
+    // surface in Dvala.
+    expect(() => dvala.typecheck(`
+      let dup<T: Number, T: String> = (x: T) -> x;
+      dup(1)
+    `)).toThrow(/Duplicate type parameter/)
+  })
+
+  it('outer T shadows inner T in nested lets', () => {
+    // Inner `<T: String>` shadows outer `<T: Number>` within the
+    // inner binding. Both can coexist without leaking scope.
+    const result = dvala.typecheck(`
+      let outer<T: Number> = (n: T) -> do
+        let inner<T: String> = (s: T) -> count(s);
+        inner("hi")
+      end;
+      outer(5)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('type params are erased after the let — later code cannot see T', () => {
+    // `T` is only in scope within the let's RHS. Once the binding
+    // completes, a later `T` resolves to a fresh annotation-local var
+    // (not the bounded one from the earlier let).
+    const result = dvala.typecheck(`
+      let f<T: Number> = (x: T) -> x;
+      let g: (T) -> T = (y) -> y;
+      g("hi")
+    `)
+    // The outer bound shouldn't constrain the later anonymous `T`.
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // Regression: the binding-scoped type-param parser uses the same
+  // collectTypeAnnotation machinery as the type-alias form (0a.1),
+  // which was fixed to split `>>` / `>>>` tokens. Verify those tokens
+  // also work in let-binding bounds.
+  it('bound with nested generic (>> token)', () => {
+    const result = dvala.typecheck(`
+      type Box<T> = {value: T};
+      let takeBox<T: Box<Number>> = (b: T) -> b;
+      let b: Box<Number> = {value: 5};
+      takeBox(b)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('bound with two-deep nested generic (>>> token)', () => {
+    const result = dvala.typecheck(`
+      type Box<T> = {value: T};
+      let takeDeepBox<T: Box<Box<Number>>> = (b: T) -> b;
+      let b: Box<Box<Number>> = {value: {value: 5}};
+      takeDeepBox(b)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('bound with three-deep nested generic (>>> + > tokens)', () => {
+    const result = dvala.typecheck(`
+      type Box<T> = {value: T};
+      let takeDeeperBox<T: Box<Box<Box<Number>>>> = (b: T) -> b;
+      let b: Box<Box<Box<Number>>> = {value: {value: {value: 5}}};
+      takeDeeperBox(b)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // Regression: the let's own return-type annotation must see the
+  // 0b-bound type params. Before the try/finally fix, the scope was
+  // restored BEFORE the annotation was parsed, so `T` in `: T` fell
+  // through to a fresh annotation-local var and the bound was silently
+  // dropped from the annotation — the signature and the body then
+  // mentioned two different vars, breaking the contract.
+  it('let f<T: U>: T = ... — annotation sees the same T as the RHS', () => {
+    const result = dvala.typecheck(`
+      let keep<T: Number>: (T) -> T = (x) -> x;
+      let n: Number = keep(5);
+      n
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('let f<T: U>: T = ... still rejects a body that violates the bound', () => {
+    // Body returns "hi" which isn't <: T (T <: Number). The annotation
+    // `(T) -> T` must be checked against the body; restoring the T-scope
+    // before this check would have parsed `: (T) -> T` with a fresh
+    // unrelated var and missed the error.
+    const result = dvala.typecheck(`
+      let bad<T: Number>: (T) -> T = (x) -> "hi";
+      bad(1)
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+})
+
 // ---------------------------------------------------------------------------
 // typecheck option on createDvala
 // ---------------------------------------------------------------------------
