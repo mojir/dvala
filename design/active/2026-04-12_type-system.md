@@ -941,15 +941,13 @@ Type the full handler contract — what flows through `perform` and `resume`.
 
 ### Phase D (future): Refinement Layer + Type-Level Computation
 
-**Refinement types:** Optional predicates on types for constraint domains:
-```dvala
-type Positive = Number & {n | n > 0}
-```
-Requires SMT-solver integration. Built on top of the set-theoretic foundation.
+Two separate Phase D+ tracks, each with its own design doc:
 
-**Type-level computation:** Conditional types, mapped types, recursive type functions — with recursion limit. Not a design goal now, but the `Type` union is extensible. Set-theoretic negation + union + intersection covers 90% of what Turing-complete type systems are used for.
+- **Refinement types** — optional predicates on types (e.g. `type Positive = Number & {n | n > 0}`). Requires a decision procedure (SMT solver or a custom bounded subset). Built on top of the set-theoretic foundation. Runtime story: compile-time only except at trust boundaries. See [`2026-04-23_refinement-types.md`](2026-04-23_refinement-types.md).
 
-Not needed for language viability.
+- **Type-level computation** — conditional types, mapped types, recursive type functions, literal-length arrays. The `Type` union is extensible, so this is additive. See [`2026-04-23_type-level-computation.md`](2026-04-23_type-level-computation.md).
+
+Neither is needed for language viability. Set-theoretic negation + union + intersection covers 90% of what Turing-complete type systems are used for.
 
 ---
 
@@ -1103,7 +1101,7 @@ Number[4][3]           // 4x3 matrix
 Number[4] <: Number[]  // fixed-size is subtype of unsized
 ```
 
-Requires literal values in type parameter positions — builds on literal types (Phase A) and the refinement layer (Phase D). No architecture blocked.
+Requires literal values in type parameter positions — builds on literal types (Phase A). Tracked in [`2026-04-23_type-level-computation.md`](2026-04-23_type-level-computation.md); can stand alone without the refinement layer.
 
 ---
 
