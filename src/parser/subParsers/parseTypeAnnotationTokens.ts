@@ -7,7 +7,7 @@
  * and parseLambdaFunction (for `(a): T -> ...`).
  */
 
-import { isOperatorToken, isRParenToken, isReservedSymbolToken } from '../../tokenizer/token'
+import { isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import type { ParserContext } from '../ParserContext'
 
 /**
@@ -30,12 +30,22 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
   const parts: string[] = []
   let depth = 0 // track balanced parens/brackets/braces
   let angleDepth = 0 // track Handler<...> and future generic type args
+  // Stack of brace types. When we enter a `{`, push either 'refinement'
+  // (if the following tokens match `IDENT |` — the refinement-predicate
+  // disambiguation used by the type parser) or 'other'. While the top
+  // of the stack is 'refinement', `<` and `>` are Dvala expression
+  // operators, not generic brackets — don't track angleDepth for them.
+  // Prevents `{n | 0 < n}` from incrementing angleDepth and eating past
+  // the matching `}`.
+  const braceStack: ('refinement' | 'other')[] = []
   const stopAtArrow = options?.stopAtArrow ?? false
   const stopAtRParen = options?.stopAtRParen ?? true
   // When set, stop at `>` at the top level (angleDepth === 0). Used when
   // collecting a type-parameter upper-bound inside a `<T: Bound>` list —
   // the closing `>` of the param list must terminate the bound collection.
   const stopAtGt = options?.stopAtGt ?? false
+
+  const inRefinementBrace = (): boolean => braceStack[braceStack.length - 1] === 'refinement'
 
   while (!ctx.isAtEnd()) {
     const token = ctx.tryPeek()
@@ -47,8 +57,13 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
     // them as a run — consume one `>` at a time for angle-depth tracking
     // and stopAtGt, mutating the token in place to "leave behind" any
     // unconsumed `>`s for the outer parser.
+    //
+    // Exception: while inside a refinement-predicate brace scope, `>`
+    // is a Dvala relational operator, not a generic closer. Skip the
+    // run-splitting logic and fall through to the default "add token
+    // text to parts" path.
     const gtRun = rightAngleRunLength(token)
-    if (gtRun > 0) {
+    if (gtRun > 0 && !inRefinementBrace()) {
       let consumed = 0
       while (consumed < gtRun) {
         if (depth === 0 && angleDepth === 0 && stopAtGt) break
@@ -82,9 +97,26 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
     }
 
     // Track nesting
-    if (token[0] === 'LParen' || token[0] === 'LBracket' || token[0] === 'LBrace') depth++
-    if (token[0] === 'RParen' || token[0] === 'RBracket' || token[0] === 'RBrace') depth--
-    if (isOperatorToken(token, '<')) angleDepth++
+    if (token[0] === 'LParen' || token[0] === 'LBracket') depth++
+    if (token[0] === 'LBrace') {
+      depth++
+      // Classify the brace: refinement-predicate `{ IDENT |` vs. anything
+      // else. Refinement needs angleDepth suspended for its body.
+      const next = ctx.peekAhead(1)
+      const after = ctx.peekAhead(2)
+      const isRefinement
+        = next !== undefined && (isSymbolToken(next) || isReservedSymbolToken(next))
+        && after !== undefined && isOperatorToken(after, '|')
+      braceStack.push(isRefinement ? 'refinement' : 'other')
+    }
+    if (token[0] === 'RParen' || token[0] === 'RBracket') depth--
+    if (token[0] === 'RBrace') {
+      depth--
+      braceStack.pop()
+    }
+    // `<` is a generic opener — but inside a refinement-predicate brace
+    // it's a Dvala less-than operator, not an angle bracket.
+    if (isOperatorToken(token, '<') && !inRefinementBrace()) angleDepth++
 
     // Reconstruct the token text
     if (token[0] === 'Atom') parts.push(`:${token[1]}`)

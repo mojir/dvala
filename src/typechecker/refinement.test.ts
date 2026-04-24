@@ -1,121 +1,150 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { builtin } from '../builtin'
+import { initBuiltinTypes } from './builtinTypes'
 import { parseTypeAnnotation, RefinementError, TypeParseError } from './parseType'
 
+// Populate the builtin-type cache so `isTypeGuard('isNumber')` returns
+// true — the fragment-checker calls it while classifying relation
+// operands. Mirrors the pattern in `infer.test.ts`.
+beforeAll(() => {
+  initBuiltinTypes(builtin.normalExpressions)
+})
+
 // ---------------------------------------------------------------------------
-// Phase 1 — parse + reject
+// Refinement types — Phase 1 (parse + fragment-check)
 // ---------------------------------------------------------------------------
 //
-// Phase 1 of the refinement-types plan (design/active/2026-04-23_refinement-types.md)
-// accepts the `Base & { binder | predicate }` syntactic shape and rejects
-// every predicate with a tagged `RefinementError(kind: 'fragment')`. The
-// `Refined` AST node and the fragment-checker walker arrive in Phase 2.
+// Design: design/active/2026-04-23_refinement-types.md (Phase 1 ship gate).
 //
-// Test structure:
-//   - "accepts syntactic shape" — the parser consumes the `{ binder | ... }`
-//     form without dying on malformed syntax. Every case throws
-//     RefinementError (not TypeParseError); the predicate body content
-//     doesn't matter yet.
-//   - "disambiguation" — record literals `{ field: T }` stay untouched.
-//   - "syntactic errors" — genuinely malformed predicates still throw
-//     TypeParseError so parse-error recovery doesn't confuse categories.
+// Phase 1 accepts the `Base & { binder | predicate }` syntax, parses the
+// predicate body as a Dvala expression, and runs the fragment-checker.
+// Accepted predicates are silently dropped (the `Refined` Type-union
+// member arrives in Phase 2); rejected predicates throw a tagged
+// RefinementError with `kind: 'fragment' | 'predicate-type'`.
+//
+// Test layout:
+//   - "accepted shapes" — everything in the Phase 1 accept list parses
+//     without throwing. The returned type reflects the base (refinement
+//     erased); behaviour beyond that is Phase 2's problem.
+//   - "rejected shapes" — each with an expected `kind` and a substring
+//     the error message must include.
+//   - "disambiguation" — record literals, generic types with `<`, etc.
+//     continue to parse.
+//   - "syntactic errors" — malformed input routes through TypeParseError
+//     (not RefinementError), so existing error-category consumers stay
+//     reliable.
 // ---------------------------------------------------------------------------
 
-describe('refinement types — Phase 1 parse + reject', () => {
-  describe('accepts syntactic shape (rejects with RefinementError, kind: fragment)', () => {
+describe('refinement types — Phase 1', () => {
+  describe('accepted shapes', () => {
     const cases = [
       'Number & {n | n > 0}',
-      'String & {s | count(s) > 0}',
-      'Integer & {n | 0 <= n && n <= 100}',
+      'Number & {n | n >= 0}',
+      'Number & {n | n < 100}',
+      'Number & {n | n <= 100}',
+      'Number & {n | n != 0}',
+      'Number & {n | n == 42}',
+      'String & {s | s == "ok"}',
+      'Number & {x | isNumber(x)}',
+      'String & {s | isString(s)}',
       'Number & {x | isNumber(x) && isInteger(x)}',
-      'String & {s | isString(s) || isNumber(s)}',
-      '{a: Number} & {r | r.min <= r.max}',
-      // Nested refinement (phase 1 rejects both — still parses both)
-      'Number & {n | n > 0} & {n | n < 100}',
+      'Number & {x | isNumber(x) || isString(x)}',
+      'Number & {x | !isNumber(x)}',
+      'String & {s | count(s) > 0}',
+      'String & {s | count(s) == 0}',
+      'String & {s | count(s) >= 3 && count(s) <= 10}',
     ]
     for (const input of cases) {
-      it(input, () => {
+      it(`accepts: ${input}`, () => {
+        expect(() => parseTypeAnnotation(input)).not.toThrow()
+      })
+    }
+  })
+
+  describe('rejected shapes', () => {
+    const cases: { input: string; kind: 'fragment' | 'predicate-type'; match: RegExp }[] = [
+      // Non-Boolean body — predicate-type kind.
+      { input: 'Number & {x | x}', kind: 'predicate-type', match: /bare identifier/i },
+      { input: 'Number & {x | 42}', kind: 'predicate-type', match: /literal/i },
+      // Arithmetic — fragment kind, with the operator named.
+      { input: 'Number & {n | n * n > 0}', kind: 'fragment', match: /left-hand side|arithmetic/i },
+      { input: 'Number & {n | n + 1 > 0}', kind: 'fragment', match: /left-hand side|arithmetic/i },
+      // Unknown / non-guard builtin function call — fragment kind.
+      { input: 'Number & {n | someUserFn(n)}', kind: 'fragment', match: /builtin/i },
+      // Control flow — fragment kind, named.
+      { input: 'Number & {n | if isNumber(n) then true else false end}', kind: 'fragment', match: /control-flow|If/i },
+      // Deferred-by-design: field access.
+      { input: 'Number & {r | isNumber(r.field)}', kind: 'fragment', match: /binder|field access/i },
+      // Deferred-by-design: `lit REL var` swapped operands.
+      { input: 'Number & {n | 0 < n}', kind: 'fragment', match: /left-hand side|literal-on-left/i },
+    ]
+    for (const { input, kind, match } of cases) {
+      it(`rejects: ${input} (kind: ${kind})`, () => {
         try {
           parseTypeAnnotation(input)
           throw new Error('expected RefinementError but parseTypeAnnotation returned successfully')
         } catch (err) {
           expect(err, `input: ${input}`).toBeInstanceOf(RefinementError)
-          expect((err as RefinementError).kind).toBe('fragment')
-          expect((err as RefinementError).cleanMessage).toMatch(/refinement types are not yet supported|Phase 1/i)
+          expect((err as RefinementError).kind).toBe(kind)
+          expect((err as RefinementError).cleanMessage).toMatch(match)
         }
       })
     }
   })
 
-  describe('disambiguation from record literals', () => {
-    it('Record literal parses unchanged — `{ field: T }`', () => {
-      // `{ a: Number }` after `&` is a record literal, not a refinement.
-      // Lookahead key: `IDENT :` (record) vs. `IDENT |` (refinement).
-      // Parser returns an Inter of two Record types (simplify collapses
-      // them later — that's not the parser's job).
+  describe('disambiguation', () => {
+    it('Record-literal intersection parses unchanged', () => {
       expect(() => parseTypeAnnotation('{a: Number} & {b: String}')).not.toThrow()
     })
 
-    it('Open record `{ field: T, ... }` still works', () => {
+    it('Open record still works', () => {
       expect(() => parseTypeAnnotation('{a: Number, ...} & {b: String}')).not.toThrow()
     })
 
-    it('Non-refinement use of `&` with bracketed operand parses', () => {
-      // `& Number[]` — the `[` starts a bracketed type, not a refinement.
-      // Lookahead correctly falls through to parsePrefix.
+    it('Non-refinement `&` with bracketed operand parses', () => {
       expect(() => parseTypeAnnotation('String & [Number]')).not.toThrow()
     })
-  })
 
-  describe('base type preserved when predicate is dropped', () => {
-    it('parser discards `& { ... }` and returns the base', () => {
-      // Phase 1 drops the refinement silently — the returned type is
-      // whatever the base parses to, with the predicate erased. The
-      // *fragment-check throw* is the user-visible effect; if we suppress
-      // the throw (try/catch in this test), the base is unchanged.
+    it('Refinement brace does not suspend angle tracking outside itself', () => {
+      // Regression guard: the refinement-specific angle suspension
+      // only applies inside refinement braces. A subsequent refinement
+      // in the same annotation must still have normal relational-op
+      // behaviour. Both halves of `{n | n < 5} & {n | n < 10}` reject
+      // with the `lit REL var` error — which is what we want; the
+      // regression target is "parse doesn't blow up mid-way."
       try {
-        parseTypeAnnotation('Number & {n | n > 0}')
-      } catch {
-        // Expected — the throw is the signal. No further assertion;
-        // the "base preserved" claim is a semantic-spec note for when
-        // Phase 2 lands and stops throwing.
+        parseTypeAnnotation('Number & {n | n < 5} & {n | n < 10}')
+      } catch (err) {
+        expect(err).toBeInstanceOf(RefinementError)
       }
     })
   })
 
-  describe('syntactic errors still route through TypeParseError', () => {
-    it('Unterminated refinement (missing `}`) produces TypeParseError, not RefinementError', () => {
-      // The predicate body is consumed via the parseType.ts brace-matcher;
-      // running off the end of input is a genuine syntax error, not a
-      // fragment rejection. Tests pin this routing so error-category
-      // consumers stay reliable.
+  describe('RefinementError subclassing', () => {
+    it('extends TypeParseError so existing error filters still match', () => {
+      try {
+        parseTypeAnnotation('Number & {n | n * n > 0}')
+      } catch (err) {
+        expect(err).toBeInstanceOf(TypeParseError)
+        expect(err).toBeInstanceOf(RefinementError)
+      }
+    })
+  })
+
+  describe('syntactic errors route through TypeParseError', () => {
+    it('Unterminated refinement (missing `}`) produces TypeParseError', () => {
       expect(() => parseTypeAnnotation('Number & {n | n > 0'))
         .toThrow(TypeParseError)
     })
 
-    it('Missing binder (no identifier before `|`) produces TypeParseError', () => {
-      // `Number & { | n > 0 }` — the binder slot is empty. Syntactic
-      // error; doesn't reach the fragment-check.
+    it('Missing binder produces TypeParseError', () => {
       expect(() => parseTypeAnnotation('Number & {| n > 0}'))
         .toThrow(TypeParseError)
     })
-  })
 
-  describe('RefinementError kind discriminator', () => {
-    it('emits kind: `fragment` for the Phase 1 stub', () => {
-      try {
-        parseTypeAnnotation('Number & {n | n > 0}')
-      } catch (err) {
-        expect(err).toBeInstanceOf(RefinementError)
-        expect((err as RefinementError).kind).toBe('fragment')
-      }
-    })
-
-    it('RefinementError extends TypeParseError (caught by existing error filters)', () => {
-      try {
-        parseTypeAnnotation('Number & {n | n > 0}')
-      } catch (err) {
-        expect(err).toBeInstanceOf(TypeParseError)
-      }
+    it('Empty predicate body produces TypeParseError', () => {
+      expect(() => parseTypeAnnotation('Number & {n | }'))
+        .toThrow(TypeParseError)
     })
   })
 })
