@@ -2,7 +2,7 @@
 
 **Status:** Proposed — implementation plan. Tier B (bounded refinements) is the chosen scope.
 **Created:** 2026-04-23
-**Last updated:** 2026-04-24 (batched-review pass: Q1–Q5 decisions from the 2026-04-24 refinement interview + reviewer punch-list resolutions)
+**Last updated:** 2026-04-24 (readiness-pass interview: Phase 1 narrowed to parse + reject only; predicate AST reuses Dvala `AstNode`; `count(var)` validation uses subtype query; tagged `RefinementError` with `kind` field; Phase 1 rejection-fixture list locked)
 **Supersedes design-time decision:** Type-system plan decision #15 parked refinement types as "Phase D+, don't do now". This doc reopens the question and picks a concrete direction.
 **Requires (Phase 0):** Generic upper-bound syntax (`T: U`) — **Phase 0a shipped 2026-04-24** (type-alias bounds + annotation-scoped function bounds). Phase 0b (let-binding-scoped `<T>`) remains deferred. See `2026-04-24_upper-bounds.md`. Phase 1 of refinements can now start; the declaration-time fragment check for `count(var)` on sequence-bounded generics is supported.
 **References:** `2026-04-12_type-system.md` (set-theoretic foundation, decision #15), `2026-04-13_bundle-type-metadata.md` (manifest / host boundary validation), `2026-04-23_type-level-computation.md` (sibling Phase D track)
@@ -427,17 +427,19 @@ When the base check fails, the refinement is irrelevant. When it succeeds, the d
 
 ### Walker updates required
 
-Adding `Refined` to the `Type` union requires new cases in every structural walker in the typechecker. Checklist:
+Adding `Refined` to the `Type` union requires new cases in every structural walker in the typechecker. Checklist (verified against `src/typechecker/` as of 2026-04-24):
 
 - `freshenAllVars`, `freshenInner` (let-polymorphism freshening).
 - `containsVars`, `containsVarsAboveLevel`, `generalizeInner` (level-based generalization — see PR #89 for the lesson from missing `Keyof`/`Index` cases).
 - `expandType`, `expandTypeForDisplay`, `expandTypeForMatchAnalysis`.
-- `simplify`, `simplifyInner` (post-inference collapse).
+- `simplify` + its per-shape helpers: `simplifyUnion`, `simplifyIntersection`, `simplifyNeg`, `simplifySequence`.
+  (The earlier draft named `simplifyInner` — no such function exists.)
 - `typeToString`, `typeId` (rendering + cache keys).
-- `substituteVar` (inside subtype.ts).
-- Any future walker added between now and Phase 1 implementation.
+- `typeEquals` (in `types.ts`) — **load-bearing**: the `union()` and `inter()` constructors call it for deduplication. Missing a `Refined` case means two equivalent refined types silently dedup as distinct, breaking simplify rules.
+- `substituteVar` (inside `subtype.ts`).
+- Any future walker added between now and Phase 2 implementation.
 
-These are mechanical extensions of switch statements. Each is a few lines. Together they're the bulk of Phase 1's integration work.
+These are mechanical extensions of switch statements. Each is a few lines. Together they're the bulk of **Phase 2's** integration work — Phase 1 deliberately does not add the `Refined` node, so walker updates are deferred.
 
 ### Simplification
 
@@ -606,38 +608,85 @@ This works because **the predicate language is a subset of Dvala itself**. No ne
 
 Five phases of refinement-types work. Each delivers something shippable.
 
-### Phase 1 — Predicate language, parsing, representation, fold-discharge
+### Phase 1 — Parse + reject (no `Refined` node yet)
 
-- Add `Refined` tag to the `Type` union.
-- Update all structural walkers in the typechecker (per the Walker-updates checklist above).
-- Add `Predicate` AST (the grammar in [Scope](#in-scope-tier-b) above).
-- Parser: accept `{binder | predicate}` after `&` in annotations.
-- Fragment-checker: walks a predicate AST, returns `OutOfFragment` with a specific reason for disallowed forms. Opacity classification per Q7's rules.
-- Multi-refinement merging in the simplification pass.
-- **Fold-discharge of refinement goals.** When a subtype check reaches a `Refined` goal whose base has a concrete literal type (directly or via fold), invoke fold on the predicate with the literal substituted. If it reduces to `true`, discharge; to `false`, disprove with the counter-example; if stuck, return "outside current phase's capability" (Phase 2 picks up from there).
-- Typecheck fixture suite: every accepted and rejected predicate form.
+Deliberately narrow. The Phase 1 compiler accepts the refinement *syntax*, enforces the fragment grammar, and emits structured errors. **Nothing else.** No `Refined` node is added to the `Type` union. No walker updates. No classification stored. No fold-discharge. Those all move to Phase 2, where they compose with the actual solver.
 
-**No decision procedure yet. No narrowing. No `assert(P)` wiring.** What works at the end of Phase 1:
+**Scope:**
 
-- Writing refinement annotations that the parser accepts and the fragment-checker validates.
-- Fragment-eligibility errors with precise messages.
-- Concrete-literal refinement checks via fold: `let x: Positive = 5` works; `let s: NonBlank = "hi"` works; `let n: Integer & {n | n == 42} = 42` works.
-- Anything with symbolic variables (non-literal) produces a clear "Phase 2 required" error.
+- **Parser.** Accept `{ binder | predicate }` after `&` in type annotations. Disambiguation from record literals is one-token lookahead (`{ IDENT |` vs. `{ IDENT :`). The parsed predicate body is a plain **Dvala `AstNode`** — the same shape the expression parser already produces. No separate "predicate IR".
+  - *Rationale (decision Q2):* reusing Dvala AST gives us free fold integration, free `typeToString`, and a ~50 LOC fragment-checker walker. A parallel IR would force us to duplicate literals, calls, field access, and atoms in a second evaluator.
+- **Fragment-checker.** A walker over the predicate `AstNode` that either returns success or throws a tagged `RefinementError`. Phase 1 accepts the shapes in the [fixture list](#phase-1-ship-gate--rejection-fixtures) below and rejects everything else. Classification of accepted shapes (opaque vs. solver-fragment) is **deferred to Phase 2** — Phase 1 doesn't store anything; it only decides accept/reject.
+- **`count(var)` well-formedness.** When a predicate calls `count(var)` and `var`'s base type is a generic `T`, the fragment-checker verifies `isSubtype(T's upper bound, Array<Unknown> | String | Collection)` using the existing subtype machinery. No hardcoded "bound-name whitelist" — any bound satisfying the subtype query is permitted.
+  - *Rationale (decision Q3):* this composes with user type aliases and the upper-bounds machinery that shipped in `2026-04-24_upper-bounds.md`. Edge case: `T` with unbounded upper bound (`Unknown`) fails the subtype query — needs an explicit error message ("`count(var)` requires `var` to be sequence-bounded; add `<T: Sequence>` to the generic parameter").
+- **Error taxonomy.** A single `RefinementError` class extending `TypeInferenceError` with a discriminator:
+  ```typescript
+  class RefinementError extends TypeInferenceError {
+    kind: 'fragment' | 'predicate-type' | 'obligation'
+  }
+  ```
+  Phase 1 emits `fragment` (shape rejected) and `predicate-type` (body isn't Boolean-typed). `obligation` is reserved for Phase 2's solver.
+  - *Rationale (decision Q4):* structured kind lets tests assert on category without coupling to message wording; one class keeps the import surface flat; future kinds add one union branch.
 
-**Ship gate:** the fragment error messages are clear, the opacity classification is correct, concrete-literal refinements are checked by fold.
+#### Phase 1 ship gate — rejection fixtures
 
-### Phase 2 — Finite-domain + interval solver + narrowing + `assert(P)` wiring
+The fragment-checker in Phase 1 accepts these shapes (all other shapes reject):
 
-- Atom / literal-set refinements (`{x | x == :ok || x == :error}`).
-- Single-variable integer interval with literal bounds (`{n | n > 0}`, `{n | 0 <= n && n <= 100}`).
-- Decision-procedure contract: `Proved` / `Disproved` / `OutOfFragment`, with counter-example for disproofs.
-- Iteration cap with deterministic behavior (same input → same verdict). Cap applies from this phase onward.
+```dvala
+// Accepted
+{x | isNumber(x)}                    // guard on var
+{n | n > 0}                          // relation, var vs. literal RHS
+{s | s == "ok"}                      // literal equality
+{x | isNumber(x) && isInteger(x)}    // Boolean AND
+{x | isString(x) || isNumber(x)}     // Boolean OR
+{x | !isBoolean(x)}                  // Boolean NOT
+{xs | count(xs) > 0}                 // count(var) + relation (on sequence-bounded var)
+```
+
+Rejected (each with a distinct error phrasing):
+
+```dvala
+{x | x}                              // non-Boolean body           [kind: predicate-type]
+{x | x * x > 0}                      // arithmetic not in fragment [kind: fragment]
+{x | someUserFn(x)}                  // unknown / non-guard call   [kind: fragment]
+{x | perform(@foo)}                  // effect                     [kind: fragment]
+{x | if isX(x) then true else false end}   // control flow         [kind: fragment]
+{r | isNumber(r.field)}              // field access — DEFERRED-BY-DESIGN
+                                     //   to Phase 1.x; not a permanent rejection
+{n | 0 < n && n < 100}               // compound bounds — DEFERRED-BY-DESIGN
+                                     //   to Phase 2 (needs solver)
+```
+
+Every rejection above becomes a vitest fixture asserting `error.kind === 'fragment'` (or `'predicate-type'`) plus a substring match on the reason. "Deferred-by-design" markers in the fixture file call out which rejections are permanent-for-now vs. planned-for-later, so future extension work can locate them.
+
+**No `Refined` node. No walker updates. No fold-discharge. No narrowing. No `assert(P)` wiring.**
+
+**What works at the end of Phase 1:**
+
+- `type Positive = Number & {n | n > 0}` is parsed and the predicate is fragment-checked — but the resulting type is **still just `Number`** (the `& {...}` is syntactically accepted but semantically dropped). Callers of `Positive` see the unrefined base. This is intentional: Phase 1 validates the surface grammar and the fragment rules without committing to the `Refined` representation.
+- Every non-fragment predicate produces a structured `RefinementError` with a testable `kind`.
+- The Phase-2 team (likely the same author) starts from a parser + checker they trust and adds the `Refined` node on top.
+
+**Ship gate:** the fixture suite above passes in `typecheck.test.ts` (or a new `refinement.test.ts`); no existing test regresses; the doc-examples in this file parse without errors.
+
+### Phase 2 — `Refined` node, walker updates, fold-discharge, finite-domain + interval solver, narrowing, `assert(P)` wiring
+
+This phase is large. It's split into sub-steps so each one lands as its own PR.
+
+**Phase 2.1 — `Refined` node + walker updates.** Add the `Refined` tag to the `Type` union and update every structural walker (see the [Walker updates required](#walker-updates-required) checklist). Phase 1's parser now produces `Refined` nodes instead of dropping the predicate; otherwise no behavioral change. Test: Phase 1's fixture suite still passes, plus `typeToString` roundtrips refined types.
+
+**Phase 2.2 — Opacity classification + multi-refinement merging.** The classifier from Q7 runs in the simplification pass and records opacity on each `Refined` node's predicate. Multi-refinement merging collapses `Base & {s|P} & {x|Q}` → `Base & {s | P && Q[x:=s]}`. Classification is stored but not yet consumed by a solver.
+
+**Phase 2.3 — Fold-discharge.** When a subtype check reaches a `Refined` goal whose base is a concrete literal (directly or via fold), invoke fold on the predicate with the literal substituted. Reduces to `true` → discharge; `false` → disprove with counter-example; stuck → out-of-fragment. Enables `let x: Positive = 5` to actually check.
+
+**Phase 2.4 — Finite-domain + single-variable interval solver.** Atom / literal-set refinements (`{x | x == :ok || x == :error}`). Single-variable integer interval with literal bounds (`{n | n > 0}`, `{n | 0 <= n && n <= 100}`). Decision-procedure contract: `Proved` / `Disproved` / `OutOfFragment`, with counter-example for disproofs. Iteration cap with deterministic behavior (same input → same verdict); cap applies from this sub-phase onward. Simplification integration: collapse refined types with decidable emptiness / redundancy / interval tightening.
+
+**Phase 2.5 — Narrowing + `assert(P)` wiring.**
 - **Block-level narrowing walker.** Walks statements in a `do` block; recognizes `assert(P)` calls with fragment-eligible `P`; threads `P` into the assumption set for subsequent statements in the block.
 - **`if`/`match` narrowing for refinement predicates** (extension of the existing flow-narrowing machinery from PR #78/#79).
-- `asserts cond` return annotation on the builtin `assert` function.
-- Simplification integration: collapse refined types with decidable emptiness / redundancy / interval tightening.
+- **`asserts cond` return annotation on the builtin `assert` function.** This is a real parser change, not a trivial builtin-annotation extension — it requires new grammar in `parseType.ts` (no existing `asserts` keyword; only `is` from type-guards at around line 882), a new field on `BuiltinTypeInfo` parallel to `guardParam` / `guardType`, and narrowing logic in `infer.ts` that reads the field and threads the assertion into the assumption set. Budget for it accordingly.
 
-**Ship gate:** `Number & !0` for division safety. Non-empty sequence refinement `{xs | count(xs) > 0}` for `head`. `assert(x > 0)` narrows `x` to `Positive` in subsequent statements. Array indexing where the bound is a literal.
+**Ship gate for Phase 2 (across all five sub-steps):** `Number & !0` for division safety. Non-empty sequence refinement `{xs | count(xs) > 0}` for `head`. `assert(x > 0)` narrows `x` to `Positive` in subsequent statements. Array indexing where the bound is a literal.
 
 ### Phase 3 — Multi-variable linear arithmetic
 
