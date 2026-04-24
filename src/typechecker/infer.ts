@@ -2194,6 +2194,13 @@ function freshenAllVars(
       args: t.args.map(a => freshenAllVars(ctx, a, mapping, rowMapping)),
       expanded: freshenAllVars(ctx, t.expanded, mapping, rowMapping),
     }
+    case 'Refined': return {
+      tag: 'Refined',
+      base: freshenAllVars(ctx, t.base, mapping, rowMapping),
+      binder: t.binder,
+      predicate: t.predicate,
+      source: t.source,
+    }
     default: return t
   }
 }

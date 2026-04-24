@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { builtin } from '../builtin'
 import { createDvala } from '../createDvala'
 import { initBuiltinTypes } from './builtinTypes'
+import { expandTypeForDisplay } from './infer'
 import { parseTypeAnnotation, RefinementError, TypeParseError } from './parseType'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
@@ -328,6 +329,11 @@ describe('refinement types — Phase 2.1 Refined node', () => {
     it('rejects a literal value that violates the base', () => {
       const result = dvala.typecheck('let x: Number & {n | n > 0} = "hi"; x')
       expect(result.diagnostics.length).toBeGreaterThan(0)
+      // The error originates from the base-level `"hi" is not a subtype
+      // of Number` check — the Refined wrapper on the RHS is passed
+      // through per Phase 2.1 policy, so the message mentions Number.
+      // (A later phase's predicate-aware message would name the full
+      // refinement; this matcher will need to widen then.)
       expect(result.diagnostics[0]!.message).toMatch(/not a subtype of Number/)
     })
 
@@ -338,6 +344,50 @@ describe('refinement types — Phase 2.1 Refined node', () => {
         'let f = (x: Number & {n | n > 0}): Number -> x + 1; f(5)',
       )
       expect(result.diagnostics).toHaveLength(0)
+    })
+
+    // Regression: `freshenAllVars` must recurse into `Refined.base` so a
+    // generic refined type alias instantiated at two different call
+    // sites doesn't share a stale un-freshened TypeVar. Without the
+    // `Refined` case in `freshenAllVars`, both calls would unify their
+    // args against the same Var in the alias's base, so the second
+    // call's concrete type would clobber the first's — manifesting as
+    // a false "type mismatch" on the later call.
+    it('generic refined alias freshens independently at each call site', () => {
+      const result = dvala.typecheck(`
+        type Positive<T> = T & {n | n > 0};
+        let f = (x: Positive<Number>): Number -> x;
+        let g = (x: Positive<Integer>): Integer -> x;
+        [f(5), g(10)]
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('generic refined alias call-sites don\'t share stale base vars', () => {
+      // Companion to the previous test — two direct calls to the same
+      // generic-refined `f` where the second would inherit the first's
+      // unification if freshenAllVars missed the Refined case.
+      const result = dvala.typecheck(`
+        type NonEmpty<T> = T & {s | count(s) > 0};
+        let len = (xs: NonEmpty<String>): Integer -> count(xs);
+        [len("hi"), len("world")]
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+  })
+
+  describe('walker direct-call sanity', () => {
+    it('expandTypeForDisplay passes through Refined', () => {
+      // Direct unit test for the `expandTypeForDisplay(Refined)` case.
+      // Uses a concrete base so the output is deterministic; the point
+      // is to confirm the walker recurses into the base and preserves
+      // the predicate + source metadata.
+      const t = parseTypeAnnotation('Number & {n | n > 0}')
+      const expanded = expandTypeForDisplay(t)
+      expect(expanded.tag).toBe('Refined')
+      if (expanded.tag !== 'Refined') throw new Error('expected Refined')
+      expect(expanded.source).toContain('n > 0')
+      expect(typeEquals(expanded.base, NumberType)).toBe(true)
     })
   })
 })

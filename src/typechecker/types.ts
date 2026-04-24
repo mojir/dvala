@@ -673,16 +673,15 @@ export function typeEquals(a: Type, b: Type): boolean {
       return typeEquals(a.target, bi.target) && typeEquals(a.key, bi.key)
     }
     case 'Refined': {
-      // Phase 2.1: strict source-text equality on the predicate + exact
-      // binder match. Alpha-renamed predicates (`{n | n > 0}` vs
-      // `{m | m > 0}`) count as distinct under this equality — the
-      // alpha-aware comparison ships with Phase 2.2's multi-refinement
-      // merging. Relying on source text is safe because the parser
-      // always populates `source` from the original annotation string.
+      // Phase 2.1: strict source-text equality on the predicate.
+      // Alpha-renamed predicates (`{n | n > 0}` vs `{m | m > 0}`) count
+      // as distinct under this equality — the alpha-aware comparison
+      // ships with Phase 2.2's multi-refinement merging. Relying on
+      // source is safe because the parser always populates it from the
+      // original annotation string (the binder is the first token of
+      // `source`, so binder equality is implied by source equality).
       const br = b as typeof a
-      return a.binder === br.binder
-        && a.source === br.source
-        && typeEquals(a.base, br.base)
+      return a.source === br.source && typeEquals(a.base, br.base)
     }
   }
 }
