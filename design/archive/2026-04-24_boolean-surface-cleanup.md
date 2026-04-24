@@ -1,8 +1,9 @@
 # Boolean Surface Cleanup — Implementation Plan
 
-**Status:** Proposed — implementation plan. Bundled language-semantics change. Pre-1.0 breaking migration.
+**Status:** Shipped — branch `feat/boolean-surface-cleanup`. All seven steps landed.
 **Created:** 2026-04-24
-**Last updated:** 2026-04-24 (reviewer-pass: blocker on `!`-as-value parser path, blocker on for-loop guards deferred, four should-fixes including `??` migration patterns, nits)
+**Shipped:** 2026-04-24
+**Last updated:** 2026-04-24 (implementation landed — tokenizer, parser, narrowing recognizer, strict `&&`/`||`/`!`/`assert`, in-repo migration, `not`/`boolean` builtins removed)
 **Scope discipline:** Four coordinated changes bundled in one landing. Hard out-of-scope list below.
 **References:** `2026-04-12_type-system.md` (type-system decisions, especially #6 / #14 / #17), `2026-04-23_refinement-types.md` (Q7 — Boolean-typed refinement predicates, the precedent this initiative extends language-wide)
 
