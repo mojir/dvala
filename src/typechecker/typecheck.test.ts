@@ -572,12 +572,12 @@ describe('typecheck — flow-sensitive narrowing in if/else', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
-  // `not(...)` swaps then/else narrowings. Without it, the `count(x)`
+  // `!(...)` swaps then/else narrowings. Without it, the `count(x)`
   // call in the then branch would still see `x: String | Number`.
-  it('not(guard) swaps then/else narrowings', () => {
+  it('!(guard) swaps then/else narrowings', () => {
     const result = dvala.typecheck(`
       let f = (x: String | Number) ->
-        if not(isNumber(x)) then count(x) else x + 1 end;
+        if !(isNumber(x)) then count(x) else x + 1 end;
       f(42)
     `)
     expect(result.diagnostics).toHaveLength(0)
@@ -585,10 +585,10 @@ describe('typecheck — flow-sensitive narrowing in if/else', () => {
 
   // Two negations should compose to identity — same narrowing as the
   // bare guard. Catches regressions in the swap implementation.
-  it('not(not(guard)) double-negates back to the original narrowing', () => {
+  it('!(!(guard)) double-negates back to the original narrowing', () => {
     const result = dvala.typecheck(`
       let f = (x: String | Number) ->
-        if not(not(isNumber(x))) then x + 1 else count(x) end;
+        if !(!(isNumber(x))) then x + 1 else count(x) end;
       f(42)
     `)
     expect(result.diagnostics).toHaveLength(0)

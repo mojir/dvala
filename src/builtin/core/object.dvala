@@ -2,7 +2,7 @@
   mergeWith: (...args) -> do
     let fn = last(args);
     let objs = slice(args, 0, count(args) - 1);
-    if not(isFunction(fn)) then
+    if !(isFunction(fn)) then
       perform(
         @dvala.error,
         { message: str("Expected function, got: ", type(fn)) }
@@ -21,7 +21,7 @@
     reduce(
       rest(objs),
       (result, obj) -> do
-        if not(isObject(obj)) then
+        if !(isObject(obj)) then
           perform(
             @dvala.error,
             { message: str("Expected object, got: ", type(obj)) }
@@ -43,7 +43,7 @@
       end,
       do
         let f = first(objs);
-        if not(isObject(f)) then
+        if !(isObject(f)) then
           perform(
             @dvala.error,
             { message: str("Expected object, got: ", type(f)) }

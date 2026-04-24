@@ -44,7 +44,7 @@ do
   end;
   let isAbundant = (n) -> n > 0 && sumProperDivisors(n) > n;
   let isDeficient = (n) -> n > 0 && sumProperDivisors(n) < n;
-  let isComposite = (n) -> n > 1 && not(isPrime(n));
+  let isComposite = (n) -> n > 1 && !(isPrime(n));
   let isHappy = (n) -> do
     let sumOfSquaredDigits = (x) -> loop(num = x, acc = 0) -> if num == 0 then
       acc
@@ -3732,7 +3732,7 @@ do
         end;
       if fn(bn, n) then recur(push(bArr, bn), n + 1) else bArr end;
     end,
-    golombTakeWhile: (fn) -> if not(fn(1, 0)) then
+    golombTakeWhile: (fn) -> if !(fn(1, 0)) then
       []
     else
       do
@@ -3767,7 +3767,7 @@ do
       else
         recur(i + 1)
       end;
-      if not(fn(0, 0)) then
+      if !(fn(0, 0)) then
         []
       else
         do
@@ -3775,7 +3775,7 @@ do
             let prev = nth(result, n - 1);
             let backward = prev - n;
             let nxt =
-              if backward > 0 && not(inArr(result, backward)) then
+              if backward > 0 && !(inArr(result, backward)) then
                 backward
               else
                 prev + n

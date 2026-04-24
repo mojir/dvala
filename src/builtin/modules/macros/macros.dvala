@@ -25,7 +25,7 @@ do
       );
     end,
     unless: macro(cond, body) -> quote
-      if not($^{cond}) then $^{body} else null end;
+      if !($^{cond}) then $^{body} else null end;
     end,
     tap: macro(value, sideEffect) -> quote
       do

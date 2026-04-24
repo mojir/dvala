@@ -34,7 +34,7 @@ if configExists then
         options: { default: false },
       }
     );
-  if not(overwrite) then raise("Aborted.") else null end
+  if !(overwrite) then raise("Aborted.") else null end
 else
   null
 end;

@@ -8,7 +8,7 @@ do
       let cells = flatten(grid, 1);
       loop(i = 0) -> if i >= count(cells) then
         true
-      else if not(predicate(nth(cells, i))) then
+      else if !(predicate(nth(cells, i))) then
         false
       else
         recur(i + 1)
@@ -26,7 +26,7 @@ do
     end,
     isEveryRow: (grid, predicate) -> loop(i = 0) -> if i >= count(grid) then
       true
-    else if not(predicate(nth(grid, i))) then
+    else if !(predicate(nth(grid, i))) then
       false
     else
       recur(i + 1)
@@ -42,7 +42,7 @@ do
       let cols = _transpose(grid);
       loop(i = 0) -> if i >= count(cols) then
         true
-      else if not(predicate(nth(cols, i))) then
+      else if !(predicate(nth(cols, i))) then
         false
       else
         recur(i + 1)

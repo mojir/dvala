@@ -501,8 +501,8 @@ describe('inference — builtin types', () => {
     expect(isSubtype(t, NumberType)).toBe(true)
   })
 
-  it('not(true) infers Boolean', () => {
-    const t = inferAndExpand('not(true)')
+  it('!(true) infers Boolean', () => {
+    const t = inferAndExpand('!(true)')
     // not returns Boolean
     expect(t.tag === 'Primitive' || t.tag === 'Literal').toBe(true)
   })

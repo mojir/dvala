@@ -201,7 +201,7 @@
       end;
     loop(i = 0) -> if i >= count(items) then
       true
-    else if not(fn(nth(items, i))) then
+    else if !(fn(nth(items, i))) then
       false
     else
       recur(i + 1)
@@ -258,7 +258,7 @@
       end;
     loop(i = 0) -> if i >= count(items) then
       false
-    else if not(fn(nth(items, i))) then
+    else if !(fn(nth(items, i))) then
       true
     else
       recur(i + 1)

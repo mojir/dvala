@@ -743,11 +743,11 @@ describe('parser edge cases', () => {
   })
 
   it('unary not', () => {
-    expect(dvala.run('not(true)')).toBe(false)
-    expect(dvala.run('not(false)')).toBe(true)
-    expect(dvala.run('not(null)')).toBe(true)
-    expect(dvala.run('not(0)')).toBe(true)
-    expect(dvala.run('not(1)')).toBe(false)
+    expect(dvala.run('!(true)')).toBe(false)
+    expect(dvala.run('!(false)')).toBe(true)
+    expect(dvala.run('!(null)')).toBe(true)
+    expect(dvala.run('!(0)')).toBe(true)
+    expect(dvala.run('!(1)')).toBe(false)
   })
 
   it('string concatenation operator', () => {

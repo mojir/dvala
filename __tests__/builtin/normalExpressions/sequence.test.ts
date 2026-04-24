@@ -182,7 +182,7 @@ describe('sequence functions', () => {
     it('returns a new array instance', () => {
       const program = `
         let l = [1, 2, 3];
-        not(l == reverse(l))
+        !(l == reverse(l))
       `
       expect(dvala.run(program)).toBe(true)
     })

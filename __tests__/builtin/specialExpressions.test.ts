@@ -205,35 +205,35 @@ describe('specialExpressions', () => {
 
   describe('if not (negated condition)', () => {
     it('samples', () => {
-      expect(dvalaDebug.run('if not(true) then "A" else "B" end')).toBe('B')
-      expect(dvalaDebug.run('if not(false) then "A" else "B" end')).toBe('A')
-      expect(dvala.run('if not(null) then "A" else "B" end')).toBe('A')
-      expect(() => dvala.run('if not(true) then "A" end')).toThrow('`if` without `else` is not allowed')
-      expect(dvala.run('if not(false) then "A" else null end')).toBe('A')
-      expect(dvala.run('if not(null) then "A" else null end')).toBe('A')
-      expect(dvala.run('if not("") then "A" else "B" end')).toBe('A')
-      expect(dvala.run('if not("x") then "A" else "B" end')).toBe('B')
-      expect(dvala.run('if not(0) then "A" else "B" end')).toBe('A')
-      expect(dvala.run('if not(1) then "A" else "B" end')).toBe('B')
-      expect(dvala.run('if not(-1) then "A" else "B" end')).toBe('B')
-      expect(dvala.run('if not([]) then "A" else "B" end')).toBe('B')
-      expect(dvala.run('if not(object()) then "A" else "B" end')).toBe('B')
+      expect(dvalaDebug.run('if !(true) then "A" else "B" end')).toBe('B')
+      expect(dvalaDebug.run('if !(false) then "A" else "B" end')).toBe('A')
+      expect(dvala.run('if !(null) then "A" else "B" end')).toBe('A')
+      expect(() => dvala.run('if !(true) then "A" end')).toThrow('`if` without `else` is not allowed')
+      expect(dvala.run('if !(false) then "A" else null end')).toBe('A')
+      expect(dvala.run('if !(null) then "A" else null end')).toBe('A')
+      expect(dvala.run('if !("") then "A" else "B" end')).toBe('A')
+      expect(dvala.run('if !("x") then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if !(0) then "A" else "B" end')).toBe('A')
+      expect(dvala.run('if !(1) then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if !(-1) then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if !([]) then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if !(object()) then "A" else "B" end')).toBe('B')
     })
-    it('that if not(...) only evaluates the correct path (true)', () => {
-      dvala.run('if not(true) then perform(@dvala.io.print, "A") else perform(@dvala.io.print, "B") end')
+    it('that if !(...) only evaluates the correct path (true)', () => {
+      dvala.run('if !(true) then perform(@dvala.io.print, "A") else perform(@dvala.io.print, "B") end')
       expect(logSpy).toHaveBeenCalledWith('B')
       expect(logSpy).not.toHaveBeenCalledWith('A')
     })
-    it('that if not(...) only evaluates the correct path (false)', () => {
-      dvala.run('if not(false) then perform(@dvala.io.print, "A") else perform(@dvala.io.print, "B") end')
+    it('that if !(...) only evaluates the correct path (false)', () => {
+      dvala.run('if !(false) then perform(@dvala.io.print, "A") else perform(@dvala.io.print, "B") end')
       expect(logSpy).not.toHaveBeenCalledWith('B')
       expect(logSpy).toHaveBeenCalledWith('A')
     })
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((getUndefinedSymbols('if not(a > b) then a else b end'))).toEqual(new Set(['a', 'b']))
-        expect((getUndefinedSymbols('if not(a > b) then c else d end'))).toEqual(new Set(['a', 'b', 'c', 'd']))
+        expect((getUndefinedSymbols('if !(a > b) then a else b end'))).toEqual(new Set(['a', 'b']))
+        expect((getUndefinedSymbols('if !(a > b) then c else d end'))).toEqual(new Set(['a', 'b', 'c', 'd']))
       })
     })
   })
@@ -528,7 +528,7 @@ end;`))).toEqual(
       dvala.run(`
 let foo = (n) -> do
   perform(@dvala.io.print, n);
-  if not(isZero(n)) then
+  if !(isZero(n)) then
     recur(n - 1)
   else
     null
@@ -541,21 +541,21 @@ foo(3)`)
       expect(logSpy).toHaveBeenNthCalledWith(4, '0')
     })
     it('recur must be called with the right number of parameters', () => {
-      expect(() => dvala.run('let foo = (n) -> do if not(isZero(n)) then recur() else null end end; foo(3)')).toThrow(DvalaError)
-      expect(() => dvala.run('let foo = (n) -> do if not(isZero(n)) then recur(n - 1) else null end end; foo(3)')).not.toThrow()
+      expect(() => dvala.run('let foo = (n) -> do if !(isZero(n)) then recur() else null end end; foo(3)')).toThrow(DvalaError)
+      expect(() => dvala.run('let foo = (n) -> do if !(isZero(n)) then recur(n - 1) else null end end; foo(3)')).not.toThrow()
       // Too many parameters ok
-      expect(() => dvala.run('let foo = (n) -> do if not(isZero(n)) then recur(n - 1, 1) else null end end; foo(3)')).not.toThrow()
-      expect(() => dvala.run('((n) -> do if not(isZero(n)) then recur() else null end end;)(3)')).toThrow(DvalaError)
-      expect(() => dvala.run('((n) -> if not(isZero(n)) then recur(n - 1) else null end)(3)')).not.toThrow()
-      expect(() => dvala.run('((n) -> if not(isZero(n)) recur(n - 1 1) then(3) end')).toThrow(DvalaError)
-      expect(() => dvala.run('((n) -> if not(isZero(n)) recur(n - 1 1, 2) then(3) end')).toThrow(DvalaError)
+      expect(() => dvala.run('let foo = (n) -> do if !(isZero(n)) then recur(n - 1, 1) else null end end; foo(3)')).not.toThrow()
+      expect(() => dvala.run('((n) -> do if !(isZero(n)) then recur() else null end end;)(3)')).toThrow(DvalaError)
+      expect(() => dvala.run('((n) -> if !(isZero(n)) then recur(n - 1) else null end)(3)')).not.toThrow()
+      expect(() => dvala.run('((n) -> if !(isZero(n)) recur(n - 1 1) then(3) end')).toThrow(DvalaError)
+      expect(() => dvala.run('((n) -> if !(isZero(n)) recur(n - 1 1, 2) then(3) end')).toThrow(DvalaError)
     })
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((getUndefinedSymbols('(-> if not(isZero($)) then recur($ - 1) else null end)(3)')))
+        expect((getUndefinedSymbols('(-> if !(isZero($)) then recur($ - 1) else null end)(3)')))
           .toEqual(new Set())
-        expect((getUndefinedSymbols('(-> if not(isZero($)) then recur($ - a) else null end)(3)')))
+        expect((getUndefinedSymbols('(-> if !(isZero($)) then recur($ - a) else null end)(3)')))
           .toEqual(new Set('a'))
       })
     })
@@ -576,33 +576,33 @@ foo(3)`)
     })
 
     it('should work with recur', () => {
-      dvala.run('loop (n = 3) -> do perform(@dvala.io.print, n); if not(isZero(n)) then recur(n - 1) else null end end')
+      dvala.run('loop (n = 3) -> do perform(@dvala.io.print, n); if !(isZero(n)) then recur(n - 1) else null end end')
       expect(logSpy).toHaveBeenNthCalledWith(1, '3')
       expect(logSpy).toHaveBeenNthCalledWith(2, '2')
       expect(logSpy).toHaveBeenNthCalledWith(3, '1')
       expect(logSpy).toHaveBeenNthCalledWith(4, '0')
     })
     it('recur must be called with right number of parameters', () => {
-      expect(() => dvalaDebug.run('loop (n = 3) -> if not(isZero(n)) then recur() else null end')).toThrow(DvalaError)
-      expect(() => dvala.run('loop (n = 3) -> if not(isZero(n)) then recur(n - 1) else null end')).not.toThrow()
-      expect(() => dvala.run('loop (n = 3) -> if not(isZero(n)) then recur(n - 1, 2) else null end')).toThrow(DvalaError)
-      expect(() => dvala.run('loop () -> if not(isZero(n)) then recur() else null end')).toThrow(DvalaError)
-      expect(() => dvala.run('loop (n = 3) -> if not(isZero(n)) then recur(perform(@dvala.error, 1)) else null end')).toThrow(DvalaError)
+      expect(() => dvalaDebug.run('loop (n = 3) -> if !(isZero(n)) then recur() else null end')).toThrow(DvalaError)
+      expect(() => dvala.run('loop (n = 3) -> if !(isZero(n)) then recur(n - 1) else null end')).not.toThrow()
+      expect(() => dvala.run('loop (n = 3) -> if !(isZero(n)) then recur(n - 1, 2) else null end')).toThrow(DvalaError)
+      expect(() => dvala.run('loop () -> if !(isZero(n)) then recur() else null end')).toThrow(DvalaError)
+      expect(() => dvala.run('loop (n = 3) -> if !(isZero(n)) then recur(perform(@dvala.error, 1)) else null end')).toThrow(DvalaError)
     })
     it('error in loop should propagate', () => {
-      expect(() => dvala.run('loop (n = 3) -> if not(isZero(n)) then perform(@dvala.error, str(recur(n - 1, 2))) else null end')).toThrow(DvalaError)
-      expect(() => dvala.run('loop (n) -> if not(isZero(n)) then recur(n - 1) else null end')).toThrow(DvalaError)
+      expect(() => dvala.run('loop (n = 3) -> if !(isZero(n)) then perform(@dvala.error, str(recur(n - 1, 2))) else null end')).toThrow(DvalaError)
+      expect(() => dvala.run('loop (n) -> if !(isZero(n)) then recur(n - 1) else null end')).toThrow(DvalaError)
     })
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
         expect(
-          (getUndefinedSymbols('loop (n = 3) -> do perform(@dvala.io.print, str(n)); if not(isZero(n)) then recur(n - 1) else null end end')),
+          (getUndefinedSymbols('loop (n = 3) -> do perform(@dvala.io.print, str(n)); if !(isZero(n)) then recur(n - 1) else null end end')),
         ).toEqual(new Set())
         expect(
-          (getUndefinedSymbols('loop (n = 3) -> do perform(@dvala.io.print, str(x)); if not(isZero(n)) then recur(n - 1) else null end end')),
+          (getUndefinedSymbols('loop (n = 3) -> do perform(@dvala.io.print, str(x)); if !(isZero(n)) then recur(n - 1) else null end end')),
         ).toEqual(new Set(['x']))
-        expect(getUndefinedSymbols('loop (n = 3 + y) -> do perform(@dvala.io.print, str(n)); if not(isZero(x)) then recur(n - 1) else null end end'))
+        expect(getUndefinedSymbols('loop (n = 3 + y) -> do perform(@dvala.io.print, str(n)); if !(isZero(x)) then recur(n - 1) else null end end'))
           .toEqual(new Set(['x', 'y']))
       })
     })

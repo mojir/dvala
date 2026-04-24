@@ -8,13 +8,13 @@
       do
         let expectedKeys = keys(firstColl) |> sort;
         for(obj in otherColls) -> do
-          if not(isObject(obj)) then
+          if !(isObject(obj)) then
             perform(@dvala.error, { message: "Expected object" })
           else
             null
           end;
           let objKeys = keys(obj) |> sort;
-          if not(objKeys == expectedKeys) then
+          if !(objKeys == expectedKeys) then
             perform(
               @dvala.error,
               {
@@ -42,7 +42,7 @@
     else if isString(firstColl) then
       do
         for(s in otherColls) -> do
-          if not(isString(s)) then
+          if !(isString(s)) then
             perform(@dvala.error, { message: "Expected string" })
           else
             null
@@ -58,7 +58,7 @@
         reduce(
           mapped,
           (acc, ch) -> do
-            if not(isString(ch)) then
+            if !(isString(ch)) then
               perform(@dvala.error, { message: "Expected string" })
             else
               null
@@ -71,7 +71,7 @@
     else
       do
         for(x in otherColls) -> do
-          if not(isArray(x)) then
+          if !(isArray(x)) then
             perform(@dvala.error, { message: "Expected array" })
           else
             null

@@ -393,7 +393,7 @@ else
 end;
 
 // Check if location has items
-let itemsDesc = if not(isEmpty(get(location, "items", []))) then
+let itemsDesc = if !(isEmpty(get(location, "items", []))) then
   // there are items
   "You see: " ++ join(location.items, ", ")
 else
@@ -405,7 +405,7 @@ let exits = keys(location.exits) join ", ";
 let exitsDesc = "Exits: " ++ exits;
 
 // Join all descriptions
-filter(/* an array */ [description, visitedStatus, itemsDesc, exitsDesc], -> not(isEmpty($))) join "\\n"
+filter(/* an array */ [description, visitedStatus, itemsDesc, exitsDesc], -> !(isEmpty($))) join "\\n"
 end`,
     `let describeLocation = (state) -> do
   let location = get(locations, state.currentLocation);
@@ -421,7 +421,7 @@ end`,
 
   // Check if location has items
   let itemsDesc =
-    if not(isEmpty(get(location, "items", []))) then
+    if !(isEmpty(get(location, "items", []))) then
       // there are items
       "You see: " ++ join(location.items, ", ")
     else
@@ -435,7 +435,7 @@ end`,
   // Join all descriptions
   filter( /* an array */
     [description, visitedStatus, itemsDesc, exitsDesc],
-    -> not(isEmpty($))
+    -> !(isEmpty($))
   ) join
     "\\n";
 end;`,
@@ -499,14 +499,14 @@ end;`,
 let cleaned = trim($);
 
 // final check
-not(isEmpty(cleaned))
+!(isEmpty(cleaned))
 end)`,
     `filter(items, -> do
   // keep filter comment
   let cleaned = trim($);
 
   // final check
-  not(isEmpty(cleaned));
+  !(isEmpty(cleaned));
 end);`,
   ))
 

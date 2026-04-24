@@ -336,16 +336,6 @@ describe('parser', () => {
       expect(dvala.run('null ?? 2')).toBe(2)
     })
   })
-  describe('not', () => {
-    test('samples', () => {
-      expect(dvala.run('not(true)')).toBe(false)
-      expect(dvala.run('not(false)')).toBe(true)
-      expect(dvala.run('not(500)')).toBe(false)
-      expect(dvala.run('not(0)')).toBe(true)
-      expect(dvala.run('not(not(500))')).toBe(true)
-      expect(dvala.run('not(not(0))')).toBe(false)
-    })
-  })
   describe('parenthises', () => {
     test('samples', () => {
       expect(dvala.run('-(2 + 3) * 2')).toBe(-10)
@@ -432,9 +422,9 @@ describe('parser', () => {
 
   describe('negated if expression', () => {
     test('samples', () => {
-      expect(dvala.run('if not(1 < 2) then 1 else 2 end')).toBe(2)
-      expect(() => dvala.run('if not(1 < 2) then 1 end')).toThrow('`if` without `else` is not allowed')
-      expect(dvala.run('if not(1 > 2) then 1 else 2 end')).toBe(1)
+      expect(dvala.run('if !(1 < 2) then 1 else 2 end')).toBe(2)
+      expect(() => dvala.run('if !(1 < 2) then 1 end')).toThrow('`if` without `else` is not allowed')
+      expect(dvala.run('if !(1 > 2) then 1 else 2 end')).toBe(1)
     })
   })
 
@@ -1195,7 +1185,7 @@ foo(1, 2)`)).toBe(3)
 
     it('handles complex logical expressions', () => {
       expect(dvala.run('(5 > 3) && (10 < 20 || 5 == 5)')).toBe(true)
-      expect(dvala.run('not(5 < 3) && (3 <= 3 || 4 >= 5)')).toBe(true)
+      expect(dvala.run('!(5 < 3) && (3 <= 3 || 4 >= 5)')).toBe(true)
     })
 
     it('handles expressions combining different operators', () => {

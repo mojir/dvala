@@ -246,17 +246,17 @@ describe('misc functions', () => {
 
     describe('not', () => {
       it('samples', () => {
-        expect(dvala.run('not(0)')).toBe(true)
-        expect(dvala.run('not("")')).toBe(true)
-        expect(dvala.run('not("0")')).toBe(false)
-        expect(dvala.run('not(1)')).toBe(false)
-        expect(dvala.run('not(-1)')).toBe(false)
-        expect(dvala.run('not([])')).toBe(false)
-        expect(dvala.run('not(false)')).toBe(true)
-        expect(dvala.run('not(true)')).toBe(false)
-        expect(dvala.run('not(null)')).toBe(true)
-        expect(() => dvala.run('not(0, 1)')).toThrow(DvalaError)
-        expect(() => dvala.run('not()')).toThrow(DvalaError)
+        expect(dvala.run('!(0)')).toBe(true)
+        expect(dvala.run('!("")')).toBe(true)
+        expect(dvala.run('!("0")')).toBe(false)
+        expect(dvala.run('!(1)')).toBe(false)
+        expect(dvala.run('!(-1)')).toBe(false)
+        expect(dvala.run('!([])')).toBe(false)
+        expect(dvala.run('!(false)')).toBe(true)
+        expect(dvala.run('!(true)')).toBe(false)
+        expect(dvala.run('!(null)')).toBe(true)
+        expect(() => dvala.run('!(0, 1)')).toThrow(DvalaError)
+        expect(() => dvala.run('!()')).toThrow(DvalaError)
       })
     })
 

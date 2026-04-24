@@ -159,7 +159,7 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);`,
 
 let lookupUser = (idStr) -> do
   let id = number(idStr);
-  if not(isNumber(id)) || id < 1 || id > 10 then
+  if !(isNumber(id)) || id < 1 || id > 10 then
     perform(@dvala.io.print, "Invalid user ID: " ++ idStr ++ ". Please enter 1-10.");
   else
     perform(@dvala.io.print, "Fetching user " ++ str(id) ++ "...");
@@ -180,7 +180,7 @@ let showTodos = (user) -> do
   perform(@dvala.io.print, "\\nFetching todos for " ++ user.name ++ "...");
   let todos = perform(@host.fetchTodos, user.id);
   let done = filter(todos, -> $.completed);
-  let pending = filter(todos, -> not($.completed));
+  let pending = filter(todos, -> !($.completed));
 
   perform(@dvala.io.print, "\\nCompleted (" ++ str(count(done)) ++ "/" ++ str(count(todos)) ++ "):");
   for (t in done take 5) -> perform(@dvala.io.print, "  ✓ " ++ t.title);
@@ -300,7 +300,7 @@ let describeLocation = (state) -> do
   end;
 
   // Check if location has items
-  let itemsDesc = if not(isEmpty(get(location, "items", []))) then
+  let itemsDesc = if !(isEmpty(get(location, "items", []))) then
     "You see: " ++ join(location.items, ", ")
   else
     ""
@@ -311,7 +311,7 @@ let describeLocation = (state) -> do
   let exitsDesc = "Exits: " ++ exits;
 
   // Join all descriptions
-  filter([description, visitedStatus, itemsDesc, exitsDesc], -> not(isEmpty($))) join "\\n"
+  filter([description, visitedStatus, itemsDesc, exitsDesc], -> !(isEmpty($))) join "\\n"
 end;
 
 let getLocationItems = (state) -> do
@@ -330,7 +330,7 @@ let move = (state, direction) -> do
     let isDark = newLocation == "tunnel" || newLocation == "treasure room";
 
     // Check if player has light source for dark areas
-    if isDark && not(state.lightSource) then
+    if isDark && !(state.lightSource) then
       [state, "It's too dark to go that way without a light source."]
     else
       let newVisited = assoc(
@@ -397,7 +397,7 @@ let dropFn = (state, item) -> do
     let newInventory = filter(-> $ != item, state.inventory);
 
     // Special case for torch
-    let stillHasLight = not(item == "torch") || contains(newInventory, "torch");
+    let stillHasLight = !(item == "torch") || contains(newInventory, "torch");
 
     // Update locations and state
     let newLocation = assoc(location, "items", newLocationItems);
@@ -736,7 +736,7 @@ perform(@dvala.io.print, double(inc(5)));   // 12
 
 // unless — a custom control flow macro
 let unless = macro (cond, body) ->
-  quote if not($^{cond}) then $^{body} else null end end;
+  quote if !($^{cond}) then $^{body} else null end end;
 
 perform(@dvala.io.print, unless(false, "runs!"));   // "runs!"
 perform(@dvala.io.print, unless(true, "skipped"));  // null
@@ -1075,7 +1075,7 @@ let error = -> perform(@dvala.error, { message: $ });
 // A classic first macro — one line of quote...end block does it all.
 
 let unless = macro (cond, body) ->
-  quote if not($^{cond}) then $^{body} else null end end;
+  quote if !($^{cond}) then $^{body} else null end end;
 
 print("── unless ──");
 print(unless(false, "condition was false → ran!"));
@@ -1113,7 +1113,7 @@ let assert = macro (cond) -> do
   let src = prettyPrint(cond);
   quote do
     let v = $^{cond};
-    if not(v) then
+    if !(v) then
       error("Assertion failed: " ++ $^{["Str", src, 0]})
     else
       true
@@ -1482,7 +1482,7 @@ end;
 
 let nums = filter(flatten(allPrev), isNumber);
 let outliers = vec.outliers(nums);
-let clean = filter(nums, (x) -> not(contains(outliers, x)));
+let clean = filter(nums, (x) -> !(contains(outliers, x)));
 let mn = vec.mean(clean);
 let sd = vec.stdev(clean);
 let q = vec.quartiles(clean);

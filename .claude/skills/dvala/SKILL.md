@@ -129,7 +129,7 @@ retry(3, -> dangerousOperation())            // retry up to 3 times
 
 Arithmetic: `+`, `-`, `*`, `/`, `^` (power), `%` (remainder), `mod`
 Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
-Logical: `&&`, `||`, `not(x)`
+Logical: `&&`, `||`, `!(x)`
 Nullish: `??` (first non-null)
 Bitwise: `&`, `|`, `xor`, `<<`, `>>`, `>>>`
 Concat: `++` (strings and arrays)

@@ -89,7 +89,7 @@ describe('quote...end code templates', () => {
 
     it('should use quote to construct if expression', () => {
       const result = run(`
-        let unless = macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+        let unless = macro (cond, body) -> quote if !($^{cond}) then $^{body} else null end end;
         unless(false, 42)
       `)
       expect(result).toBe(42)
@@ -97,7 +97,7 @@ describe('quote...end code templates', () => {
 
     it('should return null for unless with true condition', () => {
       const result = run(`
-        let unless = macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+        let unless = macro (cond, body) -> quote if !($^{cond}) then $^{body} else null end end;
         unless(true, 42)
       `)
       expect(result).toBeNull()

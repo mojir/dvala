@@ -8,7 +8,7 @@ describe('determinant.', () => {
 // Determinant function for square matrices
 let determinant = matrix -> do
   // Check if input is an array
-  if not(isArray(matrix)) then
+  if !(isArray(matrix)) then
     perform(@dvala.error, "Input must be an array")
   else null end;
 
@@ -23,7 +23,7 @@ let determinant = matrix -> do
   let firstRow = first(matrix);
   
   // Check if first row is an array
-  if not(isArray(firstRow)) then
+  if !(isArray(firstRow)) then
     perform(@dvala.error, "Input must be a 2D array")
   else null end;
   

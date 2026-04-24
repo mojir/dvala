@@ -175,14 +175,14 @@ Macros can create new control flow constructs that functions cannot:
 ```dvala
 // unless: execute body only if condition is false
 let unless =
-  macro(cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+  macro(cond, body) -> quote if !($^{cond}) then $^{body} else null end end;
 
 unless(false, 42);
 ```
 
 ```dvala
 let unless =
-  macro(cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+  macro(cond, body) -> quote if !($^{cond}) then $^{body} else null end end;
 
 unless(true, 42);
 ```
@@ -391,7 +391,7 @@ prettyPrint(macroexpand(double, quote 21 end));
 ```dvala
 let { prettyPrint } = import("ast");
 let unless =
-  macro(cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+  macro(cond, body) -> quote if !($^{cond}) then $^{body} else null end end;
 prettyPrint(macroexpand(unless, quote x > 10 end, quote 42 end));
 ```
 

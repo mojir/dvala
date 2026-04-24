@@ -2,7 +2,7 @@
   assertFails: (fn, ...args) -> do
     let message = first(args);
     assert(isFunction(fn), "First argument must be a function");
-    if not(isNull(message)) then
+    if !(isNull(message)) then
       assert(isString(message), "Second argument must be a string")
     else
       null
@@ -23,7 +23,7 @@
     let message = first(args);
     assert(isFunction(fn), "First argument must be a function");
     assert(isString(expectedError), "Second argument must be a string");
-    if not(isNull(message)) then
+    if !(isNull(message)) then
       assert(isString(message), "Third argument must be a string")
     else
       null
@@ -60,7 +60,7 @@
   assertSucceeds: (fn, ...args) -> do
     let message = first(args);
     assert(isFunction(fn), "First argument must be a function");
-    if not(isNull(message)) then
+    if !(isNull(message)) then
       assert(isString(message), "Second argument must be a string")
     else
       null

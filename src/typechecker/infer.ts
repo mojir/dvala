@@ -1040,7 +1040,7 @@ export function inferExpr(
         constrain(ctx, condType, BooleanType)
         // Flow-sensitive narrowing: if the condition is a type guard
         // (`isX(sym)` or `isX(sym.field…)`), equality test (`sym == lit`,
-        // `sym.field == lit`), `not(...)` wrapper, or `&&`/`||`
+        // `sym.field == lit`), `!(...)` wrapper, or `&&`/`||`
         // composition of any of these, narrow the referenced symbols in
         // each branch. Fall back to the outer env if no narrowing shape
         // is recognised. See `extractIfNarrowings` for the full list.
@@ -2918,7 +2918,7 @@ function isConstrainedFunctionArityCompatible(
  * - `sym == atomOrLiteral` / `sym.field… == atomOrLiteral` — equality
  *   test. Then: refines the sym (or root sym) to match the literal at
  *   that field. Else: refines to its complement.
- * - `not(cond)` — swaps then/else from the inner narrowing.
+ * - `!(cond)` — swaps then/else from the inner narrowing.
  * - `a && b` — then branch sees the conjunction of operand narrowings;
  *   else branch can't be narrowed (`!(a && b)` = `!a || !b`).
  * - `a || b` — dual: else branch sees the conjunction of operand-false
@@ -2954,7 +2954,7 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
   const builtinName = calleeNode[1] as string
   if (lookupShadowedBuiltin(env, builtinName)) return undefined
 
-  // `not(cond)` — invert the inner narrowing.
+  // `!(cond)` — invert the inner narrowing.
   if (builtinName === 'not' && argNodes.length === 1) {
     const inner = extractIfNarrowings(argNodes[0]!, env)
     if (!inner) return undefined
