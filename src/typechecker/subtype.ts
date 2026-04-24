@@ -71,6 +71,26 @@ function check(s: Type, t: Type, visited: Set<string>): boolean {
 }
 
 function checkBody(s: Type, t: Type, visited: Set<string>): boolean {
+  // --- Refined on either side ---
+  // Phase 2.1 policy (per the design doc): the `Refined` node is
+  // carried inertly — subtype treats `Refined(B, _, _)` as equivalent
+  // to `B`. The predicate is ignored; the Phase 2.4 solver adds real
+  // predicate-aware logic on top of this baseline.
+  //
+  // Consequences:
+  //   - `5 <: Refined(Number, n, n > 0)` reduces to `5 <: Number` → true.
+  //   - `Refined(Number, ...) <: Number` is trivially true.
+  //   - `Refined(Number, ...) <: Refined(Number, ...)` reduces to `Number <: Number`.
+  //   - The solver later tightens these: a refinement is a strict
+  //     subset of its base, so some subtypes that pass in Phase 2.1
+  //     will still pass; none that fail will start passing.
+  if (s.tag === 'Refined') {
+    return check(s.base, t, visited)
+  }
+  if (t.tag === 'Refined') {
+    return check(s, t.base, visited)
+  }
+
   // --- Union on the left: S1|S2 <: T iff every member <: T ---
   if (s.tag === 'Union') {
     return s.members.every(m => check(m, t, visited))
@@ -563,6 +583,13 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
       target: substituteVar(t.target, varId, replacement),
       key: substituteVar(t.key, varId, replacement),
     }
+    case 'Refined': return {
+      tag: 'Refined',
+      base: substituteVar(t.base, varId, replacement),
+      binder: t.binder,
+      predicate: t.predicate,
+      source: t.source,
+    }
     default: return t // Primitive, Atom, Literal, Regex, Unknown, Never
   }
 }
@@ -611,6 +638,12 @@ function typeId(t: Type): string {
     case 'Recursive': return `Rec:${t.id}:${typeId(t.body)}`
     case 'Keyof': return `K:${typeId(t.inner)}`
     case 'Index': return `X:${typeId(t.target)}|${typeId(t.key)}`
+    // Refinement cache key — base + binder + source-text predicate.
+    // Source-text is the authoritative identity for now (same rationale
+    // as `typeEquals`: alpha-aware identity ships in Phase 2.2). Keeps
+    // two refinements with the same base but different predicates
+    // from colliding in the cycle-detection cache.
+    case 'Refined': return `Rf:${typeId(t.base)}|${t.binder}|${t.source}`
   }
 }
 

@@ -1,7 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { builtin } from '../builtin'
+import { createDvala } from '../createDvala'
 import { initBuiltinTypes } from './builtinTypes'
 import { parseTypeAnnotation, RefinementError, TypeParseError } from './parseType'
+import { simplify } from './simplify'
+import { isSubtype } from './subtype'
+import { NumberType, StringType, typeEquals, typeToString } from './types'
 
 // Populate the builtin-type cache so `isTypeGuard('isNumber')` returns
 // true — the fragment-checker calls it while classifying relation
@@ -165,6 +169,175 @@ describe('refinement types — Phase 1', () => {
         .toThrow(TypeParseError)
       expect(() => parseTypeAnnotation('Number & {true | true == true}'))
         .toThrow(TypeParseError)
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Refinement types — Phase 2.1 (`Refined` AST node + walker updates)
+// ---------------------------------------------------------------------------
+//
+// Design: `design/active/2026-04-23_refinement-types.md` (Phase 2.1 scope).
+//
+// Phase 2.1 introduces a new `{ tag: 'Refined', base, binder, predicate,
+// source }` variant in the `Type` union and teaches every structural walker
+// to pass it through unchanged (the `Refined` node is inert until the
+// Phase 2.4 solver lands). Key invariants to pin:
+//
+//   - The parser emits `Refined` nodes (Phase 1 dropped them).
+//   - `typeToString(Refined)` renders `base & { source }`.
+//   - `typeEquals` compares `(base, binder, source)` tuples.
+//   - `simplify(Refined)` simplifies the base only.
+//   - `isSubtype` treats `Refined(B, _, _)` as equivalent to `B` in both
+//     directions (Phase 2.1 pass-through; Phase 2.4 tightens this).
+//   - End-to-end: `let x: Positive = 5` typechecks; `= "hi"` fails with
+//     a "not a subtype of Number" message (refinement is transparent to
+//     the base-level mismatch; the solver-level mismatch is Phase 2.4).
+// ---------------------------------------------------------------------------
+
+describe('refinement types — Phase 2.1 Refined node', () => {
+  describe('parser emits Refined nodes', () => {
+    it('`Number & {n | n > 0}` parses to Refined(Number, n, "n | n > 0")', () => {
+      const t = parseTypeAnnotation('Number & {n | n > 0}')
+      expect(t.tag).toBe('Refined')
+      if (t.tag !== 'Refined') return
+      expect(typeEquals(t.base, NumberType)).toBe(true)
+      expect(t.binder).toBe('n')
+      expect(t.source).toContain('n > 0')
+    })
+
+    it('stacked refinements nest in the order written', () => {
+      // `Number & {n | n > 0} & {n | n < 100}` — the second refinement
+      // wraps the first. Phase 2.2 merges these into one; Phase 2.1
+      // keeps them nested.
+      const t = parseTypeAnnotation('Number & {n | n > 0} & {n | n < 100}')
+      expect(t.tag).toBe('Refined')
+      if (t.tag !== 'Refined') return
+      expect(t.base.tag).toBe('Refined') // inner refinement = `Number & {n | n > 0}`
+    })
+
+    it('refinement on a base other than a primitive still works', () => {
+      const t = parseTypeAnnotation('String & {s | count(s) > 0}')
+      expect(t.tag).toBe('Refined')
+      if (t.tag !== 'Refined') return
+      expect(typeEquals(t.base, StringType)).toBe(true)
+    })
+  })
+
+  describe('typeToString renders the `source` text', () => {
+    it('single refinement', () => {
+      const t = parseTypeAnnotation('Number & {n | n > 0}')
+      const rendered = typeToString(t)
+      expect(rendered).toContain('Number')
+      expect(rendered).toContain('n | n > 0')
+    })
+
+    it('stacked refinements render both predicates', () => {
+      const t = parseTypeAnnotation('Number & {n | n > 0} & {n | n < 100}')
+      const rendered = typeToString(t)
+      expect(rendered).toContain('n | n > 0')
+      expect(rendered).toContain('n | n < 100')
+    })
+  })
+
+  describe('typeEquals on Refined', () => {
+    it('equal refinements are equal', () => {
+      const a = parseTypeAnnotation('Number & {n | n > 0}')
+      const b = parseTypeAnnotation('Number & {n | n > 0}')
+      expect(typeEquals(a, b)).toBe(true)
+    })
+
+    it('different predicates are not equal', () => {
+      const a = parseTypeAnnotation('Number & {n | n > 0}')
+      const b = parseTypeAnnotation('Number & {n | n >= 0}')
+      expect(typeEquals(a, b)).toBe(false)
+    })
+
+    it('alpha-renamed refinements are not equal in Phase 2.1', () => {
+      // Phase 2.1 uses source-text equality. `{n | n > 0}` and
+      // `{m | m > 0}` are semantically identical but textually
+      // distinct. Phase 2.2's multi-refinement merging brings in
+      // alpha-aware equality — this test will flip to `true` then.
+      const a = parseTypeAnnotation('Number & {n | n > 0}')
+      const b = parseTypeAnnotation('Number & {m | m > 0}')
+      expect(typeEquals(a, b)).toBe(false)
+    })
+
+    it('different bases are not equal even with identical predicate', () => {
+      const a = parseTypeAnnotation('Number & {n | n > 0}')
+      const b = parseTypeAnnotation('Integer & {n | n > 0}')
+      expect(typeEquals(a, b)).toBe(false)
+    })
+  })
+
+  describe('simplify passes through Refined', () => {
+    it('preserves the Refined node', () => {
+      const t = parseTypeAnnotation('Number & {n | n > 0}')
+      const s = simplify(t)
+      expect(s.tag).toBe('Refined')
+    })
+
+    it('simplifies the base inside the Refined', () => {
+      // `Number & {n | n > 0}` — the base `Number` is already a
+      // primitive, so simplify is a no-op. The point of this test is
+      // to assert the simplified output's structure still reflects the
+      // refinement.
+      const t = parseTypeAnnotation('Number & {n | n > 0}')
+      const s = simplify(t)
+      if (s.tag !== 'Refined') throw new Error('expected Refined')
+      expect(typeEquals(s.base, NumberType)).toBe(true)
+    })
+  })
+
+  describe('isSubtype pass-through (Phase 2.1 policy)', () => {
+    it('refinement on the right is equivalent to its base: `5 <: Positive`', () => {
+      const pos = parseTypeAnnotation('Number & {n | n > 0}')
+      const five = parseTypeAnnotation('5')
+      expect(isSubtype(five, pos)).toBe(true)
+    })
+
+    it('refinement on the left is equivalent to its base: `Positive <: Number`', () => {
+      const pos = parseTypeAnnotation('Number & {n | n > 0}')
+      expect(isSubtype(pos, NumberType)).toBe(true)
+    })
+
+    it('pass-through does not change base-level mismatches: `"hi"` not subtype of `Positive`', () => {
+      const pos = parseTypeAnnotation('Number & {n | n > 0}')
+      const str = parseTypeAnnotation('"hi"')
+      expect(isSubtype(str, pos)).toBe(false)
+    })
+
+    it('does not yet catch predicate-level violations — `-5 <: Positive` returns `true` in Phase 2.1', () => {
+      // Baseline behavior to lock in: the predicate is ignored until
+      // the Phase 2.4 solver ships. This test will flip to `false` when
+      // the solver lands; the flip IS the Phase 2.4 acceptance criterion.
+      const pos = parseTypeAnnotation('Number & {n | n > 0}')
+      const negFive = parseTypeAnnotation('-5')
+      expect(isSubtype(negFive, pos)).toBe(true)
+    })
+  })
+
+  describe('end-to-end: `let x: Refinement = value`', () => {
+    const dvala = createDvala()
+
+    it('accepts a literal value that matches the base', () => {
+      const result = dvala.typecheck('let x: Number & {n | n > 0} = 5; x')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('rejects a literal value that violates the base', () => {
+      const result = dvala.typecheck('let x: Number & {n | n > 0} = "hi"; x')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+      expect(result.diagnostics[0]!.message).toMatch(/not a subtype of Number/)
+    })
+
+    it('refined type in a function parameter composes with `+`', () => {
+      // `f(5)` with `f: (Number & {n | n > 0}) -> Number` should pass
+      // — the refinement is transparent to the Number-level arithmetic.
+      const result = dvala.typecheck(
+        'let f = (x: Number & {n | n > 0}): Number -> x + 1; f(5)',
+      )
+      expect(result.diagnostics).toHaveLength(0)
     })
   })
 })

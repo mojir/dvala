@@ -600,6 +600,20 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     return
   }
 
+  // Refinement types — Phase 2.1 policy: the `Refined` node is carried
+  // inertly; `Refined(B, _, _)` is treated as equivalent to `B` during
+  // constraint solving. The solver (Phase 2.4) replaces this pass-through
+  // with real predicate-aware checking. Consequence: `5 <: Positive`
+  // (where `Positive = Number & {n | n > 0}`) reduces to `5 <: Number`.
+  if (lhs.tag === 'Refined') {
+    constrain(ctx, lhs.base, rhs)
+    return
+  }
+  if (rhs.tag === 'Refined') {
+    constrain(ctx, lhs, rhs.base)
+    return
+  }
+
   // Indexed-access placeholders: try to reduce by expanding the inner
   // types, then constrain the reduction. If the inner types aren't
   // concrete enough to collapse (e.g. a Var with no bounds), the
@@ -2063,6 +2077,10 @@ function containsVars(t: Type): boolean {
     // containing vars — otherwise `let f: MyAlias<A> = ...` would
     // skip the forall-binding path introduced in PR #87.
     case 'Alias': return t.args.some(containsVars) || containsVars(t.expanded)
+    // Refinement carries vars only in its base. The predicate body is a
+    // Dvala expression AST, not a type — any Vars inside it are symbol
+    // references, not TypeVars, so the predicate doesn't contribute.
+    case 'Refined': return containsVars(t.base)
     default: return false
   }
 }
@@ -2280,6 +2298,17 @@ function freshenInner(
         args: t.args.map(a => freshenInner(ctx, a, mapping, rowMapping)),
         expanded: freshenInner(ctx, t.expanded, mapping, rowMapping),
       }
+    case 'Refined':
+      // Freshen the base; keep predicate + binder + source verbatim.
+      // The predicate AST references the binder as a Sym, not a TypeVar,
+      // so there's nothing to alpha-rename alongside the base freshening.
+      return {
+        tag: 'Refined',
+        base: freshenInner(ctx, t.base, mapping, rowMapping),
+        binder: t.binder,
+        predicate: t.predicate,
+        source: t.source,
+      }
     default:
       return t
   }
@@ -2320,6 +2349,7 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
     case 'Keyof': return containsVarsAboveLevel(t.inner, level)
     case 'Index': return containsVarsAboveLevel(t.target, level) || containsVarsAboveLevel(t.key, level)
     case 'Alias': return t.args.some(a => containsVarsAboveLevel(a, level)) || containsVarsAboveLevel(t.expanded, level)
+    case 'Refined': return containsVarsAboveLevel(t.base, level)
     default: return false
   }
 }
@@ -2449,6 +2479,13 @@ function generalizeInner(t: Type, level: number, mapping: Map<string, TypeVar>):
     case 'Recursive': {
       const body = generalizeInner(t.body, level, mapping)
       return body === t.body ? t : { tag: 'Recursive', id: t.id, body }
+    }
+    case 'Refined': {
+      // Generalize the base only — the predicate body is a Dvala AST,
+      // not a type, and carries no TypeVars. Preserve the refinement
+      // metadata verbatim; identity-share when the base didn't change.
+      const base = generalizeInner(t.base, level, mapping)
+      return base === t.base ? t : { tag: 'Refined', base, binder: t.binder, predicate: t.predicate, source: t.source }
     }
     default:
       return t
@@ -4712,6 +4749,13 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
     case 'Alias':
       return expandTypeForMatchAnalysis(t.expanded, visited)
 
+    // Match analysis cares about value-set shape. A refinement narrows
+    // its base but doesn't add new shapes — for match-exhaustiveness
+    // purposes the refinement is invisible (opaque to match-narrowing
+    // until the Phase 2.4 solver lands). Return the base expansion.
+    case 'Refined':
+      return expandTypeForMatchAnalysis(t.base, visited)
+
     default:
       return t
   }
@@ -4890,6 +4934,13 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
         expandType(t.target, polarity, new Set(visited)),
         expandType(t.key, polarity, new Set(visited)),
       )
+    case 'Refined': {
+      // Expand the base, preserve predicate + binder + source. Identity
+      // share when expansion doesn't change the base so downstream
+      // reference-equality fast paths still fire.
+      const base = expandType(t.base, polarity, new Set(visited))
+      return base === t.base ? t : { tag: 'Refined', base, binder: t.binder, predicate: t.predicate, source: t.source }
+    }
     default:
       return t
   }
@@ -4995,6 +5046,16 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
       return { tag: 'Alias', name: t.name, args: t.args.map(arg => expandTypeForDisplay(arg, 'positive', new Set(visited))), expanded: expandTypeForDisplay(t.expanded, polarity, new Set(visited)) }
     case 'Recursive':
       return { tag: 'Recursive', id: t.id, body: expandTypeForDisplay(t.body, polarity, new Set(visited)) }
+    case 'Refined':
+      // Expand the base for display; keep the predicate + binder + source
+      // verbatim so `typeToString` renders `<base-display> & {source}`.
+      return {
+        tag: 'Refined',
+        base: expandTypeForDisplay(t.base, polarity, new Set(visited)),
+        binder: t.binder,
+        predicate: t.predicate,
+        source: t.source,
+      }
     default:
       return t
   }

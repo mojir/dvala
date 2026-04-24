@@ -84,6 +84,12 @@ export function simplify(t: Type): Type {
     }
     case 'Keyof': return keyofType(simplify(t.inner))
     case 'Index': return indexType(simplify(t.target), simplify(t.key))
+    // Refinement: simplify the base only. Phase 2.2 will add multi-
+    // refinement merging (collapsing `Base & {x|P} & {y|Q}` into one
+    // Refined node) and trivial-predicate collapse (`{x | true}` → `Base`);
+    // Phase 2.1 keeps the Refined node inert so Phase 2.2 has clean
+    // ground to build on.
+    case 'Refined': return { tag: 'Refined', base: simplify(t.base), binder: t.binder, predicate: t.predicate, source: t.source }
     default: return t
   }
 }
