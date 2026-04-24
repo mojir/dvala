@@ -12,15 +12,16 @@ describe('assert functions', () => {
     }
     describe('assert (core)', () => {
       it('samples', () => {
+        // Strict-Boolean `assert` accepts only `Boolean`; it throws on
+        // `false` and returns `true` otherwise. Callers wanting the old
+        // truthy behaviour migrate to an explicit check, e.g.
+        // `assert(x != null)` instead of `assert(x)`.
         expect(() => dvala.run('assert(false)')).toThrowError(AssertionError)
         expect(() => dvala.run('assert(false, "Expected true")')).toThrowError(AssertionError)
-        expect(() => dvala.run('assert(null)')).toThrowError(AssertionError)
-        expect(() => dvala.run('assert(0)')).toThrowError(AssertionError)
-        expect(() => dvala.run('assert("")')).toThrowError(AssertionError)
-        expect(dvala.run('assert([])')).toEqual([])
+        expect(() => dvala.run('assert(1 == 2)')).toThrowError(AssertionError)
         expect(dvala.run('assert(true)')).toBe(true)
-        expect(dvala.run('assert(1)')).toBe(1)
-        expect(dvala.run('assert("0")')).toBe('0')
+        expect(dvala.run('assert(1 == 1)')).toBe(true)
+        expect(dvala.run('assert(true, "unreachable")')).toBe(true)
       })
     })
     describe('assertEqual', () => {

@@ -1057,14 +1057,26 @@ describe('typecheck — misc expression types', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
-  it('and expression typechecks without errors', () => {
-    const result = dvala.typecheck('true && 42')
+  // Strict Boolean — every `&&` / `||` operand must be Boolean. These
+  // replaced tests previously mixed in non-Boolean values (`42`, `"hello"`).
+  it('and expression typechecks when both operands are Boolean', () => {
+    const result = dvala.typecheck('true && false')
     expect(result.diagnostics).toHaveLength(0)
   })
 
-  it('or expression typechecks without errors', () => {
-    const result = dvala.typecheck('false || "hello"')
+  it('or expression typechecks when both operands are Boolean', () => {
+    const result = dvala.typecheck('false || true')
     expect(result.diagnostics).toHaveLength(0)
+  })
+
+  it('and expression rejects non-Boolean operand', () => {
+    const result = dvala.typecheck('true && 42')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
+
+  it('or expression rejects non-Boolean operand', () => {
+    const result = dvala.typecheck('false || "hello"')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 
   it('nullish coalescing typechecks without errors', () => {

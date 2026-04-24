@@ -272,18 +272,18 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
   },
   // Logical negation. Parser emits `!x` as `Call('!', [x])`, and
-  // `filter(xs, !)` as a Builtin reference. Signature is tightened to
-  // `(Boolean) -> Boolean` later in the Boolean-surface cleanup — for
-  // now it mirrors `not`'s `(Unknown) -> Boolean` so the swap can ship
-  // incrementally without breaking every truthy call site at once.
+  // `filter(xs, !)` as a Builtin reference. Signature is strict
+  // `(Boolean) -> Boolean` — part of the Boolean-surface cleanup;
+  // non-Boolean operands must be rewritten (e.g. `!x` where `x : Number`
+  // → `x == 0` or similar).
   '!': {
     evaluate: ([first]): boolean => !first,
     arity: toFixedArity(1),
     docs: {
-      type: '(Unknown) -> Boolean',
+      type: '(Boolean) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
-      args: { x: { type: 'any' } },
+      args: { x: { type: 'boolean' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Logical negation. Usable as a first-class function value, e.g. `filter(bs, !)`.',
       seeAlso: ['&&', '||', 'isBoolean'],

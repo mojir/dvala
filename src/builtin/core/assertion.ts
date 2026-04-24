@@ -1,31 +1,29 @@
-import type { Any } from '../../interface'
 import { AssertionError } from '../../errors'
-import { asAny } from '../../typeGuards/dvala'
 import { assertString } from '../../typeGuards/string'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const assertionNormalExpression: BuiltinNormalExpressions = {
   assert: {
-    evaluate: (params, sourceCodeInfo): Any => {
+    evaluate: (params, sourceCodeInfo): boolean => {
       const value = params.get(0)
       const message = params.size === 2 ? params.get(1) : `${value}`
       assertString(message, sourceCodeInfo)
       if (!value)
         throw new AssertionError(message, sourceCodeInfo)
 
-      return asAny(value, sourceCodeInfo)
+      return true
     },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '((Unknown) -> Unknown) & ((Unknown, String) -> Unknown)',
+      type: '((Boolean) -> Boolean) & ((Boolean, String) -> Boolean)',
       category: 'assertion',
-      description: 'If `value` is falsy it throws `AssertionError` with `message`. If no `message` is provided, message is set to `value`.',
+      description: 'If `value` is `false` it throws `AssertionError` with `message`. If no `message` is provided, the message is derived from the value. Under strict Boolean, the value must be `Boolean` — e.g. `assert(x != null, "x is null")` instead of `assert(x, "x is null")`.',
       returns: {
-        type: 'any',
+        type: 'boolean',
       },
       args: {
         value: {
-          type: 'any',
+          type: 'boolean',
         },
         message: {
           type: 'string',
@@ -45,7 +43,7 @@ export const assertionNormalExpression: BuiltinNormalExpressions = {
         },
       ],
       examples: [
-        'do with handler @dvala.error(arg) -> resume(arg) end; assert(0, "Expected a positive value") end',
+        'do with handler @dvala.error(arg) -> resume(arg) end; assert(false, "Expected a positive value") end',
       ],
       seeAlso: ['assertion.assertTruthy', 'assertion.assertTrue'],
       hideOperatorForm: true,

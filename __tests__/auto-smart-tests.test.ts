@@ -119,6 +119,7 @@ const skipWrongTypeTests = new Set([
   'compare', // accepts any types for comparison
   'typeOf', // accepts any
   'not', // coerces any to boolean
+  '!', // strict-typed to Boolean but runtime still JS-coerces; typechecker enforces
   'hash', // accepts any
   '=', // accepts any
   '!=', // accepts any

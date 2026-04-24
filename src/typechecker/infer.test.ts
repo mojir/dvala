@@ -1818,15 +1818,17 @@ describe('inference — effect annotations and misc node types', () => {
     expect(t).toEqual(StringType)
   })
 
-  it('and expression infers union of operands', () => {
-    const t = inferAndExpand('true && 42')
-    // Result is union of boolean and number
-    expect(isSubtype(literal(true), t) || isSubtype(literal(42), t)).toBe(true)
+  // Strict Boolean: `&&` / `||` take only Boolean operands. The result
+  // is a Boolean literal or union of Boolean literals (via the fold
+  // path), never a mixed type.
+  it('and expression infers Boolean-compatible result', () => {
+    const t = inferAndExpand('true && false')
+    expect(isSubtype(t, BooleanType)).toBe(true)
   })
 
-  it('or expression infers union of operands', () => {
-    const t = inferAndExpand('false || "hello"')
-    expect(isSubtype(literal(false), t) || isSubtype(literal('hello'), t)).toBe(true)
+  it('or expression infers Boolean-compatible result', () => {
+    const t = inferAndExpand('false || true')
+    expect(isSubtype(t, BooleanType)).toBe(true)
   })
 
   it('nullish coalescing infers union of operands', () => {

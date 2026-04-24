@@ -1568,13 +1568,21 @@ export function inferExpr(
       case NodeTypes.Or: {
         const operands = payload as AstNode[]
         const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
-        // C7 / decision #9: narrow on literal operands using JS-style
-        // truthiness. For &&, the first falsy operand short-circuits to
-        // its own value; for ||, the first truthy operand does. If every
-        // operand has a known truthiness without a short-circuit, the
-        // result is the last operand's type. Recognised falsy literals:
-        // `false`, `0`, `""`, `null`. All other literals are truthy.
-        // Bails to the union behaviour below on the first non-literal.
+        // Strict-Boolean cleanup: every operand must be `Boolean`. No
+        // truthy coercion remains at the `&&` / `||` positions. The
+        // branch-local fold logic below still works because, after
+        // strict, only `true`/`false` literals reach this code — and
+        // `literalTruthiness` returns the boolean value directly for
+        // those, so short-circuit results are still precise.
+        for (const t of types) {
+          constrain(ctx, t, BooleanType)
+        }
+        // C7 / decision #9: narrow on literal operands. For &&, the
+        // first false operand short-circuits to its own value; for ||,
+        // the first true operand does. If every operand has a known
+        // boolean literal without a short-circuit, the result is the
+        // last operand's type. Bails to the union behaviour below on
+        // the first non-literal.
         if (ctx.foldEnabled && types.length > 0) {
           const wantFalsy = nodeType === NodeTypes.And
           let narrowed: Type | undefined
