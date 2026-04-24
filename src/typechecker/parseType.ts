@@ -33,6 +33,10 @@ import {
 } from './types'
 import { getEffectDeclaration } from './effectTypes'
 import { isSubtype } from './subtype'
+import { parse } from '../parser'
+import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
+import { tokenize } from '../tokenizer/tokenize'
+import { fragmentCheckPredicate } from './refinementFragmentCheck'
 
 // ---------------------------------------------------------------------------
 // Type alias registry
@@ -293,11 +297,131 @@ class TypeParser {
     this.skipWhitespace()
     while (this.tryConsume('&')) {
       this.skipWhitespace()
+      // Refinement-type predicate: `Base & { binder | predicate }`.
+      // One-token lookahead disambiguates from record literal `{ field: T }`
+      // — a record has `IDENT :` after the `{`, a refinement has `IDENT |`.
+      // Phase 1 of the refinement-types plan: accept the syntax, parse
+      // the predicate body as a Dvala expression, run the fragment-checker.
+      // If the predicate is in the Phase 1 fragment, silently drop it
+      // (the `Refined` Type-union member arrives in Phase 2); if not,
+      // throw a tagged `RefinementError` with the appropriate `kind`.
+      if (this.looksLikeRefinementPredicate()) {
+        this.consumeAndCheckRefinementPredicate()
+        // `left` (the base type) is returned unchanged — the `& {...}` is
+        // parsed-then-dropped. No `inter` call, no simplify side-effects.
+        this.skipWhitespace()
+        continue
+      }
       const right = this.parsePrefix()
       left = inter(left, right)
       this.skipWhitespace()
     }
     return left
+  }
+
+  /**
+   * Refinement-predicate disambiguation — Phase 1 of the refinement-types
+   * plan. Returns true if the upcoming tokens look like `{ IDENT |`
+   * (a refinement predicate), false otherwise (record literal or any
+   * other `{`-led shape). Does NOT advance `pos` — this is pure lookahead.
+   */
+  private looksLikeRefinementPredicate(): boolean {
+    if (this.peek() !== '{') return false
+    let i = this.pos + 1
+    while (i < this.input.length && /\s/.test(this.input[i]!)) i++
+    const identStart = i
+    while (i < this.input.length && this.isIdentChar(this.input[i]!)) i++
+    if (i === identStart) return false
+    while (i < this.input.length && /\s/.test(this.input[i]!)) i++
+    // Require a single `|`, not `||` (that would be a boolean OR, not
+    // a binder separator — and a bare `||` after `{ IDENT` is malformed
+    // regardless). The check is cheap: one char must be `|` AND the
+    // next must not also be `|`.
+    if (this.input[i] !== '|') return false
+    if (this.input[i + 1] === '|') return false
+    return true
+  }
+
+  /**
+   * Phase 1: consume `{ binder | predicate }`, parse the predicate body
+   * as a Dvala expression, and run the fragment-checker. If the body
+   * passes, the refinement is silently dropped (the base type is
+   * returned unchanged — `Refined` AST node arrives in Phase 2). If not,
+   * a `RefinementError` bubbles up.
+   *
+   * Brace-depth tracking handles nested braces inside the body (e.g. a
+   * record literal on one side of a relation). `{` and `}` inside string
+   * literals are ignored — handled by the Dvala tokenizer in the inner
+   * parse; our char-level scan here just extracts the substring.
+   */
+  private consumeAndCheckRefinementPredicate(): void {
+    const startPos = this.pos
+    this.consume('{')
+    this.skipWhitespace()
+    // Read the binder — a plain identifier per the grammar.
+    const binderStart = this.pos
+    while (this.pos < this.input.length && this.isIdentChar(this.input[this.pos]!)) this.pos++
+    if (this.pos === binderStart) {
+      throw new TypeParseError('Expected binder identifier before `|`', this.input, this.pos)
+    }
+    const binder = this.input.slice(binderStart, this.pos)
+    // Reserved-word binders (`null`, `true`, `false`) tokenize as
+    // ReservedSymbol inside the predicate body, never as a plain Sym.
+    // `isBinderRef` only matches `Sym(binder)`, so a reserved-word binder
+    // would be unreferenceable and the user would get a confusing
+    // "binder must be on the LHS" error later. Reject early.
+    if (binder === 'null' || binder === 'true' || binder === 'false') {
+      throw new TypeParseError(
+        `Refinement binder '${binder}' conflicts with a reserved keyword; choose a different name`,
+        this.input,
+        binderStart,
+      )
+    }
+    this.skipWhitespace()
+    this.consume('|')
+    this.skipWhitespace()
+
+    // Grab the body string through the matching `}`, tracking brace
+    // depth. Content of string literals isn't special-cased — this is
+    // purely boundary detection; the Dvala tokenizer handles string
+    // literal semantics when we parse the substring.
+    const bodyStart = this.pos
+    let depth = 1
+    while (this.pos < this.input.length && depth > 0) {
+      const ch = this.input[this.pos]!
+      if (ch === '{') depth++
+      else if (ch === '}') depth--
+      if (depth > 0) this.pos++
+    }
+    if (this.pos >= this.input.length) {
+      throw new TypeParseError('Unterminated refinement predicate — expected `}`', this.input, this.pos)
+    }
+    const bodySource = this.input.slice(bodyStart, this.pos).trim()
+    this.consume('}')
+
+    if (bodySource.length === 0) {
+      throw new TypeParseError('Empty refinement predicate body', this.input, startPos)
+    }
+
+    // Parse the body as a Dvala expression through the main parser.
+    // If the body is syntactically invalid Dvala, the tokenizer or
+    // parser throws — let that propagate as a normal parse error.
+    const tokens = tokenize(bodySource, false, undefined)
+    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
+    const body = parse(minified)
+    if (body.length !== 1) {
+      throw new RefinementError(
+        `Refinement predicate must be a single expression; parsed ${body.length} top-level expressions.`,
+        'fragment',
+        this.input,
+        startPos,
+      )
+    }
+
+    // Run the fragment-checker. Either returns silently (accepted) or
+    // throws a RefinementError with the appropriate `kind`.
+    fragmentCheckPredicate(body[0]!, binder, this.input, startPos)
+    // Accepted — the refinement is silently dropped in Phase 1.
   }
 
   private parsePrefix(): Type {
@@ -1109,5 +1233,36 @@ export class TypeParseError extends Error {
     super(`${message} at position ${position} in "${input}"`)
     this.name = 'TypeParseError'
     this.cleanMessage = message
+  }
+}
+
+/**
+ * Refinement-specific error raised by the fragment-checker while
+ * parsing a `Base & { binder | predicate }` annotation. Tests assert
+ * on `kind` to stay decoupled from exact message wording.
+ *
+ *  - `fragment`       — predicate shape is outside the accepted
+ *                       grammar (arithmetic, effects, control flow,
+ *                       unknown calls, anything not in the Phase 1
+ *                       accepted-fixture list).
+ *  - `predicate-type` — predicate body isn't Boolean-typed.
+ *  - `obligation`     — reserved for Phase 2; the solver will raise
+ *                       this when it can't discharge a goal.
+ *
+ * Lives in parseType.ts next to `TypeParseError` to keep the
+ * typechecker→parser import direction one-way (infer.ts already
+ * depends on parseType.ts).
+ */
+export class RefinementError extends TypeParseError {
+  public readonly kind: 'fragment' | 'predicate-type' | 'obligation'
+  constructor(
+    message: string,
+    kind: 'fragment' | 'predicate-type' | 'obligation',
+    input: string,
+    position: number,
+  ) {
+    super(message, input, position)
+    this.name = 'RefinementError'
+    this.kind = kind
   }
 }
