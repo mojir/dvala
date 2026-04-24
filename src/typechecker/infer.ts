@@ -472,14 +472,6 @@ function setsEqual(a: Set<string>, b: Set<string>): boolean {
 }
 
 /**
- * The core of Simple-sub: propagate `lhs <: rhs` until everything
- * reduces to bounds on type variables.
- *
- * When a variable appears on the left, it gains an upper bound.
- * When a variable appears on the right, it gains a lower bound.
- * Existing bounds are then propagated transitively.
- */
-/**
  * Boolean-position helper for strict-Boolean positions (`if` cond,
  * `match when` guard, `&&` / `||` operands). Runs the usual
  * `constrain` but — when it fails because the operand isn't
@@ -571,6 +563,14 @@ function suggestBooleanFix(type: Type): string | undefined {
   return 'Use an explicit comparison (`x != null`, `x == value`) or a type-guard predicate. The old `boolean(x)` coercion was removed.'
 }
 
+/**
+ * The core of Simple-sub: propagate `lhs <: rhs` until everything
+ * reduces to bounds on type variables.
+ *
+ * When a variable appears on the left, it gains an upper bound.
+ * When a variable appears on the right, it gains a lower bound.
+ * Existing bounds are then propagated transitively.
+ */
 export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Trivial cases
   if (lhs === rhs) return

@@ -1138,6 +1138,25 @@ describe('typecheck — misc expression types', () => {
       expect(msg).toContain('match')
       expect(msg).toContain('!= 0')
     })
+
+    it('Record operand suggests null-checking an optional field', () => {
+      // Record literals flow through as closed records. The hint should
+      // call out that records are always truthy (the old `if obj` idiom)
+      // and nudge toward a null-check.
+      const result = dvala.typecheck('if { a: 1 } then "yes" else "no" end')
+      const msg = result.diagnostics[0]!.message
+      expect(msg).toMatch(/always truthy|null-check/)
+    })
+
+    it('Function / regex / atom operand falls through to the generic hint', () => {
+      // Regex is a concrete non-Boolean primitive that hits the fallback
+      // branch of `suggestBooleanFix` (no targeted type-specific rewrite).
+      // Assert only on the generic substrings so the fallback stays tied
+      // to the `boolean(x)`-removal message rather than a specific phrasing.
+      const result = dvala.typecheck('if #"abc" then "yes" else "no" end')
+      const msg = result.diagnostics[0]!.message
+      expect(msg).toContain('boolean(x)')
+    })
   })
 
   it('nullish coalescing typechecks without errors', () => {

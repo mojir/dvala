@@ -269,6 +269,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         '!true',
         '!false',
         '!(1 == 2)',
+        '!!true',
       ],
     },
   },

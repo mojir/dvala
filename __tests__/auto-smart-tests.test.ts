@@ -114,11 +114,9 @@ const skipWrongTypeTests = new Set([
   'uuid!', // side effect
   'rand!', // side effect
   'rand-int!', // side effect
-  'boolean', // conflicts with reserved word
   'number', // conflicts with reserved word
   'compare', // accepts any types for comparison
   'typeOf', // accepts any
-  'not', // coerces any to boolean
   '!', // strict-typed to Boolean but runtime still JS-coerces; typechecker enforces
   'hash', // accepts any
   '=', // accepts any

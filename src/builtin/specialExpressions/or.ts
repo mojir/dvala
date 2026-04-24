@@ -26,8 +26,7 @@ const docs: FunctionDocs = {
   description: `
   Computes logical \`or\`. Evaluation starts from left. As soon as an
   operand evaluates to \`true\`, the result is \`true\`; otherwise the
-  result is the value of the last operand. Under strict Boolean, every
-  operand must be \`Boolean\`.`,
+  result is \`false\`. Every operand must be \`Boolean\`.`,
   seeAlso: ['&&', '!'],
   examples: [
     'false || true',

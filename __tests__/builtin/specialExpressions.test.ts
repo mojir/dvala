@@ -203,21 +203,17 @@ describe('specialExpressions', () => {
     })
   })
 
-  describe('if not (negated condition)', () => {
+  describe('if ! (negated condition)', () => {
     it('samples', () => {
+      // Strict Boolean — `!` rejects non-Boolean operands at type-check.
+      // Tests here use only Boolean inputs or comparison expressions.
       expect(dvalaDebug.run('if !(true) then "A" else "B" end')).toBe('B')
       expect(dvalaDebug.run('if !(false) then "A" else "B" end')).toBe('A')
-      expect(dvala.run('if !(null) then "A" else "B" end')).toBe('A')
       expect(() => dvala.run('if !(true) then "A" end')).toThrow('`if` without `else` is not allowed')
       expect(dvala.run('if !(false) then "A" else null end')).toBe('A')
-      expect(dvala.run('if !(null) then "A" else null end')).toBe('A')
-      expect(dvala.run('if !("") then "A" else "B" end')).toBe('A')
-      expect(dvala.run('if !("x") then "A" else "B" end')).toBe('B')
-      expect(dvala.run('if !(0) then "A" else "B" end')).toBe('A')
-      expect(dvala.run('if !(1) then "A" else "B" end')).toBe('B')
-      expect(dvala.run('if !(-1) then "A" else "B" end')).toBe('B')
-      expect(dvala.run('if !([]) then "A" else "B" end')).toBe('B')
-      expect(dvala.run('if !(object()) then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if !(1 == 1) then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if !(1 == 2) then "A" else "B" end')).toBe('A')
+      expect(dvala.run('if !!(false) then "A" else "B" end')).toBe('B')
     })
     it('that if !(...) only evaluates the correct path (true)', () => {
       dvala.run('if !(true) then perform(@dvala.io.print, "A") else perform(@dvala.io.print, "B") end')
@@ -240,34 +236,29 @@ describe('specialExpressions', () => {
 
   describe('&&', () => {
     it('samples', () => {
-      expect(dvala.run('0 && 1')).toBe(0)
-      expect(dvala.run('2 && 1')).toBe(1)
+      // Strict Boolean: operands must be Boolean. Previously this block
+      // asserted JS-style truthy short-circuit return values (`0 && 1 → 0`,
+      // `&&(2, 3, "x") → "x"`). Those are now type errors; the runtime
+      // still short-circuits and returns the last operand (for compat),
+      // but asserting on that return is misleading — the typechecker
+      // rejects the form. Exercise only Boolean operands here.
+      expect(dvala.run('false && true')).toBe(false)
+      expect(dvala.run('true && true')).toBe(true)
       expect(dvala.run('&&()')).toBe(true)
-      expect(dvala.run('&&(0)')).toBe(0)
-      expect(dvala.run('&&(0, 1)')).toBe(0)
-      expect(dvala.run('&&(2, 0)')).toBe(0)
-      expect(dvala.run('&&(2, 0, 1)')).toBe(0)
-      expect(dvala.run('&&(2, 3, 0)')).toBe(0)
-      expect(dvala.run('&&(2, 3, "")')).toBe('')
-      expect(dvala.run('&&(2, 3, "x")')).toBe('x')
-      expect(dvala.run('&&(false, 1)')).toBe(false)
-      expect(dvala.run('&&(1, false)')).toBe(false)
-      expect(dvala.run('&&(1, null)')).toBe(null)
-      expect(dvala.run('&&(2, 2, false)')).toBe(false)
-      expect(dvala.run('&&(3, true, 3)')).toBe(3)
+      expect(dvala.run('&&(false)')).toBe(false)
+      expect(dvala.run('&&(true, true)')).toBe(true)
+      expect(dvala.run('&&(true, false)')).toBe(false)
+      expect(dvala.run('&&(true, true, true)')).toBe(true)
+      expect(dvala.run('&&(true, true, false)')).toBe(false)
     })
     describe('short circuit', () => {
       it('true, false', () => {
         expect(dvala.run('&&(true, false)')).toBe(false)
       })
-      it('true, 1', () => {
-        expect(dvala.run('&&(true, 1)')).toBe(1)
-      })
-      it('false, true', () => {
-        // If && doesn't short-circuit, dvala.error would throw
-        expect(dvala.run('&&(false, perform(@dvala.error, "not short-circuited"))')).toBe(false)
-      })
-      it('false, 0', () => {
+      it('false short-circuits — RHS is not evaluated', () => {
+        // If && didn't short-circuit, @dvala.error would abort. Since
+        // the RHS has type `Never` (the effect never returns), it's
+        // trivially a subtype of Boolean so strict Boolean accepts it.
         expect(dvala.run('&&(false, perform(@dvala.error, "not short-circuited"))')).toBe(false)
       })
     })
@@ -280,28 +271,24 @@ describe('specialExpressions', () => {
 
   describe('||', () => {
     it('samples', () => {
-      expect(dvala.run('0 || 1')).toBe(1)
-      expect(dvala.run('2 || 0')).toBe(2)
+      // Strict Boolean: operands must be Boolean. See `&&` above for
+      // the rationale — the old mixed-operand samples asserted on a
+      // JS-coerced return that the typechecker now rejects.
+      expect(dvala.run('false || true')).toBe(true)
+      expect(dvala.run('true || false')).toBe(true)
       expect(dvala.run('||()')).toBe(false)
-      expect(dvala.run('||(0)')).toBe(0)
-      expect(dvala.run('||(0, 1)')).toBe(1)
-      expect(dvala.run('||(2, 0)')).toBe(2)
-      expect(dvala.run('||(null, 0, false)')).toBe(false)
-      expect(dvala.run('||(null, 0, 1)')).toBe(1)
+      expect(dvala.run('||(false)')).toBe(false)
+      expect(dvala.run('||(false, true)')).toBe(true)
+      expect(dvala.run('||(true, false)')).toBe(true)
+      expect(dvala.run('||(false, false, true)')).toBe(true)
+      expect(dvala.run('||(false, false, false)')).toBe(false)
     })
     describe('short circuit', () => {
-      it('true, false', () => {
-        // If || doesn't short-circuit, dvala.error would throw
-        expect(dvala.run('||(true, perform(@dvala.error, "not short-circuited"))')).toBe(true)
-      })
-      it('true, 1', () => {
+      it('true short-circuits — RHS is not evaluated', () => {
         expect(dvala.run('||(true, perform(@dvala.error, "not short-circuited"))')).toBe(true)
       })
       it('false, true', () => {
         expect(dvala.run('||(false, true)')).toBe(true)
-      })
-      it('false, 0', () => {
-        expect(dvala.run('||(false, 0)')).toBe(0)
       })
     })
     describe('unresolvedIdentifiers', () => {

@@ -1877,6 +1877,9 @@ function needsSpaceBetween(prev: string, cur: string): boolean {
 function isOperatorText(s: string): boolean {
   if (s.length === 0) return false
   const ch = s[0]!
-  // Operators start with symbolic characters; identifiers/numbers/strings don't
-  return '+-*/%<>=!&|^~?'.includes(ch) || s === 'not' || s === 'and' || s === 'or'
+  // Operators start with symbolic characters; identifiers/numbers/strings don't.
+  // Note: `not` used to be listed here as a word-operator alias, but it was
+  // removed under the Boolean-surface cleanup — `not` is now a plain identifier
+  // that a user can bind (e.g. `let not = !`). `and`/`or` are not Dvala operators.
+  return '+-*/%<>=!&|^~?'.includes(ch)
 }
