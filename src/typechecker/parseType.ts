@@ -29,23 +29,30 @@ import type { RowVarTail, Type } from './types'
 import {
   NumberType, IntegerType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, AnyFunction, PureEffects,
-  array, atom, effectSet, fn, handlerType, indexType, inter, keyofType, literal, neg, tuple, union,
+  array, atom, effectSet, fn, handlerType, indexType, inter, keyofType, literal, neg, tuple, typeToString, union,
 } from './types'
 import { getEffectDeclaration } from './effectTypes'
+import { isSubtype } from './subtype'
 
 // ---------------------------------------------------------------------------
 // Type alias registry
 // ---------------------------------------------------------------------------
 
+// `AliasParam` is defined canonically in the parser layer (the shape
+// flows from parser into AST). Re-export here so typechecker consumers
+// have a single import site and the two declarations can never diverge.
+export type { AliasParam } from '../parser/types'
+import type { AliasParam } from '../parser/types'
+
 /** Registered type aliases: name → { params, body string } */
-const typeAliasRegistry = new Map<string, { params: string[]; body: string }>()
+const typeAliasRegistry = new Map<string, { params: AliasParam[]; body: string }>()
 
 export interface TypeAliasRegistrySnapshot {
-  entries: [string, { params: string[]; body: string }][]
+  entries: [string, { params: AliasParam[]; body: string }][]
 }
 
 /** Register a type alias. Called by typecheck.ts from parsed AST. */
-export function registerTypeAlias(name: string, params: string[], body: string): void {
+export function registerTypeAlias(name: string, params: AliasParam[], body: string): void {
   typeAliasRegistry.set(name, { params, body })
 }
 
@@ -57,7 +64,10 @@ export function resetTypeAliases(): void {
 /** Snapshot the current alias registry so nested import typechecking can restore it. */
 export function snapshotTypeAliases(): TypeAliasRegistrySnapshot {
   return {
-    entries: [...typeAliasRegistry.entries()].map(([name, alias]) => [name, { params: [...alias.params], body: alias.body }]),
+    entries: [...typeAliasRegistry.entries()].map(([name, alias]) => [name, {
+      params: alias.params.map(p => p.bound === undefined ? { name: p.name } : { name: p.name, bound: p.bound }),
+      body: alias.body,
+    }]),
   }
 }
 
@@ -143,10 +153,83 @@ class TypeParser {
   }
 
   /**
+   * Phase 0a — parse an optional `<T, T: Bound, ...>` prefix before a
+   * function type. Registers each type variable in `typeVarMap` with its
+   * bound (if any) populated in `upperBounds` before the surrounding type
+   * is parsed. Called from `parsePrimary` / `parseFunctionOrType` when
+   * the parser is at a `<` token at type position.
+   *
+   * Syntax: `<A, B: Bound, C>` — each param is a single uppercase letter
+   * with an optional `: Type` bound. Bounds propagate via the existing
+   * `Var.upperBounds` + `constrain` machinery (no new inference code).
+   */
+  private parseTypeVarPrefix(): void {
+    this.consume('<')
+    this.skipWhitespace()
+    if (this.tryConsume('>')) return
+
+    // Track names introduced by THIS prefix so we can reject duplicates.
+    // Two `<T: Number, T: String>` would otherwise push both bounds onto
+    // the same TypeVar and produce a confusing `Number & String = Never`
+    // situation at call sites; a clean error here is friendlier.
+    const seen = new Set<string>()
+    for (;;) {
+      this.skipWhitespace()
+      const name = this.readIdentifier()
+      if (!name) {
+        throw this.error('Expected type parameter name in <...> prefix')
+      }
+      if (!(name.length === 1 && name >= 'A' && name <= 'Z')) {
+        throw this.error(`Type parameter '${name}' must be a single uppercase letter (A, B, ..., Z)`)
+      }
+      if (seen.has(name)) {
+        throw this.error(`Duplicate type parameter '${name}' in <...> prefix`)
+      }
+      seen.add(name)
+
+      // Create the TypeVar up front so it's in scope by the time the
+      // bound (if present) is parsed — a bound that references an
+      // earlier type variable in the same list will resolve correctly.
+      // Invariant: typeVarMap only stores Var-tagged types (created here
+      // and in makeTypeRef), so the cast below is safe by construction.
+      let v = this.typeVarMap.get(name)
+      if (!v) {
+        v = { tag: 'Var', id: this.nextVarId++, level: 0, lowerBounds: [], upperBounds: [] }
+        this.typeVarMap.set(name, v)
+      }
+
+      this.skipWhitespace()
+      if (this.tryConsume(':')) {
+        this.skipWhitespace()
+        const bound = this.parseType()
+        ;(v as Extract<Type, { tag: 'Var' }>).upperBounds.push(bound)
+      }
+
+      this.skipWhitespace()
+      if (this.tryConsume(',')) continue
+      break
+    }
+    this.skipWhitespace()
+    if (!this.tryConsume('>')) {
+      throw this.error('Expected ">" to close type-parameter list')
+    }
+  }
+
+  /**
    * Parse either a function type (if we see params + ->) or a regular type.
    * Also detects type guard syntax: (x: T) -> x is U
    */
   parseFunctionOrType(): ParsedFunctionType {
+    this.skipWhitespace()
+    // Phase 0a — optional `<T: U>` prefix for annotation-scoped
+    // forall-quantified function types. Parses the prefix, registers
+    // the type vars with their bounds, then falls through to the
+    // normal function-type parse. The forall quantifier scope is the
+    // whole annotation (same as the existing A/B/T convention).
+    if (this.peek() === '<') {
+      this.parseTypeVarPrefix()
+      this.skipWhitespace()
+    }
     // Try to parse as function type
     const saved = this.pos
     if (this.tryConsume('(')) {
@@ -279,6 +362,21 @@ class TypeParser {
   private parsePrimary(): Type {
     this.skipWhitespace()
 
+    // Phase 0a — annotation-scoped `<T: U>` prefix before a function type.
+    // When seen inside a larger type (e.g. union/intersection members),
+    // the prefix must still be recognized so nested function types can
+    // declare their own forall quantification.
+    if (this.peek() === '<') {
+      this.parseTypeVarPrefix()
+      this.skipWhitespace()
+      // After the prefix, a function type follows. `(` is required — a
+      // lone `<T>` without a function type is meaningless.
+      if (this.peek() !== '(') {
+        throw this.error('Expected "(" after type-parameter prefix')
+      }
+      return this.parseParenOrFunction()
+    }
+
     // Parenthesized type or function type
     if (this.peek() === '(') {
       return this.parseParenOrFunction()
@@ -325,6 +423,17 @@ class TypeParser {
       case 'Regex': return RegexType
       case 'Function': return AnyFunction
       case 'Handler': return this.parseHandlerType()
+      // `Sequence` and `Collection` are user-facing type-keyword unions
+      // that match the `isSequence` and `isCollection` builtins. Inlined
+      // here (rather than exported from types.ts) because:
+      //   - the name `SequenceType` is already the internal prefix/rest
+      //     interface used for match narrowing, and
+      //   - the parallel primitive-type exports (NumberType, StringType,
+      //     ...) are all primitives, not unions; adding union-valued
+      //     "*Type" consts would mislead callers about what kind of
+      //     value they're handling.
+      case 'Sequence': return union(array(Unknown), StringType)
+      case 'Collection': return union(array(Unknown), StringType, { tag: 'Record', fields: new Map(), open: true })
       case 'Unknown': return Unknown
       case 'Never': return Never
       case 'true': return literal(true)
@@ -812,7 +921,29 @@ class TypeParser {
         throw this.error(`Type alias '${name}' expects ${alias.params.length} type argument(s), got ${args.length}`)
       }
 
-      const scopedTypeRefs = new Map(alias.params.map((param, index) => [param, args[index]!]))
+      // Enforce upper bounds per Phase 0a. For each param with a declared
+      // bound, parse the bound in the current scope (so it sees any scoped
+      // type refs or aliases defined before this expansion) and check that
+      // the supplied argument is a subtype of the bound. The check uses
+      // `isSubtype` rather than `constrain` so it is side-effect-free —
+      // argument type vars are not mutated by the bound check.
+      for (let i = 0; i < alias.params.length; i++) {
+        const param = alias.params[i]!
+        if (param.bound === undefined) continue
+        const boundParser = new TypeParser(param.bound, this.scopedTypeRefs)
+        const boundType = boundParser.parseType()
+        if (!boundParser.isAtEnd()) {
+          throw this.error(`Invalid bound on type alias '${name}' parameter '${param.name}': '${boundParser.remaining()}'`)
+        }
+        const argType = args[i]!
+        if (!isSubtype(argType, boundType)) {
+          throw this.error(
+            `Type argument does not satisfy bound on '${name}': parameter '${param.name}' is bounded by '${typeToString(boundType)}', but got '${typeToString(argType)}'`,
+          )
+        }
+      }
+
+      const scopedTypeRefs = new Map(alias.params.map((param, index) => [param.name, args[index]!]))
       const parser = new TypeParser(alias.body, scopedTypeRefs)
       const expanded = parser.parseType()
       if (!parser.isAtEnd()) {
@@ -961,8 +1092,17 @@ interface ParamInfo {
 }
 
 export class TypeParseError extends Error {
+  /**
+   * The original message without the position/input suffix. The
+   * `.message` field carries the decorated form for debug output;
+   * callers that convert this to a user-facing diagnostic (e.g.
+   * `TypeInferenceError`) should prefer `cleanMessage` to avoid
+   * leaking internal parser positions into errors.
+   */
+  public readonly cleanMessage: string
   constructor(message: string, public input: string, public position: number) {
     super(`${message} at position ${position} in "${input}"`)
     this.name = 'TypeParseError'
+    this.cleanMessage = message
   }
 }

@@ -4,7 +4,7 @@
 **Created:** 2026-04-23
 **Last updated:** 2026-04-24 (batched-review pass: Q1–Q5 decisions from the 2026-04-24 refinement interview + reviewer punch-list resolutions)
 **Supersedes design-time decision:** Type-system plan decision #15 parked refinement types as "Phase D+, don't do now". This doc reopens the question and picks a concrete direction.
-**Requires (Phase 0):** Generic upper-bound syntax (`T: U`). See the upcoming `2026-04-24_upper-bounds.md` plan. Phase 1 of refinements starts after Phase 0 ships — the declaration-time fragment check for `count(var)` on sequence types depends on bounds.
+**Requires (Phase 0):** Generic upper-bound syntax (`T: U`) — **Phase 0a shipped 2026-04-24** (type-alias bounds + annotation-scoped function bounds). Phase 0b (let-binding-scoped `<T>`) remains deferred. See `2026-04-24_upper-bounds.md`. Phase 1 of refinements can now start; the declaration-time fragment check for `count(var)` on sequence-bounded generics is supported.
 **References:** `2026-04-12_type-system.md` (set-theoretic foundation, decision #15), `2026-04-13_bundle-type-metadata.md` (manifest / host boundary validation), `2026-04-23_type-level-computation.md` (sibling Phase D track)
 
 ---

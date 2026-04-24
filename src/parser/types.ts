@@ -296,9 +296,23 @@ export interface EffectDeclarationInfo {
   retType: string
 }
 
+/**
+ * A single generic parameter in a type-alias declaration.
+ * `name` is the parameter identifier (e.g., `T`).
+ * `bound`, when present, is the upper-bound constraint source text
+ * (e.g., `"Sequence"` for `type NonEmpty<T: Sequence>`). Stored as
+ * source text and parsed on alias expansion to avoid circular-parse
+ * dependencies when a bound references a type defined later in the
+ * same file.
+ */
+export interface AliasParam {
+  name: string
+  bound?: string
+}
+
 /** Parsed type alias: type Name<Params> = Body */
 export interface TypeAliasInfo {
-  params: string[]
+  params: AliasParam[]
   body: string
 }
 

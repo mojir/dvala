@@ -148,8 +148,31 @@ function checkBody(s: Type, t: Type, visited: Set<string>): boolean {
     return false
   }
 
-  // --- Type variables: check bounds (Step 2 will extend this) ---
-  if (s.tag === 'Var' || t.tag === 'Var') return false
+  // --- Type variables: check through upper bounds ---
+  //
+  // When `s` is a Var, it's constrained by its upperBounds to be a
+  // subtype of their intersection. So `s <: t` holds if ANY upper
+  // bound `U` of `s` already satisfies `U <: t` — because then
+  // `s <= intersection(upperBounds) <= U <= t`.
+  //
+  // This handles the annotation-bounded case (`<T: U>(T) -> T`):
+  // when the isSubtype-sanity-check at the let-annotation site
+  // compares the body's expanded type against the declared one,
+  // the declared T's upper bound lets the check succeed instead of
+  // failing structurally.
+  //
+  // For `t.tag === 'Var'` (Var on right) we deliberately don't try
+  // a symmetric rule: `s <: Var` isn't provable from Var's upper
+  // bounds (Var could be as small as the union of its lower
+  // bounds, so s being <= an upper bound doesn't prove s <= Var).
+  // Matching the conservative behavior preserves the existing
+  // reject case for e.g. `let f: (A) -> A = (x) -> 42` — the Var
+  // on the right returns false structurally, flagging the
+  // mismatch.
+  if (s.tag === 'Var') {
+    return s.upperBounds.some(u => check(u, t, visited))
+  }
+  if (t.tag === 'Var') return false
 
   const sourceSequence = toSequenceType(s)
   const targetSequence = toSequenceType(t)

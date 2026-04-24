@@ -5,7 +5,7 @@ import { debugInfoToSourceCodeInfo, isOperatorToken } from '../tokenizer/token'
 import type { TokenStream } from '../tokenizer/tokenize'
 import type { ParserContext } from './ParserContext'
 import { createParserContext, createCstParserContext, parseExpression } from './subParsers/parseExpression'
-import type { AstNode, Ast, SourceMap } from './types'
+import type { AliasParam, AstNode, Ast, SourceMap } from './types'
 
 export { createParserContext, parseExpression }
 
@@ -63,7 +63,7 @@ export function parseToCst(fullTokenStream: TokenStream): ParseToCstResult {
 // AST parsing
 // ---------------------------------------------------------------------------
 
-function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { nodes: AstNode[]; sourceMap: SourceMap | undefined; typeAnnotations?: Map<number, string>; effectDeclarations?: Map<string, { argType: string; retType: string }>; typeAliases?: Map<string, { params: string[]; body: string }> } {
+function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { nodes: AstNode[]; sourceMap: SourceMap | undefined; typeAnnotations?: Map<number, string>; effectDeclarations?: Map<string, { argType: string; retType: string }>; typeAliases?: Map<string, { params: AliasParam[]; body: string }> } {
   tokenStream.tokens.forEach(token => {
     if (token[0] === 'Error') {
       throw new ParseError(token[3], debugInfoToSourceCodeInfo(token[2], tokenStream.source, tokenStream.filePath))

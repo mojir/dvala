@@ -2,7 +2,7 @@ import { ParseError } from '../errors'
 import type { SourceCodeInfo, Token, TokenDebugInfo } from '../tokenizer/token'
 import { debugInfoToSourceCodeInfo } from '../tokenizer/token'
 import type { TokenStream } from '../tokenizer/tokenize'
-import type { AstNode, SourceMap, SourceMapPosition } from './types'
+import type { AliasParam, AstNode, SourceMap, SourceMapPosition } from './types'
 import type { CstBuilder } from '../cst/builder'
 import type { CstToken, TriviaNode } from '../cst/types'
 import { isTrivia, rawTokenText, splitTriviaAtNewline, toTriviaNode } from '../cst/attachTrivia'
@@ -26,7 +26,7 @@ export class ParserContext {
   /** Effect declarations: effect @name(ArgType) -> RetType */
   readonly effectDeclarations = new Map<string, { argType: string; retType: string }>()
   /** Type alias declarations: type Name<Params> = TypeExpr */
-  readonly typeAliases = new Map<string, { params: string[]; body: string }>()
+  readonly typeAliases = new Map<string, { params: AliasParam[]; body: string }>()
 
   // -- CST mode fields --
   /** When present, the parser operates in CST mode on the full token stream. */

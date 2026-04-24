@@ -186,6 +186,16 @@ export const RegexType: Type = { tag: 'Regex' }
 // AnyFunction — supertype of all function types regardless of arity
 export const AnyFunction: Type = { tag: 'AnyFunction' }
 
+// Note: the `Sequence` and `Collection` type keywords (used as bounds
+// like `<T: Sequence>`) resolve inline in the type-annotation parser
+// (`parseType.ts:parsePrimary`) — no top-level exported const here,
+// because the name `SequenceType` is already taken by the internal
+// prefix/rest interface above (used for match narrowing), and the
+// parallel primitive-type exports (`NumberType`, `StringType`, …) are
+// all primitives, not unions. Keywords that resolve to unions stay
+// inline to avoid misleading users about what kind of value they
+// represent.
+
 // Singletons
 export function atom(name: string): Type {
   return { tag: 'Atom', name }
