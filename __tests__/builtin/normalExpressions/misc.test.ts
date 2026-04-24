@@ -244,35 +244,17 @@ describe('misc functions', () => {
       })
     })
 
-    describe('not', () => {
+    describe('!', () => {
       it('samples', () => {
-        expect(dvala.run('not(0)')).toBe(true)
-        expect(dvala.run('not("")')).toBe(true)
-        expect(dvala.run('not("0")')).toBe(false)
-        expect(dvala.run('not(1)')).toBe(false)
-        expect(dvala.run('not(-1)')).toBe(false)
-        expect(dvala.run('not([])')).toBe(false)
-        expect(dvala.run('not(false)')).toBe(true)
-        expect(dvala.run('not(true)')).toBe(false)
-        expect(dvala.run('not(null)')).toBe(true)
-        expect(() => dvala.run('not(0, 1)')).toThrow(DvalaError)
-        expect(() => dvala.run('not()')).toThrow(DvalaError)
-      })
-    })
-
-    describe('boolean', () => {
-      it('samples', () => {
-        expect(dvala.run('boolean(0)')).toBe(false)
-        expect(dvala.run('boolean(1)')).toBe(true)
-        expect(dvala.run('boolean("Albert")')).toBe(true)
-        expect(dvala.run('boolean("")')).toBe(false)
-        expect(dvala.run('boolean(true)')).toBe(true)
-        expect(dvala.run('boolean(false)')).toBe(false)
-        expect(dvala.run('boolean(null)')).toBe(false)
-        expect(dvala.run('boolean([])')).toBe(true)
-        expect(dvala.run('boolean({})')).toBe(true)
-        expect(() => dvala.run('boolean()')).toThrow(DvalaError)
-        expect(() => dvala.run('boolean(2, 3)')).toThrow(DvalaError)
+        // Strict Boolean: `!` accepts only Boolean. Earlier truthy-coercion
+        // inputs (`!(0)`, `!("")`, `!([])`, etc.) are no longer supported —
+        // users write explicit checks like `x == 0` or `count(x) == 0`.
+        expect(dvala.run('!(false)')).toBe(true)
+        expect(dvala.run('!(true)')).toBe(false)
+        expect(dvala.run('!(1 == 1)')).toBe(false)
+        expect(dvala.run('!(1 == 2)')).toBe(true)
+        expect(() => dvala.run('!(true, false)')).toThrow(DvalaError)
+        expect(() => dvala.run('!()')).toThrow(DvalaError)
       })
     })
 

@@ -149,7 +149,7 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
       ctx.setNodeEnd(node[2])
       return node
     }
-    /* v8 ignore next 11 */
+    /* v8 ignore next 12 */
     case '.':
     case '?.':
     case '?':
@@ -160,6 +160,7 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case ',':
     case '->':
     case '...':
+    case '!': // unary prefix, handled in parseOperand — never reaches binary path
       throw new ParseError(`Unknown binary operator: ${operatorName}`, ctx.resolveTokenDebugInfo(debugInfo))
     // Exhaustive check: all operator cases are handled above
     /* v8 ignore next 2 */

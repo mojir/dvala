@@ -47,7 +47,10 @@ describe('parseRecoverable', () => {
   })
 
   it('returns empty body and errors for a completely broken program', () => {
-    const result = parseR('!!!')
+    // `)))` is unambiguously invalid — unexpected close parens at top level.
+    // Previously used `!!!`, but `!` is now the unary-negation operator, so
+    // `!!!` parses as `!(!(!))` (the innermost `!` being the value form).
+    const result = parseR(')))')
     expect(result.errors.length).toBeGreaterThan(0)
     expect(result.body).toHaveLength(0)
   })

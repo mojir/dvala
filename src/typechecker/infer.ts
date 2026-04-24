@@ -472,6 +472,98 @@ function setsEqual(a: Set<string>, b: Set<string>): boolean {
 }
 
 /**
+ * Boolean-position helper for strict-Boolean positions (`if` cond,
+ * `match when` guard, `&&` / `||` operands). Runs the usual
+ * `constrain` but — when it fails because the operand isn't
+ * Boolean-compatible — re-throws a richer error that includes a
+ * type-specific "did you mean" suggestion. For Var operands the
+ * constrain call just adds an upper bound and no error is thrown,
+ * so this helper is a pass-through in that case.
+ */
+function constrainBoolean(
+  ctx: InferenceContext,
+  type: Type,
+  nodeId: number,
+  position: string,
+): void {
+  try {
+    constrain(ctx, type, BooleanType)
+  } catch (error) {
+    if (error instanceof TypeInferenceError) {
+      const expanded = expandType(type)
+      const suggestion = suggestBooleanFix(expanded)
+      if (suggestion !== undefined) {
+        throw new TypeInferenceError(
+          `${position} requires Boolean but got ${typeToString(expanded)}. ${suggestion}`,
+          nodeId,
+        )
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Generates a context-specific migration hint for a non-Boolean operand
+ * at a Boolean position. The strict-Boolean cleanup removed the
+ * `boolean(x)` coercion and the `not(nonBoolean)` truthy pattern, so
+ * users migrating from those patterns benefit from a targeted nudge:
+ * - Number / Integer    → `x != 0`
+ * - String              → `x != ""` or `count(x) > 0`
+ * - Null                → the condition is always falsy; probably a bug
+ * - T | Null (nullable) → `x != null` (and for `||` default-value:
+ *   consider `x ?? default`)
+ * - Array / Tuple / Sequence → `count(x) > 0`
+ * - Literal             → the condition folds to a constant; drop the
+ *   branch that can't run
+ * - Unknown / anything else → general nudge
+ */
+function suggestBooleanFix(type: Type): string | undefined {
+  // Literal — the value is already known at type-check time.
+  if (type.tag === 'Literal') {
+    if (typeof type.value === 'number')
+      return 'Did you mean `x != 0`?'
+    if (typeof type.value === 'string')
+      return 'Did you mean `x != ""` or `count(x) > 0`?'
+    // boolean Literal is already <: Boolean — wouldn't reach this path.
+    return undefined
+  }
+
+  // Null — almost certainly a mistake; every branch either always
+  // fires or never fires.
+  if (type.tag === 'Primitive' && type.name === 'Null')
+    return 'The operand is `Null`; this condition never succeeds. Did you mean a comparison like `x != null`?'
+
+  // Primitive non-Boolean operands.
+  if (type.tag === 'Primitive') {
+    if (type.name === 'Number' || type.name === 'Integer')
+      return 'Did you mean `x != 0`?'
+    if (type.name === 'String')
+      return 'Did you mean `x != ""` or `count(x) > 0`?'
+    // fall through
+  }
+
+  // `T | Null` — the common "nullable value" idiom. Needs an explicit
+  // null check. Also mention `??` since this is what the old
+  // `x || default` idiom should migrate to.
+  if (type.tag === 'Union' && type.members.some(m => m.tag === 'Primitive' && m.name === 'Null'))
+    return 'Did you mean `x != null`? (For default-value idioms, `x ?? default` replaces the old `x || default` pattern.)'
+
+  // Sequence-like — the old `if xs` truthy pattern.
+  if (type.tag === 'Array' || type.tag === 'Tuple' || type.tag === 'Sequence')
+    return 'Did you mean `count(x) > 0`?'
+
+  // Record — `if obj` was always truthy under the old rules; typically
+  // the user meant a null-check on an optional value that got inferred
+  // as a required record.
+  if (type.tag === 'Record')
+    return 'Records are always truthy; this condition always succeeds. Did you mean to null-check an optional field?'
+
+  // Atom / Function / Regex / etc. — generic fallback hint.
+  return 'Use an explicit comparison (`x != null`, `x == value`) or a type-guard predicate. The old `boolean(x)` coercion was removed.'
+}
+
+/**
  * The core of Simple-sub: propagate `lhs <: rhs` until everything
  * reduces to bounds on type variables.
  *
@@ -1037,10 +1129,10 @@ export function inferExpr(
       case NodeTypes.If: {
         const [cond, thenNode, elseNode] = payload as [AstNode, AstNode, AstNode | undefined]
         const condType = inferExpr(cond, ctx, env, typeMap)
-        constrain(ctx, condType, BooleanType)
+        constrainBoolean(ctx, condType, cond[2], 'The `if` condition')
         // Flow-sensitive narrowing: if the condition is a type guard
         // (`isX(sym)` or `isX(sym.field…)`), equality test (`sym == lit`,
-        // `sym.field == lit`), `not(...)` wrapper, or `&&`/`||`
+        // `sym.field == lit`), `!(...)` wrapper, or `&&`/`||`
         // composition of any of these, narrow the referenced symbols in
         // each branch. Fall back to the outer env if no narrowing shape
         // is recognised. See `extractIfNarrowings` for the full list.
@@ -1568,13 +1660,22 @@ export function inferExpr(
       case NodeTypes.Or: {
         const operands = payload as AstNode[]
         const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
-        // C7 / decision #9: narrow on literal operands using JS-style
-        // truthiness. For &&, the first falsy operand short-circuits to
-        // its own value; for ||, the first truthy operand does. If every
-        // operand has a known truthiness without a short-circuit, the
-        // result is the last operand's type. Recognised falsy literals:
-        // `false`, `0`, `""`, `null`. All other literals are truthy.
-        // Bails to the union behaviour below on the first non-literal.
+        // Strict-Boolean cleanup: every operand must be `Boolean`. No
+        // truthy coercion remains at the `&&` / `||` positions. The
+        // branch-local fold logic below still works because, after
+        // strict, only `true`/`false` literals reach this code — and
+        // `literalTruthiness` returns the boolean value directly for
+        // those, so short-circuit results are still precise.
+        const opName = nodeType === NodeTypes.And ? '&&' : '||'
+        for (let i = 0; i < types.length; i++) {
+          constrainBoolean(ctx, types[i]!, operands[i]![2], `The \`${opName}\` operand`)
+        }
+        // C7 / decision #9: narrow on literal operands. For &&, the
+        // first false operand short-circuits to its own value; for ||,
+        // the first true operand does. If every operand has a known
+        // boolean literal without a short-circuit, the result is the
+        // last operand's type. Bails to the union behaviour below on
+        // the first non-literal.
         if (ctx.foldEnabled && types.length > 0) {
           const wantFalsy = nodeType === NodeTypes.And
           let narrowed: Type | undefined
@@ -1662,7 +1763,7 @@ export function inferExpr(
 
           if (guard) {
             const guardType = inferExpr(guard, ctx, caseEnv, typeMap)
-            constrain(ctx, guardType, BooleanType)
+            constrainBoolean(ctx, guardType, guard[2], 'The `match` guard (`when`)')
             // C9: a guard that folds to literal(false) makes this case
             // unreachable. Skip the body so its type doesn't contribute to
             // the result, and do NOT subtract consumedType from remaining —
@@ -2918,7 +3019,7 @@ function isConstrainedFunctionArityCompatible(
  * - `sym == atomOrLiteral` / `sym.field… == atomOrLiteral` — equality
  *   test. Then: refines the sym (or root sym) to match the literal at
  *   that field. Else: refines to its complement.
- * - `not(cond)` — swaps then/else from the inner narrowing.
+ * - `!(cond)` — swaps then/else from the inner narrowing.
  * - `a && b` — then branch sees the conjunction of operand narrowings;
  *   else branch can't be narrowed (`!(a && b)` = `!a || !b`).
  * - `a || b` — dual: else branch sees the conjunction of operand-false
@@ -2954,8 +3055,10 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
   const builtinName = calleeNode[1] as string
   if (lookupShadowedBuiltin(env, builtinName)) return undefined
 
-  // `not(cond)` — invert the inner narrowing.
-  if (builtinName === 'not' && argNodes.length === 1) {
+  // `!cond` — invert the inner narrowing. The AST shape is
+  // `Call(Builtin('!'), [cond])`, produced by the unary-prefix parser
+  // path.
+  if (builtinName === '!' && argNodes.length === 1) {
     const inner = extractIfNarrowings(argNodes[0]!, env)
     if (!inner) return undefined
     return { whenTrue: inner.whenFalse, whenFalse: inner.whenTrue }

@@ -877,7 +877,7 @@ describe('trampoline integration', () => {
   })
 
   it('should evaluate negated if expression', () => {
-    const node = parseFirst('if not(true) then 1 else 2 end')
+    const node = parseFirst('if !(true) then 1 else 2 end')
     const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(2)
   })

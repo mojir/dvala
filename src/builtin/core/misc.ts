@@ -249,46 +249,27 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'not': {
+  // Logical negation. Parser emits `!x` as `Call('!', [x])`, and
+  // `filter(xs, !)` as a Builtin reference. Signature is strict
+  // `(Boolean) -> Boolean` — part of the Boolean-surface cleanup;
+  // non-Boolean operands must be rewritten (e.g. `!x` where `x : Number`
+  // → `x == 0` or similar).
+  '!': {
     evaluate: ([first]): boolean => !first,
     arity: toFixedArity(1),
     docs: {
-      type: '(Unknown) -> Boolean',
+      type: '(Boolean) -> Boolean',
       category: 'misc',
       returns: { type: 'boolean' },
-      args: { x: { type: 'any' } },
+      args: { x: { type: 'boolean' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Computes logical negation. Note that any other `x` than `false`, `0`, `null` and `\'\'` is truthy.',
-      seeAlso: ['boolean'],
+      description: 'Logical negation. Usable as a first-class function value, e.g. `filter(bs, !)`.',
+      seeAlso: ['&&', '||', 'isBoolean'],
       examples: [
-        'not(3)',
-        'not(true)',
-        'not("A string")',
-        'not(0)',
-        'not(false)',
-        'not(null)',
-        'not("")',
-      ],
-    },
-  },
-  'boolean': {
-    evaluate: ([value]): boolean => {
-      return !!value
-    },
-    arity: toFixedArity(1),
-    docs: {
-      type: '(Unknown) -> Boolean',
-      category: 'misc',
-      returns: { type: 'boolean' },
-      args: { x: { type: 'any' } },
-      variants: [{ argumentNames: ['x'] }],
-      description: 'Coerces `x` to boolean.',
-      seeAlso: ['not', 'isBoolean', 'isTrue', 'isFalse'],
-      examples: [
-        'boolean(0)',
-        'boolean(1)',
-        'boolean(null)',
-        'boolean("Albert")',
+        '!true',
+        '!false',
+        '!(1 == 2)',
+        '!!true',
       ],
     },
   },

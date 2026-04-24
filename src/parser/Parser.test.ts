@@ -186,6 +186,24 @@ describe('parser', () => {
       expect(dvala.run('2 - 3')).toBe(-1)
       expect(dvala.run('2 - 3 - 2')).toBe(-3)
     })
+    // Unary minus precedence: property access, index access, and call
+    // chaining all bind *inside* the negation. Previously the parser
+    // used `parseOperandPart` for the operand and let the outer chaining
+    // loop attach `.a`, `[i]`, `(args)` onto `(-x)` — producing the
+    // nonsensical `(-x).a` instead of the expected `-(x.a)`.
+    test('-x.a binds as -(x.a)', () => {
+      expect(dvala.run('let x = { a: 5 }; -x.a')).toBe(-5)
+      expect(dvala.run('let x = { a: -5 }; -x.a')).toBe(5)
+    })
+    test('-f(x) binds as -(f(x))', () => {
+      expect(dvala.run('let f = (n) -> n + 1; -f(4)')).toBe(-5)
+    })
+    test('-xs[i] binds as -(xs[i])', () => {
+      expect(dvala.run('let xs = [1, 2, 3]; -xs[1]')).toBe(-2)
+    })
+    test('-obj.nested.field chains fully through the negation', () => {
+      expect(dvala.run('let o = { inner: { v: 7 } }; -o.inner.v')).toBe(-7)
+    })
   })
   describe('<<', () => {
     test('samples', () => {
@@ -252,6 +270,43 @@ describe('parser', () => {
       expect(dvala.run('2 == 1')).toBe(false)
     })
   })
+  // Boolean-surface cleanup: `!` is a unary prefix operator and a
+  // first-class function value. Parser has two paths — `!expr` and
+  // bare `!` (in a value slot). These tests lock in both plus the
+  // tricky precedence / recursion cases.
+  describe('!', () => {
+    test('unary negation on literals', () => {
+      expect(dvala.run('!true')).toBe(false)
+      expect(dvala.run('!false')).toBe(true)
+    })
+    test('double and triple negation', () => {
+      expect(dvala.run('!!true')).toBe(true)
+      expect(dvala.run('!!false')).toBe(false)
+      expect(dvala.run('!!!true')).toBe(false)
+    })
+    test('parenthesized Boolean expression', () => {
+      expect(dvala.run('!(1 == 2)')).toBe(true)
+      expect(dvala.run('!(1 == 1)')).toBe(false)
+    })
+    test('binds tighter than binary operators', () => {
+      // `!a && b` is `(!a) && b`, not `!(a && b)`.
+      expect(dvala.run('!true && true')).toBe(false)
+      expect(dvala.run('!false && true')).toBe(true)
+    })
+    test('call chaining binds inside `!` — `!f(x).field` is `!(f(x).field)`', () => {
+      expect(dvala.run('let o = {ok: true}; let f = (x) -> o; !f(5).ok')).toBe(false)
+      expect(dvala.run('let o = {ok: false}; let f = (x) -> o; !f(5).ok')).toBe(true)
+    })
+    test('bare `!` passable as function value', () => {
+      expect(dvala.run('map([true, false, true], !)')).toEqual([false, true, false])
+      expect(dvala.run('filter([true, false, true], !)')).toEqual([false])
+    })
+    test('user alias `let not = !` works', () => {
+      expect(dvala.run('let not = !; not(true)')).toBe(false)
+      expect(dvala.run('let not = !; not(false)')).toBe(true)
+    })
+  })
+
   describe('!=', () => {
     test('samples', () => {
       expect(dvala.run('2 != 3')).toBe(true)
@@ -297,16 +352,6 @@ describe('parser', () => {
     test('samples', () => {
       expect(dvala.run('1 ?? 2')).toBe(1)
       expect(dvala.run('null ?? 2')).toBe(2)
-    })
-  })
-  describe('not', () => {
-    test('samples', () => {
-      expect(dvala.run('not(true)')).toBe(false)
-      expect(dvala.run('not(false)')).toBe(true)
-      expect(dvala.run('not(500)')).toBe(false)
-      expect(dvala.run('not(0)')).toBe(true)
-      expect(dvala.run('not(not(500))')).toBe(true)
-      expect(dvala.run('not(not(0))')).toBe(false)
     })
   })
   describe('parenthises', () => {
@@ -395,9 +440,9 @@ describe('parser', () => {
 
   describe('negated if expression', () => {
     test('samples', () => {
-      expect(dvala.run('if not(1 < 2) then 1 else 2 end')).toBe(2)
-      expect(() => dvala.run('if not(1 < 2) then 1 end')).toThrow('`if` without `else` is not allowed')
-      expect(dvala.run('if not(1 > 2) then 1 else 2 end')).toBe(1)
+      expect(dvala.run('if !(1 < 2) then 1 else 2 end')).toBe(2)
+      expect(() => dvala.run('if !(1 < 2) then 1 end')).toThrow('`if` without `else` is not allowed')
+      expect(dvala.run('if !(1 > 2) then 1 else 2 end')).toBe(1)
     })
   })
 
@@ -1158,7 +1203,7 @@ foo(1, 2)`)).toBe(3)
 
     it('handles complex logical expressions', () => {
       expect(dvala.run('(5 > 3) && (10 < 20 || 5 == 5)')).toBe(true)
-      expect(dvala.run('not(5 < 3) && (3 <= 3 || 4 >= 5)')).toBe(true)
+      expect(dvala.run('!(5 < 3) && (3 <= 3 || 4 >= 5)')).toBe(true)
     })
 
     it('handles expressions combining different operators', () => {

@@ -132,7 +132,13 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       if (isUnary) {
         ctx.builder?.startNode('PrefixOp')
         ctx.advance()
-        const operand = parseOperandPart(ctx)
+        // Parse the full operand chain (accessors, index, calls) so
+        // `-x.a`, `-f(x)`, `-xs[0]` bind as `-(x.a)`, `-(f(x))`,
+        // `-(xs[0])` — matching precedence in every mainstream language.
+        // Previously used `parseOperandPart`, which stopped at the raw
+        // operand and let the outer while-loop chain `.a` onto `(-x)`,
+        // producing the nonsensical `(-x).a`.
+        const operand = parseOperand(ctx)
         const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Num, 0, 0], token[2], ctx)
         const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx) as BuiltinSymbolNode
         const node = withSourceCodeInfo([NodeTypes.Call, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
@@ -140,6 +146,42 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         ctx.builder?.endNode()
         return node
       }
+    }
+
+    // Unary `!` (Boolean-surface cleanup): two paths.
+    //   Path A — `!expr` as unary prefix → `Call('!', [expr])`.
+    //   Path B — bare `!` as a value (e.g. `filter(xs, !)`) → `Builtin('!')`.
+    // Disambiguate by lookahead: if the next token starts an expression,
+    // take Path A; otherwise Path B. Path A uses the full `parseOperand`
+    // (same as unary minus above) so that `!f(x).field` binds as
+    // `!(f(x).field)`.
+    if (operatorName === '!') {
+      const nextToken = ctx.peekAhead(1)
+      const nextType = nextToken?.[0]
+      const isUnary = nextType === 'Number' || nextType === 'BasePrefixedNumber'
+        || nextType === 'Symbol' || nextType === 'ReservedSymbol'
+        || nextType === 'string' || nextType === 'TemplateString'
+        || nextType === 'LBracket' || nextType === 'LBrace' || nextType === 'LParen'
+        || nextType === 'Atom' || nextType === 'EffectName'
+        || nextType === 'RegexpShorthand' || nextType === 'MacroPrefix'
+        || (nextType === 'Operator' && (nextToken![1] === '-' || nextToken![1] === '!'))
+      if (isUnary) {
+        ctx.builder?.startNode('PrefixOp')
+        ctx.advance()
+        const operand = parseOperand(ctx)
+        const bangSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '!', 0], token[2], ctx) as BuiltinSymbolNode
+        const node = withSourceCodeInfo([NodeTypes.Call, [bangSymbol, [operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
+        ctx.setNodeEnd(node[2])
+        ctx.builder?.endNode()
+        return node
+      }
+      // Path B: bare `!` as a first-class function value.
+      ctx.builder?.startNode('Symbol')
+      ctx.advance()
+      const node = withSourceCodeInfo([NodeTypes.Builtin, '!', 0], token[2], ctx) as BuiltinSymbolNode
+      ctx.setNodeEnd(node[2])
+      ctx.builder?.endNode()
+      return node
     }
 
     if (isBinaryOperator(operatorName)) {

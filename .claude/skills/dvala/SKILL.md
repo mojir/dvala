@@ -129,12 +129,12 @@ retry(3, -> dangerousOperation())            // retry up to 3 times
 
 Arithmetic: `+`, `-`, `*`, `/`, `^` (power), `%` (remainder), `mod`
 Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
-Logical: `&&`, `||`, `not(x)`
+Logical: `&&`, `||`, `!x` (strict Boolean: operands must be `Boolean`)
 Nullish: `??` (first non-null)
 Bitwise: `&`, `|`, `xor`, `<<`, `>>`, `>>>`
 Concat: `++` (strings and arrays)
 Pipe: `|>` (value pipe)
-Unary: `-x` (negation)
+Unary: `-x` (arithmetic negation), `!x` (Boolean negation)
 
 ## Import
 

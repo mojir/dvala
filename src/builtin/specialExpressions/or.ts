@@ -12,10 +12,10 @@ const docs: FunctionDocs = {
     type: 'boolean',
   },
   args: {
-    a: { type: 'any' },
-    b: { type: 'any' },
+    a: { type: 'boolean' },
+    b: { type: 'boolean' },
     c: {
-      type: 'any',
+      type: 'boolean',
       rest: true,
     },
   },
@@ -24,17 +24,17 @@ const docs: FunctionDocs = {
     { argumentNames: ['a', 'b', 'c'] },
   ],
   description: `
-  Computes logical \`or\`. Evaluation of expressions evaluation starts from left.
-  As soon as a \`expression\` evaluates to a truthy value, the result is returned.
-
-  If all expressions evaluate to falsy values, the value of the last expression is returned.`,
+  Computes logical \`or\`. Evaluation starts from left. As soon as an
+  operand evaluates to \`true\`, the result is \`true\`; otherwise the
+  result is \`false\`. Every operand must be \`Boolean\`.`,
+  seeAlso: ['&&', '!'],
   examples: [
-    'false || 1',
-    '||(1, 1)',
-    '||(3 > 2, "string")',
-    '||(3 < 2, "string")',
+    'false || true',
+    '||(true, true)',
+    '||(3 > 2, 4 > 2)',
+    '||(3 < 2, 4 < 2)',
     '||(false, false, false, true)',
-    '||(1, 2, 3, 4)',
+    '||(true, false, true, false)',
   ],
 }
 

@@ -269,7 +269,7 @@ describe('auto: effect + control flow', () => {
   })
 
   it('effect in if-not-then branch', () => {
-    const result = dvala.run(wrap('if not(false) then perform(@test.eff, 4) else 0 end'))
+    const result = dvala.run(wrap('if !(false) then perform(@test.eff, 4) else 0 end'))
     expect(result).toBe(40)
   })
 

@@ -9,7 +9,7 @@ double(21);
 
 ```dvala
 let unless =
-  macro(cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+  macro(cond, body) -> quote if !($^{cond}) then $^{body} else null end end;
 
 unless(false, "this runs!");
 ```

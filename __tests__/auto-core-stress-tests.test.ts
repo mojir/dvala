@@ -742,12 +742,16 @@ describe('parser edge cases', () => {
     expect(dvala.run('0 ?? 42')).toBe(0)
   })
 
-  it('unary not', () => {
-    expect(dvala.run('not(true)')).toBe(false)
-    expect(dvala.run('not(false)')).toBe(true)
-    expect(dvala.run('not(null)')).toBe(true)
-    expect(dvala.run('not(0)')).toBe(true)
-    expect(dvala.run('not(1)')).toBe(false)
+  it('unary !', () => {
+    // Strict Boolean: `!` accepts only Boolean operands. The runtime
+    // JS-coerces other values silently, but under strict Boolean the
+    // typechecker rejects those forms — asserting on the coerced result
+    // is misleading. Exercise only Boolean inputs / expressions here.
+    expect(dvala.run('!(true)')).toBe(false)
+    expect(dvala.run('!(false)')).toBe(true)
+    expect(dvala.run('!(1 == 1)')).toBe(false)
+    expect(dvala.run('!(1 == 2)')).toBe(true)
+    expect(dvala.run('!!(true)')).toBe(true)
   })
 
   it('string concatenation operator', () => {
