@@ -14,6 +14,7 @@
 
 import type { Type, PrimitiveName } from './types'
 import { Never, Unknown, array, indexType, inter, keyofType, neg, normalizeSequenceType, tuple, typeEquals, union } from './types'
+import { mergeRefinementPredicates } from './refinementMerge'
 import { isSubtype } from './subtype'
 
 // ---------------------------------------------------------------------------
@@ -84,12 +85,27 @@ export function simplify(t: Type): Type {
     }
     case 'Keyof': return keyofType(simplify(t.inner))
     case 'Index': return indexType(simplify(t.target), simplify(t.key))
-    // Refinement: simplify the base only. Phase 2.2 will add multi-
-    // refinement merging (collapsing `Base & {x|P} & {y|Q}` into one
-    // Refined node) and trivial-predicate collapse (`{x | true}` → `Base`);
-    // Phase 2.1 keeps the Refined node inert so Phase 2.2 has clean
-    // ground to build on.
-    case 'Refined': return { tag: 'Refined', base: simplify(t.base), binder: t.binder, predicate: t.predicate, source: t.source }
+    // Refinement — Phase 2.2 multi-refinement merging: when the base
+    // simplifies to another Refined, collapse the pair into a single
+    // node with conjoined predicates. The inner binder wins; the outer
+    // predicate is alpha-renamed to the inner binder before merging.
+    // Trivial-predicate collapse (`{x | true}` → `Base`, `{x | false}`
+    // → `Never`) is deferred to the Phase 2.4 solver work — recognising
+    // those shapes structurally would duplicate logic the solver already
+    // needs.
+    case 'Refined': {
+      const base = simplify(t.base)
+      if (base.tag === 'Refined') {
+        const { predicate, source } = mergeRefinementPredicates(
+          base.binder,
+          base.predicate,
+          t.binder,
+          t.predicate,
+        )
+        return { tag: 'Refined', base: base.base, binder: base.binder, predicate, source }
+      }
+      return { tag: 'Refined', base, binder: t.binder, predicate: t.predicate, source: t.source }
+    }
     default: return t
   }
 }

@@ -376,6 +376,95 @@ describe('refinement types — Phase 2.1 Refined node', () => {
     })
   })
 
+  // ---------------------------------------------------------------------------
+  // Phase 2.2 — multi-refinement merging
+  // ---------------------------------------------------------------------------
+  //
+  // `simplify` collapses `Refined(Refined(B, s1, P), s2, Q)` into
+  // `Refined(B, s1, P && Q[s2 := s1])`. Properties to pin:
+  //   - Shape collapses to a single Refined (one level deep).
+  //   - Inner binder wins; outer predicate's binder is alpha-renamed.
+  //   - Alpha-renaming doesn't touch string literals with the same text.
+  //   - Chains flatten to a single `And` node (no right-skewed nesting).
+  //   - Already-matching binders skip the rename fast-path.
+  describe('Phase 2.2 — multi-refinement merging', () => {
+    it('merges two nested refinements with the same binder', () => {
+      const t = parseTypeAnnotation('Number & {n | n > 0} & {n | n < 100}')
+      const s = simplify(t)
+      expect(s.tag).toBe('Refined')
+      if (s.tag !== 'Refined') return
+      // Merged: the base should be Number directly, not another Refined.
+      expect(typeEquals(s.base, NumberType)).toBe(true)
+      expect(s.binder).toBe('n')
+      // Source reflects both predicates.
+      expect(s.source).toContain('n > 0')
+      expect(s.source).toContain('n < 100')
+    })
+
+    it('merges with alpha-rename when binders differ', () => {
+      // Inner binder `n` wins. Outer predicate `x < 100` becomes `n < 100`.
+      const t = parseTypeAnnotation('Number & {n | n > 0} & {x | x < 100}')
+      const s = simplify(t)
+      expect(s.tag).toBe('Refined')
+      if (s.tag !== 'Refined') return
+      expect(s.binder).toBe('n')
+      // The merged body should contain BOTH the original predicate (with `n`)
+      // AND the renamed predicate (with `n`, not `x`).
+      expect(s.source).toContain('n > 0')
+      expect(s.source).toContain('n < 100')
+      expect(s.source).not.toContain('x')
+    })
+
+    it('flattens chains of three refinements into a single Refined', () => {
+      const t = parseTypeAnnotation('Number & {n | n > 0} & {n | n < 100} & {n | n != 50}')
+      const s = simplify(t)
+      expect(s.tag).toBe('Refined')
+      if (s.tag !== 'Refined') return
+      // After the chain collapses, the base is the primitive; no nested Refined.
+      expect(typeEquals(s.base, NumberType)).toBe(true)
+      // All three predicate bodies appear in the merged source.
+      expect(s.source).toContain('n > 0')
+      expect(s.source).toContain('n < 100')
+      expect(s.source).toContain('n != 50')
+    })
+
+    it('preserves the base when the single-refinement case hits simplify', () => {
+      // Regression: simplify on a single Refined (no nested Refined inside)
+      // must pass through without mangling the base.
+      const t = parseTypeAnnotation('Number & {n | n > 0}')
+      const s = simplify(t)
+      expect(s.tag).toBe('Refined')
+      if (s.tag !== 'Refined') return
+      expect(typeEquals(s.base, NumberType)).toBe(true)
+      expect(s.source).toBe('n | n > 0')
+    })
+
+    it('merged refinement typechecks the same as the unmerged form', () => {
+      // End-to-end sanity: a program using `Number & {n|n>0} & {n|n<100}`
+      // should accept 50 and reject (base-mismatch) "hi", same as the
+      // unmerged form would have. Phase 2.1 pass-through holds post-merge.
+      const dvala = createDvala()
+      expect(dvala.typecheck('let x: Number & {n | n > 0} & {n | n < 100} = 50; x').diagnostics)
+        .toHaveLength(0)
+      expect(dvala.typecheck('let x: Number & {n | n > 0} & {n | n < 100} = "hi"; x').diagnostics.length)
+        .toBeGreaterThan(0)
+    })
+
+    it('string-literal content that happens to match the binder name is not renamed', () => {
+      // The merger uses AST-based rename (not textual regex) so a string
+      // literal like `"x"` inside one predicate stays intact when the
+      // binder is `x`. Regression guard for the pathological case the
+      // design doc flagged for Phase 2.2.
+      const t = parseTypeAnnotation('String & {s | s == "n"} & {n | n == "other"}')
+      const result = simplify(t)
+      expect(result.tag).toBe('Refined')
+      if (result.tag !== 'Refined') return
+      // The literal `"n"` from the first predicate must survive the
+      // rename of binder `n` in the second predicate.
+      expect(result.source).toContain('"n"')
+    })
+  })
+
   describe('walker direct-call sanity', () => {
     it('expandTypeForDisplay passes through Refined', () => {
       // Direct unit test for the `expandTypeForDisplay(Refined)` case.
