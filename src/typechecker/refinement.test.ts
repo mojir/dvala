@@ -1,12 +1,14 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { builtin } from '../builtin'
+import { NodeTypes } from '../constants/constants'
 import { createDvala } from '../createDvala'
+import type { AstNode } from '../parser/types'
 import { initBuiltinTypes } from './builtinTypes'
 import { expandTypeForDisplay } from './infer'
 import { parseTypeAnnotation, RefinementError, TypeParseError } from './parseType'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
-import { NumberType, StringType, typeEquals, typeToString } from './types'
+import { NumberType, StringType, typeEquals, typeToString, type Type } from './types'
 
 // Populate the builtin-type cache so `isTypeGuard('isNumber')` returns
 // true — the fragment-checker calls it while classifying relation
@@ -189,11 +191,10 @@ describe('refinement types — Phase 1', () => {
 //   - `typeToString(Refined)` renders `base & { source }`.
 //   - `typeEquals` compares `(base, binder, source)` tuples.
 //   - `simplify(Refined)` simplifies the base only.
-//   - `isSubtype` treats `Refined(B, _, _)` as equivalent to `B` in both
-//     directions (Phase 2.1 pass-through; Phase 2.4 tightens this).
-//   - End-to-end: `let x: Positive = 5` typechecks; `= "hi"` fails with
-//     a "not a subtype of Number" message (refinement is transparent to
-//     the base-level mismatch; the solver-level mismatch is Phase 2.4).
+//   - `isSubtype` folds a refinement predicate when the source is a
+//     concrete literal, otherwise it still passes through to the base.
+//   - End-to-end: `let x: Positive = 5` typechecks; `= -5` now fails via
+//     fold-discharge; `= "hi"` still fails at the base-level mismatch.
 // ---------------------------------------------------------------------------
 
 describe('refinement types — Phase 2.1 Refined node', () => {
@@ -290,11 +291,59 @@ describe('refinement types — Phase 2.1 Refined node', () => {
     })
   })
 
-  describe('isSubtype pass-through (Phase 2.1 policy)', () => {
-    it('refinement on the right is equivalent to its base: `5 <: Positive`', () => {
+  describe('isSubtype fold-discharge (Phase 2.3 policy)', () => {
+    it('discharges a positive literal against `Positive`', () => {
       const pos = parseTypeAnnotation('Number & {n | n > 0}')
       const five = parseTypeAnnotation('5')
       expect(isSubtype(five, pos)).toBe(true)
+    })
+
+    it('rejects a negative literal against `Positive`', () => {
+      const pos = parseTypeAnnotation('Number & {n | n > 0}')
+      const negFive = parseTypeAnnotation('-5')
+      expect(isSubtype(negFive, pos)).toBe(false)
+    })
+
+    it('discharges a non-empty string via `count(s) > 0`', () => {
+      const nonEmpty = parseTypeAnnotation('String & {s | count(s) > 0}')
+      const value = parseTypeAnnotation('"hello"')
+      expect(isSubtype(value, nonEmpty)).toBe(true)
+    })
+
+    it('rejects an empty string via `count(s) > 0`', () => {
+      const nonEmpty = parseTypeAnnotation('String & {s | count(s) > 0}')
+      const value = parseTypeAnnotation('""')
+      expect(isSubtype(value, nonEmpty)).toBe(false)
+    })
+
+    it('substitutes every operand in conjunctions before folding', () => {
+      const bounded = parseTypeAnnotation('Number & {n | n < 0 && n < 10}')
+      const value = parseTypeAnnotation('5')
+      expect(isSubtype(value, bounded)).toBe(false)
+    })
+
+    it('substitutes every operand in disjunctions before folding', () => {
+      const impossible = parseTypeAnnotation('Number & {n | n < 0 || n > 10}')
+      const value = parseTypeAnnotation('5')
+      expect(isSubtype(value, impossible)).toBe(false)
+    })
+
+    it('handles deeply nested predicates without recursive substitution overflow', () => {
+      const falseLeaf = relation('>', binderRef('n'), numLiteral(10))
+      let predicate = falseLeaf
+      for (let index = 0; index < 12_000; index++) {
+        predicate = [NodeTypes.And, [falseLeaf, predicate], 0] as unknown as AstNode
+      }
+      const target: Type = {
+        tag: 'Refined',
+        base: NumberType,
+        binder: 'n',
+        predicate,
+        source: 'n | deeply nested false conjunction',
+      }
+      const value = parseTypeAnnotation('5')
+      expect(() => isSubtype(value, target)).not.toThrow()
+      expect(isSubtype(value, target)).toBe(false)
     })
 
     it('refinement on the left is equivalent to its base: `Positive <: Number`', () => {
@@ -302,38 +351,42 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       expect(isSubtype(pos, NumberType)).toBe(true)
     })
 
+    it('refined sources still erase to the base before a refined target check', () => {
+      const positive = parseTypeAnnotation('Number & {n | n > 0}')
+      const smallPositive = parseTypeAnnotation('Number & {n | n > 0 && n < 10}')
+      expect(isSubtype(positive, smallPositive)).toBe(true)
+    })
+
+    it('non-literal sources still pass through to the base', () => {
+      const pos = parseTypeAnnotation('Number & {n | n > 0}')
+      expect(isSubtype(NumberType, pos)).toBe(true)
+    })
+
     it('pass-through does not change base-level mismatches: `"hi"` not subtype of `Positive`', () => {
       const pos = parseTypeAnnotation('Number & {n | n > 0}')
       const str = parseTypeAnnotation('"hi"')
       expect(isSubtype(str, pos)).toBe(false)
-    })
-
-    it('does not yet catch predicate-level violations — `-5 <: Positive` returns `true` in Phase 2.1', () => {
-      // Baseline behavior to lock in: the predicate is ignored until
-      // the Phase 2.4 solver ships. This test will flip to `false` when
-      // the solver lands; the flip IS the Phase 2.4 acceptance criterion.
-      const pos = parseTypeAnnotation('Number & {n | n > 0}')
-      const negFive = parseTypeAnnotation('-5')
-      expect(isSubtype(negFive, pos)).toBe(true)
     })
   })
 
   describe('end-to-end: `let x: Refinement = value`', () => {
     const dvala = createDvala()
 
-    it('accepts a literal value that matches the base', () => {
+    it('accepts a literal value that satisfies the predicate', () => {
       const result = dvala.typecheck('let x: Number & {n | n > 0} = 5; x')
       expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('rejects a literal value that violates the predicate', () => {
+      const result = dvala.typecheck('let x: Number & {n | n > 0} = -5; x')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+      expect(result.diagnostics[0]!.message).toContain('n | n > 0')
     })
 
     it('rejects a literal value that violates the base', () => {
       const result = dvala.typecheck('let x: Number & {n | n > 0} = "hi"; x')
       expect(result.diagnostics.length).toBeGreaterThan(0)
-      // The error originates from the base-level `"hi" is not a subtype
-      // of Number` check — the Refined wrapper on the RHS is passed
-      // through per Phase 2.1 policy, so the message mentions Number.
-      // (A later phase's predicate-aware message would name the full
-      // refinement; this matcher will need to widen then.)
+      // Base mismatches still fail before any predicate-fold attempt.
       expect(result.diagnostics[0]!.message).toMatch(/not a subtype of Number/)
     })
 
@@ -536,3 +589,19 @@ describe('refinement types — Phase 2.1 Refined node', () => {
     })
   })
 })
+
+function binderRef(name: string): AstNode {
+  return [NodeTypes.Sym, name, 0] as unknown as AstNode
+}
+
+function builtinRef(name: string): AstNode {
+  return [NodeTypes.Builtin, name, 0] as unknown as AstNode
+}
+
+function numLiteral(value: number): AstNode {
+  return [NodeTypes.Num, value, 0] as unknown as AstNode
+}
+
+function relation(name: string, left: AstNode, right: AstNode): AstNode {
+  return [NodeTypes.Call, [builtinRef(name), [left, right], null], 0] as unknown as AstNode
+}
