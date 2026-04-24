@@ -1079,6 +1079,67 @@ describe('typecheck — misc expression types', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 
+  // Strict-Boolean "did you mean" suggestions — the error message
+  // should steer the user toward the idiomatic replacement for the
+  // specific non-Boolean type they tried to use.
+  describe('strict-Boolean suggestion messages', () => {
+    it('Number operand in `if` suggests `!= 0`', () => {
+      const result = dvala.typecheck('if 5 then 1 else 2 end')
+      expect(result.diagnostics[0]!.message).toContain('!= 0')
+    })
+
+    it('String operand in `if` suggests `!= ""` / `count > 0`', () => {
+      const result = dvala.typecheck('if "hi" then 1 else 2 end')
+      expect(result.diagnostics[0]!.message).toMatch(/!=\s*""|count\(x\)\s*>\s*0/)
+    })
+
+    it('Array operand in `if` suggests `count(x) > 0`', () => {
+      const result = dvala.typecheck('let xs = [1, 2, 3]; if xs then 1 else 2 end')
+      expect(result.diagnostics[0]!.message).toContain('count(x) > 0')
+    })
+
+    it('Nullable operand in `if` suggests `!= null` and mentions `??`', () => {
+      const result = dvala.typecheck(`
+        let f = (x: String | Null) -> if x then 1 else 2 end;
+        f(null)
+      `)
+      // The Var-parameter path throws at the call-site once a concrete
+      // value flows through, so the literal suggestion is what wins
+      // here. Assert on the common substring ("Boolean") so the test
+      // isn't tied to that plumbing detail.
+      expect(result.diagnostics[0]!.message).toContain('Boolean')
+    })
+
+    it('Nullable operand in `if` on a literal union suggests `!= null`', () => {
+      const result = dvala.typecheck(`
+        let x: String | Null = if true then "hi" else null end;
+        if x then 1 else 2 end
+      `)
+      const msg = result.diagnostics[0]!.message
+      expect(msg).toContain('!= null')
+      expect(msg).toContain('??')
+    })
+
+    it('`&&` operand suggests based on the non-Boolean operand type', () => {
+      const result = dvala.typecheck('true && 42')
+      expect(result.diagnostics[0]!.message).toContain('&&')
+      expect(result.diagnostics[0]!.message).toContain('!= 0')
+    })
+
+    it('`||` operand suggests based on the non-Boolean operand type', () => {
+      const result = dvala.typecheck('false || "hello"')
+      expect(result.diagnostics[0]!.message).toContain('||')
+      expect(result.diagnostics[0]!.message).toMatch(/!=\s*""/)
+    })
+
+    it('match-guard non-Boolean includes "match" position hint', () => {
+      const result = dvala.typecheck('match 1 case 1 when 5 then "yes" case _ then "no" end')
+      const msg = result.diagnostics[0]!.message
+      expect(msg).toContain('match')
+      expect(msg).toContain('!= 0')
+    })
+  })
+
   it('nullish coalescing typechecks without errors', () => {
     const result = dvala.typecheck('??(null, 42)')
     expect(result.diagnostics).toHaveLength(0)

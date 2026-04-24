@@ -479,6 +479,98 @@ function setsEqual(a: Set<string>, b: Set<string>): boolean {
  * When a variable appears on the right, it gains a lower bound.
  * Existing bounds are then propagated transitively.
  */
+/**
+ * Boolean-position helper for strict-Boolean positions (`if` cond,
+ * `match when` guard, `&&` / `||` operands). Runs the usual
+ * `constrain` but — when it fails because the operand isn't
+ * Boolean-compatible — re-throws a richer error that includes a
+ * type-specific "did you mean" suggestion. For Var operands the
+ * constrain call just adds an upper bound and no error is thrown,
+ * so this helper is a pass-through in that case.
+ */
+function constrainBoolean(
+  ctx: InferenceContext,
+  type: Type,
+  nodeId: number,
+  position: string,
+): void {
+  try {
+    constrain(ctx, type, BooleanType)
+  } catch (error) {
+    if (error instanceof TypeInferenceError) {
+      const expanded = expandType(type)
+      const suggestion = suggestBooleanFix(expanded)
+      if (suggestion !== undefined) {
+        throw new TypeInferenceError(
+          `${position} requires Boolean but got ${typeToString(expanded)}. ${suggestion}`,
+          nodeId,
+        )
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Generates a context-specific migration hint for a non-Boolean operand
+ * at a Boolean position. The strict-Boolean cleanup removed the
+ * `boolean(x)` coercion and the `not(nonBoolean)` truthy pattern, so
+ * users migrating from those patterns benefit from a targeted nudge:
+ * - Number / Integer    → `x != 0`
+ * - String              → `x != ""` or `count(x) > 0`
+ * - Null                → the condition is always falsy; probably a bug
+ * - T | Null (nullable) → `x != null` (and for `||` default-value:
+ *   consider `x ?? default`)
+ * - Array / Tuple / Sequence → `count(x) > 0`
+ * - Literal             → the condition folds to a constant; drop the
+ *   branch that can't run
+ * - Unknown / anything else → general nudge
+ */
+function suggestBooleanFix(type: Type): string | undefined {
+  // Literal — the value is already known at type-check time.
+  if (type.tag === 'Literal') {
+    if (typeof type.value === 'number')
+      return 'Did you mean `x != 0`?'
+    if (typeof type.value === 'string')
+      return 'Did you mean `x != ""` or `count(x) > 0`?'
+    // boolean Literal is already <: Boolean — wouldn't reach this path.
+    return undefined
+  }
+
+  // Null — almost certainly a mistake; every branch either always
+  // fires or never fires.
+  if (type.tag === 'Primitive' && type.name === 'Null')
+    return 'The operand is `Null`; this condition never succeeds. Did you mean a comparison like `x != null`?'
+
+  // Primitive non-Boolean operands.
+  if (type.tag === 'Primitive') {
+    if (type.name === 'Number' || type.name === 'Integer')
+      return 'Did you mean `x != 0`?'
+    if (type.name === 'String')
+      return 'Did you mean `x != ""` or `count(x) > 0`?'
+    // fall through
+  }
+
+  // `T | Null` — the common "nullable value" idiom. Needs an explicit
+  // null check. Also mention `??` since this is what the old
+  // `x || default` idiom should migrate to.
+  if (type.tag === 'Union' && type.members.some(m => m.tag === 'Primitive' && m.name === 'Null'))
+    return 'Did you mean `x != null`? (For default-value idioms, `x ?? default` replaces the old `x || default` pattern.)'
+
+  // Sequence-like — the old `if xs` truthy pattern.
+  if (type.tag === 'Array' || type.tag === 'Tuple' || type.tag === 'Sequence')
+    return 'Did you mean `count(x) > 0`?'
+
+  // Record — `if obj` was always truthy under the old rules; typically
+  // the user meant a null-check on an optional value that got inferred
+  // as a required record.
+  if (type.tag === 'Record')
+    return 'Records are always truthy; this condition always succeeds. Did you mean to null-check an optional field?'
+
+  // Atom / Function / Regex / etc. — generic fallback hint.
+  return 'Use an explicit comparison (`x != null`, `x == value`) or a type-guard predicate. The old `boolean(x)` coercion was removed.'
+}
+
 export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Trivial cases
   if (lhs === rhs) return
@@ -1037,7 +1129,7 @@ export function inferExpr(
       case NodeTypes.If: {
         const [cond, thenNode, elseNode] = payload as [AstNode, AstNode, AstNode | undefined]
         const condType = inferExpr(cond, ctx, env, typeMap)
-        constrain(ctx, condType, BooleanType)
+        constrainBoolean(ctx, condType, cond[2], 'The `if` condition')
         // Flow-sensitive narrowing: if the condition is a type guard
         // (`isX(sym)` or `isX(sym.field…)`), equality test (`sym == lit`,
         // `sym.field == lit`), `!(...)` wrapper, or `&&`/`||`
@@ -1574,8 +1666,9 @@ export function inferExpr(
         // strict, only `true`/`false` literals reach this code — and
         // `literalTruthiness` returns the boolean value directly for
         // those, so short-circuit results are still precise.
-        for (const t of types) {
-          constrain(ctx, t, BooleanType)
+        const opName = nodeType === NodeTypes.And ? '&&' : '||'
+        for (let i = 0; i < types.length; i++) {
+          constrainBoolean(ctx, types[i]!, operands[i]![2], `The \`${opName}\` operand`)
         }
         // C7 / decision #9: narrow on literal operands. For &&, the
         // first false operand short-circuits to its own value; for ||,
@@ -1670,7 +1763,7 @@ export function inferExpr(
 
           if (guard) {
             const guardType = inferExpr(guard, ctx, caseEnv, typeMap)
-            constrain(ctx, guardType, BooleanType)
+            constrainBoolean(ctx, guardType, guard[2], 'The `match` guard (`when`)')
             // C9: a guard that folds to literal(false) makes this case
             // unreachable. Skip the body so its type doesn't contribute to
             // the result, and do NOT subtract consumedType from remaining —
