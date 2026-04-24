@@ -167,10 +167,38 @@ Semantically equivalent at runtime. Different under solver reasoning. Users lear
 
 ### Out of scope (would require Tier C)
 
-- `x * y` where both are non-literal — non-linear, outside the solver fragment. Predicate is accepted as opaque if wrapped in a Boolean-returning call, but the solver gives no insight.
-- `forall` / `exists` — quantifiers. Rejected at declaration (no practical runtime evaluation semantics for quantification at a boundary either).
-- Regex/string-content theory inside the solver — rejected for reasoning; allowed as opaque.
-- Recursion in predicates — rejected at declaration; would risk boundary non-termination.
+Concrete examples of what Tier B's decidable fragment cannot express:
+
+```dvala
+// Variable × variable (non-linear) — parametric-size types fall here:
+type Matrix<N, M> = Integer[] & {xs | count(xs) == N * M}           // OUT
+let index: (row, col, N, M) -> Integer & {i | i < N * M}            // OUT
+
+// Division / modulo — not in linear arithmetic:
+let half: (n: Integer) -> Integer & {h | h == n / 2}                // OUT
+let parity: (n: Integer) -> Integer & {p | p == n % 2}              // OUT
+
+// Polynomial — var × var:
+type Square = Integer & {n | n * n < 100}                           // OUT
+
+// Quantifiers:
+type Sorted = Integer[] & {xs | forall i. xs[i] <= xs[i+1]}         // OUT
+type AllPositive = Integer[] & {xs | all(xs, (x) -> x > 0)}         // OUT
+
+// Arbitrary string-content theory:
+type Email = String & {s | matches(s, /^[^@]+@[^@]+$/)}
+  // Accepted as OPAQUE (boundary-validated, solver treats as black box).
+  // Solver cannot decompose or reason about the regex structure.
+```
+
+Summarized:
+
+- **Variable × variable** — non-linear, outside the solver fragment. Parametric-size types (`Matrix<N,M>`, `FixedBuffer<Size>`) fall here. Predicate is accepted as opaque if wrapped in a Boolean-returning call, but the solver gives no insight.
+- **Division / modulo** — not in the linear fragment. Users rewrite with bounds (`2 * h == n`) or fall back to opaque predicates.
+- **Polynomial / `x * x` etc.** — same variable-times-variable problem.
+- **`forall` / `exists` quantifiers** — rejected at declaration. No practical runtime evaluation semantics for quantification over unbounded domains at a boundary either.
+- **Regex / string-content theory inside the solver** — rejected for reasoning; allowed as opaque (boundary-validated).
+- **Recursion in predicates** — rejected at declaration; would risk boundary non-termination.
 
 ### Out of scope (syntactic sugar, not capability)
 
@@ -199,6 +227,134 @@ type Range = {min: Number, max: Number} & {r | r.min <= r.max}
 - **Postfix brackets** (`Number[n > 0]`) — visually clashes with indexed-access `T[K]` (shipped) and literal-length `Number[4]` (future). Same-symbol-different-meaning creates parsing edge cases and reader confusion.
 
 The set-builder form with explicit binder is the only option without either ambiguity or special cases. It matches mathematical set-builder notation (familiar to users from Haskell, Python comprehensions, or math background).
+
+---
+
+## Example refinement types (library patterns)
+
+Concrete library patterns Tier B Level 3 enables. Each shows a motivating use case, the predicate form, and which solver capability it exercises. These are the "ship gate" examples for Phase 3.
+
+### 1. Scaling conversions — `Percent → Permille`
+
+```dvala
+type Percent  = Integer & {n | 0 <= n && n <= 100}
+type Permille = Integer & {n | 0 <= n && n <= 1000}
+
+let toPermille: (p: Percent) -> Permille = (p) -> p * 10
+```
+
+Solver obligation: prove `0 <= p*10 <= 1000` from `0 <= p <= 100`.
+
+Single variable, scalar multiplication by literal coefficient 10. General case: integer scaling conversions — basis-points-from-percent, microseconds-from-milliseconds, cents-from-dollars.
+
+### 2. Multi-field unit conversions — `TimeOfDay → seconds`
+
+```dvala
+type TimeOfDay = {
+  hours:   Integer & {h | 0 <= h && h < 24},
+  minutes: Integer & {m | 0 <= m && m < 60},
+  seconds: Integer & {s | 0 <= s && s < 60}
+}
+
+let toSeconds: (t: TimeOfDay) -> Integer & {n | 0 <= n && n < 86400}
+  = (t) -> t.hours * 3600 + t.minutes * 60 + t.seconds
+```
+
+Solver obligation: prove `0 <= h*3600 + m*60 + s < 86400` from the field bounds.
+
+Multi-field, weighted sum with large literal coefficients (3600, 60). General case: any library converting between units in multi-field records — bytes/KB/MB, degrees/radians, pixels/points.
+
+### 3. Byte packing — `RGB → 24-bit integer`
+
+```dvala
+type Byte = Integer & {n | 0 <= n && n < 256}
+type RGB  = {r: Byte, g: Byte, b: Byte}
+
+let pack: (c: RGB) -> Integer & {n | 0 <= n && n < 16777216}
+  = (c) -> c.r * 65536 + c.g * 256 + c.b
+```
+
+Solver obligation: prove the packed result stays within 24-bit range.
+
+Multi-field weighted sum with power-of-two coefficients. General case: byte-packing, bit-field manipulation, network-protocol serialization.
+
+### 4. Sum-to-constant invariants — `BudgetAllocation`
+
+```dvala
+type BudgetAllocation = {
+  payroll:    Integer & {n | n >= 0},
+  operations: Integer & {n | n >= 0},
+  savings:    Integer & {n | n >= 0}
+} & {b | b.payroll + b.operations + b.savings == 100}
+
+let rebalance: (b: BudgetAllocation, delta: Integer) -> BudgetAllocation
+  = (b, delta) -> {
+      payroll: b.payroll + delta,
+      operations: b.operations - delta,
+      savings: b.savings
+    }
+```
+
+Solver obligation: prove the output still sums to 100.
+
+Three-variable sum equality with ±1 coefficients. General case: budget splits, probability distributions summing to 1, resource quotas, RGB-sum balance.
+
+### 5. Weighted business-rule constraints — `ValidShipment`
+
+```dvala
+type ValidShipment = {weight: Integer, volume: Integer}
+  & {s | 3 * s.weight + 2 * s.volume <= 1000}
+```
+
+Solver obligation: enforce the weighted-sum inequality at construction and mutation sites.
+
+Two-variable weighted linear inequality. General case: pricing/discount rules, physics constraints, linear-optimization inputs.
+
+### 6. Cross-field ordering — `Range`
+
+```dvala
+type Range = {min: Number, max: Number} & {r | r.min <= r.max}
+type Interval = {start: Integer, end: Integer} & {i | i.start < i.end}
+```
+
+Solver obligation: prove the ordering invariant at every construction site and after any mutation.
+
+Two-variable relational constraint. General case: interval types, temporal ranges, bounded regions, `start < end` invariants.
+
+### Plus the small cases already implicit in the design
+
+- `type Positive = Number & {n | n > 0}` — single-variable, simple bound. Phase 2 interval solver.
+- `type NonEmpty<T: Sequence> = T & {xs | count(xs) > 0}` — collection-length refinement. Phase 2.
+- `type Score = Integer & {n | 0 <= n && n <= 100}` — bounded-range integer. Phase 2.
+- `type NonBlank = String & {s | count(s) > 0}` — non-empty string. Phase 2.
+
+### Number vs Integer refinements — float-rounding caveat
+
+Dvala's `Number` is IEEE 754 float64. The solver reasons symbolically over **exact rationals**, not over float-with-rounding. For inclusive bounds and reasonable value ranges, float behavior matches the symbolic claim exactly:
+
+```dvala
+type Percent = Number & {n | 0 <= n && n <= 100}      // works fine
+// Float behavior agrees with symbolic reasoning for every representable Percent value.
+```
+
+At the strict edges, float rounding can nominally violate what the checker proved (1-ULP margin):
+
+```dvala
+type StrictPercent  = Number & {n | 0 < n && n < 100}
+type StrictPermille = Number & {n | 0 < n && n < 1000}
+let toPermille: (p: StrictPercent) -> StrictPermille = (p) -> p * 10
+// Symbolically: p < 100 ⇒ p*10 < 1000. Proved.
+// Runtime edge case: p = 99.99999999999999 (largest double < 100).
+//   p * 10 in float64 may round to exactly 1000.0, violating "< 1000".
+```
+
+**The contract Dvala accepts:**
+
+- **Internal code trusts the solver's symbolic proof.** Refinements describe the mathematical claim; 1-ULP edge cases are accepted as out-of-scope for the type system.
+- **Boundary validation catches actual violations.** When a value crosses a trust boundary (host handler return, snapshot load), the validator runs the predicate on the float value. If float rounding pushed it over the bound, the boundary check fails — with a clear error at the boundary, not silent corruption.
+- **Users who need exact behavior use `Integer`.** Integer refinements have no rounding at all; the solver's symbolic reasoning and runtime behavior always agree. For most unit-conversion and packing use cases (examples 1-4 above), Integer is the natural domain anyway.
+
+This is the same contract Liquid Haskell and similar systems use. Option 2 alternatives (restrict Number refinements to no-arithmetic, or build an IEEE-aware solver) were explicitly rejected — the first is too restrictive, the second is a research project.
 
 ---
 
@@ -491,7 +647,7 @@ Five phases of refinement-types work. Each delivers something shippable.
 - **Forward refinement propagation** (bullet 3 of Q4's narrowing contract): `let y = x + 1` with `x: Positive` infers `y: Integer & {n | n > 1}` using the solver.
 - Cross-field refinements (`{r | r.min <= r.max}`) and tuple-indexed predicates (`{t | t[0] < t[1]}`).
 
-**Ship gate:** Array indexing with `i` bounded by `count(xs)`. Range/interval invariants (`min <= max`). State-machine refinements where state depends on prior operations' effect-free outcomes.
+**Ship gate:** All six patterns from the "Example refinement types (library patterns)" section typecheck — `Percent → Permille`, `TimeOfDay → seconds`, `RGB packing`, `BudgetAllocation`, `ValidShipment`, `Range`. Plus array indexing with `i` bounded by `count(xs)` and state-machine refinements where state depends on prior effect-free outcomes.
 
 ### Phase 4 — Runtime boundary validation
 
