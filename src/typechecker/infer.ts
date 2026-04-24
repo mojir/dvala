@@ -2954,8 +2954,11 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
   const builtinName = calleeNode[1] as string
   if (lookupShadowedBuiltin(env, builtinName)) return undefined
 
-  // `!(cond)` — invert the inner narrowing.
-  if (builtinName === 'not' && argNodes.length === 1) {
+  // `!cond` (new, unary-prefix shape) and `not(cond)` (legacy form while
+  // `not` still exists as a builtin) — invert the inner narrowing. The
+  // two share one branch because the AST shape is identical: both emit
+  // `Call(Builtin(name), [cond])`, only the name differs.
+  if ((builtinName === '!' || builtinName === 'not') && argNodes.length === 1) {
     const inner = extractIfNarrowings(argNodes[0]!, env)
     if (!inner) return undefined
     return { whenTrue: inner.whenFalse, whenFalse: inner.whenTrue }

@@ -594,6 +594,29 @@ describe('typecheck — flow-sensitive narrowing in if/else', () => {
     expect(result.diagnostics).toHaveLength(0)
   })
 
+  // Idiomatic form without parens — `!isNumber(x)` parses as
+  // `Call('!', [Call(isNumber, [x])])` under the Phase-2 parser
+  // (full-operand binding for `!`), so narrowing must fire.
+  it('idiomatic `!isNumber(x)` narrows without parens', () => {
+    const result = dvala.typecheck(`
+      let f = (x: String | Number) ->
+        if !isNumber(x) then count(x) else x + 1 end;
+      f(42)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
+  // `!!isNumber(x)` — double negation without parens. Same result
+  // as `isNumber(x)` after two swaps.
+  it('idiomatic `!!isNumber(x)` preserves the original narrowing', () => {
+    const result = dvala.typecheck(`
+      let f = (x: String | Number) ->
+        if !!isNumber(x) then x + 1 else count(x) end;
+      f(42)
+    `)
+    expect(result.diagnostics).toHaveLength(0)
+  })
+
   // Field-path narrowing: equality on `r.field` narrows the *root sym*
   // to a refined record shape, picking the matching tagged-union member.
   it('equality on a field path narrows a tagged union', () => {
