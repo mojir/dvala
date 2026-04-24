@@ -87,8 +87,16 @@ export function restoreTypeAliases(snapshot: TypeAliasRegistrySnapshot): void {
  * Parse a type annotation string into a Type value.
  * Throws on syntax errors.
  */
-export function parseTypeAnnotation(input: string): Type {
-  const parser = new TypeParser(input)
+/**
+ * Parse a type annotation string. An optional `scopedTypeRefs` map lets
+ * callers pre-bind type-variable names to existing Types — used for
+ * Phase 0b binding-scoped `let f<T: U> = ...` so that occurrences of
+ * `T` inside the RHS's annotations resolve to the same pre-created
+ * TypeVar (with its bound in `upperBounds`) rather than a fresh
+ * annotation-local var.
+ */
+export function parseTypeAnnotation(input: string, scopedTypeRefs?: Map<string, Type>): Type {
+  const parser = new TypeParser(input, scopedTypeRefs)
   const result = parser.parseType()
   if (!parser.isAtEnd()) {
     throw new TypeParseError(`Unexpected token: '${parser.remaining()}'`, input, parser.pos)

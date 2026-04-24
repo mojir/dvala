@@ -1,8 +1,8 @@
 # Generic Upper Bounds (`T: U`) — Implementation Plan
 
-**Status:** **Phase 0a shipped 2026-04-24.** Phase 0b deferred. (Type-alias bounds + annotation-scoped function-type bounds implemented; type-system plan decision #25 reflects the shipped state.)
+**Status:** **Phase 0a shipped 2026-04-24. Phase 0b shipped 2026-04-24.** (Type-alias bounds + annotation-scoped function-type bounds + let-binding-scoped `<T: U>` all implemented; type-system plan decision #25 reflects the shipped state.)
 **Created:** 2026-04-24
-**Last updated:** 2026-04-24 (reviewer-pass: split into Phase 0a + 0b, registry-schema spec added, nits addressed; then Phase 0a implementation landed)
+**Last updated:** 2026-04-24 (Phase 0a then 0b implementation landed back-to-back)
 **Scope discipline:** Minimum viable upper bounds only. Hard-capped feature list; explicit out-of-scope list below. **If scope creeps beyond what's in this doc, stop and reassess before shipping.**
 **References:** `2026-04-12_type-system.md` (set-theoretic foundation, decision #22 on type-variable syntax), `2026-04-23_refinement-types.md` (primary motivation)
 
@@ -273,9 +273,13 @@ The bound is stored as source-text and parsed on expansion; this avoids a circul
 
 ### Phase 0b — Let-binding-scoped `<T>` syntax
 
-**Independent of refinements. Targets scoping-flexibility polish; can ship any time after 0a.**
+**Status: shipped 2026-04-24.** Independent of refinements; landed alongside 0a.
 
-**Target:** 1–2 weeks, ~150-250 LOC on top of 0a.
+**Actual:** ~150 LOC of production changes + ~140 LOC of tests. Completed in a single session.
+
+**Deferred items (same rationale as 0a.6):**
+
+- Display polish — `typeToString` rendering of `T: Bound` for binding-scoped type vars. Errors already name parameter + bound clearly; postponed until IDE-hover UX shows demand.
 
 **What 0b adds that 0a doesn't cover:** 0a's annotation-scoped `<T: U>` scopes `T` to the annotation only. 0b's `let f<T: U> = ...` scopes `T` to the entire let RHS — intermediate `let` bindings, destructure-pattern annotations, and explicit type assertions inside the body can all reference `T`.
 

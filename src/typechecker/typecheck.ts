@@ -141,6 +141,9 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
         if (importedAst.typeAnnotations) {
           importCtx.typeAnnotations = importedAst.typeAnnotations
         }
+        if (importedAst.typeParams) {
+          importCtx.typeParams = importedAst.typeParams
+        }
         const importEnv = new TypeEnv()
         const importTypeMap = new Map<number, Type>()
         const importDiagnostics: TypeDiagnostic[] = []
@@ -214,6 +217,11 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   // Pass type annotations from the parser to the inference engine
   if (ast.typeAnnotations) {
     ctx.typeAnnotations = ast.typeAnnotations
+  }
+  // Phase 0b — pass binding-scoped type-param side-table so `let f<T: U>`
+  // installs the bounded TypeVars for the RHS.
+  if (ast.typeParams) {
+    ctx.typeParams = ast.typeParams
   }
   // Register type aliases before inference so annotations can reference them
   if (ast.typeAliases) {

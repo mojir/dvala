@@ -21,7 +21,7 @@ import {
   typeToString, typeEquals,
   effectSetToString, isEffectSubset, subtractEffects,
 } from './types'
-import type { AstNode, ObjectBindingEntry } from '../parser/types'
+import type { AliasParam, AstNode, ObjectBindingEntry } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
@@ -104,6 +104,21 @@ export class InferenceContext {
   private constraintCache = new Set<string>()
   /** Type annotations from the parser side-table. Keyed by binding target nodeId. */
   typeAnnotations = new Map<number, string>()
+  /**
+   * Binding-scoped type parameters from `let f<T: U> = ...` (Phase 0b).
+   * Parser side-table — the typechecker reads this when inferring a let
+   * binding, creates TypeVars with the declared bounds, and pushes them
+   * onto `activeTypeParams` for the whole RHS scope.
+   */
+  typeParams?: Map<number, AliasParam[]>
+  /**
+   * The currently-active binding-scoped type params. Maps name (e.g.
+   * "T") → TypeVar so `parseTypeAnnotation` calls during the RHS
+   * resolve the name to the pre-created bounded var rather than a
+   * fresh annotation-local one. Shadowing: nested lets with their own
+   * `<T>` overlay their parents. Restored on scope exit via a snapshot.
+   */
+  activeTypeParams = new Map<string, Type>()
   /** Resolves file imports for cross-file type checking. */
   resolveFileType?: (importPath: string) => Type
   /**
@@ -1056,6 +1071,38 @@ export function inferExpr(
       // --- Let binding ---
       case NodeTypes.Let: {
         const [binding, valueNode] = payload as [AstNode, AstNode]
+        const bindingNodeId = binding[2]
+
+        // Phase 0b — binding-scoped type parameters (`let f<T: U> = ...`).
+        // When the parser recorded any, install them in `activeTypeParams`
+        // before inferring the RHS so that occurrences of `T` inside the
+        // RHS's annotations resolve to pre-created bounded TypeVars.
+        // Snapshot-and-restore lets nested `<T>` lets shadow outer ones
+        // without leaking scope when each completes.
+        const bindingTypeParams = ctx.typeParams?.get(bindingNodeId)
+        const typeParamsSnapshot = bindingTypeParams ? new Map(ctx.activeTypeParams) : undefined
+        if (bindingTypeParams) {
+          for (const param of bindingTypeParams) {
+            const fresh = ctx.freshVar()
+            if (param.bound !== undefined) {
+              try {
+                // Parse the bound against the current outer scope — a
+                // later param's bound can reference earlier params, but
+                // bounds cannot reference themselves or later params.
+                const boundType = parseTypeAnnotation(param.bound, ctx.activeTypeParams)
+                fresh.upperBounds.push(boundType)
+              } catch (error) {
+                if (error instanceof TypeParseError) {
+                  ctx.deferError(new TypeInferenceError(error.cleanMessage, bindingNodeId))
+                } else {
+                  throw error
+                }
+              }
+            }
+            ctx.activeTypeParams.set(param.name, fresh)
+          }
+        }
+
         // Infer the value's type at a higher level for generalization.
         // Wrap in try/catch so that a type error in the value still binds the
         // variable as Unknown — this prevents cascading "undefined variable"
@@ -1077,10 +1124,15 @@ export function inferExpr(
         }
         ctx.leaveLevel()
 
+        // Restore the outer type-params scope. Must happen whether the
+        // RHS inference succeeded or hit a recoverable error above.
+        if (typeParamsSnapshot !== undefined) {
+          ctx.activeTypeParams = typeParamsSnapshot
+        }
+
         valueType = generalizeTypeVars(valueType, ctx.level)
 
         // Check type annotation constraint: let x: T = expr → constrain expr <: T
-        const bindingNodeId = binding[2]
         const annotation = ctx.typeAnnotations?.get(bindingNodeId)
         let boundType: Type = valueType
         if (annotation) {
@@ -1097,7 +1149,7 @@ export function inferExpr(
           // surfaces as a diagnostic instead of aborting the pass.
           let declaredType: Type
           try {
-            declaredType = simplify(parseTypeAnnotation(annotation))
+            declaredType = simplify(parseTypeAnnotation(annotation, ctx.activeTypeParams))
           } catch (error) {
             if (error instanceof TypeParseError) {
               throw new TypeInferenceError(error.cleanMessage, valueNode[2])
@@ -1702,7 +1754,7 @@ export function inferExpr(
             if (paramAnnotation) {
               let annotatedType: Type
               try {
-                annotatedType = simplify(parseTypeAnnotation(paramAnnotation))
+                annotatedType = simplify(parseTypeAnnotation(paramAnnotation, ctx.activeTypeParams))
               } catch (error) {
                 if (error instanceof TypeParseError) {
                   throw new TypeInferenceError(error.cleanMessage, param[2])
@@ -2685,7 +2737,7 @@ function inferFunctionNode(
       if (paramAnnotation) {
         let declaredType: Type
         try {
-          declaredType = simplify(parseTypeAnnotation(paramAnnotation))
+          declaredType = simplify(parseTypeAnnotation(paramAnnotation, ctx.activeTypeParams))
         } catch (error) {
           if (error instanceof TypeParseError) {
             throw new TypeInferenceError(error.cleanMessage, param[2])
@@ -2723,7 +2775,7 @@ function inferFunctionNode(
     if (rawAnnotation?.startsWith('return:')) {
       let declaredType: Type
       try {
-        declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length))
+        declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length), ctx.activeTypeParams)
       } catch (error) {
         if (error instanceof TypeParseError) {
           throw new TypeInferenceError(error.cleanMessage, node[2])

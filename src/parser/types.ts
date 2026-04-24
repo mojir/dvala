@@ -325,4 +325,9 @@ export interface Ast {
   effectDeclarations?: Map<string, EffectDeclarationInfo>
   /** Type alias declarations from source code. Erased before evaluation. */
   typeAliases?: Map<string, TypeAliasInfo>
+  /**
+   * Binding-scoped type parameters for `let f<T: U> = ...` (Phase 0b),
+   * keyed by the binding-target nodeId. Erased before evaluation.
+   */
+  typeParams?: Map<number, AliasParam[]>
 }
