@@ -28,6 +28,12 @@ function skipWhitespace(ctx: ParserContext): void {
 }
 
 export function parseTypeDeclaration(ctx: ParserContext): AstNode {
+  // Wrap the entire type declaration in a CST `TypeAlias` node so the
+  // formatter can find and emit it as a unit. Without this, the
+  // declaration's tokens flow into the parent CST node as a flat
+  // sequence and the formatter has no way to recognize them as a
+  // type-decl. The AST is unaffected (still a null Reserved node).
+  ctx.builder?.startNode('TypeAlias')
   const token = ctx.peek() // 'type'
   ctx.advance() // consume 'type'
 
@@ -101,6 +107,9 @@ export function parseTypeDeclaration(ctx: ParserContext): AstNode {
 
   // Store in the parser's type declaration registry
   ctx.typeAliases.set(name, { params, body: typeExpr })
+
+  // Close the CST `TypeAlias` node before returning the erased AST.
+  ctx.builder?.endNode()
 
   // Return a null node — type declarations are erased at runtime
   return withSourceCodeInfo([NodeTypes.Reserved, 'null', 0], token[2], ctx)

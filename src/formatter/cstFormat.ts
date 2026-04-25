@@ -720,9 +720,11 @@ function formatNode(node: UntypedCstNode): Doc {
     case 'Spread':
       return formatSpread(node)
 
-    // -- Let --
+    // -- Let / Type alias --
     case 'Let':
       return formatLet(node)
+    case 'TypeAlias':
+      return formatTypeAlias(node)
 
     // -- Control flow --
     case 'If':
@@ -1147,9 +1149,14 @@ function formatLet(node: UntypedCstNode): Doc {
         lastTargetText = ', '
         continue
       }
+      // Postfix `[`: type-annotation `Number[]` and index `arr[0]` —
+      // no space between identifier and `[`. Same logic as the
+      // `needsSpaceBetween` rule for `(`.
+      const postfixBracket = t === '[' && lastTargetText.length > 0 && /[A-Za-z_0-9]$/.test(lastTargetText)
       if (targetParts.length > 0 && !isPunctuation(t) && !isOpenBracket(lastTargetText)
         && lastTargetText !== '...'
-        && !lastTargetText.endsWith(' ')) {
+        && !lastTargetText.endsWith(' ')
+        && !postfixBracket) {
         targetParts.push(text(' '))
       }
       targetParts.push(formatClosingToken(child))
@@ -1773,6 +1780,85 @@ function formatSplice(node: UntypedCstNode): Doc {
  * This is used for complex constructs where specialized formatting hasn't been
  * implemented yet — it produces correct (lossless-ish) but unformatted output.
  */
+/**
+ * Format a `type X[<T...>] = TypeExpr` declaration. Type expressions
+ * have their own grammar and aren't fully formatted here — the
+ * implementation walks the raw token stream and uses the standard
+ * `needsSpaceBetween` rules with a small override for generic angle
+ * brackets, which the regular fallback would space-pad incorrectly
+ * (turning `Foo<T>` into `Foo < T >`).
+ *
+ * Tokens flow into the CST in source order via `ctx.advance()`
+ * during type-decl parsing, so the children list contains every
+ * token of the declaration body in sequence. No nested CstNodes
+ * appear here today — type expressions don't go through the
+ * expression parser.
+ */
+function formatTypeAlias(node: UntypedCstNode): Doc {
+  const parts: Doc[] = []
+  let prevText = ''
+  let isFirst = true
+  // Track angle-bracket nesting so we can suppress spacing around
+  // `<`, `>`, and the `:` that introduces a bound. The body of the
+  // alias may have `<` from less-than relations inside refinement
+  // predicates (e.g. `{n | n > 0}`) — those are inside `{...}` braces
+  // where angle-bracket tracking is disabled by `braceDepth`.
+  let angleDepth = 0
+  let braceDepth = 0
+
+  for (const child of node.children) {
+    if (!isToken(child)) {
+      // Type expressions don't currently produce nested CST nodes,
+      // but if that changes, fall back to formatNode for the child.
+      parts.push(isFirst ? formatNode(child) : formatExprChild(child))
+      prevText = '_'
+      isFirst = false
+      continue
+    }
+
+    const t = child.text
+    const inGenerics = angleDepth > 0 && braceDepth === 0
+    let space = ''
+
+    if (parts.length > 0) {
+      // Inside a generic param list: no spaces around `<`, `>`, or
+      // `:` that introduces a bound. The fallback would otherwise
+      // emit `Foo < T : Bound >` instead of `Foo<T: Bound>`.
+      if (t === '<' && /^[A-Z_a-z]/.test(prevText) && braceDepth === 0) {
+        // `Name<` — no space (generic-type-param open).
+        space = ''
+      } else if (t === '>' && inGenerics) {
+        space = ''
+      } else if (prevText === '<' && braceDepth === 0) {
+        space = ''
+      } else if (prevText === ':' && inGenerics) {
+        space = ' '
+      } else if (t === ':' && inGenerics) {
+        space = ''
+      } else if (t === ',' && inGenerics) {
+        space = ''
+      } else if (prevText === ',' && inGenerics) {
+        space = ' '
+      } else if (needsSpaceBetween(prevText, t)) {
+        space = ' '
+      }
+    }
+
+    if (space) parts.push(text(space))
+    parts.push(isFirst ? formatTokenWithTrivia(child) : formatClosingToken(child))
+
+    if (t === '<' && /^[A-Z_a-z]/.test(prevText) && braceDepth === 0) angleDepth++
+    else if (t === '>' && inGenerics) angleDepth--
+    else if (t === '{') braceDepth++
+    else if (t === '}') braceDepth--
+
+    prevText = t
+    isFirst = false
+  }
+
+  return concat(...parts)
+}
+
 function formatFromChildren(node: UntypedCstNode): Doc {
   const parts: Doc[] = []
   let prevText = '' // last emitted token text, or '_' after a child node
@@ -1870,6 +1956,12 @@ function needsSpaceBetween(prev: string, cur: string): boolean {
   if (isOpenBracket(prev)) return false // no space after (, [, {
   if (prev === '.') return false // no space after .  (property access)
   if (cur === '(' && !isOperatorText(prev)) return false // function call: foo(x)
+  // Postfix `[`: same logic as `(` — `Number[]` (array type) and
+  // `arr[0]` (index access) shouldn't have a space; `= [...]` (array
+  // literal at statement position) keeps its space because `=` is an
+  // operator. Prevents `Number[]` from formatting as `Number []` in
+  // type-annotation contexts that flow through the fallback walker.
+  if (cur === '[' && !isOperatorText(prev)) return false
   return true
 }
 
