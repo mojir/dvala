@@ -20,6 +20,9 @@ When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI
 
 **Refinement-types changes (anything under `src/typechecker/refinement*` or `src/typechecker/parseType.ts`'s refinement-handling code) MUST run the perf benchmark before the PR merges.**
 
+The `.githooks/pre-push` hook automates this: when you push a commit that touched refinement files and HEAD's hash isn't yet in `benchmarks/refinement-history.json`, it runs the bench, aborts the push, and asks you to commit the bench data and re-push. Install once per clone with `npm run install-hooks` (sets `core.hooksPath=.githooks`).
+
+Manual flow if you skip the hook:
 - Run `npm run benchmarks:run` on the PR branch's tip (after the last code change).
 - Commit the resulting changes to `benchmarks/refinement-history.json` and `benchmarks/refinement-performance.md` to the PR branch.
 - Push so the perf data is part of the PR's history.

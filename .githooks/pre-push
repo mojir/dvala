@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+#
+# Pre-push hook: runs the refinement-types perf benchmark before pushing
+# any commit that touches refinement code, so the perf history stays
+# dense without depending on memory.
+#
+# Behavior:
+#   1. For each ref being pushed, find commits in (remote..local) that
+#      touch refinement-relevant files.
+#   2. If any such commit exists AND HEAD's short hash is not yet in
+#      benchmarks/refinement-history.json, run `npm run benchmarks:run`,
+#      abort the push, and tell the user to commit the bench data.
+#   3. If the data already exists for HEAD, push proceeds.
+#   4. If no refinement code was touched, push proceeds.
+#
+# Override with `git push --no-verify` for non-perf-relevant force-pushes
+# or when bench output is unwanted.
+#
+# Installed by `npm run install-hooks` (sets core.hooksPath=.githooks).
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# Files that, when changed, demand a fresh perf row. Mirrors CLAUDE.md
+# "refinement-types changes" definition.
+REFINEMENT_PATHS=(
+  'src/typechecker/refinement*'
+  'src/typechecker/parseType.ts'
+)
+
+HISTORY_FILE='benchmarks/refinement-history.json'
+ZERO='0000000000000000000000000000000000000000'
+
+# Determine the default base branch (origin/main) for new-branch pushes.
+DEFAULT_BASE='origin/main'
+
+needs_bench=0
+local_sha_for_bench=''
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Branch deletion — nothing to bench.
+  if [[ "$local_sha" == "$ZERO" ]]; then
+    continue
+  fi
+
+  # New branch — diff against the default base instead of an empty SHA,
+  # otherwise `git log` would walk the entire history.
+  if [[ "$remote_sha" == "$ZERO" ]]; then
+    if git rev-parse --verify --quiet "$DEFAULT_BASE" >/dev/null; then
+      range="$DEFAULT_BASE..$local_sha"
+    else
+      # No upstream main known — only check the tip commit.
+      range="$local_sha~1..$local_sha"
+    fi
+  else
+    range="$remote_sha..$local_sha"
+  fi
+
+  # Any commit in the range touch refinement-relevant files?
+  # `git log -- <pathspec>` returns matching commits; if the output is
+  # non-empty, at least one commit qualifies.
+  if [[ -n "$(git log "$range" --pretty=format:%H -- "${REFINEMENT_PATHS[@]}" 2>/dev/null || true)" ]]; then
+    needs_bench=1
+    local_sha_for_bench="$local_sha"
+  fi
+done
+
+if [[ "$needs_bench" -eq 0 ]]; then
+  exit 0
+fi
+
+# Idempotency: if we already have a row for the tip's short hash, push proceeds.
+short_sha="$(git rev-parse --short "$local_sha_for_bench")"
+if [[ -f "$HISTORY_FILE" ]] && grep -q "\"commit\": \"$short_sha\"" "$HISTORY_FILE"; then
+  echo "✓ refinement perf data already recorded for $short_sha — push proceeding"
+  exit 0
+fi
+
+# Refuse to bench a dirty tree: the JSON would be tagged with HEAD's
+# hash but measure working-tree state. Force the user to clean up first.
+if ! git diff --quiet HEAD || ! git diff --cached --quiet; then
+  echo "❌ working tree has uncommitted changes."
+  echo "   Refusing to benchmark — the recorded data would not match commit $short_sha."
+  echo "   Either commit/stash, or push with --no-verify to skip."
+  exit 1
+fi
+
+cat <<EOF
+⏱  Refinement code touched in this push and no perf data exists for $short_sha.
+   Running \`npm run benchmarks:run\` (this can take ~30s)...
+EOF
+
+if ! npm run benchmarks:run >/dev/null 2>&1; then
+  echo "❌ benchmark run failed — see \`npm run benchmarks:run\` output. Push aborted."
+  exit 1
+fi
+
+cat <<EOF
+
+✓ Benchmark data appended for $short_sha. Files changed:
+   benchmarks/refinement-history.json
+   benchmarks/refinement-performance.md
+   benchmarks/results/refinement-*.json
+
+Commit them and re-push:
+
+   git add benchmarks/
+   git commit -m "bench: $short_sha"
+   git push
+
+(Or push with --no-verify to skip bench enforcement entirely.)
+EOF
+exit 1
