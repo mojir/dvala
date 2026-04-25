@@ -45,6 +45,7 @@ import { allStandardEffectDefinitions } from '../src/evaluator/standardEffects'
 import { isSymbolicOperator } from '../src/tokenizer/operators'
 import { canBeOperator } from '../src/utils/arity'
 import { datatype } from './datatype'
+import { prelude } from './prelude'
 import { shorthand } from './shorthand'
 
 // --- Helper: derive FunctionReference from co-located docs ---
@@ -194,6 +195,14 @@ export interface DatatypeReference extends CommonReference<'datatype'> {
   datatype: true
 }
 
+// Prelude aliases (refined types declared in src/prelude.dvala). Carry a
+// `definition` string so `dvala doc Positive` can show the alias body
+// alongside the description.
+export interface PreludeReference extends CommonReference<'prelude'> {
+  prelude: true
+  definition: string
+}
+
 export interface EffectReference extends CommonReference<'effect' | 'playground-effect'> {
   effect: true
   args: Record<string, Argument>
@@ -201,7 +210,7 @@ export interface EffectReference extends CommonReference<'effect' | 'playground-
   variants: Variant[]
 }
 
-export type Reference<T extends Category = Category> = FunctionReference<T> | CustomReference<T> | ShorthandReference | DatatypeReference | EffectReference
+export type Reference<T extends Category = Category> = FunctionReference<T> | CustomReference<T> | ShorthandReference | DatatypeReference | PreludeReference | EffectReference
 
 export function isFunctionReference<T extends Category>(ref: Reference<T>): ref is FunctionReference<T> {
   return 'returns' in ref && 'args' in ref && 'variants' in ref && !('effect' in ref)
@@ -217,6 +226,10 @@ export function isShorthandReference<T extends Category>(ref: Reference<T>): ref
 
 export function isDatatypeReference<T extends Category>(ref: Reference<T>): ref is DatatypeReference {
   return 'datatype' in ref
+}
+
+export function isPreludeReference<T extends Category>(ref: Reference<T>): ref is PreludeReference {
+  return 'prelude' in ref
 }
 
 export function isEffectReference<T extends Category>(ref: Reference<T>): ref is EffectReference {
@@ -291,7 +304,7 @@ export const functionReference = {
 }
 
 // Core API reference (always available)
-export const apiReference: Record<CoreApiName, Reference> = sortByCategory({ ...functionReference, ...shorthand, ...datatype })
+export const apiReference: Record<CoreApiName, Reference> = sortByCategory({ ...functionReference, ...shorthand, ...datatype, ...prelude })
 
 // Effect reference — derived from co-located docs in standardEffects.ts
 function deriveEffectReference(): Record<string, EffectReference> {
