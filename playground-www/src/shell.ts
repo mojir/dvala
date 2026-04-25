@@ -350,11 +350,17 @@ function getSettingsPage(): string {
       <div class="settings-tabs">
         <button id="settings-tab-btn-actions" class="settings-tab-btn" onclick="Playground.showSettingsTab('actions')">Actions</button>
         <button id="settings-tab-btn-developer" class="settings-tab-btn" style="display:none" onclick="Playground.showSettingsTab('developer')">Developer</button>
+        <button id="settings-tab-btn-benchmarks" class="settings-tab-btn" style="display:none" onclick="Playground.showSettingsTab('benchmarks')">Benchmarks</button>
       </div>
 
       <div id="settings-tab-developer" class="settings-tab-content">
         <p class="settings-tab-content__desc">Design tokens and color palette for the playground theme.</p>
         <div id="settings-color-palette"></div>
+      </div>
+
+      <div id="settings-tab-benchmarks" class="settings-tab-content">
+        <p class="settings-tab-content__desc">Pipeline performance history — every commit on the bench-history JSON, charted by scenario. See <code>benchmarks/pipeline-performance.md</code> for the source-of-truth tables.</p>
+        <div id="settings-benchmarks-charts"></div>
       </div>
 
       <div id="settings-tab-actions" class="settings-tab-content">
