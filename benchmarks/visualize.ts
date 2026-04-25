@@ -6,7 +6,7 @@
  * one line per measurement, with x-axis running oldest-to-newest by run.
  *
  * Usage:
- *   npm run show:benchmarks
+ *   npm run benchmarks:show
  *
  * Generated file (gitignored):
  *   benchmarks/visualization.html
@@ -50,7 +50,7 @@ interface History {
 
 if (!existsSync(HISTORY_FILE)) {
   console.error(`No history found at ${HISTORY_FILE}.`)
-  console.error('Run `npm run benchmark:refinement` at least once to generate the baseline.')
+  console.error('Run `npm run benchmarks:run` at least once to generate the baseline.')
   process.exit(1)
 }
 
@@ -61,7 +61,7 @@ const history: History = JSON.parse(readFileSync(HISTORY_FILE, 'utf-8')) as Hist
 const runs = [...history.runs].reverse()
 
 if (runs.length === 0) {
-  console.error('History contains no runs. Run `npm run benchmark:refinement` first.')
+  console.error('History contains no runs. Run `npm run benchmarks:run` first.')
   process.exit(1)
 }
 

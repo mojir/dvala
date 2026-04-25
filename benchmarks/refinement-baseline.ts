@@ -38,8 +38,8 @@
  * table, and shows `—` for older runs that didn't measure it.
  *
  * Running:
- *   npm run benchmark:refinement   — run benchmarks, update history + .md
- *   npm run show:benchmarks        — open an HTML chart view of the history
+ *   npm run benchmarks:run    — run benchmarks, update history + .md
+ *   npm run benchmarks:show   — open an HTML chart view of the history
  *
  * Compare runs by reading the rendered markdown left-to-right (latest
  * column first), or open the HTML view for a graphical trend. Sudden
@@ -364,7 +364,7 @@ function renderMarkdown(h: History): string {
   lines.push('Tracks performance of the refinement-types machinery (Phase 2.1+) over time.')
   lines.push('')
   lines.push(`Source of truth: \`${HISTORY_FILE}\` (full history).`)
-  lines.push(`Re-render: \`npm run benchmark:refinement\` (also runs the benchmarks first).`)
+  lines.push(`Re-render: \`npm run benchmarks:run\` (also runs the benchmarks first).`)
   lines.push(`Last ${MAX_COLUMNS_IN_RENDERED} runs shown below; older runs are in the JSON only.`)
   lines.push('')
   lines.push('A new measurement added in a future run shows up as a new row, with `—` in')

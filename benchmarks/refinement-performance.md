@@ -3,7 +3,7 @@
 Tracks performance of the refinement-types machinery (Phase 2.1+) over time.
 
 Source of truth: `benchmarks/refinement-history.json` (full history).
-Re-render: `npm run benchmark:refinement` (also runs the benchmarks first).
+Re-render: `npm run benchmarks:run` (also runs the benchmarks first).
 Last 10 runs shown below; older runs are in the JSON only.
 
 A new measurement added in a future run shows up as a new row, with `—` in

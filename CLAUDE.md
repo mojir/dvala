@@ -9,8 +9,8 @@
 - `npm run check` — full pipeline: lint + typecheck + test + build
 - `npm run test` — run tests only
 - `npm run build` — build all bundles
-- `npm run benchmark:refinement` — run the refinement-types perf bench; appends a row to `benchmarks/refinement-performance.md`
-- `npm run show:benchmarks` — render the perf history as an interactive HTML chart and open it in the browser
+- `npm run benchmarks:run` — run the refinement-types perf bench; appends a row to `benchmarks/refinement-performance.md`
+- `npm run benchmarks:show` — render the perf history as an interactive HTML chart and open it in the browser
 
 Run `npm run check` after any medium or larger code change.
 
@@ -20,7 +20,7 @@ When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI
 
 **Refinement-types changes (anything under `src/typechecker/refinement*` or `src/typechecker/parseType.ts`'s refinement-handling code) MUST run the perf benchmark before the PR merges.**
 
-- Run `npm run benchmark:refinement` on the PR branch's tip (after the last code change).
+- Run `npm run benchmarks:run` on the PR branch's tip (after the last code change).
 - Commit the resulting changes to `benchmarks/refinement-history.json` and `benchmarks/refinement-performance.md` to the PR branch.
 - Push so the perf data is part of the PR's history.
 
