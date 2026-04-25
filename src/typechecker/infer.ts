@@ -27,6 +27,8 @@ import { getBuiltinType, getModuleType } from './builtinTypes'
 import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
 import { FOLD_ENABLED } from './foldToggle'
 import { parseTypeAnnotation, TypeParseError } from './parseType'
+import { fragmentCheckPredicate } from './refinementFragmentCheck'
+import { prettyPrint } from '../prettyPrint'
 import { getEffectDeclaration } from './effectTypes'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
@@ -1130,10 +1132,19 @@ export function inferExpr(
       // --- Block (sequence of expressions) ---
       case NodeTypes.Block: {
         const nodes = payload as AstNode[]
-        const blockEnv = env.child()
+        // `currentEnv` is the env used to type each successive
+        // statement. After typechecking an `assert(P)` call, we narrow
+        // `currentEnv` so that later statements in the block see
+        // any variable mentioned in `P` with `P` woven into its
+        // type as a `Refined` wrapper. See `extractAssertNarrowings`.
+        let currentEnv = env.child()
         let blockType: Type = NullType
         for (const stmt of nodes) {
-          blockType = inferExpr(stmt, ctx, blockEnv, typeMap)
+          blockType = inferExpr(stmt, ctx, currentEnv, typeMap)
+          const assertNarrowings = extractAssertNarrowings(stmt, currentEnv)
+          if (assertNarrowings) {
+            currentEnv = applyAssertNarrowings(currentEnv, assertNarrowings)
+          }
         }
         result = blockType
         break
@@ -2912,9 +2923,16 @@ function inferFunctionNode(
 
     let retType: Type = NullType
     let lastBodyNode: AstNode | undefined
+    // Mirror of the Block case: narrow funcEnv after each `assert(P)`
+    // statement so subsequent body statements see the assumed predicate.
+    let bodyEnv = funcEnv
     for (const bodyNode of bodyNodes) {
-      retType = inferExpr(bodyNode, ctx, funcEnv, typeMap)
+      retType = inferExpr(bodyNode, ctx, bodyEnv, typeMap)
       lastBodyNode = bodyNode
+      const assertNarrowings = extractAssertNarrowings(bodyNode, bodyEnv)
+      if (assertNarrowings) {
+        bodyEnv = applyAssertNarrowings(bodyEnv, assertNarrowings)
+      }
     }
 
     const bodyEffects = ctx.popEffects()
@@ -3141,6 +3159,127 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
   }
 
   return undefined
+}
+
+/**
+ * Block-level narrowing from `assert(P)`.
+ *
+ * Phase 2.5a: when a `do` block walker encounters `assert(P)` (the
+ * builtin in `core/assertion.ts`), we treat the predicate `P` as an
+ * assumed fact for subsequent statements in the block. The narrowing
+ * is expressed as a `Refined` wrapper around the variable's current
+ * type — exactly the same shape the user could write as an
+ * annotation. The solver from PR #96 then handles downstream subtype
+ * queries against refined targets without any extra plumbing.
+ *
+ * Scope (MVP):
+ *   - `P` must reference exactly one free symbol bound in `env`.
+ *     Multi-variable predicates (`x > y`) need cross-variable
+ *     reasoning that's deferred to Phase 3 anyway.
+ *   - `P` must pass `fragmentCheckPredicate` with the free symbol as
+ *     the binder. If it doesn't, the runtime `assert` still works,
+ *     but no static narrowing applies — clean fallback.
+ *
+ * Returns the narrowing map (sym → Refined) or `undefined` if the
+ * statement isn't an `assert(P)` call we can narrow.
+ */
+function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type> | undefined {
+  // Recognize Call(Builtin('assert'), [predicate, ...])
+  if (stmt[0] !== NodeTypes.Call) return undefined
+  const [calleeNode, argNodes] = stmt[1] as [AstNode, AstNode[]]
+  if (calleeNode[0] !== NodeTypes.Builtin) return undefined
+  if (calleeNode[1] !== 'assert') return undefined
+  if (argNodes.length < 1) return undefined
+  // If the user shadowed `assert` (e.g. with `let assert = ...`), the
+  // semantics could differ — be conservative and skip narrowing.
+  if (lookupShadowedBuiltin(env, 'assert')) return undefined
+
+  const predicate = argNodes[0]!
+
+  // Collect free symbols that resolve to env-bound variables. Built-in
+  // names (`isNumber`, `count`, etc.) and unresolved symbols don't count.
+  const freeSymbols = collectFreeBoundSymbols(predicate, env)
+  if (freeSymbols.size !== 1) return undefined
+  const binderName = [...freeSymbols][0]!
+
+  // Validate the predicate against the Phase 1 fragment using the
+  // single free symbol as the binder. Anything outside the fragment
+  // can't be reasoned about by the solver, so we skip narrowing.
+  try {
+    fragmentCheckPredicate(predicate, binderName, '<assert>', 0)
+  } catch {
+    return undefined
+  }
+
+  const baseType = env.lookup(binderName)
+  if (!baseType) return undefined
+
+  // Source string mirrors the format used by `parseTypeAnnotation` and
+  // `mergeRefinementPredicates`: `<binder> | <prettyPrinted predicate>`.
+  // Used for hover / error display, not for solver semantics.
+  const source = `${binderName} | ${prettyPrint(predicate).trim()}`
+  const refined: Type = { tag: 'Refined', base: baseType, binder: binderName, predicate, source }
+
+  return new Map([[binderName, refined]])
+}
+
+/**
+ * Bind each name in `narrowings` directly in a child env. We DON'T go
+ * through `narrowEnv` (which intersects via `intersectMatchTypes`)
+ * because that helper short-circuits on `isSubtype`, and the Phase 2.3
+ * inert pass-through makes `isSubtype(Number, Refined<Number, x, x>0>)`
+ * return true — which would discard the Refined wrapper entirely.
+ *
+ * `extractAssertNarrowings` already produces the exact post-assert
+ * type (the Refined wrapping the binder's previous type), so a direct
+ * bind is the right operation here.
+ */
+function applyAssertNarrowings(env: TypeEnv, narrowings: Map<string, Type>): TypeEnv {
+  if (narrowings.size === 0) return env
+  const narrowed = env.child()
+  for (const [name, type] of narrowings) {
+    narrowed.bind(name, type)
+  }
+  return narrowed
+}
+
+/**
+ * Walk a predicate AST and return the set of identifiers that are
+ * bound in `env` (i.e. real variables), ignoring builtins and
+ * unresolved names. Used to find which variable an `assert(P)` is
+ * narrowing.
+ */
+function collectFreeBoundSymbols(node: AstNode, env: TypeEnv): Set<string> {
+  const out = new Set<string>()
+  const visit = (n: AstNode): void => {
+    switch (n[0]) {
+      case NodeTypes.Sym: {
+        const name = n[1] as string
+        if (env.lookup(name)) out.add(name)
+        return
+      }
+      case NodeTypes.Call: {
+        const [callee, args] = n[1] as [AstNode, AstNode[]]
+        // A user-defined function used in the predicate counts as a
+        // free symbol too — but the Phase 1 fragment rejects those, so
+        // this is mostly defensive.
+        visit(callee)
+        for (const arg of args) visit(arg)
+        return
+      }
+      case NodeTypes.And:
+      case NodeTypes.Or: {
+        const operands = n[1] as AstNode[]
+        for (const op of operands) visit(op)
+        return
+      }
+      // Literals + Builtins + Reserved contribute no free symbols.
+      default:
+        return
+    }
+  }
+  visit(node)
+  return out
 }
 
 /**
