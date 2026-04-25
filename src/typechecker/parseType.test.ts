@@ -527,19 +527,33 @@ describe('parseFunctionType — type guards', () => {
 describe('parseFunctionType — asserts return (Phase 2.5c)', () => {
   it('(x: Number) -> asserts {x | x > 0}', () => {
     const result = parseFunctionTypeAnnotation('(x: Number) -> asserts {x | x > 0}')
-    expect(typeEquals(result.type, fn([NumberType], BooleanType))).toBe(true)
+    // Function shape: takes Number, returns Boolean (asserts metadata
+    // doesn't change the declared return type).
+    expect(result.type.tag).toBe('Function')
+    if (result.type.tag !== 'Function') return
+    expect(result.type.params.length).toBe(1)
+    expect(typeEquals(result.type.params[0]!, NumberType)).toBe(true)
+    expect(typeEquals(result.type.ret, BooleanType)).toBe(true)
+    // Asserts metadata: paramIndex 0, binder 'x', source string.
+    expect(result.type.asserts?.paramIndex).toBe(0)
+    expect(result.type.asserts?.binder).toBe('x')
+    expect(result.type.asserts?.source).toBe('x | x > 0')
+    // Side fields on ParsedFunctionType still populated for callers
+    // that read them (BuiltinTypeInfo migration follows in step 6).
     expect(result.assertsParam).toBe('x')
     expect(result.assertsPredicate?.binder).toBe('x')
-    expect(result.assertsPredicate?.source).toBe('x | x > 0')
   })
 
   // Multi-parameter: the binder name identifies which parameter is
-  // asserted. Nothing about the function changes by adding `asserts`
-  // beyond the side metadata — the function still takes both args
-  // and returns Boolean.
+  // asserted. paramIndex on the Function type points to position 1
+  // (the 'b' parameter).
   it('(a: Number, b: Number) -> asserts {b | b > 0}', () => {
     const result = parseFunctionTypeAnnotation('(a: Number, b: Number) -> asserts {b | b > 0}')
-    expect(typeEquals(result.type, fn([NumberType, NumberType], BooleanType))).toBe(true)
+    expect(result.type.tag).toBe('Function')
+    if (result.type.tag !== 'Function') return
+    expect(result.type.params.length).toBe(2)
+    expect(result.type.asserts?.paramIndex).toBe(1)
+    expect(result.type.asserts?.binder).toBe('b')
     expect(result.assertsParam).toBe('b')
   })
 
@@ -573,6 +587,23 @@ describe('parseFunctionType — asserts return (Phase 2.5c)', () => {
     const result = parseFunctionTypeAnnotation('(Number) -> String')
     expect(result.assertsParam).toBeUndefined()
     expect(result.assertsPredicate).toBeUndefined()
+  })
+
+  // Round-trip: parse → typeToString → parse must produce a structurally
+  // equal type. Anchors the rendering format and guards against drift
+  // between the parser and the formatter.
+  it('round-trips through typeToString', () => {
+    const inputs = [
+      '(x: Number) -> asserts {x | x > 0}',
+      '(a: Number, b: Number) -> asserts {b | b > 0}',
+      '(xs: Number[]) -> asserts {xs | count(xs) > 0}',
+    ]
+    for (const input of inputs) {
+      const parsed = parseFunctionTypeAnnotation(input)
+      const rendered = typeToString(parsed.type)
+      const reparsed = parseFunctionTypeAnnotation(rendered)
+      expect(typeEquals(parsed.type, reparsed.type), `round-trip failed for ${input}: rendered as ${rendered}`).toBe(true)
+    }
   })
 })
 

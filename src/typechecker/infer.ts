@@ -303,7 +303,7 @@ function varKey(t: Type): string {
   if (t.tag === 'Primitive') return `P:${t.name}`
   if (t.tag === 'Atom') return `A:${t.name}`
   if (t.tag === 'Literal') return `L:${String(t.value)}`
-  if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}`
+  if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}${t.asserts ? `:AS:${t.asserts.paramIndex}:${t.asserts.source}` : ''}`
   // The constraint cache uses these keys to skip redundant subtype checks,
   // so any field that affects subtyping must appear here. `introduced` must
   // be part of the key — `constrain`/`isSubtype` now compare it covariantly
@@ -2148,6 +2148,11 @@ function freshenAllVars(
         // (Unknown or specific primitives), so this is latent — not broken.
         t.handlerWrapper,
         t.restParam !== undefined ? freshenAllVars(ctx, t.restParam, mapping, rowMapping) : undefined,
+        // asserts metadata also passes through unchanged. The predicate
+        // AST contains user-written symbol references (parameter names),
+        // not type variables — freshening type vars never alters the
+        // predicate body. Same lifecycle as handlerWrapper.
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -2253,6 +2258,7 @@ function freshenInner(
         freshenEffectSet(ctx, t.effects, rowMapping),
         t.handlerWrapper,
         t.restParam !== undefined ? freshenInner(ctx, t.restParam, mapping, rowMapping) : undefined,
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -2409,7 +2415,7 @@ function generalizeInner(t: Type, level: number, mapping: Map<string, TypeVar>):
       const restParam = t.restParam !== undefined ? generalizeInner(t.restParam, level, mapping) : undefined
       const ret = generalizeInner(t.ret, level, mapping)
       if (params.every((p, i) => p === t.params[i]) && restParam === t.restParam && ret === t.ret) return t
-      return fn(params, ret, t.effects, t.handlerWrapper, restParam)
+      return fn(params, ret, t.effects, t.handlerWrapper, restParam, t.asserts)
     }
     case 'Handler': {
       const body = generalizeInner(t.body, level, mapping)
@@ -5042,6 +5048,7 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
         t.effects,
         t.handlerWrapper,
         t.restParam !== undefined ? expandTypeForMatchAnalysis(t.restParam, new Set(visited)) : undefined,
+        t.asserts,
       )
 
     case 'Handler': {
@@ -5228,6 +5235,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
         t.restParam !== undefined
           ? expandType(t.restParam, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))
           : undefined,
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -5347,6 +5355,7 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
         t.restParam !== undefined
           ? expandTypeForDisplay(t.restParam, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))
           : undefined,
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -5417,6 +5426,7 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
         t.effects,
         t.handlerWrapper,
         t.restParam !== undefined ? sanitizeDisplayType(t.restParam, true) : undefined,
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()

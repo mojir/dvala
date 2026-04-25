@@ -25,7 +25,7 @@
  *   EffectSet  = "@{" [effectName ("," effectName)*] ["," "..."] "}"
  */
 
-import type { RowVarTail, Type } from './types'
+import type { AssertsInfo, RowVarTail, Type } from './types'
 import {
   NumberType, IntegerType, StringType, BooleanType, NullType,
   Unknown, Never, RegexType, AnyFunction, PureEffects,
@@ -282,14 +282,25 @@ class TypeParser {
           }
           // Phase 2.5c — check for asserts return: -> asserts {binder | body}
           // Sibling of type-guard syntax; both produce a Boolean-returning
-          // function with side metadata identifying which parameter the
-          // call narrows. `tryParseAsserts` runs the existing refinement
+          // function. Unlike type-guards, asserts metadata travels ON the
+          // Function type itself (Function.asserts) so it survives flow
+          // through let-bindings and call-site dispatch without needing
+          // a side table. `tryParseAsserts` runs the existing refinement
           // predicate parser (`consumeAndCheckRefinementPredicate`) so the
           // predicate fragment + binder rules are exactly the same as the
           // ones used for `Type & {n | n > 0}` refinements.
           const assertsResult = this.tryParseAsserts(paramsResult.params)
           if (assertsResult) {
-            const funcType = fn(paramsResult.types, BooleanType, PureEffects, undefined, paramsResult.restType)
+            const paramIndex = paramsResult.params.findIndex(p => p.name === assertsResult.paramName)
+            // Cannot fail here — `tryParseAsserts` already validated the
+            // binder against parameter names, so paramIndex is always >= 0.
+            const assertsInfo: AssertsInfo = {
+              paramIndex,
+              binder: assertsResult.predicate.binder,
+              predicate: assertsResult.predicate.predicate,
+              source: assertsResult.predicate.source,
+            }
+            const funcType = fn(paramsResult.types, BooleanType, PureEffects, undefined, paramsResult.restType, assertsInfo)
             return {
               type: funcType,
               assertsParam: assertsResult.paramName,
@@ -637,6 +648,24 @@ class TypeParser {
       this.skipWhitespace()
       if (this.tryConsume('->')) {
         this.skipWhitespace()
+        // Phase 2.5c — `asserts {binder | body}` annotation, also valid
+        // when the function appears nested inside other types (e.g. inside
+        // a type alias body or a `let f: ... = ...` annotation). Mirrors
+        // the outer `parseFunctionOrType` path. Type-guards (`is T`) aren't
+        // supported here because their narrowing info has nowhere to live
+        // on a bare Type — but asserts metadata travels on FunctionType
+        // itself, so it does survive.
+        const assertsResult = this.tryParseAsserts(paramsResult.params)
+        if (assertsResult) {
+          const paramIndex = paramsResult.params.findIndex(p => p.name === assertsResult.paramName)
+          const assertsInfo: AssertsInfo = {
+            paramIndex,
+            binder: assertsResult.predicate.binder,
+            predicate: assertsResult.predicate.predicate,
+            source: assertsResult.predicate.source,
+          }
+          return fn(paramsResult.types, BooleanType, PureEffects, undefined, paramsResult.restType, assertsInfo)
+        }
         const effects = this.tryParseEffectSet() ?? undefined
         const retType = this.parseType()
         return fn(paramsResult.types, retType, effects, undefined, paramsResult.restType)
