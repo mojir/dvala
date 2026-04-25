@@ -1310,36 +1310,79 @@ describe('refinement types — Phase 2.5b (if-narrowing on refinements)', () => 
   })
 
   describe('else-branch narrowing', () => {
-    it('`if x > 0 then ... else x` records a Refined with `!(x > 0)` predicate', () => {
+    it('`if x > 0 then ... else x` records a Refined with `!(x > 0)` predicate AST', () => {
       const refineds = refinedTypesInTypeMap(`
         let test = (x: Number): Number ->
           if x > 0 then 0 else x end;
         test(-1)
       `)
-      // The else-branch synthesizes `!(cond)` as the predicate. The
-      // exact source format depends on prettyPrint; we just verify
-      // SOME Refined source contains a `!` indicating negation.
-      const negated = refineds.find(t => t.binder === 'x' && t.source.includes('!'))
+      // The else-branch synthesizes `!(cond)` as the predicate. Pin
+      // the AST shape directly: must be a Call to Builtin('!') with
+      // a single arg (the original cond `x > 0`).
+      const negated = refineds.find(t => {
+        if (t.binder !== 'x') return false
+        const pred = t.predicate
+        if (pred[0] !== NodeTypes.Call) return false
+        const [callee, args] = pred[1] as [AstNode, AstNode[]]
+        return callee[0] === NodeTypes.Builtin
+          && callee[1] === '!'
+          && args.length === 1
+      })
       expect(negated).toBeDefined()
+    })
+
+    it('`if !(x > 0) then ... else x` peepholes the double-negation', () => {
+      // User wrote `!(x > 0)`. Then-branch sees `!(x > 0)`. Else
+      // would be `!(!(x > 0))` — but the synth path peephole-strips
+      // the outer `!`, so the else-branch predicate is just `x > 0`.
+      const refineds = refinedTypesInTypeMap(`
+        let test = (x: Number): Number ->
+          if !(x > 0) then 0 else x end;
+        test(1)
+      `)
+      // Find the Refined whose predicate is `x > 0` (no `!` wrapper).
+      const peephole = refineds.find(t => {
+        if (t.binder !== 'x') return false
+        const pred = t.predicate
+        if (pred[0] !== NodeTypes.Call) return false
+        const [callee] = pred[1] as [AstNode, AstNode[]]
+        return callee[0] === NodeTypes.Builtin && callee[1] === '>'
+      })
+      expect(peephole).toBeDefined()
     })
   })
 
   describe('compound conditions', () => {
-    it('`if x > 0 && x < 100` narrows x in the then-branch', () => {
-      // Each && operand narrows x; composeNarrowings intersects them.
-      // The visible observable: a Refined entry whose predicate
-      // mentions both relations (either nested or merged).
+    it('`if x > 0 && x < 100` merges both predicates into a single Refined', () => {
+      // composeNarrowings merges two same-symbol Refineds via
+      // `mergeRefinementPredicates`. Pin the merged form: the
+      // resulting Refined's source must contain BOTH relations.
       const refineds = refinedTypesInTypeMap(`
         let test = (x: Number): Number ->
           if x > 0 && x < 100 then x else 0 end;
         test(50)
       `)
-      // The whenTrue narrowing for an `&&` is composeNarrowings on the
-      // operands' whenTrue maps. With two refinement narrowings on the
-      // same key, the simplify pipeline merges them. Either way, at
-      // least one Refined for x exists in the typeMap.
-      const xRefined = refineds.find(t => t.binder === 'x')
-      expect(xRefined).toBeDefined()
+      const merged = refineds.find(t =>
+        t.binder === 'x'
+        && t.source.includes('x > 0')
+        && t.source.includes('x < 100'),
+      )
+      expect(merged).toBeDefined()
+    })
+
+    it('mixed `type-guard && refinement` lifts to a single Refined', () => {
+      // `isNumber(x)` produces a NumberType narrowing; `x > 0`
+      // produces a Refined narrowing. composeNarrowings'
+      // mergeNarrowingPair must lift the regular type into the
+      // Refined's base, so the composed narrowing is still Refined
+      // (and narrowEnv direct-binds it).
+      const refineds = refinedTypesInTypeMap(`
+        let test = (x: Number): Number ->
+          if isNumber(x) && x > 0 then x else 0 end;
+        test(5)
+      `)
+      const lifted = refineds.find(t => t.binder === 'x' && t.source.includes('x > 0'))
+      expect(lifted).toBeDefined()
     })
   })
 

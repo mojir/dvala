@@ -3293,11 +3293,17 @@ function extractRefinementNarrowing(cond: AstNode, env: TypeEnv): {
   // Negation for the else-branch: synthesize `!(cond)` as the
   // predicate AST. Phase 1's fragment-checker already accepts `!P`
   // for any accepted P, so this is in-fragment.
-  const notCond: AstNode = [NodeTypes.Call, [
-    [NodeTypes.Builtin, '!', 0] as AstNode,
-    [cond],
-    null,
-  ], 0] as unknown as AstNode
+  //
+  // Double-negation peephole: if the user already wrote `if !(P)
+  // then ...`, we'd otherwise produce `!(!(P))` for the else side.
+  // Simplify to `P` so downstream consumers see a clean predicate.
+  const notCond: AstNode = isNegationCall(cond)
+    ? (cond[1] as [AstNode, AstNode[]])[1][0]!
+    : [NodeTypes.Call, [
+      [NodeTypes.Builtin, '!', 0] as AstNode,
+      [cond],
+      null,
+    ], 0] as unknown as AstNode
   const falseSource = `${binderName} | ${prettyPrint(notCond).trim()}`
   const falseRefined: Type = {
     tag: 'Refined',
@@ -3311,6 +3317,21 @@ function extractRefinementNarrowing(cond: AstNode, env: TypeEnv): {
     whenTrue: new Map([[binderName, trueRefined]]),
     whenFalse: new Map([[binderName, falseRefined]]),
   }
+}
+
+/**
+ * `true` iff `node` is a `Call(Builtin('!'), [inner])` — the AST shape
+ * for `!P`. Used to peephole double-negation when synthesizing the
+ * else-branch predicate in `extractRefinementNarrowing`.
+ */
+function isNegationCall(node: AstNode): boolean {
+  if (node[0] !== NodeTypes.Call) return false
+  const [callee, args] = node[1] as [AstNode, AstNode[]]
+  return (
+    callee[0] === NodeTypes.Builtin
+    && callee[1] === '!'
+    && args.length === 1
+  )
 }
 
 /**
@@ -3414,38 +3435,64 @@ function composeNarrowings(maps: (Map<string, Type> | undefined)[]): Map<string,
     if (!m) continue
     for (const [sym, narrow] of m) {
       const existing = out.get(sym)
-      if (!existing) {
-        out.set(sym, narrow)
-        continue
-      }
-      // When both narrowings are Refined on the same symbol with
-      // matching base types, merge their predicates with `&&` so the
-      // resulting narrowing is itself a single Refined node. Going
-      // through `inter(...)` instead would produce an `Inter<Refined,
-      // Refined>` shape that downstream `narrowEnv` can't direct-bind
-      // (it's not tag `Refined` at the top level), so the wrappers
-      // would get washed out by the inert pass-through.
-      if (
-        existing.tag === 'Refined' && narrow.tag === 'Refined'
-        && typeEquals(existing.base, narrow.base)
-      ) {
-        const merged = mergeRefinementPredicates(
-          existing.binder, existing.predicate,
-          narrow.binder, narrow.predicate,
-        )
-        out.set(sym, {
-          tag: 'Refined',
-          base: existing.base,
-          binder: existing.binder,
-          predicate: merged.predicate,
-          source: merged.source,
-        })
-        continue
-      }
-      out.set(sym, inter(existing, narrow))
+      out.set(sym, existing ? mergeNarrowingPair(existing, narrow) : narrow)
     }
   }
   return out
+}
+
+/**
+ * Combine two narrowings for the same symbol from sibling operands
+ * of an `&&` compose. Critical invariant: if EITHER input is
+ * `Refined`, the output must also be `Refined`. Going through
+ * `inter(a, b)` produces `Inter<Refined, T>` whose top tag is
+ * `Inter`, and downstream `narrowEnv` only direct-binds when the top
+ * tag is `Refined`. Without the lift, the Phase 2.3 inert pass-
+ * through would silently discard the refinement on mixed
+ * type-guard + refinement operands.
+ *
+ * Cases:
+ *   - Both Refined: merge predicates via `mergeRefinementPredicates`
+ *     (alpha-renames if binders differ); base = inter of the two
+ *     bases, identity-shared when equal.
+ *   - One Refined + one regular type: keep the Refined's predicate,
+ *     intersect its base with the regular type (which becomes an
+ *     additional base constraint).
+ *   - Neither Refined: fall through to `inter(...)` — the existing
+ *     compose semantics.
+ */
+function mergeNarrowingPair(a: Type, b: Type): Type {
+  const aIsRef = a.tag === 'Refined'
+  const bIsRef = b.tag === 'Refined'
+  if (!aIsRef && !bIsRef) return inter(a, b)
+
+  const aBase = aIsRef ? a.base : a
+  const bBase = bIsRef ? b.base : b
+  const newBase = typeEquals(aBase, bBase) ? aBase : inter(aBase, bBase)
+
+  if (aIsRef && bIsRef) {
+    const merged = mergeRefinementPredicates(
+      a.binder, a.predicate,
+      b.binder, b.predicate,
+    )
+    return {
+      tag: 'Refined',
+      base: newBase,
+      binder: a.binder,
+      predicate: merged.predicate,
+      source: merged.source,
+    }
+  }
+
+  // Exactly one is Refined.
+  const refined = (aIsRef ? a : b) as Extract<Type, { tag: 'Refined' }>
+  return {
+    tag: 'Refined',
+    base: newBase,
+    binder: refined.binder,
+    predicate: refined.predicate,
+    source: refined.source,
+  }
 }
 
 /**
