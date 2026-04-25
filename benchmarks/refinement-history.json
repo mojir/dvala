@@ -434,6 +434,202 @@
           }
         }
       }
+    },
+    {
+      "timestamp": "2026-04-24T23:24:47+02:00",
+      "commit": "1d812f61",
+      "commitMessage": "Refinement types Phase 1 — parse + fragment-check (#95)",
+      "scenarios": {
+        "parse-overhead": {
+          "typecheck: plain (no annotation)": {
+            "median": 0.008387208000000002,
+            "min": 0.0040806249999999974,
+            "max": 0.013417417000000001,
+            "unit": "ms"
+          },
+          "typecheck: typed Number annotation": {
+            "median": 0.007311042,
+            "min": 0.0061293329999999886,
+            "max": 0.008005167,
+            "unit": "ms"
+          },
+          "typecheck: refined Number & {n | n > 0}": {
+            "median": 0.011585750000000018,
+            "min": 0.01048275000000001,
+            "max": 0.013265625,
+            "unit": "ms"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-04-24T20:06:01Z",
+      "commit": "b02f24d2",
+      "commitMessage": "Boolean surface cleanup: strict Boolean + `!` operator (#94)",
+      "scenarios": {
+        "parse-overhead": {
+          "typecheck: plain (no annotation)": {
+            "median": 0.006676209000000008,
+            "min": 0.004277124999999998,
+            "max": 0.011269542,
+            "unit": "ms"
+          },
+          "typecheck: typed Number annotation": {
+            "median": 0.006657415999999998,
+            "min": 0.005962084000000005,
+            "max": 0.007444834,
+            "unit": "ms"
+          },
+          "typecheck: refined Number & {n | n > 0}": {
+            "median": 0.09282137499999998,
+            "min": 0.02154374999999999,
+            "max": 0.09591724999999998,
+            "unit": "ms"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-04-24T16:14:02Z",
+      "commit": "bf6a2b1d",
+      "commitMessage": "feat(typechecker): let-binding-scoped `<T: U>` — Phase 0b (#92)",
+      "scenarios": {
+        "parse-overhead": {
+          "typecheck: plain (no annotation)": {
+            "median": 0.008167165999999995,
+            "min": 0.004031500000000008,
+            "max": 0.011501334,
+            "unit": "ms"
+          },
+          "typecheck: typed Number annotation": {
+            "median": 0.008497167000000005,
+            "min": 0.0062755000000000085,
+            "max": 0.013052709000000008,
+            "unit": "ms"
+          },
+          "typecheck: refined Number & {n | n > 0}": {
+            "median": 0.09740562499999998,
+            "min": 0.02332666599999999,
+            "max": 0.09807383299999999,
+            "unit": "ms"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-04-24T15:33:26Z",
+      "commit": "da6072a2",
+      "commitMessage": "feat(typechecker): generic upper bounds `<T: U>` — Phase 0a (#91)",
+      "scenarios": {
+        "parse-overhead": {
+          "typecheck: plain (no annotation)": {
+            "median": 0.007653666000000001,
+            "min": 0.0059862499999999985,
+            "max": 0.013673291999999997,
+            "unit": "ms"
+          },
+          "typecheck: typed Number annotation": {
+            "median": 0.008010833000000005,
+            "min": 0.007035708999999983,
+            "max": 0.008772959,
+            "unit": "ms"
+          },
+          "typecheck: refined Number & {n | n > 0}": {
+            "median": 0.08433941700000003,
+            "min": 0.022061959000000003,
+            "max": 0.08516262499999999,
+            "unit": "ms"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-04-23T11:10:54Z",
+      "commit": "5cb1a5b2",
+      "commitMessage": "feat(typechecker): indexed-access types — keyof T and T[K] (#80)",
+      "scenarios": {
+        "parse-overhead": {
+          "typecheck: plain (no annotation)": {
+            "median": 0.0072987079999999906,
+            "min": 0.0045966250000000035,
+            "max": 0.013495708,
+            "unit": "ms"
+          },
+          "typecheck: typed Number annotation": {
+            "median": 0.006638832999999991,
+            "min": 0.0055628340000000095,
+            "max": 0.007772166999999996,
+            "unit": "ms"
+          },
+          "typecheck: refined Number & {n | n > 0}": null
+        }
+      }
+    },
+    {
+      "timestamp": "2026-04-22T22:14:45Z",
+      "commit": "6c025631",
+      "commitMessage": "feat(typechecker): &&/||/not narrowing + truthy/falsy literal fold (#78)",
+      "scenarios": {
+        "parse-overhead": {
+          "typecheck: plain (no annotation)": {
+            "median": 0.0068387500000000045,
+            "min": 0.004054915999999992,
+            "max": 0.012119041999999993,
+            "unit": "ms"
+          },
+          "typecheck: typed Number annotation": {
+            "median": 0.006161166999999992,
+            "min": 0.005871499999999997,
+            "max": 0.007044167000000001,
+            "unit": "ms"
+          },
+          "typecheck: refined Number & {n | n > 0}": null
+        }
+      }
+    },
+    {
+      "timestamp": "2026-04-20T23:41:48Z",
+      "commit": "2b2d7b38",
+      "commitMessage": "feat(types): type-system future extensions batch — Integer, optional fields, flow narrowing (#69)",
+      "scenarios": {
+        "parse-overhead": {
+          "typecheck: plain (no annotation)": {
+            "median": 0.006760000000000005,
+            "min": 0.004702709000000013,
+            "max": 0.012628959000000002,
+            "unit": "ms"
+          },
+          "typecheck: typed Number annotation": {
+            "median": 0.0064849999999999994,
+            "min": 0.005594332999999992,
+            "max": 0.008036083000000005,
+            "unit": "ms"
+          },
+          "typecheck: refined Number & {n | n > 0}": null
+        }
+      }
+    },
+    {
+      "timestamp": "2026-04-19T17:23:51+02:00",
+      "commit": "2ec33513",
+      "commitMessage": "feat(typechecker): handler typing — introduced effect set + do-with-h application law (#55)",
+      "scenarios": {
+        "parse-overhead": {
+          "typecheck: plain (no annotation)": {
+            "median": 0.007015999999999991,
+            "min": 0.003618542000000005,
+            "max": 0.011694749999999999,
+            "unit": "ms"
+          },
+          "typecheck: typed Number annotation": {
+            "median": 0.006217875000000006,
+            "min": 0.005609417000000008,
+            "max": 0.007409458000000001,
+            "unit": "ms"
+          },
+          "typecheck: refined Number & {n | n > 0}": null
+        }
+      }
     }
   ]
 }
