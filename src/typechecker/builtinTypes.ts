@@ -20,6 +20,13 @@ export interface BuiltinTypeInfo {
   guardParam?: string
   /** If the function is a type guard, the type it narrows to. */
   guardType?: Type
+  /**
+   * Phase 2.5c — zero-based index of the parameter that, when supplied
+   * as a fragment-eligible single-symbol predicate, gets threaded into
+   * the assumption set after the call (see `extractAssertNarrowings`).
+   * Populated from each builtin's `docs.asserts.paramIndex`.
+   */
+  assertsParam?: number
 }
 
 /** Map from builtin name to its parsed type info. */
@@ -50,6 +57,12 @@ export function initBuiltinTypes(normalExpressions: BuiltinNormalExpressions): v
         type: parsed.type,
         guardParam: parsed.guardParam,
         guardType: parsed.guardType,
+        // The `asserts` annotation lives on `docs.asserts` (rather than
+        // being parsed out of the type string) — keeps the type-string
+        // grammar unchanged. The full Phase 2.5c plan adds an
+        // `asserts <param>` parser surface; this side-channel is the
+        // builtin-only stepping stone.
+        assertsParam: expr.docs?.asserts?.paramIndex,
       })
     } catch {
       // Silently degrade to Unknown — the builtin works at runtime,
