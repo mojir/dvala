@@ -16,6 +16,12 @@
  * - Negation: S <: !T iff S & T = Never (S and T are disjoint)
  */
 
+import { NodeTypes } from '../constants/constants'
+import { createContextStack } from '../evaluator/ContextStack'
+import { evaluateNodeForFold } from '../evaluator/foldEvaluate'
+import type { AstNode } from '../parser/types'
+import { literalTypeToAstNode } from './constantFold'
+import { solveRefinedSubtype } from './refinementSolver'
 import type { FunctionType, SequenceType, Type, PrimitiveName } from './types'
 import { effectSetToString, functionAcceptsArity, getFunctionParamType, indexType, isEffectSubset, keyofType, sequenceElementAt, sequenceMayHaveIndex, toSequenceType, typeEquals } from './types'
 
@@ -71,6 +77,60 @@ function check(s: Type, t: Type, visited: Set<string>): boolean {
 }
 
 function checkBody(s: Type, t: Type, visited: Set<string>): boolean {
+  // --- Refined on either side ---
+  //
+  // Three-stage policy (order matters — each stage preempts the next):
+  //
+  //   1. **Refined source, non-Refined target** — erase the source's
+  //      refinement and recurse on the base. The source's predicate
+  //      narrows the source's value set, so anything that satisfies the
+  //      source also satisfies the source's base, which is what `t`
+  //      cares about.
+  //
+  //   2. **Refined target** — first check that `s.base <: t.base`
+  //      (refinement is a strict subset of its base, so base subtyping
+  //      is necessary). Then try, in order:
+  //
+  //      a. **Literal fold** (`tryDischargeRefinedLiteral`). Receives
+  //         `s.base` (or `s` if it's not Refined). If `s` is a concrete
+  //         literal, substitute it for the binder and fold the predicate.
+  //         A definite `true`/`false` is the answer; otherwise bail.
+  //
+  //      b. **Solver** (`solveRefinedSubtype`). Receives the FULL `s`
+  //         (predicate intact when `s` is Refined), so it can extract
+  //         the source's domain from `s.predicate` and check domain
+  //         containment against `t`'s domain. Returns `Proved` /
+  //         `Disproved` / `OutOfFragment`.
+  //
+  //      c. **Inert pass-through.** If both fold and solver bail, return
+  //         `true` — the predicate is unverified, but `s.base <: t.base`
+  //         was confirmed in step 2's prologue. Conservative; future
+  //         solver work can flip cases here from `true` to `false`.
+  //
+  // Consequences:
+  //   - `5 <: Refined(Number, n, n > 0)` — fold says `5 > 0` → `true`.
+  //   - `-5 <: Refined(Number, n, n > 0)` — fold says `-5 > 0` → `false`.
+  //   - `Refined(Number, n, n > 0) <: Refined(Number, n, n > -1)` —
+  //     fold bails (no literal source); solver compares intervals; Proved.
+  //   - `Number <: Refined(Number, n, n > 0)` — fold bails; solver
+  //     can't extract a domain from a bare `Number`; pass-through `true`.
+  //   - `Refined(Number, ...) <: Number` — stage 1: erases to `Number <: Number`.
+  if (s.tag === 'Refined') {
+    if (t.tag !== 'Refined') return check(s.base, t, visited)
+  }
+  if (t.tag === 'Refined') {
+    const sourceBase = s.tag === 'Refined' ? s.base : s
+    if (!check(sourceBase, t.base, visited)) return false
+
+    const folded = tryDischargeRefinedLiteral(sourceBase, t)
+    if (folded !== null) return folded
+
+    const solved = solveRefinedSubtype(s, t)
+    if (solved.tag === 'Proved') return true
+    if (solved.tag === 'Disproved') return false
+    return true
+  }
+
   // --- Union on the left: S1|S2 <: T iff every member <: T ---
   if (s.tag === 'Union') {
     return s.members.every(m => check(m, t, visited))
@@ -563,6 +623,13 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
       target: substituteVar(t.target, varId, replacement),
       key: substituteVar(t.key, varId, replacement),
     }
+    case 'Refined': return {
+      tag: 'Refined',
+      base: substituteVar(t.base, varId, replacement),
+      binder: t.binder,
+      predicate: t.predicate,
+      source: t.source,
+    }
     default: return t // Primitive, Atom, Literal, Regex, Unknown, Never
   }
 }
@@ -611,6 +678,12 @@ function typeId(t: Type): string {
     case 'Recursive': return `Rec:${t.id}:${typeId(t.body)}`
     case 'Keyof': return `K:${typeId(t.inner)}`
     case 'Index': return `X:${typeId(t.target)}|${typeId(t.key)}`
+    // Refinement cache key — base + binder + source-text predicate.
+    // Source-text is the authoritative identity for now (same rationale
+    // as `typeEquals`: alpha-aware identity ships in Phase 2.2). Keeps
+    // two refinements with the same base but different predicates
+    // from colliding in the cycle-detection cache.
+    case 'Refined': return `Rf:${typeId(t.base)}|${t.binder}|${t.source}`
   }
 }
 
@@ -619,4 +692,81 @@ function isSubtypeFunctionArityCompatible(source: FunctionType, target: Function
     return source.restParam !== undefined && source.params.length <= target.params.length
   }
   return functionAcceptsArity(source, target.params.length)
+}
+
+function tryDischargeRefinedLiteral(
+  source: Type,
+  target: Extract<Type, { tag: 'Refined' }>,
+): boolean | null {
+  const literalAst = literalTypeToAstNode(source)
+  if (!literalAst) return null
+
+  const predicate = substitutePredicateBinder(target.predicate, target.binder, literalAst)
+  const outcome = evaluateNodeForFold(predicate, createContextStack())
+  if (!outcome.ok) return null
+  if (outcome.value === true) return true
+  if (outcome.value === false) return false
+  return null
+}
+
+function substitutePredicateBinder(node: AstNode, binder: string, literalAst: AstNode): AstNode {
+  const rewritten = new Map<AstNode, AstNode>()
+  const stack: { node: AstNode; exiting: boolean }[] = [{ node, exiting: false }]
+
+  while (stack.length > 0) {
+    const frame = stack.pop()!
+    const current = frame.node
+
+    if (frame.exiting) {
+      rewritten.set(current, rewritePredicateNode(current, binder, literalAst, rewritten))
+      continue
+    }
+
+    stack.push({ node: current, exiting: true })
+
+    if (current[0] === NodeTypes.Call && Array.isArray(current[1])) {
+      const [callee, args] = current[1] as [AstNode, AstNode[]]
+      for (let index = args.length - 1; index >= 0; index--) {
+        stack.push({ node: args[index]!, exiting: false })
+      }
+      stack.push({ node: callee, exiting: false })
+      continue
+    }
+
+    if ((current[0] === NodeTypes.And || current[0] === NodeTypes.Or) && Array.isArray(current[1])) {
+      const operands = current[1] as AstNode[]
+      for (let index = operands.length - 1; index >= 0; index--) {
+        stack.push({ node: operands[index]!, exiting: false })
+      }
+    }
+  }
+
+  return rewritten.get(node) ?? node
+}
+
+function rewritePredicateNode(
+  node: AstNode,
+  binder: string,
+  literalAst: AstNode,
+  rewritten: Map<AstNode, AstNode>,
+): AstNode {
+  if (node[0] === NodeTypes.Sym && node[1] === binder) return literalAst
+
+  if (node[0] === NodeTypes.Call && Array.isArray(node[1])) {
+    const [callee, args, hints] = node[1] as [AstNode, AstNode[], unknown]
+    const rewrittenCallee = rewritten.get(callee) ?? callee
+    const rewrittenArgs = args.map(arg => rewritten.get(arg) ?? arg)
+    const unchanged = rewrittenCallee === callee && rewrittenArgs.every((arg, index) => arg === args[index])
+    if (unchanged) return node
+    return [NodeTypes.Call, [rewrittenCallee, rewrittenArgs, hints], node[2]] as unknown as AstNode
+  }
+
+  if ((node[0] === NodeTypes.And || node[0] === NodeTypes.Or) && Array.isArray(node[1])) {
+    const operands = node[1] as AstNode[]
+    const rewrittenOperands = operands.map(operand => rewritten.get(operand) ?? operand)
+    if (rewrittenOperands.every((operand, index) => operand === operands[index])) return node
+    return [node[0], rewrittenOperands, node[2]] as AstNode
+  }
+
+  return node
 }

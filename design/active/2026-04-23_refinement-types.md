@@ -388,9 +388,11 @@ The dispatcher picks the smallest solver that handles the goal. Fragment-check r
 
 ### Termination contract
 
-- Every solver call has an explicit iteration cap (default: 10,000 iterations). Hitting the cap returns `OutOfFragment` with reason "constraint graph too large". The cap applies from Phase 2 onward (Phase 1 has no solver, only fold-discharge, which has no iteration concept).
-- No wall-clock timeout. The iteration cap is deterministic — same input always gives same verdict.
+- The Phase 2.3/2.4 solver as shipped is **non-iterative**: it computes domain intersections and unions algebraically over a closed family of `interval` / `set` / `excludedSet` / `intervalExclusion` shapes. Every operation runs in time bounded by the size of its inputs. There is no fixpoint loop, so no iteration cap is needed.
+- The 10,000-iteration cap only applies once the **Phase 3 linear-arithmetic solver** (Fourier-Motzkin / simplex) lands. That solver iterates over constraint variables, and pathological inputs there could grow the constraint graph past a useful bound. Hitting the cap will return `OutOfFragment` with reason "constraint graph too large".
+- No wall-clock timeout at any phase. Caps (when they apply) are deterministic — same input always gives same verdict.
 - Predicate ASTs are immutable; no fixpoint can oscillate.
+- Pathological inputs to the Phase 2.3/2.4 algebra (e.g. `n != 1 && n != 2 && ... && n != 5000` — an `excludedSet` with thousands of values) hit O(n²) merging cost. Real refinement annotations have ≤2 such conjuncts in practice; if generated/LLM-authored annotations start producing chains in the hundreds, introduce a `MAX_EXCLUDED_SET_SIZE` cap analogous to `MAX_FINITE_INTEGER_DOMAIN_SIZE`.
 
 ### What we do NOT build
 
@@ -673,13 +675,16 @@ Every rejection above becomes a vitest fixture asserting `error.kind === 'fragme
 
 This phase is large. It's split into sub-steps so each one lands as its own PR.
 
-**Phase 2.1 — `Refined` node + walker updates.** Add the `Refined` tag to the `Type` union and update every structural walker (see the [Walker updates required](#walker-updates-required) checklist). Phase 1's parser now produces `Refined` nodes instead of dropping the predicate; otherwise no behavioral change. Test: Phase 1's fixture suite still passes, plus `typeToString` roundtrips refined types.
+**Phase 2.1 — `Refined` node + walker updates. ✓ shipped (PR #96).** Added the `Refined` tag to the `Type` union and updated every structural walker. Phase 1's parser now produces `Refined` nodes instead of dropping the predicate; otherwise no behavioral change.
 
-**Phase 2.2 — Opacity classification + multi-refinement merging.** The classifier from Q7 runs in the simplification pass and records opacity on each `Refined` node's predicate. Multi-refinement merging collapses `Base & {s|P} & {x|Q}` → `Base & {s | P && Q[x:=s]}`. Classification is stored but not yet consumed by a solver.
+**Phase 2.2 — Multi-refinement merging. ✓ shipped (PR #96).** Multi-refinement merging collapses `Base & {s|P} & {x|Q}` → `Base & {s | P && Q[x:=s]}` in the simplify pass, with AST-based alpha-renaming and `prettyPrint`-based source reconstruction. `&&` chains flatten to a single variadic `And` node. Opacity classification (the second half of the original 2.2 scope) was deferred — Phase 1's accept list is solver-fragment-only, so every stored predicate is implicitly `'fragment'` and there's nothing yet to classify.
 
-**Phase 2.3 — Fold-discharge.** When a subtype check reaches a `Refined` goal whose base is a concrete literal (directly or via fold), invoke fold on the predicate with the literal substituted. Reduces to `true` → discharge; `false` → disprove with counter-example; stuck → out-of-fragment. Enables `let x: Positive = 5` to actually check.
+**Phase 2.3 + 2.4 — Fold-discharge + finite-domain / interval solver. ✓ shipped (PR #96).** Originally split into two sub-phases; landed together because the solver's `solveRefinedSubtype` and the literal-fold path naturally interleave at the same call site in `subtype.ts`. The shipped behaviour:
 
-**Phase 2.4 — Finite-domain + single-variable interval solver.** Atom / literal-set refinements (`{x | x == :ok || x == :error}`). Single-variable integer interval with literal bounds (`{n | n > 0}`, `{n | 0 <= n && n <= 100}`). Decision-procedure contract: `Proved` / `Disproved` / `OutOfFragment`, with counter-example for disproofs. Iteration cap with deterministic behavior (same input → same verdict); cap applies from this sub-phase onward. Simplification integration: collapse refined types with decidable emptiness / redundancy / interval tightening.
+- **Literal fold-discharge.** When the source is a concrete literal AST and the target is `Refined`, substitute the literal for the binder, fold the predicate, and discharge / reject based on the fold result. Bails to the solver if fold can't reduce.
+- **Domain-based solver** (`refinementSolver.ts`, ~860 LOC). Non-iterative; computes domain operations algebraically over four shapes: `interval`, `set`, `excludedSet`, `intervalExclusion`. Returns `Proved` / `Disproved` (with witness) / `OutOfFragment`. Handles single-variable intervals (`n > 0`, `0 <= n && n <= 100`), atom/literal sets (`x == :ok || x == :error`), `count(var)` intervals, swapped operands (`0 < n` normalised to `n > 0`), and conjunctions/disjunctions of those shapes — except `interval || interval`, which is deferred-by-design (would need non-convex domain representation; Phase 2.5+ work).
+- **Trivial-collapse** in simplify: `simplifyRefinedType` handles base-tautology → base (target's domain contains the base's), and disjoint-with-base → Never (target's domain is empty under the base's constraints). Wired into `simplify.ts`'s `Refined` case after the merge step. The `{x|true}` / `{x|false}` literal-predicate forms aren't reachable today — the fragment-checker rejects bare `Reserved(true)` / `Reserved(false)` as top-level predicate bodies; literal predicates would need a `NodeTypes.Reserved` case in `checkBooleanExpr` first.
+- **Counter-example synthesis.** Disproofs return a `witness` Type that demonstrates the source admits a value the target rejects.
 
 **Phase 2.5 — Narrowing + `assert(P)` wiring.**
 - **Block-level narrowing walker.** Walks statements in a `do` block; recognizes `assert(P)` calls with fragment-eligible `P`; threads `P` into the assumption set for subsequent statements in the block.

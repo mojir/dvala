@@ -10,6 +10,19 @@
  * Design: side-table only, erased after checking. Zero runtime cost.
  */
 
+import type { AstNode } from '../parser/types'
+
+/**
+ * Refinement-predicate body — the expression parsed from the text
+ * between `|` and `}` in `Base & { binder | predicate }`. Per the
+ * refinement-types design decision Q2, predicates reuse Dvala's
+ * expression AST rather than a separate mini-IR. Alias exists for
+ * readability at the `Refined` call site and so Phase 2+ can replace
+ * it with a classified AST (opacity-tagged) without touching every
+ * walker signature.
+ */
+export type RefinedPredicate = AstNode
+
 // ---------------------------------------------------------------------------
 // Type algebra
 // ---------------------------------------------------------------------------
@@ -156,6 +169,22 @@ export type Type =
   // Named (Step 2+)
   | { tag: 'Alias'; name: string; args: Type[]; expanded: Type }
   | { tag: 'Recursive'; id: number; body: Type } // μα.F(α)
+
+  // Refinement types (Phase 2.1 — representation only; no solver yet) —
+  // `Base & { binder | predicate }`. The predicate is a Dvala expression
+  // AST (the same shape the Dvala parser produces for the body of
+  // `fn x -> x > 0`). Phase 1 parsed + fragment-checked these and
+  // dropped the refinement; Phase 2.1 introduces the type-union member
+  // so walkers can carry it around. The solver (Phase 2.4) consumes
+  // the predicate; until then the node is carried inertly — subtype
+  // / inference ignore the predicate and treat `Refined(B, _, _)` as
+  // equivalent to `B`.
+  //
+  // `source` is the user-written predicate text with the binder prefix
+  // intact (`n | n > 0`). It's the authoritative display form for error
+  // messages (per the design doc's "Error UX contract") and the fallback
+  // for structural equality until alpha-aware equality lands.
+  | { tag: 'Refined'; base: Type; binder: string; predicate: RefinedPredicate; source: string }
 
   // Indexed-access types — placeholder nodes that stand in for the
   // result of `keyof T` / `T[K]` until the inner type is concrete
@@ -529,6 +558,12 @@ export function typeToString(t: Type): string {
     case 'Recursive': return `μ${t.id}.${typeToString(t.body)}`
     case 'Keyof': return `keyof ${typeToString(t.inner)}`
     case 'Index': return `${typeToString(t.target)}[${typeToString(t.key)}]`
+    // Refinement: render `base & { source }` where `source` is the
+    // user-written predicate text (binder included). Falls back to the
+    // canonical form `{ binder | <opaque> }` if source is somehow
+    // missing (shouldn't happen in Phase 2.1 — the parser always sets
+    // it — but defensive since the field is typed as string).
+    case 'Refined': return `${typeToString(t.base)} & {${t.source}}`
   }
 }
 
@@ -636,6 +671,17 @@ export function typeEquals(a: Type, b: Type): boolean {
     case 'Index': {
       const bi = b as typeof a
       return typeEquals(a.target, bi.target) && typeEquals(a.key, bi.key)
+    }
+    case 'Refined': {
+      // Phase 2.1: strict source-text equality on the predicate.
+      // Alpha-renamed predicates (`{n | n > 0}` vs `{m | m > 0}`) count
+      // as distinct under this equality — the alpha-aware comparison
+      // ships with Phase 2.2's multi-refinement merging. Relying on
+      // source is safe because the parser always populates it from the
+      // original annotation string (the binder is the first token of
+      // `source`, so binder equality is implied by source equality).
+      const br = b as typeof a
+      return a.source === br.source && typeEquals(a.base, br.base)
     }
   }
 }

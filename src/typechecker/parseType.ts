@@ -46,7 +46,7 @@ import { fragmentCheckPredicate } from './refinementFragmentCheck'
 // flows from parser into AST). Re-export here so typechecker consumers
 // have a single import site and the two declarations can never diverge.
 export type { AliasParam } from '../parser/types'
-import type { AliasParam } from '../parser/types'
+import type { AliasParam, AstNode } from '../parser/types'
 
 /** Registered type aliases: name → { params, body string } */
 const typeAliasRegistry = new Map<string, { params: AliasParam[]; body: string }>()
@@ -300,15 +300,12 @@ class TypeParser {
       // Refinement-type predicate: `Base & { binder | predicate }`.
       // One-token lookahead disambiguates from record literal `{ field: T }`
       // — a record has `IDENT :` after the `{`, a refinement has `IDENT |`.
-      // Phase 1 of the refinement-types plan: accept the syntax, parse
-      // the predicate body as a Dvala expression, run the fragment-checker.
-      // If the predicate is in the Phase 1 fragment, silently drop it
-      // (the `Refined` Type-union member arrives in Phase 2); if not,
-      // throw a tagged `RefinementError` with the appropriate `kind`.
+      // Phase 2.1 of the refinement-types plan: accept the syntax, parse
+      // the predicate body as a Dvala expression, run the fragment-checker,
+      // and wrap the accumulated base in a `Refined` node.
       if (this.looksLikeRefinementPredicate()) {
-        this.consumeAndCheckRefinementPredicate()
-        // `left` (the base type) is returned unchanged — the `& {...}` is
-        // parsed-then-dropped. No `inter` call, no simplify side-effects.
+        const { binder, predicate, source } = this.consumeAndCheckRefinementPredicate()
+        left = { tag: 'Refined', base: left, binder, predicate, source }
         this.skipWhitespace()
         continue
       }
@@ -343,18 +340,21 @@ class TypeParser {
   }
 
   /**
-   * Phase 1: consume `{ binder | predicate }`, parse the predicate body
-   * as a Dvala expression, and run the fragment-checker. If the body
-   * passes, the refinement is silently dropped (the base type is
-   * returned unchanged — `Refined` AST node arrives in Phase 2). If not,
-   * a `RefinementError` bubbles up.
+   * Phase 2.1: consume `{ binder | predicate }`, parse the predicate
+   * body as a Dvala expression, and run the fragment-checker. On accept,
+   * returns the `(binder, predicate, source)` triple the caller wraps
+   * into a `Refined` node. On reject, throws `RefinementError`.
    *
    * Brace-depth tracking handles nested braces inside the body (e.g. a
    * record literal on one side of a relation). `{` and `}` inside string
    * literals are ignored — handled by the Dvala tokenizer in the inner
    * parse; our char-level scan here just extracts the substring.
    */
-  private consumeAndCheckRefinementPredicate(): void {
+  private consumeAndCheckRefinementPredicate(): {
+    binder: string
+    predicate: AstNode
+    source: string
+  } {
     const startPos = this.pos
     this.consume('{')
     this.skipWhitespace()
@@ -420,8 +420,13 @@ class TypeParser {
 
     // Run the fragment-checker. Either returns silently (accepted) or
     // throws a RefinementError with the appropriate `kind`.
-    fragmentCheckPredicate(body[0]!, binder, this.input, startPos)
-    // Accepted — the refinement is silently dropped in Phase 1.
+    const predicate = body[0]!
+    fragmentCheckPredicate(predicate, binder, this.input, startPos)
+    // Phase 2.1: accepted predicates flow into a `Refined` node.
+    // `source` is the raw "binder | body" text, which `typeToString`
+    // renders between the braces for error messages.
+    const source = `${binder} | ${bodySource}`
+    return { binder, predicate, source }
   }
 
   private parsePrefix(): Type {
