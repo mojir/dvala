@@ -51,7 +51,9 @@
  */
 
 import { execSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import * as os from 'node:os'
 import { performance } from 'node:perf_hooks'
 
 // Hybrid imports:
@@ -90,6 +92,28 @@ const MAX_COLUMNS_IN_RENDERED = 10
 /** One measurement value. `null` means "this run didn't measure this". */
 type MeasurementValue = { median: number; min: number; max: number; unit: 'ms' | 'us' } | null
 
+/**
+ * Hardware/OS context captured per run. Comparing perf numbers across
+ * different fingerprints is unsafe — a 2x jump may just mean a different
+ * CPU, not a regression. The visualizer surfaces this so a reader can
+ * group runs by fingerprint before drawing conclusions.
+ */
+interface MachineInfo {
+  /** sha1[0..8] of (cpu model, core count, OS, node major). Same fingerprint = comparable runs. */
+  fingerprint: string
+  cpu: string
+  cores: number
+  memoryGB: number
+  /** "<platform> <release>" — e.g. "darwin 25.4.0". */
+  os: string
+  /** Full Node version, e.g. "v22.11.0". */
+  node: string
+  /** macOS only via `pmset`; null on other platforms or on detection failure. */
+  onBattery: boolean | null
+  /** 1-minute load average at run start. High values indicate contention. */
+  loadAvg1m: number
+}
+
 /** A run = (timestamp, commit, commitMessage) + per-scenario per-measurement values. */
 interface RunEntry {
   timestamp: string
@@ -97,6 +121,11 @@ interface RunEntry {
   commit: string
   /** Subject line of the commit message, for human-readable context. */
   commitMessage: string
+  /**
+   * Hardware/OS context. Optional for backwards compat with older runs
+   * that pre-date this field; new runs always populate it.
+   */
+  machine?: MachineInfo
   /** scenario-id → measurement-name → value. */
   scenarios: Record<string, Record<string, MeasurementValue>>
 }
@@ -120,6 +149,7 @@ const currentRun: RunEntry = {
   timestamp: new Date().toISOString(),
   commit: getGitRev(),
   commitMessage: getGitMessage(),
+  machine: captureMachineInfo(),
   scenarios: {},
 }
 
@@ -139,6 +169,47 @@ function getGitMessage(): string {
     return execSync('git log -1 --format=%s HEAD', { encoding: 'utf-8' }).trim()
   } catch {
     return ''
+  }
+}
+
+function captureMachineInfo(): MachineInfo {
+  const cpus = os.cpus()
+  const cpu = cpus[0]?.model ?? 'unknown'
+  const cores = cpus.length
+  const memoryGB = Math.round(os.totalmem() / 1024 ** 3)
+  const platform = `${os.platform()} ${os.release()}`
+  const nodeVersion = process.version
+
+  // Fingerprint = stable identifiers only. Excludes load avg / battery
+  // (transient) and exact node patch version (we group by major because
+  // patch releases rarely change V8 perf meaningfully).
+  const nodeMajor = nodeVersion.split('.')[0]
+  const fingerprint = createHash('sha1')
+    .update(`${cpu}|${cores}|${platform}|${nodeMajor}`)
+    .digest('hex')
+    .slice(0, 8)
+
+  // Battery state: macOS only via `pmset`. Best-effort — failure is
+  // expected on Linux/Windows and on detection issues.
+  let onBattery: boolean | null = null
+  if (os.platform() === 'darwin') {
+    try {
+      const out = execSync('pmset -g batt', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] })
+      onBattery = out.includes('Battery Power')
+    } catch {
+      // leave null
+    }
+  }
+
+  return {
+    fingerprint,
+    cpu,
+    cores,
+    memoryGB,
+    os: platform,
+    node: nodeVersion,
+    onBattery,
+    loadAvg1m: Number(os.loadavg()[0]!.toFixed(2)),
   }
 }
 

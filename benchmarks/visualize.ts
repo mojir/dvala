@@ -30,10 +30,23 @@ interface MeasurementValue {
   unit: 'ms' | 'us'
 }
 
+interface MachineInfo {
+  fingerprint: string
+  cpu: string
+  cores: number
+  memoryGB: number
+  os: string
+  node: string
+  onBattery: boolean | null
+  loadAvg1m: number
+}
+
 interface RunEntry {
   timestamp: string
   commit: string
   commitMessage: string
+  /** Optional — older runs predating machine-info capture have no field. */
+  machine?: MachineInfo
   scenarios: Record<string, Record<string, MeasurementValue | null>>
 }
 
@@ -72,7 +85,22 @@ function renderHtml(scenarios: ScenarioMeta[], rs: RunEntry[]): string {
   // X-axis labels: use the short SHA. The full timestamp + commit
   // message live in the tooltip so the chart doesn't get cluttered.
   const xLabels = rs.map(r => r.commit)
-  const xTooltips = rs.map(r => `${r.commit}\n${r.timestamp.slice(0, 19).replace('T', ' ')}\n${r.commitMessage}`)
+  // Append machine fingerprint + battery state to each tooltip so a
+  // reader can spot "wait, this point was on battery while the others
+  // were plugged in" before drawing conclusions about a perf jump.
+  const xTooltips = rs.map((r) => {
+    const base = `${r.commit}\n${r.timestamp.slice(0, 19).replace('T', ' ')}\n${r.commitMessage}`
+    if (!r.machine) return base
+    const battery = r.machine.onBattery === null ? '' : r.machine.onBattery ? ' [on battery]' : ' [plugged in]'
+    return `${base}\nmachine: ${r.machine.fingerprint} (${r.machine.cpu})${battery}\nload: ${r.machine.loadAvg1m}`
+  })
+
+  // If the visible window mixes hardware fingerprints, the chart's
+  // "regression" curves may just reflect different machines. Surface
+  // this as a banner so the reader doesn't have to inspect tooltips
+  // to notice.
+  const fingerprints = new Set(rs.map(r => r.machine?.fingerprint).filter(Boolean) as string[])
+  const mixedHardware = fingerprints.size > 1
 
   // For each scenario, build the Chart.js dataset payload. Each measurement
   // gets one dataset; values across runs come from `runs[i].scenarios[id][name]`.
@@ -176,6 +204,7 @@ function renderHtml(scenarios: ScenarioMeta[], rs: RunEntry[]): string {
   details summary { cursor: pointer; font-weight: 500; }
   details table { border-collapse: collapse; margin-top: 8px; }
   details td, details th { padding: 4px 8px; border: 1px solid #ddd; text-align: left; font-size: 12px; }
+  .warning { background: #fff5e6; border: 1px solid #ffb84d; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 13px; color: #663300; }
 </style>
 </head>
 <body>
@@ -187,11 +216,20 @@ function renderHtml(scenarios: ScenarioMeta[], rs: RunEntry[]): string {
   Source: <code>benchmarks/refinement-history.json</code>.
 </div>
 
+${mixedHardware
+  ? `<div class="warning">⚠ Runs span ${fingerprints.size} different hardware fingerprints — perf differences may reflect machine, not code. Hover a point for its fingerprint.</div>`
+  : ''}
+
 <details>
 <summary>Run history (${rs.length})</summary>
 <table>
-<tr><th>Commit</th><th>Date</th><th>Message</th></tr>
-${rs.map(r => `<tr><td><code>${escapeHtml(r.commit)}</code></td><td>${escapeHtml(r.timestamp.slice(0, 19).replace('T', ' '))}</td><td>${escapeHtml(r.commitMessage)}</td></tr>`).join('\n')}
+<tr><th>Commit</th><th>Date</th><th>Message</th><th>Machine</th></tr>
+${rs.map((r) => {
+  const machineCell = r.machine
+    ? `<code>${escapeHtml(r.machine.fingerprint)}</code> ${escapeHtml(r.machine.cpu)}${r.machine.onBattery === true ? ' 🔋' : ''}`
+    : '—'
+  return `<tr><td><code>${escapeHtml(r.commit)}</code></td><td>${escapeHtml(r.timestamp.slice(0, 19).replace('T', ' '))}</td><td>${escapeHtml(r.commitMessage)}</td><td>${machineCell}</td></tr>`
+}).join('\n')}
 </table>
 </details>
 
