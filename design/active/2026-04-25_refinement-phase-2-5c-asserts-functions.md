@@ -11,7 +11,7 @@
 Let users write sound named assertion helpers like `assertPositive` so calling them narrows the argument the same way `assert(x > 0)` does today — without opening an `assume P` soundness hole.
 
 ```dvala
-let assertPositive = (x: Number) -> asserts x > 0 = (x) -> assert(x > 0);
+let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> assert(x > 0);
 
 let safeDiv = (a: Number, b: Number) -> {
   assertPositive(b);   // narrows b to {n | n > 0} for the rest of the body
@@ -53,14 +53,25 @@ We're past v1 implementation now. This is that reconsideration. Choosing to ship
 
 ### Surface syntax
 
-`asserts P` lives in the same return-type slot as `is T` (type guards) and `T -> U` (ordinary returns). Predicates use the existing single-symbol single-variable fragment check, with the predicate's free variable bound to a parameter name:
+`asserts {binder | body}` lives in the same return-type slot as `is T` (type guards) and `T -> U` (ordinary returns). The predicate inside the braces is the **same shape used everywhere else in the refinement-type system** — `Number & {n | n > 0}`, `Sequence & {xs | count(xs) > 0}`, etc. — so users learn one predicate form and apply it across all surfaces (type alias body, intersection refinement, assertion return).
 
 ```dvala
-let assertPositive: (Number) -> asserts x > 0 = (x) -> assert(x > 0);
-let assertNonEmpty: (xs: Array<Number>) -> asserts count(xs) > 0 = (xs) -> assert(count(xs) > 0);
+let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> assert(x > 0);
+let assertNonEmpty: (xs: Array<Number>) -> asserts {xs | count(xs) > 0} = (xs) -> assert(count(xs) > 0);
 ```
 
-The free variable in the predicate must match exactly one parameter name (the asserted parameter). Multi-parameter assertions (`asserts a > b`) are out of scope for this phase — they require relational refinements that the current solver can't handle.
+Two constraints, both checked at parse/type-check time:
+
+- **Binder name must equal a parameter name in the surrounding function signature.** This identifies which parameter is being asserted, unambiguously even for multi-parameter functions:
+  ```dvala
+  // Asserts the second parameter:
+  let foo: (a: Number, b: Number) -> asserts {b | b > 0} = ...
+  // Rejected — `n` is not a parameter:
+  let bad: (x: Number) -> asserts {n | n > 0} = ...
+  ```
+- **Predicate body satisfies the existing fragment check.** Same fragment-eligible single-binder predicates accepted by `Number & {n | n > 0}` are accepted here. Multi-parameter assertions (`asserts {a, b | a > b}`) are out of scope for this phase — they need relational refinements the current solver can't handle.
+
+The binder name being equal to the parameter name is mildly redundant (the binder serves as a syntactic marker more than independent information), but it's the cost of reusing the existing predicate parser and fragment-checker without any wrapper code.
 
 ### Body verification pass
 
@@ -102,7 +113,7 @@ Body may include `if`/`match`/early-return; every reachable normal-return path m
 **Why:** Phases 2.5a and 2.5b already built the path-sensitive assumption-accumulation machinery, so (c) reuses it rather than building from scratch — real cost is ~400–700 LOC, not 10× (b). And (b) is annoyingly restrictive in practice: users can't write the natural form
 
 ```dvala
-let assertScore = (n: Number) -> asserts 0 <= n && n <= 100 = (n) -> {
+let assertScore: (n: Number) -> asserts {n | 0 <= n && n <= 100} = (n) -> {
   if n < 0 -> perform(@dvala.error, "negative")
   else if n > 100 -> perform(@dvala.error, "too big")
   else -> {}   // nothing to assert; the if-chain narrowed n
@@ -117,14 +128,14 @@ Match the rest of the typechecker. Users advertising soundness in a signature sh
 
 ### 3. Migrate builtin `assert` from metadata to parser-surface annotation — **yes (follow-up commit)**
 
-After the parser surface lands, change `assert`'s `docs.type` from `'(cond: Boolean) -> Boolean'` (with `asserts: { paramIndex: 0 }` metadata) to `'(cond: Boolean) -> asserts cond'`. Cosmetic; removes the parallel metadata field and gives one canonical encoding for the feature.
+After the parser surface lands, change `assert`'s `docs.type` from `'(cond: Boolean) -> Boolean'` (with `asserts: { paramIndex: 0 }` metadata) to `'(cond: Boolean) -> asserts {cond | cond}'`. Cosmetic; removes the parallel metadata field and gives one canonical encoding for the feature. The trivial-`assert` form is mildly weird (`{cond | cond}` is the degenerate "assert this Boolean is truthy" predicate), but only this one builtin has the shape — real user assertions always use the binder meaningfully.
 
 ### 4. Recursion in assertion bodies — **reject (direct and mutual)**
 
 **Why:** Allowing recursion admits induction-without-a-base-case "proofs":
 
 ```dvala
-let bogus: (n: Number) -> asserts n > 0 = (n) -> { bogus(n) }
+let bogus: (n: Number) -> asserts {n | n > 0} = (n) -> { bogus(n) }
 ```
 
 The body's only path is a recursive call. By induction "`bogus(n)` returns ⇒ `n > 0`", so the body type-checks vacuously — but the recursive call never terminates and the proof is circular. To allow recursion soundly we'd need a totality check (prove every recursion path eventually hits a base case via a well-founded measure). Totality checking is undecidable in general; the practical compromise (structural-recursion detection) is weeks of compiler work.
@@ -138,7 +149,7 @@ The body's only path is a recursive call. By induction "`bogus(n)` returns ⇒ `
 Performing effects in the body is *fine* — they're throwing paths, naturally exempt. The soundness hole is narrower: a handler **inside the body** that catches the effect can turn a throwing path into a returning path that didn't prove `P`:
 
 ```dvala
-let bogus = (x: Number) -> asserts x > 0 = (x) -> {
+let bogus: (x: Number) -> asserts {x | x > 0} = (x) -> {
   do with handler @dvala.error(_) -> resume(:caught) end;
     assert(x > 0)   // x <= 0: throws → handler resumes → function returns
                     //         but x > 0 was NEVER established
@@ -158,7 +169,7 @@ Tracked as separate commits inside the same PR (or sequential PRs if it grows). 
 
 Tracked as separate commits inside the same PR (or sequential PRs if it grows). All steps gated on `npm run check` passing.
 
-1. **Parser surface for `asserts P` return-type annotations.** Extend `parseType.ts` (around the existing `is T` handling near line 882) — new keyword `asserts`, predicate parsing reuses Phase 1's predicate parser. New AST node variant on `FunctionType` carrying the asserted parameter name + predicate AST. Round-trip: parse → format → parse stable.
+1. **Parser surface for `asserts {binder | body}` return-type annotations.** Extend `parseType.ts` (`tryParseTypeGuard` neighbor, around line 1011) — new keyword `asserts`, predicate parsing reuses `consumeAndCheckRefinementPredicate` directly (the same call used by `Type & {binder | body}`). After parsing, validate the binder name equals a parameter name in the signature; reject otherwise. Carry the result through `ParsedFunctionType` (new fields `assertsParam` + `assertsPredicate` parallel to `guardParam`/`guardType`). Round-trip: parse → format → parse stable.
 2. **Walker updates.** Every function-type walker in the codebase (substitution, simplification, formatting, doc generation, untokenizer) needs a case for the new variant. ~14 touchpoints per memory.
 3. **Inference integration.** Asserts-bearing function types flow through inference like ordinary function types — the assertion metadata is read at call sites by the existing PR #100 dispatch. At this point, **builtin-only** call sites already work; user-declared functions parse and infer but the body isn't verified yet (so they're treated as untrusted, no narrowing — same as today).
 4. **Body-verification pass — fragment scope (c).** New file `src/typechecker/assertsBodyVerify.ts`.
