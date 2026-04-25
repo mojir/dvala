@@ -9,10 +9,23 @@
 - `npm run check` — full pipeline: lint + typecheck + test + build
 - `npm run test` — run tests only
 - `npm run build` — build all bundles
+- `npm run benchmark:refinement` — run the refinement-types perf bench; appends a row to `benchmarks/refinement-performance.md`
 
 Run `npm run check` after any medium or larger code change.
 
 When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI escape codes don't pollute the captured output (applies to `vitest`, `eslint`, etc.).
+
+## Performance tracking
+
+**Refinement-types changes (anything under `src/typechecker/refinement*` or `src/typechecker/parseType.ts`'s refinement-handling code) MUST run the perf benchmark before the PR merges.**
+
+- Run `npm run benchmark:refinement` on the PR branch's tip (after the last code change).
+- Commit the resulting changes to `benchmarks/refinement-history.json` and `benchmarks/refinement-performance.md` to the PR branch.
+- Push so the perf data is part of the PR's history.
+
+If a refinement-types PR was merged without perf data: open a follow-up PR that runs the benchmark on `main` (so the row's commit hash is the merge commit) and ships the resulting `.md` / `.json` updates. Don't backfill onto the merged commit retroactively — keep the perf history honest about when the data was captured.
+
+Why: the rendered `.md` table is the at-a-glance regression signal during PR review. Skipping it means a future regression goes unnoticed until someone manually re-runs the bench.
 
 ## Project Structure
 
