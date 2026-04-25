@@ -22,6 +22,7 @@ import { expandType, InferenceContext, TypeEnv, inferExpr, TypeInferenceError } 
 import { initBuiltinTypes, registerModuleType, resetModuleTypeCache } from './builtinTypes'
 import { declareEffect, initBuiltinEffects, resetUserEffects, restoreEffectRegistry, snapshotEffectRegistry } from './effectTypes'
 import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases, restoreTypeAliases, snapshotTypeAliases, TypeParseError } from './parseType'
+import { installPreludeAliases } from './prelude'
 import { builtin } from '../builtin'
 import { expandMacros } from '../ast/expandMacros'
 
@@ -210,6 +211,20 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   // Clear per-document state from previous typecheck passes
   resetUserEffects()
   resetTypeAliases()
+  // Re-install the standard prelude aliases (`Positive`, `NonEmpty`,
+  // etc.) right after the reset so they're available to user source —
+  // before user-declared aliases are registered, so user aliases can
+  // shadow prelude ones of the same name (later `registerTypeAlias`
+  // calls win on the underlying Map).
+  //
+  // ORDERING: must run BEFORE inference (line ~262 below). The
+  // import-resolver closure takes a `snapshotTypeAliases()` mid-
+  // flight; that snapshot must include the prelude so a
+  // `restoreTypeAliases` after the imported file finishes doesn't
+  // strip the prelude. Today install is before inference so any
+  // closure invocation sees the prelude — moving it after inference
+  // would silently break imports that rely on prelude aliases.
+  installPreludeAliases()
   resetModuleTypeCache()
   for (const mod of options?.modules ?? []) {
     registerModuleType(mod.name, mod.functions, mod.docs)
@@ -273,6 +288,10 @@ export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap, options?:
   if (options?.fold !== undefined) ctx.foldEnabled = options.fold
   resetUserEffects()
   resetTypeAliases()
+  // Re-install prelude aliases for the same reason as in `typecheck`
+  // above — keeps `Positive`, `NonEmpty`, etc. visible in REPL /
+  // single-expression checks too.
+  installPreludeAliases()
   resetModuleTypeCache()
   for (const mod of options?.modules ?? []) {
     registerModuleType(mod.name, mod.functions, mod.docs)

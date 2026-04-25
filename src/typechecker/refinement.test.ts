@@ -1457,6 +1457,122 @@ describe('refinement types — Phase 2.5c (builtin-metadata cut)', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Refinement types — Prelude aliases (src/prelude.dvala)
+// ---------------------------------------------------------------------------
+//
+// `src/prelude.dvala` declares a starter set of refined type aliases
+// (`Positive`, `NonNegative`, `NonZero`, `NonEmpty<T: Sequence>`) that
+// are auto-loaded into every typecheck session. Tests here verify
+// each alias resolves correctly — using literal values that exercise
+// the fold-disprove path so violations actually surface as
+// diagnostics (regular pass-through accepts would be silent).
+// ---------------------------------------------------------------------------
+
+describe('refinement types — prelude aliases', () => {
+  const dvala = createDvala()
+
+  describe('Positive (Number & {n | n > 0})', () => {
+    it('accepts a positive literal', () => {
+      const result = dvala.typecheck('let x: Positive = 5; x')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('rejects zero (n > 0 is strict)', () => {
+      const result = dvala.typecheck('let x: Positive = 0; x')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('rejects a negative literal', () => {
+      const result = dvala.typecheck('let x: Positive = -5; x')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('NonNegative (Number & {n | n >= 0})', () => {
+    it('accepts zero (>= is non-strict)', () => {
+      const result = dvala.typecheck('let x: NonNegative = 0; x')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('accepts a positive literal', () => {
+      const result = dvala.typecheck('let x: NonNegative = 5; x')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('rejects a negative literal', () => {
+      const result = dvala.typecheck('let x: NonNegative = -1; x')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('NonZero (Number & {n | n != 0})', () => {
+    it('accepts a positive literal', () => {
+      const result = dvala.typecheck('let x: NonZero = 5; x')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('accepts a negative literal', () => {
+      const result = dvala.typecheck('let x: NonZero = -5; x')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('rejects zero', () => {
+      const result = dvala.typecheck('let x: NonZero = 0; x')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('NonEmpty<T: Sequence> (T & {xs | count(xs) > 0})', () => {
+    it('accepts a non-empty array literal (Dvala uses `Number[]` postfix syntax)', () => {
+      const result = dvala.typecheck('let xs: NonEmpty<Number[]> = [1, 2, 3]; xs')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('accepts a non-empty string literal', () => {
+      const result = dvala.typecheck('let s: NonEmpty<String> = "hi"; s')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('rejects non-Sequence type argument (Number is not a Sequence)', () => {
+      // The `T: Sequence` upper bound on the alias's type parameter
+      // gates instantiation. `Number` doesn't satisfy `Sequence`, so
+      // `NonEmpty<Number>` must error. Without this test the bound
+      // contract has no rejection coverage.
+      const result = dvala.typecheck('let x: NonEmpty<Number> = 5; x')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+      // Any of the diagnostics should mention the bound violation —
+      // exact wording is parser-implementation-specific so we just
+      // require *some* mention of "bound" in *some* diagnostic.
+      expect(result.diagnostics.some(d => /bound/i.test(d.message))).toBe(true)
+    })
+  })
+
+  describe('user shadowing', () => {
+    it('user-declared `type Positive = ...` overrides the prelude alias', () => {
+      // User shadows Positive with a stricter definition (n > 100).
+      // 50 satisfies the prelude version but not the user one — should
+      // error, proving the user's wins.
+      const result = dvala.typecheck(`
+        type Positive = Number & {n | n > 100};
+        let x: Positive = 50;
+        x
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('after the user-shadow typecheck, a fresh typecheck resets to the prelude default', () => {
+      // Critical regression check: the prelude must be re-installed
+      // after every `resetTypeAliases()`. If a previous typecheck
+      // shadowed `Positive`, the next one should see the prelude
+      // version, not the user's.
+      dvala.typecheck('type Positive = Number & {n | n > 100}; let x: Positive = 200; x')
+      const result = dvala.typecheck('let y: Positive = 5; y')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+  })
+})
+
 function binderRef(name: string): AstNode {
   return [NodeTypes.Sym, name, 0] as unknown as AstNode
 }
