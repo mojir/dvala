@@ -216,6 +216,14 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   // before user-declared aliases are registered, so user aliases can
   // shadow prelude ones of the same name (later `registerTypeAlias`
   // calls win on the underlying Map).
+  //
+  // ORDERING: must run BEFORE inference (line ~262 below). The
+  // import-resolver closure takes a `snapshotTypeAliases()` mid-
+  // flight; that snapshot must include the prelude so a
+  // `restoreTypeAliases` after the imported file finishes doesn't
+  // strip the prelude. Today install is before inference so any
+  // closure invocation sees the prelude — moving it after inference
+  // would silently break imports that rely on prelude aliases.
   installPreludeAliases()
   resetModuleTypeCache()
   for (const mod of options?.modules ?? []) {

@@ -33,9 +33,13 @@ let cached: PreludeAlias[] | null = null
  * cheap Map.set operations.
  *
  * If parsing the prelude fails (shouldn't — it ships with the
- * codebase), the function silently leaves the registry alone rather
- * than crashing the entire typechecker. A broken prelude shouldn't
- * take down user typechecking.
+ * codebase), emit a `console.warn` and leave the registry alone
+ * rather than crashing the entire typechecker. The prelude must be
+ * loud when it breaks, otherwise users see `Positive` etc. resolve
+ * to "type alias not found" with no clue why.
+ *
+ * Cache scope: module-level. Vitest isolates workers per file, so
+ * each test file gets a fresh instance — no cross-file leakage.
  */
 export function installPreludeAliases(): void {
   if (!cached) {
@@ -46,7 +50,9 @@ export function installPreludeAliases(): void {
       cached = ast.typeAliases
         ? [...ast.typeAliases].map(([name, { params, body }]) => ({ name, params, body }))
         : []
-    } catch {
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(`[dvala prelude] failed to parse src/prelude.dvala: ${e instanceof Error ? e.message : String(e)}`)
       cached = []
     }
   }

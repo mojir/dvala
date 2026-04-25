@@ -1533,6 +1533,19 @@ describe('refinement types — prelude aliases', () => {
       const result = dvala.typecheck('let s: NonEmpty<String> = "hi"; s')
       expect(result.diagnostics).toHaveLength(0)
     })
+
+    it('rejects non-Sequence type argument (Number is not a Sequence)', () => {
+      // The `T: Sequence` upper bound on the alias's type parameter
+      // gates instantiation. `Number` doesn't satisfy `Sequence`, so
+      // `NonEmpty<Number>` must error. Without this test the bound
+      // contract has no rejection coverage.
+      const result = dvala.typecheck('let x: NonEmpty<Number> = 5; x')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+      // Any of the diagnostics should mention the bound violation —
+      // exact wording is parser-implementation-specific so we just
+      // require *some* mention of "bound" in *some* diagnostic.
+      expect(result.diagnostics.some(d => /bound/i.test(d.message))).toBe(true)
+    })
   })
 
   describe('user shadowing', () => {
