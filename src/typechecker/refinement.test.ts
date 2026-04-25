@@ -1259,6 +1259,129 @@ describe('refinement types — Phase 2.5a (assert narrowing)', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Refinement types — Phase 2.5b (`if`/`match` flow narrowing on refinements)
+// ---------------------------------------------------------------------------
+//
+// Design: design/active/2026-04-23_refinement-types.md, Phase 2.5
+// (line 691). When an `if cond then ... else ...` (or match guard)
+// uses a fragment-eligible single-symbol predicate as `cond`, the
+// then-branch sees the variable narrowed to a Refined wrapper of
+// `cond`, and the else-branch to a Refined wrapper of `!(cond)`.
+//
+// Builds on Phase 2.5a: same `Refined`-construction shape, same
+// `typeMap` observable. Adds the else-branch direction via a synthetic
+// `!(cond)` AST node so both branches can be inspected.
+// ---------------------------------------------------------------------------
+
+describe('refinement types — Phase 2.5b (if-narrowing on refinements)', () => {
+  const dvala = createDvala()
+
+  function refinedTypesInTypeMap(source: string): Extract<Type, { tag: 'Refined' }>[] {
+    const result = dvala.typecheck(source)
+    const refineds: Extract<Type, { tag: 'Refined' }>[] = []
+    for (const t of result.typeMap.values()) {
+      if (t.tag === 'Refined') refineds.push(t)
+    }
+    return refineds
+  }
+
+  describe('then-branch narrowing', () => {
+    it('`if x > 0 then x` records a Refined for x with predicate `x > 0`', () => {
+      const refineds = refinedTypesInTypeMap(`
+        let test = (x: Number): Number ->
+          if x > 0 then x else 0 end;
+        test(1)
+      `)
+      // At least one Refined entry whose source carries `x > 0`.
+      const positive = refineds.find(t => t.binder === 'x' && t.source.includes('x > 0') && !t.source.includes('!('))
+      expect(positive).toBeDefined()
+    })
+
+    it('count-based predicate (`count(s) > 0`) narrows', () => {
+      const refineds = refinedTypesInTypeMap(`
+        let test = (s: String): String ->
+          if count(s) > 0 then s else "" end;
+        test("hi")
+      `)
+      const ne = refineds.find(t => t.binder === 's' && t.source.includes('count(s) > 0') && !t.source.includes('!('))
+      expect(ne).toBeDefined()
+    })
+  })
+
+  describe('else-branch narrowing', () => {
+    it('`if x > 0 then ... else x` records a Refined with `!(x > 0)` predicate', () => {
+      const refineds = refinedTypesInTypeMap(`
+        let test = (x: Number): Number ->
+          if x > 0 then 0 else x end;
+        test(-1)
+      `)
+      // The else-branch synthesizes `!(cond)` as the predicate. The
+      // exact source format depends on prettyPrint; we just verify
+      // SOME Refined source contains a `!` indicating negation.
+      const negated = refineds.find(t => t.binder === 'x' && t.source.includes('!'))
+      expect(negated).toBeDefined()
+    })
+  })
+
+  describe('compound conditions', () => {
+    it('`if x > 0 && x < 100` narrows x in the then-branch', () => {
+      // Each && operand narrows x; composeNarrowings intersects them.
+      // The visible observable: a Refined entry whose predicate
+      // mentions both relations (either nested or merged).
+      const refineds = refinedTypesInTypeMap(`
+        let test = (x: Number): Number ->
+          if x > 0 && x < 100 then x else 0 end;
+        test(50)
+      `)
+      // The whenTrue narrowing for an `&&` is composeNarrowings on the
+      // operands' whenTrue maps. With two refinement narrowings on the
+      // same key, the simplify pipeline merges them. Either way, at
+      // least one Refined for x exists in the typeMap.
+      const xRefined = refineds.find(t => t.binder === 'x')
+      expect(xRefined).toBeDefined()
+    })
+  })
+
+  describe('non-narrowing shapes', () => {
+    it('arithmetic-on-binder cond is out-of-fragment, no narrowing', () => {
+      const refineds = refinedTypesInTypeMap(`
+        let test = (x: Number): Number ->
+          if x + 1 > 1 then x else 0 end;
+        test(5)
+      `)
+      // Predicate `x + 1 > 1` rejects the fragment-check (arithmetic
+      // on the binder), so neither branch synthesizes a Refined.
+      expect(refineds.filter(t => t.binder === 'x')).toHaveLength(0)
+    })
+
+    it('multi-symbol cond does not narrow (two free vars)', () => {
+      const refineds = refinedTypesInTypeMap(`
+        let test = (x: Number, y: Number): Number ->
+          if x > y then x else 0 end;
+        test(5, 0)
+      `)
+      // Two free symbols → extractRefinementNarrowing bails.
+      expect(refineds.filter(t => t.binder === 'x' || t.binder === 'y')).toHaveLength(0)
+    })
+
+    it('existing type-guard narrowing (`isNumber(x)`) still wins over refinement path', () => {
+      // Sanity: the existing flow-narrowing for `isNumber` produces
+      // a concrete type (NumberType), not a Refined wrapper. The new
+      // refinement-narrowing fallback shouldn't shadow that.
+      const refineds = refinedTypesInTypeMap(`
+        let test = (x: Number): Number ->
+          if isNumber(x) then x else 0 end;
+        test(5)
+      `)
+      // No Refined for x — the type-guard path narrowed x to Number
+      // (which is the same as the param type, so no observable
+      // change, but more importantly NOT a Refined wrapper).
+      expect(refineds.filter(t => t.binder === 'x')).toHaveLength(0)
+    })
+  })
+})
+
 function binderRef(name: string): AstNode {
   return [NodeTypes.Sym, name, 0] as unknown as AstNode
 }

@@ -28,6 +28,7 @@ import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFu
 import { FOLD_ENABLED } from './foldToggle'
 import { parseTypeAnnotation, TypeParseError } from './parseType'
 import { fragmentCheckPredicate } from './refinementFragmentCheck'
+import { mergeRefinementPredicates } from './refinementMerge'
 import { prettyPrint } from '../prettyPrint'
 import { getEffectDeclaration } from './effectTypes'
 import { simplify } from './simplify'
@@ -3134,16 +3135,25 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
     const [leftNode, rightNode] = argNodes as [AstNode, AstNode]
     const narrow = extractEqualityNarrowing(leftNode, rightNode)
       ?? extractEqualityNarrowing(rightNode, leftNode)
-    if (!narrow) return undefined
-    // For `!=`, positive-branch narrowing is the complement.
-    const negated = builtinName === '!='
-    return {
-      whenTrue: new Map([[narrow.symName, negated ? neg(narrow.value) : narrow.value]]),
-      whenFalse: new Map([[narrow.symName, negated ? narrow.value : neg(narrow.value)]]),
+    if (narrow) {
+      // For `!=`, positive-branch narrowing is the complement.
+      const negated = builtinName === '!='
+      return {
+        whenTrue: new Map([[narrow.symName, negated ? neg(narrow.value) : narrow.value]]),
+        whenFalse: new Map([[narrow.symName, negated ? narrow.value : neg(narrow.value)]]),
+      }
     }
+    // Fall through to refinement narrowing — `==` / `!=` against
+    // expressions that don't form a literal narrowing (e.g.
+    // `count(xs) == 0`) can still be fragment-eligible.
   }
 
-  return undefined
+  // Refinement narrowing — final fallback for fragment-eligible
+  // single-symbol predicates that the earlier paths didn't handle:
+  // `x > 0`, `x <= 100`, `count(s) > 0`, etc. Wraps the variable's
+  // current type in a `Refined` node for the then-branch and the
+  // negated predicate for the else-branch.
+  return extractRefinementNarrowing(cond, env)
 }
 
 /**
@@ -3233,23 +3243,74 @@ function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type>
 }
 
 /**
- * Bind each name in `narrowings` directly in a child env. We DON'T go
- * through `narrowEnv` (which intersects via `intersectMatchTypes`)
- * because that helper short-circuits on `isSubtype`, and the Phase 2.3
- * inert pass-through makes `isSubtype(Number, Refined<Number, x, x>0>)`
- * return true — which would discard the Refined wrapper entirely.
+ * Phase 2.5b — flow narrowing from `if` and `match` guards whose
+ * condition is a fragment-eligible refinement predicate.
  *
- * `extractAssertNarrowings` already produces the exact post-assert
- * type (the Refined wrapping the binder's previous type), so a direct
- * bind is the right operation here.
+ * Mirrors `extractAssertNarrowings` but produces both whenTrue and
+ * whenFalse maps — the else branch sees the negated predicate
+ * `!(P)` wrapped as a Refined node (the fragment-checker accepts `!P`,
+ * so this stays in-fragment).
+ *
+ * Why a separate helper from `extractAssertNarrowings`: assert is a
+ * statement form that produces narrowing only forward; if/match
+ * conditions branch into two worlds, each with its own narrowing.
+ * Sharing the `Refined`-construction logic via a small inline factory
+ * would only obscure the symmetry — so this is duplicated by design.
+ *
+ * Returns undefined if the cond doesn't qualify (multi-symbol,
+ * out-of-fragment, etc.), letting the surrounding `extractIfNarrowings`
+ * fall through to its default "no narrowing".
  */
-function applyAssertNarrowings(env: TypeEnv, narrowings: Map<string, Type>): TypeEnv {
-  if (narrowings.size === 0) return env
-  const narrowed = env.child()
-  for (const [name, type] of narrowings) {
-    narrowed.bind(name, type)
+function extractRefinementNarrowing(cond: AstNode, env: TypeEnv): {
+  whenTrue: Map<string, Type>
+  whenFalse: Map<string, Type>
+} | undefined {
+  const free = collectFreeBoundSymbols(cond, env)
+  if (free.size !== 1) return undefined
+  const binderName = [...free][0]!
+
+  // Validate the predicate is in the Phase 1 fragment with the free
+  // symbol as binder. Out-of-fragment predicates skip narrowing
+  // (runtime evaluation of the if/match still works).
+  try {
+    fragmentCheckPredicate(cond, binderName, '<if>', 0)
+  } catch {
+    return undefined
   }
-  return narrowed
+
+  const baseType = env.lookup(binderName)
+  if (!baseType) return undefined
+
+  const trueSource = `${binderName} | ${prettyPrint(cond).trim()}`
+  const trueRefined: Type = {
+    tag: 'Refined',
+    base: baseType,
+    binder: binderName,
+    predicate: cond,
+    source: trueSource,
+  }
+
+  // Negation for the else-branch: synthesize `!(cond)` as the
+  // predicate AST. Phase 1's fragment-checker already accepts `!P`
+  // for any accepted P, so this is in-fragment.
+  const notCond: AstNode = [NodeTypes.Call, [
+    [NodeTypes.Builtin, '!', 0] as AstNode,
+    [cond],
+    null,
+  ], 0] as unknown as AstNode
+  const falseSource = `${binderName} | ${prettyPrint(notCond).trim()}`
+  const falseRefined: Type = {
+    tag: 'Refined',
+    base: baseType,
+    binder: binderName,
+    predicate: notCond,
+    source: falseSource,
+  }
+
+  return {
+    whenTrue: new Map([[binderName, trueRefined]]),
+    whenFalse: new Map([[binderName, falseRefined]]),
+  }
 }
 
 /**
@@ -3279,7 +3340,8 @@ function inferStatementsWithAssertNarrowing(
     lastStmt = stmt
     const narrowings = extractAssertNarrowings(stmt, currentEnv)
     if (narrowings) {
-      currentEnv = applyAssertNarrowings(currentEnv, narrowings)
+      // `narrowEnv` direct-binds Refined narrowings — see its body.
+      currentEnv = narrowEnv(currentEnv, narrowings)
     }
   }
   return { lastType, lastStmt, finalEnv: currentEnv }
@@ -3352,7 +3414,35 @@ function composeNarrowings(maps: (Map<string, Type> | undefined)[]): Map<string,
     if (!m) continue
     for (const [sym, narrow] of m) {
       const existing = out.get(sym)
-      out.set(sym, existing ? inter(existing, narrow) : narrow)
+      if (!existing) {
+        out.set(sym, narrow)
+        continue
+      }
+      // When both narrowings are Refined on the same symbol with
+      // matching base types, merge their predicates with `&&` so the
+      // resulting narrowing is itself a single Refined node. Going
+      // through `inter(...)` instead would produce an `Inter<Refined,
+      // Refined>` shape that downstream `narrowEnv` can't direct-bind
+      // (it's not tag `Refined` at the top level), so the wrappers
+      // would get washed out by the inert pass-through.
+      if (
+        existing.tag === 'Refined' && narrow.tag === 'Refined'
+        && typeEquals(existing.base, narrow.base)
+      ) {
+        const merged = mergeRefinementPredicates(
+          existing.binder, existing.predicate,
+          narrow.binder, narrow.predicate,
+        )
+        out.set(sym, {
+          tag: 'Refined',
+          base: existing.base,
+          binder: existing.binder,
+          predicate: merged.predicate,
+          source: merged.source,
+        })
+        continue
+      }
+      out.set(sym, inter(existing, narrow))
     }
   }
   return out
@@ -3430,6 +3520,19 @@ function narrowEnv(env: TypeEnv, narrowings: Map<string, Type>): TypeEnv {
   for (const [name, narrow] of narrowings) {
     const outer = env.lookup(name)
     if (!outer) continue
+
+    // Refined narrowings already incorporate the variable's prior type
+    // as their base (the extractor reads `env.lookup(name)` and uses
+    // it). Going through `intersectMatchTypes` would short-circuit on
+    // `isSubtype`, and the Phase 2.3 inert pass-through makes
+    // `isSubtype(Number, Refined<Number, x, x>0>)` return true — which
+    // would cause intersect to discard the Refined wrapper. Direct
+    // bind keeps the narrowing intact.
+    if (narrow.tag === 'Refined') {
+      narrowed.bind(name, narrow)
+      continue
+    }
+
     const intersected = intersectMatchTypes(outer, narrow)
     // Avoid re-binding to the outer type if narrowing yielded nothing
     // tighter — keeps hover/debug output cleaner.
