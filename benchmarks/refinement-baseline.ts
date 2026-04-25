@@ -4,6 +4,25 @@
  * Tracks the cost of the refinement-types machinery (Phase 2.1+) so
  * regressions are visible across commits.
  *
+ * Naming policy — IMPORTANT:
+ *
+ *   Measurement names (the strings passed to `benchPerCall` /
+ *   `benchPerOp`) are STABLE IDENTIFIERS. The JSON history keys on
+ *   them, and the rendered .md table groups historical values by name.
+ *   Renaming a measurement creates a new row and breaks the historical
+ *   thread for that measurement (the old row goes to `—` going
+ *   forward and falls off the recent window after 10 runs).
+ *
+ *   Names should describe WHAT is being measured at the user-visible
+ *   level (predicate shape, program size, source-vs-target combination)
+ *   — never the internal function being called. Internal function
+ *   names get refactored; user-visible behaviour is stable.
+ *
+ *   Scenario descriptions follow the same rule: describe the user-
+ *   visible behaviour being tested, not the implementation. If a
+ *   description mentions an internal function, it'll go stale at the
+ *   next refactor.
+ *
  * Layout:
  *   - `benchmarks/refinement-history.json` — source of truth. Every run
  *     appends an entry. Version-controlled. Each entry stores per-
@@ -47,7 +66,10 @@ import { performance } from 'node:perf_hooks'
 // cache as a side effect; the typechecker internals depend on it
 // being populated to classify type-guard calls (e.g. `isNumber`).
 // eslint-disable-next-line ts/no-require-imports, ts/no-var-requires
-const { createDvala } = require('../dist/index.js') as typeof import('../src/createDvala')
+const { createDvala, parseTokenStream, tokenizeSource } = require('../dist/index.js') as typeof import('../src/createDvala') & {
+  parseTokenStream: typeof import('../src/tooling').parseTokenStream
+  tokenizeSource: typeof import('../src/tooling').tokenizeSource
+}
 import { parseTypeAnnotation } from '../src/typechecker/parseType'
 import { solveRefinedSubtype } from '../src/typechecker/refinementSolver'
 import { simplify } from '../src/typechecker/simplify'
@@ -172,17 +194,41 @@ function benchPerOp(name: string, iterations: number, fn: () => void): void {
 
 const dvala = createDvala()
 
-// 1. Parse + typecheck overhead
-startScenario('parse-overhead', '1. Parse + typecheck overhead', 'plain Number annotation vs. Number & {n | n > 0} on otherwise identical programs')
+// 1. Parse + typecheck overhead — split parse from typecheck
+//
+// Three programs of identical shape, varying only the annotation:
+//   - plain (no annotation): catches walker overhead unrelated to
+//     refinements; should hold steady regardless of refinement work
+//   - typed Number annotation: pre-Phase-2.1 baseline shape
+//   - refined `{n | n > 0}` annotation: full machinery exercised
+//
+// Each program is benched in two stages:
+//   - parse-only: `parseTokenStream(tokenizeSource(p))`
+//   - typecheck: `dvala.typecheck(p)` (which also parses internally)
+//
+// The delta between parse and typecheck rows isolates the typecheck
+// step. The delta between rows in the same column isolates the
+// refinement-specific cost.
+startScenario('parse-overhead', '1. Parse + typecheck overhead', 'plain (no annotation) vs. typed Number vs. refined Number & {n | n > 0} — same program shape, parse and typecheck split out')
 {
-  const plainProgram = 'let x: Number = 5; x'
+  const plainProgram = 'let x = 5; x'
+  const typedProgram = 'let x: Number = 5; x'
   const refinedProgram = 'let x: Number & {n | n > 0} = 5; x'
-  benchPerOp('plain Number annotation', 1000, () => { dvala.typecheck(plainProgram) })
-  benchPerOp('refined Number & {n | n > 0}', 1000, () => { dvala.typecheck(refinedProgram) })
+
+  // Parse-only timings — strip out the typecheck step. Useful to see
+  // whether the parser cost itself shifted between commits.
+  benchPerOp('parse: plain (no annotation)', 1000, () => { parseTokenStream(tokenizeSource(plainProgram)) })
+  benchPerOp('parse: typed Number annotation', 1000, () => { parseTokenStream(tokenizeSource(typedProgram)) })
+  benchPerOp('parse: refined Number & {n | n > 0}', 1000, () => { parseTokenStream(tokenizeSource(refinedProgram)) })
+
+  // Full pipeline (parse + typecheck via the public API).
+  benchPerOp('typecheck: plain (no annotation)', 1000, () => { dvala.typecheck(plainProgram) })
+  benchPerOp('typecheck: typed Number annotation', 1000, () => { dvala.typecheck(typedProgram) })
+  benchPerOp('typecheck: refined Number & {n | n > 0}', 1000, () => { dvala.typecheck(refinedProgram) })
 }
 
 // 2. Solver direct cost per shape
-startScenario('solver-direct', '2. Solver direct cost (per shape)', 'isolated solveRefinedSubtype calls — no parse or typecheck overhead')
+startScenario('solver-direct', '2. Refinement subtype-check cost (per predicate shape)', 'isolated subtype-check calls between source type and refinement target — no parse or typecheck overhead')
 {
   type Refined = Extract<ReturnType<typeof parseTypeAnnotation>, { tag: 'Refined' }>
   const intervalT = parseTypeAnnotation('Number & {n | n > 0 && n < 100}') as Refined
@@ -198,7 +244,7 @@ startScenario('solver-direct', '2. Solver direct cost (per shape)', 'isolated so
 }
 
 // 3. Stacked refinement simplify scaling
-startScenario('simplify-scaling', '3. Stacked refinement simplify scaling', 'N stacked refinements collapse via mergeRefinementPredicates — empirically O(N²) (each merge re-walks the growing inner predicate); regressions show as a worse exponent')
+startScenario('simplify-scaling', '3. Stacked refinement simplify scaling', 'simplifying N stacked refinements (`Base & {p1} & {p2} & ... & {pN}`) — empirically O(N²); regressions show as a worse exponent')
 {
   for (const N of [2, 4, 8, 16, 32]) {
     const conjuncts: string[] = []
@@ -209,8 +255,8 @@ startScenario('simplify-scaling', '3. Stacked refinement simplify scaling', 'N s
   }
 }
 
-// 4. excludedSet quadratic worst case
-startScenario('excluded-quadratic', '4. excludedSet quadratic worst case', '`n != 1 && n != 2 && ... && n != N` — documented O(n²) per `mergeExcludedValues`')
+// 4. Many-inequality refinement worst case
+startScenario('excluded-quadratic', '4. Many-inequality refinement worst case', '`Number & {n | n != 1 && n != 2 && ... && n != N}` — documented quadratic worst case (each conjunction step merges against the growing exclusion list)')
 {
   for (const { N, iters } of [{ N: 10, iters: 5000 }, { N: 50, iters: 1000 }, { N: 100, iters: 200 }]) {
     const conjuncts: string[] = []
@@ -220,8 +266,8 @@ startScenario('excluded-quadratic', '4. excludedSet quadratic worst case', '`n !
   }
 }
 
-// 5. End-to-end realistic program
-startScenario('end-to-end', '5. End-to-end refinement-heavy program', 'representative shape — 3 type aliases, 4 calls, multiple solver paths')
+// 5. End-to-end realistic program (small)
+startScenario('end-to-end', '5. End-to-end refinement-heavy program (small)', 'representative shape — 3 type aliases, 4 calls, multiple solver paths')
 {
   const program = `
     type Positive = Number & {n | n > 0};
@@ -240,6 +286,36 @@ startScenario('end-to-end', '5. End-to-end refinement-heavy program', 'represent
     [total, msg, r1, r2]
   `
   benchPerOp('parse + typecheck full program', 500, () => { dvala.typecheck(program) })
+}
+
+// 6. End-to-end realistic program (large)
+//
+// Generated source: 50 distinct refinement annotations spread across
+// type aliases, function parameters, and let-bindings. Catches scaling
+// regressions a 10-line program would miss — especially anything
+// proportional to "number of refinements in the program" rather than
+// "size of one refinement". Realistic shape: a library of validation
+// functions where every numeric parameter has an interval refinement
+// and every string has an emptiness refinement.
+startScenario('end-to-end-large', '6. End-to-end refinement-heavy program (large)', '50+ refinement annotations across type aliases, function params, and let-bindings — catches scaling regressions proportional to refinement count')
+{
+  const aliases: string[] = []
+  const fns: string[] = []
+  const calls: string[] = []
+  // 25 numeric refinement aliases, each used by one function and called twice.
+  for (let i = 0; i < 25; i++) {
+    aliases.push(`type N${i} = Number & {n | n > ${i}};`)
+    fns.push(`let f${i} = (x: N${i}): Number -> x;`)
+    calls.push(`f${i}(${i + 10})`)
+  }
+  // 25 string-emptiness refinement aliases, each used once.
+  for (let i = 0; i < 25; i++) {
+    aliases.push(`type S${i} = String & {s | count(s) > ${i}};`)
+    fns.push(`let g${i} = (x: S${i}): String -> x;`)
+    calls.push(`g${i}("${'x'.repeat(i + 1)}")`)
+  }
+  const program = `${aliases.join('\n')}\n${fns.join('\n')}\n[${calls.join(', ')}]`
+  benchPerOp('parse + typecheck (50 refinements)', 100, () => { dvala.typecheck(program) })
 }
 
 // ---------------------------------------------------------------------------
