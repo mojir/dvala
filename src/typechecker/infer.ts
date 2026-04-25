@@ -3188,17 +3188,24 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
  * statement isn't an `assert(P)` call we can narrow.
  */
 function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type> | undefined {
-  // Recognize Call(Builtin('assert'), [predicate, ...])
+  // Recognize Call(Builtin(<assert-style builtin>), args). The set of
+  // assertion-style builtins is driven by `BuiltinTypeInfo.assertsParam`
+  // metadata (Phase 2.5c builtin-only cut), not a hardcoded name list —
+  // so adding a new assertion-style builtin is a metadata edit, no
+  // typechecker plumbing change. Today only `assert` carries it.
   if (stmt[0] !== NodeTypes.Call) return undefined
   const [calleeNode, argNodes] = stmt[1] as [AstNode, AstNode[]]
   if (calleeNode[0] !== NodeTypes.Builtin) return undefined
-  if (calleeNode[1] !== 'assert') return undefined
-  if (argNodes.length < 1) return undefined
-  // If the user shadowed `assert` (e.g. with `let assert = ...`), the
+  const builtinName = calleeNode[1] as string
+  const info = getBuiltinType(builtinName)
+  const paramIndex = info.assertsParam
+  if (paramIndex === undefined) return undefined
+  if (argNodes.length <= paramIndex) return undefined
+  // If the user shadowed the builtin (e.g. `let assert = ...`), the
   // semantics could differ — be conservative and skip narrowing.
-  if (lookupShadowedBuiltin(env, 'assert')) return undefined
+  if (lookupShadowedBuiltin(env, builtinName)) return undefined
 
-  const predicate = argNodes[0]!
+  const predicate = argNodes[paramIndex]!
 
   // Collect free symbols that resolve to env-bound variables. Built-in
   // names (`isNumber`, `count`, etc.) and unresolved symbols don't count.
@@ -3210,7 +3217,7 @@ function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type>
   // single free symbol as the binder. Anything outside the fragment
   // can't be reasoned about by the solver, so we skip narrowing.
   try {
-    fragmentCheckPredicate(predicate, binderName, '<assert>', 0)
+    fragmentCheckPredicate(predicate, binderName, `<${builtinName}>`, 0)
   } catch {
     return undefined
   }

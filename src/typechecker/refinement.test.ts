@@ -3,7 +3,7 @@ import { builtin } from '../builtin'
 import { NodeTypes } from '../constants/constants'
 import { createDvala } from '../createDvala'
 import type { AstNode } from '../parser/types'
-import { initBuiltinTypes } from './builtinTypes'
+import { getBuiltinType, initBuiltinTypes } from './builtinTypes'
 import { expandTypeForDisplay } from './infer'
 import { parseTypeAnnotation, RefinementError, TypeParseError } from './parseType'
 import { solveRefinedSubtype } from './refinementSolver'
@@ -1422,6 +1422,38 @@ describe('refinement types — Phase 2.5b (if-narrowing on refinements)', () => 
       // change, but more importantly NOT a Refined wrapper).
       expect(refineds.filter(t => t.binder === 'x')).toHaveLength(0)
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Refinement types — Phase 2.5c (builtin-metadata cut)
+// ---------------------------------------------------------------------------
+//
+// Phase 2.5c (full plan) generalises `assert(P)` recognition to
+// user-defined assertion helpers via an `asserts <param>` parser
+// surface. The cut shipped here is the metadata-only stepping stone:
+// the typechecker's dispatch is now driven by `BuiltinTypeInfo.
+// assertsParam` rather than a hardcoded `'assert'` name match. No
+// user-visible change today (only the builtin `assert` is registered),
+// but adding more assertion-style builtins is now a metadata edit.
+// ---------------------------------------------------------------------------
+
+describe('refinement types — Phase 2.5c (builtin-metadata cut)', () => {
+  it('the `assert` builtin is registered with assertsParam: 0', () => {
+    // Pin the metadata-driven dispatch contract: `assert`'s
+    // `BuiltinTypeInfo.assertsParam` must point at param index 0.
+    // Without this, the dispatch in `extractAssertNarrowings` would
+    // skip `assert` and Phase 2.5a's narrowing would silently break.
+    const info = getBuiltinType('assert')
+    expect(info.assertsParam).toBe(0)
+  })
+
+  it('builtins without an `asserts` annotation have assertsParam: undefined', () => {
+    // Spot-check a couple of unrelated builtins to verify the field
+    // isn't being populated spuriously.
+    expect(getBuiltinType('+').assertsParam).toBeUndefined()
+    expect(getBuiltinType('isNumber').assertsParam).toBeUndefined()
+    expect(getBuiltinType('count').assertsParam).toBeUndefined()
   })
 })
 

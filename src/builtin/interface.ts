@@ -169,6 +169,19 @@ export interface FunctionDocs {
     handled: string[]
     introduced: string[]
   }
+  /**
+   * Phase 2.5c (builtin-metadata cut) — when set, calling this builtin
+   * with a fragment-eligible single-symbol predicate at `paramIndex`
+   * narrows the variable in subsequent statements, mirroring TypeScript's
+   * `asserts cond` annotation semantics. Used by `assert` (paramIndex 0).
+   *
+   * The full Phase 2.5c plan extends this surface to user-defined
+   * assertion helpers via an `asserts <param>` parser change; this
+   * metadata field is the dispatch target either way.
+   */
+  asserts?: {
+    paramIndex: number
+  }
 }
 
 export interface CustomDocs {

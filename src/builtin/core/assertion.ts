@@ -47,6 +47,11 @@ export const assertionNormalExpression: BuiltinNormalExpressions = {
       ],
       seeAlso: ['assertion.assertTruthy', 'assertion.assertTrue'],
       hideOperatorForm: true,
+      // Phase 2.5c — the value at index 0 is the predicate; calling
+      // `assert(P)` with a fragment-eligible single-symbol P narrows
+      // the referenced variable in subsequent statements. See
+      // `extractAssertNarrowings` in src/typechecker/infer.ts.
+      asserts: { paramIndex: 0 },
     },
   },
 }
