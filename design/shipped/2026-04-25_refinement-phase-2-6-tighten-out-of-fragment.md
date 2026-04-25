@@ -132,6 +132,7 @@ Tracked as separate commits inside the same PR.
    - `let x: Number = 5; let y: Positive = x` continues to accept (`OutOfFragment` lenience preserved).
    - `let x: Number = -5; let y: Positive = x` continues to reject (literal fold path unchanged).
    - **Alias-via-bounds-expansion test (per Decision 4):** a Var whose `lowerBounds` contain an Alias that wraps a Refined type (e.g. flowing `Positive`-typed values through inference) — confirm the unwrap chain produces the correct Refined type at the solver call.
+   - **`Inter`-of-Refined RHS test (concern B from review):** RHS is `Inter<Refined<...>, Refined<...>>` (multiple refinements ANDed at the target). The dispatch only handles direct `Refined`; the existing `Inter` handling in `constrain` should iterate members so each Refined reaches the dispatch on the recursive call. Test confirms this.
 5. **Memory + design-doc updates**. Mark Phase 2.6 shipped in `project_refinement_types.md`. Move this design doc to `design/shipped/`. Update `2026-04-23_refinement-types.md` to note Phase 2.3's "accept conservatively" choice was tightened in 2.6.
 6. **Resume Phase 2.5c**. Now that narrowing is observable, switch back to `refinement-phase-2-5c-asserts-functions` branch and pick up at step 3.
 
