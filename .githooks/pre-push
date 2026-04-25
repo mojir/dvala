@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+#
+# Pre-push hook: runs the Dvala pipeline perf benchmark before pushing
+# any commit that touches source code, so the perf history stays dense
+# without depending on memory.
+#
+# Behavior:
+#   1. For each ref being pushed, find commits in (remote..local) that
+#      touch any source file under `src/`.
+#   2. If any such commit exists AND HEAD's short hash is not yet in
+#      benchmarks/pipeline-history.json, run `npm run benchmarks:run`,
+#      abort the push, and tell the user to commit the bench data.
+#   3. If the data already exists for HEAD, push proceeds.
+#   4. If no source code was touched, push proceeds.
+#
+# Override with `git push --no-verify` for non-perf-relevant force-pushes
+# or when bench output is unwanted.
+#
+# Installed by `npm run install-hooks` (sets core.hooksPath=.githooks).
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# Files that, when changed, demand a fresh perf row. Anything under
+# `src/` plausibly affects pipeline timing — broader is safer than
+# missing a regression. Use `--no-verify` for non-perf-relevant pushes.
+SOURCE_PATHS=(
+  'src/'
+)
+
+HISTORY_FILE='benchmarks/pipeline-history.json'
+ZERO='0000000000000000000000000000000000000000'
+
+# Determine the default base branch (origin/main) for new-branch pushes.
+DEFAULT_BASE='origin/main'
+
+# Collect every ref tip whose range touches src/ — multi-ref pushes
+# (`git push origin a b`) need each tip checked, not just the last one.
+# Stored as space-separated full SHAs in `bench_tips`.
+bench_tips=''
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Branch deletion — nothing to bench.
+  if [[ "$local_sha" == "$ZERO" ]]; then
+    continue
+  fi
+
+  # New branch — diff against the default base instead of an empty SHA,
+  # otherwise `git log` would walk the entire history.
+  if [[ "$remote_sha" == "$ZERO" ]]; then
+    if git rev-parse --verify --quiet "$DEFAULT_BASE" >/dev/null; then
+      range="$DEFAULT_BASE..$local_sha"
+    else
+      # No upstream main known — only check the tip commit.
+      range="$local_sha~1..$local_sha"
+    fi
+  else
+    range="$remote_sha..$local_sha"
+  fi
+
+  # Any commit in the range touch source code?
+  # `git log -- <pathspec>` returns matching commits; if the output is
+  # non-empty, at least one commit qualifies.
+  if [[ -n "$(git log "$range" --pretty=format:%H -- "${SOURCE_PATHS[@]}" 2>/dev/null || true)" ]]; then
+    bench_tips="$bench_tips $local_sha"
+  fi
+done
+
+if [[ -z "$bench_tips" ]]; then
+  exit 0
+fi
+
+# Walk the collected tips, partition into "have data" / "missing data".
+# Missing tips block the push. The bench can only be run for HEAD (it
+# rev-parses HEAD internally to tag the row), so:
+#   - if HEAD is the only missing tip → bench HEAD, abort, ask to commit
+#   - if HEAD is not in the missing list → push the missing tips
+#     individually so each becomes HEAD when its bench runs
+missing_tips=''
+head_sha="$(git rev-parse HEAD)"
+head_short="$(git rev-parse --short HEAD)"
+for tip in $bench_tips; do
+  short="$(git rev-parse --short "$tip")"
+  if [[ -f "$HISTORY_FILE" ]] && grep -q "\"commit\": \"$short\"" "$HISTORY_FILE"; then
+    echo "✓ pipeline perf data already recorded for $short"
+  else
+    missing_tips="$missing_tips $tip"
+  fi
+done
+
+if [[ -z "$missing_tips" ]]; then
+  echo "✓ all pushed tips have perf data — push proceeding"
+  exit 0
+fi
+
+# Multi-tip case where HEAD isn't one of the missing tips. We can't
+# bench another commit without checking it out, which would clobber the
+# user's working state. Refuse and tell them what to do.
+head_in_missing=0
+for tip in $missing_tips; do
+  [[ "$tip" == "$head_sha" ]] && head_in_missing=1
+done
+
+if [[ "$head_in_missing" -eq 0 ]]; then
+  echo "❌ Multi-ref push has tips needing bench data, but none of them are HEAD."
+  echo "   The bench tags rows with HEAD's hash, so each tip must become HEAD."
+  echo "   Push them one at a time, or skip with --no-verify:"
+  for tip in $missing_tips; do
+    short="$(git rev-parse --short "$tip")"
+    echo "     • $short"
+  done
+  exit 1
+fi
+
+short_sha="$head_short"
+
+# Refuse to bench a dirty tree: the JSON would be tagged with HEAD's
+# hash but measure working-tree state. Force the user to clean up first.
+if ! git diff --quiet HEAD || ! git diff --cached --quiet; then
+  echo "❌ working tree has uncommitted changes."
+  echo "   Refusing to benchmark — the recorded data would not match commit $short_sha."
+  echo "   Either commit/stash, or push with --no-verify to skip."
+  exit 1
+fi
+
+cat <<EOF
+⏱  Source code touched in this push and no perf data exists for $short_sha.
+   Running \`npm run benchmarks:run\` (this can take ~30s)...
+EOF
+
+if ! npm run benchmarks:run >/dev/null 2>&1; then
+  echo "❌ benchmark run failed — see \`npm run benchmarks:run\` output. Push aborted."
+  exit 1
+fi
+
+cat <<EOF
+
+✓ Benchmark data appended for $short_sha. Files changed:
+   benchmarks/pipeline-history.json
+   benchmarks/pipeline-performance.md
+   benchmarks/results/pipeline-*.json
+
+Commit them and re-push:
+
+   git add benchmarks/
+   git commit -m "bench: $short_sha"
+   git push
+
+(Or push with --no-verify to skip bench enforcement entirely.)
+EOF
+exit 1

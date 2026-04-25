@@ -1,0 +1,145 @@
+{
+  "timestamp": "2026-04-25T10:52:17.404Z",
+  "commit": "7a67807c",
+  "commitMessage": "docs(claude.md): require perf benchmark on refinement-types PRs",
+  "scenarios": {
+    "parse-overhead": {
+      "parse: plain (no annotation)": {
+        "median": 0.0039604580000000165,
+        "min": 0.0027855410000000233,
+        "max": 0.006124125000000049,
+        "unit": "ms"
+      },
+      "parse: typed Number annotation": {
+        "median": 0.0028585840000000078,
+        "min": 0.00272524999999996,
+        "max": 0.0034156249999999773,
+        "unit": "ms"
+      },
+      "parse: refined Number & {n | n > 0}": {
+        "median": 0.004343915999999979,
+        "min": 0.004164667000000008,
+        "max": 0.005216000000000008,
+        "unit": "ms"
+      },
+      "typecheck: plain (no annotation)": {
+        "median": 0.009568125000000009,
+        "min": 0.007283667000000037,
+        "max": 0.009960833000000037,
+        "unit": "ms"
+      },
+      "typecheck: typed Number annotation": {
+        "median": 0.007415542000000016,
+        "min": 0.005781541000000005,
+        "max": 0.010036208000000045,
+        "unit": "ms"
+      },
+      "typecheck: refined Number & {n | n > 0}": {
+        "median": 0.018693707999999903,
+        "min": 0.01304945900000007,
+        "max": 0.022657000000000038,
+        "unit": "ms"
+      }
+    },
+    "solver-direct": {
+      "interval target — Number → {n | n > 0 && n < 100}": {
+        "median": 0.0838458300000002,
+        "min": 0.08269624999999906,
+        "max": 0.12264749999999934,
+        "unit": "us"
+      },
+      "set target — :ok → {x | :ok | :error}": {
+        "median": 0.11711583000000018,
+        "min": 0.11565165999999975,
+        "max": 0.15230999999999995,
+        "unit": "us"
+      },
+      "count target — String → {s | count(s) > 0}": {
+        "median": 0.051675420000000256,
+        "min": 0.049416250000000446,
+        "max": 0.08587791000000038,
+        "unit": "us"
+      },
+      "excludedSet — Number → {n | !=0 && !=1 && !=-1}": {
+        "median": 0.19590291999999976,
+        "min": 0.19541791999999986,
+        "max": 0.2256479200000001,
+        "unit": "us"
+      },
+      "literal source — 50 → {n | n > 0 && n < 100}": {
+        "median": 0.1002216599999997,
+        "min": 0.09683415999999964,
+        "max": 0.14462125000000015,
+        "unit": "us"
+      }
+    },
+    "simplify-scaling": {
+      "N= 2 stacked refinements": {
+        "median": 0.7789666000000125,
+        "min": 0.7584331999999904,
+        "max": 1.4552249999999958,
+        "unit": "us"
+      },
+      "N= 4 stacked refinements": {
+        "median": 3.278699999999981,
+        "min": 3.254266800000005,
+        "max": 3.313591599999995,
+        "unit": "us"
+      },
+      "N= 8 stacked refinements": {
+        "median": 14.20048340000003,
+        "min": 14.152258400000026,
+        "max": 14.318699999999989,
+        "unit": "us"
+      },
+      "N=16 stacked refinements": {
+        "median": 86.32694159999996,
+        "min": 86.02884159999994,
+        "max": 87.03049999999995,
+        "unit": "us"
+      },
+      "N=32 stacked refinements": {
+        "median": 454.0738168,
+        "min": 449.7715666000001,
+        "max": 458.8872499999998,
+        "unit": "us"
+      }
+    },
+    "excluded-quadratic": {
+      "N= 10 (parse + simplify)": {
+        "median": 27.555625000000145,
+        "min": 26.703408399999898,
+        "max": 28.611941600000137,
+        "unit": "us"
+      },
+      "N= 50 (parse + simplify)": {
+        "median": 170.46375000000083,
+        "min": 168.648624999998,
+        "max": 171.0445830000026,
+        "unit": "us"
+      },
+      "N=100 (parse + simplify)": {
+        "median": 417.7552100000139,
+        "min": 414.83250000001135,
+        "max": 423.03916499999104,
+        "unit": "us"
+      }
+    },
+    "end-to-end": {
+      "parse + typecheck full program": {
+        "median": 0.15125183399999514,
+        "min": 0.1465829159999994,
+        "max": 0.21504658400000334,
+        "unit": "ms"
+      }
+    },
+    "end-to-end-large": {
+      "parse + typecheck (50 refinements)": {
+        "median": 4.772306669999998,
+        "min": 4.7347283299999985,
+        "max": 5.056422909999965,
+        "unit": "ms"
+      }
+    }
+  }
+}

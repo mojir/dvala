@@ -9,10 +9,29 @@
 - `npm run check` — full pipeline: lint + typecheck + test + build
 - `npm run test` — run tests only
 - `npm run build` — build all bundles
+- `npm run benchmarks:run` — run the Dvala pipeline perf bench (tokenize → parse → typecheck → run + refinement-typechecker scenarios); appends a row to `benchmarks/pipeline-performance.md`
+- `npm run benchmarks:show` — render the perf history as an interactive HTML chart and open it in the browser
 
 Run `npm run check` after any medium or larger code change.
 
 When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI escape codes don't pollute the captured output (applies to `vitest`, `eslint`, etc.).
+
+## Performance tracking
+
+**Source-code changes (anything under `src/`) MUST run the pipeline perf benchmark before the PR merges.**
+
+The `.githooks/pre-push` hook automates this: when you push a commit that touched any `src/` file and HEAD's hash isn't yet in `benchmarks/pipeline-history.json`, it runs the bench, aborts the push, and asks you to commit the bench data and re-push. Install once per clone with `npm run install-hooks` (sets `core.hooksPath=.githooks`). Disable with `npm run uninstall-hooks`.
+
+**Escape hatch:** for trivially non-perf-relevant `src/` changes (comment typo, dead-code removal, error-message wording), bypass the gate with `git push --no-verify`. The hook is intentionally conservative — broader-than-necessary so we don't miss a regression. Use `--no-verify` thoughtfully; if in doubt, run the bench.
+
+Manual flow if you skip the hook:
+- Run `npm run benchmarks:run` on the PR branch's tip (after the last code change).
+- Commit the resulting changes to `benchmarks/pipeline-history.json` and `benchmarks/pipeline-performance.md` to the PR branch.
+- Push so the perf data is part of the PR's history.
+
+If a source-touching PR was merged without perf data: open a follow-up PR that runs the benchmark on `main` (so the row's commit hash is the merge commit) and ships the resulting `.md` / `.json` updates. Don't backfill onto the merged commit retroactively — keep the perf history honest about when the data was captured.
+
+Why: the rendered `.md` table is the at-a-glance regression signal during PR review. Skipping it means a future regression goes unnoticed until someone manually re-runs the bench.
 
 ## Project Structure
 

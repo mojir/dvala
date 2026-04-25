@@ -2502,6 +2502,67 @@ button:focus {
   display: flex;
 }
 
+/* Benchmarks (Settings → Benchmarks tab) */
+.benchmarks-warning {
+  background: var(--color-surface-2);
+  border-left: 3px solid var(--color-primary);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+.benchmarks-runs {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.benchmarks-runs summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--color-text-bright);
+}
+
+.benchmarks-runs table {
+  border-collapse: collapse;
+  margin-top: var(--space-2);
+  width: 100%;
+}
+
+.benchmarks-runs td,
+.benchmarks-runs th {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border-subtle);
+  text-align: left;
+  font-size: 11px;
+  color: var(--color-text);
+}
+
+.benchmarks-runs th {
+  color: var(--color-text-bright);
+  background: var(--color-surface-2);
+}
+
+.benchmarks-chart {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  height: 360px;
+}
+
+.benchmarks-error {
+  color: var(--color-error);
+  font-size: 13px;
+}
+
 /* Settings toggle switch */
 .settings-toggle {
   position: relative;

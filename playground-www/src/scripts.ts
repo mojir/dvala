@@ -16,6 +16,7 @@ import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { buildDocTree, formatSource, getAutoCompleter, getUndefinedSymbols, parseToCst, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import { createAstTreeViewer } from './components/astTreeViewer'
+import { renderBenchmarksCharts } from './components/benchmarksPage'
 import type { EditorMenuItem } from './editorMenu'
 import { renderEditorMenu } from './editorMenu'
 import { addIcon, copyIcon, downloadIcon, hamburgerIcon, saveIcon, shareIcon } from './icons'
@@ -1058,6 +1059,8 @@ export function showSettingsTab(id: string) {
     updateStorageUsage()
   if (id === 'developer')
     renderColorPalette()
+  if (id === 'benchmarks')
+    void renderBenchmarksCharts()
 }
 
 function renderColorPalette(): void {
@@ -7366,6 +7369,9 @@ function updateCSS() {
   const devTabBtn = document.getElementById('settings-tab-btn-developer')
   if (devTabBtn)
     devTabBtn.style.display = getState('playground-developer') ? '' : 'none'
+  const benchmarksTabBtn = document.getElementById('settings-tab-btn-benchmarks')
+  if (benchmarksTabBtn)
+    benchmarksTabBtn.style.display = getState('playground-developer') ? '' : 'none'
 
   const currentFileId = getState('current-file-id')
   const currentFile = currentFileId ? getSavedFiles().find(entry => entry.id === currentFileId) : null
