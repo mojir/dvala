@@ -1132,21 +1132,11 @@ export function inferExpr(
       // --- Block (sequence of expressions) ---
       case NodeTypes.Block: {
         const nodes = payload as AstNode[]
-        // `currentEnv` is the env used to type each successive
-        // statement. After typechecking an `assert(P)` call, we narrow
-        // `currentEnv` so that later statements in the block see
-        // any variable mentioned in `P` with `P` woven into its
-        // type as a `Refined` wrapper. See `extractAssertNarrowings`.
-        let currentEnv = env.child()
-        let blockType: Type = NullType
-        for (const stmt of nodes) {
-          blockType = inferExpr(stmt, ctx, currentEnv, typeMap)
-          const assertNarrowings = extractAssertNarrowings(stmt, currentEnv)
-          if (assertNarrowings) {
-            currentEnv = applyAssertNarrowings(currentEnv, assertNarrowings)
-          }
-        }
-        result = blockType
+        // `inferStatementsWithAssertNarrowing` types each statement
+        // in turn and threads any `assert(P)` narrowings into the env
+        // used by later statements — see `extractAssertNarrowings`.
+        const { lastType } = inferStatementsWithAssertNarrowing(nodes, ctx, env.child(), typeMap)
+        result = lastType
         break
       }
 
@@ -1902,10 +1892,11 @@ export function inferExpr(
 
           ctx.pushResume(declaredRetType, answerType)
           ctx.pushEffects()
-          let clauseBodyType: Type = NullType
-          for (const bodyNode of clause.body) {
-            clauseBodyType = inferExpr(bodyNode, ctx, clauseEnv, typeMap)
-          }
+          // Handler-clause bodies are a sequence-of-statements, just
+          // like a Block — apply the same assert-narrowing semantics.
+          const { lastType: clauseBodyType } = inferStatementsWithAssertNarrowing(
+            clause.body, ctx, clauseEnv, typeMap,
+          )
           introducedSets.push(ctx.popEffects())
           ctx.popResume()
           constrain(ctx, clauseBodyType, answerType)
@@ -1916,10 +1907,9 @@ export function inferExpr(
           const transformEnv = env.child()
           bindPattern(transformParam, bodyType, transformEnv, ctx, typeMap)
           ctx.pushEffects()
-          let transformResult: Type = NullType
-          for (const bodyNode of transformBody) {
-            transformResult = inferExpr(bodyNode, ctx, transformEnv, typeMap)
-          }
+          const { lastType: transformResult } = inferStatementsWithAssertNarrowing(
+            transformBody, ctx, transformEnv, typeMap,
+          )
           introducedSets.push(ctx.popEffects())
           constrain(ctx, transformResult, answerType)
           constrain(ctx, answerType, transformResult)
@@ -1953,9 +1943,10 @@ export function inferExpr(
 
           ctx.pushHandledSignatures(guaranteedHandled)
           try {
-            for (const bodyNode of bodyExprs) {
-              bodyType = inferExpr(bodyNode, ctx, env, typeMap)
-            }
+            // WithHandler body is a `do ... end` semantically — apply
+            // the same assert-narrowing as Block/function-body sites.
+            const { lastType } = inferStatementsWithAssertNarrowing(bodyExprs, ctx, env, typeMap)
+            bodyType = lastType
           } finally {
             ctx.popHandledSignatures()
           }
@@ -1973,9 +1964,8 @@ export function inferExpr(
             ? handlerAlternatives[0]!.output
             : union(...handlerAlternatives.map(handler => handler.output))
         } else {
-          for (const bodyNode of bodyExprs) {
-            bodyType = inferExpr(bodyNode, ctx, env, typeMap)
-          }
+          const { lastType } = inferStatementsWithAssertNarrowing(bodyExprs, ctx, env, typeMap)
+          bodyType = lastType
           result = bodyType
         }
         break
@@ -2921,19 +2911,14 @@ function inferFunctionNode(
 
     ctx.pushEffects()
 
-    let retType: Type = NullType
-    let lastBodyNode: AstNode | undefined
     // Mirror of the Block case: narrow funcEnv after each `assert(P)`
     // statement so subsequent body statements see the assumed predicate.
-    let bodyEnv = funcEnv
-    for (const bodyNode of bodyNodes) {
-      retType = inferExpr(bodyNode, ctx, bodyEnv, typeMap)
-      lastBodyNode = bodyNode
-      const assertNarrowings = extractAssertNarrowings(bodyNode, bodyEnv)
-      if (assertNarrowings) {
-        bodyEnv = applyAssertNarrowings(bodyEnv, assertNarrowings)
-      }
-    }
+    const { lastType: retType, lastStmt: lastBodyNode } = inferStatementsWithAssertNarrowing(
+      bodyNodes,
+      ctx,
+      funcEnv,
+      typeMap,
+    )
 
     const bodyEffects = ctx.popEffects()
 
@@ -3180,6 +3165,15 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
  *     the binder. If it doesn't, the runtime `assert` still works,
  *     but no static narrowing applies — clean fallback.
  *
+ * Silent-no-op caveat: a fragment-eligible predicate that the solver
+ * can't extract a domain from (e.g. `isValidId(x)` — type-guard call
+ * to a non-narrowing builtin) still narrows structurally to a
+ * `Refined` wrapper, but downstream subtype queries hit the inert
+ * pass-through and accept everything. The narrowing is technically
+ * present; it just has no end-to-end observable effect today. When
+ * the solver gains coverage in later phases, these refinements will
+ * automatically start tightening the static analysis.
+ *
  * Returns the narrowing map (sym → Refined) or `undefined` if the
  * statement isn't an `assert(P)` call we can narrow.
  */
@@ -3214,9 +3208,24 @@ function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type>
   const baseType = env.lookup(binderName)
   if (!baseType) return undefined
 
-  // Source string mirrors the format used by `parseTypeAnnotation` and
-  // `mergeRefinementPredicates`: `<binder> | <prettyPrinted predicate>`.
-  // Used for hover / error display, not for solver semantics.
+  // Source string format: `<binder> | <prettyPrinted predicate>`.
+  //
+  // KNOWN DIVERGENCE: `parseTypeAnnotation` (the path used for written
+  // refinement annotations) builds source from the raw input substring
+  // (preserving the user's exact spacing). This path uses `prettyPrint`
+  // to format the predicate AST, which canonicalizes whitespace. The
+  // two formats can therefore differ: a user-written `{n|n>0}`
+  // produces source "n | n>0" via parseType, but an `assert(x > 0)`
+  // produces source "x | x > 0" via this path.
+  //
+  // Practical impact: `typeEquals` on Refined compares source strings,
+  // so the same predicate written via assert vs via annotation is NOT
+  // equal even when the binders match. This is acceptable in Phase 2.5a
+  // because (a) typeEquals is mainly used for union dedup, and (b) the
+  // binders typically differ (asserts use the variable's name, written
+  // refinements use a fresh binder like `n`). Aligning the formats is
+  // a follow-up: either prettyPrint everywhere (changes error UX) or
+  // reconstruct raw text from the AST in this path.
   const source = `${binderName} | ${prettyPrint(predicate).trim()}`
   const refined: Type = { tag: 'Refined', base: baseType, binder: binderName, predicate, source }
 
@@ -3241,6 +3250,39 @@ function applyAssertNarrowings(env: TypeEnv, narrowings: Map<string, Type>): Typ
     narrowed.bind(name, type)
   }
   return narrowed
+}
+
+/**
+ * Walk a list of statements left-to-right, calling `inferExpr` on each
+ * and threading any `assert(P)` narrowings from earlier statements
+ * into the env used by later ones. Used by every block-shaped node
+ * (Block, function body, handler clauses, transform, WithHandler) so
+ * the narrowing semantics are uniform across all sequence-of-stmt
+ * sites in the typechecker.
+ *
+ * Returns the type of the LAST statement (the value of the block) and
+ * the final env so callers can inspect it if they need the narrowed
+ * bindings later (e.g. for return-type inference). Most callers
+ * discard the env.
+ */
+function inferStatementsWithAssertNarrowing(
+  stmts: AstNode[],
+  ctx: InferenceContext,
+  env: TypeEnv,
+  typeMap: Map<number, Type>,
+): { lastType: Type; lastStmt: AstNode | undefined; finalEnv: TypeEnv } {
+  let lastType: Type = NullType
+  let lastStmt: AstNode | undefined
+  let currentEnv = env
+  for (const stmt of stmts) {
+    lastType = inferExpr(stmt, ctx, currentEnv, typeMap)
+    lastStmt = stmt
+    const narrowings = extractAssertNarrowings(stmt, currentEnv)
+    if (narrowings) {
+      currentEnv = applyAssertNarrowings(currentEnv, narrowings)
+    }
+  }
+  return { lastType, lastStmt, finalEnv: currentEnv }
 }
 
 /**
