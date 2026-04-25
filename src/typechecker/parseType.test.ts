@@ -521,6 +521,61 @@ describe('parseFunctionType — type guards', () => {
   })
 })
 
+// Phase 2.5c — `asserts {binder | body}` return-type annotation. Sibling
+// surface to type-guards (`x is T`); produces a Boolean-returning function
+// with side metadata identifying which parameter the call narrows.
+describe('parseFunctionType — asserts return (Phase 2.5c)', () => {
+  it('(x: Number) -> asserts {x | x > 0}', () => {
+    const result = parseFunctionTypeAnnotation('(x: Number) -> asserts {x | x > 0}')
+    expect(typeEquals(result.type, fn([NumberType], BooleanType))).toBe(true)
+    expect(result.assertsParam).toBe('x')
+    expect(result.assertsPredicate?.binder).toBe('x')
+    expect(result.assertsPredicate?.source).toBe('x | x > 0')
+  })
+
+  // Multi-parameter: the binder name identifies which parameter is
+  // asserted. Nothing about the function changes by adding `asserts`
+  // beyond the side metadata — the function still takes both args
+  // and returns Boolean.
+  it('(a: Number, b: Number) -> asserts {b | b > 0}', () => {
+    const result = parseFunctionTypeAnnotation('(a: Number, b: Number) -> asserts {b | b > 0}')
+    expect(typeEquals(result.type, fn([NumberType, NumberType], BooleanType))).toBe(true)
+    expect(result.assertsParam).toBe('b')
+  })
+
+  it('rejects when binder does not match any parameter', () => {
+    expect(() =>
+      parseFunctionTypeAnnotation('(x: Number) -> asserts {n | n > 0}'),
+    ).toThrow(TypeParseError)
+    expect(() =>
+      parseFunctionTypeAnnotation('(x: Number) -> asserts {n | n > 0}'),
+    ).toThrow(/binder 'n' does not match any parameter/)
+  })
+
+  // Backtrack-not-throw: `asserts` isn't a reserved type name, so a
+  // user-defined alias (`type asserts = Number`) should still work as
+  // a return-type position. Mirrors how `is` falls through in
+  // tryParseTypeGuard when the param name doesn't match.
+  // Backtrack-not-throw: `asserts` isn't a reserved type name, so a
+  // user-defined alias (`type asserts = Number`) should still work as
+  // a return-type position. The returned type is an `Alias` wrapper
+  // around Number — that's the regular type-alias path doing its
+  // job, not the asserts path firing.
+  it('falls through to regular return type when not followed by `{`', () => {
+    registerTypeAlias('asserts', [], 'Number')
+    const result = parseFunctionTypeAnnotation('(x: Number) -> asserts')
+    expect(result.type.tag).toBe('Function')
+    expect(result.assertsParam).toBeUndefined()
+    expect(result.assertsPredicate).toBeUndefined()
+  })
+
+  it('regular function (no asserts)', () => {
+    const result = parseFunctionTypeAnnotation('(Number) -> String')
+    expect(result.assertsParam).toBeUndefined()
+    expect(result.assertsPredicate).toBeUndefined()
+  })
+})
+
 // ---------------------------------------------------------------------------
 // Complex / real-world examples
 // ---------------------------------------------------------------------------

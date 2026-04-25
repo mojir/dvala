@@ -115,6 +115,22 @@ export interface ParsedFunctionType {
   guardParam?: string
   /** If the function is a type guard, the type it narrows to. */
   guardType?: Type
+  /**
+   * Phase 2.5c — name of the parameter asserted by the function's
+   * `asserts {binder | body}` return annotation. The binder name in
+   * the predicate must equal one of the parameter names; that match
+   * identifies the asserted parameter. Unset when the function has no
+   * `asserts` annotation.
+   */
+  assertsParam?: string
+  /**
+   * Phase 2.5c — predicate AST + binder + source for the `asserts`
+   * annotation. Predicate has already been fragment-checked
+   * (`fragmentCheckPredicate`) against the binder, same as the
+   * `Refined` node body. Unset when the function has no `asserts`
+   * annotation.
+   */
+  assertsPredicate?: { binder: string; predicate: AstNode; source: string }
 }
 
 export function parseFunctionTypeAnnotation(input: string): ParsedFunctionType {
@@ -262,6 +278,22 @@ class TypeParser {
               type: funcType,
               guardParam: guardResult.paramName,
               guardType: guardResult.guardType,
+            }
+          }
+          // Phase 2.5c — check for asserts return: -> asserts {binder | body}
+          // Sibling of type-guard syntax; both produce a Boolean-returning
+          // function with side metadata identifying which parameter the
+          // call narrows. `tryParseAsserts` runs the existing refinement
+          // predicate parser (`consumeAndCheckRefinementPredicate`) so the
+          // predicate fragment + binder rules are exactly the same as the
+          // ones used for `Type & {n | n > 0}` refinements.
+          const assertsResult = this.tryParseAsserts(paramsResult.params)
+          if (assertsResult) {
+            const funcType = fn(paramsResult.types, BooleanType, PureEffects, undefined, paramsResult.restType)
+            return {
+              type: funcType,
+              assertsParam: assertsResult.paramName,
+              assertsPredicate: assertsResult.predicate,
             }
           }
           // Regular return type
@@ -1030,6 +1062,59 @@ class TypeParser {
     this.skipWhitespace()
     const guardType = this.parseType()
     return { paramName: name, guardType }
+  }
+
+  // --- Asserts-return parsing (Phase 2.5c) ---
+
+  /**
+   * Try to parse `asserts {binder | body}` after `->`. Returns the parsed
+   * predicate plus the asserted parameter name (which must equal the
+   * binder), or `null` if `asserts` isn't the next token.
+   *
+   * The constraint "binder name equals a parameter name" identifies the
+   * asserted parameter unambiguously even for multi-parameter functions
+   * (a `(a: Number, b: Number) -> asserts {b | b > 0}` asserts `b`).
+   * Reusing the binder as the parameter selector is mildly redundant but
+   * keeps `consumeAndCheckRefinementPredicate` callable without a wrapper.
+   */
+  private tryParseAsserts(params: ParamInfo[]): {
+    paramName: string
+    predicate: { binder: string; predicate: AstNode; source: string }
+  } | null {
+    const saved = this.pos
+    const keyword = this.readIdentifier()
+    if (keyword !== 'asserts') {
+      this.pos = saved
+      return null
+    }
+    this.skipWhitespace()
+    // `asserts` is not a reserved word in the type grammar — a user
+    // could legitimately have `type asserts = Number` and use it as a
+    // return-type alias. Mirror `tryParseTypeGuard` and backtrack when
+    // the next token isn't the predicate-opening `{`; the caller falls
+    // through to the regular return-type parse and resolves `asserts`
+    // as a normal identifier.
+    if (this.peek() !== '{') {
+      this.pos = saved
+      return null
+    }
+    const predicateStart = this.pos
+    const predicate = this.consumeAndCheckRefinementPredicate()
+    // Binder must equal one of the function's parameter names. This is
+    // the "which parameter is being asserted" selector.
+    const matched = params.find(p => p.name === predicate.binder)
+    if (!matched) {
+      const paramNames = params.map(p => p.name).filter((n): n is string => n !== undefined)
+      const hint = paramNames.length > 0
+        ? ` (parameters: ${paramNames.join(', ')})`
+        : ' (function has no named parameters)'
+      throw new TypeParseError(
+        `\`asserts\` binder '${predicate.binder}' does not match any parameter name${hint}`,
+        this.input,
+        predicateStart,
+      )
+    }
+    return { paramName: predicate.binder, predicate }
   }
 
   // --- Type variable / named type ---
