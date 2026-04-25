@@ -1,7 +1,7 @@
 /**
- * Refinement-types performance — HTML visualisation generator.
+ * Dvala pipeline performance — HTML visualisation generator.
  *
- * Reads `benchmarks/refinement-history.json` and writes a self-contained
+ * Reads `benchmarks/pipeline-history.json` and writes a self-contained
  * HTML file with one Chart.js line chart per scenario. Each chart shows
  * one line per measurement, with x-axis running oldest-to-newest by run.
  *
@@ -19,7 +19,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
-const HISTORY_FILE = 'benchmarks/refinement-history.json'
+const HISTORY_FILE = 'benchmarks/pipeline-history.json'
 const OUTPUT_FILE = 'benchmarks/visualization.html'
 const CHART_JS_SRC = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js'
 
@@ -190,7 +190,7 @@ function renderHtml(scenarios: ScenarioMeta[], rs: RunEntry[]): string {
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Refinement-types performance</title>
+<title>Dvala pipeline performance</title>
 <script src="${CHART_JS_SRC}"></script>
 <style>
   body { font-family: system-ui, -apple-system, sans-serif; margin: 24px; max-width: 1200px; color: #222; }
@@ -208,12 +208,12 @@ function renderHtml(scenarios: ScenarioMeta[], rs: RunEntry[]): string {
 </style>
 </head>
 <body>
-<h1>Refinement-types performance</h1>
+<h1>Dvala pipeline performance</h1>
 <div class="meta">
   ${rs.length} run${rs.length === 1 ? '' : 's'} from
   <code>${rs[0]!.commit}</code> (${rs[0]!.timestamp.slice(0, 10)})
   to <code>${rs[rs.length - 1]!.commit}</code> (${rs[rs.length - 1]!.timestamp.slice(0, 10)}).
-  Source: <code>benchmarks/refinement-history.json</code>.
+  Source: <code>benchmarks/pipeline-history.json</code>.
 </div>
 
 ${mixedHardware

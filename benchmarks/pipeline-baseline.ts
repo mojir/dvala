@@ -1,8 +1,20 @@
 /**
- * Refinement-types performance benchmark.
+ * Dvala pipeline performance benchmark.
  *
- * Tracks the cost of the refinement-types machinery (Phase 2.1+) so
- * regressions are visible across commits.
+ * Tracks the cost of every pipeline phase (tokenize → parse → typecheck →
+ * evaluate → end-to-end) across a corpus of representative programs, plus
+ * a few refinement-types-specific scenarios that stress the typechecker.
+ *
+ * Phase measurements are CUMULATIVE through the pipeline:
+ *   tokenize      = pure tokenize
+ *   parse         = tokenize + parseTokenStream
+ *   typecheck     = tokenize + parse + typecheck (via dvala.typecheck)
+ *   run           = tokenize + parse + typecheck + evaluate (full)
+ *   run-no-tc     = tokenize + parse + evaluate (typecheck disabled)
+ *
+ * Reader subtracts to isolate a phase. Cumulative form keeps the
+ * measurement boundaries identical to the public API surface — no
+ * private-API setup, and the numbers match what a user observes.
  *
  * Naming policy — IMPORTANT:
  *
@@ -24,10 +36,10 @@
  *   next refactor.
  *
  * Layout:
- *   - `benchmarks/refinement-history.json` — source of truth. Every run
+ *   - `benchmarks/pipeline-history.json` — source of truth. Every run
  *     appends an entry. Version-controlled. Each entry stores per-
  *     scenario per-measurement medians.
- *   - `benchmarks/refinement-performance.md` — generated from the JSON
+ *   - `benchmarks/pipeline-performance.md` — generated from the JSON
  *     each run. One markdown table per scenario; rows = measurements,
  *     columns = recent runs (newest first, last 10 kept in the rendered
  *     view; older runs only visible in JSON).
@@ -80,8 +92,8 @@ import { simplify } from '../src/typechecker/simplify'
 import { NumberType, StringType, atom, literal } from '../src/typechecker/types'
 
 const RUNS = 5
-const HISTORY_FILE = 'benchmarks/refinement-history.json'
-const RENDERED_FILE = 'benchmarks/refinement-performance.md'
+const HISTORY_FILE = 'benchmarks/pipeline-history.json'
+const RENDERED_FILE = 'benchmarks/pipeline-performance.md'
 const RAW_DIR = 'benchmarks/results'
 const MAX_COLUMNS_IN_RENDERED = 10
 
@@ -266,42 +278,133 @@ function benchPerOp(name: string, iterations: number, fn: () => void): void {
 // ---------------------------------------------------------------------------
 
 const dvala = createDvala()
+const dvalaNoTypecheck = createDvala({ typecheck: false })
 
-// 1. Parse + typecheck overhead — split parse from typecheck
+// ---------------------------------------------------------------------------
+// Corpus — representative programs covering different stress points.
 //
-// Three programs of identical shape, varying only the annotation:
-//   - plain (no annotation): catches walker overhead unrelated to
-//     refinements; should hold steady regardless of refinement work
-//   - typed Number annotation: pre-Phase-2.1 baseline shape
-//   - refined `{n | n > 0}` annotation: full machinery exercised
+// Each program is run through every pipeline phase (tokenize, parse,
+// typecheck, run-no-typecheck, run) so a regression in any phase shows
+// up as a worsening across the affected programs.
 //
-// Each program is benched in two stages:
-//   - parse-only: `parseTokenStream(tokenizeSource(p))`
-//   - typecheck: `dvala.typecheck(p)` (which also parses internally)
+// Programs are picked to span:
+//   - tiny: pure expression (parser/typechecker baseline overhead)
+//   - medium: untyped functional shape (lambdas, lists, reduce)
+//   - typed: explicit annotations everywhere (basic typechecker exercise)
+//   - refinement-heavy: 50+ refinement annotations (refinement machinery)
+//   - effect-heavy: handler + perform (effect-system pipeline)
+//   - eval-heavy: deep recursion (evaluator stress)
 //
-// The delta between parse and typecheck rows isolates the typecheck
-// step. The delta between rows in the same column isolates the
-// refinement-specific cost.
-startScenario('parse-overhead', '1. Parse + typecheck overhead', 'plain (no annotation) vs. typed Number vs. refined Number & {n | n > 0} — same program shape, parse and typecheck split out')
+// Programs are validated to actually parse and run via `dvala run` —
+// see the bench validation step for details.
+const corpus: Array<{ name: string; source: string; iters: { tokParse: number; tc: number; run: number } }> = []
+
+corpus.push({
+  name: 'tiny (1 + 2 * 3)',
+  source: '1 + 2 * 3',
+  iters: { tokParse: 5000, tc: 1000, run: 1000 },
+})
+
+corpus.push({
+  name: 'medium (untyped fold)',
+  source: 'let xs = [1,2,3,4,5,6,7,8,9,10]; reduce(xs, (a, b) -> a + b, 0)',
+  iters: { tokParse: 2000, tc: 500, run: 500 },
+})
+
+corpus.push({
+  name: 'typed (annotated arithmetic)',
+  source: 'let add = (a: Number, b: Number): Number -> a + b; let total: Number = add(add(1, 2), add(3, 4)); total',
+  iters: { tokParse: 2000, tc: 500, run: 500 },
+})
+
+// 50-refinement program — kept identical to the previous "end-to-end-large"
+// scenario so its measurements line up across the schema migration.
 {
-  const plainProgram = 'let x = 5; x'
-  const typedProgram = 'let x: Number = 5; x'
-  const refinedProgram = 'let x: Number & {n | n > 0} = 5; x'
-
-  // Parse-only timings — strip out the typecheck step. Useful to see
-  // whether the parser cost itself shifted between commits.
-  benchPerOp('parse: plain (no annotation)', 1000, () => { parseTokenStream(tokenizeSource(plainProgram)) })
-  benchPerOp('parse: typed Number annotation', 1000, () => { parseTokenStream(tokenizeSource(typedProgram)) })
-  benchPerOp('parse: refined Number & {n | n > 0}', 1000, () => { parseTokenStream(tokenizeSource(refinedProgram)) })
-
-  // Full pipeline (parse + typecheck via the public API).
-  benchPerOp('typecheck: plain (no annotation)', 1000, () => { dvala.typecheck(plainProgram) })
-  benchPerOp('typecheck: typed Number annotation', 1000, () => { dvala.typecheck(typedProgram) })
-  benchPerOp('typecheck: refined Number & {n | n > 0}', 1000, () => { dvala.typecheck(refinedProgram) })
+  const aliases: string[] = []
+  const fns: string[] = []
+  const calls: string[] = []
+  for (let i = 0; i < 25; i++) {
+    aliases.push(`type N${i} = Number & {n | n > ${i}};`)
+    fns.push(`let f${i} = (x: N${i}): Number -> x;`)
+    calls.push(`f${i}(${i + 10})`)
+  }
+  for (let i = 0; i < 25; i++) {
+    aliases.push(`type S${i} = String & {s | count(s) > ${i}};`)
+    fns.push(`let g${i} = (x: S${i}): String -> x;`)
+    calls.push(`g${i}("${'x'.repeat(i + 1)}")`)
+  }
+  corpus.push({
+    name: 'refinement-heavy (50 annotations)',
+    source: `${aliases.join('\n')}\n${fns.join('\n')}\n[${calls.join(', ')}]`,
+    iters: { tokParse: 200, tc: 50, run: 50 },
+  })
 }
 
-// 2. Solver direct cost per shape
-startScenario('solver-direct', '2. Refinement subtype-check cost (per predicate shape)', 'isolated subtype-check calls between source type and refinement target — no parse or typecheck overhead')
+corpus.push({
+  name: 'effect-heavy (handler + perform)',
+  source: 'do with handler @test.eff(x) -> resume(x * 10) end; perform(@test.eff, 5) end',
+  iters: { tokParse: 2000, tc: 500, run: 500 },
+})
+
+// Recursive fib is a known-slow runtime workload (exponential calls);
+// `n=15` keeps each run a few ms so the iter count stays sane.
+corpus.push({
+  name: 'eval-heavy (fib(15) recursion)',
+  source: 'let fib = (n) -> if n < 2 then n else fib(n - 1) + fib(n - 2) end; fib(15)',
+  iters: { tokParse: 2000, tc: 500, run: 100 },
+})
+
+// Pre-tokenize once for the parse scenario so we measure parser cost
+// without re-tokenizing each call. (Tokenize is a separate scenario.)
+const preTokenized = corpus.map(p => ({ ...p, tokens: tokenizeSource(p.source) }))
+
+// 1. Phase: tokenize — pure tokenize, no downstream work
+startScenario('phase-tokenize', '1. Pipeline: tokenize', 'pure tokenize cost — `tokenize(source)` for each corpus program')
+{
+  for (const p of corpus) {
+    benchPerOp(p.name, p.iters.tokParse, () => { tokenizeSource(p.source) })
+  }
+}
+
+// 2. Phase: parse — `parseTokenStream(pre-tokenized)`. Excludes the
+// tokenize cost so the column directly reflects parser work.
+startScenario('phase-parse', '2. Pipeline: parse (pre-tokenized)', 'parser cost only — `parseTokenStream(pre-tokenized)` for each corpus program')
+{
+  for (const p of preTokenized) {
+    benchPerOp(p.name, p.iters.tokParse, () => { parseTokenStream(p.tokens) })
+  }
+}
+
+// 3. Phase: typecheck — cumulative through typecheck via public API.
+// Includes tokenize + parse + typecheck. Subtract phase-parse to
+// isolate typecheck-only cost.
+startScenario('phase-typecheck', '3. Pipeline: typecheck (cumulative — incl. tokenize + parse)', '`dvala.typecheck(source)` per program — full pipeline through the typechecker. Subtract phase-parse for typecheck-only cost.')
+{
+  for (const p of corpus) {
+    benchPerOp(p.name, p.iters.tc, () => { dvala.typecheck(p.source) })
+  }
+}
+
+// 4. Phase: run with typecheck DISABLED — tokenize + parse + evaluate.
+// Subtracting phase-parse leaves the evaluator cost in isolation.
+startScenario('phase-run-no-typecheck', '4. Pipeline: run (typecheck disabled)', '`dvala.run(source)` with typecheck disabled — captures tokenize + parse + evaluate. Subtract phase-parse for evaluator-only cost.')
+{
+  for (const p of corpus) {
+    benchPerOp(p.name, p.iters.run, () => { dvalaNoTypecheck.run(p.source) })
+  }
+}
+
+// 5. Phase: end-to-end — full pipeline including typecheck.
+// This is what the user actually pays per `dvala run`.
+startScenario('phase-end-to-end', '5. Pipeline: end-to-end (full)', '`dvala.run(source)` — tokenize + parse + typecheck + evaluate. The number a user actually observes.')
+{
+  for (const p of corpus) {
+    benchPerOp(p.name, p.iters.run, () => { dvala.run(p.source) })
+  }
+}
+
+// 6. Solver direct cost per shape
+startScenario('solver-direct', '6. Refinement subtype-check cost (per predicate shape)', 'isolated subtype-check calls between source type and refinement target — no parse or typecheck overhead')
 {
   type Refined = Extract<ReturnType<typeof parseTypeAnnotation>, { tag: 'Refined' }>
   const intervalT = parseTypeAnnotation('Number & {n | n > 0 && n < 100}') as Refined
@@ -316,8 +419,8 @@ startScenario('solver-direct', '2. Refinement subtype-check cost (per predicate 
   benchPerCall('literal source — 50 → {n | n > 0 && n < 100}', 100_000, () => { solveRefinedSubtype(literal(50), intervalT) })
 }
 
-// 3. Stacked refinement simplify scaling
-startScenario('simplify-scaling', '3. Stacked refinement simplify scaling', 'simplifying N stacked refinements (`Base & {p1} & {p2} & ... & {pN}`) — empirically O(N²); regressions show as a worse exponent')
+// 7. Stacked refinement simplify scaling
+startScenario('simplify-scaling', '7. Stacked refinement simplify scaling', 'simplifying N stacked refinements (`Base & {p1} & {p2} & ... & {pN}`) — empirically O(N²); regressions show as a worse exponent')
 {
   for (const N of [2, 4, 8, 16, 32]) {
     const conjuncts: string[] = []
@@ -328,8 +431,8 @@ startScenario('simplify-scaling', '3. Stacked refinement simplify scaling', 'sim
   }
 }
 
-// 4. Many-inequality refinement worst case
-startScenario('excluded-quadratic', '4. Many-inequality refinement worst case', '`Number & {n | n != 1 && n != 2 && ... && n != N}` — documented quadratic worst case (each conjunction step merges against the growing exclusion list)')
+// 8. Many-inequality refinement worst case
+startScenario('excluded-quadratic', '8. Many-inequality refinement worst case', '`Number & {n | n != 1 && n != 2 && ... && n != N}` — documented quadratic worst case (each conjunction step merges against the growing exclusion list)')
 {
   for (const { N, iters } of [{ N: 10, iters: 5000 }, { N: 50, iters: 1000 }, { N: 100, iters: 200 }]) {
     const conjuncts: string[] = []
@@ -339,57 +442,8 @@ startScenario('excluded-quadratic', '4. Many-inequality refinement worst case', 
   }
 }
 
-// 5. End-to-end realistic program (small)
-startScenario('end-to-end', '5. End-to-end refinement-heavy program (small)', 'representative shape — 3 type aliases, 4 calls, multiple solver paths')
-{
-  const program = `
-    type Positive = Number & {n | n > 0};
-    type NonEmpty = String & {s | count(s) > 0};
-    type Status = Atom & {x | x == :ok || x == :error};
-
-    let validate = (n: Positive): Number -> n;
-    let label = (s: NonEmpty): String -> s;
-    let route = (x: Status): String -> "routed";
-
-    let total: Number = validate(5) + validate(10);
-    let msg: String = label("hello");
-    let r1: String = route(:ok);
-    let r2: String = route(:error);
-
-    [total, msg, r1, r2]
-  `
-  benchPerOp('parse + typecheck full program', 500, () => { dvala.typecheck(program) })
-}
-
-// 6. End-to-end realistic program (large)
-//
-// Generated source: 50 distinct refinement annotations spread across
-// type aliases, function parameters, and let-bindings. Catches scaling
-// regressions a 10-line program would miss — especially anything
-// proportional to "number of refinements in the program" rather than
-// "size of one refinement". Realistic shape: a library of validation
-// functions where every numeric parameter has an interval refinement
-// and every string has an emptiness refinement.
-startScenario('end-to-end-large', '6. End-to-end refinement-heavy program (large)', '50+ refinement annotations across type aliases, function params, and let-bindings — catches scaling regressions proportional to refinement count')
-{
-  const aliases: string[] = []
-  const fns: string[] = []
-  const calls: string[] = []
-  // 25 numeric refinement aliases, each used by one function and called twice.
-  for (let i = 0; i < 25; i++) {
-    aliases.push(`type N${i} = Number & {n | n > ${i}};`)
-    fns.push(`let f${i} = (x: N${i}): Number -> x;`)
-    calls.push(`f${i}(${i + 10})`)
-  }
-  // 25 string-emptiness refinement aliases, each used once.
-  for (let i = 0; i < 25; i++) {
-    aliases.push(`type S${i} = String & {s | count(s) > ${i}};`)
-    fns.push(`let g${i} = (x: S${i}): String -> x;`)
-    calls.push(`g${i}("${'x'.repeat(i + 1)}")`)
-  }
-  const program = `${aliases.join('\n')}\n${fns.join('\n')}\n[${calls.join(', ')}]`
-  benchPerOp('parse + typecheck (50 refinements)', 100, () => { dvala.typecheck(program) })
-}
+// (end-to-end refinement scenarios removed — subsumed by phase scenarios
+// with the "refinement-heavy (50 annotations)" corpus program above.)
 
 // ---------------------------------------------------------------------------
 // Persist
@@ -397,7 +451,7 @@ startScenario('end-to-end-large', '6. End-to-end refinement-heavy program (large
 
 mkdirSync(RAW_DIR, { recursive: true })
 const ts = currentRun.timestamp.replace(/[:.]/g, '-')
-writeFileSync(`${RAW_DIR}/refinement-${ts}.json`, JSON.stringify(currentRun, null, 2))
+writeFileSync(`${RAW_DIR}/pipeline-${ts}.json`, JSON.stringify(currentRun, null, 2))
 
 // Load history (or start fresh) and prepend the new run
 let history: History
@@ -430,9 +484,9 @@ writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2))
 // names (union across all runs), columns = most recent runs (capped).
 function renderMarkdown(h: History): string {
   const lines: string[] = []
-  lines.push('# Refinement-types performance history')
+  lines.push('# Dvala pipeline performance history')
   lines.push('')
-  lines.push('Tracks performance of the refinement-types machinery (Phase 2.1+) over time.')
+  lines.push('Tracks performance of every pipeline phase (tokenize → parse → typecheck → run) plus refinement-typechecker scenarios.')
   lines.push('')
   lines.push(`Source of truth: \`${HISTORY_FILE}\` (full history).`)
   lines.push(`Re-render: \`npm run benchmarks:run\` (also runs the benchmarks first).`)
@@ -511,4 +565,4 @@ function renderMarkdown(h: History): string {
 writeFileSync(RENDERED_FILE, renderMarkdown(history))
 console.log(`\nHistory: ${HISTORY_FILE}`)
 console.log(`Rendered: ${RENDERED_FILE}`)
-console.log(`Raw run: ${RAW_DIR}/refinement-${ts}.json`)
+console.log(`Raw run: ${RAW_DIR}/pipeline-${ts}.json`)
