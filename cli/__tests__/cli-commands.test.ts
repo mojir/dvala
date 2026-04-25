@@ -386,6 +386,21 @@ describe('CLI commands', () => {
       const result = execFails('doc nonexistent_function_xyz')
       expect(result.length).toBeGreaterThan(0)
     })
+
+    // Prelude refined-type aliases (from src/prelude.dvala) are
+    // surfaced through the same lookupDoc fuzzy fallback that
+    // resolves bare names to their `-prelude-*` keys.
+    it('shows documentation for a prelude alias by bare name', () => {
+      const result = exec('doc Positive')
+      expect(result).toContain('Positive')
+      expect(result).toContain('Number & {n | n > 0}')
+    })
+
+    it('shows documentation for NonEmpty', () => {
+      const result = exec('doc NonEmpty')
+      expect(result).toContain('NonEmpty')
+      expect(result).toContain('count(xs) > 0')
+    })
   })
 
   // --- list ---
@@ -413,6 +428,12 @@ describe('CLI commands', () => {
       const result = exec('list --datatypes')
       expect(result).toContain('number')
       expect(result).toContain('string')
+    })
+
+    it('includes prelude refined types under --datatypes', () => {
+      const result = exec('list --datatypes')
+      expect(result).toContain('Positive')
+      expect(result).toContain('NonEmpty')
     })
   })
 

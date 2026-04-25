@@ -1104,6 +1104,12 @@ export const api = {
     '-short-fn',
     '-short-object',
   ] as const satisfies `-short-${string}`[],
+  prelude: [
+    '-prelude-Positive',
+    '-prelude-NonNegative',
+    '-prelude-NonZero',
+    '-prelude-NonEmpty',
+  ] as const satisfies `-prelude-${string}`[],
   datatype: [
     '-type-number',
     '-type-string',
@@ -1208,6 +1214,8 @@ export type ShorthandName = typeof api.shorthand[number]
 
 export type DatatypeName = typeof api.datatype[number]
 
+export type PreludeName = typeof api.prelude[number]
+
 // Core API function names (always available)
 const coreApiFunctionNames = [
   ...api.collection,
@@ -1248,17 +1256,19 @@ const apiFunctionNames = [
   ...moduleApiFunctionNames,
 ] as const
 
-// Core API names (core functions + shorthand + datatype)
+// Core API names (core functions + shorthand + datatype + prelude)
 const coreApiNames = [
   ...coreApiFunctionNames,
   ...api.shorthand,
   ...api.datatype,
+  ...api.prelude,
 ] as const
 
 const apiNames = [
   ...apiFunctionNames,
   ...api.shorthand,
   ...api.datatype,
+  ...api.prelude,
 ] as const
 
 export type CoreApiName = typeof coreApiNames[number]

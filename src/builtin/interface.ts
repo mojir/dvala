@@ -69,6 +69,7 @@ export const categoryRecord = {
   'macros': true,
   'shorthand': true,
   'datatype': true,
+  'prelude': true,
   'effect': true,
   'playground-effect': true,
   'ast': true,
@@ -83,7 +84,7 @@ export const categories = Object.keys(categoryRecord) as Category[]
 export const moduleCategories: Category[] = ['assertion', 'ast', 'bitwise', 'collection', 'convert', 'functional', 'grid', 'effectHandler', 'json', 'linearAlgebra', 'macros', 'math', 'matrix', 'numberTheory', 'sequence', 'string', 'test', 'time', 'vector']
 
 // Core categories (always available) — special-expression first, rest alphabetical
-export const coreCategories: Category[] = ['special-expression', 'array', 'assertion', 'bitwise', 'collection', 'datatype', 'functional', 'math', 'meta', 'misc', 'object', 'predicate', 'regular-expression', 'sequence', 'shorthand', 'string']
+export const coreCategories: Category[] = ['special-expression', 'array', 'assertion', 'bitwise', 'collection', 'datatype', 'functional', 'math', 'meta', 'misc', 'object', 'predicate', 'prelude', 'regular-expression', 'sequence', 'shorthand', 'string']
 
 // Short descriptions for each core category, shown on the reference card grid.
 export const coreCategoryDescriptions: Record<string, string> = {
@@ -99,6 +100,7 @@ export const coreCategoryDescriptions: Record<string, string> = {
   'misc': 'Miscellaneous utilities.',
   'object': 'Create and transform key-value objects.',
   'predicate': 'Test values: equality, comparison, and type checks.',
+  'prelude': 'Refined type aliases auto-loaded into every typecheck session (Positive, NonEmpty, ...).',
   'regular-expression': 'Create and match regular expressions.',
   'sequence': 'Operations on arrays and strings as ordered sequences.',
   'shorthand': 'Concise syntax aliases for common operations.',

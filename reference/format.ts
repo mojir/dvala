@@ -10,6 +10,7 @@ import type {
   DatatypeReference,
   EffectReference,
   FunctionReference,
+  PreludeReference,
   Reference,
   ShorthandReference,
 } from '.'
@@ -20,6 +21,7 @@ import {
   isDatatypeReference,
   isEffectReference,
   isFunctionReference,
+  isPreludeReference,
   isShorthandReference,
   moduleReference,
   normalExpressionReference,
@@ -200,6 +202,27 @@ function formatDatatypeDoc(ref: DatatypeReference): string {
   return lines.join('\n')
 }
 
+function formatPreludeDoc(ref: PreludeReference): string {
+  const lines: string[] = []
+  lines.push(`# ${ref.title}`)
+  lines.push('Category: prelude (refined type)')
+  lines.push('')
+  lines.push(`type ${ref.title} = ${ref.definition}`)
+  lines.push('')
+  lines.push(stripMarkdown(ref.description))
+  lines.push('')
+  appendExamples(lines, ref)
+  if (ref.seeAlso && ref.seeAlso.length > 0) {
+    lines.push('## See also')
+    // The seeAlso entries use the internal `-prelude-*` keys (required
+    // by the symmetry check in reference.test.ts). Render their titles
+    // so users see "NonNegative, NonZero" rather than the raw keys.
+    const titles = ref.seeAlso.map(sa => allReference[sa]?.title ?? sa)
+    lines.push(titles.join(', '))
+  }
+  return lines.join('\n')
+}
+
 function appendExamples(lines: string[], ref: { examples: ExampleEntry[] }): void {
   if (ref.examples.length > 0) {
     lines.push('## Examples')
@@ -228,6 +251,8 @@ export function formatDoc(ref: Reference): string {
     return formatShorthandDoc(ref)
   if (isDatatypeReference(ref))
     return formatDatatypeDoc(ref)
+  if (isPreludeReference(ref))
+    return formatPreludeDoc(ref)
   return `# ${(ref as Reference).title}\n\n${(ref as Reference).description}`
 }
 
@@ -309,13 +334,28 @@ export function listModuleExpressions(moduleName: string): string | null {
   return lines.join('\n')
 }
 
-/** List all datatypes with descriptions. */
+/**
+ * List all datatypes and prelude refined-type aliases with descriptions.
+ * Prelude aliases follow under their own heading so users can tell raw
+ * datatypes from refinement-bearing aliases at a glance.
+ */
 export function listDatatypes(): string {
   const lines: string[] = []
+  const preludeRefs: PreludeReference[] = []
   for (const [, ref] of Object.entries(allReference)) {
     if (isDatatypeReference(ref)) {
       const desc = ref.description.replace(/`(.+?)`/g, '$1')
       lines.push(`  ${ref.title} - ${desc}`)
+    } else if (isPreludeReference(ref)) {
+      preludeRefs.push(ref)
+    }
+  }
+  if (preludeRefs.length > 0) {
+    lines.push('')
+    lines.push('## Prelude refined types')
+    for (const ref of preludeRefs) {
+      const desc = ref.description.replace(/`(.+?)`/g, '$1')
+      lines.push(`  ${ref.title} = ${ref.definition} - ${desc}`)
     }
   }
   return lines.join('\n')

@@ -67,6 +67,7 @@ function categoryToCompletionKind(category: string): vscode.CompletionItemKind {
     case 'effect': return vscode.CompletionItemKind.Event
     case 'shorthand': return vscode.CompletionItemKind.Operator
     case 'datatype': return vscode.CompletionItemKind.Class
+    case 'prelude': return vscode.CompletionItemKind.Class
     default: return vscode.CompletionItemKind.Function
   }
 }
