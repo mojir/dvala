@@ -6,6 +6,7 @@ import type { AstNode } from '../parser/types'
 import { initBuiltinTypes } from './builtinTypes'
 import { expandTypeForDisplay } from './infer'
 import { parseTypeAnnotation, RefinementError, TypeParseError } from './parseType'
+import { solveRefinedSubtype } from './refinementSolver'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
 import { NumberType, StringType, typeEquals, typeToString, type Type } from './types'
@@ -89,8 +90,6 @@ describe('refinement types — Phase 1', () => {
       { input: 'Number & {n | if isNumber(n) then true else false end}', kind: 'fragment', match: /control-flow|If/i },
       // Deferred-by-design: field access.
       { input: 'Number & {r | isNumber(r.field)}', kind: 'fragment', match: /binder|field access/i },
-      // Deferred-by-design: `lit REL var` swapped operands.
-      { input: 'Number & {n | 0 < n}', kind: 'fragment', match: /left-hand side|literal-on-left/i },
     ]
     for (const { input, kind, match } of cases) {
       it(`rejects: ${input} (kind: ${kind})`, () => {
@@ -121,16 +120,13 @@ describe('refinement types — Phase 1', () => {
 
     it('refinement brace does not suspend angle tracking outside itself', () => {
       // Regression guard: the refinement-specific angle suspension
-      // only applies inside refinement braces. A subsequent refinement
-      // in the same annotation must still have normal relational-op
-      // behaviour. Both halves of `{n | n < 5} & {n | n < 10}` reject
-      // with the `lit REL var` error — which is what we want; the
-      // regression target is "parse doesn't blow up mid-way."
-      try {
-        parseTypeAnnotation('Number & {n | n < 5} & {n | n < 10}')
-      } catch (err) {
-        expect(err).toBeInstanceOf(RefinementError)
-      }
+      // only applies inside refinement braces. Multiple refinements with
+      // `<` operators inside their predicates must all parse correctly
+      // — the angle-tracking state from one brace must NOT leak to the
+      // next. Both predicates here use `<` (which originally tripped
+      // the angle-tracker pre-fix); the regression target is "parse
+      // doesn't blow up mid-way."
+      expect(() => parseTypeAnnotation('Number & {n | n < 5} & {n | n < 10}')).not.toThrow()
     })
   })
 
@@ -351,10 +347,10 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       expect(isSubtype(pos, NumberType)).toBe(true)
     })
 
-    it('refined sources still erase to the base before a refined target check', () => {
+    it('disproves a broader refined source against a narrower refined target', () => {
       const positive = parseTypeAnnotation('Number & {n | n > 0}')
       const smallPositive = parseTypeAnnotation('Number & {n | n > 0 && n < 10}')
-      expect(isSubtype(positive, smallPositive)).toBe(true)
+      expect(isSubtype(positive, smallPositive)).toBe(false)
     })
 
     it('non-literal sources still pass through to the base', () => {
@@ -508,7 +504,7 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       // literal like `"x"` inside one predicate stays intact when the
       // binder is `x`. Regression guard for the pathological case the
       // design doc flagged for Phase 2.2.
-      const t = parseTypeAnnotation('String & {s | s == "n"} & {n | n == "other"}')
+      const t = parseTypeAnnotation('String & {s | s == "n"} & {n | n != "other"}')
       const result = simplify(t)
       expect(result.tag).toBe('Refined')
       if (result.tag !== 'Refined') return
@@ -586,6 +582,494 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       if (expanded.tag !== 'Refined') throw new Error('expected Refined')
       expect(expanded.source).toContain('n > 0')
       expect(typeEquals(expanded.base, NumberType)).toBe(true)
+    })
+  })
+
+  describe('Phase 2.4 — interval and finite-domain solver', () => {
+    it('proves refined interval containment', () => {
+      const positive = parseTypeAnnotation('Integer & {n | n > 0}')
+      const nonNegative = parseTypeAnnotation('Integer & {n | n >= 0}')
+      expect(isSubtype(positive, nonNegative)).toBe(true)
+    })
+
+    it('proves interval containment when the binder appears on the right-hand side', () => {
+      const score = parseTypeAnnotation('Integer & {n | 0 <= n && n <= 100}')
+      const nonNegative = parseTypeAnnotation('Integer & {n | n >= 0}')
+      expect(isSubtype(score, nonNegative)).toBe(true)
+    })
+
+    it('disproves refined interval containment when the source is wider', () => {
+      const score = parseTypeAnnotation('Integer & {n | n >= 0 && n <= 100}')
+      const small = parseTypeAnnotation('Integer & {n | n >= 0 && n < 10}')
+      expect(isSubtype(score, small)).toBe(false)
+    })
+
+    it('proves interval targets conjoined with an excluded numeric literal', () => {
+      const zero = parseTypeAnnotation('Integer & {n | n == 0}')
+      const nonNegativeNotOne = parseTypeAnnotation('Integer & {n | n >= 0 && n != 1}')
+      expect(isSubtype(zero, nonNegativeNotOne)).toBe(true)
+    })
+
+    it('proves positive number intervals against excluded-zero targets', () => {
+      const positive = parseTypeAnnotation('Number & {n | n > 0}')
+      const nonZero = parseTypeAnnotation('Number & {n | n != 0}')
+      expect(isSubtype(positive, nonZero)).toBe(true)
+    })
+
+    it('disproves non-negative number intervals against excluded-zero targets', () => {
+      const nonNegative = parseTypeAnnotation('Number & {n | n >= 0}')
+      const nonZero = parseTypeAnnotation('Number & {n | n != 0}')
+      expect(isSubtype(nonNegative, nonZero)).toBe(false)
+    })
+
+    it('produces excluded-zero witnesses for non-negative number intervals', () => {
+      const source = parseTypeAnnotation('Number & {n | n >= 0}')
+      const target = parseTypeAnnotation('Number & {n | n != 0}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('0')
+    })
+
+    it('proves number interval-exclusion sources against matching excluded-value targets', () => {
+      const nonNegativeExceptOne = parseTypeAnnotation('Number & {n | n >= 0 && n <= 2 && n != 1}')
+      const notOne = parseTypeAnnotation('Number & {n | n != 1}')
+      expect(isSubtype(nonNegativeExceptOne, notOne)).toBe(true)
+    })
+
+    it('disproves number interval-exclusion sources against excluded-value targets', () => {
+      const nonNegativeExceptOne = parseTypeAnnotation('Number & {n | n >= 0 && n <= 2 && n != 1}')
+      const notTwo = parseTypeAnnotation('Number & {n | n != 2}')
+      expect(isSubtype(nonNegativeExceptOne, notTwo)).toBe(false)
+    })
+
+    it('produces excluded-value witnesses for number interval-exclusion sources', () => {
+      const source = parseTypeAnnotation('Number & {n | n >= 0 && n <= 2 && n != 1}')
+      const target = parseTypeAnnotation('Number & {n | n != 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('2')
+    })
+
+    it('treats integer open intervals as discrete integer domains', () => {
+      const singletonOne = parseTypeAnnotation('Integer & {n | n > 0 && n < 2}')
+      const exactlyOne = parseTypeAnnotation('Integer & {n | n == 1}')
+      expect(isSubtype(singletonOne, exactlyOne)).toBe(true)
+    })
+
+    it('disproves interval targets conjoined with an excluded numeric literal', () => {
+      const zeroOrOne = parseTypeAnnotation('Integer & {n | n >= 0 && n <= 1}')
+      const nonNegativeNotOne = parseTypeAnnotation('Integer & {n | n >= 0 && n != 1}')
+      expect(isSubtype(zeroOrOne, nonNegativeNotOne)).toBe(false)
+    })
+
+    it('produces integer witnesses for disproved integer intervals', () => {
+      const source = parseTypeAnnotation('Integer & {n | n > 0 && n < 3}')
+      const target = parseTypeAnnotation('Integer & {n | n == 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('1')
+    })
+
+    it('disproves integer interval sources against excluded-value targets', () => {
+      const zeroToTwo = parseTypeAnnotation('Integer & {n | n >= 0 && n <= 2}')
+      const notOne = parseTypeAnnotation('Integer & {n | n != 1}')
+      expect(isSubtype(zeroToTwo, notOne)).toBe(false)
+    })
+
+    it('produces excluded-value witnesses for integer interval sources', () => {
+      const source = parseTypeAnnotation('Integer & {n | n >= 0 && n <= 2}')
+      const target = parseTypeAnnotation('Integer & {n | n != 1}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('1')
+    })
+
+    it('proves tiny integer interval-exclusion sources against finite set targets', () => {
+      const zeroOrTwo = parseTypeAnnotation('Integer & {n | n == 0 || n == 2}')
+      const nonNegativeExceptOne = parseTypeAnnotation('Integer & {n | n >= 0 && n <= 2 && n != 1}')
+      expect(isSubtype(nonNegativeExceptOne, zeroOrTwo)).toBe(true)
+    })
+
+    it('proves integer interval-exclusion sources against matching excluded-value targets', () => {
+      const nonNegativeExceptOne = parseTypeAnnotation('Integer & {n | n >= 0 && n <= 2 && n != 1}')
+      const notOne = parseTypeAnnotation('Integer & {n | n != 1}')
+      expect(isSubtype(nonNegativeExceptOne, notOne)).toBe(true)
+    })
+
+    it('disproves tiny integer interval-exclusion sources against narrower finite set targets', () => {
+      const onlyZero = parseTypeAnnotation('Integer & {n | n == 0}')
+      const nonNegativeExceptOne = parseTypeAnnotation('Integer & {n | n >= 0 && n <= 2 && n != 1}')
+      expect(isSubtype(nonNegativeExceptOne, onlyZero)).toBe(false)
+    })
+
+    it('disproves integer interval-exclusion sources against excluded-value targets', () => {
+      const nonNegativeExceptOne = parseTypeAnnotation('Integer & {n | n >= 0 && n <= 2 && n != 1}')
+      const notTwo = parseTypeAnnotation('Integer & {n | n != 2}')
+      expect(isSubtype(nonNegativeExceptOne, notTwo)).toBe(false)
+    })
+
+    it('produces excluded-value witnesses for integer interval-exclusion sources', () => {
+      const source = parseTypeAnnotation('Integer & {n | n >= 0 && n <= 2 && n != 1}')
+      const target = parseTypeAnnotation('Integer & {n | n != 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('2')
+    })
+
+    it('proves finite-domain containment for atom refinements', () => {
+      const ok = parseTypeAnnotation('Atom & {x | x == :ok}')
+      const okOrError = parseTypeAnnotation('Atom & {x | x == :ok || x == :error}')
+      expect(isSubtype(ok, okOrError)).toBe(true)
+    })
+
+    it('proves finite literal string domains against a != target', () => {
+      const okOrWarn = parseTypeAnnotation('String & {s | s == "ok" || s == "warn"}')
+      const notError = parseTypeAnnotation('String & {s | s != "error"}')
+      expect(isSubtype(okOrWarn, notError)).toBe(true)
+    })
+
+    it('disproves finite-domain containment for atom refinements', () => {
+      const okOrError = parseTypeAnnotation('Atom & {x | x == :ok || x == :error}')
+      const ok = parseTypeAnnotation('Atom & {x | x == :ok}')
+      expect(isSubtype(okOrError, ok)).toBe(false)
+    })
+
+    it('disproves finite literal string domains against a != target', () => {
+      const okOrError = parseTypeAnnotation('String & {s | s == "ok" || s == "error"}')
+      const notError = parseTypeAnnotation('String & {s | s != "error"}')
+      expect(isSubtype(okOrError, notError)).toBe(false)
+    })
+
+    it('disproves excluded string sources against finite literal string targets', () => {
+      const notError = parseTypeAnnotation('String & {s | s != "error"}')
+      const okOrWarn = parseTypeAnnotation('String & {s | s == "ok" || s == "warn"}')
+      expect(isSubtype(notError, okOrWarn)).toBe(false)
+    })
+
+    it('produces readable string witnesses for excluded string sources', () => {
+      const source = parseTypeAnnotation('String & {s | s != "error"}')
+      const target = parseTypeAnnotation('String & {s | s == "ok" || s == "warn"}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('"a"')
+    })
+
+    it('produces target-exclusion witnesses for excluded string sources', () => {
+      const source = parseTypeAnnotation('String & {s | s != "error"}')
+      const target = parseTypeAnnotation('String & {s | s != "warn"}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('"warn"')
+    })
+
+    it('disproves excluded boolean sources against finite boolean targets', () => {
+      const notFalse = parseTypeAnnotation('Boolean & {b | b != false}')
+      const falseOnly = parseTypeAnnotation('Boolean & {b | b == false}')
+      expect(isSubtype(notFalse, falseOnly)).toBe(false)
+    })
+
+    it('produces boolean witnesses for excluded boolean sources', () => {
+      const source = parseTypeAnnotation('Boolean & {b | b != false}')
+      const target = parseTypeAnnotation('Boolean & {b | b == false}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('true')
+    })
+
+    it('produces target-exclusion witnesses for excluded boolean sources', () => {
+      const source = parseTypeAnnotation('Boolean & {b | b != false}')
+      const target = parseTypeAnnotation('Boolean & {b | b != true}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('true')
+    })
+
+    it('disproves excluded atom sources against finite atom targets', () => {
+      const notError = parseTypeAnnotation('Atom & {x | x != :error}')
+      const okOrWarn = parseTypeAnnotation('Atom & {x | x == :ok || x == :warn}')
+      expect(isSubtype(notError, okOrWarn)).toBe(false)
+    })
+
+    it('produces atom witnesses for excluded atom sources', () => {
+      const source = parseTypeAnnotation('Atom & {x | x != :error}')
+      const target = parseTypeAnnotation('Atom & {x | x == :ok || x == :warn}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe(':other')
+    })
+
+    it('produces target-exclusion witnesses for excluded atom sources', () => {
+      const source = parseTypeAnnotation('Atom & {x | x != :error}')
+      const target = parseTypeAnnotation('Atom & {x | x != :warn}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe(':warn')
+    })
+
+    it('disproves excluded numeric sources against finite numeric targets', () => {
+      const notOne = parseTypeAnnotation('Number & {n | n != 1}')
+      const zeroOrTwo = parseTypeAnnotation('Number & {n | n == 0 || n == 2}')
+      expect(isSubtype(notOne, zeroOrTwo)).toBe(false)
+    })
+
+    it('produces numeric witnesses for excluded numeric sources', () => {
+      const source = parseTypeAnnotation('Number & {n | n != 1}')
+      const target = parseTypeAnnotation('Number & {n | n == 0 || n == 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('-1')
+    })
+
+    it('disproves count interval-exclusion sources against excluded-count targets', () => {
+      const boundedExceptOne = parseTypeAnnotation('String & {s | count(s) >= 0 && count(s) <= 2 && count(s) != 1}')
+      const notTwo = parseTypeAnnotation('String & {s | count(s) != 2}')
+      expect(isSubtype(boundedExceptOne, notTwo)).toBe(false)
+    })
+
+    it('produces excluded-count witnesses for count interval-exclusion sources', () => {
+      const source = parseTypeAnnotation('String & {s | count(s) >= 0 && count(s) <= 2 && count(s) != 1}')
+      const target = parseTypeAnnotation('String & {s | count(s) != 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('2')
+    })
+
+    it('disproves count interval sources against excluded-count targets', () => {
+      const zeroToTwo = parseTypeAnnotation('String & {s | count(s) >= 0 && count(s) <= 2}')
+      const notOne = parseTypeAnnotation('String & {s | count(s) != 1}')
+      expect(isSubtype(zeroToTwo, notOne)).toBe(false)
+    })
+
+    it('produces excluded-count witnesses for count interval sources', () => {
+      const source = parseTypeAnnotation('String & {s | count(s) >= 0 && count(s) <= 2}')
+      const target = parseTypeAnnotation('String & {s | count(s) != 1}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('1')
+    })
+
+    it('produces target-exclusion witnesses for excluded numeric sources', () => {
+      const source = parseTypeAnnotation('Number & {n | n != 1}')
+      const target = parseTypeAnnotation('Number & {n | n != 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('2')
+    })
+
+    it('disproves excluded numeric sources against interval-exclusion targets', () => {
+      const notOne = parseTypeAnnotation('Number & {n | n != 1}')
+      const positiveNotTwo = parseTypeAnnotation('Number & {n | n > 0 && n != 2}')
+      expect(isSubtype(notOne, positiveNotTwo)).toBe(false)
+    })
+
+    it('produces witnesses for excluded numeric sources against interval-exclusion targets', () => {
+      const source = parseTypeAnnotation('Number & {n | n != 1}')
+      const target = parseTypeAnnotation('Number & {n | n > 0 && n != 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('0')
+    })
+
+    it('disproves excluded count sources against finite count targets', () => {
+      const notOne = parseTypeAnnotation('String & {s | count(s) != 1}')
+      const zeroOrTwo = parseTypeAnnotation('String & {s | count(s) == 0 || count(s) == 2}')
+      expect(isSubtype(notOne, zeroOrTwo)).toBe(false)
+    })
+
+    it('produces non-negative count witnesses for excluded count sources', () => {
+      const source = parseTypeAnnotation('String & {s | count(s) != 1}')
+      const target = parseTypeAnnotation('String & {s | count(s) == 0 || count(s) == 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('3')
+    })
+
+    it('produces target-exclusion witnesses for excluded count sources', () => {
+      const source = parseTypeAnnotation('String & {s | count(s) != 1}')
+      const target = parseTypeAnnotation('String & {s | count(s) != 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('2')
+    })
+
+    it('disproves excluded count sources against interval-exclusion targets', () => {
+      const notOne = parseTypeAnnotation('String & {s | count(s) != 1}')
+      const positiveNotTwo = parseTypeAnnotation('String & {s | count(s) > 0 && count(s) != 2}')
+      expect(isSubtype(notOne, positiveNotTwo)).toBe(false)
+    })
+
+    it('produces count witnesses against interval-exclusion targets', () => {
+      const source = parseTypeAnnotation('String & {s | count(s) != 1}')
+      const target = parseTypeAnnotation('String & {s | count(s) > 0 && count(s) != 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('0')
+    })
+
+    it('proves count-interval containment for refined strings', () => {
+      const atLeastThree = parseTypeAnnotation('String & {s | count(s) >= 3}')
+      const nonEmpty = parseTypeAnnotation('String & {s | count(s) > 0}')
+      expect(isSubtype(atLeastThree, nonEmpty)).toBe(true)
+    })
+
+    it('proves positive count intervals against excluded-zero count targets', () => {
+      const nonEmpty = parseTypeAnnotation('String & {s | count(s) > 0}')
+      const notEmpty = parseTypeAnnotation('String & {s | count(s) != 0}')
+      expect(isSubtype(nonEmpty, notEmpty)).toBe(true)
+    })
+
+    it('disproves non-negative count intervals against excluded-zero count targets', () => {
+      const nonNegative = parseTypeAnnotation('String & {s | count(s) >= 0}')
+      const notEmpty = parseTypeAnnotation('String & {s | count(s) != 0}')
+      expect(isSubtype(nonNegative, notEmpty)).toBe(false)
+    })
+
+    it('produces excluded-zero count witnesses for non-negative count intervals', () => {
+      const source = parseTypeAnnotation('String & {s | count(s) >= 0}')
+      const target = parseTypeAnnotation('String & {s | count(s) != 0}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('0')
+    })
+
+    it('proves tiny finite count domains against set-valued count targets', () => {
+      const zeroOrTwo = parseTypeAnnotation('String & {s | count(s) == 0 || count(s) == 2}')
+      const boundedExceptOne = parseTypeAnnotation('String & {s | count(s) >= 0 && count(s) <= 2 && count(s) != 1}')
+      expect(isSubtype(boundedExceptOne, zeroOrTwo)).toBe(true)
+    })
+
+    it('proves count interval-exclusion sources against matching excluded-count targets', () => {
+      const boundedExceptOne = parseTypeAnnotation('String & {s | count(s) >= 0 && count(s) <= 2 && count(s) != 1}')
+      const notOne = parseTypeAnnotation('String & {s | count(s) != 1}')
+      expect(isSubtype(boundedExceptOne, notOne)).toBe(true)
+    })
+
+    it('disproves tiny finite count domains against narrower count targets', () => {
+      const zeroOnly = parseTypeAnnotation('String & {s | count(s) == 0}')
+      const boundedExceptOne = parseTypeAnnotation('String & {s | count(s) >= 0 && count(s) <= 2 && count(s) != 1}')
+      expect(isSubtype(boundedExceptOne, zeroOnly)).toBe(false)
+    })
+
+    it('produces count witnesses for disproved tiny count domains', () => {
+      const source = parseTypeAnnotation('String & {s | count(s) >= 0 && count(s) <= 2 && count(s) != 1}')
+      const target = parseTypeAnnotation('String & {s | count(s) == 0}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+      if (verdict.tag !== 'Disproved') return
+      expect(typeToString(verdict.witness)).toBe('2')
+    })
+
+    it('proves count-interval containment when count(binder) appears on the right-hand side', () => {
+      const nonEmpty = parseTypeAnnotation('String & {s | 0 < count(s)}')
+      const hasRoom = parseTypeAnnotation('String & {s | count(s) >= 1}')
+      expect(isSubtype(nonEmpty, hasRoom)).toBe(true)
+    })
+
+  })
+
+  // ---------------------------------------------------------------------------
+  // Phase 2.4 — `OutOfFragment` boundary
+  // ---------------------------------------------------------------------------
+  //
+  // The solver returns one of `Proved | Disproved | OutOfFragment`. Tests
+  // above pin the first two; this block pins the third. The boundary
+  // matters because a "fix" that flips one of these cases to Proved or
+  // Disproved without consciously extending the solver scope would silently
+  // change semantics — these tests fail the moment that happens, prompting
+  // an explicit decision.
+  //
+  // When the solver returns `OutOfFragment`, the subtype check falls through
+  // to inert pass-through (returns `true`). So at the `isSubtype` level the
+  // user-visible effect is "accepted-without-actually-checking" — soundness
+  // depends on the base check that ran earlier.
+  describe('Phase 2.4 — OutOfFragment cases', () => {
+    it('interval || interval bails — `n > 10 || n < -5`', () => {
+      // Disjunction of two intervals can't be expressed as a single
+      // interval domain, so unionDomains returns null and the solver
+      // bails. Subtype passes through to `true` (the base check already
+      // ran). Testing via direct solver call so we assert on the verdict.
+      const target = parseTypeAnnotation('Number & {n | n > 10 || n < -5}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(NumberType, target)
+      expect(verdict.tag).toBe('OutOfFragment')
+    })
+
+    it('mixed-subject conjunction bails — `n > 0 && count(n) < 5`', () => {
+      // Inner conjunction mixes `self` (binder) and `count(binder)` —
+      // domain abstraction tracks one subject per domain, so the
+      // intersection can't combine them. Bails to OutOfFragment.
+      // Note: this only matters if the predicate parses; today it's
+      // accepted by the fragment-checker because each conjunct is
+      // independently valid.
+      const target = parseTypeAnnotation('String & {s | count(s) > 0 && s == "x"}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(StringType, target)
+      expect(verdict.tag).toBe('OutOfFragment')
+    })
+
+    it('non-Refined source against Refined target without analyzable domain bails', () => {
+      // `Number <: Refined(Number, n, n > 0)` — source is the bare
+      // primitive `Number`, no domain to extract from. Solver bails.
+      // The subtype check falls through to inert pass-through (returns
+      // `true`); we assert on the solver's verdict directly so the
+      // bail path itself is pinned.
+      const target = parseTypeAnnotation('Number & {n | n > 0}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(NumberType, target)
+      expect(verdict.tag).toBe('OutOfFragment')
+    })
+
+    it('isSubtype falls through to true when the solver bails', () => {
+      // End-to-end pin: when the solver bails, the user-visible behavior
+      // is the inert pass-through accept (because base subtyping already
+      // succeeded). This is a deliberate Phase 2.3 choice — Phase 2.4+
+      // can flip these to false as the solver scope expands.
+      const target = parseTypeAnnotation('Number & {n | n > 0 || n < -5}')
+      // Number itself, when checked against an OutOfFragment target,
+      // passes via inert pass-through (base check `Number <: Number`
+      // succeeds, then solver bail → return true).
+      expect(isSubtype(NumberType, target)).toBe(true)
     })
   })
 })

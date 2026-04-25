@@ -9,9 +9,11 @@
  * Design reference: `design/active/2026-04-23_refinement-types.md`,
  * Phase 1 ship gate.
  *
- * Phase 1 accepts (top-level shape must reduce to Boolean):
+ * Accepted shapes (top-level must reduce to Boolean):
  *   - `isX(var)` — any type-guard builtin applied to the binder
  *   - `var REL literal`  (REL ∈ ==, !=, <, <=, >, >=)
+ *   - `lit REL var` (swapped operands) — accepted; the Phase 2.3 solver
+ *     normalises these to canonical `var REL lit` form internally
  *   - `!P`, `P && Q`, `P || Q`  where P, Q are themselves accepted
  *   - `count(var) REL literal`
  *
@@ -23,9 +25,7 @@
  *   - Control flow (`if`, `match`, `let`,
  *     `loop`, `for`)                        → kind: `fragment`
  *   - Field access on binder                → kind: `fragment`
- *                                             (deferred-by-design; Phase 1.x)
- *   - `lit REL var` (swapped operands)      → kind: `fragment`
- *                                             (deferred-by-design; Phase 1.x)
+ *                                             (deferred-by-design; Phase 2.5+)
  *
  * Walker strategy is a simple switch on `NodeTypes`. Each accepted case
  * recurses into its children; every other case throws. No classification
@@ -246,11 +246,9 @@ function checkCall(node: AstNode, binder: string, source: string, position: numb
 }
 
 /**
- * Accepted operand shapes on each side of a relation:
- *   LHS:  `binder` (Sym) OR `count(binder)` (Call of `count` builtin on binder)
- *   RHS:  literal (Num, Str, Atom, or `true`/`false` reserved)
- *
- * `lit REL var` (swapped operands) is rejected — deferred to Phase 1.x.
+ * Accepted operand shapes for a relation:
+ *   one side:  `binder` (Sym) OR `count(binder)` (Call of `count` builtin on binder)
+ *   other side: literal (Num, Str, Atom, or `true`/`false` reserved)
  */
 function checkRelationOperands(
   lhs: AstNode,
@@ -261,7 +259,34 @@ function checkRelationOperands(
   position: number,
 ): void {
   const lhsKind = classifyRelationLhs(lhs, binder)
-  if (lhsKind === 'other') {
+  if (lhsKind !== 'other') {
+    if (!isLiteralLike(rhs)) {
+      throw new RefinementError(
+        `Refinement predicate: relation '${relName}' requires a literal on the non-binder side. `
+        + 'References to other variables, arithmetic, and sub-expressions are deferred to a later phase.',
+        'fragment',
+        source,
+        position,
+      )
+    }
+    return
+  }
+
+  const rhsKind = classifyRelationLhs(rhs, binder)
+  if (rhsKind !== 'other') {
+    if (!isLiteralLike(lhs)) {
+      throw new RefinementError(
+        `Refinement predicate: relation '${relName}' requires a literal on the non-binder side. `
+        + 'References to other variables, arithmetic, and sub-expressions are deferred to a later phase.',
+        'fragment',
+        source,
+        position,
+      )
+    }
+    return
+  }
+
+  {
     // Arithmetic on the LHS (e.g. `n * n > 0`, `n + 1 > 0`) gets a
     // dedicated message — the "rewrite as `n > 0`" advice from the
     // literal-on-left branch is actively wrong here. Direct users to
@@ -277,18 +302,8 @@ function checkRelationOperands(
       )
     }
     throw new RefinementError(
-      `Refinement predicate: relation '${relName}' must have the binder '${binder}' `
-      + `(or 'count(${binder})') on its left-hand side. `
-      + 'Literal-on-left forms (e.g. `0 < n`) are deferred to a later phase — rewrite as `n > 0`.',
-      'fragment',
-      source,
-      position,
-    )
-  }
-
-  if (!isLiteralLike(rhs)) {
-    throw new RefinementError(
-      `Refinement predicate: relation '${relName}' requires a literal on the right-hand side. `
+      `Refinement predicate: relation '${relName}' must compare the binder '${binder}' `
+      + `(or 'count(${binder})') directly against a literal. `
       + 'References to other variables, arithmetic, and sub-expressions are deferred to a later phase.',
       'fragment',
       source,

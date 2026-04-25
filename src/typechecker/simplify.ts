@@ -14,6 +14,7 @@
 
 import type { Type, PrimitiveName } from './types'
 import { mergeRefinementPredicates } from './refinementMerge'
+import { simplifyRefinedType } from './refinementSolver'
 import { isSubtype } from './subtype'
 import { Never, Unknown, array, indexType, inter, keyofType, neg, normalizeSequenceType, tuple, typeEquals, union } from './types'
 
@@ -85,16 +86,19 @@ export function simplify(t: Type): Type {
     }
     case 'Keyof': return keyofType(simplify(t.inner))
     case 'Index': return indexType(simplify(t.target), simplify(t.key))
-    // Refinement — Phase 2.2 multi-refinement merging: when the base
-    // simplifies to another Refined, collapse the pair into a single
-    // node with conjoined predicates. The inner binder wins; the outer
-    // predicate is alpha-renamed to the inner binder before merging.
-    // Trivial-predicate collapse (`{x | true}` → `Base`, `{x | false}`
-    // → `Never`) is deferred to the Phase 2.4 solver work — recognising
-    // those shapes structurally would duplicate logic the solver already
-    // needs.
+    // Refinement — three-step pipeline:
+    //   1. simplify the base (recursive).
+    //   2. if the simplified base is itself Refined, merge stacked
+    //      refinements (Phase 2.2): `Base & {s|P} & {x|Q}` → one
+    //      `Refined` with `P && Q[x:=s]`.
+    //   3. ask the solver whether the (possibly merged) refinement
+    //      collapses to a simpler shape: `{x|true}` → base,
+    //      `{x|false}` → Never, base-tautology → base. Implemented
+    //      by `simplifyRefinedType`; returns `null` if no collapse
+    //      applies.
     case 'Refined': {
       const base = simplify(t.base)
+      let merged: Extract<Type, { tag: 'Refined' }>
       if (base.tag === 'Refined') {
         const { predicate, source } = mergeRefinementPredicates(
           base.binder,
@@ -102,9 +106,12 @@ export function simplify(t: Type): Type {
           t.binder,
           t.predicate,
         )
-        return { tag: 'Refined', base: base.base, binder: base.binder, predicate, source }
+        merged = { tag: 'Refined', base: base.base, binder: base.binder, predicate, source }
+      } else {
+        merged = { tag: 'Refined', base, binder: t.binder, predicate: t.predicate, source: t.source }
       }
-      return { tag: 'Refined', base, binder: t.binder, predicate: t.predicate, source: t.source }
+      const collapsed = simplifyRefinedType(merged)
+      return collapsed ?? merged
     }
     default: return t
   }

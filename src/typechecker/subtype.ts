@@ -16,13 +16,14 @@
  * - Negation: S <: !T iff S & T = Never (S and T are disjoint)
  */
 
-import type { FunctionType, SequenceType, Type, PrimitiveName } from './types'
-import { effectSetToString, functionAcceptsArity, getFunctionParamType, indexType, isEffectSubset, keyofType, sequenceElementAt, sequenceMayHaveIndex, toSequenceType, typeEquals } from './types'
-import { literalTypeToAstNode } from './constantFold'
+import { NodeTypes } from '../constants/constants'
 import { createContextStack } from '../evaluator/ContextStack'
 import { evaluateNodeForFold } from '../evaluator/foldEvaluate'
-import { NodeTypes } from '../constants/constants'
 import type { AstNode } from '../parser/types'
+import { literalTypeToAstNode } from './constantFold'
+import { solveRefinedSubtype } from './refinementSolver'
+import type { FunctionType, SequenceType, Type, PrimitiveName } from './types'
+import { effectSetToString, functionAcceptsArity, getFunctionParamType, indexType, isEffectSubset, keyofType, sequenceElementAt, sequenceMayHaveIndex, toSequenceType, typeEquals } from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -77,30 +78,57 @@ function check(s: Type, t: Type, visited: Set<string>): boolean {
 
 function checkBody(s: Type, t: Type, visited: Set<string>): boolean {
   // --- Refined on either side ---
-  // Phase 2.3 policy: a `Refined` source still erases to its base, but a
-  // `Refined` target now gets one extra check when the source type is a
-  // concrete literal value. If `s <: base` and `s` can be reconstructed as
-  // a literal AST, substitute that literal for the refinement binder and run
-  // the fold evaluator on the predicate:
-  //   - folds to `true`  -> discharge the subtype goal
-  //   - folds to `false` -> reject the subtype goal
-  //   - anything else    -> fall back to Phase 2.1 base pass-through
   //
-  // This is intentionally narrow: non-literal sources still use inert
-  // pass-through until the interval / finite-domain solver lands.
+  // Three-stage policy (order matters — each stage preempts the next):
+  //
+  //   1. **Refined source, non-Refined target** — erase the source's
+  //      refinement and recurse on the base. The source's predicate
+  //      narrows the source's value set, so anything that satisfies the
+  //      source also satisfies the source's base, which is what `t`
+  //      cares about.
+  //
+  //   2. **Refined target** — first check that `s.base <: t.base`
+  //      (refinement is a strict subset of its base, so base subtyping
+  //      is necessary). Then try, in order:
+  //
+  //      a. **Literal fold** (`tryDischargeRefinedLiteral`). Receives
+  //         `s.base` (or `s` if it's not Refined). If `s` is a concrete
+  //         literal, substitute it for the binder and fold the predicate.
+  //         A definite `true`/`false` is the answer; otherwise bail.
+  //
+  //      b. **Solver** (`solveRefinedSubtype`). Receives the FULL `s`
+  //         (predicate intact when `s` is Refined), so it can extract
+  //         the source's domain from `s.predicate` and check domain
+  //         containment against `t`'s domain. Returns `Proved` /
+  //         `Disproved` / `OutOfFragment`.
+  //
+  //      c. **Inert pass-through.** If both fold and solver bail, return
+  //         `true` — the predicate is unverified, but `s.base <: t.base`
+  //         was confirmed in step 2's prologue. Conservative; future
+  //         solver work can flip cases here from `true` to `false`.
   //
   // Consequences:
-  //   - `5 <: Refined(Number, n, n > 0)` folds `5 > 0` -> true.
-  //   - `-5 <: Refined(Number, n, n > 0)` folds `-5 > 0` -> false.
-  //   - `Refined(Number, ...) <: Number` is trivially true.
-  //   - `Number <: Refined(Number, ...)` still passes through on the base.
+  //   - `5 <: Refined(Number, n, n > 0)` — fold says `5 > 0` → `true`.
+  //   - `-5 <: Refined(Number, n, n > 0)` — fold says `-5 > 0` → `false`.
+  //   - `Refined(Number, n, n > 0) <: Refined(Number, n, n > -1)` —
+  //     fold bails (no literal source); solver compares intervals; Proved.
+  //   - `Number <: Refined(Number, n, n > 0)` — fold bails; solver
+  //     can't extract a domain from a bare `Number`; pass-through `true`.
+  //   - `Refined(Number, ...) <: Number` — stage 1: erases to `Number <: Number`.
   if (s.tag === 'Refined') {
-    return check(s.base, t, visited)
+    if (t.tag !== 'Refined') return check(s.base, t, visited)
   }
   if (t.tag === 'Refined') {
-    if (!check(s, t.base, visited)) return false
-    const folded = tryDischargeRefinedLiteral(s, t)
-    return folded ?? true
+    const sourceBase = s.tag === 'Refined' ? s.base : s
+    if (!check(sourceBase, t.base, visited)) return false
+
+    const folded = tryDischargeRefinedLiteral(sourceBase, t)
+    if (folded !== null) return folded
+
+    const solved = solveRefinedSubtype(s, t)
+    if (solved.tag === 'Proved') return true
+    if (solved.tag === 'Disproved') return false
+    return true
   }
 
   // --- Union on the left: S1|S2 <: T iff every member <: T ---
