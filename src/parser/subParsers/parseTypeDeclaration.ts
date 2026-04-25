@@ -33,7 +33,21 @@ export function parseTypeDeclaration(ctx: ParserContext): AstNode {
   // declaration's tokens flow into the parent CST node as a flat
   // sequence and the formatter has no way to recognize them as a
   // type-decl. The AST is unaffected (still a null Reserved node).
+  //
+  // Defensive try/finally: if any of the nested `throw new ParseError`
+  // paths fire, we still close the node so the builder's stack stays
+  // balanced. In practice the whole CST is discarded on parse error
+  // (see `format()` in formatter), but balancing the stack pre-empts
+  // any future code path that might inspect a partial tree.
   ctx.builder?.startNode('TypeAlias')
+  try {
+    return parseTypeDeclarationBody(ctx)
+  } finally {
+    ctx.builder?.endNode()
+  }
+}
+
+function parseTypeDeclarationBody(ctx: ParserContext): AstNode {
   const token = ctx.peek() // 'type'
   ctx.advance() // consume 'type'
 
@@ -108,9 +122,7 @@ export function parseTypeDeclaration(ctx: ParserContext): AstNode {
   // Store in the parser's type declaration registry
   ctx.typeAliases.set(name, { params, body: typeExpr })
 
-  // Close the CST `TypeAlias` node before returning the erased AST.
-  ctx.builder?.endNode()
-
-  // Return a null node — type declarations are erased at runtime
+  // Return a null node — type declarations are erased at runtime.
+  // The CST `TypeAlias` node is closed by the surrounding finally.
   return withSourceCodeInfo([NodeTypes.Reserved, 'null', 0], token[2], ctx)
 }

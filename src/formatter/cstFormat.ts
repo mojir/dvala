@@ -1149,10 +1149,11 @@ function formatLet(node: UntypedCstNode): Doc {
         lastTargetText = ', '
         continue
       }
-      // Postfix `[`: type-annotation `Number[]` and index `arr[0]` —
-      // no space between identifier and `[`. Same logic as the
-      // `needsSpaceBetween` rule for `(`.
-      const postfixBracket = t === '[' && lastTargetText.length > 0 && /[A-Za-z_0-9]$/.test(lastTargetText)
+      // Postfix `[`: type-annotation `Number[]`, index `arr[0]`, and
+      // chained forms like `(arr)[0]` or `xs[0][1]` — no space between
+      // a closing identifier-or-bracket and the `[`. Same idea as the
+      // `needsSpaceBetween` rule for `(`. Trailing `)` / `]` join too.
+      const postfixBracket = t === '[' && lastTargetText.length > 0 && /[)\]A-Za-z_0-9]$/.test(lastTargetText)
       if (targetParts.length > 0 && !isPunctuation(t) && !isOpenBracket(lastTargetText)
         && lastTargetText !== '...'
         && !lastTargetText.endsWith(' ')
@@ -1803,6 +1804,10 @@ function formatTypeAlias(node: UntypedCstNode): Doc {
   // alias may have `<` from less-than relations inside refinement
   // predicates (e.g. `{n | n > 0}`) — those are inside `{...}` braces
   // where angle-bracket tracking is disabled by `braceDepth`.
+  //
+  // The tokenizer emits `<=`, `>=`, `!=` as atomic tokens, so the
+  // single-char checks below never match the prefix of a two-char
+  // operator. A future tokenizer change would need to revisit this.
   let angleDepth = 0
   let braceDepth = 0
 
