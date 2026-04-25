@@ -1,36 +1,6 @@
 {
   "scenarios": [
     {
-      "id": "parse-overhead",
-      "title": "1. Parse + typecheck overhead",
-      "description": "plain (no annotation) vs. typed Number vs. refined Number & {n | n > 0} — same program shape, parse and typecheck split out"
-    },
-    {
-      "id": "solver-direct",
-      "title": "6. Refinement subtype-check cost (per predicate shape)",
-      "description": "isolated subtype-check calls between source type and refinement target — no parse or typecheck overhead"
-    },
-    {
-      "id": "simplify-scaling",
-      "title": "7. Stacked refinement simplify scaling",
-      "description": "simplifying N stacked refinements (`Base & {p1} & {p2} & ... & {pN}`) — empirically O(N²); regressions show as a worse exponent"
-    },
-    {
-      "id": "excluded-quadratic",
-      "title": "8. Many-inequality refinement worst case",
-      "description": "`Number & {n | n != 1 && n != 2 && ... && n != N}` — documented quadratic worst case (each conjunction step merges against the growing exclusion list)"
-    },
-    {
-      "id": "end-to-end",
-      "title": "5. End-to-end refinement-heavy program (small)",
-      "description": "representative shape — 3 type aliases, 4 calls, multiple solver paths"
-    },
-    {
-      "id": "end-to-end-large",
-      "title": "6. End-to-end refinement-heavy program (large)",
-      "description": "50+ refinement annotations across type aliases, function params, and let-bindings — catches scaling regressions proportional to refinement count"
-    },
-    {
       "id": "phase-tokenize",
       "title": "1. Pipeline: tokenize",
       "description": "pure tokenize cost — `tokenize(source)` for each corpus program"
@@ -54,6 +24,21 @@
       "id": "phase-end-to-end",
       "title": "5. Pipeline: end-to-end (full)",
       "description": "`dvala.run(source)` — tokenize + parse + typecheck + evaluate. The number a user actually observes."
+    },
+    {
+      "id": "solver-direct",
+      "title": "6. Refinement subtype-check cost (per predicate shape)",
+      "description": "isolated subtype-check calls between source type and refinement target — no parse or typecheck overhead"
+    },
+    {
+      "id": "simplify-scaling",
+      "title": "7. Stacked refinement simplify scaling",
+      "description": "simplifying N stacked refinements (`Base & {p1} & {p2} & ... & {pN}`) — empirically O(N²); regressions show as a worse exponent"
+    },
+    {
+      "id": "excluded-quadratic",
+      "title": "8. Many-inequality refinement worst case",
+      "description": "`Number & {n | n != 1 && n != 2 && ... && n != N}` — documented quadratic worst case (each conjunction step merges against the growing exclusion list)"
     }
   ],
   "runs": [

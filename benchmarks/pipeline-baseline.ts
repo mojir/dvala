@@ -5,16 +5,28 @@
  * evaluate → end-to-end) across a corpus of representative programs, plus
  * a few refinement-types-specific scenarios that stress the typechecker.
  *
- * Phase measurements are CUMULATIVE through the pipeline:
- *   tokenize      = pure tokenize
- *   parse         = tokenize + parseTokenStream
- *   typecheck     = tokenize + parse + typecheck (via dvala.typecheck)
- *   run           = tokenize + parse + typecheck + evaluate (full)
- *   run-no-tc     = tokenize + parse + evaluate (typecheck disabled)
+ * Two measurement styles, mixed deliberately:
  *
- * Reader subtracts to isolate a phase. Cumulative form keeps the
- * measurement boundaries identical to the public API surface — no
- * private-API setup, and the numbers match what a user observes.
+ *   ISOLATED (only the named phase runs in the inner loop):
+ *     tokenize  = `tokenize(source)`             — pure tokenize cost
+ *     parse     = `parseTokenStream(pre_tokens)` — pure parse cost
+ *
+ *   CUMULATIVE (matches the public API surface — what a user pays):
+ *     typecheck = `dvala.typecheck(source)`      — tokenize + parse + typecheck
+ *     run-no-tc = `dvalaNoTc.run(source)`        — tokenize + parse + evaluate
+ *     run       = `dvala.run(source)`            — tokenize + parse + typecheck + evaluate
+ *
+ *   Why mixed: tokenize and parse are cheap and easy to isolate via the
+ *   public tooling, so we measure them directly. Typecheck and evaluate
+ *   need significant context-stack setup to call in isolation, so we
+ *   measure them through the public composite API and let the reader
+ *   subtract.
+ *
+ *   To isolate a single phase from the data:
+ *     tokenize-only  = phase-tokenize
+ *     parse-only     = phase-parse
+ *     typecheck-only ≈ phase-typecheck − phase-tokenize − phase-parse
+ *     evaluate-only  ≈ phase-run-no-typecheck − phase-tokenize − phase-parse
  *
  * Naming policy — IMPORTANT:
  *
@@ -91,7 +103,13 @@ import { solveRefinedSubtype } from '../src/typechecker/refinementSolver'
 import { simplify } from '../src/typechecker/simplify'
 import { NumberType, StringType, atom, literal } from '../src/typechecker/types'
 
+// Each measurement collects this many outer runs and reports the median.
+// 5 is a tradeoff: enough samples for the median to filter out the
+// occasional GC pause or scheduler hiccup, few enough that the whole
+// bench finishes in well under a minute. Min/max are also recorded so
+// a single outlier doesn't silently move the reported median.
 const RUNS = 5
+
 const HISTORY_FILE = 'benchmarks/pipeline-history.json'
 const RENDERED_FILE = 'benchmarks/pipeline-performance.md'
 const RAW_DIR = 'benchmarks/results'
@@ -247,7 +265,15 @@ function record(name: string, value: { median: number; min: number; max: number;
   console.log(`  ${name.padEnd(60)} ${valueStr.padStart(8)} ${unitLabel}  (min ${value.min.toFixed(2)}, max ${value.max.toFixed(2)})`)
 }
 
-/** Microsecond-per-call hot-path bench. */
+/**
+ * Microsecond-per-call hot-path bench. Used for sub-microsecond inner
+ * loops (solver calls, simplify, etc.) where we want each measurement
+ * to span tens of milliseconds for stable timing.
+ *
+ * Warm-up: up to 1000 calls. V8 needs ~10² invocations to fully tier
+ * up tight numeric/array hot paths, so 1000 ensures the optimizer has
+ * stabilized before the timed run begins.
+ */
 function benchPerCall(name: string, iterations: number, fn: () => void): void {
   for (let i = 0; i < Math.min(1000, iterations); i++) fn() // warm-up
 
@@ -260,7 +286,15 @@ function benchPerCall(name: string, iterations: number, fn: () => void): void {
   record(name, { median: median(times), min: Math.min(...times), max: Math.max(...times), unit: 'us' })
 }
 
-/** Millisecond-per-op coarser bench. */
+/**
+ * Millisecond-per-op coarser bench. Used for end-to-end pipeline
+ * operations where each call already takes 0.1–10ms.
+ *
+ * Warm-up: only 10 calls. Each individual op is large enough (parse +
+ * typecheck a non-trivial program) that a few iterations is enough for
+ * V8 to JIT the hot inner functions; cranking warm-up higher would
+ * just add seconds to every bench run for no measurement benefit.
+ */
 function benchPerOp(name: string, iterations: number, fn: () => void): void {
   for (let i = 0; i < Math.min(10, iterations); i++) fn() // warm-up
 
@@ -376,9 +410,10 @@ startScenario('phase-parse', '2. Pipeline: parse (pre-tokenized)', 'parser cost 
 }
 
 // 3. Phase: typecheck — cumulative through typecheck via public API.
-// Includes tokenize + parse + typecheck. Subtract phase-parse to
-// isolate typecheck-only cost.
-startScenario('phase-typecheck', '3. Pipeline: typecheck (cumulative — incl. tokenize + parse)', '`dvala.typecheck(source)` per program — full pipeline through the typechecker. Subtract phase-parse for typecheck-only cost.')
+// Includes tokenize + parse + typecheck. To isolate typecheck-only,
+// subtract BOTH phase-tokenize and phase-parse (phase-parse is itself
+// already isolated from tokenize, so don't double-count).
+startScenario('phase-typecheck', '3. Pipeline: typecheck (cumulative — incl. tokenize + parse)', '`dvala.typecheck(source)` per program — full pipeline through the typechecker. Typecheck-only cost ≈ this − phase-tokenize − phase-parse.')
 {
   for (const p of corpus) {
     benchPerOp(p.name, p.iters.tc, () => { dvala.typecheck(p.source) })
@@ -387,7 +422,7 @@ startScenario('phase-typecheck', '3. Pipeline: typecheck (cumulative — incl. t
 
 // 4. Phase: run with typecheck DISABLED — tokenize + parse + evaluate.
 // Subtracting phase-parse leaves the evaluator cost in isolation.
-startScenario('phase-run-no-typecheck', '4. Pipeline: run (typecheck disabled)', '`dvala.run(source)` with typecheck disabled — captures tokenize + parse + evaluate. Subtract phase-parse for evaluator-only cost.')
+startScenario('phase-run-no-typecheck', '4. Pipeline: run (typecheck disabled)', '`dvala.run(source)` with typecheck disabled — captures tokenize + parse + evaluate. Evaluator-only cost ≈ this − phase-tokenize − phase-parse.')
 {
   for (const p of corpus) {
     benchPerOp(p.name, p.iters.run, () => { dvalaNoTypecheck.run(p.source) })

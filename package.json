@@ -145,6 +145,7 @@
     "benchmarks:run": "npm run build-dvala && npx tsx benchmarks/pipeline-baseline.ts",
     "benchmarks:show": "npx tsx benchmarks/visualize.ts && open-cli benchmarks/visualization.html",
     "install-hooks": "git config core.hooksPath .githooks && echo 'git hooks installed: core.hooksPath=.githooks'",
+    "uninstall-hooks": "git config --unset core.hooksPath && echo 'git hooks uninstalled: core.hooksPath unset'",
     "demo": "node scripts/demo-link.mjs",
     "format-snippets": "npx tsx scripts/format-sources.ts",
     "pdf": "node scripts/generate-pdf.mjs",

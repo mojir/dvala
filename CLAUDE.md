@@ -20,7 +20,9 @@ When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI
 
 **Source-code changes (anything under `src/`) MUST run the pipeline perf benchmark before the PR merges.**
 
-The `.githooks/pre-push` hook automates this: when you push a commit that touched any `src/` file and HEAD's hash isn't yet in `benchmarks/pipeline-history.json`, it runs the bench, aborts the push, and asks you to commit the bench data and re-push. Install once per clone with `npm run install-hooks` (sets `core.hooksPath=.githooks`).
+The `.githooks/pre-push` hook automates this: when you push a commit that touched any `src/` file and HEAD's hash isn't yet in `benchmarks/pipeline-history.json`, it runs the bench, aborts the push, and asks you to commit the bench data and re-push. Install once per clone with `npm run install-hooks` (sets `core.hooksPath=.githooks`). Disable with `npm run uninstall-hooks`.
+
+**Escape hatch:** for trivially non-perf-relevant `src/` changes (comment typo, dead-code removal, error-message wording), bypass the gate with `git push --no-verify`. The hook is intentionally conservative — broader-than-necessary so we don't miss a regression. Use `--no-verify` thoughtfully; if in doubt, run the bench.
 
 Manual flow if you skip the hook:
 - Run `npm run benchmarks:run` on the PR branch's tip (after the last code change).

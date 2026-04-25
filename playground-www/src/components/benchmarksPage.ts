@@ -104,11 +104,30 @@ function escapeHtml(s: string): string {
 const liveCharts: { destroy: () => void }[] = []
 
 /**
+ * In-flight guard: if `renderBenchmarksCharts` is called twice while
+ * Chart.js is still loading from CDN, the second call's teardown loop
+ * would empty `liveCharts` before the first call's chart-creation loop
+ * has had a chance to push into it. The result is a silent double-render
+ * with leaked Chart instances. The guard makes concurrent calls coalesce.
+ */
+let renderInFlight = false
+
+/**
  * Render the benchmarks panel. Called every time the tab is shown —
  * idempotent: existing charts are destroyed first to avoid leaks
  * across re-renders.
  */
 export async function renderBenchmarksCharts(): Promise<void> {
+  if (renderInFlight) return
+  renderInFlight = true
+  try {
+    await renderBenchmarksChartsInner()
+  } finally {
+    renderInFlight = false
+  }
+}
+
+async function renderBenchmarksChartsInner(): Promise<void> {
   const container = document.getElementById('settings-benchmarks-charts')
   if (!container) return
 
@@ -210,7 +229,10 @@ export async function renderBenchmarksCharts(): Promise<void> {
       spanGaps: true,
     }))
 
-    // Pick the dominant unit for axis labelling.
+    // Pick the unit from the first non-null measurement. Each scenario
+    // currently keeps a single unit across its measurements, so this is
+    // sufficient — if a future scenario ever mixes ms and μs across rows,
+    // the y-axis label may need a real majority vote.
     let unit: 'ms' | 'us' = 'ms'
     for (const run of runs) {
       const buckets = run.scenarios[sc.id] ?? {}
