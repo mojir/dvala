@@ -38,11 +38,13 @@
  * table, and shows `—` for older runs that didn't measure it.
  *
  * Running:
- *   npm run benchmark:refinement
+ *   npm run benchmark:refinement   — run benchmarks, update history + .md
+ *   npm run show:benchmarks        — open an HTML chart view of the history
  *
  * Compare runs by reading the rendered markdown left-to-right (latest
- * column first). Sudden 2x jumps in any cell are a regression signal —
- * re-run the script before and after the suspect commit to confirm.
+ * column first), or open the HTML view for a graphical trend. Sudden
+ * 2x jumps in any cell are a regression signal — re-run the script
+ * before and after the suspect commit to confirm.
  *
  * The script depends on the built dist; the npm script runs
  * `build-dvala` first.

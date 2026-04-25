@@ -10,6 +10,7 @@
 - `npm run test` — run tests only
 - `npm run build` — build all bundles
 - `npm run benchmark:refinement` — run the refinement-types perf bench; appends a row to `benchmarks/refinement-performance.md`
+- `npm run show:benchmarks` — render the perf history as an interactive HTML chart and open it in the browser
 
 Run `npm run check` after any medium or larger code change.
 
