@@ -1074,6 +1074,191 @@ describe('refinement types — Phase 2.1 Refined node', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Refinement types — Phase 2.5a (block-level `assert(P)` narrowing)
+// ---------------------------------------------------------------------------
+//
+// Design: design/active/2026-04-23_refinement-types.md, Phase 2.5
+// (line 689). When a `do` block walker sees `assert(P)`, treat the
+// predicate `P` as an assumed fact for subsequent statements in the
+// block by wrapping the referenced variable's type in a `Refined`
+// node. Subsequent subtype checks against refined targets get the
+// solver's machinery for free (no API change to the solver itself).
+//
+// Scope of these tests:
+//   - the narrowing applies after a successful `assert(P)`
+//   - it persists for the rest of the same block
+//   - it's gated on Phase 1 fragment eligibility (out-of-fragment
+//     predicates fall back to runtime-only behaviour without erroring)
+//   - it requires exactly one free variable in `P` (multi-variable
+//     reasoning is Phase 3)
+//   - it composes with itself (multiple asserts narrow incrementally)
+// ---------------------------------------------------------------------------
+
+describe('refinement types — Phase 2.5a (assert narrowing)', () => {
+  const dvala = createDvala()
+
+  // The Phase 2.3 solver bails to inert "accept" when it can't extract
+  // a domain from a bare-primitive source (e.g. checking `Number` against
+  // `Number & P`). That makes downstream subtype checks an unreliable
+  // observable for narrowing — both narrowed and un-narrowed sources
+  // pass inertly, so the diagnostic stream looks the same.
+  //
+  // Phase 2.5a's contract is structural: AFTER an `assert(P)` statement,
+  // the env's binding for the asserted variable is a `Refined` type
+  // wrapping the variable's pre-assert type. We pin this directly via
+  // `typeMap` inspection: a post-assert reference to the variable
+  // resolves through env to the Refined type, and the typechecker
+  // records that resolved type at the reference's node id.
+  //
+  // Test helper: parse + typecheck, then return the type recorded for
+  // the last expression in the body. Tests place a bare reference (`x`
+  // / `y`) as the trailing expression so its inferred type — pulled
+  // from the env at lookup time — is the observable.
+
+  /**
+   * Return any `Refined` type recorded in the typeMap for this source.
+   * Phase 2.5a only places Refined types via the assert-narrow path
+   * (Phase 1 erases predicates from non-narrowed annotations until
+   * the parser writes them as Refined too — but no other code in the
+   * test fixtures triggers that), so finding *any* Refined in the
+   * typeMap is a reliable proxy for "narrowing happened".
+   */
+  function findRefinedInTypeMap(source: string): Extract<Type, { tag: 'Refined' }> | undefined {
+    const result = dvala.typecheck(source)
+    for (const t of result.typeMap.values()) {
+      if (t.tag === 'Refined') return t
+    }
+    return undefined
+  }
+
+  function countRefinedInTypeMap(source: string): number {
+    const result = dvala.typecheck(source)
+    let n = 0
+    for (const t of result.typeMap.values()) {
+      if (t.tag === 'Refined') n++
+    }
+    return n
+  }
+
+  describe('basic narrowing', () => {
+    it('after `assert(x > 0)`, a subsequent reference to x has Refined type', () => {
+      const t = findRefinedInTypeMap(`
+        let test = (x: Number): Number -> do
+          assert(x > 0);
+          x
+        end
+      `)
+      expect(t).toBeDefined()
+      if (!t) return
+      expect(t.binder).toBe('x')
+      expect(t.source).toContain('x > 0')
+    })
+
+    it('without an assert, no Refined type appears in the typeMap', () => {
+      expect(countRefinedInTypeMap(`
+        let test = (x: Number): Number -> do
+          x
+        end
+      `)).toBe(0)
+    })
+  })
+
+  describe('compound predicates', () => {
+    it('top-level `&&` lands in the Refined source string', () => {
+      const t = findRefinedInTypeMap(`
+        let test = (x: Number): Number -> do
+          assert(x > 0 && x < 100);
+          x
+        end
+      `)
+      expect(t).toBeDefined()
+      if (!t) return
+      // prettyPrint of `x > 0 && x < 100` yields a body that contains
+      // both relations; binder prefix added.
+      expect(t.source).toContain('x > 0')
+      expect(t.source).toContain('x < 100')
+    })
+
+    it('multi-variable predicate (`x > y`) does NOT narrow', () => {
+      // Two free symbols → outside Phase 2.5a's single-symbol scope.
+      expect(countRefinedInTypeMap(`
+        let test = (x: Number, y: Number): Number -> do
+          assert(x > y);
+          x
+        end
+      `)).toBe(0)
+    })
+  })
+
+  describe('fragment gating', () => {
+    it('arithmetic in the predicate (`x + 1 > 1`) does NOT narrow', () => {
+      // Out of the Phase 1 accept list — fragment-checker rejects
+      // arithmetic on the binder. Runtime `assert` still works; no
+      // static narrowing applies.
+      expect(countRefinedInTypeMap(`
+        let test = (x: Number): Number -> do
+          assert(x + 1 > 1);
+          x
+        end
+      `)).toBe(0)
+    })
+
+    it('a literal predicate (`assert(true)`) is a no-op for narrowing', () => {
+      expect(countRefinedInTypeMap(`
+        let test = (x: Number): Number -> do
+          assert(true);
+          x
+        end
+      `)).toBe(0)
+    })
+  })
+
+  describe('composition', () => {
+    it('two asserts on the same variable both contribute to the narrowing', () => {
+      // Multiple Refined types end up in the typeMap (one per
+      // post-assert reference). We want the OUTER one — the
+      // doubly-wrapped result, with the second assert's predicate at
+      // the top and the first nested one level down.
+      const result = dvala.typecheck(`
+        let test = (x: Number): Number -> do
+          assert(x > 0);
+          assert(x < 100);
+          x
+        end
+      `)
+      // Pick the Refined whose .base is itself Refined — that's the
+      // composed result we're after.
+      let outer: Extract<Type, { tag: 'Refined' }> | undefined
+      for (const t of result.typeMap.values()) {
+        if (t.tag === 'Refined' && t.base.tag === 'Refined') {
+          outer = t
+          break
+        }
+      }
+      expect(outer).toBeDefined()
+      if (!outer) return
+      expect(outer.source).toContain('x < 100')
+      if (outer.base.tag !== 'Refined') return
+      expect(outer.base.source).toContain('x > 0')
+    })
+  })
+
+  describe('shadowing', () => {
+    it('user-shadowed `assert` does NOT trigger narrowing', () => {
+      // A locally-bound `assert` may not throw on falsy. Conservative:
+      // skip narrowing entirely.
+      expect(countRefinedInTypeMap(`
+        let test = (x: Number): Number -> do
+          let assert = (b: Boolean): Boolean -> b;
+          assert(x > 0);
+          x
+        end
+      `)).toBe(0)
+    })
+  })
+})
+
 function binderRef(name: string): AstNode {
   return [NodeTypes.Sym, name, 0] as unknown as AstNode
 }

@@ -36,8 +36,12 @@ ZERO='0000000000000000000000000000000000000000'
 # Determine the default base branch (origin/main) for new-branch pushes.
 DEFAULT_BASE='origin/main'
 
-# Collect every ref tip whose range touches src/ — multi-ref pushes
-# (`git push origin a b`) need each tip checked, not just the last one.
+# Collect the LATEST src/-touching commit per ref — that commit is
+# the subject of the bench (the one whose hash gets recorded). Using
+# the ref tip would mean a follow-up "bench data" commit (which itself
+# doesn't touch src/) moves the tip to a SHA that has no bench row,
+# and the hook would loop forever asking for more data.
+#
 # Stored as space-separated full SHAs in `bench_tips`.
 bench_tips=''
 
@@ -60,11 +64,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     range="$remote_sha..$local_sha"
   fi
 
-  # Any commit in the range touch source code?
-  # `git log -- <pathspec>` returns matching commits; if the output is
-  # non-empty, at least one commit qualifies.
-  if [[ -n "$(git log "$range" --pretty=format:%H -- "${SOURCE_PATHS[@]}" 2>/dev/null || true)" ]]; then
-    bench_tips="$bench_tips $local_sha"
+  # Latest commit in the range that touched source code. `git log`
+  # returns commits newest-first; `head -n 1` picks the most recent.
+  # Empty output means no commit in the range touched src/.
+  latest_src_touch="$(git log "$range" --pretty=format:%H -- "${SOURCE_PATHS[@]}" 2>/dev/null | head -n 1)"
+  if [[ -n "$latest_src_touch" ]]; then
+    bench_tips="$bench_tips $latest_src_touch"
   fi
 done
 
@@ -72,43 +77,44 @@ if [[ -z "$bench_tips" ]]; then
   exit 0
 fi
 
-# Walk the collected tips, partition into "have data" / "missing data".
-# Missing tips block the push. The bench can only be run for HEAD (it
-# rev-parses HEAD internally to tag the row), so:
-#   - if HEAD is the only missing tip → bench HEAD, abort, ask to commit
-#   - if HEAD is not in the missing list → push the missing tips
-#     individually so each becomes HEAD when its bench runs
-missing_tips=''
+# Walk collected src/-touching commits, partition into "have data" /
+# "missing data". A missing commit blocks the push. The bench can only
+# be run for HEAD (it rev-parses HEAD internally to tag the row), so:
+#   - if HEAD is the unique missing commit → bench HEAD, abort, ask to commit
+#   - if some other commit is missing → user must rebase / push that
+#     commit so it becomes HEAD when its bench runs
+missing_commits=''
 head_sha="$(git rev-parse HEAD)"
 head_short="$(git rev-parse --short HEAD)"
-for tip in $bench_tips; do
-  short="$(git rev-parse --short "$tip")"
+for commit in $bench_tips; do
+  short="$(git rev-parse --short "$commit")"
   if [[ -f "$HISTORY_FILE" ]] && grep -q "\"commit\": \"$short\"" "$HISTORY_FILE"; then
     echo "✓ pipeline perf data already recorded for $short"
   else
-    missing_tips="$missing_tips $tip"
+    missing_commits="$missing_commits $commit"
   fi
 done
 
-if [[ -z "$missing_tips" ]]; then
-  echo "✓ all pushed tips have perf data — push proceeding"
+if [[ -z "$missing_commits" ]]; then
+  echo "✓ all src/-touching commits in this push have perf data — push proceeding"
   exit 0
 fi
 
-# Multi-tip case where HEAD isn't one of the missing tips. We can't
-# bench another commit without checking it out, which would clobber the
-# user's working state. Refuse and tell them what to do.
+# Bench tags rows with HEAD's hash. If the missing src/-touching
+# commit isn't HEAD, we can't bench it without checking it out (which
+# would clobber the user's working state). Refuse and tell them what
+# to do.
 head_in_missing=0
-for tip in $missing_tips; do
-  [[ "$tip" == "$head_sha" ]] && head_in_missing=1
+for commit in $missing_commits; do
+  [[ "$commit" == "$head_sha" ]] && head_in_missing=1
 done
 
 if [[ "$head_in_missing" -eq 0 ]]; then
-  echo "❌ Multi-ref push has tips needing bench data, but none of them are HEAD."
-  echo "   The bench tags rows with HEAD's hash, so each tip must become HEAD."
-  echo "   Push them one at a time, or skip with --no-verify:"
-  for tip in $missing_tips; do
-    short="$(git rev-parse --short "$tip")"
+  echo "❌ Push has src/-touching commits with no perf data, but none are HEAD."
+  echo "   The bench tags rows with HEAD's hash, so the target commit must be HEAD."
+  echo "   Rebase to make it HEAD, or skip with --no-verify:"
+  for commit in $missing_commits; do
+    short="$(git rev-parse --short "$commit")"
     echo "     • $short"
   done
   exit 1
