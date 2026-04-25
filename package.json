@@ -142,6 +142,7 @@
     "build-vscode-ext": "wireit",
     "dvala": "node ./dist/cli/cli.js",
     "benchmark": "npm run build-dvala && npx tsx benchmarks/pds-baseline.ts",
+    "benchmark:refinement": "npm run build-dvala && npx tsx benchmarks/refinement-baseline.ts",
     "demo": "node scripts/demo-link.mjs",
     "format-snippets": "npx tsx scripts/format-sources.ts",
     "pdf": "node scripts/generate-pdf.mjs",

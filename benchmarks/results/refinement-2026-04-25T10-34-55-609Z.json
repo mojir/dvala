@@ -1,0 +1,113 @@
+{
+  "timestamp": "2026-04-25T10:34:55.609Z",
+  "commit": "966faea2",
+  "commitMessage": "Refinement types Phase 2.1 – 2.4 — representation, merging, fold-discharge, solver (#96)",
+  "scenarios": {
+    "parse-overhead": {
+      "plain Number annotation": {
+        "median": 0.009227167000000008,
+        "min": 0.006676832999999988,
+        "max": 0.020011082999999985,
+        "unit": "ms"
+      },
+      "refined Number & {n | n > 0}": {
+        "median": 0.017132750000000044,
+        "min": 0.014210667000000001,
+        "max": 0.02518237499999998,
+        "unit": "ms"
+      }
+    },
+    "solver-direct": {
+      "interval target — Number → {n | n > 0 && n < 100}": {
+        "median": 0.09959875000000011,
+        "min": 0.09203125,
+        "max": 0.14001499999999964,
+        "unit": "us"
+      },
+      "set target — :ok → {x | :ok | :error}": {
+        "median": 0.12141999999999996,
+        "min": 0.11776457999999991,
+        "max": 0.16188583999999992,
+        "unit": "us"
+      },
+      "count target — String → {s | count(s) > 0}": {
+        "median": 0.05432666999999924,
+        "min": 0.05222541999999976,
+        "max": 0.08698375000000054,
+        "unit": "us"
+      },
+      "excludedSet — Number → {n | !=0 && !=1 && !=-1}": {
+        "median": 0.20451209000000062,
+        "min": 0.2011283299999991,
+        "max": 0.23910292000000027,
+        "unit": "us"
+      },
+      "literal source — 50 → {n | n > 0 && n < 100}": {
+        "median": 0.10239707999999952,
+        "min": 0.10075375000000007,
+        "max": 0.12247916999999915,
+        "unit": "us"
+      }
+    },
+    "simplify-scaling": {
+      "N= 2 stacked refinements": {
+        "median": 0.8259915999999976,
+        "min": 0.7461250000000064,
+        "max": 1.3881584000000202,
+        "unit": "us"
+      },
+      "N= 4 stacked refinements": {
+        "median": 3.539466799999991,
+        "min": 3.3974249999999984,
+        "max": 3.6971,
+        "unit": "us"
+      },
+      "N= 8 stacked refinements": {
+        "median": 14.535658400000012,
+        "min": 14.349191599999994,
+        "max": 15.002500000000008,
+        "unit": "us"
+      },
+      "N=16 stacked refinements": {
+        "median": 85.98015839999998,
+        "min": 85.211975,
+        "max": 89.2998666,
+        "unit": "us"
+      },
+      "N=32 stacked refinements": {
+        "median": 455.1241249999999,
+        "min": 453.5512499999997,
+        "max": 481.2610000000001,
+        "unit": "us"
+      }
+    },
+    "excluded-quadratic": {
+      "N= 10 (parse + simplify)": {
+        "median": 27.364333199999965,
+        "min": 27.059408400000027,
+        "max": 28.657541599999966,
+        "unit": "us"
+      },
+      "N= 50 (parse + simplify)": {
+        "median": 173.18870799999786,
+        "min": 170.80091600000014,
+        "max": 175.2305410000008,
+        "unit": "us"
+      },
+      "N=100 (parse + simplify)": {
+        "median": 427.1616649999851,
+        "min": 414.2827049999869,
+        "max": 466.12708000000566,
+        "unit": "us"
+      }
+    },
+    "end-to-end": {
+      "parse + typecheck full program": {
+        "median": 0.17929966599999897,
+        "min": 0.14946824999999808,
+        "max": 0.22251425000000016,
+        "unit": "ms"
+      }
+    }
+  }
+}
