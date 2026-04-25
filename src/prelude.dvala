@@ -1,0 +1,24 @@
+// Dvala standard prelude — refined type aliases auto-loaded into every
+// typecheck session.
+//
+// Aliases declared here are available everywhere without explicit
+// import, like core builtins. They're a starter set covering the most
+// common refinement patterns; users can shadow any of them by writing
+// their own `type X = ...` with the same name in their source file.
+
+// Strictly positive numbers (n > 0). Common precondition for division
+// safety (`x / n`) and quantity-style values where zero is meaningless.
+type Positive = Number & {n | n > 0};
+
+// Non-negative numbers (n >= 0). Array-indexing precondition; the
+// "natural numbers" sense from CS (where 0 ∈ ℕ).
+type NonNegative = Number & {n | n >= 0};
+
+// Non-zero numbers (n != 0). The minimal precondition for division —
+// `Positive` is stricter than needed when negatives are also fine.
+type NonZero = Number & {n | n != 0};
+
+// Non-empty sequences. Generic over Array AND String via the Sequence
+// upper bound, so `head(xs: NonEmpty<Array<Number>>)` and
+// `firstChar(s: NonEmpty<String>)` both pass the count(xs) > 0 check.
+type NonEmpty<T: Sequence> = T & {xs | count(xs) > 0};
