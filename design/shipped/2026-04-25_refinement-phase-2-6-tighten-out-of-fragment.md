@@ -147,8 +147,8 @@ Tracked as separate commits inside the same PR.
 
 Surfaced during PR review (after the design was approved). A function parameter typed as `Refined<Number, n, n > 0> | Refined<Number, n, n < -10>` (a Union of refinements) does *not* get rejected at call sites for arguments outside both members. `f(0)` against this parameter type silently passes today even though `0` satisfies neither member.
 
-Root cause is in the simplifier, not in this phase: certain Union-of-Refined types collapse to a wider type (e.g. `Number`) before the constrain-time dispatch runs. The Union-on-right path in `constrain` (infer.ts:787) tries each member, but if the simplifier widens before that path executes, no Refined member remains.
+Root cause is in the simplifier, not in this phase: certain Union-of-Refined types collapse to a wider type (e.g. `Number`) before the constrain-time dispatch runs. The Union-on-right branch in `constrain` tries each member, but if the simplifier widens before that path executes, no Refined member remains.
 
-Why this is acceptable for v1: Union-of-Refined RHS is a rare annotation pattern. Users typically use `Inter` for compound predicates (which IS covered — see test `Inter-of-Refined RHS`) or a single alias. The let-binding annotation path's separate `isSubtype` check (infer.ts:1304) does catch the Union case (`let x: R1 | R2 = 0` correctly rejects), so the gap is specifically at function call sites with Union-of-Refined parameters.
+Why this is acceptable for v1: Union-of-Refined RHS is a rare annotation pattern. Users typically use `Inter` for compound predicates (which IS covered — see test `Inter-of-Refined RHS`) or a single alias. The let-binding annotation site's separate `isSubtype` check does catch the Union case (`let x: R1 | R2 = 0` correctly rejects), so the gap is specifically at function call sites with Union-of-Refined parameters.
 
 If real cases surface, the fix path is in the simplifier (preserve refinement structure when widening Unions of refinements that share a base) — independent of the constrain-time dispatch shipped here.
