@@ -90,12 +90,13 @@ let f = (x: Number) -> do
 end;
 ```
 
-The typechecker only trusts user-declared assertion helpers when their body proves the declared predicate on every normal-return path. Today that proof check is intentionally narrow: exact `assert(...)` calls, simple control-flow propagation, and calls to other verified assertion helpers.
+The typechecker only trusts user-declared assertion helpers when their body proves the declared predicate on every normal-return path. Today that proof check covers: exact `assert(...)` calls, calls to other verified assertion helpers, and control-flow propagation through `if` / `match`. Match cases narrow on guards that match the target predicate and recognise simple case bindings (`case n then assert(n > 0)` works the same as `assert(x > 0)` when the scrutinee is the asserted parameter).
 
 Current restrictions:
 
 - Assertion helper bodies may not recurse, directly or mutually.
 - Assertion helper bodies may not install handlers with `do with ... end`.
+- Pattern-binding aliasing only fires for simple symbol bindings (`case n then ...`) when the match's scrutinee is the asserted parameter directly. Destructuring patterns and matches on derived expressions don't substitute.
 
 If the checker cannot prove the helper's contract, the function is rejected rather than treated as an unchecked `assume`.
 

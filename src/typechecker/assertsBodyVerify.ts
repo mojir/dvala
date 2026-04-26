@@ -283,18 +283,20 @@ function terminalProves(
  * same shape `If` uses for its non-terminal `statementGuarantees`
  * case.
  *
- * Guards (`case n when cond then ...`) are treated opaquely in v1.
- * The existing `If` case narrows when the condition itself matches the
- * target predicate; a future revision could extend the same trick to
- * guards if real cases call for it.
+ * Two narrowing-related bonuses are applied per case:
  *
- * Case-pattern bindings (`case n then ...`) introduce a new name `n`
- * bound to the scrutinee's value. The verifier doesn't track this
- * substitution — assertions inside the case body that reference `n`
- * (rather than the outer asserted parameter) won't match the target
- * predicate. Users either reference the outer name in the assert, or
- * accept the conservative rejection. Pattern-aware substitution is
- * a future enhancement, gated on demand.
+ *   1. **Guard narrowing.** A `case n when cond then ...` whose
+ *      `cond` matches the target predicate starts the case body
+ *      with `proven=true`. Mirrors the `If` treatment of the
+ *      condition.
+ *   2. **Pattern-binding-aware substitution.** When the match's
+ *      scrutinee is the asserted parameter and the case binds a
+ *      single Sym (`case n then ...`), the binder `n` is recognised
+ *      as a local alias for the outer parameter. Predicates inside
+ *      the case body that reference `n` are rewritten as if they
+ *      referenced the outer parameter, so `assert(n > 0)` correctly
+ *      proves `x > 0`. Limited to simple Sym bindings — destructuring
+ *      / nested patterns / literal patterns don't substitute.
  */
 function matchProves(
   node: AstNode,
@@ -303,12 +305,131 @@ function matchProves(
   proven: boolean,
   stack: Set<AssertionFunctionInfo>,
 ): boolean {
-  const [, cases] = node[1] as [AstNode, [BindingTarget, AstNode, AstNode | undefined][]]
+  const [scrutinee, cases] = node[1] as [AstNode, [BindingTarget, AstNode, AstNode | undefined][]]
   // Every case body must establish the predicate. An empty match
   // (no cases) is structurally degenerate — fail the proof so the
   // user sees a diagnostic rather than a silent accept.
   if (cases.length === 0) return false
-  return cases.every(([, body]) => terminalProves(body, info, assertionFunctions, proven, stack))
+  // Pattern-binding substitution requires the scrutinee to be the
+  // asserted parameter directly. `match expr ...` where `expr` is
+  // anything else doesn't establish that the case binding aliases
+  // the asserted parameter — bail out of the substitution layer in
+  // that case.
+  const scrutineeIsAssertedParam
+    = scrutinee[0] === NodeTypes.Sym && scrutinee[1] === info.asserts.binder
+  return cases.every(([binding, body, guard]) => {
+    let caseInfo = info
+    if (scrutineeIsAssertedParam) {
+      caseInfo = applyCaseBinderAlias(info, binding)
+    }
+    // Guard narrowing: if the guard's predicate matches the (per-case)
+    // target predicate, the body starts with proven=true. Same shape
+    // as the `If` treatment for its condition.
+    const caseProven = proven || (guard !== undefined && predicateMatchesTarget(guard, caseInfo))
+    return terminalProves(body, caseInfo, assertionFunctions, caseProven, stack)
+  })
+}
+
+/**
+ * If a case's binding is a single Sym (`case n then ...`), treat the
+ * bound name as a local alias for the outer asserted parameter. The
+ * info's binder + predicate are rewritten so the existing
+ * `predicateMatchesTarget` structural compare matches user-written
+ * predicates referring to the case binding.
+ *
+ * Other binding shapes (object/array destructuring, literal patterns,
+ * wildcards, rest) don't introduce a single aliasing name, so they
+ * leave info untouched — predicates referring to the outer parameter
+ * by its original name still match.
+ */
+function applyCaseBinderAlias(info: AssertionFunctionInfo, binding: BindingTarget): AssertionFunctionInfo {
+  if (binding[0] !== bindingTargetTypes.symbol) return info
+  const [symbolNode] = binding[1] as [AstNode, AstNode | undefined]
+  if (symbolNode[0] !== NodeTypes.Sym) return info
+  const aliasName = symbolNode[1] as string
+  if (aliasName === info.asserts.binder) return info
+  return {
+    ...info,
+    asserts: {
+      ...info.asserts,
+      binder: aliasName,
+      predicate: renameBinderInPredicate(info.asserts.predicate, info.asserts.binder, aliasName),
+    },
+  }
+}
+
+/**
+ * Rewrite every `Sym(oldName)` in a predicate AST to `Sym(newName)`.
+ * Handles the same node shapes the fragment checker accepts: Sym, And,
+ * Or, Call. Other shapes are leaves — returned unchanged because they
+ * can't transitively contain binder references.
+ *
+ * Mirrors the structure of `substitutePredicateBinder` in subtype.ts
+ * (which substitutes Sym for a literal). Kept private — refinement-
+ * solver work that needs a similar utility should pull this out.
+ */
+function renameBinderInPredicate(node: AstNode, oldName: string, newName: string): AstNode {
+  const rewritten = new Map<AstNode, AstNode>()
+  const stack: { node: AstNode; exiting: boolean }[] = [{ node, exiting: false }]
+
+  while (stack.length > 0) {
+    const frame = stack.pop()!
+    const current = frame.node
+
+    if (frame.exiting) {
+      rewritten.set(current, rewriteRenamedNode(current, oldName, newName, rewritten))
+      continue
+    }
+
+    stack.push({ node: current, exiting: true })
+
+    if (current[0] === NodeTypes.Call && Array.isArray(current[1])) {
+      const [callee, args] = current[1] as [AstNode, AstNode[]]
+      for (let index = args.length - 1; index >= 0; index--) {
+        stack.push({ node: args[index]!, exiting: false })
+      }
+      stack.push({ node: callee, exiting: false })
+      continue
+    }
+
+    if ((current[0] === NodeTypes.And || current[0] === NodeTypes.Or) && Array.isArray(current[1])) {
+      const operands = current[1] as AstNode[]
+      for (let index = operands.length - 1; index >= 0; index--) {
+        stack.push({ node: operands[index]!, exiting: false })
+      }
+    }
+  }
+
+  return rewritten.get(node) ?? node
+}
+
+function rewriteRenamedNode(
+  node: AstNode,
+  oldName: string,
+  newName: string,
+  rewritten: Map<AstNode, AstNode>,
+): AstNode {
+  if (node[0] === NodeTypes.Sym && node[1] === oldName) {
+    return [NodeTypes.Sym, newName, node[2]] as unknown as AstNode
+  }
+
+  if (node[0] === NodeTypes.Call && Array.isArray(node[1])) {
+    const [callee, args, hints] = node[1] as [AstNode, AstNode[], unknown]
+    const rewrittenCallee = rewritten.get(callee) ?? callee
+    const rewrittenArgs = args.map(arg => rewritten.get(arg) ?? arg)
+    const unchanged = rewrittenCallee === callee && rewrittenArgs.every((arg, index) => arg === args[index])
+    if (unchanged) return node
+    return [NodeTypes.Call, [rewrittenCallee, rewrittenArgs, hints], node[2]] as unknown as AstNode
+  }
+
+  if ((node[0] === NodeTypes.And || node[0] === NodeTypes.Or) && Array.isArray(node[1])) {
+    const operands = node[1] as AstNode[]
+    const rewrittenOperands = operands.map(operand => rewritten.get(operand) ?? operand)
+    if (rewrittenOperands.every((operand, index) => operand === operands[index])) return node
+    return [node[0], rewrittenOperands, node[2]] as AstNode
+  }
+
+  return node
 }
 
 function establishesTargetPredicate(

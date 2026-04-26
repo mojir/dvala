@@ -227,14 +227,11 @@ describe('verifyAssertionFunctionBodies', () => {
     expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
   })
 
-  // Pattern-binding-aware substitution is a future enhancement. Today
-  // an assertion that references the case-binding name (`n`) instead
-  // of the outer parameter name (`x`) is conservatively rejected
-  // because `predicateMatchesTarget` compares the predicate AST
-  // structurally — `n > 0` and `x > 0` are different expressions.
-  // Sound but restrictive; users either reference the outer name or
-  // accept the rejection.
-  it('rejects assertion that references case-binding name instead of outer parameter', () => {
+  // Pattern-binding-aware substitution: when the scrutinee is the
+  // outer asserted parameter and the case binds a single Sym, the
+  // bound name is recognised as a local alias and predicates that
+  // reference it match as if they referenced the outer parameter.
+  it('accepts assertion that references case-binding name (pattern-binding alias)', () => {
     const ast = parseProgram(`
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
         match x
@@ -243,7 +240,81 @@ describe('verifyAssertionFunctionBodies', () => {
       1
     `)
     const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
+  // Pattern-binding alias only fires when the scrutinee IS the outer
+  // asserted parameter. Matching on a different expression doesn't
+  // establish that the case binding aliases the asserted parameter,
+  // so `assert(n > 0)` is correctly rejected.
+  it('rejects pattern-binding alias when scrutinee is not the asserted parameter', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x + 1
+          case n then assert(n > 0)
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
     expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
+  })
+
+  // Guard narrowing: a guard whose condition matches the target
+  // predicate establishes proven=true for the case body — same as
+  // an `If` whose condition matches the target.
+  it('accepts guard whose condition matches the target predicate', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case _ when x > 0 then x
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
+  it('rejects guard whose condition does not match the target predicate', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case _ when x < 0 then x
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
+  })
+
+  // Combined: guard narrowing should also use the substituted info,
+  // so a guard referencing the case-binding name should narrow when
+  // its predicate matches the (per-case) target.
+  it('accepts guard referencing case-binding name when the alias predicate matches', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case n when n > 0 then n
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
+  // Nested match — match inside another match. Verifies recursion
+  // works through the matchProves helper for both outer and inner.
+  it('accepts nested match where every leaf case proves the predicate', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case _ then match x
+            case _ then assert(x > 0)
+          end
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
   })
 
   // Empty match — no cases — is structurally degenerate. Reject so
