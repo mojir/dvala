@@ -326,6 +326,16 @@ function varKey(t: Type): string {
   if (t.tag === 'Neg') return `N:${varKey(t.inner)}`
   if (t.tag === 'Unknown') return '?'
   if (t.tag === 'Never') return '!'
+  // `Refined` must include the predicate source so two refinements with
+  // the same base but different predicates don't share a cache key. Pre-
+  // 2.6 this didn't matter (constrain stripped Refined wrappers anyway,
+  // so the cache never saw them); post-2.6 the dispatch keeps Refined
+  // intact, and a Union<Refined1, Refined2> would otherwise let a
+  // failed Refined1 attempt poison the cache for Refined2 — the second
+  // member would short-circuit via the cycle guard and silently
+  // "prove". Include base for the same reason: distinct bases are
+  // distinct types regardless of predicate text.
+  if (t.tag === 'Refined') return `Rf:${varKey(t.base)}:${t.source}`
   return t.tag
 }
 
