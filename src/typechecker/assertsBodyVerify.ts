@@ -240,6 +240,9 @@ function statementGuarantees(
     const elseProven = terminalProves(elseNode ?? thenNode, info, assertionFunctions, proven, stack)
     return thenProven && elseProven
   }
+  if (node[0] === NodeTypes.Match) {
+    return matchProves(node, info, assertionFunctions, proven, stack)
+  }
   return establishesTargetPredicate(node, info, assertionFunctions, stack)
 }
 
@@ -260,7 +263,183 @@ function terminalProves(
     const elseProven = terminalProves(elseNode ?? thenNode, info, assertionFunctions, proven, stack)
     return thenProven && elseProven
   }
+  if (node[0] === NodeTypes.Match) {
+    return matchProves(node, info, assertionFunctions, proven, stack)
+  }
   return establishesTargetPredicate(node, info, assertionFunctions, stack)
+}
+
+/**
+ * `match` proof check — every case body must prove the asserted
+ * predicate, since each case is a possible normal-return path. Mirrors
+ * the `If` treatment with both branches required to prove.
+ *
+ * Called from both `terminalProves` (the match is the function's
+ * terminal expression) and `statementGuarantees` (the match is in
+ * non-terminal position; if every case proves P, downstream
+ * statements inherit proven=true via the `sequenceProves` loop).
+ * Each case body is itself a terminal expression *within* its case,
+ * so we recurse via `terminalProves` regardless of caller — the
+ * same shape `If` uses for its non-terminal `statementGuarantees`
+ * case.
+ *
+ * Two narrowing-related bonuses are applied per case:
+ *
+ *   1. **Guard narrowing.** A `case n when cond then ...` whose
+ *      `cond` matches the target predicate starts the case body
+ *      with `proven=true`. Mirrors the `If` treatment of the
+ *      condition.
+ *   2. **Pattern-binding-aware substitution.** When the match's
+ *      scrutinee is the asserted parameter and the case binds a
+ *      single Sym (`case n then ...`), the binder `n` is recognised
+ *      as a local alias for the outer parameter. Predicates inside
+ *      the case body that reference `n` are rewritten as if they
+ *      referenced the outer parameter, so `assert(n > 0)` correctly
+ *      proves `x > 0`. Limited to simple Sym bindings — destructuring
+ *      / nested patterns / literal patterns don't substitute.
+ */
+function matchProves(
+  node: AstNode,
+  info: AssertionFunctionInfo,
+  assertionFunctions: AssertionFunctionInfo[],
+  proven: boolean,
+  stack: Set<AssertionFunctionInfo>,
+): boolean {
+  const [scrutinee, cases] = node[1] as [AstNode, [BindingTarget, AstNode, AstNode | undefined][]]
+  // Every case body must establish the predicate. An empty match
+  // (no cases) is structurally degenerate — fail the proof so the
+  // user sees a diagnostic rather than a silent accept.
+  if (cases.length === 0) return false
+  // Pattern-binding substitution requires the scrutinee to be the
+  // asserted parameter directly. `match expr ...` where `expr` is
+  // anything else doesn't establish that the case binding aliases
+  // the asserted parameter — bail out of the substitution layer in
+  // that case.
+  const scrutineeIsAssertedParam
+    = scrutinee[0] === NodeTypes.Sym && scrutinee[1] === info.asserts.binder
+  return cases.every(([binding, body, guard]) => {
+    let caseInfo = info
+    if (scrutineeIsAssertedParam) {
+      caseInfo = applyCaseBinderAlias(info, binding)
+    }
+    // Guard narrowing: if the guard's predicate matches the (per-case)
+    // target predicate, the body starts with proven=true. Same shape
+    // as the `If` treatment for its condition.
+    const caseProven = proven || (guard !== undefined && predicateMatchesTarget(guard, caseInfo))
+    return terminalProves(body, caseInfo, assertionFunctions, caseProven, stack)
+  })
+}
+
+/**
+ * If a case's binding is a single Sym (`case n then ...`), treat the
+ * bound name as a local alias for the outer asserted parameter. The
+ * info's binder + predicate are rewritten so the existing
+ * `predicateMatchesTarget` structural compare matches user-written
+ * predicates referring to the case binding.
+ *
+ * Other binding shapes (object/array destructuring, literal patterns,
+ * wildcards, rest) don't introduce a single aliasing name, so they
+ * leave info untouched — predicates referring to the outer parameter
+ * by its original name still match.
+ */
+function applyCaseBinderAlias(info: AssertionFunctionInfo, binding: BindingTarget): AssertionFunctionInfo {
+  if (binding[0] !== bindingTargetTypes.symbol) return info
+  const [symbolNode] = binding[1] as [AstNode, AstNode | undefined]
+  if (symbolNode[0] !== NodeTypes.Sym) return info
+  const aliasName = symbolNode[1] as string
+  if (aliasName === info.asserts.binder) return info
+  // Rewrite `source` alongside `binder` and `predicate` to preserve
+  // the invariant that `info.source` begins with `info.binder | ...`.
+  // The alpha-aware compare in `establishesTargetPredicate` renames
+  // a candidate helper's predicate to use `info.binder`, so this
+  // invariant is what makes the helper-call path work for both
+  // pattern-binding-aliased calls (`case n then assertPositive(n)`)
+  // and ordinary cross-binder helper calls.
+  const renamedPredicate = renameBinderInPredicate(info.asserts.predicate, info.asserts.binder, aliasName)
+  return {
+    ...info,
+    asserts: {
+      ...info.asserts,
+      binder: aliasName,
+      predicate: renamedPredicate,
+      source: `${aliasName} | ${prettyPrint(renamedPredicate).trim()}`,
+    },
+  }
+}
+
+/**
+ * Rewrite every `Sym(oldName)` in a predicate AST to `Sym(newName)`.
+ * Walks the structural shapes that can contain binder references:
+ * Sym (the leaf substitution case), And, Or, Call. Leaves that can't
+ * transitively contain a Sym (Num, Str, Atom, TmplStr, etc.) are
+ * returned unchanged via the bottom of the walk.
+ *
+ * Mirrors the structure of `substitutePredicateBinder` in subtype.ts
+ * (which substitutes Sym for a literal). Kept private — refinement-
+ * solver work that needs a similar utility should pull this out.
+ */
+function renameBinderInPredicate(node: AstNode, oldName: string, newName: string): AstNode {
+  const rewritten = new Map<AstNode, AstNode>()
+  const stack: { node: AstNode; exiting: boolean }[] = [{ node, exiting: false }]
+
+  while (stack.length > 0) {
+    const frame = stack.pop()!
+    const current = frame.node
+
+    if (frame.exiting) {
+      rewritten.set(current, rewriteRenamedNode(current, oldName, newName, rewritten))
+      continue
+    }
+
+    stack.push({ node: current, exiting: true })
+
+    if (current[0] === NodeTypes.Call && Array.isArray(current[1])) {
+      const [callee, args] = current[1] as [AstNode, AstNode[]]
+      for (let index = args.length - 1; index >= 0; index--) {
+        stack.push({ node: args[index]!, exiting: false })
+      }
+      stack.push({ node: callee, exiting: false })
+      continue
+    }
+
+    if ((current[0] === NodeTypes.And || current[0] === NodeTypes.Or) && Array.isArray(current[1])) {
+      const operands = current[1] as AstNode[]
+      for (let index = operands.length - 1; index >= 0; index--) {
+        stack.push({ node: operands[index]!, exiting: false })
+      }
+    }
+  }
+
+  return rewritten.get(node) ?? node
+}
+
+function rewriteRenamedNode(
+  node: AstNode,
+  oldName: string,
+  newName: string,
+  rewritten: Map<AstNode, AstNode>,
+): AstNode {
+  if (node[0] === NodeTypes.Sym && node[1] === oldName) {
+    return [NodeTypes.Sym, newName, node[2]] as unknown as AstNode
+  }
+
+  if (node[0] === NodeTypes.Call && Array.isArray(node[1])) {
+    const [callee, args, hints] = node[1] as [AstNode, AstNode[], unknown]
+    const rewrittenCallee = rewritten.get(callee) ?? callee
+    const rewrittenArgs = args.map(arg => rewritten.get(arg) ?? arg)
+    const unchanged = rewrittenCallee === callee && rewrittenArgs.every((arg, index) => arg === args[index])
+    if (unchanged) return node
+    return [NodeTypes.Call, [rewrittenCallee, rewrittenArgs, hints], node[2]] as unknown as AstNode
+  }
+
+  if ((node[0] === NodeTypes.And || node[0] === NodeTypes.Or) && Array.isArray(node[1])) {
+    const operands = node[1] as AstNode[]
+    const rewrittenOperands = operands.map(operand => rewritten.get(operand) ?? operand)
+    if (rewrittenOperands.every((operand, index) => operand === operands[index])) return node
+    return [node[0], rewrittenOperands, node[2]] as AstNode
+  }
+
+  return node
 }
 
 function establishesTargetPredicate(
@@ -275,7 +454,25 @@ function establishesTargetPredicate(
   if (calleeNode[0] !== NodeTypes.Sym) return false
   const helper = assertionFunctions.find(candidate => candidate.name === calleeNode[1])
   if (!helper) return false
-  if (helper.asserts.source !== info.asserts.source) return false
+  // Alpha-aware source compare. The helper's source uses its own
+  // binder (e.g. `assertPositive` declares `asserts {x | x > 0}` with
+  // binder `x`). The info's source might use a different binder —
+  // either the caller declared its assertion with a different
+  // parameter name (`outer: (y: Number) -> asserts {y | y > 0}` with
+  // binder `y`) or `applyCaseBinderAlias` rewrote info to a case-
+  // binding alias (binder `n`). Rename helper's predicate to use
+  // info's binder before comparing, so structurally-equivalent
+  // predicates match regardless of which name they were authored
+  // with. Sound: the helper is verified to establish its predicate
+  // for whatever its argument is; alpha-renaming is a no-op on
+  // semantics.
+  const helperRenamed = renameBinderInPredicate(
+    helper.asserts.predicate,
+    helper.asserts.binder,
+    info.asserts.binder,
+  )
+  const helperSourceRenamed = `${info.asserts.binder} | ${prettyPrint(helperRenamed).trim()}`
+  if (helperSourceRenamed !== info.asserts.source) return false
   const helperArg = argNodes[helper.asserts.paramIndex]
   if (!helperArg || helperArg[0] !== NodeTypes.Sym || helperArg[1] !== info.asserts.binder) return false
   return bodyProvesAssertion(helper, assertionFunctions, stack)

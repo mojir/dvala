@@ -43,6 +43,297 @@
   ],
   "runs": [
     {
+      "timestamp": "2026-04-26T15:08:16.192Z",
+      "commit": "4b6e3410",
+      "commitMessage": "feat(typechecker): match-body proof checking in asserts verifier",
+      "machine": {
+        "fingerprint": "c3d8f199",
+        "cpu": "Apple M4 Pro",
+        "cores": 14,
+        "memoryGB": 24,
+        "os": "darwin 25.4.0",
+        "node": "v22.15.1",
+        "onBattery": true,
+        "loadAvg1m": 7.83
+      },
+      "scenarios": {
+        "phase-tokenize": {
+          "tiny (1 + 2 * 3)": {
+            "median": 0.001206358399999999,
+            "min": 0.0010554165999999896,
+            "max": 0.001789316800000006,
+            "unit": "ms"
+          },
+          "medium (untyped fold)": {
+            "median": 0.007954542000000004,
+            "min": 0.007819041500000026,
+            "max": 0.008273750000000007,
+            "unit": "ms"
+          },
+          "typed (annotated arithmetic)": {
+            "median": 0.00981770850000001,
+            "min": 0.009676832999999987,
+            "max": 0.012560833000000002,
+            "unit": "ms"
+          },
+          "refinement-heavy (50 annotations)": {
+            "median": 0.3838904150000002,
+            "min": 0.37992583499999966,
+            "max": 0.40447521,
+            "unit": "ms"
+          },
+          "effect-heavy (handler + perform)": {
+            "median": 0.004645125000000007,
+            "min": 0.0045876670000000105,
+            "max": 0.004834562500000004,
+            "unit": "ms"
+          },
+          "eval-heavy (fib(15) recursion)": {
+            "median": 0.006683895500000005,
+            "min": 0.006544916999999998,
+            "max": 0.006746479000000022,
+            "unit": "ms"
+          }
+        },
+        "phase-parse": {
+          "tiny (1 + 2 * 3)": {
+            "median": 0.0007644749999999931,
+            "min": 0.0005115749999999935,
+            "max": 0.001998433399999999,
+            "unit": "ms"
+          },
+          "medium (untyped fold)": {
+            "median": 0.0024288334999999963,
+            "min": 0.0020149789999999255,
+            "max": 0.0068765209999999116,
+            "unit": "ms"
+          },
+          "typed (annotated arithmetic)": {
+            "median": 0.0026417710000000627,
+            "min": 0.002190687500000081,
+            "max": 0.004136395999999991,
+            "unit": "ms"
+          },
+          "refinement-heavy (50 annotations)": {
+            "median": 0.08936458499999958,
+            "min": 0.08572750000000041,
+            "max": 0.10116771000000085,
+            "unit": "ms"
+          },
+          "effect-heavy (handler + perform)": {
+            "median": 0.0013042914999999767,
+            "min": 0.0009386249999998881,
+            "max": 0.0022689164999999322,
+            "unit": "ms"
+          },
+          "eval-heavy (fib(15) recursion)": {
+            "median": 0.0024825834999999187,
+            "min": 0.0019119584999999688,
+            "max": 0.0025777500000000375,
+            "unit": "ms"
+          }
+        },
+        "phase-typecheck": {
+          "tiny (1 + 2 * 3)": {
+            "median": 0.007265333999999939,
+            "min": 0.004424249999999802,
+            "max": 0.014465124999999943,
+            "unit": "ms"
+          },
+          "medium (untyped fold)": {
+            "median": 0.032299749999999676,
+            "min": 0.02902383200000031,
+            "max": 0.042715416000000006,
+            "unit": "ms"
+          },
+          "typed (annotated arithmetic)": {
+            "median": 0.056922583999999915,
+            "min": 0.047181750000000196,
+            "max": 0.06698791600000004,
+            "unit": "ms"
+          },
+          "refinement-heavy (50 annotations)": {
+            "median": 5.363098340000001,
+            "min": 5.229854159999995,
+            "max": 5.891376659999996,
+            "unit": "ms"
+          },
+          "effect-heavy (handler + perform)": {
+            "median": 0.022495750000000043,
+            "min": 0.018937166000000616,
+            "max": 0.02577741799999967,
+            "unit": "ms"
+          },
+          "eval-heavy (fib(15) recursion)": {
+            "median": 0.07748675000000003,
+            "min": 0.0753467499999997,
+            "max": 0.2264198320000005,
+            "unit": "ms"
+          }
+        },
+        "phase-run-no-typecheck": {
+          "tiny (1 + 2 * 3)": {
+            "median": 0.0010903750000002218,
+            "min": 0.0008699999999998908,
+            "max": 0.0022991669999996704,
+            "unit": "ms"
+          },
+          "medium (untyped fold)": {
+            "median": 0.037024999999999635,
+            "min": 0.03650383200000033,
+            "max": 0.05809466800000064,
+            "unit": "ms"
+          },
+          "typed (annotated arithmetic)": {
+            "median": 0.006947000000000116,
+            "min": 0.004763165999999729,
+            "max": 0.007764000000000124,
+            "unit": "ms"
+          },
+          "refinement-heavy (50 annotations)": {
+            "median": 0.06764999999999417,
+            "min": 0.06304081999999653,
+            "max": 0.12569083999999747,
+            "unit": "ms"
+          },
+          "effect-heavy (handler + perform)": {
+            "median": 0.004785665999999765,
+            "min": 0.004153249999999389,
+            "max": 0.006288083999999799,
+            "unit": "ms"
+          },
+          "eval-heavy (fib(15) recursion)": {
+            "median": 4.627307909999995,
+            "min": 4.625768749999997,
+            "max": 4.662896249999994,
+            "unit": "ms"
+          }
+        },
+        "phase-end-to-end": {
+          "tiny (1 + 2 * 3)": {
+            "median": 0.0018322919999991427,
+            "min": 0.0015492920000006053,
+            "max": 0.0020100830000001225,
+            "unit": "ms"
+          },
+          "medium (untyped fold)": {
+            "median": 0.0457978320000002,
+            "min": 0.043043083999998996,
+            "max": 0.04746208400000069,
+            "unit": "ms"
+          },
+          "typed (annotated arithmetic)": {
+            "median": 0.027026582000000417,
+            "min": 0.026814915999999356,
+            "max": 0.027074749999999766,
+            "unit": "ms"
+          },
+          "refinement-heavy (50 annotations)": {
+            "median": 0.6023775000000023,
+            "min": 0.5958050000000003,
+            "max": 1.1461283399999957,
+            "unit": "ms"
+          },
+          "effect-heavy (handler + perform)": {
+            "median": 0.007463168000000223,
+            "min": 0.007266499999999724,
+            "max": 0.00933283399999891,
+            "unit": "ms"
+          },
+          "eval-heavy (fib(15) recursion)": {
+            "median": 4.68285167,
+            "min": 4.646812500000006,
+            "max": 4.729391669999996,
+            "unit": "ms"
+          }
+        },
+        "solver-direct": {
+          "interval target — Number → {n | n > 0 && n < 100}": {
+            "median": 0.08807042000000365,
+            "min": 0.08483582999999272,
+            "max": 0.12107250000000931,
+            "unit": "us"
+          },
+          "set target — :ok → {x | :ok | :error}": {
+            "median": 0.1285283300000083,
+            "min": 0.1278350000000137,
+            "max": 0.17095042000000832,
+            "unit": "us"
+          },
+          "count target — String → {s | count(s) > 0}": {
+            "median": 0.05664875000000393,
+            "min": 0.05537000000000262,
+            "max": 0.09419583999999304,
+            "unit": "us"
+          },
+          "excludedSet — Number → {n | !=0 && !=1 && !=-1}": {
+            "median": 0.2300395799999933,
+            "min": 0.22462665999999445,
+            "max": 0.25761250000001384,
+            "unit": "us"
+          },
+          "literal source — 50 → {n | n > 0 && n < 100}": {
+            "median": 0.11172875000000204,
+            "min": 0.11056749999999738,
+            "max": 0.13037374999999884,
+            "unit": "us"
+          }
+        },
+        "simplify-scaling": {
+          "N= 2 stacked refinements": {
+            "median": 0.8342916000001424,
+            "min": 0.7973583999999392,
+            "max": 1.4230415999998514,
+            "unit": "us"
+          },
+          "N= 4 stacked refinements": {
+            "median": 3.58482499999991,
+            "min": 3.5245584000000236,
+            "max": 3.5963331999999353,
+            "unit": "us"
+          },
+          "N= 8 stacked refinements": {
+            "median": 15.412699999999678,
+            "min": 15.403874999999971,
+            "max": 15.551900000000023,
+            "unit": "us"
+          },
+          "N=16 stacked refinements": {
+            "median": 94.01603340000001,
+            "min": 93.62299999999995,
+            "max": 96.87894159999996,
+            "unit": "us"
+          },
+          "N=32 stacked refinements": {
+            "median": 500.0563915999999,
+            "min": 497.6693584000001,
+            "max": 501.60184179999993,
+            "unit": "us"
+          }
+        },
+        "excluded-quadratic": {
+          "N= 10 (parse + simplify)": {
+            "median": 29.365066600000137,
+            "min": 29.115158399999927,
+            "max": 31.216075000000274,
+            "unit": "us"
+          },
+          "N= 50 (parse + simplify)": {
+            "median": 196.30962499999805,
+            "min": 187.35004200000185,
+            "max": 202.85725000000093,
+            "unit": "us"
+          },
+          "N=100 (parse + simplify)": {
+            "median": 464.87146000001303,
+            "min": 463.5010449999936,
+            "max": 473.94374999999854,
+            "unit": "us"
+          }
+        }
+      }
+    },
+    {
       "timestamp": "2026-04-26T10:10:22.857Z",
       "commit": "219c9678",
       "commitMessage": "docs: update refinement phase plan",
