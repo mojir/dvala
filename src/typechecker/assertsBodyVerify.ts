@@ -348,21 +348,31 @@ function applyCaseBinderAlias(info: AssertionFunctionInfo, binding: BindingTarge
   if (symbolNode[0] !== NodeTypes.Sym) return info
   const aliasName = symbolNode[1] as string
   if (aliasName === info.asserts.binder) return info
+  // Rewrite `source` alongside `binder` and `predicate` to preserve
+  // the invariant that `info.source` begins with `info.binder | ...`.
+  // The alpha-aware compare in `establishesTargetPredicate` renames
+  // a candidate helper's predicate to use `info.binder`, so this
+  // invariant is what makes the helper-call path work for both
+  // pattern-binding-aliased calls (`case n then assertPositive(n)`)
+  // and ordinary cross-binder helper calls.
+  const renamedPredicate = renameBinderInPredicate(info.asserts.predicate, info.asserts.binder, aliasName)
   return {
     ...info,
     asserts: {
       ...info.asserts,
       binder: aliasName,
-      predicate: renameBinderInPredicate(info.asserts.predicate, info.asserts.binder, aliasName),
+      predicate: renamedPredicate,
+      source: `${aliasName} | ${prettyPrint(renamedPredicate).trim()}`,
     },
   }
 }
 
 /**
  * Rewrite every `Sym(oldName)` in a predicate AST to `Sym(newName)`.
- * Handles the same node shapes the fragment checker accepts: Sym, And,
- * Or, Call. Other shapes are leaves — returned unchanged because they
- * can't transitively contain binder references.
+ * Walks the structural shapes that can contain binder references:
+ * Sym (the leaf substitution case), And, Or, Call. Leaves that can't
+ * transitively contain a Sym (Num, Str, Atom, TmplStr, etc.) are
+ * returned unchanged via the bottom of the walk.
  *
  * Mirrors the structure of `substitutePredicateBinder` in subtype.ts
  * (which substitutes Sym for a literal). Kept private — refinement-
@@ -444,7 +454,25 @@ function establishesTargetPredicate(
   if (calleeNode[0] !== NodeTypes.Sym) return false
   const helper = assertionFunctions.find(candidate => candidate.name === calleeNode[1])
   if (!helper) return false
-  if (helper.asserts.source !== info.asserts.source) return false
+  // Alpha-aware source compare. The helper's source uses its own
+  // binder (e.g. `assertPositive` declares `asserts {x | x > 0}` with
+  // binder `x`). The info's source might use a different binder —
+  // either the caller declared its assertion with a different
+  // parameter name (`outer: (y: Number) -> asserts {y | y > 0}` with
+  // binder `y`) or `applyCaseBinderAlias` rewrote info to a case-
+  // binding alias (binder `n`). Rename helper's predicate to use
+  // info's binder before comparing, so structurally-equivalent
+  // predicates match regardless of which name they were authored
+  // with. Sound: the helper is verified to establish its predicate
+  // for whatever its argument is; alpha-renaming is a no-op on
+  // semantics.
+  const helperRenamed = renameBinderInPredicate(
+    helper.asserts.predicate,
+    helper.asserts.binder,
+    info.asserts.binder,
+  )
+  const helperSourceRenamed = `${info.asserts.binder} | ${prettyPrint(helperRenamed).trim()}`
+  if (helperSourceRenamed !== info.asserts.source) return false
   const helperArg = argNodes[helper.asserts.paramIndex]
   if (!helperArg || helperArg[0] !== NodeTypes.Sym || helperArg[1] !== info.asserts.binder) return false
   return bodyProvesAssertion(helper, assertionFunctions, stack)

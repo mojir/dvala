@@ -301,6 +301,25 @@ describe('verifyAssertionFunctionBodies', () => {
     expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
   })
 
+  // Helper-call path under pattern-binding alias. The case body
+  // calls another verified assertion helper using the case-binding
+  // name. Without `source` being rewritten in `applyCaseBinderAlias`,
+  // `establishesTargetPredicate`'s `helper.asserts.source !==
+  // info.asserts.source` guard would over-reject this — even though
+  // the call structurally proves the assertion under the alias.
+  it('accepts case-aliased helper call (binder-rewrite covers `source` too)', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> assert(x > 0);
+      let outer: (y: Number) -> asserts {y | y > 0} = (y) ->
+        match y
+          case n then assertPositive(n)
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
   // Nested match — match inside another match. Verifies recursion
   // works through the matchProves helper for both outer and inner.
   it('accepts nested match where every leaf case proves the predicate', () => {
