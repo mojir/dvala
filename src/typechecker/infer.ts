@@ -1352,15 +1352,16 @@ export function inferExpr(
             } else if (declaredType.tag === 'Function' && declaredType.asserts && boundType.tag === 'Function') {
               // Phase 2.5c step 3 — keep parser-surface `asserts {x | ...}`
               // metadata on the let-bound function type after the annotation
-              // has been checked. We keep the inferred params / effects /
-              // wrapper info from the body and copy only the assertion
-              // contract from the annotation.
+              // has been checked. The declared parameter surface is the
+              // call-site contract, so preserve the annotated params / rest /
+              // return while keeping the inferred effects and wrapper info
+              // from the body.
               boundType = fn(
-                boundType.params,
-                boundType.ret,
+                declaredType.params,
+                declaredType.ret,
                 boundType.effects,
                 boundType.handlerWrapper,
-                boundType.restParam,
+                declaredType.restParam,
                 declaredType.asserts,
               )
             }
@@ -3263,24 +3264,45 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
  * statement isn't an `assert(P)` call we can narrow.
  */
 function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type> | undefined {
-  // Recognize Call(Builtin(<assert-style builtin>), args). The set of
-  // assertion-style builtins is driven by `BuiltinTypeInfo.assertsParam`
-  // metadata (Phase 2.5c builtin-only cut), not a hardcoded name list —
-  // so adding a new assertion-style builtin is a metadata edit, no
-  // typechecker plumbing change. Today only `assert` carries it.
+  // Recognize both builtins with `assertsParam` metadata and user-declared
+  // symbol callees whose inferred function type carries parser-surface
+  // `asserts {binder | ...}` metadata.
   if (stmt[0] !== NodeTypes.Call) return undefined
   const [calleeNode, argNodes] = stmt[1] as [AstNode, AstNode[]]
-  if (calleeNode[0] !== NodeTypes.Builtin) return undefined
-  const builtinName = calleeNode[1] as string
-  const info = getBuiltinType(builtinName)
-  const paramIndex = info.assertsParam
-  if (paramIndex === undefined) return undefined
-  if (argNodes.length <= paramIndex) return undefined
-  // If the user shadowed the builtin (e.g. `let assert = ...`), the
-  // semantics could differ — be conservative and skip narrowing.
-  if (lookupShadowedBuiltin(env, builtinName)) return undefined
 
-  const predicate = argNodes[paramIndex]!
+  let paramIndex: number | undefined
+  let predicateLabel: string
+  let predicate: AstNode | undefined
+
+  if (calleeNode[0] === NodeTypes.Builtin) {
+    const builtinName = calleeNode[1] as string
+    const info = getBuiltinType(builtinName)
+    paramIndex = info.assertsParam
+    if (paramIndex === undefined) return undefined
+    if (argNodes.length <= paramIndex) return undefined
+    // If the user shadowed the builtin (e.g. `let assert = ...`), the
+    // semantics could differ — be conservative and skip narrowing.
+    if (lookupShadowedBuiltin(env, builtinName)) return undefined
+    predicateLabel = `<${builtinName}>`
+    predicate = argNodes[paramIndex]!
+  } else if (calleeNode[0] === NodeTypes.Sym) {
+    const calleeType = expandType(env.lookup(calleeNode[1] as string) ?? Unknown)
+    if (calleeType.tag !== 'Function' || !calleeType.asserts) return undefined
+    paramIndex = calleeType.asserts.paramIndex
+    if (argNodes.length <= paramIndex) return undefined
+    const assertedArg = argNodes[paramIndex]!
+    if (assertedArg[0] !== NodeTypes.Sym) return undefined
+    const binderName = assertedArg[1] as string
+    const baseType = env.lookup(binderName)
+    if (!baseType) return undefined
+    predicate = rewritePredicateBinder(calleeType.asserts.predicate, calleeType.asserts.binder, assertedArg)
+    const source = `${binderName} | ${prettyPrint(predicate).trim()}`
+    return new Map([[binderName, { tag: 'Refined', base: baseType, binder: binderName, predicate, source }]])
+  } else {
+    return undefined
+  }
+
+  if (!predicate) return undefined
 
   // Collect free symbols that resolve to env-bound variables. Built-in
   // names (`isNumber`, `count`, etc.) and unresolved symbols don't count.
@@ -3292,7 +3314,7 @@ function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type>
   // single free symbol as the binder. Anything outside the fragment
   // can't be reasoned about by the solver, so we skip narrowing.
   try {
-    fragmentCheckPredicate(predicate, binderName, `<${builtinName}>`, 0)
+    fragmentCheckPredicate(predicate, binderName, predicateLabel, 0)
   } catch {
     return undefined
   }
@@ -3322,6 +3344,63 @@ function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type>
   const refined: Type = { tag: 'Refined', base: baseType, binder: binderName, predicate, source }
 
   return new Map([[binderName, refined]])
+}
+
+function rewritePredicateBinder(node: AstNode, binder: string, replacement: AstNode): AstNode {
+  const rewritten = new Map<AstNode, AstNode>()
+  const stack: { node: AstNode; exiting: boolean }[] = [{ node, exiting: false }]
+
+  while (stack.length > 0) {
+    const frame = stack.pop()!
+    const current = frame.node
+
+    if (frame.exiting) {
+      rewritten.set(current, rewritePredicateNode(current, binder, replacement, rewritten))
+      continue
+    }
+
+    stack.push({ node: current, exiting: true })
+
+    if (current[0] === NodeTypes.Call && Array.isArray(current[1])) {
+      const [callee, args] = current[1] as [AstNode, AstNode[]]
+      for (let index = args.length - 1; index >= 0; index--) stack.push({ node: args[index]!, exiting: false })
+      stack.push({ node: callee, exiting: false })
+      continue
+    }
+
+    if ((current[0] === NodeTypes.And || current[0] === NodeTypes.Or) && Array.isArray(current[1])) {
+      const operands = current[1] as AstNode[]
+      for (let index = operands.length - 1; index >= 0; index--) stack.push({ node: operands[index]!, exiting: false })
+    }
+  }
+
+  return rewritten.get(node) ?? node
+}
+
+function rewritePredicateNode(
+  node: AstNode,
+  binder: string,
+  replacement: AstNode,
+  rewritten: Map<AstNode, AstNode>,
+): AstNode {
+  if (node[0] === NodeTypes.Sym && node[1] === binder) return replacement
+
+  if (node[0] === NodeTypes.Call && Array.isArray(node[1])) {
+    const [callee, args, hints] = node[1] as [AstNode, AstNode[], unknown]
+    const rewrittenCallee = rewritten.get(callee) ?? callee
+    const rewrittenArgs = args.map(arg => rewritten.get(arg) ?? arg)
+    if (rewrittenCallee === callee && rewrittenArgs.every((arg, index) => arg === args[index])) return node
+    return [NodeTypes.Call, [rewrittenCallee, rewrittenArgs, hints], node[2]] as unknown as AstNode
+  }
+
+  if ((node[0] === NodeTypes.And || node[0] === NodeTypes.Or) && Array.isArray(node[1])) {
+    const operands = node[1] as AstNode[]
+    const rewrittenOperands = operands.map(operand => rewritten.get(operand) ?? operand)
+    if (rewrittenOperands.every((operand, index) => operand === operands[index])) return node
+    return [node[0], rewrittenOperands, node[2]] as AstNode
+  }
+
+  return node
 }
 
 /**

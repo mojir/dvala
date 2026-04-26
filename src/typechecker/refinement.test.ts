@@ -1456,23 +1456,18 @@ describe('refinement types — Phase 2.5c (builtin-metadata cut)', () => {
     expect(getBuiltinType('count').assertsParam).toBeUndefined()
   })
 
-  it('verified user-defined assertion helpers still do not narrow before call-site support exists', () => {
+  it('verified user-defined assertion helpers narrow at call sites', () => {
     const dvala = createDvala()
     const result = dvala.typecheck(`
-      let test = (x: Number): Number -> do
+      let usePositive = (value: Positive) -> value;
+      let test = (x: Number) -> do
         let assertPositive: (value: Number) -> asserts {value | value > 0} = (value) -> assert(value > 0);
         assertPositive(x);
-        x
+        usePositive(x)
       end
     `)
 
-    let refinedCount = 0
-    for (const t of result.typeMap.values()) {
-      if (t.tag === 'Refined') refinedCount++
-    }
-
     expect(result.diagnostics).toHaveLength(0)
-    expect(refinedCount).toBe(0)
   })
 
   it('rejects assertion helpers whose body does not prove the asserted predicate', () => {
