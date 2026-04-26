@@ -1573,6 +1573,154 @@ describe('refinement types — prelude aliases', () => {
   })
 })
 
+// Phase 2.6 — tighten the OutOfFragment pass-through. Cases the solver
+// can now decide get rejected at constrain time instead of being
+// silently accepted via the inert pass-through. Cases truly out of
+// fragment continue to be accepted (the lenience is preserved for
+// situations the solver can't decide).
+describe('refinement types — Phase 2.6 (solver-aware constrain)', () => {
+  const dvala = createDvala()
+
+  describe('headline benefit — narrowed flow now observable', () => {
+    it('assert(x != 0) lets x flow into a NonZero parameter', () => {
+      const result = dvala.typecheck(`
+        let safeDiv = (a: Number, b: NonZero) -> a / b;
+        let f = (n: Number) -> do
+          assert(n != 0);
+          safeDiv(10, n)
+        end
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('assert(x > 0) lets x flow into a Positive parameter', () => {
+      const result = dvala.typecheck(`
+        let usePositive = (p: Positive) -> p;
+        let f = (n: Number) -> do
+          assert(n > 0);
+          usePositive(n)
+        end
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+  })
+
+  describe('newly-rejected cases — solver disproves now produces error', () => {
+    it('rejects assert(x < 0) flowing into Positive', () => {
+      const result = dvala.typecheck(`
+        let f = (n: Number) -> do
+          assert(n < 0);
+          let y: Positive = n;
+          y
+        end
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+      expect(result.diagnostics[0]!.message).toMatch(/not a subtype of/)
+    })
+
+    it('rejects literal -5 flowing through Var into Positive', () => {
+      // The Var's lowerBound is Literal(-5); expansion produces -5;
+      // solver folds -5 > 0 → false → Disproved.
+      const result = dvala.typecheck(`
+        let n = -5;
+        let y: Positive = n;
+        y
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('OutOfFragment lenience preserved', () => {
+    it('accepts unnarrowed Number flowing into Positive (solver bails)', () => {
+      // No assert, no literal — solver has no domain info on a bare
+      // `Number` source. Returns OutOfFragment, falls back to base
+      // constraint, accepted. Pre-2.6 also accepted but for the wrong
+      // reason (strip-and-recurse never consulted the solver).
+      const result = dvala.typecheck(`
+        let f = (n: Number) -> do let y: Positive = n; y end
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('accepts an empty fresh Var flowing into Positive', () => {
+      // A function param annotated as Positive — paramVar is fresh
+      // and empty before body inference; expansion to Unknown means
+      // we skip the solver path and just propagate the base bound.
+      const result = dvala.typecheck(`
+        let f = (x: Positive): Number -> x
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+  })
+
+  describe('literal fold path unchanged', () => {
+    it('still rejects direct literal -5 against Positive', () => {
+      const result = dvala.typecheck('let y: Positive = -5; y')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('still accepts direct literal 5 against Positive', () => {
+      const result = dvala.typecheck('let y: Positive = 5; y')
+      expect(result.diagnostics).toHaveLength(0)
+    })
+  })
+
+  describe('alias-via-bounds-expansion (Decision 4 follow-up)', () => {
+    it('Var lowerBound containing an Alias-wrapped Refined unwraps correctly', () => {
+      // A Var whose lowerBound is a Positive value should still be
+      // accepted when constrained against a wider refinement (e.g.
+      // NonNegative). The expansion path goes through the recursive
+      // constrain call, which hits the alias-unwrap (lines 597-604)
+      // before the Refined-handling code. Without that unwrap, the
+      // Refined wrapper would be hidden behind the Alias and the
+      // solver would bail.
+      const result = dvala.typecheck(`
+        let p: Positive = 5;
+        let n: NonNegative = p;
+        n
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('Var lowerBound containing Alias-wrapped Refined disproves correctly', () => {
+      // Same shape as above, but the constraint is provably wrong:
+      // a NonNegative (n >= 0) is not necessarily Positive (n > 0).
+      // The alias-unwrap chain should expose the source predicate
+      // and the solver should disprove the relation.
+      const result = dvala.typecheck(`
+        let n: NonNegative = 0;
+        let p: Positive = n;
+        p
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Inter-of-Refined RHS (concern B from review)', () => {
+    // Use inline `Number & {n | ...} & {n | ...}` form rather than
+    // intersecting two aliases (`NonZero & Positive`) — the latter hits
+    // a pre-existing simplifier issue that collapses such intersections
+    // to Never. The Inter-iteration code path being exercised is the
+    // same either way: existing Inter handling in `constrain` walks
+    // members, each Refined member reaches the 2.6 dispatch.
+    it('rejects when ANY of the conjoined refinements is disproved', () => {
+      const result = dvala.typecheck(`
+        let f = (x: Number & {n | n > 0} & {n | n < 100}) -> x;
+        f(150)
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('accepts when all conjoined refinements are provable', () => {
+      const result = dvala.typecheck(`
+        let f = (x: Number & {n | n > 0} & {n | n < 100}) -> x;
+        f(50)
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+  })
+})
+
 function binderRef(name: string): AstNode {
   return [NodeTypes.Sym, name, 0] as unknown as AstNode
 }

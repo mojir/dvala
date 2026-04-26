@@ -574,6 +574,19 @@ function suggestBooleanFix(type: Type): string | undefined {
  * When a variable appears on the right, it gains a lower bound.
  * Existing bounds are then propagated transitively.
  */
+
+// Phase 2.6 — earlier drafts pre-expanded a Var LHS via a helper
+// (`expandLowerBoundsToType`, returning `expandTypeForDisplay(v, 'positive')`)
+// before calling the solver. The simpler structure landed instead:
+// fall through to the standard Var handling, which pushes the full
+// Refined to upperBounds and re-runs each existing lowerBound through
+// constrain. Each lowerBound re-enters the Refined branch with a
+// concrete LHS, where the solver / fold checks fire naturally — no
+// pre-expansion needed. If precision-tuning ever calls for a tighter
+// bound (e.g. intersecting multiple Refined wrappers in lowerBounds
+// into a single combined predicate, see Phase 2.6 design Decision 2
+// for the constraint-grade vs display-grade discussion), the helper
+// can be reintroduced at the constrain call site.
 export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Trivial cases
   if (lhs === rhs) return
@@ -603,17 +616,59 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     return
   }
 
-  // Refinement types — Phase 2.1 policy: the `Refined` node is carried
-  // inertly; `Refined(B, _, _)` is treated as equivalent to `B` during
-  // constraint solving. The solver (Phase 2.4) replaces this pass-through
-  // with real predicate-aware checking. Consequence: `5 <: Positive`
-  // (where `Positive = Number & {n | n > 0}`) reduces to `5 <: Number`.
-  if (lhs.tag === 'Refined') {
-    constrain(ctx, lhs.base, rhs)
+  // Refinement types — Phase 2.6 solver-aware constraint dispatch.
+  // Replaces the Phase 2.1 strip-and-recurse pass-through. When the
+  // RHS carries a refinement, the solver actually fires; provably-
+  // violating constraints emit a typecheck error instead of being
+  // silently accepted. See design/shipped/2026-04-25_refinement-
+  // phase-2-6-tighten-out-of-fragment.md for the full design.
+  //
+  // Three-branch dispatch:
+  //   - RHS Refined with non-Var LHS (literal / primitive / Refined
+  //     from assert-narrowing): consult `isSubtype`, which does the
+  //     full literal-fold-then-solver pipeline with OutOfFragment →
+  //     true preserved as the inert lenience at the end. A `false`
+  //     return given the base check passed = definitive Disproved.
+  //   - RHS Refined with Var LHS: deliberately fall through (no
+  //     branch matches, control reaches the standard Var handler at
+  //     line ~731). That handler pushes the full Refined to
+  //     `lhs.upperBounds`, then for each existing lowerBound re-runs
+  //     `constrain(lb, rhs)` — which re-enters this dispatch with a
+  //     concrete LHS where verification fires. The Var acts as an
+  //     "inert carrier" for the refinement constraint until something
+  //     concrete flows in. No explicit expansion needed; propagation
+  //     does the work.
+  //   - LHS Refined with non-Refined RHS: fall back to base subtyping
+  //     (refinement narrows the source's value set, so anything
+  //     satisfying the source satisfies the source's base).
+  //
+  // The RHS-Refined check goes BEFORE the LHS-Refined check so that
+  // when both sides are Refined (assert-narrowed source against a
+  // refined target), `isSubtype` sees both predicates and the solver
+  // can prove or disprove. Otherwise stripping LHS first would mask
+  // disproved cases like `{n | n < 0} <: {n | n > 0}`.
+  if (rhs.tag === 'Refined' && lhs.tag !== 'Var') {
+    // Verify the base relationship first — refinement is a strict
+    // subset of its base, so base subtyping is necessary.
+    constrain(ctx, lhs, rhs.base)
+    if (!isSubtype(lhs, rhs)) {
+      // Expand the LHS for display so internal Var IDs (α0 etc.)
+      // don't leak into user-facing diagnostics. Pre-existing
+      // `expandTypeForDisplay` quirk: assert-narrowed Var sources
+      // can render with extra union members (e.g. `Number | String`)
+      // rather than the cleaner narrowed form. Not introduced here
+      // and not pinned by tests; clean up separately if it surfaces.
+      throw new TypeInferenceError(
+        `${typeToString(expandTypeForDisplay(lhs))} is not a subtype of ${typeToString(rhs)}`,
+      )
+    }
     return
   }
-  if (rhs.tag === 'Refined') {
-    constrain(ctx, lhs, rhs.base)
+  // LHS Refined (with non-Refined RHS): fall back to base subtyping.
+  // Refinement narrows the source's value set, so anything satisfying
+  // the source also satisfies the source's base.
+  if (lhs.tag === 'Refined') {
+    constrain(ctx, lhs.base, rhs)
     return
   }
 
