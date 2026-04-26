@@ -1349,6 +1349,20 @@ export function inferExpr(
             // inference happened to produce.
             if (containsVars(declaredType)) {
               boundType = generalizeTypeVars(declaredType, -1)
+            } else if (declaredType.tag === 'Function' && declaredType.asserts && boundType.tag === 'Function') {
+              // Phase 2.5c step 3 — keep parser-surface `asserts {x | ...}`
+              // metadata on the let-bound function type after the annotation
+              // has been checked. We keep the inferred params / effects /
+              // wrapper info from the body and copy only the assertion
+              // contract from the annotation.
+              boundType = fn(
+                boundType.params,
+                boundType.ret,
+                boundType.effects,
+                boundType.handlerWrapper,
+                boundType.restParam,
+                declaredType.asserts,
+              )
             }
           }
         } finally {

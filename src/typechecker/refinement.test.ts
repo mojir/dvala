@@ -1455,6 +1455,25 @@ describe('refinement types — Phase 2.5c (builtin-metadata cut)', () => {
     expect(getBuiltinType('isNumber').assertsParam).toBeUndefined()
     expect(getBuiltinType('count').assertsParam).toBeUndefined()
   })
+
+  it('user-defined assertion helpers still do not narrow before body verification exists', () => {
+    const dvala = createDvala()
+    const result = dvala.typecheck(`
+      let test = (x: Number): Number -> do
+        let assertPositive: (value: Number) -> asserts {value | value > 0} = (value) -> true;
+        assertPositive(x);
+        x
+      end
+    `)
+
+    let refinedCount = 0
+    for (const t of result.typeMap.values()) {
+      if (t.tag === 'Refined') refinedCount++
+    }
+
+    expect(result.diagnostics).toHaveLength(0)
+    expect(refinedCount).toBe(0)
+  })
 })
 
 // ---------------------------------------------------------------------------
