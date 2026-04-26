@@ -82,16 +82,16 @@ These are explicitly rejected at parse time with a structured "outside the bound
 
 ## Scope
 
-Refinement predicates are classified by **two fragments**, both operating on the same surface syntax:
+Refinement predicates are classified by **one accepted static fragment** plus an **explicit runtime-validation path**:
 
-- **Solver fragment** — predicates the decision procedure reasons about. Proofs, narrowing, disproofs, counterexamples all apply here.
-- **Boundary fragment** — predicates the evaluator can run at a trust boundary. Any pure Boolean expression qualifies.
+- **Solver fragment** — predicates the decision procedure reasons about. Proofs, narrowing, disproofs, counterexamples all apply here. This is the fragment accepted in written refinement annotations.
+- **Runtime validation** — arbitrary pure Boolean checks remain useful, but they are expressed explicitly with `assert(...)` (or APIs built on the same assertion mechanism), not as opaque refinement annotations.
 
-Every solver-fragment predicate is also in the boundary fragment. The reverse is not true: opaque predicates (e.g., `contains(s, "@")` for an email-ish check, or `sequence.startsWith(s, "http")` via the `sequence` module) are boundary-checkable but not solver-decidable.
+This replaces the earlier "boundary fragment" idea. Opaque predicates (e.g. `contains(s, "@")` for an email-ish check, or `sequence.startsWith(s, "http")`) are still valid runtime checks, but they are not part of the refinement-annotation language unless and until the typechecker can reason about them.
 
-### Universal requirements (both fragments)
+### Universal requirements
 
-Every refinement predicate — solver-decidable or opaque — must be:
+Every refinement predicate accepted in annotations, and every Boolean used for explicit runtime validation, must be:
 
 - **Boolean-typed.** The expression must have type `Boolean`. No implicit truthy-coercion; `{s | s}` is a type error. Users write `count(s) > 0`, `n != 0`, `r != null` explicitly. Matches Dvala's strict-null direction (Decision #14): types are what they are, conversions are explicit.
 - **Pure.** No `perform`, no handler invocation, no function with a non-empty effect set. Enforced by the fragment-checker via effect-set analysis. Refinements describe **values**, not behaviors — effectful predicates are a category error.
@@ -123,31 +123,35 @@ Type-tag checks are expressed as calls to existing Dvala type-guard builtins —
 
 (Note: "sequence" here means the user-facing Array-or-String grouping from `isSequence`, not the typechecker's internal `Sequence` tag used for match-narrowing shape inference.)
 
-### Boundary fragment (opaque-permissive)
+### Explicit runtime validation
 
-Any **pure Boolean-typed** expression qualifies. Function calls — top-level predicates (`contains`, `isNumber`, `isString`, `matches`, etc.), module-qualified calls (`sequence.startsWith`, `sequence.endsWith`), or user-defined ones (`(n) -> n > 0 && n % 2 == 0`) — are all valid as long as they're pure and return Boolean.
+Any **pure Boolean-typed** expression still qualifies as a runtime check, but it is written explicitly with `assert(...)` rather than embedded as an opaque refinement annotation.
 
 ```dvala
-type Email = String & {s | contains(s, "@")}                    // ✓ top-level contains
-type Http = String & {s | sequence.startsWith(s, "http")}       // ✓ module-qualified
-type PositiveEven = Integer & {n | isPositiveEven(n)}           // ✓ user-defined predicate
+assert(contains(email, "@"))
+assert(sequence.startsWith(url, "http"))
+assert(isPositiveEven(n))
 ```
 
-Boundary validator runs them at trust edges. Solver treats them as black boxes — subtype decisions fall back to structural equality of the predicate AST.
+This keeps the type-level story simple:
+
+- written refinement annotations are statically checkable claims
+- dynamic validation is opt-in and explicit at the call site or boundary
+- `assert(...)` can still feed flow narrowing when its predicate is in the supported fragment
 
 ### Opacity classification
 
-Predicates carrying any non-solver-fragment term are **opaque** as a whole. Rules for compound forms:
+Predicates carrying any non-solver-fragment term are **opaque** as a whole. Under this plan, opaque predicates are runtime-validation-only; they are not accepted as written refinement annotations. Rules for compound forms:
 
 | Predicate shape | Classification | Solver behavior |
 |---|---|---|
 | All subterms solver-fragment | **fragment** | direct reasoning |
-| Conjunction `P && Q` where each conjunct is fragment OR opaque | **decomposed** — fragment parts → assumptions, opaque parts tracked for structural match |
+| Conjunction `P && Q` where each conjunct is fragment OR opaque | **opaque** in written refinements; split manually into static refinement + explicit `assert(Q)` if both are wanted |
 | Disjunction `P \|\| Q` with all disjuncts solver-fragment | **fragment** | native handling by solver |
-| Disjunction with any opaque disjunct | **opaque** | can't soundly case-split over opaque |
+| Disjunction with any opaque disjunct | **opaque** | runtime-only |
 | `!P` where P solver-fragment | **fragment** | negation is in Tier B boolean algebra |
 | `!P` where P opaque | **opaque** | |
-| Named predicate call `f(v)` | **opaque** (body not inlined) | use structural match; user can inline the body for solver reasoning |
+| Named predicate call `f(v)` | **opaque** (body not inlined) | runtime-only; inline the body if solver reasoning is desired |
 | Effectful predicate | **rejected at declaration** | not a valid refinement |
 
 **Consequence for named vs. inlined predicates:**
@@ -155,15 +159,15 @@ Predicates carrying any non-solver-fragment term are **opaque** as a whole. Rule
 ```dvala
 let isNonBlankHttp = (s: String) -> count(s) > 0 && sequence.startsWith(s, "http")
 
-// Version A — named predicate, whole thing opaque:
-type NonBlankHttp_A = String & {s | isNonBlankHttp(s)}
+// Runtime validation path — explicit and fully allowed:
+assert(isNonBlankHttp(url))
 
-// Version B — inlined, conjunction decomposed:
-type NonBlankHttp_B = String & {s | count(s) > 0 && sequence.startsWith(s, "http")}
-// Solver reasons about `count(s) > 0`, treats `sequence.startsWith` as opaque.
+// Static refinement path — keep only the solver-fragment part in the type:
+type NonBlank = String & {s | count(s) > 0}
+assert(sequence.startsWith(url, "http"))
 ```
 
-Semantically equivalent at runtime. Different under solver reasoning. Users learn the idiom: **named helper for encapsulation; inline for solver reasoning**. Matches how Liquid Haskell and F\* handle named predicates (opaque by default unless marked for inlining).
+Semantically, both styles can enforce the same runtime property. The difference is explicitness: solver-fragment facts live in types; opaque checks live in `assert(...)`. Users learn the idiom: **put statically-provable facts in the refinement, keep domain-specific validation explicit at runtime**.
 
 ### Out of scope (would require Tier C)
 
@@ -691,6 +695,14 @@ This phase is large. It's split into sub-steps so each one lands as its own PR.
 - **`if`/`match` narrowing for refinement predicates** (extension of the existing flow-narrowing machinery from PR #78/#79).
 - **`asserts cond` return annotation on the builtin `assert` function.** This is a real parser change, not a trivial builtin-annotation extension — it requires new grammar in `parseType.ts` (no existing `asserts` keyword; only `is` from type-guards at around line 882), a new field on `BuiltinTypeInfo` parallel to `guardParam` / `guardType`, and narrowing logic in `infer.ts` that reads the field and threads the assertion into the assumption set. Budget for it accordingly.
 
+**Phase 2.7 — Make the static/runtime boundary explicit.**
+- **Written refinement annotations remain solver-fragment-only.** No opaque/user-defined/module-qualified Boolean predicates in `{x | ...}` annotations.
+- **Dynamic validation goes through `assert(...)`.** Any pure Boolean check that the solver cannot reason about is still valid, but it is expressed explicitly at runtime rather than hidden inside a type.
+- **Mixed invariants split cleanly.** Example: `type NonEmpty = String & {s | count(s) > 0}` plus `assert(sequence.startsWith(url, "http"))`, rather than one annotation containing both parts.
+- **Plan/documentation cleanup.** Remove any remaining wording that implies an automatic opaque-predicate boundary validator separate from `assert`.
+
+**Ship gate:** The plan, docs, and implementation all agree on the contract: `{x | ...}` means solver-fragment refinement; `assert(...)` is the explicit mechanism for runtime-only Boolean validation.
+
 **Ship gate for Phase 2 (across all five sub-steps):** `Number & !0` for division safety. Non-empty sequence refinement `{xs | count(xs) > 0}` for `head`. `assert(x > 0)` narrows `x` to `Positive` in subsequent statements. Array indexing where the bound is a literal.
 
 ### Phase 3 — Multi-variable linear arithmetic
@@ -706,7 +718,7 @@ This phase is large. It's split into sub-steps so each one lands as its own PR.
 ### Phase 4 — Runtime boundary validation
 
 - Bundle manifest: refinement signatures serialized as predicate ASTs. Cross-reference [`2026-04-13_bundle-type-metadata.md`](2026-04-13_bundle-type-metadata.md) for the serialization schema.
-- Evaluator: validate inbound values at host boundaries against manifest predicates. Always-on, no opt-out (per Q5 of the 2026-04-23 interview).
+- Evaluator: validate inbound values at host boundaries against manifest predicates for solver-fragment refinements, and run any additional domain-specific runtime checks explicitly through `assert(...)`-style validation hooks. Always-on, no opt-out (per Q5 of the 2026-04-23 interview).
 - `HostBoundaryError` / `RefinementViolationError` with the same shape as today's type-shape validation errors.
 
 **Ship gate:** A host-provided handler returning `Integer & {n | 0 <= n && n <= 100}` fails with a clear error when the host returns `150`.

@@ -63,7 +63,7 @@
  *
  * Running:
  *   npm run benchmarks:run    — run benchmarks, update history + .md
- *   npm run benchmarks:show   — open an HTML chart view of the history
+ *   Playground → Settings → Developer → Benchmarks — interactive chart view of the history
  *
  * Compare runs by reading the rendered markdown left-to-right (latest
  * column first), or open the HTML view for a graphical trend. Sudden

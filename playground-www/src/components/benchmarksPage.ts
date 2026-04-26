@@ -2,9 +2,8 @@
  * Benchmarks page (Settings → Developer → Benchmarks tab).
  *
  * Renders the perf-history JSON as Chart.js line charts inside the
- * playground. Mirrors `benchmarks/visualize.ts` (the standalone HTML
- * generator) but uses playground CSS variables for theming and lazy-
- * loads Chart.js from CDN on first render — keeps the playground
+ * playground, using playground CSS variables for theming and lazy-
+ * loading Chart.js from CDN on first render — keeps the playground
  * bundle slim for the 99% of users who never open this tab.
  *
  * Source of truth: `benchmarks/pipeline-history.json` (imported at
@@ -144,15 +143,16 @@ async function renderBenchmarksChartsInner(): Promise<void> {
   const h = history as unknown as History
   // Newest-first stored, but charts read left-to-right chronologically.
   const runs = [...h.runs].reverse()
+  const visibleRuns = trimLeadingEmptyRuns(h.scenarios, runs)
 
-  if (runs.length === 0) {
+  if (visibleRuns.length === 0) {
     container.innerHTML = '<p>No benchmark runs yet. Run <code>npm run benchmarks:run</code> to generate data.</p>'
     return
   }
 
   // Multiple machine fingerprints in the visible window means the
   // chart compares apples-to-oranges — surface as a banner.
-  const fingerprints = new Set(runs.map(r => r.machine?.fingerprint).filter(Boolean) as string[])
+  const fingerprints = new Set(visibleRuns.map(r => r.machine?.fingerprint).filter(Boolean) as string[])
   const mixedHardware = fingerprints.size > 1
 
   // Build the panel skeleton: warning banner (if mixed) + run table + per-scenario chart slots.
@@ -161,10 +161,10 @@ async function renderBenchmarksChartsInner(): Promise<void> {
       ? `<div class="benchmarks-warning">⚠ Runs span ${fingerprints.size} different hardware fingerprints — perf differences may reflect machine, not code. Hover a point for its fingerprint.</div>`
       : ''}
     <details class="benchmarks-runs">
-      <summary>Run history (${runs.length})</summary>
+      <summary>Run history (${visibleRuns.length})</summary>
       <table>
         <tr><th>Commit</th><th>Date</th><th>Message</th><th>Machine</th></tr>
-        ${runs.map(r => {
+        ${visibleRuns.map(r => {
           const machineCell = r.machine
             ? `<code>${escapeHtml(r.machine.fingerprint)}</code> ${escapeHtml(r.machine.cpu)}${r.machine.onBattery === true ? ' 🔋' : ''}`
             : '—'
@@ -194,8 +194,8 @@ async function renderBenchmarksChartsInner(): Promise<void> {
   const textColor = cssVar('--color-text', '#d4d4d4')
   const gridColor = cssVar('--color-border-subtle', '#323232')
 
-  const xLabels = runs.map(r => r.commit)
-  const xTooltips = runs.map(r => {
+  const xLabels = visibleRuns.map(r => r.commit)
+  const xTooltips = visibleRuns.map(r => {
     const base = `${r.commit}\n${r.timestamp.slice(0, 19).replace('T', ' ')}\n${r.commitMessage}`
     if (!r.machine) return base
     const battery = r.machine.onBattery === null ? '' : r.machine.onBattery ? ' [on battery]' : ' [plugged in]'
@@ -209,7 +209,7 @@ async function renderBenchmarksChartsInner(): Promise<void> {
     // Union of measurement names across all runs, preserving first-seen order.
     const seen = new Set<string>()
     const names: string[] = []
-    for (const run of runs) {
+    for (const run of visibleRuns) {
       const buckets = run.scenarios[sc.id] ?? {}
       for (const name of Object.keys(buckets)) {
         if (!seen.has(name)) { seen.add(name); names.push(name) }
@@ -219,7 +219,7 @@ async function renderBenchmarksChartsInner(): Promise<void> {
 
     const datasets = names.map((name, idx) => ({
       label: name,
-      data: runs.map(run => {
+      data: visibleRuns.map(run => {
         const v = run.scenarios[sc.id]?.[name]
         return v ? v.median : null
       }),
@@ -234,7 +234,7 @@ async function renderBenchmarksChartsInner(): Promise<void> {
     // sufficient — if a future scenario ever mixes ms and μs across rows,
     // the y-axis label may need a real majority vote.
     let unit: 'ms' | 'us' = 'ms'
-    for (const run of runs) {
+    for (const run of visibleRuns) {
       const buckets = run.scenarios[sc.id] ?? {}
       for (const v of Object.values(buckets)) {
         if (v) { unit = v.unit; break }
@@ -281,4 +281,16 @@ async function renderBenchmarksChartsInner(): Promise<void> {
     })
     liveCharts.push(chart)
   })
+}
+
+function trimLeadingEmptyRuns(scenarios: ScenarioMeta[], runs: RunEntry[]): RunEntry[] {
+  const firstVisibleIndex = runs.findIndex(run =>
+    scenarios.every(scenario => {
+      const buckets = run.scenarios[scenario.id]
+      if (!buckets) return false
+      return Object.values(buckets).some(value => value !== null)
+    }),
+  )
+
+  return firstVisibleIndex < 0 || firstVisibleIndex === 0 ? runs : runs.slice(firstVisibleIndex)
 }
