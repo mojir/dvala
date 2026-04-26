@@ -1,8 +1,8 @@
 # Phase 2.5c — Sound User-Declared `asserts P` Assertion Functions
 
-**Status:** Approved — ready for implementation
+**Status:** Implemented on branch — validated, pending merge
 **Created:** 2026-04-25
-**Last updated:** 2026-04-25 (open questions resolved; see Decisions section)
+**Last updated:** 2026-04-26 (implementation complete on `refinement-phase-2-5c-asserts-functions`; parser surface, body verification, call-site narrowing, builtin migration, tests, and book docs all landed)
 **Tracks:** Continuation of `2026-04-23_refinement-types.md` (Phase 2.5 — Narrowing + assert(P) wiring)
 **Supersedes-decision:** v1's "no user-declared `asserts P`" rule — Phase 3 reconsideration moment described in the parent doc.
 
@@ -169,17 +169,17 @@ Tracked as separate commits inside the same PR (or sequential PRs if it grows). 
 
 Tracked as separate commits inside the same PR (or sequential PRs if it grows). All steps gated on `npm run check` passing.
 
-1. **Parser surface for `asserts {binder | body}` return-type annotations.** Extend `parseType.ts` (`tryParseTypeGuard` neighbor, around line 1011) — new keyword `asserts`, predicate parsing reuses `consumeAndCheckRefinementPredicate` directly (the same call used by `Type & {binder | body}`). After parsing, validate the binder name equals a parameter name in the signature; reject otherwise. Carry the result through `ParsedFunctionType` (new fields `assertsParam` + `assertsPredicate` parallel to `guardParam`/`guardType`). Round-trip: parse → format → parse stable.
-2. **Walker updates.** Every function-type walker in the codebase (substitution, simplification, formatting, doc generation, untokenizer) needs a case for the new variant. ~14 touchpoints per memory.
-3. **Inference integration.** Asserts-bearing function types flow through inference like ordinary function types — the assertion metadata is read at call sites by the existing PR #100 dispatch. At this point, **builtin-only** call sites already work; user-declared functions parse and infer but the body isn't verified yet (so they're treated as untrusted, no narrowing — same as today).
-4. **Body-verification pass — fragment scope (c).** New file `src/typechecker/assertsBodyVerify.ts`.
+1. **Parser surface for `asserts {binder | body}` return-type annotations.** Implemented. `parseType.ts` now parses `asserts {binder | body}`, validates the binder against the parameter list, and carries the parsed predicate through `ParsedFunctionType` and `Function.asserts`.
+2. **Walker updates.** Implemented. Function-type walkers preserve `asserts` metadata through simplification, formatting, inference freshening/generalization, and display.
+3. **Inference integration.** Implemented. Let-bound asserts helpers retain their declared call-site contract and flow through inference as asserts-bearing function types.
+4. **Body-verification pass — fragment scope (c).** Implemented in `src/typechecker/assertsBodyVerify.ts`.
    - Walk function declarations with `asserts P` returns.
    - For each: traverse the body's control-flow graph, accumulating per-path assumption sets (reuse Phase 2.5a/b machinery). Existing effect-set analysis decides throw-vs-return per path.
    - Pre-flight: reject recursion (call-graph SCC containing this function) and reject any `do with h ... end` block in the body. Both emit `error` diagnostics distinct from the proof-failure diagnostic.
    - Per normal-return path: query the existing solver against `P` under that path's assumption set. Unproven paths emit `error`-severity diagnostic with the path's source span.
-5. **Call-site narrowing — user-declared.** Once the body verifies, the same dispatch path that handles builtin `assert` (PR #100) narrows the asserted argument at call sites. No new code expected here — verify the existing dispatch works for user-declared signatures.
-6. **Builtin migration.** Move `assert` from `assertsParam` metadata to `asserts cond` parser-surface annotation in its `docs.type` string. Verify the metadata-pipeline path still produces identical narrowing (no behavior change; cosmetic only). The metadata field stays in code as a parsed representation.
-7. **Tests.**
+5. **Call-site narrowing — user-declared.** Implemented. Verified assertion helpers now narrow symbol arguments at call sites through the same post-statement narrowing pipeline as builtin assertion-style calls.
+6. **Builtin migration.** Implemented. Builtin `assert` now declares its contract in `docs.type` using parser-surface `asserts` syntax, and the builtin registry recovers `assertsParam` from parsed function/intersection types.
+7. **Tests.** Implemented.
    - Round-trip: body verifies, narrowing works at call sites.
    - Round-trip with control flow: `if`/`match`/early-return bodies (the `assertScore` example above).
    - Negative: body fails to prove → diagnostic with exact unproven-path span.
@@ -188,8 +188,8 @@ Tracked as separate commits inside the same PR (or sequential PRs if it grows). 
    - Negative: free-variable mismatch (predicate's free var doesn't match a parameter name).
    - Negative: predicate not fragment-eligible.
    - Round-trip on the migrated builtin `assert` — narrowing identical before/after.
-8. **Documentation.** Extend `book/05-advanced/08-refinement-types.md` with a "User-declared assertion functions" section. Cover the soundness story (why no `assume P`), the body restrictions (no recursion, no handler-install), and the natural control-flow form.
-9. **Memory + design-doc updates.** Mark this phase shipped in `project_refinement_types.md`. Move this design doc to `design/shipped/` once landed.
+8. **Documentation.** Implemented. `book/05-advanced/08-refinement-types.md` now documents user-declared assertion helpers, the proof model, and the current body restrictions.
+9. **Memory + design-doc updates.** In progress. This doc now reflects the implemented branch state. Move it to `design/shipped/` and update the parent refinement plan once the branch lands.
 
 ---
 
