@@ -68,6 +68,29 @@ When adding a new export, ask: *is this for end users running Dvala?* → public
 
 **Execution-semantics spike.** While we're auditing, also spike the divergence (if any) between the playground's current execution path and `dvala run` on multi-file inputs. Hours of work — read the two entry points, run a few multi-file programs through both, write down the diff. The result determines whether Phase 1 needs an alignment step or not. We're not closing the gap in Phase 0 (that's Phase 1 if it exists) — we're answering "is there a gap?" before we commit to Phase 1's scope.
 
+**Code-organization cleanup.** [scripts.ts](playground-www/src/scripts.ts) is currently **7,636 LOC** — 61% of the playground codebase in a single file. That's past the comfort zone for navigation, code review, and merge conflicts. Phase 1 will edit several different concerns inside this file simultaneously (tabs, panels, tree, editor mount, file ops), which would create a constant merge-hazard if the file isn't split first.
+
+Phase 0 splits `scripts.ts` along concern boundaries. Likely seams (final list determined by reading the code):
+
+- `playground-www/src/scripts/sidePanels.ts` — `showSideTab`, `syncCodePanelView`, side-panel icon/header sync
+- `playground-www/src/scripts/contextEditor.ts` — `updateContextState`, `renderContextEntryList`, context UI
+- `playground-www/src/scripts/files.ts` — `loadSavedFile`, `populateExplorerFileList`, `populateSavedFilesList`
+- `playground-www/src/scripts/modals.ts` — `createModalPanel`, `pushPanel`, `popModal`, modal stack
+- `playground-www/src/scripts/runActions.ts` — run / typecheck / format wiring
+- `playground-www/src/scripts/keybindings.ts` — keyboard shortcut wiring
+- `playground-www/src/scripts/init.ts` — entrypoint that wires everything together
+
+This is a **mechanical refactor** — pure file-splitting + import fixing, no behavior changes. Splits should preserve git-blame where possible (use `git mv` for files that move whole; for cuts within a file, do them in one PR per concern so blame stays meaningful per chunk). No feature work in this step; the whole point is to give Phase 1 a workspace where edits don't all collide on one file.
+
+**Homemade reactivity primitive.** The playground's UI code is heavily imperative — state writes cascade through 5–7 manual sync calls per event ([scripts.ts](playground-www/src/scripts.ts) has 77+ such calls). Phase 1 multiplies this (file tree, tabs, resizable panels, conflict prompts each need multi-region sync). Phase 0 introduces a tiny homemade reactive lib at `playground-www/src/lib/reactive.ts`:
+
+- **API surface (kept deliberately small):** `ref<T>(initial)`, `effect(fn)`, `computed(fn)`. Optional later: `watch(source, cb)` if a real need surfaces.
+- **Implementation cost:** ~40 LOC for the MVP, growing to ~120 LOC once nested-effect handling, sub cleanup on re-run, re-entrancy guard, and `computed` dirtying are in.
+- **Why homemade over a library:** zero external deps, full control, no version churn. The codebase is sub-1.0 and the use case is shallow (no deep reactivity needed — state stays as primitives + arrays + plain object refs). A 120-LOC custom file beats pulling in 6 KB of `@vue/reactivity` for what we actually use.
+- **Edge cases to handle from day one** (these are the bugs that take an afternoon to debug if missed): (1) stack of active effects, not a single global, (2) clear an effect's old subscriptions before each re-run, (3) re-entrancy guard for self-mutating effects, (4) `Object.is` equality check before notifying, (5) snapshot subscriber set before iterating to allow safe mutation during dispatch.
+- **Escape hatch:** if the file grows past ~150 LOC or we hit a class of bug that's painful to fix, swap to `@vue/reactivity`. Migration is tiny because both are `ref`/`effect`-shaped — a `s/import.*from '\.\/lib\/reactive'/from '@vue\/reactivity'/` and a few API tweaks.
+- **Adoption pattern:** wrap [state.ts](playground-www/src/state.ts) in reactive primitives; convert the worst existing cascades (`loadSavedFile`, `showSideTab`, `updateContextState`) to `effect` blocks; new Phase 1 code uses reactivity natively. Don't rewrite working pages (startPage, chapterPage, AST viewer) — they're already clean.
+
 ### Phase 1 — Monaco + tree view
 
 **1a. Editor swap to Monaco**
@@ -181,50 +204,54 @@ The language service today exposes `WorkspaceIndex` + symbol table primitives. P
 2. Verify HMR works end-to-end: edit a file under `src/`, confirm the playground reflects it without `npm run build`. Confirm stack traces resolve to engine source, not bundled output.
 3. Audit playground imports: catalog every place the playground reaches past `src/full.ts` / `src/index.ts` into engine internals.
 4. For each deep import, decide: (a) promote to public API, (b) expose via explicit introspection entry point (`dvala/internal` or similar), or (c) keep as deep import with a comment explaining why (tracked as tech debt). **Time-boxed:** for imports where the decision is painful or non-obvious, mark with `// FIXME: deep import, see Phase 0 audit` and defer to a follow-up PR. Phase 0 ships when HMR works + the audit is documented, not when every import is perfect.
-5. Execution-semantics spike: read the playground's run path and `dvala run`'s entry point side by side; run a handful of multi-file programs through both; document any divergence. Don't fix here — outputs feed Phase 1's planning. If no divergence, Phase 1 step 13 (alignment) becomes a no-op.
-6. Update `CLAUDE.md` Playground Architecture section to document the new "engine consumed as a library via public API" pattern and the introspection entry point.
+5. Execution-semantics spike: read the playground's run path and `dvala run`'s entry point side by side; run a handful of multi-file programs through both; document any divergence. Don't fix here — outputs feed Phase 1's planning. If no divergence, Phase 1 step 17 (alignment) becomes a no-op.
+6. Split [scripts.ts](playground-www/src/scripts.ts) (7,636 LOC) into per-concern files under `playground-www/src/scripts/`. Likely seams (finalize after reading): `sidePanels.ts`, `contextEditor.ts`, `files.ts`, `modals.ts`, `runActions.ts`, `keybindings.ts`, `init.ts`. **Pure mechanical refactor — no behavior changes.** Run the existing test suite + e2e to confirm no regressions. Use one PR per concern slice so git-blame stays meaningful.
+7. Create `playground-www/src/lib/reactive.ts` — homemade reactive primitive with `ref<T>`, `effect`, `computed`. Handle the edge cases from day one: stack of active effects (not a single global), per-effect dep tracking with cleanup before re-run, re-entrancy guard, `Object.is` equality check before notifying, snapshot subscriber set before iteration. Add `playground-www/src/lib/reactive.test.ts` covering all the above.
+8. Wrap [state.ts](playground-www/src/state.ts) in reactive primitives — replace the plain object with a reactive equivalent. Keep the existing `getState()` / `updateState()` exports as thin wrappers so existing call sites keep working unchanged. New consumers subscribe via `effect` instead of polling `getState()`.
+9. Convert the three worst existing cascades as proof-of-concept: `loadSavedFile` (7 manual updates → reactive), `showSideTab` (11+ DOM mutations → reactive), `updateContextState` (5 cascade calls → reactive). Each becomes ~3 lines of state writes + one `effect` block per affected DOM region. Now living in the split files from step 6.
+10. Update `CLAUDE.md` Playground Architecture section to document (a) the new "engine consumed as a library via public API" pattern and the introspection entry point, (b) the reactive primitive at `playground-www/src/lib/reactive.ts` — what it is, when to use `ref` vs. `effect` vs. `computed`, and the escape hatch (swap to `@vue/reactivity` if the file grows past ~150 LOC or hits a painful bug class), and (c) the `playground-www/src/scripts/` per-concern layout.
 
 ### Phase 1 — Monaco + tree view
 
-7. Add `monaco-editor` to `playground-www/package.json`; configure Vite for Monaco workers.
-8. Write a `TokensProvider` backed by `tokenScan`. If `tokenScan` lacks line-resumable state, add it (single source of truth between highlighter, parser, and LS).
-9. Define a Dvala theme matching current colors.
-10. Introduce `path` on the file model; bump IndexedDB schema (upgrade handler drops the old store — no migration).
-11. Introduce a `FileBackend` interface (read / write / list / watch — keep tiny); the web-only mode uses an `IndexedDBBackend` implementation. (Phase 3 adds `BridgeBackend`.)
-12. Swap the editor mount in `shell.ts`; wire state hooks (through `FileBackend`, not directly to IndexedDB) and keybindings; delete `SyntaxOverlay.ts`.
-13. Close any execution-semantics divergence found in Phase 0 step 5: align the playground's run path with `dvala run` (same evaluator, module loader, import resolver). No-op if Phase 0 found no divergence.
-14. Render the left bar as a tree; add new-file / new-folder / rename / delete with path updates.
-15. Persist expand/collapse state per workspace.
-16. Layout shell: introduce right panel (AST / outline) and bottom panel (run output / state history / snapshots), both internally tabbed and collapsible. Migrate existing debug surfaces into the appropriate panel. Persist panel sizes + collapsed state in localStorage.
-17. Editor tabs: tab strip above Monaco; per-tab `(model + viewState)`; insertion-order; modified-dot indicator; localStorage persistence of open tabs + active tab; keyboard shortcuts (Cmd/Ctrl-W, Cmd/Ctrl-1..9, Cmd/Ctrl-PgUp/PgDn); middle-click close.
-18. Quick Open (Cmd/Ctrl-P) via Monaco's `quickInput` API.
-19. e2e: cover editor swap, tree operations, tab switching/persistence, panel toggling, and multi-file import execution parity with `dvala run`.
+11. Add `monaco-editor` to `playground-www/package.json`; configure Vite for Monaco workers.
+12. Write a `TokensProvider` backed by `tokenScan`. If `tokenScan` lacks line-resumable state, add it (single source of truth between highlighter, parser, and LS).
+13. Define a Dvala theme matching current colors.
+14. Introduce `path` on the file model; bump IndexedDB schema (upgrade handler drops the old store — no migration).
+15. Introduce a `FileBackend` interface (read / write / list / watch — keep tiny); the web-only mode uses an `IndexedDBBackend` implementation. (Phase 3 adds `BridgeBackend`.)
+16. Swap the editor mount in `shell.ts`; wire state hooks (through `FileBackend`, not directly to IndexedDB) and keybindings; delete `SyntaxOverlay.ts`.
+17. Close any execution-semantics divergence found in Phase 0 step 5: align the playground's run path with `dvala run` (same evaluator, module loader, import resolver). No-op if Phase 0 found no divergence.
+18. Render the left bar as a tree; add new-file / new-folder / rename / delete with path updates.
+19. Persist expand/collapse state per workspace.
+20. Layout shell: introduce right panel (AST / outline) and bottom panel (run output / state history / snapshots), both internally tabbed and collapsible. Migrate existing debug surfaces into the appropriate panel. Persist panel sizes + collapsed state in localStorage.
+21. Editor tabs: tab strip above Monaco; per-tab `(model + viewState)`; insertion-order; modified-dot indicator; localStorage persistence of open tabs + active tab; keyboard shortcuts (Cmd/Ctrl-W, Cmd/Ctrl-1..9, Cmd/Ctrl-PgUp/PgDn); middle-click close.
+22. Quick Open (Cmd/Ctrl-P) via Monaco's `quickInput` API.
+23. e2e: cover editor swap, tree operations, tab switching/persistence, panel toggling, and multi-file import execution parity with `dvala run`.
 
 ### Phase 2 — LS parity
 
-20. Audit which LS features are already callable from the browser; list the import-graph blockers (Node-only deps, etc.).
-21. Stand up the worker: Vite `?worker` import, Monaco's own workers configured, LS message protocol (reused from VSCode extension) wired across the boundary. Confirm dev + prod bundles both load the worker correctly.
-22. Wire diagnostics first — debounced, runs after parse/typecheck, pushed via `setModelMarkers`.
-23. Hover provider (built-in docs + inferred types).
-24. Go-to-definition + find-references (backed by `WorkspaceIndex`).
-25. Rename provider (depends on LS-next cross-file rename).
-26. Completions provider.
-27. Document formatter.
-28. Performance pass: profile on a 50-file workspace; tune debouncing and message-batching as needed.
+24. Audit which LS features are already callable from the browser; list the import-graph blockers (Node-only deps, etc.).
+25. Stand up the worker: Vite `?worker` import, Monaco's own workers configured, LS message protocol (reused from VSCode extension) wired across the boundary. Confirm dev + prod bundles both load the worker correctly.
+26. Wire diagnostics first — debounced, runs after parse/typecheck, pushed via `setModelMarkers`.
+27. Hover provider (built-in docs + inferred types).
+28. Go-to-definition + find-references (backed by `WorkspaceIndex`).
+29. Rename provider (depends on LS-next cross-file rename).
+30. Completions provider.
+31. Document formatter.
+32. Performance pass: profile on a 50-file workspace; tune debouncing and message-batching as needed.
 
 ### Phase 3 — CLI
 
-29. New `dvala playground` subcommand: arg parsing, default path, port selection.
-30. Static bundle serving (the playground build output as an asset).
-31. File-system bridge: `list / read / write`, scoped to the requested root with path-traversal guards.
-32. Implement `BridgeBackend` (the second `FileBackend` introduced in step 12): debounced ~300ms write-through to the bridge.
-33. SSE-based file watcher; playground subscribes and reloads files with no pending edits.
-34. External-edit conflict handling: track per-file `lastSyncedHash`; show inline "use disk / keep mine" prompt when the watcher fires for a file with unflushed local edits.
-35. Playground "local mode" flag: swap the active `FileBackend` to `BridgeBackend` based on query param.
-36. Scratch namespace: add a "Scratch" tree root in CLI mode (backed by `IndexedDBBackend`); update the import resolver to enforce one-way visibility (scratch → project allowed; project → scratch rejected).
-37. Auth: per-session random token (header) + Origin check on every bridge request. Token rotates per CLI invocation; CLI auto-opens the browser to the tokenised URL.
-38. Bundle-size check: confirm the added playground assets don't bloat the CLI tarball unacceptably.
-39. Docs: README section + `dvala playground --help`.
+33. New `dvala playground` subcommand: arg parsing, default path, port selection.
+34. Static bundle serving (the playground build output as an asset).
+35. File-system bridge: `list / read / write`, scoped to the requested root with path-traversal guards.
+36. Implement `BridgeBackend` (the second `FileBackend` introduced in step 15): debounced ~300ms write-through to the bridge.
+37. SSE-based file watcher; playground subscribes and reloads files with no pending edits.
+38. External-edit conflict handling: track per-file `lastSyncedHash`; show inline "use disk / keep mine" prompt when the watcher fires for a file with unflushed local edits.
+39. Playground "local mode" flag: swap the active `FileBackend` to `BridgeBackend` based on query param.
+40. Scratch namespace: add a "Scratch" tree root in CLI mode (backed by `IndexedDBBackend`); update the import resolver to enforce one-way visibility (scratch → project allowed; project → scratch rejected).
+41. Auth: per-session random token (header) + Origin check on every bridge request. Token rotates per CLI invocation; CLI auto-opens the browser to the tokenised URL.
+42. Bundle-size check: confirm the added playground assets don't bloat the CLI tarball unacceptably.
+43. Docs: README section + `dvala playground --help`.
 
 ---
 
