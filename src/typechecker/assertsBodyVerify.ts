@@ -2,60 +2,104 @@ import { NodeTypes, isNodeType } from '../constants/constants'
 import { resolveSourceCodeInfo } from '../parser/types'
 import type { Ast, AstNode, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
+import { prettyPrint } from '../prettyPrint'
 import { parseTypeAnnotation, TypeParseError } from './parseType'
 import { simplify } from './simplify'
+import type { AssertsInfo } from './types'
 import type { TypeDiagnostic } from './typecheck'
+
+interface AssertionFunctionInfo {
+  binding: BindingTarget
+  bodyNodes: AstNode[]
+  name?: string
+  node: AstNode
+  valueNode: AstNode
+  asserts: AssertsInfo
+}
 
 export function verifyAssertionFunctionBodies(ast: Ast): TypeDiagnostic[] {
   if (!ast.typeAnnotations || ast.typeAnnotations.size === 0) return []
 
   const diagnostics: TypeDiagnostic[] = []
-  for (const node of ast.body) {
-    visitNode(node, ast, diagnostics)
-  }
+  verifyStatementList(ast.body, ast, diagnostics)
   return diagnostics
 }
 
-function visitNode(node: AstNode, ast: Ast, diagnostics: TypeDiagnostic[]): void {
-  if (node[0] === NodeTypes.Let) {
-    inspectAssertionFunctionBinding(node, ast, diagnostics)
-  }
-  walkAstChildren(node, ast, diagnostics, true)
-}
+function verifyStatementList(nodes: AstNode[], ast: Ast, diagnostics: TypeDiagnostic[]): void {
+  const assertionFunctions = collectAssertionFunctions(nodes, ast)
+  const cyclicFunctions = findRecursiveAssertionFunctions(assertionFunctions)
 
-function inspectAssertionFunctionBinding(node: AstNode, ast: Ast, diagnostics: TypeDiagnostic[]): void {
-  const [binding, valueNode] = node[1] as [BindingTarget, AstNode]
-  if (valueNode[0] !== NodeTypes.Function) return
-
-  const annotation = ast.typeAnnotations?.get(binding[2])
-  if (!annotation) return
-
-  try {
-    const declaredType = simplify(parseTypeAnnotation(annotation))
-    if (declaredType.tag !== 'Function' || !declaredType.asserts) return
-  } catch (error) {
-    if (error instanceof TypeParseError) return
-    throw error
-  }
-
-  const [, bodyNodes] = valueNode[1] as [AstNode[], AstNode[]]
-  const bindingName = getSymbolBindingName(binding)
-  if (bindingName) {
-    for (const recursiveCallNode of findDirectRecursiveCalls(bodyNodes, bindingName)) {
+  for (const info of assertionFunctions) {
+    const blocked = emitPreflightDiagnostics(info, ast, diagnostics, cyclicFunctions)
+    if (!blocked && !bodyProvesAssertion(info, assertionFunctions, new Set())) {
       diagnostics.push({
-        message: `Assertion function '${bindingName}' may not recurse.`,
+        message: `Assertion function '${info.name ?? '<anonymous>'}' does not prove ${info.asserts.source} on all normal-return paths.`,
         severity: 'error',
-        sourceCodeInfo: resolveNodeSourceInfo(recursiveCallNode, ast),
+        sourceCodeInfo: resolveNodeSourceInfo(info.valueNode, ast),
       })
     }
   }
-  for (const withHandlerNode of findWithHandlerNodes(bodyNodes)) {
+
+  for (const node of nodes) {
+    visitNestedStatementLists(node, ast, diagnostics)
+  }
+}
+
+function collectAssertionFunctions(nodes: AstNode[], ast: Ast): AssertionFunctionInfo[] {
+  const out: AssertionFunctionInfo[] = []
+  for (const node of nodes) {
+    if (node[0] !== NodeTypes.Let) continue
+    const [binding, valueNode] = node[1] as [BindingTarget, AstNode]
+    if (valueNode[0] !== NodeTypes.Function) continue
+
+    const annotation = ast.typeAnnotations?.get(binding[2])
+    if (!annotation) continue
+
+    try {
+      const declaredType = simplify(parseTypeAnnotation(annotation))
+      if (declaredType.tag !== 'Function' || !declaredType.asserts) continue
+      const [, bodyNodes] = valueNode[1] as [AstNode[], AstNode[]]
+      out.push({
+        binding,
+        bodyNodes,
+        name: getSymbolBindingName(binding),
+        node,
+        valueNode,
+        asserts: declaredType.asserts,
+      })
+    } catch (error) {
+      if (error instanceof TypeParseError) continue
+      throw error
+    }
+  }
+  return out
+}
+
+function emitPreflightDiagnostics(
+  info: AssertionFunctionInfo,
+  ast: Ast,
+  diagnostics: TypeDiagnostic[],
+  cyclicFunctions: Set<AssertionFunctionInfo>,
+): boolean {
+  let blocked = false
+  if (cyclicFunctions.has(info)) {
+    diagnostics.push({
+      message: `Assertion function '${info.name ?? '<anonymous>'}' may not recurse or participate in recursive assertion cycles.`,
+      severity: 'error',
+      sourceCodeInfo: resolveNodeSourceInfo(info.binding as unknown as AstNode, ast),
+    })
+    blocked = true
+  }
+
+  for (const withHandlerNode of findWithHandlerNodes(info.bodyNodes)) {
     diagnostics.push({
       message: 'Assertion function bodies may not install handlers with `do with ... end`.',
       severity: 'error',
       sourceCodeInfo: resolveNodeSourceInfo(withHandlerNode, ast),
     })
+    blocked = true
   }
+  return blocked
 }
 
 function findWithHandlerNodes(nodes: AstNode[]): AstNode[] {
@@ -66,12 +110,30 @@ function findWithHandlerNodes(nodes: AstNode[]): AstNode[] {
   return hits
 }
 
-function findDirectRecursiveCalls(nodes: AstNode[], bindingName: string): AstNode[] {
-  const hits: AstNode[] = []
-  for (const node of nodes) {
-    visitBodyNode(node, hits, true, bindingName)
+function findRecursiveAssertionFunctions(infos: AssertionFunctionInfo[]): Set<AssertionFunctionInfo> {
+  const byName = new Map(infos.flatMap(info => info.name ? [[info.name, info]] : []))
+  const edges = new Map<AssertionFunctionInfo, Set<AssertionFunctionInfo>>()
+  for (const info of infos) {
+    const callees = new Set<AssertionFunctionInfo>()
+    for (const calleeName of collectCalledAssertionNames(info.bodyNodes, new Set(byName.keys()))) {
+      const callee = byName.get(calleeName)
+      if (callee) callees.add(callee)
+    }
+    edges.set(info, callees)
   }
-  return hits
+
+  const cyclic = new Set<AssertionFunctionInfo>()
+  for (const info of infos) {
+    if (hasCycle(info, info, edges, new Set())) {
+      cyclic.add(info)
+      for (const other of infos) {
+        if (other !== info && hasCycle(info, other, edges, new Set()) && hasCycle(other, info, edges, new Set())) {
+          cyclic.add(other)
+        }
+      }
+    }
+  }
+  return cyclic
 }
 
 function visitBodyNode(node: AstNode, hits: AstNode[], allowNestedFunctions: boolean, bindingName?: string): void {
@@ -90,6 +152,147 @@ function visitBodyNode(node: AstNode, hits: AstNode[], allowNestedFunctions: boo
   walkBodyChildren(node[1], hits, node[0] === NodeTypes.Function ? false : allowNestedFunctions, bindingName)
 }
 
+function collectCalledAssertionNames(nodes: AstNode[], names: Set<string>): Set<string> {
+  const hits = new Set<string>()
+  const visit = (node: AstNode, allowNestedFunctions: boolean): void => {
+    if (node[0] === NodeTypes.Call) {
+      const [calleeNode] = node[1] as [AstNode, AstNode[]]
+      if (calleeNode[0] === NodeTypes.Sym && names.has(calleeNode[1] as string)) {
+        hits.add(calleeNode[1] as string)
+      }
+    }
+    if (node[0] === NodeTypes.Function && !allowNestedFunctions) return
+    walkValue(node[1], node[0] === NodeTypes.Function ? false : allowNestedFunctions)
+  }
+
+  const walkValue = (value: unknown, allowNestedFunctions: boolean): void => {
+    if (isAstNode(value)) {
+      if (value[0] === NodeTypes.Function && !allowNestedFunctions) return
+      visit(value, allowNestedFunctions)
+      return
+    }
+    if (!Array.isArray(value)) return
+    for (const item of value) walkValue(item, allowNestedFunctions)
+  }
+
+  for (const node of nodes) walkValue(node, false)
+  return hits
+}
+
+function hasCycle(
+  current: AssertionFunctionInfo,
+  target: AssertionFunctionInfo,
+  edges: Map<AssertionFunctionInfo, Set<AssertionFunctionInfo>>,
+  visited: Set<AssertionFunctionInfo>,
+): boolean {
+  if (visited.has(current)) return false
+  visited.add(current)
+  for (const next of edges.get(current) ?? []) {
+    if (next === target) return true
+    if (hasCycle(next, target, edges, visited)) return true
+  }
+  return false
+}
+
+function bodyProvesAssertion(
+  info: AssertionFunctionInfo,
+  assertionFunctions: AssertionFunctionInfo[],
+  stack: Set<AssertionFunctionInfo>,
+): boolean {
+  if (stack.has(info)) return false
+  stack.add(info)
+  try {
+    return sequenceProves(info.bodyNodes, info, assertionFunctions, false, stack)
+  } finally {
+    stack.delete(info)
+  }
+}
+
+function sequenceProves(
+  nodes: AstNode[],
+  info: AssertionFunctionInfo,
+  assertionFunctions: AssertionFunctionInfo[],
+  proven: boolean,
+  stack: Set<AssertionFunctionInfo>,
+): boolean {
+  if (nodes.length === 0) return proven
+  let currentProven = proven
+  for (let i = 0; i < nodes.length - 1; i++) {
+    currentProven = statementGuarantees(nodes[i]!, info, assertionFunctions, currentProven, stack)
+  }
+  return terminalProves(nodes.at(-1)!, info, assertionFunctions, currentProven, stack)
+}
+
+function statementGuarantees(
+  node: AstNode,
+  info: AssertionFunctionInfo,
+  assertionFunctions: AssertionFunctionInfo[],
+  proven: boolean,
+  stack: Set<AssertionFunctionInfo>,
+): boolean {
+  if (proven) return true
+  if (node[0] === NodeTypes.Block) {
+    return sequenceProves(node[1] as AstNode[], info, assertionFunctions, proven, stack)
+  }
+  if (node[0] === NodeTypes.If) {
+    const [cond, thenNode, elseNode] = node[1] as [AstNode, AstNode, AstNode | undefined]
+    const thenProven = terminalProves(thenNode, info, assertionFunctions, proven || predicateMatchesTarget(cond, info), stack)
+    const elseProven = terminalProves(elseNode ?? thenNode, info, assertionFunctions, proven, stack)
+    return thenProven && elseProven
+  }
+  return establishesTargetPredicate(node, info, assertionFunctions, stack)
+}
+
+function terminalProves(
+  node: AstNode,
+  info: AssertionFunctionInfo,
+  assertionFunctions: AssertionFunctionInfo[],
+  proven: boolean,
+  stack: Set<AssertionFunctionInfo>,
+): boolean {
+  if (proven) return true
+  if (node[0] === NodeTypes.Block) {
+    return sequenceProves(node[1] as AstNode[], info, assertionFunctions, proven, stack)
+  }
+  if (node[0] === NodeTypes.If) {
+    const [cond, thenNode, elseNode] = node[1] as [AstNode, AstNode, AstNode | undefined]
+    const thenProven = terminalProves(thenNode, info, assertionFunctions, proven || predicateMatchesTarget(cond, info), stack)
+    const elseProven = terminalProves(elseNode ?? thenNode, info, assertionFunctions, proven, stack)
+    return thenProven && elseProven
+  }
+  return establishesTargetPredicate(node, info, assertionFunctions, stack)
+}
+
+function establishesTargetPredicate(
+  node: AstNode,
+  info: AssertionFunctionInfo,
+  assertionFunctions: AssertionFunctionInfo[],
+  stack: Set<AssertionFunctionInfo>,
+): boolean {
+  if (isExactBuiltinAssert(node, info)) return true
+  if (node[0] !== NodeTypes.Call) return false
+  const [calleeNode, argNodes] = node[1] as [AstNode, AstNode[]]
+  if (calleeNode[0] !== NodeTypes.Sym) return false
+  const helper = assertionFunctions.find(candidate => candidate.name === calleeNode[1])
+  if (!helper) return false
+  if (helper.asserts.source !== info.asserts.source) return false
+  const helperArg = argNodes[helper.asserts.paramIndex]
+  if (!helperArg || helperArg[0] !== NodeTypes.Sym || helperArg[1] !== info.asserts.binder) return false
+  return bodyProvesAssertion(helper, assertionFunctions, stack)
+}
+
+function isExactBuiltinAssert(node: AstNode, info: AssertionFunctionInfo): boolean {
+  if (node[0] !== NodeTypes.Call) return false
+  const [calleeNode, argNodes] = node[1] as [AstNode, AstNode[]]
+  if (calleeNode[0] !== NodeTypes.Builtin || calleeNode[1] !== 'assert') return false
+  const predicate = argNodes[0]
+  return predicate ? predicateMatchesTarget(predicate, info) : false
+}
+
+function predicateMatchesTarget(node: AstNode, info: AssertionFunctionInfo): boolean {
+  return prettyPrint(node).trim() === prettyPrint(info.asserts.predicate).trim()
+}
+
 function walkAstChildren(node: AstNode, ast: Ast, diagnostics: TypeDiagnostic[], allowNestedFunctions: boolean): void {
   if (node[0] === NodeTypes.Function && !allowNestedFunctions) {
     return
@@ -99,7 +302,8 @@ function walkAstChildren(node: AstNode, ast: Ast, diagnostics: TypeDiagnostic[],
 
 function walkAstValue(value: unknown, ast: Ast, diagnostics: TypeDiagnostic[], allowNestedFunctions: boolean): void {
   if (isAstNode(value)) {
-    visitNodeWithMode(value, ast, diagnostics, allowNestedFunctions)
+    if (value[0] === NodeTypes.Function && !allowNestedFunctions) return
+    visitNestedStatementLists(value, ast, diagnostics)
     return
   }
   if (!Array.isArray(value)) return
@@ -119,11 +323,25 @@ function walkBodyChildren(value: unknown, hits: AstNode[], allowNestedFunctions:
   }
 }
 
-function visitNodeWithMode(node: AstNode, ast: Ast, diagnostics: TypeDiagnostic[], allowNestedFunctions: boolean): void {
-  if (node[0] === NodeTypes.Let) {
-    inspectAssertionFunctionBinding(node, ast, diagnostics)
+function visitNestedStatementLists(node: AstNode, ast: Ast, diagnostics: TypeDiagnostic[]): void {
+  switch (node[0]) {
+    case NodeTypes.Function: {
+      const [, bodyNodes] = node[1] as [AstNode[], AstNode[]]
+      verifyStatementList(bodyNodes, ast, diagnostics)
+      return
+    }
+    case NodeTypes.Block:
+      verifyStatementList(node[1] as AstNode[], ast, diagnostics)
+      return
+    case NodeTypes.WithHandler: {
+      const [handlerExpr, bodyNodes] = node[1] as [AstNode, AstNode[]]
+      visitNestedStatementLists(handlerExpr, ast, diagnostics)
+      verifyStatementList(bodyNodes, ast, diagnostics)
+      return
+    }
+    default:
+      walkAstChildren(node, ast, diagnostics, true)
   }
-  walkAstChildren(node, ast, diagnostics, allowNestedFunctions)
 }
 
 function isAstNode(value: unknown): value is AstNode {

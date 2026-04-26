@@ -1456,11 +1456,11 @@ describe('refinement types — Phase 2.5c (builtin-metadata cut)', () => {
     expect(getBuiltinType('count').assertsParam).toBeUndefined()
   })
 
-  it('user-defined assertion helpers still do not narrow before body verification exists', () => {
+  it('verified user-defined assertion helpers still do not narrow before call-site support exists', () => {
     const dvala = createDvala()
     const result = dvala.typecheck(`
       let test = (x: Number): Number -> do
-        let assertPositive: (value: Number) -> asserts {value | value > 0} = (value) -> true;
+        let assertPositive: (value: Number) -> asserts {value | value > 0} = (value) -> assert(value > 0);
         assertPositive(x);
         x
       end
@@ -1473,6 +1473,16 @@ describe('refinement types — Phase 2.5c (builtin-metadata cut)', () => {
 
     expect(result.diagnostics).toHaveLength(0)
     expect(refinedCount).toBe(0)
+  })
+
+  it('rejects assertion helpers whose body does not prove the asserted predicate', () => {
+    const dvala = createDvala()
+    const result = dvala.typecheck(`
+      let assertPositive: (value: Number) -> asserts {value | value > 0} = (value) -> true;
+      1
+    `)
+
+    expect(result.diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
   })
 
   it('rejects handler-install blocks inside assertion function bodies', () => {
@@ -1495,6 +1505,29 @@ describe('refinement types — Phase 2.5c (builtin-metadata cut)', () => {
     `)
 
     expect(result.diagnostics.some(d => d.message.includes('may not recurse'))).toBe(true)
+  })
+
+  it('rejects mutual recursion between assertion helpers', () => {
+    const dvala = createDvala()
+    const result = dvala.typecheck(`
+      let assertPositiveA: (x: Number) -> asserts {x | x > 0} = (x) -> assertPositiveB(x);
+      let assertPositiveB: (x: Number) -> asserts {x | x > 0} = (x) -> assertPositiveA(x);
+      1
+    `)
+
+    expect(result.diagnostics.some(d => d.message.includes('recursive assertion cycles'))).toBe(true)
+  })
+
+  it('rejects mutual recursion when the helper call is nested in control flow', () => {
+    const dvala = createDvala()
+    const result = dvala.typecheck(`
+      let assertPositiveA: (x: Number) -> asserts {x | x > 0} = (x) ->
+        if true then assertPositiveB(x) else assert(x > 0) end;
+      let assertPositiveB: (x: Number) -> asserts {x | x > 0} = (x) -> assertPositiveA(x);
+      1
+    `)
+
+    expect(result.diagnostics.some(d => d.message.includes('recursive assertion cycles'))).toBe(true)
   })
 })
 
