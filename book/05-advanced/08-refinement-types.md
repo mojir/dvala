@@ -75,6 +75,30 @@ User-declared aliases shadow prelude aliases of the same name, so you can overri
 
 For non-literal sources (function parameters, expression results), use `assert` to narrow inside a `do` block — see the assertions and pattern-matching chapters for details. `if` and `match` guards also narrow when the condition is in the refinement fragment (single-symbol relations like `x > 0`, type guards, equality).
 
+You can also package a repeated refinement check as a named assertion helper:
+
+```dvala
+let assertPositive: (value: Number) -> asserts { value | value > 0 } = (value) -> assert(
+  value > 0
+);
+
+let usePositive = (value: Positive) -> value;
+
+let f = (x: Number) -> do
+  assertPositive(x);
+  usePositive(x);
+end;
+```
+
+The typechecker only trusts user-declared assertion helpers when their body proves the declared predicate on every normal-return path. Today that proof check is intentionally narrow: exact `assert(...)` calls, simple control-flow propagation, and calls to other verified assertion helpers.
+
+Current restrictions:
+
+- Assertion helper bodies may not recurse, directly or mutually.
+- Assertion helper bodies may not install handlers with `do with ... end`.
+
+If the checker cannot prove the helper's contract, the function is rejected rather than treated as an unchecked `assume`.
+
 ## What's enforced today
 
 The static analysis is intentionally conservative: when the solver can't decide a refinement holds, the call is accepted to avoid false positives. As the solver matures, refinement violations will become more strictly enforced at call sites.

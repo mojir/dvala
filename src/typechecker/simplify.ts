@@ -38,6 +38,7 @@ export function simplify(t: Type): Type {
       ret: simplify(t.ret),
       effects: t.effects,
       handlerWrapper: t.handlerWrapper,
+      ...(t.asserts !== undefined ? { asserts: t.asserts } : {}),
     }
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()

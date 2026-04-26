@@ -120,6 +120,27 @@ export interface HandlerWrapperInfo {
   introduced: EffectSet
 }
 
+/**
+ * Phase 2.5c — function declared `(...) -> asserts {binder | body}`.
+ * Identifies which parameter gets narrowed at the call site after the
+ * function returns. Travels with the function type so direct-named
+ * call sites (`assertPositive(n)`) can read it without a side-table
+ * lookup; falls away naturally when the function flows into a
+ * non-asserts-typed context (subtyping into `(Number) -> Boolean`
+ * structurally drops it, which is the right v1 semantics — the
+ * asserts contract is the asserts-bearing function's, not the target).
+ */
+export interface AssertsInfo {
+  /** Zero-based index of the parameter whose asserted predicate fires post-call. */
+  paramIndex: number
+  /** Predicate-local binder name. Same shape as `Refined.binder`. */
+  binder: string
+  /** Predicate AST. Already fragment-checked at parse time. */
+  predicate: RefinedPredicate
+  /** Original `binder | body` source text — authoritative for display. */
+  source: string
+}
+
 export interface FunctionType {
   tag: 'Function'
   params: Type[]
@@ -127,6 +148,7 @@ export interface FunctionType {
   ret: Type
   effects: EffectSet
   handlerWrapper?: HandlerWrapperInfo
+  asserts?: AssertsInfo
 }
 
 export interface SequenceType {
@@ -241,6 +263,7 @@ export function fn(
   effects: EffectSet = PureEffects,
   handlerWrapper?: HandlerWrapperInfo,
   restParam?: Type,
+  asserts?: AssertsInfo,
 ): Type {
   return {
     tag: 'Function',
@@ -249,6 +272,7 @@ export function fn(
     effects,
     ...(handlerWrapper ? { handlerWrapper } : {}),
     ...(restParam !== undefined ? { restParam } : {}),
+    ...(asserts ? { asserts } : {}),
   }
 }
 
@@ -487,14 +511,26 @@ export function typeToString(t: Type): string {
     case 'Literal':
       return typeof t.value === 'string' ? `"${t.value}"` : String(t.value)
     case 'Function': {
+      // Phase 2.5c — when an asserts annotation is present, the binder
+      // must be parseable back as a parameter name on round-trip. The
+      // FunctionType itself doesn't carry parameter names, so render the
+      // asserted parameter with its binder as the name (`x: Number` rather
+      // than just `Number`). Other parameters are unaffected.
       const params = [
-        ...t.params.map(typeToString),
+        ...t.params.map((p, i) => {
+          const isAssertedParam = t.asserts && t.asserts.paramIndex === i
+          return isAssertedParam ? `${t.asserts!.binder}: ${typeToString(p)}` : typeToString(p)
+        }),
         ...(t.restParam !== undefined ? [`...${typeToString(array(t.restParam))}`] : []),
       ].join(', ')
       const effectStr = effectSetToString(t.effects)
+      // Asserts-bearing functions render the predicate instead of the
+      // (always-Boolean) declared return type. The source string already
+      // includes `binder | body` shape.
+      const ret = t.asserts ? `asserts {${t.asserts.source}}` : typeToString(t.ret)
       return effectStr
-        ? `(${params}) -> ${effectStr} ${typeToString(t.ret)}`
-        : `(${params}) -> ${typeToString(t.ret)}`
+        ? `(${params}) -> ${effectStr} ${ret}`
+        : `(${params}) -> ${ret}`
     }
     case 'Handler': {
       const handledEffects = effectSetToString(effectSet([...t.handled.keys()]))
@@ -600,6 +636,7 @@ export function typeEquals(a: Type, b: Type): boolean {
         && typeEquals(a.ret, bf.ret)
         && effectSetEquals(a.effects, bf.effects)
         && handlerWrapperEquals(a.handlerWrapper, bf.handlerWrapper)
+        && assertsInfoEquals(a.asserts, bf.asserts)
     }
     case 'Handler': {
       const bh = b as typeof a
@@ -788,6 +825,17 @@ function dedup(types: Type[]): Type[] {
     }
   }
   return result
+}
+
+function assertsInfoEquals(a?: AssertsInfo, b?: AssertsInfo): boolean {
+  if (!a && !b) return true
+  if (!a || !b) return false
+  // Source-text equality is the authoritative comparison: it captures
+  // both binder name and predicate body in one stable string. AST
+  // equality across alpha-renamed predicates would need a structural
+  // walk; the source string sidesteps that until the typechecker
+  // grows a need for true alpha-equivalence.
+  return a.paramIndex === b.paramIndex && a.source === b.source
 }
 
 function handlerWrapperEquals(a?: HandlerWrapperInfo, b?: HandlerWrapperInfo): boolean {

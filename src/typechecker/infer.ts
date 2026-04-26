@@ -303,7 +303,7 @@ function varKey(t: Type): string {
   if (t.tag === 'Primitive') return `P:${t.name}`
   if (t.tag === 'Atom') return `A:${t.name}`
   if (t.tag === 'Literal') return `L:${String(t.value)}`
-  if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}`
+  if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}${t.asserts ? `:AS:${t.asserts.paramIndex}:${t.asserts.source}` : ''}`
   // The constraint cache uses these keys to skip redundant subtype checks,
   // so any field that affects subtyping must appear here. `introduced` must
   // be part of the key — `constrain`/`isSubtype` now compare it covariantly
@@ -1349,6 +1349,21 @@ export function inferExpr(
             // inference happened to produce.
             if (containsVars(declaredType)) {
               boundType = generalizeTypeVars(declaredType, -1)
+            } else if (declaredType.tag === 'Function' && declaredType.asserts && boundType.tag === 'Function') {
+              // Phase 2.5c step 3 — keep parser-surface `asserts {x | ...}`
+              // metadata on the let-bound function type after the annotation
+              // has been checked. The declared parameter surface is the
+              // call-site contract, so preserve the annotated params / rest /
+              // return while keeping the inferred effects and wrapper info
+              // from the body.
+              boundType = fn(
+                declaredType.params,
+                declaredType.ret,
+                boundType.effects,
+                boundType.handlerWrapper,
+                declaredType.restParam,
+                declaredType.asserts,
+              )
             }
           }
         } finally {
@@ -2203,6 +2218,11 @@ function freshenAllVars(
         // (Unknown or specific primitives), so this is latent — not broken.
         t.handlerWrapper,
         t.restParam !== undefined ? freshenAllVars(ctx, t.restParam, mapping, rowMapping) : undefined,
+        // asserts metadata also passes through unchanged. The predicate
+        // AST contains user-written symbol references (parameter names),
+        // not type variables — freshening type vars never alters the
+        // predicate body. Same lifecycle as handlerWrapper.
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -2308,6 +2328,7 @@ function freshenInner(
         freshenEffectSet(ctx, t.effects, rowMapping),
         t.handlerWrapper,
         t.restParam !== undefined ? freshenInner(ctx, t.restParam, mapping, rowMapping) : undefined,
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -2464,7 +2485,7 @@ function generalizeInner(t: Type, level: number, mapping: Map<string, TypeVar>):
       const restParam = t.restParam !== undefined ? generalizeInner(t.restParam, level, mapping) : undefined
       const ret = generalizeInner(t.ret, level, mapping)
       if (params.every((p, i) => p === t.params[i]) && restParam === t.restParam && ret === t.ret) return t
-      return fn(params, ret, t.effects, t.handlerWrapper, restParam)
+      return fn(params, ret, t.effects, t.handlerWrapper, restParam, t.asserts)
     }
     case 'Handler': {
       const body = generalizeInner(t.body, level, mapping)
@@ -3243,24 +3264,45 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
  * statement isn't an `assert(P)` call we can narrow.
  */
 function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type> | undefined {
-  // Recognize Call(Builtin(<assert-style builtin>), args). The set of
-  // assertion-style builtins is driven by `BuiltinTypeInfo.assertsParam`
-  // metadata (Phase 2.5c builtin-only cut), not a hardcoded name list —
-  // so adding a new assertion-style builtin is a metadata edit, no
-  // typechecker plumbing change. Today only `assert` carries it.
+  // Recognize both builtins with `assertsParam` metadata and user-declared
+  // symbol callees whose inferred function type carries parser-surface
+  // `asserts {binder | ...}` metadata.
   if (stmt[0] !== NodeTypes.Call) return undefined
   const [calleeNode, argNodes] = stmt[1] as [AstNode, AstNode[]]
-  if (calleeNode[0] !== NodeTypes.Builtin) return undefined
-  const builtinName = calleeNode[1] as string
-  const info = getBuiltinType(builtinName)
-  const paramIndex = info.assertsParam
-  if (paramIndex === undefined) return undefined
-  if (argNodes.length <= paramIndex) return undefined
-  // If the user shadowed the builtin (e.g. `let assert = ...`), the
-  // semantics could differ — be conservative and skip narrowing.
-  if (lookupShadowedBuiltin(env, builtinName)) return undefined
 
-  const predicate = argNodes[paramIndex]!
+  let paramIndex: number | undefined
+  let predicateLabel: string
+  let predicate: AstNode | undefined
+
+  if (calleeNode[0] === NodeTypes.Builtin) {
+    const builtinName = calleeNode[1] as string
+    const info = getBuiltinType(builtinName)
+    paramIndex = info.assertsParam
+    if (paramIndex === undefined) return undefined
+    if (argNodes.length <= paramIndex) return undefined
+    // If the user shadowed the builtin (e.g. `let assert = ...`), the
+    // semantics could differ — be conservative and skip narrowing.
+    if (lookupShadowedBuiltin(env, builtinName)) return undefined
+    predicateLabel = `<${builtinName}>`
+    predicate = argNodes[paramIndex]!
+  } else if (calleeNode[0] === NodeTypes.Sym) {
+    const calleeType = expandType(env.lookup(calleeNode[1] as string) ?? Unknown)
+    if (calleeType.tag !== 'Function' || !calleeType.asserts) return undefined
+    paramIndex = calleeType.asserts.paramIndex
+    if (argNodes.length <= paramIndex) return undefined
+    const assertedArg = argNodes[paramIndex]!
+    if (assertedArg[0] !== NodeTypes.Sym) return undefined
+    const binderName = assertedArg[1] as string
+    const baseType = env.lookup(binderName)
+    if (!baseType) return undefined
+    predicate = rewritePredicateBinder(calleeType.asserts.predicate, calleeType.asserts.binder, assertedArg)
+    const source = `${binderName} | ${prettyPrint(predicate).trim()}`
+    return new Map([[binderName, { tag: 'Refined', base: baseType, binder: binderName, predicate, source }]])
+  } else {
+    return undefined
+  }
+
+  if (!predicate) return undefined
 
   // Collect free symbols that resolve to env-bound variables. Built-in
   // names (`isNumber`, `count`, etc.) and unresolved symbols don't count.
@@ -3272,7 +3314,7 @@ function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type>
   // single free symbol as the binder. Anything outside the fragment
   // can't be reasoned about by the solver, so we skip narrowing.
   try {
-    fragmentCheckPredicate(predicate, binderName, `<${builtinName}>`, 0)
+    fragmentCheckPredicate(predicate, binderName, predicateLabel, 0)
   } catch {
     return undefined
   }
@@ -3302,6 +3344,63 @@ function extractAssertNarrowings(stmt: AstNode, env: TypeEnv): Map<string, Type>
   const refined: Type = { tag: 'Refined', base: baseType, binder: binderName, predicate, source }
 
   return new Map([[binderName, refined]])
+}
+
+function rewritePredicateBinder(node: AstNode, binder: string, replacement: AstNode): AstNode {
+  const rewritten = new Map<AstNode, AstNode>()
+  const stack: { node: AstNode; exiting: boolean }[] = [{ node, exiting: false }]
+
+  while (stack.length > 0) {
+    const frame = stack.pop()!
+    const current = frame.node
+
+    if (frame.exiting) {
+      rewritten.set(current, rewritePredicateNode(current, binder, replacement, rewritten))
+      continue
+    }
+
+    stack.push({ node: current, exiting: true })
+
+    if (current[0] === NodeTypes.Call && Array.isArray(current[1])) {
+      const [callee, args] = current[1] as [AstNode, AstNode[]]
+      for (let index = args.length - 1; index >= 0; index--) stack.push({ node: args[index]!, exiting: false })
+      stack.push({ node: callee, exiting: false })
+      continue
+    }
+
+    if ((current[0] === NodeTypes.And || current[0] === NodeTypes.Or) && Array.isArray(current[1])) {
+      const operands = current[1] as AstNode[]
+      for (let index = operands.length - 1; index >= 0; index--) stack.push({ node: operands[index]!, exiting: false })
+    }
+  }
+
+  return rewritten.get(node) ?? node
+}
+
+function rewritePredicateNode(
+  node: AstNode,
+  binder: string,
+  replacement: AstNode,
+  rewritten: Map<AstNode, AstNode>,
+): AstNode {
+  if (node[0] === NodeTypes.Sym && node[1] === binder) return replacement
+
+  if (node[0] === NodeTypes.Call && Array.isArray(node[1])) {
+    const [callee, args, hints] = node[1] as [AstNode, AstNode[], unknown]
+    const rewrittenCallee = rewritten.get(callee) ?? callee
+    const rewrittenArgs = args.map(arg => rewritten.get(arg) ?? arg)
+    if (rewrittenCallee === callee && rewrittenArgs.every((arg, index) => arg === args[index])) return node
+    return [NodeTypes.Call, [rewrittenCallee, rewrittenArgs, hints], node[2]] as unknown as AstNode
+  }
+
+  if ((node[0] === NodeTypes.And || node[0] === NodeTypes.Or) && Array.isArray(node[1])) {
+    const operands = node[1] as AstNode[]
+    const rewrittenOperands = operands.map(operand => rewritten.get(operand) ?? operand)
+    if (rewrittenOperands.every((operand, index) => operand === operands[index])) return node
+    return [node[0], rewrittenOperands, node[2]] as AstNode
+  }
+
+  return node
 }
 
 /**
@@ -5097,6 +5196,7 @@ function expandTypeForMatchAnalysis(t: Type, visited = new Set<string>()): Type 
         t.effects,
         t.handlerWrapper,
         t.restParam !== undefined ? expandTypeForMatchAnalysis(t.restParam, new Set(visited)) : undefined,
+        t.asserts,
       )
 
     case 'Handler': {
@@ -5283,6 +5383,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
         t.restParam !== undefined
           ? expandType(t.restParam, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))
           : undefined,
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -5402,6 +5503,7 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
         t.restParam !== undefined
           ? expandTypeForDisplay(t.restParam, polarity === 'positive' ? 'negative' : 'positive', new Set(visited))
           : undefined,
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -5472,6 +5574,7 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
         t.effects,
         t.handlerWrapper,
         t.restParam !== undefined ? sanitizeDisplayType(t.restParam, true) : undefined,
+        t.asserts,
       )
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()

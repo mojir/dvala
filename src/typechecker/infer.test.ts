@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { parse } from '../parser'
+import { parse, parseToAst as parseProgramAst } from '../parser'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { builtin } from '../builtin'
@@ -91,6 +91,27 @@ function inferType(source: string): Type {
   return result
 }
 
+function inferProgram(source: string): { result: Type; env: TypeEnv; typeMap: Map<number, Type> } {
+  const rewritten = fixtureWithOpaqueIfCond(source)
+  if (rewritten !== source) {
+    declareEffect('__fold_opaque', NullType, BooleanType)
+  }
+  const tokenStream = tokenize(rewritten, false, undefined)
+  const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
+  const ast = parseProgramAst(minified)
+  const ctx = new InferenceContext()
+  const env = new TypeEnv()
+  const typeMap = new Map<number, Type>()
+
+  let result: Type = Never
+  ctx.typeAnnotations = ast.typeAnnotations ?? new Map()
+  ctx.typeParams = ast.typeParams
+  for (const node of ast.body) {
+    result = inferExpr(node, ctx, env, typeMap)
+  }
+  return { result, env, typeMap }
+}
+
 /**
  * Prepare the source so that any `if true` / `if false` patterns embedded in
  * test fixtures don't narrow under C8 (if-literal fold). Replaces literal
@@ -126,6 +147,24 @@ function inferAndExpand(source: string): Type {
   const result = inferType(source)
   return simplify(expandType(result))
 }
+
+describe('inferExpr bindings', () => {
+  it('let-bound assertion function annotations stay on the env binding', () => {
+    const { env } = inferProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> true;
+      assertPositive
+    `)
+    const bound = env.lookup('assertPositive')
+    expect(bound?.tag).toBe('Function')
+    if (!bound || bound.tag !== 'Function') {
+      throw new Error('expected assertPositive to bind as a Function')
+    }
+
+    expect(bound.asserts?.paramIndex).toBe(0)
+    expect(bound.asserts?.binder).toBe('x')
+    expect(typeToString(bound)).toContain('asserts {x | x > 0}')
+  })
+})
 
 // ---------------------------------------------------------------------------
 // Constrain function
