@@ -25,6 +25,7 @@ import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases, restoreTypeAl
 import { installPreludeAliases } from './prelude'
 import { builtin } from '../builtin'
 import { expandMacros } from '../ast/expandMacros'
+import { verifyAssertionFunctionBodies } from './assertsBodyVerify'
 
 // ---------------------------------------------------------------------------
 // Diagnostic types
@@ -273,6 +274,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   const env = new TypeEnv()
   const typeMap = new Map<number, Type>()
   inferNodesRecoveringErrors(expandedAst.body, ctx, env, typeMap, diagnostics, sourceMap)
+  diagnostics.push(...verifyAssertionFunctionBodies(expandedAst))
 
   return { diagnostics, typeMap, sourceMap: sourceMap?.positions }
 }

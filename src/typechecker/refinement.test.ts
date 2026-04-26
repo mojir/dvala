@@ -1474,6 +1474,28 @@ describe('refinement types — Phase 2.5c (builtin-metadata cut)', () => {
     expect(result.diagnostics).toHaveLength(0)
     expect(refinedCount).toBe(0)
   })
+
+  it('rejects handler-install blocks inside assertion function bodies', () => {
+    const dvala = createDvala()
+    const result = dvala.typecheck(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        do with handler @dvala.error(err) -> resume(true) end; assert(x > 0) end;
+      1
+    `)
+
+    expect(result.diagnostics.some(d => d.message.includes('may not install handlers'))).toBe(true)
+  })
+
+  it('rejects direct recursion inside assertion function bodies', () => {
+    const dvala = createDvala()
+    const result = dvala.typecheck(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        assertPositive(x);
+      1
+    `)
+
+    expect(result.diagnostics.some(d => d.message.includes('may not recurse'))).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------
