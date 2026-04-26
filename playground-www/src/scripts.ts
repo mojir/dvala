@@ -4528,13 +4528,13 @@ function reportTypeDiagnostics(diagnostics: TypeDiagnostic[]): void {
 
 // Run typecheck on the given source and emit diagnostics. Never throws —
 // any unexpected typecheck failure is swallowed so it cannot block run().
+// We log to the console so a typechecker bug isn't silently invisible in dev.
 function typecheckAndReport(code: string): void {
   try {
     const result = getDvala().typecheck(code)
     reportTypeDiagnostics(result.diagnostics)
-  } catch {
-    // Typecheck is best-effort during run; surfacing internal failures here
-    // would obscure the actual runtime output the user is after.
+  } catch (error) {
+    console.warn('Pre-run typecheck failed:', error)
   }
 }
 
