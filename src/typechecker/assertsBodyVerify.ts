@@ -240,6 +240,9 @@ function statementGuarantees(
     const elseProven = terminalProves(elseNode ?? thenNode, info, assertionFunctions, proven, stack)
     return thenProven && elseProven
   }
+  if (node[0] === NodeTypes.Match) {
+    return matchProves(node, info, assertionFunctions, proven, stack)
+  }
   return establishesTargetPredicate(node, info, assertionFunctions, stack)
 }
 
@@ -260,7 +263,43 @@ function terminalProves(
     const elseProven = terminalProves(elseNode ?? thenNode, info, assertionFunctions, proven, stack)
     return thenProven && elseProven
   }
+  if (node[0] === NodeTypes.Match) {
+    return matchProves(node, info, assertionFunctions, proven, stack)
+  }
   return establishesTargetPredicate(node, info, assertionFunctions, stack)
+}
+
+/**
+ * `match` proof check — every case body must prove the asserted
+ * predicate, since each case is a possible normal-return path. Mirrors
+ * the `If` treatment with both branches required to prove.
+ *
+ * Guards (`case n when cond then ...`) are treated opaquely in v1.
+ * The existing `If` case narrows when the condition itself matches the
+ * target predicate; a future revision could extend the same trick to
+ * guards if real cases call for it.
+ *
+ * Case-pattern bindings (`case n then ...`) introduce a new name `n`
+ * bound to the scrutinee's value. The verifier doesn't track this
+ * substitution — assertions inside the case body that reference `n`
+ * (rather than the outer asserted parameter) won't match the target
+ * predicate. Users either reference the outer name in the assert, or
+ * accept the conservative rejection. Pattern-aware substitution is
+ * a future enhancement, gated on demand.
+ */
+function matchProves(
+  node: AstNode,
+  info: AssertionFunctionInfo,
+  assertionFunctions: AssertionFunctionInfo[],
+  proven: boolean,
+  stack: Set<AssertionFunctionInfo>,
+): boolean {
+  const [, cases] = node[1] as [AstNode, [BindingTarget, AstNode, AstNode | undefined][]]
+  // Every case body must establish the predicate. An empty match
+  // (no cases) is structurally degenerate — fail the proof so the
+  // user sees a diagnostic rather than a silent accept.
+  if (cases.length === 0) return false
+  return cases.every(([, body]) => terminalProves(body, info, assertionFunctions, proven, stack))
 }
 
 function establishesTargetPredicate(

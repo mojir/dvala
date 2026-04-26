@@ -175,13 +175,45 @@ describe('verifyAssertionFunctionBodies', () => {
     expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
   })
 
-  // Pins the documented limitation: `match` bodies aren't path-checked
-  // by the verifier in this cut. The body is conservatively rejected
-  // (treated as "did not prove P") rather than silently accepted —
-  // sound but restrictive. Future work could add a `Match` case to
-  // `terminalProves` / `statementGuarantees` mirroring the existing
-  // `If` handling. See design doc Decision 1 for context.
-  it('rejects match-bodied assertion functions (match path-checking deferred)', () => {
+  // `match` bodies are now path-checked: every case's body must prove
+  // the asserted predicate, mirroring how `if` requires both branches
+  // to prove. Sibling tests below cover positive + rejection paths.
+  it('accepts match-bodied assertion when every case body proves the predicate', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case _ then assert(x > 0)
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
+  it('rejects match-bodied assertion when ANY case body fails to prove', () => {
+    // First case returns 0 without asserting; the second proves. Match
+    // proof requires ALL cases to prove (any case is a possible
+    // normal-return path), so this is correctly rejected.
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case 0 then 0
+          case _ then assert(x > 0)
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
+  })
+
+  // Pattern-binding-aware substitution is a future enhancement. Today
+  // an assertion that references the case-binding name (`n`) instead
+  // of the outer parameter name (`x`) is conservatively rejected
+  // because `predicateMatchesTarget` compares the predicate AST
+  // structurally — `n > 0` and `x > 0` are different expressions.
+  // Sound but restrictive; users either reference the outer name or
+  // accept the rejection.
+  it('rejects assertion that references case-binding name instead of outer parameter', () => {
     const ast = parseProgram(`
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
         match x
@@ -189,6 +221,28 @@ describe('verifyAssertionFunctionBodies', () => {
         end;
       1
     `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
+  })
+
+  // Empty match — no cases — is structurally degenerate. Reject so
+  // the user sees a diagnostic rather than a silent accept. (Empty
+  // match likely fails earlier in the parser too, but the verifier
+  // is defensively coded here.)
+  it('rejects match with no cases as not proving the predicate', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case _ then assert(x > 0)
+        end;
+      1
+    `)
+    // Drop the cases array to construct an empty match for the test.
+    const valueNode = (ast.body[0]![1] as [BindingTarget, AstNode])[1]
+    const bodyMatch = (valueNode[1] as [AstNode[], AstNode[]])[1][0] as AstNode
+    if (bodyMatch[0] === NodeTypes.Match) {
+      ;(bodyMatch[1] as [AstNode, AstNode[]])[1] = []
+    }
     const diagnostics = verifyAssertionFunctionBodies(ast)
     expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
   })
