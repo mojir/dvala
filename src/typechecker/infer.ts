@@ -5478,12 +5478,12 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
 
       if ((t.displayUpperBounds?.length ?? 0) > 0) {
         const candidates = t.displayUpperBounds!.map(ub => expandTypeForDisplay(ub, 'positive', new Set(visited)))
-        return normalizeDisplayCandidates(candidates)
+        return intersectDisplayCandidates(candidates)
       }
 
       if (t.lowerBounds.length === 0 && t.upperBounds.length > 0) {
         const candidates = t.upperBounds.map(ub => expandTypeForDisplay(ub, 'positive', new Set(visited)))
-        return normalizeDisplayCandidates(candidates)
+        return intersectDisplayCandidates(candidates)
       }
 
       if (polarity === 'positive') {
@@ -5783,6 +5783,26 @@ function normalizeDisplayCandidates(candidates: Type[]): Type {
   if (candidates.length === 0) return Never
   if (candidates.length === 1) return candidates[0]!
   return normalizeDisplayUnion(candidates)
+}
+
+/**
+ * Combine multiple upper-bound candidates for display. A Var is a
+ * subtype of every upper bound, so the displayable value is their
+ * INTERSECTION (`Number & (Number | String)` simplifies to `Number`),
+ * not their union. Using union here was a bug: an assert-narrowed
+ * parameter Var picks up the call-site signature's wider arg type
+ * (e.g. `Number | String` from a multi-overload `assert` builtin) as
+ * an extra upper bound, and a union display would surface that
+ * spurious `String` in error messages.
+ *
+ * `simplify` collapses the literal `inter(...)` to its tightest
+ * representation when possible (subset absorption etc.), giving the
+ * cleanest display for the common case of `[narrow, wider]` bounds.
+ */
+function intersectDisplayCandidates(candidates: Type[]): Type {
+  if (candidates.length === 0) return Unknown
+  if (candidates.length === 1) return candidates[0]!
+  return simplify(inter(...candidates))
 }
 
 // ---------------------------------------------------------------------------

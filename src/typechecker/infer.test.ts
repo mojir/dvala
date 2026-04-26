@@ -2759,6 +2759,26 @@ describe('expandTypeForDisplay — complex type shapes', () => {
     expect(result.tag).not.toBe('Var')
   })
 
+  // A Var that has multiple upperBounds (e.g. an assert-narrowed
+  // parameter accumulating both its declared type and the wider
+  // type of an `assert(...)` call's signature) used to render as
+  // the UNION of its upper bounds — surfacing spurious members like
+  // `Number | String` for a `Number`-declared param. Display should
+  // show the INTERSECTION (Var is a subtype of every upper bound),
+  // which simplify reduces to the tightest single type when one
+  // member subsumes the others.
+  it('expands Var with overlapping upperBounds as the intersection (not union)', () => {
+    const ctx = new InferenceContext()
+    const v = ctx.freshVar()
+    // Mirrors the assert-narrowed pattern: a `Number` declared bound
+    // plus a wider `Number | String` that flowed in from a builtin
+    // signature. The displayed type should be `Number`, not the
+    // union.
+    v.upperBounds = [NumberType, union(NumberType, StringType)]
+    const result = expandTypeForDisplay(v)
+    expect(typeToString(result)).toBe('Number')
+  })
+
   it('expands Function with rest param', () => {
     const f = fn([NumberType], StringType, undefined, undefined, NumberType)
     const result = expandTypeForDisplay(f)
