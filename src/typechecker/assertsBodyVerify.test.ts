@@ -190,6 +190,27 @@ describe('verifyAssertionFunctionBodies', () => {
     expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
   })
 
+  // Exercises the `statementGuarantees` path (vs `terminalProves`).
+  // The match is mid-sequence — every case body proves P, then a
+  // trailing expression continues. Without `matchProves` being
+  // called from `statementGuarantees`, the trailing statement would
+  // start with proven=false and the function as a whole would be
+  // rejected. With it, the loop in `sequenceProves` correctly
+  // inherits proven=true into the next statement.
+  it('accepts match in non-terminal position when every case proves the predicate', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> do
+        match x
+          case _ then assert(x > 0)
+        end;
+        x
+      end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
   it('rejects match-bodied assertion when ANY case body fails to prove', () => {
     // First case returns 0 without asserting; the second proves. Match
     // proof requires ALL cases to prove (any case is a possible
@@ -226,10 +247,12 @@ describe('verifyAssertionFunctionBodies', () => {
   })
 
   // Empty match — no cases — is structurally degenerate. Reject so
-  // the user sees a diagnostic rather than a silent accept. (Empty
-  // match likely fails earlier in the parser too, but the verifier
-  // is defensively coded here.)
-  it('rejects match with no cases as not proving the predicate', () => {
+  // the user sees a diagnostic rather than a silent accept. The
+  // parser likely rejects empty match upstream (parseMatch requires
+  // at least one `case` token); this test mutates a parsed AST
+  // synthetically to exercise the verifier's defensive path. End-to-
+  // end parse-and-verify of an empty match shouldn't be reachable.
+  it('rejects synthetically-empty match (defensive verifier path)', () => {
     const ast = parseProgram(`
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
         match x

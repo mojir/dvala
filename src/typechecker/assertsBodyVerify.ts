@@ -274,6 +274,15 @@ function terminalProves(
  * predicate, since each case is a possible normal-return path. Mirrors
  * the `If` treatment with both branches required to prove.
  *
+ * Called from both `terminalProves` (the match is the function's
+ * terminal expression) and `statementGuarantees` (the match is in
+ * non-terminal position; if every case proves P, downstream
+ * statements inherit proven=true via the `sequenceProves` loop).
+ * Each case body is itself a terminal expression *within* its case,
+ * so we recurse via `terminalProves` regardless of caller — the
+ * same shape `If` uses for its non-terminal `statementGuarantees`
+ * case.
+ *
  * Guards (`case n when cond then ...`) are treated opaquely in v1.
  * The existing `If` case narrows when the condition itself matches the
  * target predicate; a future revision could extend the same trick to
