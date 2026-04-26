@@ -10,7 +10,6 @@
 - `npm run test` — run tests only
 - `npm run build` — build all bundles
 - `npm run benchmarks:run` — run the Dvala pipeline perf bench (tokenize → parse → typecheck → run + refinement-typechecker scenarios); appends a row to `benchmarks/pipeline-performance.md`
-- `npm run benchmarks:show` — render the perf history as an interactive HTML chart and open it in the browser
 
 Run `npm run check` after any medium or larger code change.
 
