@@ -1857,6 +1857,16 @@ export function inferExpr(
               break
           }
 
+          // Phase 2 — guard-narrowed case body env. Mirrors the `If`
+          // treatment: when the guard is a fragment-eligible refinement
+          // predicate (e.g. `when x > 0`, `when count(xs) > 0`), the body
+          // sees the narrowed type for the referenced symbol via
+          // `narrowEnv(...whenTrue)`. Without this, a guard `when x > 0`
+          // would type-check but its narrowing implication wouldn't reach
+          // the body — so a downstream `let p: Positive = x` would
+          // silently lenient-accept (OutOfFragment) instead of being
+          // explicitly proved.
+          let bodyEnv = caseEnv
           if (guard) {
             const guardType = inferExpr(guard, ctx, caseEnv, typeMap)
             constrainBoolean(ctx, guardType, guard[2], 'The `match` guard (`when`)')
@@ -1877,10 +1887,14 @@ export function inferExpr(
                 continue
               }
             }
+            const guardNarrowings = extractIfNarrowings(guard, caseEnv)
+            if (guardNarrowings) {
+              bodyEnv = narrowEnv(caseEnv, guardNarrowings.whenTrue)
+            }
           }
 
           // Infer body type in the case scope
-          const bodyType = inferExpr(body, ctx, caseEnv, typeMap)
+          const bodyType = inferExpr(body, ctx, bodyEnv, typeMap)
           branchTypes.push(bodyType)
 
           // Subtract only what the clause definitely consumes.

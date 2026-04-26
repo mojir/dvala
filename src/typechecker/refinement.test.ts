@@ -1841,6 +1841,121 @@ describe('refinement types — Phase 2.6 (solver-aware constrain)', () => {
   })
 })
 
+// Phase 2 — verify forward propagation through structural patterns
+// (tuple destructuring) and match guard narrowing actually works
+// end-to-end. The design doc's Phase 2 description claims both work
+// for "simple patterns"; these tests pin the observable behaviors and
+// the documented edge cases.
+describe('refinement types — Phase 2 propagation through patterns', () => {
+  const dvala = createDvala()
+
+  describe('tuple destructuring forward propagation', () => {
+    // Concrete tuple → destructure → element refinements flow
+    // through to the bound names. Caught via fold-discharge (the
+    // literal value reaches the refinement check), but the literal
+    // would only flow into the binding's lowerBounds if destructuring
+    // correctly distributes the scrutinee's elements.
+    it('propagates element types through let-destructuring of a concrete tuple', () => {
+      const result = dvala.typecheck(`
+        let pair: [Positive, Number] = [5, 10];
+        let [a, b] = pair;
+        let p: Number & {n | n < 0} = a;
+        p
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('accepts narrower destructured value flowing into wider refinement', () => {
+      const result = dvala.typecheck(`
+        let pair: [Positive, Number] = [5, 10];
+        let [a, b] = pair;
+        let p: NonZero = a;
+        p
+      `)
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+    })
+
+    // Function-param-typed-as-Tuple destructuring: elemVar gets no
+    // bounds because paramVar's declared Tuple type lives in
+    // upperBounds, not lowerBounds, and `bindPattern` uses positive-
+    // polarity expansion (which yields Never for empty lowerBounds).
+    // This is the standard typechecker lazy-Var behavior, NOT a
+    // refinement-specific gap. The eager check fires when concrete
+    // values flow in (call site), not at the function definition.
+    it('function-param tuple destructuring is lazy at definition time', () => {
+      const result = dvala.typecheck(`
+        let f = (pair: [Positive, Number]) -> do
+          let [a, b] = pair;
+          let p: Number & {n | n < 0} = a;
+          p
+        end
+      `)
+      // Definition typechecks (lazy); the contradictory bound is
+      // detected at the call site instead.
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+    })
+
+    it('function-param tuple destructuring rejects bad concrete arg at call site', () => {
+      const result = dvala.typecheck(`
+        let f = (pair: [Positive, Number]) -> do
+          let [a, b] = pair;
+          a
+        end;
+        f([-5, 10])
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('match guard narrowing on the case binding', () => {
+    // The interesting case: an asymmetric guard that narrows in the
+    // OPPOSITE direction of what the body expects. Without guard
+    // narrowing in match (the bug this PR fixes), the body's
+    // contradictory annotation would lenient-accept via OutOfFragment.
+    // With it, the solver proves `x < 0` and `x > 0` are disjoint.
+    it('rejects body that contradicts the guard predicate', () => {
+      const result = dvala.typecheck(`
+        let f = (n: Number) -> match n
+          case x when x < 0 then do
+            let p: Positive = x;
+            p
+          end
+          case _ then 0
+        end
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+      expect(result.diagnostics[0]!.message).toMatch(/not a subtype of/)
+    })
+
+    it('accepts body matching the guard predicate', () => {
+      const result = dvala.typecheck(`
+        let f = (n: Number) -> match n
+          case x when x > 0 then do
+            let p: Positive = x;
+            p
+          end
+          case _ then 0
+        end
+      `)
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+    })
+
+    // Headline use case: a guard like `when x != 0` narrows `x` to
+    // NonZero, letting the body call a function that requires NonZero
+    // without the lenient-accept fallback masking it.
+    it('guard narrowing lets a NonZero-required call succeed', () => {
+      const result = dvala.typecheck(`
+        let safeDiv = (a: Number, b: NonZero) -> a / b;
+        let f = (n: Number) -> match n
+          case x when x != 0 then safeDiv(10, x)
+          case _ then 0
+        end
+      `)
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+    })
+  })
+})
+
 function binderRef(name: string): AstNode {
   return [NodeTypes.Sym, name, 0] as unknown as AstNode
 }
