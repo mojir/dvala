@@ -57,18 +57,30 @@ export function initBuiltinTypes(normalExpressions: BuiltinNormalExpressions): v
         type: parsed.type,
         guardParam: parsed.guardParam,
         guardType: parsed.guardType,
-        // The `asserts` annotation lives on `docs.asserts` (rather than
-        // being parsed out of the type string) — keeps the type-string
-        // grammar unchanged. The full Phase 2.5c plan adds an
-        // `asserts <param>` parser surface; this side-channel is the
-        // builtin-only stepping stone.
-        assertsParam: expr.docs?.asserts?.paramIndex,
+        assertsParam: parsed.assertsParam !== undefined
+          ? parsed.type.tag === 'Function' && parsed.type.asserts
+            ? parsed.type.asserts.paramIndex
+            : expr.docs?.asserts?.paramIndex
+          : extractAssertParamFromType(parsed.type) ?? expr.docs?.asserts?.paramIndex,
       })
     } catch {
       // Silently degrade to Unknown — the builtin works at runtime,
       // it just won't have type information for the checker.
     }
   }
+}
+
+function extractAssertParamFromType(type: Type): number | undefined {
+  if (type.tag === 'Function') return type.asserts?.paramIndex
+  if (type.tag !== 'Inter') return undefined
+
+  const assertParams = type.members
+    .filter((member): member is Extract<Type, { tag: 'Function' }> => member.tag === 'Function' && member.asserts !== undefined)
+    .map(member => member.asserts!.paramIndex)
+
+  if (assertParams.length === 0) return undefined
+  const [first] = assertParams
+  return assertParams.every(paramIndex => paramIndex === first) ? first : undefined
 }
 
 /**

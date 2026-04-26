@@ -15,7 +15,7 @@ export const assertionNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
     docs: {
-      type: '((Boolean) -> Boolean) & ((Boolean, String) -> Boolean)',
+      type: '((cond: Boolean) -> asserts {cond | cond == true}) & ((cond: Boolean, message: String) -> asserts {cond | cond == true})',
       category: 'assertion',
       description: 'If `value` is `false` it throws `AssertionError` with `message`. If no `message` is provided, the message is derived from the value. Under strict Boolean, the value must be `Boolean` — e.g. `assert(x != null, "x is null")` instead of `assert(x, "x is null")`.',
       returns: {
@@ -47,11 +47,6 @@ export const assertionNormalExpression: BuiltinNormalExpressions = {
       ],
       seeAlso: ['assertion.assertTruthy', 'assertion.assertTrue'],
       hideOperatorForm: true,
-      // Phase 2.5c — the value at index 0 is the predicate; calling
-      // `assert(P)` with a fragment-eligible single-symbol P narrows
-      // the referenced variable in subsequent statements. See
-      // `extractAssertNarrowings` in src/typechecker/infer.ts.
-      asserts: { paramIndex: 0 },
     },
   },
 }
