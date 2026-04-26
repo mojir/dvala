@@ -512,27 +512,28 @@ Every fact the solver uses must be earned by exactly one of three sound mechanis
 
 No opt-outs. No `assume`, no `unvalidated`, no cast operator. Users who want compile-time refinement without paying the boundary check can't have one — if the refinement matters enough to write, it matters enough to verify. If the cost truly can't be paid, the refinement didn't belong at that boundary; use the base type.
 
-### User-declared assertion functions — v1 says no
+### User-declared assertion functions
 
-v1 does **not** allow user-defined functions with `asserts P` in their return type. Users who want named assertion helpers call `assert(P)` directly at the narrowing site:
+User-defined functions with `asserts {binder | predicate}` in their return type are now supported, but only in the **body-verified** form. The typechecker proves that every normal-return path in the helper establishes the declared predicate before the function is trusted at call sites.
 
 ```dvala
-// Helper exists, but narrowing does not cross its boundary:
-let assertInRange = (x, lo, hi) -> assert(lo <= x && x <= hi)
-assertInRange(score, 0, 100)    // score NOT narrowed — narrowing stops at the call
+let assertInRange: (score: Number, lo: Number, hi: Number) -> asserts {score | lo <= score && score <= hi} =
+  (score, lo, hi) -> assert(lo <= score && score <= hi)
 
-// To get narrowing, inline the assert:
-assert(0 <= score && score <= 100)   // score narrowed
+let useScore = (score: Number) -> do
+  assertInRange(score, 0, 100)
+  score   // narrowed after the verified helper call
+end
 ```
 
-Rationale:
+Soundness boundary:
 
-- **Allowing user-declared `asserts P` without body verification is structurally identical to `assume P`.** Consider `let bogus: (x) -> asserts x > 0 = (x) -> x` — the body doesn't enforce the claim, but if the typechecker trusts the annotation, downstream code gets a proved fact that doesn't hold. Same unsafe-typecast hole as `assume`, wrapped in function syntax.
-- **Sound user-declared assertion functions would require a body-verification pass** — prove that every normal-return path of the function establishes the annotated predicate. Doable for simple bodies (single `assert(P)` call), but compound bodies need symbolic execution of control flow, unreachability analysis for throws, and path-sensitive narrowing accumulation. Real implementation cost, real correctness risk.
-- **v1 picks the minimal safe choice: builtin `assert` only.** Users get the narrowing; no unsoundness hole. Slight usability cost — factoring out assertion logic means the helper call doesn't narrow, so users inline `assert(P)` at the narrowing site.
-- **Aligns with the "no narrowing across function boundaries" decision.** User-declared assertion functions would be a special-case exemption to that rule; cleaner to not carve at all in v1.
+- **Unchecked `asserts P` annotations are still rejected in spirit.** Trusting a user-declared assertion helper without checking its body would still be structurally equivalent to `assume P`.
+- **The implementation therefore verifies the body** — every reachable normal-return path must establish the predicate, while throwing paths are exempt.
+- **Current restrictions:** no direct or mutual recursion, and no `do with ... end` handler-install blocks inside assertion helper bodies.
+- **Call-site effect:** once verified, the helper narrows its asserted argument through the same post-statement narrowing pipeline used by builtin `assert`.
 
-**Reconsider before implementing v1.** The body-verified form (sound user-declared assertion functions) should be re-evaluated once at the start of Phase 3 with fresh information. If assertion helpers turn out to be a dominant user pattern, the usability cost of forcing inlining may outweigh the implementation cost of body verification. Decision deferred, not closed.
+This keeps the original soundness argument intact while removing the ergonomics penalty of forcing users to inline repeated `assert(P)` checks at each narrowing site.
 
 ### Forward refinement propagation
 
@@ -805,7 +806,6 @@ IDE hover shows the **full** error message — verdict, predicate source, assump
 
 ## Open questions
 
-- **User-declared assertion functions.** v1 rejects user-defined functions with `asserts P` in their return type on soundness grounds — allowing them without body verification is structurally equivalent to `assume` (see the Narrowing section). Before Phase 3 implementation begins, **reconsider the body-verified form** (symbolic execution proving every normal-return path establishes the predicate). If assertion helpers turn out to be a dominant user pattern, the ~500-1000 LOC body-verification pass may be worth building. Decision deferred, not closed.
 - **Generalizing `count` to other projections.** v1 hardcodes `count(var)` on sequences (Array, String). A future generalization — user-declared "measure functions" (monotone projections from values to non-negative integers) — would let users express richer refinements (e.g. `type ShallowTree = Tree & {t | depth(t) <= 10}`). Open questions: how is monotonicity verified, how do measures compose, can they reference effects. Defer until concrete demand appears in Phase 3+ usage.
 - **`transparent` / `inline` modifier for user-declared predicates.** v1 keeps named predicate functions opaque — the solver doesn't inline their bodies. Users who need solver reasoning must inline the predicate at the refinement site. If users routinely duplicate logic between named validators and inlined predicates, a `transparent` modifier (analogous to Liquid Haskell's `INLINE` or F\*'s `reflect`) could fuse the two — mark a function whose body is fragment-eligible; the solver inlines it when it appears in a refinement. Requires body inspection, termination checks, interaction with generics. Potential v2 feature. Reconsider when usage data shows the duplication pain.
 - **Interaction with constant folding.** Fold already evaluates pure expressions at type time. Can fold discharge some Phase-2 obligations without invoking the decision procedure at all? Feels like a natural synergy — "refinement over a literal is a fold check", not a solver call.
