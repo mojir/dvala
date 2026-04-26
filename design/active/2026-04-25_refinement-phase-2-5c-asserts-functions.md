@@ -108,7 +108,9 @@ The five open questions raised during design review have been resolved. Recordin
 
 ### 1. Body-verification fragment scope — **(c) full control flow**
 
-Body may include `if`/`match`/early-return; every reachable normal-return path must prove `P`; throwing paths are exempt.
+Body may include `if`/early-return; every reachable normal-return path must prove `P`; throwing paths are exempt.
+
+**Implementation note (filled in post-ship, 2026-04-26):** the verifier landed with `if` + `Block` + early-return support; **`match` proof-checking is deferred** to a follow-up. A `match`-bodied assertion helper today is conservatively rejected (treated as "did not prove P" because the verifier walks Match's children with `walkAstChildren` rather than path-sensitively). Sound but restrictive — users hitting this can either factor the body into an `if`-chain or wait for the match handling to land. Tracked as a future addition; the verifier's `terminalProves`/`statementGuarantees` machinery would gain a `Match` case mirroring how it handles `If`. The book chapter at `book/05-advanced/08-refinement-types.md` describes the actual shipped behavior ("simple control-flow propagation") — this design doc's earlier broader claim was the inconsistency.
 
 **Why:** Phases 2.5a and 2.5b already built the path-sensitive assumption-accumulation machinery, so (c) reuses it rather than building from scratch — real cost is ~400–700 LOC, not 10× (b). And (b) is annoyingly restrictive in practice: users can't write the natural form
 

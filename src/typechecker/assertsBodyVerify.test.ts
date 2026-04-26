@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseToAst } from '../parser'
 import { NodeTypes } from '../constants/constants'
+import { parseToAst } from '../parser'
 import type { AstNode, BindingTarget } from '../parser/types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
@@ -172,6 +172,24 @@ describe('verifyAssertionFunctionBodies', () => {
 
     const diagnostics = verifyAssertionFunctionBodies(ast)
 
+    expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
+  })
+
+  // Pins the documented limitation: `match` bodies aren't path-checked
+  // by the verifier in this cut. The body is conservatively rejected
+  // (treated as "did not prove P") rather than silently accepted —
+  // sound but restrictive. Future work could add a `Match` case to
+  // `terminalProves` / `statementGuarantees` mirroring the existing
+  // `If` handling. See design doc Decision 1 for context.
+  it('rejects match-bodied assertion functions (match path-checking deferred)', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case n then assert(n > 0)
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
     expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
   })
 })

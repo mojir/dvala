@@ -78,14 +78,15 @@ For non-literal sources (function parameters, expression results), use `assert` 
 You can also package a repeated refinement check as a named assertion helper:
 
 ```dvala
-let assertPositive: (value: Number) -> asserts {value | value > 0} =
-	(value) -> assert(value > 0);
+let assertPositive: (value: Number) -> asserts { value | value > 0 } = (value) -> assert(
+  value > 0
+);
 
 let usePositive = (value: Positive) -> value;
 
 let f = (x: Number) -> do
-	assertPositive(x);
-	usePositive(x)
+  assertPositive(x);
+  usePositive(x);
 end;
 ```
 
