@@ -899,10 +899,12 @@ test.describe('playground effects', () => {
   test('editor.typeText types characters into the editor', async ({ page }) => {
     await setDvalaCode(page, 'do perform(@playground.editor.setContent, ""); perform(@playground.editor.typeText, "hi"); perform(@playground.editor.getContent) end')
     await clickRun(page)
-    // typeText is async with setTimeout delays — wait longer
+    // typeText is async with setTimeout delays — wait longer.
+    // Look for the actual expected content, not just span count, since the
+    // pre-run typecheck pass adds spans before the result span lands.
     await page.waitForFunction(() => {
       const output = document.getElementById('output-result')
-      return output && output.querySelectorAll('span').length >= 2
+      return !!output && (output.textContent ?? '').includes('hi')
     }, { timeout: 8000 })
     const output = await getOutputText(page)
     expect(output).toContain('hi')
@@ -913,7 +915,7 @@ test.describe('playground effects', () => {
     await clickRun(page)
     await page.waitForFunction(() => {
       const output = document.getElementById('output-result')
-      return output && output.querySelectorAll('span').length >= 2
+      return !!output && (output.textContent ?? '').includes('ab')
     }, { timeout: 8000 })
     const output = await getOutputText(page)
     expect(output).toContain('ab')
