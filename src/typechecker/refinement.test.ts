@@ -1788,6 +1788,51 @@ describe('refinement types — Phase 2.6 (solver-aware constrain)', () => {
       expect(result.diagnostics).toHaveLength(0)
     })
   })
+
+  // Pre-fix bug (filed in Phase 2.6 design as a known limitation):
+  // `varKey` for `Refined` types fell through to `return t.tag`,
+  // which collapsed every Refined to the same cache key. The
+  // constraint cache then short-circuited the second member of a
+  // `Union<Refined1, Refined2>` after the first failed, silently
+  // "proving" the call. Fix: include base + source in `varKey` for
+  // Refined nodes.
+  describe('Union-of-Refined RHS at call sites (cycle-guard fix)', () => {
+    it('rejects argument outside both Refined members', () => {
+      const result = dvala.typecheck(`
+        let f = (x: Number & {n | n > 0} | Number & {n | n < -10}) -> x;
+        f(0)
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('accepts argument inside the first Refined member', () => {
+      const result = dvala.typecheck(`
+        let f = (x: Number & {n | n > 0} | Number & {n | n < -10}) -> x;
+        f(5)
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    it('accepts argument inside the second Refined member', () => {
+      const result = dvala.typecheck(`
+        let f = (x: Number & {n | n > 0} | Number & {n | n < -10}) -> x;
+        f(-20)
+      `)
+      expect(result.diagnostics).toHaveLength(0)
+    })
+
+    // Three-member union exercises the cache-poisoning case more
+    // thoroughly: pre-fix, only the FIRST member would actually be
+    // checked; the next two would short-circuit-as-proven.
+    // Argument 0 satisfies none: not > 0, not < -10, not == 100.
+    it('rejects argument outside all three Refined members', () => {
+      const result = dvala.typecheck(`
+        let f = (x: Number & {n | n > 0} | Number & {n | n < -10} | Number & {n | n == 100}) -> x;
+        f(0)
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+  })
 })
 
 function binderRef(name: string): AstNode {
