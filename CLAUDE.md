@@ -163,3 +163,4 @@ createModalPanel({
 
 Sizes: small=480px, medium=800px, large=1200px. If `markdown` is provided, body is auto-rendered. If `footerActions` provided, footer buttons are auto-created. Snapshot panel uses `createModalPanel({ size: 'large' })`.
 
+In general when coding under src/, make sure code coverage is 100% (or near 100% )for new code. Also apply boy scout principle, try to improve code coverage on neighbouring code
