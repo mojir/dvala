@@ -1685,6 +1685,12 @@ describe('refinement types — Phase 2.6 (solver-aware constrain)', () => {
       `)
       expect(result.diagnostics.length).toBeGreaterThan(0)
       expect(result.diagnostics[0]!.message).toMatch(/not a subtype of/)
+      // The displayed source type should be `Number & {n | n < 0}` —
+      // not the historical `Number | String & {n | n < 0}` artifact
+      // where `assert`'s wider arg-overload type leaked into the
+      // narrowed Var's upperBounds and got unioned for display.
+      expect(result.diagnostics[0]!.message).not.toMatch(/String/)
+      expect(result.diagnostics[0]!.message).toMatch(/Number & \{n \| n < 0\}/)
     })
 
     it('rejects literal -5 flowing through Var into Positive', () => {
