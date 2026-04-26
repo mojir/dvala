@@ -61,15 +61,22 @@ If the playground design's Phase 0 is also running, doing both at the same time 
 
 **Approach:** mechanical swap; keep current structure (no formal workspaces). The project is structured *like* a monorepo but isn't formally one — that's fine, and we don't need to change it as part of this migration.
 
-- `pnpm install` to generate `pnpm-lock.yaml`. Delete `package-lock.json`.
+- `pnpm install` locally to generate `pnpm-lock.yaml`. **Commit the lockfile and delete `package-lock.json` from git in the same change** — CI uses `--frozen-lockfile` and will fail on a fresh checkout if the lockfile isn't tracked.
+- Add `"packageManager": "pnpm@<version>"` to root `package.json`. Corepack uses this to auto-install the correct pnpm version on a fresh checkout, so contributors don't need a manual `npm i -g pnpm` step.
+- Add `"engines": { "node": ">=22 <23" }` to root `package.json` if not already present. Pairs with `.nvmrc` (section 2) and lets `engine-strict=true` actually enforce something.
 - Update all CI workflows to use `pnpm/action-setup@v4` + `pnpm install --frozen-lockfile`.
 - Update the pre-push hook to `pnpm run benchmarks:run`.
 - Update inline references in `package.json` scripts (`check`, `benchmarks:*`, the `npm install --prefix` inside wireit's typecheck task).
 - Move `overrides` to `pnpm.overrides` with the same content.
-- Optionally add `.npmrc` with `auto-install-peers=true` if peer-dep warnings get noisy (pnpm's default is stricter than npm's).
-- **Smoke-test `vsce package`** against the migrated environment before merging — this is the highest-risk surface. If vsce trips on pnpm's symlinked node_modules, fall back to `vsce package --no-dependencies` in the build script. vsce 3.0+ has improved pnpm support; this should usually work without intervention but verify.
+- Add `.npmrc` with: `auto-install-peers=true` (pnpm's default is stricter than npm's), and optionally `engine-strict=true` to enforce the Node version on install.
+- **Smoke-test `vsce package`** against the migrated environment before merging — this is the highest-risk surface. Fallback chain in order: (1) try `vsce package` as-is — vsce 3.0+ usually handles pnpm. (2) If it trips on symlinked node_modules, add `--no-dependencies` to the vsce invocation in `vscode-dvala/build.mjs` (preserves strict layout but skips dep validation). (3) If that's still problematic, set `node-linker=hoisted` in `.npmrc` — this makes pnpm produce a flat node_modules like npm does, sacrificing the strict-layout phantom-dep benefit but eliminating most "tool doesn't understand symlinks" issues.
+- **Smoke-test wireit caching** after migration: a fresh `pnpm run check:no-fix` followed by an immediate second run should be fast (cache hit). Confirms wireit's content-tracking still works under pnpm's symlinked node_modules.
 
 **Phantom-dep risk.** pnpm enforces "you can only import what you declared." Code that imports something a transitive dep happens to bring in will fail under pnpm. Most projects find 0–3 such cases. Fix is trivial (add the missing dep to `package.json`).
+
+**`npx` calls in scripts.** [package.json](package.json) has many `npx` invocations (`npx tsx`, `npx playwright`, `npx serve`, `npx @modelcontextprotocol/inspector`). These keep working under pnpm — `npx` is a Node tool, not npm-specific. **Leave them alone.** Mass-converting to `pnpm dlx` is churn for no functional benefit.
+
+**`npm publish` for the publish step.** [publish.yml:33](.github/workflows/publish.yml#L33) uses `npm publish --provenance --access public`. **Keep this as `npm publish`** even after the migration — npm's publish pipeline is what the npm registry expects, and `--provenance` is well-tested with npm. Use pnpm everywhere else; use `npm` only for the registry-publishing step.
 
 ### 2. Pin Node version (`.nvmrc` or `.tool-versions`)
 
@@ -94,13 +101,15 @@ This pairs well with the playground design's Phase 0 import audit — knip can d
 
 ### 4. `tsgo` opt-in (TypeScript-Go preview)
 
-Microsoft's Go port of the TypeScript compiler — typically ~10x faster than `tsc` for typecheck. As of early 2026, still in preview as `@typescript/native-preview`.
+Microsoft's Go port of the TypeScript compiler — typically ~10x faster than `tsc` for typecheck. As of early 2026, still in preview as `@typescript/native-preview` (verify the exact package name at install time — it has shifted before and may be renamed at 1.0).
 
-Add as a parallel `typecheck:fast` script alongside the existing `typecheck`:
+Add as a parallel `typecheck:fast` script alongside the existing `typecheck`. The existing wireit typecheck task does `npm install --prefix vscode-dvala && tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit` — the `--prefix` install ensures vscode-dvala's deps are present. `typecheck:fast` mirrors that:
 
 ```jsonc
-"typecheck:fast": "tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit"
+"typecheck:fast": "pnpm install --dir vscode-dvala && tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit"
 ```
+
+(If skipping the install in the inner dev loop materially helps, add a `typecheck:fast:no-install` variant for when vscode-dvala deps are already up to date.)
 
 **The `tsc` task in CI is unchanged.** Use `tsgo` locally for fast iteration, especially during Phase 0/1 of the playground design where typecheck-watch matters for HMR DX. If `tsgo` errors on this codebase, the script just doesn't get used — no failure.
 
@@ -132,25 +141,29 @@ Until those, `tsgo` stays opt-in.
 
 ### Step 1: pnpm migration (single PR)
 
-1. Run `pnpm install` locally to generate `pnpm-lock.yaml`. Delete `package-lock.json`.
-2. Move `"overrides"` to `"pnpm": { "overrides": { ... } }` in root `package.json`.
-3. Update all `package.json` scripts that reference `npm` (specifically lines 131, 144, 145, 216 of root + any in vscode-dvala). Update `npm install --prefix` to `pnpm install --dir`.
-4. Update all four GitHub workflows: `pnpm/action-setup@v4`, `cache: 'pnpm'`, `pnpm install --frozen-lockfile`, `pnpm run ...`, and `pnpm version` in release.yml.
-5. Update `.githooks/pre-push` to use `pnpm run benchmarks:run`.
-6. Smoke test `vsce package` (build the VS Code extension) — ensure it produces a `.vsix` indistinguishable from the npm-built one. If it fails, add `--no-dependencies` to the vsce invocation in `vscode-dvala/build.mjs`.
-7. Update README + CONTRIBUTING (or equivalent) with `pnpm install` instead of `npm install`. Update CLAUDE.md "Key Commands" section.
-8. Run the full `pnpm run check:no-fix` pipeline to confirm no regressions. Surface any phantom-dep failures and add the missing deps to `package.json`.
+1. Run `pnpm install` locally to generate `pnpm-lock.yaml`. **Stage `pnpm-lock.yaml` for commit; remove `package-lock.json` from git in the same change.** CI uses `--frozen-lockfile` and will fail on a fresh checkout if the new lockfile isn't committed.
+2. Add `"packageManager": "pnpm@<latest>"` to root `package.json`. Add `"engines": { "node": ">=22 <23" }` if not already present.
+3. Move `"overrides"` to `"pnpm": { "overrides": { ... } }` in root `package.json`.
+4. Add a root `.npmrc` with `auto-install-peers=true` and (optionally) `engine-strict=true`.
+5. Update all `package.json` scripts that reference `npm` (specifically [package.json:131](package.json#L131) `check`, [package.json:144-145](package.json#L144) `benchmarks:*`, [package.json:216](package.json#L216) inside the wireit `typecheck` task). Convert `npm install --prefix` → `pnpm install --dir`. Leave `npx` calls alone.
+6. Update all four GitHub workflows: `pnpm/action-setup@v4`, `cache: 'pnpm'`, `pnpm install --frozen-lockfile`, `pnpm run ...`. In `release.yml` update `npm version` → `pnpm version`. In `publish.yml` **keep `npm publish`** (registry compatibility).
+7. Update [.githooks/pre-push](.githooks/pre-push) to use `pnpm run benchmarks:run`.
+8. Smoke test `vsce package` (build the VS Code extension) — ensure it produces a `.vsix` indistinguishable from the npm-built one. Fallback chain on failure: try `vsce package --no-dependencies` first; if that's still problematic, set `node-linker=hoisted` in `.npmrc` (loses strict layout but flattens node_modules to npm-like).
+9. Smoke test wireit caching: clean `.wireit`, run `pnpm run check:no-fix` twice. Second run should be substantially faster (cache hit). Confirms wireit's file-tracking works under pnpm's symlinked layout.
+10. Update [CLAUDE.md](CLAUDE.md) — replace `npm run` with `pnpm run` in: "Key Commands" section (lines 9-14, 22, 27), "Demo Convention" section (lines 56, 93-95, 106), "Skills & Agents" section (line 121). Update "Run npm run check after any medium or larger code change" wording to match. (Note: README.md's user-facing `npm install @mojir/dvala` examples on lines 100, 130 are end-user install instructions — leave those as-is. No CONTRIBUTING file exists.)
+11. Run the full `pnpm run check:no-fix` pipeline to confirm no regressions. Surface any phantom-dep failures and add the missing deps to `package.json`.
+12. **Note for whoever lands the PR:** the first CI run after this PR will be slow (cold pnpm cache). GitHub Actions cache key changes when `package-lock.json` → `pnpm-lock.yaml`. Subsequent runs are fast.
 
 ### Step 2: tooling additions (same PR or fast-follow)
 
-9. Add `.nvmrc` pinning Node 22 (or `.tool-versions` if preferred).
-10. `pnpm add -D knip`. Create `knip.json` with reasonable defaults. Add `"knip": "knip"` script. Run once locally; document any baseline issues but don't block on them.
-11. `pnpm add -D @typescript/native-preview`. Add `"typecheck:fast": "tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit"` script. Try it once on this codebase; if it errors, document and revert (tsgo opt-in fails to land but doesn't block the rest of the PR).
-12. Update CLAUDE.md to document: pnpm as the package manager, `.nvmrc` for Node version, `pnpm run knip` for dead-code checks, `pnpm run typecheck:fast` as the opt-in fast typecheck.
+13. Add `.nvmrc` pinning Node 22 (or `.tool-versions` if preferred).
+14. `pnpm add -D knip`. Create `knip.json` with reasonable defaults. Add `"knip": "knip"` script. Run once locally; document any baseline issues but don't block on them.
+15. `pnpm add -D @typescript/native-preview` (verify package name first — see section 4 caveat). Add `"typecheck:fast": "pnpm install --dir vscode-dvala && tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit"` script. Try it once on this codebase; if it errors, document and revert (tsgo opt-in fails to land but doesn't block the rest of the PR).
+16. Update [CLAUDE.md](CLAUDE.md) again to document: pnpm as the package manager (already done in step 10 above), `.nvmrc` for Node version, `pnpm run knip` for dead-code checks, `pnpm run typecheck:fast` as the opt-in fast typecheck. Add "Toolchain" section if not already present.
 
 ### Step 3: knip baseline cleanup (follow-up PR, not blocking)
 
-13. If knip surfaced unused exports/files/deps, address them in a separate PR. Promote knip to a CI hard-gate once the codebase is clean.
+17. If knip surfaced unused exports/files/deps, address them in a separate PR. Promote knip to a CI hard-gate (add to `check` pipeline) once the codebase is clean — until then, it stays a warn-only manual command.
 
 ---
 
