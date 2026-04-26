@@ -15,6 +15,7 @@ import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { buildDocTree, formatSource, getAutoCompleter, getUndefinedSymbols, parseToCst, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
+import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
 import { createAstTreeViewer } from './components/astTreeViewer'
 import { renderBenchmarksCharts } from './components/benchmarksPage'
 import type { EditorMenuItem } from './editorMenu'
@@ -3720,6 +3721,12 @@ window.onload = async function () {
           evt.preventDefault()
           tokenize()
           break
+        // evt.key for Shift+T is uppercase 'T' on most layouts —
+        // match it explicitly so Ctrl+Shift+T triggers typecheck.
+        case 'T':
+          evt.preventDefault()
+          typecheck()
+          break
         case 'p':
           evt.preventDefault()
           parse()
@@ -4335,6 +4342,10 @@ export async function run() {
 
   appendOutput(title, 'comment')
 
+  // Always typecheck before running. Diagnostics are informational and
+  // never block evaluation — matches the createDvala design contract.
+  typecheckAndReport(code)
+
   const startTime = performance.now()
   document.body.classList.add('dvala-running')
   const dvalaParams = getDvalaParamsFromContext()
@@ -4453,6 +4464,10 @@ export function runSync() {
 
   appendOutput(title, 'comment')
 
+  // Always typecheck before running. Diagnostics are informational and
+  // never block evaluation — matches the createDvala design contract.
+  typecheckAndReport(code)
+
   const startTime = performance.now()
   const hijacker = hijackConsole()
   try {
@@ -4493,6 +4508,58 @@ export function analyze() {
     appendOutput(error, 'error')
   } finally {
     hijacker.releaseConsole()
+    focusDvalaCode()
+  }
+}
+
+// Render type diagnostics into the output panel. Errors are styled red,
+// warnings yellow. Used by the standalone Typecheck action AND prepended
+// to every Run / Run sync invocation so users always see type issues.
+function reportTypeDiagnostics(diagnostics: TypeDiagnostic[]): void {
+  for (const d of diagnostics) {
+    const loc = d.sourceCodeInfo
+      ? `line ${d.sourceCodeInfo.position.line}, col ${d.sourceCodeInfo.position.column}: `
+      : ''
+    const prefix = d.severity === 'error' ? '[type error]' : '[type warning]'
+    const className: OutputType = d.severity === 'error' ? 'error' : 'warn'
+    appendOutput(`${prefix} ${loc}${d.message}`, className)
+  }
+}
+
+// Run typecheck on the given source and emit diagnostics. Never throws —
+// any unexpected typecheck failure is swallowed so it cannot block run().
+function typecheckAndReport(code: string): void {
+  try {
+    const result = getDvala().typecheck(code)
+    reportTypeDiagnostics(result.diagnostics)
+  } catch {
+    // Typecheck is best-effort during run; surfacing internal failures here
+    // would obscure the actual runtime output the user is after.
+  }
+}
+
+export function typecheck() {
+  addOutputSeparator()
+
+  const selectedCode = getSelectedDvalaCode()
+  const code = selectedCode.code || getState('dvala-code')
+  const title = selectedCode.code ? 'Typecheck selection' : 'Typecheck'
+
+  appendOutput(title, 'comment')
+
+  try {
+    const result = getDvala().typecheck(code)
+    if (result.diagnostics.length === 0) {
+      appendOutput('No type errors', 'analyze')
+    } else {
+      reportTypeDiagnostics(result.diagnostics)
+      const errors = result.diagnostics.filter(d => d.severity === 'error').length
+      const warnings = result.diagnostics.filter(d => d.severity === 'warning').length
+      appendOutput(`${errors} error(s), ${warnings} warning(s)`, 'comment')
+    }
+  } catch (error) {
+    appendOutput(error, 'error')
+  } finally {
     focusDvalaCode()
   }
 }
