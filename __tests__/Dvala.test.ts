@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { DvalaError, UndefinedSymbolError } from '../src/errors'
+import { DvalaError, ReferenceError } from '../src/errors'
 import { Cache } from '../src/Cache'
 import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, transformSymbols, untokenize } from '../src/tooling'
 import type { Ast } from '../src/parser/types'
@@ -168,8 +168,8 @@ describe('all tests', () => {
       }
     })
     it('name not recognized', () => {
-      expect(() => dvala.run('asd()')).toThrowError(UndefinedSymbolError)
-      expect(() => dvala.run('asd')).toThrowError(UndefinedSymbolError)
+      expect(() => dvala.run('asd()')).toThrowError(ReferenceError)
+      expect(() => dvala.run('asd')).toThrowError(ReferenceError)
     })
 
     it('unexpected argument', () => {

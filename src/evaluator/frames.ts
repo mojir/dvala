@@ -120,7 +120,7 @@ export interface OrFrame {
 /**
  * Nullish coalescing `??` — evaluates nodes sequentially, returning the
  * first non-null value. Undefined user-defined symbols are treated as null
- * (skipped without throwing `UndefinedSymbolError`).
+ * (skipped without throwing `ReferenceError`).
  */
 export interface QqFrame {
   type: 'Qq'

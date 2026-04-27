@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
 import { createDvala } from '../../src/createDvala'
-import type { UserDefinedError } from '../../src/errors'
+import type { UserError } from '../../src/errors'
 import { DvalaError, MatchError } from '../../src/errors'
 import { getUndefinedSymbols } from '../../src/tooling'
 
@@ -29,7 +29,7 @@ describe('specialExpressions', () => {
       dvalaNoDebug.run('perform(@dvala.error, { message: slice("An error", 3) })')
       failed = true
     } catch (error) {
-      expect((error as UserDefinedError).message).toBe('error')
+      expect((error as UserError).message).toBe('error')
     }
     if (failed)
       throw new Error('Should have thrown an error')
@@ -39,7 +39,7 @@ describe('specialExpressions', () => {
       dvalaDebug.run('perform(@dvala.error, { message: slice("An error", 3) })')
       failed = true
     } catch (error) {
-      expect((error as UserDefinedError).message).toBe(
+      expect((error as UserError).message).toBe(
         'error\nLocation 1:1\nperform(@dvala.error, { message: slice("An error", 3) })\n^                                                       ',
       )
     }

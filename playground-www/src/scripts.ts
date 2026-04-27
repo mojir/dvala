@@ -5543,8 +5543,6 @@ export function closeAllModals() {
   resolveSnapshotModal?.()
   resolveSnapshotModal = null
 }
-export const closeSnapshotModal = closeAllModals
-
 export function openImportSnapshotModal() {
   const input = document.createElement('input')
   input.type = 'file'
@@ -6130,7 +6128,7 @@ export async function resumeSnapshot() {
   if (!currentSnapshot)
     return
   const snapshot = currentSnapshot
-  closeSnapshotModal()
+  closeAllModals()
   addOutputSeparator()
   appendOutput(`Resume snapshot ${snapshot.index}:`, 'comment')
   const dvalaParams = getDvalaParamsFromContext()
@@ -7126,7 +7124,7 @@ function initExecutionControlBar() {
     if (pendingEffects.length > 0) {
       haltCurrentEffectHandler()
     } else {
-      closeSnapshotModal()
+      closeAllModals()
       hideExecutionControlBar()
     }
   })

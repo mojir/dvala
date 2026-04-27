@@ -2,7 +2,7 @@ import type { SpecialExpression } from '../builtin'
 import { builtin, specialExpressionKeys } from '../builtin'
 import { normalExpressions } from '../builtin/normalExpressions'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
-import { TypeError, UndefinedSymbolError } from '../errors'
+import { ReferenceError, TypeError } from '../errors'
 import type { Any } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { NormalBuiltinFunction, SourceMap, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
@@ -310,7 +310,7 @@ export class ContextStackImpl {
     if (isContextEntry(lookUpResult))
       return lookUpResult.value
 
-    throw new UndefinedSymbolError(node[1], this.resolve(node[2]))
+    throw new ReferenceError(node[1], this.resolve(node[2]))
   }
 }
 
