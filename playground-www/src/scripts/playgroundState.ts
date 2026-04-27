@@ -45,6 +45,8 @@ export const state: {
   snapshotExecutionControlsVisible: boolean
   activeSnapshotKey: string | null
   sideSnapshotsShowAll: boolean
+  autoSaveTimer: ReturnType<typeof setTimeout> | null
+  scratchEditedTimer: ReturnType<typeof setTimeout> | null
 } = {
   pendingEffects: [],
   currentEffectIndex: 0,
@@ -61,4 +63,6 @@ export const state: {
   snapshotExecutionControlsVisible: false,
   activeSnapshotKey: null,
   sideSnapshotsShowAll: false,
+  autoSaveTimer: null,
+  scratchEditedTimer: null,
 }

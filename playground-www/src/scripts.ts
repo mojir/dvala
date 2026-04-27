@@ -2021,32 +2021,30 @@ export function openContextJsonModal() {
 
 // ─── Auto-save ────────────────────────────────────────────────────────────────
 
-let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 // Timer to clear the scratch "edited" indicator after a short delay (mirrors auto-save UX)
-let scratchEditedTimer: ReturnType<typeof setTimeout> | null = null
 const PENDING_INDICATOR_DELAY = 1000
 
 function scheduleScratchEditedClear() {
   // dvala-code-edited persists as the durable "user touched scratch" flag.
-  // The timer only drives the transient pending indicator via scratchEditedTimer !== null.
+  // The timer only drives the transient pending indicator via state.scratchEditedTimer !== null.
   saveState({ 'dvala-code-edited': true }, false)
-  if (scratchEditedTimer) clearTimeout(scratchEditedTimer)
-  scratchEditedTimer = setTimeout(() => {
-    scratchEditedTimer = null
+  if (state.scratchEditedTimer) clearTimeout(state.scratchEditedTimer)
+  state.scratchEditedTimer = setTimeout(() => {
+    state.scratchEditedTimer = null
     updateCSS()
   }, PENDING_INDICATOR_DELAY)
 }
 
 function cancelScratchEditedClear() {
-  if (!scratchEditedTimer) return
-  clearTimeout(scratchEditedTimer)
-  scratchEditedTimer = null
+  if (!state.scratchEditedTimer) return
+  clearTimeout(state.scratchEditedTimer)
+  state.scratchEditedTimer = null
 }
 
 function flushPendingAutoSave() {
-  if (!autoSaveTimer) return
-  clearTimeout(autoSaveTimer)
-  autoSaveTimer = null
+  if (!state.autoSaveTimer) return
+  clearTimeout(state.autoSaveTimer)
+  state.autoSaveTimer = null
   const id = getState('current-file-id')
   if (id) {
     const updated = getSavedFiles().map(p =>
@@ -2070,9 +2068,9 @@ function scheduleAutoSave() {
   const currentId = getState('current-file-id')
   if (!currentId) return
   if (getSavedFiles().find(p => p.id === currentId)?.locked) return
-  if (autoSaveTimer) clearTimeout(autoSaveTimer)
-  autoSaveTimer = setTimeout(() => {
-    autoSaveTimer = null
+  if (state.autoSaveTimer) clearTimeout(state.autoSaveTimer)
+  state.autoSaveTimer = setTimeout(() => {
+    state.autoSaveTimer = null
     const id = getState('current-file-id')
     if (!id) return
     const updated = getSavedFiles().map(p =>
@@ -6986,7 +6984,7 @@ export function updateCSS() {
       : ''
   const currentFileTitle = currentFile ? currentFile.name : SCRATCH_TITLE
   const showCodePendingIndicator =
-    !isContextTab && !isLocked && (autoSaveTimer !== null || (currentFileId === null && scratchEditedTimer !== null))
+    !isContextTab && !isLocked && (state.autoSaveTimer !== null || (currentFileId === null && state.scratchEditedTimer !== null))
   const showSaveScratchButton = currentFileId === null && hasScratchContent() && getCurrentSideTab() !== 'snapshots'
   // Title string: only shown for context tab (shows binding/handler name)
   elements.dvalaCodeTitleString.textContent = isContextTab ? contextTitle : ''
