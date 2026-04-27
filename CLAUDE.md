@@ -21,6 +21,8 @@ When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI
 
 The `.githooks/pre-push` hook automates this: when you push a commit that touched any `src/` file and HEAD's hash isn't yet in `benchmarks/pipeline-history.json`, it runs the bench, aborts the push, and asks you to commit the bench data and re-push. Install once per clone with `pnpm run install-hooks` (sets `core.hooksPath=.githooks`). Disable with `pnpm run uninstall-hooks`.
 
+**Multi-commit gotcha:** the bench tags rows with HEAD's hash. If you stack docs/test/config commits on top of a src/ change before pushing, HEAD won't be the src/-touching commit and the hook will refuse to push (with a clear "rebase or --no-verify" error). Easiest path: push the src/-touching commit on its own first — let the hook bench it — then stack follow-ups. Don't try to run `pnpm run benchmarks:run` proactively from a HEAD that's already past the src/ change; the row gets tagged with the wrong SHA.
+
 **Escape hatch:** for trivially non-perf-relevant `src/` changes (comment typo, dead-code removal, error-message wording), bypass the gate with `git push --no-verify`. The hook is intentionally conservative — broader-than-necessary so we don't miss a regression. Use `--no-verify` thoughtfully; if in doubt, run the bench.
 
 Manual flow if you skip the hook:
