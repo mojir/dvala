@@ -1,11 +1,11 @@
-import type { Any, Coll, Obj } from '../interface'
+import type { Any } from '../interface'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import { isAtom, isColl, isObj, isRegularExpression } from '../typeGuards/dvala'
+import { isAtom, isColl, isRegularExpression } from '../typeGuards/dvala'
 import { isNumber } from '../typeGuards/number'
 import { asString, assertStringOrNumber } from '../typeGuards/string'
 import { isUnknownRecord } from '../typeGuards'
 import { TypeError } from '../errors'
-import { isPersistentMap, isPersistentVector, PersistentMap } from './persistent'
+import { isPersistentMap, isPersistentVector } from './persistent'
 
 export function collHasKey(coll: unknown, key: string | number): boolean {
   if (!isColl(coll))
@@ -122,28 +122,6 @@ export function toNonNegativeInteger(num: number): number {
 
 export function toAny(value: unknown): Any {
   return (value ?? null) as Any
-}
-
-function cloneValue<T>(value: T): T {
-  if (isPersistentMap(value)) {
-    // PersistentMap is already immutable — return as-is (structural sharing)
-    return value
-  }
-  if (isPersistentVector(value)) {
-    // PersistentVector is already immutable — return as-is
-    return value
-  }
-  if (isObj(value)) {
-    // Internal plain-object clone (should rarely be needed after HAMT migration)
-    return Object.entries(value as Obj).reduce((result: Obj, [key, val]) => {
-      return result.assoc(key, cloneValue(val))
-    }, PersistentMap.empty()) as unknown as T
-  }
-  return value
-}
-
-export function cloneColl<T extends Coll>(value: T): T {
-  return cloneValue(value)
 }
 
 export function joinSets<T>(...results: Set<T>[]): Set<T> {
