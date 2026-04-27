@@ -21,7 +21,7 @@ import { createDvala } from '../src/createDvala'
 import type { RunResult } from '../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../src/allModules'
 import { MatchError } from '../src/errors'
-import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, transformSymbols, untokenize } from '../src/tooling'
+import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../src/tooling'
 
 const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
 const dvalaDebug = createDvala({ modules: allBuiltinModules, debug: true, disableAutoCheckpoint: true })
@@ -927,13 +927,6 @@ describe('dvala API edge cases', () => {
   it('parse produces an AST', () => {
     const ast = parseTokenStream(tokenizeSource('1 + 2'))
     expect(ast.body.length).toBe(1)
-  })
-
-  it('transformSymbols transforms user-defined symbols', () => {
-    const ts = tokenizeSource('let x = 1; x + y')
-    const transformed = transformSymbols(ts, s => s === 'x' ? 'a' : s)
-    const result = untokenize(transformed)
-    expect(result).toBe('let a = 1; a + y')
   })
 
   it('getAutoCompleter returns an object', () => {
