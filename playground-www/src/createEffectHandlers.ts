@@ -24,7 +24,7 @@ export function createEffectHandlers(api: PlaygroundAPI): HandlerRegistration[] 
             if (result instanceof Promise) {
               return result.then(r => ctx.resume((r ?? null) as Any)).catch(e => ctx.fail((e as Error).message))
             }
-            ctx.resume((result ?? null) as Any)
+            ctx.resume((result ?? null))
           } catch (err) {
             ctx.fail(err instanceof Error ? err.message : String(err))
           }

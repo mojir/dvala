@@ -6789,7 +6789,7 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
 // Non-blocking print handler — appends to output panel and resumes immediately
 function outputPrintHandler(ctx: EffectContext): void {
   const value = ctx.arg
-  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+  const text = typeof value === 'string' ? value : stringifyValue(value, false)
   appendOutput(text, 'output')
   ctx.resume(value)
 }
@@ -6797,7 +6797,7 @@ function outputPrintHandler(ctx: EffectContext): void {
 function ioErrorHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
     const value = ctx.arg
-    const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+    const text = typeof value === 'string' ? value : stringifyValue(value, false)
 
     const submit = () => {
       ctx.resume(value)
@@ -6874,7 +6874,7 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
     }
 
     const submit = (index: number | null) => {
-      ctx.resume(index as Any)
+      ctx.resume(index)
       resolve()
       resolveCurrentEffect()
       focusDvalaCode()
@@ -6958,7 +6958,7 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
     }
 
     const submit = (value: boolean) => {
-      ctx.resume(value as Any)
+      ctx.resume(value)
       resolve()
       resolveCurrentEffect()
       focusDvalaCode()
@@ -7151,16 +7151,16 @@ function syncIoPickHandler(ctx: EffectContext): void {
   }
   const trimmed = result.trim()
   if (trimmed === '') {
-    ctx.resume((defaultIndex !== undefined ? defaultIndex : null) as Any)
+    ctx.resume((defaultIndex !== undefined ? defaultIndex : null))
     return
   }
   const parsed = Number(trimmed)
-  ctx.resume(parsed as Any)
+  ctx.resume(parsed)
 }
 
 function syncIoConfirmHandler(ctx: EffectContext): void {
   const question = typeof ctx.arg === 'string' ? ctx.arg : ''
-  ctx.resume(window.confirm(question) as Any)
+  ctx.resume(window.confirm(question))
 }
 
 function syncReadlineHandler(ctx: EffectContext): void {
@@ -7171,14 +7171,14 @@ function syncReadlineHandler(ctx: EffectContext): void {
 
 function syncPrintlnHandler(ctx: EffectContext): void {
   const value = ctx.arg
-  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+  const text = typeof value === 'string' ? value : stringifyValue(value, false)
   window.alert(text)
   ctx.resume(value)
 }
 
 function syncIoErrorHandler(ctx: EffectContext): void {
   const value = ctx.arg
-  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+  const text = typeof value === 'string' ? value : stringifyValue(value, false)
   window.alert(`Error: ${text}`)
   ctx.resume(value)
 }

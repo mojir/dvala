@@ -35,5 +35,5 @@ export function parseArray(ctx: ParserContext): ArrayNode {
   const node = withSourceCodeInfo([NodeTypes.Array, params, 0], firstToken[2], ctx)
   ctx.setNodeEnd(node[2])
   ctx.builder?.endNode()
-  return node as ArrayNode
+  return node
 }

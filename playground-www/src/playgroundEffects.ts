@@ -282,7 +282,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       category: 'playground-effect',
       description: e.description,
       args: args as EffectReference['args'],
-      returns: e.returns as EffectReference['returns'],
+      returns: e.returns,
       variants: e.variants,
       examples: e.examples,
     }

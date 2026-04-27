@@ -228,7 +228,7 @@ function parseResume(ctx: ParserContext): AstNode {
       argNode = ctx.parseExpression()
     } else {
       // resume() — no arg, equivalent to resume(null)
-      argNode = withSourceCodeInfo([NodeTypes.Reserved, 'null' as const, 0], token[2], ctx) as AstNode
+      argNode = withSourceCodeInfo([NodeTypes.Reserved, 'null' as const, 0], token[2], ctx)
     }
     if (!isRParenToken(ctx.tryPeek())) {
       throw new ParseError('Expected ")" after resume argument', ctx.peekSourceCodeInfo())

@@ -5,9 +5,9 @@
 
 ## Goal
 
-Migrate the project from npm to pnpm, plus three small co-shippable tooling additions: `.nvmrc` (or equivalent) to pin Node, **Knip** for dead-code/dep detection, and an opt-in **`tsgo`** (TypeScript-Go) script for fast typecheck iteration.
+Migrate the project from npm to pnpm, plus three co-shippable tooling additions (`.nvmrc` to pin Node, **Knip** for dead-code/dep detection, opt-in **`tsgo`** for fast typecheck iteration) and one fast-follow once the migration is on `main`: **Renovate** for automated dependency upgrades.
 
-Single small PR (or short sequence). Independent of and *not* bundled with the playground design doc ([2026-04-26_playground-monaco-tree-ls-cli.md](2026-04-26_playground-monaco-tree-ls-cli.md)) — these are infrastructure changes that complicate the playground refactor if combined.
+Single PR for the migration + co-shippable tooling, then Renovate as a fast-follow. Independent of and *not* bundled with the playground design doc ([2026-04-26_playground-monaco-tree-ls-cli.md](2026-04-26_playground-monaco-tree-ls-cli.md)) — these are infrastructure changes that complicate the playground refactor if combined.
 
 ---
 
@@ -24,7 +24,7 @@ The project is already on a 2026-native stack:
 - **TypeScript 5.9** + **Node 22**
 - **Playwright** for e2e
 
-None of these are being replaced. The work below is additive (pnpm, knip, tsgo opt-in) plus one config field migration (`overrides` → `pnpm.overrides`).
+None of these are being replaced. The work below is additive (pnpm, knip, tsgo opt-in, Renovate fast-follow) plus one config field migration (`overrides` → `pnpm.overrides`).
 
 ### What the audit found
 
@@ -69,7 +69,7 @@ If the playground design's Phase 0 is also running, doing both at the same time 
 - Update inline references in `package.json` scripts (`check`, `benchmarks:*`, the `npm install --prefix` inside wireit's typecheck task).
 - Move `overrides` to `pnpm.overrides` with the same content.
 - Add `.npmrc` with: `auto-install-peers=true` (pnpm's default is stricter than npm's), and optionally `engine-strict=true` to enforce the Node version on install.
-- **Smoke-test `vsce package`** against the migrated environment before merging — this is the highest-risk surface. Fallback chain in order: (1) try `vsce package` as-is — vsce 3.0+ usually handles pnpm. (2) If it trips on symlinked node_modules, add `--no-dependencies` to the vsce invocation in `vscode-dvala/build.mjs` (preserves strict layout but skips dep validation). (3) If that's still problematic, set `node-linker=hoisted` in `.npmrc` — this makes pnpm produce a flat node_modules like npm does, sacrificing the strict-layout phantom-dep benefit but eliminating most "tool doesn't understand symlinks" issues.
+- **Smoke-test `vsce package`** against the migrated environment before merging — this is the highest-risk surface. Note: [vscode-dvala/build.mjs:39](vscode-dvala/build.mjs#L39) already passes `--no-dependencies` to vsce, so we're starting at the safe baseline. Just rebuild and confirm the `.vsix` is byte-equivalent (or at least functional) vs. the npm-built one. If something still goes wrong (e.g. vsce can't find its own binary at `../node_modules/.bin/vsce` under pnpm's symlinked layout), the fallback is `node-linker=hoisted` in `.npmrc`, which flattens pnpm to npm-like and sacrifices strict-layout phantom-dep detection.
 - **Smoke-test wireit caching** after migration: a fresh `pnpm run check:no-fix` followed by an immediate second run should be fast (cache hit). Confirms wireit's content-tracking still works under pnpm's symlinked node_modules.
 
 **Phantom-dep risk.** pnpm enforces "you can only import what you declared." Code that imports something a transitive dep happens to bring in will fail under pnpm. Most projects find 0–3 such cases. Fix is trivial (add the missing dep to `package.json`).
@@ -103,6 +103,8 @@ This pairs well with the playground design's Phase 0 import audit — knip can d
 
 Microsoft's Go port of the TypeScript compiler — typically ~10x faster than `tsc` for typecheck. As of early 2026, still in preview as `@typescript/native-preview` (verify the exact package name at install time — it has shifted before and may be renamed at 1.0).
 
+**Status (2026-04-27 attempt):** tsgo `7.0.0-dev.20260427.1` does not run on this codebase without `tsconfig.json` changes — it errors on `downlevelIteration` (removed) and `moduleResolution: "node"` (removed; needs `"node10"`, `"node16"`, or `"bundler"`). Touching those settings is risky because it also affects `tsc`'s build. Per plan section 4, the script doesn't get used — opt-in failed to land but doesn't block the migration. Revisit when tsgo nears 1.0 and can either accept the legacy options or when we're ready to migrate to a modern `moduleResolution` value (likely `bundler` given rolldown).
+
 Add as a parallel `typecheck:fast` script alongside the existing `typecheck`. The existing wireit typecheck task does `npm install --prefix vscode-dvala && tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit` — the `--prefix` install ensures vscode-dvala's deps are present. `typecheck:fast` mirrors that:
 
 ```jsonc
@@ -121,6 +123,48 @@ Add as a parallel `typecheck:fast` script alongside the existing `typecheck`. Th
 
 Until those, `tsgo` stays opt-in.
 
+### 5. Renovate — automated dependency upgrades (fast-follow)
+
+Add [Renovate](https://github.com/apps/renovate) (Mend-hosted GitHub App, free for open-source) for grouped weekly upgrade PRs with auto-merge for low-risk updates. Lands *after* the pnpm migration is on `main`, not in the same PR — a bad pnpm interaction would otherwise be hard to attribute.
+
+**Why Renovate (not Dependabot).** Dependabot is GitHub-native and zero-config but has coarser grouping and auto-merge. With ~100 dev deps, Renovate's `packageRules` are the difference between "one weekly PR I skim" and "a dozen PRs I ignore." Renovate also has first-class pnpm support (understands `pnpm.overrides`, lockfile maintenance) and can pin GitHub Actions to commit digests for supply-chain safety.
+
+**Config sketch** (commit as `renovate.json` at repo root):
+
+```jsonc
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard", ":semanticCommits"],
+  "schedule": ["before 6am on monday"],
+  "timezone": "Europe/Stockholm",
+  "prConcurrentLimit": 5,
+  "lockFileMaintenance": { "enabled": true, "schedule": ["before 6am on monday"] },
+  "packageRules": [
+    {
+      "description": "Group dev-dep minor/patch and auto-merge",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dev dependencies (non-major)",
+      "automerge": true
+    },
+    { "matchPackagePatterns": ["^eslint", "^@typescript-eslint/", "^@stylistic/"], "groupName": "eslint ecosystem" },
+    { "matchPackageNames": ["typescript", "@typescript/native-preview"], "groupName": "typescript" },
+    { "matchPackagePatterns": ["^vitest", "^@vitest/"], "groupName": "vitest" },
+    {
+      "description": "Manual review for runtime deps and all majors",
+      "matchDepTypes": ["dependencies"], "automerge": false, "labels": ["runtime-dep"]
+    },
+    { "matchUpdateTypes": ["major"], "automerge": false, "labels": ["major-update"] },
+    { "matchManagers": ["github-actions"], "pinDigests": true }
+  ],
+  "vulnerabilityAlerts": { "labels": ["security"], "automerge": true, "schedule": ["at any time"] }
+}
+```
+
+Behavior summary: one grouped Monday PR for dev-dep minor/patch (auto-merge if `/check` passes); vulnerability alerts run any time and auto-merge; `lockFileMaintenance` weekly to refresh transitives without bumping declared ranges; runtime deps and majors always require manual review (labeled for filtering); GitHub Actions pinned to commit digests as defense against tag-rewrite supply-chain attacks.
+
+**Auto-merge prerequisites.** Branch protection on `main` already requires `/check`; Renovate inherits that gate. The GitHub App grants merge permission. `/check` must be stable — if it's flaky, auto-merge is either annoying (false fails) or dangerous (false passes). If unsure, ship with `automerge: false` everywhere and enable per-group as confidence builds.
+
 ---
 
 ## Open Questions
@@ -130,6 +174,11 @@ Until those, `tsgo` stays opt-in.
 - **Knip enforcement level.** Warn-only first vs. CI-gated immediately?
 - **Node version pin format.** `.nvmrc` (nvm-only) or `.tool-versions` (asdf/mise)? Whichever the maintainer uses locally is the better default.
 - **Whether to enable pnpm's `engine-strict=true`** to refuse install on a non-Node-22 host. Stricter, but correct given we already pin Node 22 in CI.
+- **Renovate auto-merge from day one, or warm-up period?** Recommended: ship with auto-merge enabled for dev-dep minor/patch since `/check` is comprehensive. Dial back if the first 2–3 weeks produce surprises.
+- **Renovate schedule day.** Monday before 6am means PRs ready when the week starts. Friday afternoon is the alternative (review-and-merge before weekend).
+- **Renovate concurrent PR limit.** Set to 5 in the config sketch. Lower if the dashboard gets noisy; higher if grouping leaves PRs queued.
+- **Is the `file-type` override at [package.json:3-4](package.json#L3) still needed?** If it's residue from a fixed upstream issue, drop it as a 1-line cleanup before Renovate starts proposing bumps for it. If still needed, add a `# renovate: ignore` comment so Renovate doesn't fight the pin.
+- **GitHub Actions digest-pinning churn.** `pinDigests: true` produces a PR every action release. Project has only 4 workflows so churn should be low — turn off if the noise outweighs the supply-chain safety value.
 
 ### Deferred decisions
 
@@ -141,16 +190,21 @@ Until those, `tsgo` stays opt-in.
 
 ### Step 1: pnpm migration (single PR)
 
-1. Run `pnpm install` locally to generate `pnpm-lock.yaml`. **Stage `pnpm-lock.yaml` for commit; remove `package-lock.json` from git in the same change.** CI uses `--frozen-lockfile` and will fail on a fresh checkout if the new lockfile isn't committed.
-2. Add `"packageManager": "pnpm@<latest>"` to root `package.json`. Add `"engines": { "node": ">=22 <23" }` if not already present.
-3. Move `"overrides"` to `"pnpm": { "overrides": { ... } }` in root `package.json`.
-4. Add a root `.npmrc` with `auto-install-peers=true` and (optionally) `engine-strict=true`.
-5. Update all `package.json` scripts that reference `npm` (specifically [package.json:131](package.json#L131) `check`, [package.json:144-145](package.json#L144) `benchmarks:*`, [package.json:216](package.json#L216) inside the wireit `typecheck` task). Convert `npm install --prefix` → `pnpm install --dir`. Leave `npx` calls alone.
-6. Update all four GitHub workflows: `pnpm/action-setup@v4`, `cache: 'pnpm'`, `pnpm install --frozen-lockfile`, `pnpm run ...`. In `release.yml` update `npm version` → `pnpm version`. In `publish.yml` **keep `npm publish`** (registry compatibility).
-7. Update [.githooks/pre-push](.githooks/pre-push) to use `pnpm run benchmarks:run`.
-8. Smoke test `vsce package` (build the VS Code extension) — ensure it produces a `.vsix` indistinguishable from the npm-built one. Fallback chain on failure: try `vsce package --no-dependencies` first; if that's still problematic, set `node-linker=hoisted` in `.npmrc` (loses strict layout but flattens node_modules to npm-like).
+**Order matters:** edit all configuration *before* generating the lockfile. If `pnpm install` runs while `overrides` is still at the top level instead of under `pnpm.overrides`, pnpm ignores it and the lockfile reflects the wrong resolution.
+
+1. Edit root `package.json`:
+   - Add `"packageManager": "pnpm@<latest>"` (Corepack auto-installs the matching version on fresh checkouts).
+   - Add `"engines": { "node": ">=22 <23" }`.
+   - Move `"overrides": {...}` to `"pnpm": { "overrides": {...} }`.
+2. Add root `.npmrc` with `auto-install-peers=true` and `engine-strict=true`.
+3. Update all `package.json` scripts that reference `npm` (specifically [package.json:131](package.json#L131) `check`, [package.json:144-145](package.json#L144) `benchmarks:*`, [package.json:216](package.json#L216) inside the wireit `typecheck` task). Convert `npm install --prefix` → `pnpm install --dir`. Leave `npx` calls alone.
+4. Update all four GitHub workflows: `pnpm/action-setup@v4`, `cache: 'pnpm'`, `pnpm install --frozen-lockfile`, `pnpm run ...` (covers `npm run check:no-fix` at [ci.yml:36](.github/workflows/ci.yml#L36), `npm run build` at [ci.yml:54](.github/workflows/ci.yml#L54), `npm run test:e2e` at [ci.yml:56](.github/workflows/ci.yml#L56), `npm run check:no-fix` at [publish.yml:27](.github/workflows/publish.yml#L27), `npm run build-book` at [publish.yml:31](.github/workflows/publish.yml#L31) and [deploy-pages.yml:34](.github/workflows/deploy-pages.yml#L34)). In `release.yml` update `npm version` → `pnpm version`. In `publish.yml` **keep `npm publish`** (registry compatibility).
+5. Update [.githooks/pre-push](.githooks/pre-push) to use `pnpm run benchmarks:run` (3 references: lines 11 and 136 are comments, line 139 is the live invocation — update all three for consistency).
+6. **Now** run `pnpm install` locally to generate `pnpm-lock.yaml` (the lockfile will reflect the moved `pnpm.overrides`).
+7. Stage `pnpm-lock.yaml`; `git rm package-lock.json`. CI's `--frozen-lockfile` will fail without the new lockfile committed.
+8. Smoke test `vsce package` (run `node vscode-dvala/build.mjs` or whatever the build script is). [vscode-dvala/build.mjs:39](vscode-dvala/build.mjs#L39) already uses `--no-dependencies`, so the smoke test is just "does the build still produce a usable `.vsix` under pnpm's layout?" If `vsce` can't resolve its own binary via `../node_modules/.bin/vsce`, fall back to `node-linker=hoisted` in `.npmrc`.
 9. Smoke test wireit caching: clean `.wireit`, run `pnpm run check:no-fix` twice. Second run should be substantially faster (cache hit). Confirms wireit's file-tracking works under pnpm's symlinked layout.
-10. Update [CLAUDE.md](CLAUDE.md) — replace `npm run` with `pnpm run` in: "Key Commands" section (lines 9-14, 22, 27), "Demo Convention" section (lines 56, 93-95, 106), "Skills & Agents" section (line 121). Update "Run npm run check after any medium or larger code change" wording to match. (Note: README.md's user-facing `npm install @mojir/dvala` examples on lines 100, 130 are end-user install instructions — leave those as-is. No CONTRIBUTING file exists.)
+10. Update [CLAUDE.md](CLAUDE.md) — replace `npm run` with `pnpm run` throughout: "Key Commands" section (lines 9-14, 22, 27), "Demo Convention" section (lines 56, 93-95, 106), "Skills & Agents" section (line 121). Update "Run npm run check after any medium or larger code change" wording to match. (Note: README.md's user-facing `npm install @mojir/dvala` examples on lines 100, 130 are end-user install instructions — leave those as-is. No CONTRIBUTING file exists.)
 11. Run the full `pnpm run check:no-fix` pipeline to confirm no regressions. Surface any phantom-dep failures and add the missing deps to `package.json`.
 12. **Note for whoever lands the PR:** the first CI run after this PR will be slow (cold pnpm cache). GitHub Actions cache key changes when `package-lock.json` → `pnpm-lock.yaml`. Subsequent runs are fast.
 
@@ -161,9 +215,18 @@ Until those, `tsgo` stays opt-in.
 15. `pnpm add -D @typescript/native-preview` (verify package name first — see section 4 caveat). Add `"typecheck:fast": "pnpm install --dir vscode-dvala && tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit"` script. Try it once on this codebase; if it errors, document and revert (tsgo opt-in fails to land but doesn't block the rest of the PR).
 16. Update [CLAUDE.md](CLAUDE.md) again to document: pnpm as the package manager (already done in step 10 above), `.nvmrc` for Node version, `pnpm run knip` for dead-code checks, `pnpm run typecheck:fast` as the opt-in fast typecheck. Add "Toolchain" section if not already present.
 
-### Step 3: knip baseline cleanup (follow-up PR, not blocking)
+### Step 3: Renovate setup (fast-follow, after Step 1+2 has shipped to `main`)
 
-17. If knip surfaced unused exports/files/deps, address them in a separate PR. Promote knip to a CI hard-gate (add to `check` pipeline) once the codebase is clean — until then, it stays a warn-only manual command.
+17. Audit the `file-type` override at [package.json:3-4](package.json#L3). If still needed, leave it; if residue, drop it now so Renovate doesn't immediately propose un-pinning.
+18. Install the [Renovate GitHub App](https://github.com/apps/renovate) on `mojir/dvala`. Grant the requested permissions.
+19. Renovate opens an onboarding PR titled "Configure Renovate." Replace its proposed config with the `renovate.json` from section 5 above. Merge.
+20. Review the first wave: one grouped "dev dependencies (non-major)" PR (auto-merges if `/check` passes), possibly several major-bump PRs labeled `major-update` (review individually), any vulnerability fixes labeled `security`.
+21. Update [CLAUDE.md](CLAUDE.md) with a short "Dependencies" section: Renovate runs Mondays before 6am Europe/Stockholm; dev-dep minor/patch auto-merges on green `/check`; runtime-dep and major-update PRs require manual review; the dashboard issue is the source of truth.
+22. After 2 weeks live: audit PR volume, auto-merge success rate, any deps Renovate didn't pick up. Tune `packageRules` if needed.
+
+### Step 4: knip baseline cleanup (follow-up PR, not blocking)
+
+23. If knip surfaced unused exports/files/deps, address them in a separate PR. Promote knip to a CI hard-gate (add to `check` pipeline) once the codebase is clean — until then, it stays a warn-only manual command.
 
 ---
 
@@ -171,7 +234,8 @@ Until those, `tsgo` stays opt-in.
 
 - **No external dependencies.** Doesn't gate on anything in the playground design or shared-LS plan.
 - **The playground design's Phase 0 work assumes pnpm if this lands first**, npm if it doesn't. Either ordering works; just pick one and document. Recommended order: this plan ships first (it's smaller and faster to validate), then the playground plan starts on the new package manager.
-- **Step 3 (knip baseline cleanup) is non-blocking.** Step 1 + Step 2 can ship together in one PR. Step 3 is a follow-up that doesn't gate anything.
+- **Step 3 (Renovate) sequences after Step 1+2 lands on `main`.** Same PR or concurrent PRs would muddy attribution if anything breaks. Once pnpm is on `main`, Renovate can land any time — no further gating.
+- **Step 4 (knip baseline cleanup) is non-blocking.** Step 1 + Step 2 ship together in one PR. Step 3 is a fast-follow. Step 4 doesn't gate anything.
 
 ---
 
@@ -183,5 +247,7 @@ These were considered and deliberately not included:
 - **Biome (replacing ESLint).** Project uses `@stylistic/eslint-plugin` for stylistic rules instead of Prettier; the classic "ESLint+Prettier→Biome" pitch only half-applies. Migration cost likely exceeds the speed win.
 - **Bun.** Replaces too many things at once during a phase where stability matters. Defer until there's a concrete pain point Bun would solve.
 - **TypeScript project references.** Would speed up incremental `tsc`, but `tsgo` makes most of that win moot. If `tsgo` doesn't pan out, revisit project references later.
-- **Renovate / Dependabot.** Useful but unrelated to this plan's scope.
+- **Snyk / Socket.dev / supply-chain risk analysis.** Distinct concern (malicious packages, install scripts, license risk) from version freshness. Renovate's `vulnerabilityAlerts` covers known CVEs; deeper supply-chain analysis is a separate decision.
+- **`pnpm audit` as a hard CI gate.** Renovate's `vulnerabilityAlerts` already opens PRs for fixable CVEs. Adding `pnpm audit` to the `check` pipeline is redundant and produces noise on advisories that have no fix yet.
+- **Self-hosted Renovate.** Mend's hosted version is free for open-source and adequate at this scale.
 - **Formal pnpm workspaces.** Would require giving sub-trees their own `package.json` files. The project isn't structured that way today and there's no concrete benefit until shared-LS extraction happens. Revisit when shared modules need their own publish surface.

@@ -3,7 +3,6 @@ import { builtin } from '../../builtin'
 import type { AndNode } from '../../builtin/specialExpressions/and'
 import type { ArrayNode } from '../../builtin/specialExpressions/array'
 import type { EffectNode } from '../../builtin/specialExpressions/effect'
-import type { ImportNode } from '../../builtin/specialExpressions/import'
 import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'
 import type { OrNode } from '../../builtin/specialExpressions/or'
 import type { PerformNode } from '../../builtin/specialExpressions/perform'
@@ -75,7 +74,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
         throw new ParseError('import expects a string argument, e.g. import("math")', resolveSourceCodeInfo(param[2], ctx.sourceMap) ?? symbolSci)
       }
       const moduleName = param[1] as string
-      const node = withSourceCodeInfo([NodeTypes.Import, moduleName, 0], symbolDebugInfo, ctx) as ImportNode
+      const node = withSourceCodeInfo([NodeTypes.Import, moduleName, 0], symbolDebugInfo, ctx)
       ctx.setNodeEnd(node[2])
       return node
     }
@@ -199,7 +198,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
 function parseEffectArgs(ctx: ParserContext, symbolDebugInfo: TokenDebugInfo | undefined): EffectNode {
   const firstToken = ctx.peek()
   if (!isSymbolToken(firstToken)) {
-    throw new ParseError('effect expects a dotted name identifier', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
+    throw new ParseError('effect expects a dotted name identifier', ctx.resolveTokenDebugInfo(firstToken[2]))
   }
   let name = firstToken[1]
   ctx.advance()
@@ -207,7 +206,7 @@ function parseEffectArgs(ctx: ParserContext, symbolDebugInfo: TokenDebugInfo | u
     ctx.advance() // skip dot
     const nextToken = ctx.peek()
     if (!isSymbolToken(nextToken)) {
-      throw new ParseError('Expected identifier after dot in effect name', ctx.resolveTokenDebugInfo(nextToken[2] as TokenDebugInfo))
+      throw new ParseError('Expected identifier after dot in effect name', ctx.resolveTokenDebugInfo(nextToken[2]))
     }
     name += `.${nextToken[1]}`
     ctx.advance()
@@ -216,7 +215,7 @@ function parseEffectArgs(ctx: ParserContext, symbolDebugInfo: TokenDebugInfo | u
     throw new ParseError('Expected closing parenthesis after effect name', ctx.peekSourceCodeInfo())
   }
   ctx.advance()
-  const node = withSourceCodeInfo([NodeTypes.Effect, name, 0], symbolDebugInfo, ctx) as EffectNode
+  const node = withSourceCodeInfo([NodeTypes.Effect, name, 0], symbolDebugInfo, ctx)
   ctx.setNodeEnd(node[2])
   return node
 }

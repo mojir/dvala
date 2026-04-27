@@ -56,7 +56,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([obj], sourceCodeInfo): Arr => {
       assertObj(obj, sourceCodeInfo)
       // Each entry is a [key, value] pair represented as a PersistentVector
-      return PersistentVector.from(obj.entries().map(([k, v]) => PersistentVector.from([k, v]) as Arr))
+      return PersistentVector.from(obj.entries().map(([k, v]) => PersistentVector.from([k, v])))
     },
     arity: toFixedArity(1),
     docs: {

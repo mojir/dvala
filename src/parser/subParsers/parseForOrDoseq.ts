@@ -64,7 +64,7 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
     while (isSymbolToken(token, 'let')) {
       const letNode = parseLet(ctx, token)
       const existingBoundNames = letBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[0])))
-      const [letTarget, letValue] = letNode[1] as [BindingTarget, AstNode]
+      const [letTarget, letValue] = letNode[1]
       const newBoundNames = Object.keys(getAllBindingTargetNames(letTarget))
       if (newBoundNames.some(n => existingBoundNames.includes(n))) {
         throw new ParseError('Duplicate binding', undefined)

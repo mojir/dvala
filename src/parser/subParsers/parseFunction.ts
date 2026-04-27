@@ -3,7 +3,6 @@ import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
-import type { TokenDebugInfo } from '../../tokenizer/token'
 import { assertLParenToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -71,7 +70,7 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
   if (isReservedSymbolToken(ctx.peek(), 'do')) {
     const doNode = parseDo(ctx)
     // Plain do...end: unwrap body expressions for multi-statement lambdas.
-    nodes = doNode[1] as AstNode[]
+    nodes = doNode[1]
   } else {
     nodes = [ctx.parseExpression()]
   }
@@ -152,7 +151,7 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   if (isReservedSymbolToken(ctx.peek(), 'do')) {
     const doNode = parseDo(ctx)
     // Plain do...end: unwrap body expressions.
-    nodes = doNode[1] as AstNode[]
+    nodes = doNode[1]
   } else {
     nodes = [ctx.parseExpression()]
   }
@@ -169,11 +168,11 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
       if (match) {
         const number = match[1] ?? '1'
         if (match[1] === '1') {
-          throw new ParseError('Use $ instead of $1 for the first argument', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
+          throw new ParseError('Use $ instead of $1 for the first argument', ctx.resolveTokenDebugInfo(firstToken[2]))
         }
         arity = Math.max(arity, Number(number))
         if (arity > maxShorthandLambdaArity)
-          throw new ParseError('Can\'t specify more than 20 arguments', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
+          throw new ParseError('Can\'t specify more than 20 arguments', ctx.resolveTokenDebugInfo(firstToken[2]))
       }
     }
   }
@@ -189,7 +188,7 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
     functionArguments,
     nodes,
     { isShorthand: true },
-  ], 0], firstToken[2], ctx) as LambdaNode
+  ], 0], firstToken[2], ctx)
 
   ctx.setNodeEnd(node[2])
   ctx.builder?.endNode()

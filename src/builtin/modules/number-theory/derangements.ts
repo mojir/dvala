@@ -59,7 +59,7 @@ export const derangementsNormalExpressions: BuiltinNormalExpressions = {
     // Returns a PersistentVector of PersistentVectors (each derangement), cast to Any
     evaluate: ([set], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
-      return PersistentVector.from(getAllDerangements(set)) as unknown as Any
+      return PersistentVector.from(getAllDerangements(set))
     },
     arity: toFixedArity(1),
   },

@@ -803,7 +803,7 @@ function partitionHelper(n: number, step: number, seq: Seq, pad: Arr | undefined
       }
     }
     // For string sequences, join the inner array chars into a string
-    result = result.append(isStringSeq ? [...innerArr].join('') as Any : innerArr as Any)
+    result = result.append(isStringSeq ? [...innerArr].join('') : innerArr)
     start += step
   }
   return result

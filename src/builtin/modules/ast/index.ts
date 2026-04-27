@@ -434,7 +434,7 @@ const astFunctions: BuiltinNormalExpressions = {
       return (isPersistentVector(node) || Array.isArray(node))
         && nodeSize(node) >= 2
         && typeof nodeElem(node, 0) === 'string'
-        && isNodeType(nodeElem(node, 0) as string)
+        && isNodeType(nodeElem(node, 0))
     },
     arity: toFixedArity(1),
     docs: {

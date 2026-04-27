@@ -42,7 +42,7 @@ export function parseString(ctx: ParserContext, token: StringToken): StringNode 
       },
     )
 
-  const node = withSourceCodeInfo([NodeTypes.Str, value, 0], token[2], ctx) as StringNode
+  const node = withSourceCodeInfo([NodeTypes.Str, value, 0], token[2], ctx)
   ctx.setNodeEnd(node[2])
   ctx.builder?.endNode()
   return node

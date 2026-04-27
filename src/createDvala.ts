@@ -214,7 +214,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         if (effectHandlers) {
           // toJS converts PersistentVector/Map to plain JS arrays/objects so
           // host code can work with standard JS values.
-          return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers) as never)
+          return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers))
         }
         const result = evaluate(ast, contextStack)
         /* v8 ignore next 2 */
@@ -229,7 +229,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       emitTypeDiagnostics(ast)
 
       if (effectHandlers) {
-        return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers) as never)
+        return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers))
       }
 
       const result = evaluate(ast, contextStack)

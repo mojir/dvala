@@ -61,7 +61,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       if (!isSymbolToken(symbolToken)) {
         throw new ParseError('Expected symbol', ctx.peekSourceCodeInfo())
       }
-      const stringNode: StringNode = withSourceCodeInfo([NodeTypes.Str, symbolToken[1], 0], symbolToken[2], ctx) as StringNode
+      const stringNode: StringNode = withSourceCodeInfo([NodeTypes.Str, symbolToken[1], 0], symbolToken[2], ctx)
       if (safe) {
         // `a?.b` → get(a, "b") — returns null for missing key
         operand = createAccessorNode(ctx, operand, stringNode, token[2])
@@ -125,7 +125,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       // Unary minus triggers on: -x, -3, -PI, -0xFF, -[...], -{...}
       // NOT on -(  which is a prefix function call: -(a, b)
       const isUnary = nextType === 'Number' || nextType === 'Symbol'
-        || (nextType === 'ReservedSymbol' && isNumberReservedSymbol(nextToken![1] as string))
+        || (nextType === 'ReservedSymbol' && isNumberReservedSymbol(nextToken![1]))
         || nextType === 'LBracket' || nextType === 'LBrace'
         || nextType === 'string' || nextType === 'EffectName'
         || nextType === 'BasePrefixedNumber'
@@ -140,7 +140,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         // producing the nonsensical `(-x).a`.
         const operand = parseOperand(ctx)
         const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Num, 0, 0], token[2], ctx)
-        const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx) as BuiltinSymbolNode
+        const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx)
         const node = withSourceCodeInfo([NodeTypes.Call, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
         ctx.setNodeEnd(node[2])
         ctx.builder?.endNode()
@@ -169,7 +169,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         ctx.builder?.startNode('PrefixOp')
         ctx.advance()
         const operand = parseOperand(ctx)
-        const bangSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '!', 0], token[2], ctx) as BuiltinSymbolNode
+        const bangSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '!', 0], token[2], ctx)
         const node = withSourceCodeInfo([NodeTypes.Call, [bangSymbol, [operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
         ctx.setNodeEnd(node[2])
         ctx.builder?.endNode()
@@ -178,7 +178,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       // Path B: bare `!` as a first-class function value.
       ctx.builder?.startNode('Symbol')
       ctx.advance()
-      const node = withSourceCodeInfo([NodeTypes.Builtin, '!', 0], token[2], ctx) as BuiltinSymbolNode
+      const node = withSourceCodeInfo([NodeTypes.Builtin, '!', 0], token[2], ctx)
       ctx.setNodeEnd(node[2])
       ctx.builder?.endNode()
       return node
@@ -203,7 +203,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     if (operatorName === '->') {
       return parseShorthandLambdaFunction(ctx)
     } else {
-      throw new ParseError(`Illegal operator: ${operatorName}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+      throw new ParseError(`Illegal operator: ${operatorName}`, ctx.resolveTokenDebugInfo(token[2]))
     }
   }
 
@@ -279,7 +279,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       // Validate dvala.* effect names — only known standard effects are allowed.
       // Wildcards (containing *) are exempt since they're patterns, not literal names.
       if (effectName.startsWith('dvala.') && !effectName.includes('*') && !validDvalaEffects.has(effectName)) {
-        throw new ParseError(`Unknown dvala effect: '${effectName}'`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+        throw new ParseError(`Unknown dvala effect: '${effectName}'`, ctx.resolveTokenDebugInfo(token[2]))
       }
       ctx.advance()
       const node = withSourceCodeInfo([NodeTypes.Effect, effectName, 0], token[2], ctx)
@@ -289,7 +289,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     }
 
     default:
-      throw new ParseError(`Unknown token type: ${tokenType}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+      throw new ParseError(`Unknown token type: ${tokenType}`, ctx.resolveTokenDebugInfo(token[2]))
   }
 }
 

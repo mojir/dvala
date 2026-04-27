@@ -92,7 +92,7 @@ function valueToLiteralType(value: unknown): Type | null {
   if (typeof value === 'boolean') return literal(value)
   // Atom values carry a `name` field (see typeGuards/dvala isAtom).
   if (typeof value === 'object' && value !== null && 'name' in value
-    && typeof (value as { name: unknown }).name === 'string'
+    && typeof (value).name === 'string'
     && '^^atom^^' in value) {
     return atomType((value as { name: string }).name)
   }

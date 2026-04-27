@@ -1,0 +1,32 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "cli/src/cli.ts",
+    "mcp-server/src/server.ts",
+    "playground-builder/src/playground-builder.ts",
+    "playground-www/src/scripts.ts",
+    "vscode-dvala/src/extension.ts",
+    "vscode-dvala/src/debugAdapter.ts",
+    "scripts/*.{ts,mjs}",
+    "benchmarks/*.ts",
+    "__tests__/**/*.test.ts",
+    "src/**/*.test.ts",
+    "e2e/**/*.spec.ts"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "common/**/*.ts",
+    "cli/src/**/*.ts",
+    "mcp-server/src/**/*.ts",
+    "playground-builder/src/**/*.ts",
+    "playground-www/src/**/*.ts",
+    "vscode-dvala/src/**/*.ts",
+    "reference/**/*.ts",
+    "__tests__/**/*.ts",
+    "benchmarks/**/*.ts",
+    "scripts/**/*.{ts,mjs}"
+  ],
+  "ignoreDependencies": [
+    "@vscode/vsce"
+  ]
+}

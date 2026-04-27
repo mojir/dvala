@@ -16,20 +16,24 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
+          cache: 'pnpm'
           registry-url: https://registry.npmjs.org
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - run: npm run check:no-fix
+      - run: pnpm run check:no-fix
 
       - run: npx playwright install --with-deps chromium
 
-      - run: npm run build-book
+      - run: pnpm run build-book
 
+      # Use `npm publish` (not pnpm) for registry compatibility — npm's
+      # publish pipeline + --provenance is what the npm registry expects.
       - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

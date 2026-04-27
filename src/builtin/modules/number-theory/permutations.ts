@@ -45,7 +45,7 @@ export const permutationsNormalExpressions: BuiltinNormalExpressions = {
     evaluate: ([set], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
       // Convert PV to plain array for the recursive permutations helper, then wrap results
-      return PersistentVector.from(permutations([...set]).map(p => PersistentVector.from(p))) as unknown as Any
+      return PersistentVector.from(permutations([...set]).map(p => PersistentVector.from(p)))
     },
     arity: toFixedArity(1),
   },

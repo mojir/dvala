@@ -140,11 +140,11 @@ export function fromJS(value: unknown): Any {
     return value as Any
 
   if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
-    return value as Any
+    return value
 
   // Already persistent — pass through
   if (isPersistentVector(value) || isPersistentMap(value))
-    return value as Any
+    return value
 
   if (Array.isArray(value)) {
     let vec = PersistentVector.empty<Any>()

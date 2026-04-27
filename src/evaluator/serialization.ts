@@ -108,7 +108,7 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
     // Conditionally serializable — check inner values/functions
     case 'Partial': {
       const partial = fn
-      return isSerializable(partial.function as Any, visited)
+      return isSerializable(partial.function, visited)
         && [...partial.params].every(p => isSerializable(p as Any, visited))
     }
 
@@ -129,7 +129,7 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
 
     case 'Complement': {
       const complement = fn
-      return isSerializable(complement.function as Any, visited)
+      return isSerializable(complement.function, visited)
     }
 
     case 'EveryPred': {
@@ -144,7 +144,7 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
 
     case 'Fnull': {
       const fnull = fn
-      return isSerializable(fnull.function as Any, visited)
+      return isSerializable(fnull.function, visited)
         && [...fnull.params].every(p => isSerializable(p as Any, visited))
     }
 
@@ -181,7 +181,7 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
     // Check inner functions for compound function types
     if (value.functionType === 'Partial') {
       const partial = value
-      const fnIssue = describeSerializationIssue(partial.function as Any, `${path}.function`)
+      const fnIssue = describeSerializationIssue(partial.function, `${path}.function`)
       if (fnIssue)
         return fnIssue
       for (let i = 0; i < partial.params.size; i++) {
@@ -204,7 +204,7 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
 
     if (value.functionType === 'Complement') {
       const complement = value
-      return describeSerializationIssue(complement.function as Any, `${path}.function`)
+      return describeSerializationIssue(complement.function, `${path}.function`)
     }
 
     if (value.functionType === 'Constantly') {
@@ -244,7 +244,7 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
 
     if (value.functionType === 'Fnull') {
       const fnull = value
-      const fnIssue = describeSerializationIssue(fnull.function as Any, `${path}.function`)
+      const fnIssue = describeSerializationIssue(fnull.function, `${path}.function`)
       if (fnIssue)
         return fnIssue
       for (let i = 0; i < fnull.params.size; i++) {

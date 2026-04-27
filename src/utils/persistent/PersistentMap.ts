@@ -246,7 +246,7 @@ function expandCollision<V>(collision: CollisionNode<V>, leaf: LeafNode<V>, shif
   }
   // Same unsigned-comparison fix as mergeTwoLeaves — see comment there.
   const [first, second] = (bc >>> 0) < (bl >>> 0) ? [collision, leaf] : [leaf, collision]
-  return { type: 'bitmap', bitmap: bc | bl, children: [first as HNode<V>, second as HNode<V>] }
+  return { type: 'bitmap', bitmap: bc | bl, children: [first, second] }
 }
 
 // ---------------------------------------------------------------------------

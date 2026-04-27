@@ -6,12 +6,12 @@
 
 ## Key Commands
 
-- `npm run check` — full pipeline: lint + typecheck + test + build
-- `npm run test` — run tests only
-- `npm run build` — build all bundles
-- `npm run benchmarks:run` — run the Dvala pipeline perf bench (tokenize → parse → typecheck → run + refinement-typechecker scenarios); appends a row to `benchmarks/pipeline-performance.md`
+- `pnpm run check` — full pipeline: lint + typecheck + test + build
+- `pnpm run test` — run tests only
+- `pnpm run build` — build all bundles
+- `pnpm run benchmarks:run` — run the Dvala pipeline perf bench (tokenize → parse → typecheck → run + refinement-typechecker scenarios); appends a row to `benchmarks/pipeline-performance.md`
 
-Run `npm run check` after any medium or larger code change.
+Run `pnpm run check` after any medium or larger code change.
 
 When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI escape codes don't pollute the captured output (applies to `vitest`, `eslint`, etc.).
 
@@ -19,12 +19,12 @@ When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI
 
 **Source-code changes (anything under `src/`) MUST run the pipeline perf benchmark before the PR merges.**
 
-The `.githooks/pre-push` hook automates this: when you push a commit that touched any `src/` file and HEAD's hash isn't yet in `benchmarks/pipeline-history.json`, it runs the bench, aborts the push, and asks you to commit the bench data and re-push. Install once per clone with `npm run install-hooks` (sets `core.hooksPath=.githooks`). Disable with `npm run uninstall-hooks`.
+The `.githooks/pre-push` hook automates this: when you push a commit that touched any `src/` file and HEAD's hash isn't yet in `benchmarks/pipeline-history.json`, it runs the bench, aborts the push, and asks you to commit the bench data and re-push. Install once per clone with `pnpm run install-hooks` (sets `core.hooksPath=.githooks`). Disable with `pnpm run uninstall-hooks`.
 
 **Escape hatch:** for trivially non-perf-relevant `src/` changes (comment typo, dead-code removal, error-message wording), bypass the gate with `git push --no-verify`. The hook is intentionally conservative — broader-than-necessary so we don't miss a regression. Use `--no-verify` thoughtfully; if in doubt, run the bench.
 
 Manual flow if you skip the hook:
-- Run `npm run benchmarks:run` on the PR branch's tip (after the last code change).
+- Run `pnpm run benchmarks:run` on the PR branch's tip (after the last code change).
 - Commit the resulting changes to `benchmarks/pipeline-history.json` and `benchmarks/pipeline-performance.md` to the PR branch.
 - Push so the perf data is part of the PR's history.
 
@@ -53,7 +53,7 @@ Why: the rendered `.md` table is the at-a-glance regression signal during PR rev
 
 ## Demo Convention
 
-For user-facing features, include **demo blocks** in the commit message. These serve as an interactive changelog — `npm run demo [ref]` extracts them and generates playground URLs.
+For user-facing features, include **demo blocks** in the commit message. These serve as an interactive changelog — `pnpm run demo [ref]` extracts them and generates playground URLs.
 
 ### Commit message format
 
@@ -90,9 +90,9 @@ do with h; perform(@my.eff, 10) end
 ### Generating playground links
 
 ```bash
-npm run demo          # from HEAD
-npm run demo HEAD~3   # from specific ref
-npm run demo abc123   # from hash
+pnpm run demo          # from HEAD
+pnpm run demo HEAD~3   # from specific ref
+pnpm run demo abc123   # from hash
 ```
 
 ### Before committing
@@ -103,7 +103,7 @@ Always show the user a playground demo link before committing. Generate it with:
 node -e "const code = 'let x = 42; x + 1'; console.log('http://localhost:22230/?state=' + btoa(encodeURIComponent(JSON.stringify({'dvala-code': code}))))"
 ```
 
-The playground runs on `http://localhost:22230/` (start with `npm run dev`).
+The playground runs on `http://localhost:22230/` (start with `pnpm run dev`).
 
 ## Creating design documents and plans
 I encurage you to structurize bigger tasks by creating .md plans.
@@ -118,7 +118,7 @@ Use the project skills and agents proactively — don't do manually what a skill
 ### When to use skills
 
 - **`/dvala`** — Load this before writing, debugging, or reasoning about Dvala language code. Always load when you need syntax reference, AST node format, or macro details.
-- **`/check`** — After any code change, use this instead of running `npm run check` manually. It also runs e2e tests and fixes failures.
+- **`/check`** — After any code change, use this instead of running `pnpm run check` manually. It also runs e2e tests and fixes failures.
 - **`/demo`** — Before committing user-facing features. Generates playground links and formats demo blocks for commit messages.
 - **`/design`** — When the user asks to create a design document or plan.
 - **`/fix-issue`** — When the user asks to fix a GitHub issue by number.
