@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { indexWorkspace, loadFile } from './nodeWorkspaceIndexer'
 import { WorkspaceIndex } from './WorkspaceIndex'
 
 describe('WorkspaceIndex', () => {
@@ -229,8 +230,8 @@ describe('WorkspaceIndex', () => {
     it('resolves imports and tracks the import graph', () => {
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; let e = 2.71; { pi, e }')
       const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const mainSymbols = index.getFileSymbols(mainPath)
       expect(mainSymbols).not.toBeNull()
       expect([...mainSymbols!.imports.values()]).toContain(libPath)
@@ -239,8 +240,8 @@ describe('WorkspaceIndex', () => {
     it('findDefinition resolves cross-file symbols', () => {
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       // Find reference to `pi` in main (the `pi * 2` part)
       const mainSymbols = index.getFileSymbols(mainPath)!
       const piRef = mainSymbols.references.find(r => r.name === 'pi')
@@ -253,8 +254,8 @@ describe('WorkspaceIndex', () => {
     it('findReferences includes references from importing files', () => {
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       // Find references to 'pi' starting from lib — should include main's references
       const refs = index.findReferences(libPath, 'pi')
       // lib has at least 1 reference to pi (in the export object), main has references too
@@ -264,8 +265,8 @@ describe('WorkspaceIndex', () => {
     it('findAllOccurrences works cross-file', () => {
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const occurrences = index.findAllOccurrences(libPath, 'pi')
       // lib: `let pi` definition + shorthand `{ pi }` (Str key + Sym value share
       // the same source position, dedup to one). main: `let { pi }` destructuring
@@ -280,29 +281,17 @@ describe('WorkspaceIndex', () => {
     it('resolves .dvala extension automatically', () => {
       const libPath = writeFile('utils.dvala', 'let helper = 1; { helper }')
       const mainPath = writeFile('main.dvala', 'let { helper } = import("./utils"); helper')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const mainSymbols = index.getFileSymbols(mainPath)
       expect([...mainSymbols!.imports.values()]).toContain(libPath)
-    })
-
-    it('reads file from disk when source not provided', () => {
-      const filePath = writeFile('auto.dvala', 'let x = 42; x')
-      const result = index.updateFile(filePath)
-      expect(result).not.toBeNull()
-      expect(result!.definitions.find(d => d.name === 'x')).toBeDefined()
-    })
-
-    it('returns null for nonexistent file', () => {
-      const result = index.updateFile(path.join(tmpDir, 'nonexistent.dvala'))
-      expect(result).toBeNull()
     })
 
     it('invalidates dependents when a file changes', () => {
       const libPath = writeFile('lib.dvala', 'let x = 1; { x }')
       const mainPath = writeFile('main.dvala', 'let { x } = import("./lib"); x')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       // Invalidate lib — main (which imports lib) should also be invalidated
       index.invalidateFile(libPath)
       expect(index.getFileSymbols(libPath)).toBeNull()
@@ -336,8 +325,8 @@ describe('WorkspaceIndex', () => {
         'main.dvala',
         'let { pi } = import("./lib"); let f = () -> do let pi = 99; pi end; pi * 2',
       )
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const occurrences = index.findAllOccurrences(libPath, 'pi')
       // lib: let + export (deduped) = 2. main: destructuring + `pi * 2` = 2.
       // The local `let pi = 99` and its inner reference stay out.
@@ -349,9 +338,9 @@ describe('WorkspaceIndex', () => {
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const aPath = writeFile('a.dvala', 'let { pi } = import("./lib"); pi')
       const bPath = writeFile('b.dvala', 'let { pi } = import("./lib"); pi + 1')
-      index.updateFile(libPath)
-      index.updateFile(aPath)
-      index.updateFile(bPath)
+      loadFile(index, libPath)
+      loadFile(index, aPath)
+      loadFile(index, bPath)
       const occurrences = index.findAllOccurrences(libPath, 'pi')
       // lib: 2 (let + export shorthand deduped).
       // each importer: 2 (destructuring + use). 2 + 4 = 6.
@@ -367,9 +356,9 @@ describe('WorkspaceIndex', () => {
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const otherPath = writeFile('other.dvala', 'let pi = 99; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi')
-      index.updateFile(libPath)
-      index.updateFile(otherPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, otherPath)
+      loadFile(index, mainPath)
       const occurrences = index.findAllOccurrences(libPath, 'pi')
       // Only lib + main should appear (2 + 2). other.dvala isn't imported
       // by anyone here, but crucially its definitions don't leak into
@@ -383,7 +372,7 @@ describe('WorkspaceIndex', () => {
       // definition is `somePi`. Renaming "somePi" must rename the let
       // binding + the object value ref, but not the export key "pi".
       const libPath = writeFile('lib.dvala', 'let somePi = 3.14; { pi: somePi }')
-      index.updateFile(libPath)
+      loadFile(index, libPath)
       const occurrences = index.findAllOccurrences(libPath, 'somePi')
       // let somePi + Sym reference inside the export object = 2.
       expect(occurrences).toHaveLength(2)
@@ -398,8 +387,8 @@ describe('WorkspaceIndex', () => {
       // — aliasing is an explicit opt-out of origin-rename propagation.
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const occurrences = index.findAllOccurrences(libPath, 'pi')
       // Expected:
       //   lib: let pi + export `pi` (deduped by position) = 2
@@ -420,8 +409,8 @@ describe('WorkspaceIndex', () => {
       // origin-side tokens.
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p + p')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const occurrences = index.findAllOccurrences(libPath, 'pi')
       const mainContent = fs.readFileSync(mainPath, 'utf-8')
       for (const occ of occurrences.filter(o => o.file === mainPath)) {
@@ -454,7 +443,7 @@ describe('WorkspaceIndex', () => {
     it('returns the current file when cursor is on a local definition', () => {
       // `let pi = 3.14; { pi }` — `pi` at the `let` site (col 5, 1-based).
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
-      index.updateFile(libPath)
+      loadFile(index, libPath)
       const result = index.resolveCanonicalFile(libPath, 1, 5)
       expect(result).toEqual({ file: libPath, name: 'pi' })
     })
@@ -466,8 +455,8 @@ describe('WorkspaceIndex', () => {
       // importPath back to lib.dvala.
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const result = index.resolveCanonicalFile(mainPath, 1, 7)
       expect(result).toEqual({ file: libPath, name: 'pi' })
     })
@@ -477,15 +466,15 @@ describe('WorkspaceIndex', () => {
       // main's destructuring def, which in turn points at lib via importPath.
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); pi * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const result = index.resolveCanonicalFile(mainPath, 1, 31)
       expect(result).toEqual({ file: libPath, name: 'pi' })
     })
 
     it('returns null when the cursor is not on any symbol', () => {
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
-      index.updateFile(libPath)
+      loadFile(index, libPath)
       // Column 1 is the `l` in `let` — a keyword, not a symbol.
       expect(index.resolveCanonicalFile(libPath, 1, 1)).toBeNull()
     })
@@ -493,7 +482,7 @@ describe('WorkspaceIndex', () => {
     it('falls back to the current file when a reference is unresolved', () => {
       // `undef * 2` references `undef` which has no binding — resolvedDef is null.
       const filePath = writeFile('orphan.dvala', 'undef * 2')
-      index.updateFile(filePath)
+      loadFile(index, filePath)
       const result = index.resolveCanonicalFile(filePath, 1, 1)
       expect(result).toEqual({ file: filePath, name: 'undef' })
     })
@@ -503,7 +492,7 @@ describe('WorkspaceIndex', () => {
       // falls back to the current file AND reports the raw import path so
       // the VS Code layer can surface a warning before performing the rename.
       const mainPath = writeFile('main.dvala', 'let { pi } = import("./missing"); pi')
-      index.updateFile(mainPath)
+      loadFile(index, mainPath)
       const result = index.resolveCanonicalFile(mainPath, 1, 7)
       expect(result).not.toBeNull()
       expect(result!.file).toBe(mainPath)
@@ -517,7 +506,7 @@ describe('WorkspaceIndex', () => {
       // on the key returned null — F2 on an explicit export key did nothing.
       // `{ pi: somePi }` places `pi` at col 22 (1-based).
       const libPath = writeFile('lib.dvala', 'let somePi = 3.14; { pi: somePi }')
-      index.updateFile(libPath)
+      loadFile(index, libPath)
       const result = index.resolveCanonicalFile(libPath, 1, 22)
       expect(result).toEqual({ file: libPath, name: 'pi' })
     })
@@ -528,8 +517,8 @@ describe('WorkspaceIndex', () => {
       // the origin. Returned file must be the importer itself, name=`p`.
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       // Column of `p` in `{ pi as p }` — let=col1, { at col 5, pi at col 7,
       // ` as ` through col 11, `p` at col 13.
       const result = index.resolveCanonicalFile(mainPath, 1, 13)
@@ -542,8 +531,8 @@ describe('WorkspaceIndex', () => {
       // must follow the importPath back to lib.
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const result = index.resolveCanonicalFile(mainPath, 1, 7)
       expect(result).toEqual({ file: libPath, name: 'pi' })
     })
@@ -553,8 +542,8 @@ describe('WorkspaceIndex', () => {
       // def, whose keyLocation distinguishes this as a local rename target.
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
       const mainPath = writeFile('main.dvala', 'let { pi as p } = import("./lib"); p * 2')
-      index.updateFile(libPath)
-      index.updateFile(mainPath)
+      loadFile(index, libPath)
+      loadFile(index, mainPath)
       const result = index.resolveCanonicalFile(mainPath, 1, 36)
       expect(result).toEqual({ file: mainPath, name: 'p' })
     })
@@ -582,9 +571,9 @@ describe('WorkspaceIndex', () => {
       const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
       const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
       const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi * 2')
-      index.updateFile(aPath)
-      index.updateFile(bPath)
-      index.updateFile(cPath)
+      loadFile(index, aPath)
+      loadFile(index, bPath)
+      loadFile(index, cPath)
       const occurrences = index.findAllOccurrences(aPath, 'pi')
       // A: `let pi` + shorthand `{ pi }` (deduped to 2).
       // B: destructuring `let { pi }` + shorthand export `{ pi }` — the
@@ -603,11 +592,11 @@ describe('WorkspaceIndex', () => {
       const b2Path = writeFile('b2.dvala', 'let { pi } = import("./a"); { pi }')
       const c1Path = writeFile('c1.dvala', 'let { pi } = import("./b1"); pi')
       const c2Path = writeFile('c2.dvala', 'let { pi } = import("./b2"); pi')
-      index.updateFile(aPath)
-      index.updateFile(b1Path)
-      index.updateFile(b2Path)
-      index.updateFile(c1Path)
-      index.updateFile(c2Path)
+      loadFile(index, aPath)
+      loadFile(index, b1Path)
+      loadFile(index, b2Path)
+      loadFile(index, c1Path)
+      loadFile(index, c2Path)
       const occurrences = index.findAllOccurrences(aPath, 'pi')
       // 2 per file × 5 files = 10.
       expect(occurrences).toHaveLength(10)
@@ -623,10 +612,10 @@ describe('WorkspaceIndex', () => {
       const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
       const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); let result = pi * 2; { result }')
       const dPath = writeFile('d.dvala', 'let { result } = import("./c"); result')
-      index.updateFile(aPath)
-      index.updateFile(bPath)
-      index.updateFile(cPath)
-      index.updateFile(dPath)
+      loadFile(index, aPath)
+      loadFile(index, bPath)
+      loadFile(index, cPath)
+      loadFile(index, dPath)
       const occurrences = index.findAllOccurrences(aPath, 'pi')
       expect(occurrences.filter(o => o.file === aPath)).toHaveLength(2)
       expect(occurrences.filter(o => o.file === bPath)).toHaveLength(2)
@@ -640,9 +629,9 @@ describe('WorkspaceIndex', () => {
       const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
       const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
       const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi * 2')
-      index.updateFile(aPath)
-      index.updateFile(bPath)
-      index.updateFile(cPath)
+      loadFile(index, aPath)
+      loadFile(index, bPath)
+      loadFile(index, cPath)
       // `pi * 2` starts at col 29 in C (after `let { pi } = import("./b"); `
       // — note the shorter path makes this 2 cols earlier than `"./lib"`).
       const result = index.resolveCanonicalFile(cPath, 1, 29)
@@ -655,8 +644,8 @@ describe('WorkspaceIndex', () => {
       // termination + expected totals.
       const aPath = writeFile('a.dvala', 'let { pi } = import("./b"); { pi }')
       const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
-      index.updateFile(aPath)
-      index.updateFile(bPath)
+      loadFile(index, aPath)
+      loadFile(index, bPath)
       // Both files have unresolved external chains, but each is a valid
       // destructuring binding on its own. Starting from A, BFS visits B
       // through reverseImports, B enqueues A as a re-exporter, visited guard
@@ -672,8 +661,8 @@ describe('WorkspaceIndex', () => {
       // the import def) keeps the inner `pi` out.
       const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
       const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); let f = () -> do let pi = 99; pi end; { pi }')
-      index.updateFile(aPath)
-      index.updateFile(bPath)
+      loadFile(index, aPath)
+      loadFile(index, bPath)
       const occurrences = index.findAllOccurrences(aPath, 'pi')
       // A: 2. B: destructuring + export shorthand = 2. Inner `let pi = 99`
       // and its ref do NOT count — they resolve to a different def.
@@ -689,9 +678,9 @@ describe('WorkspaceIndex', () => {
       const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
       const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi: pi }')
       const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi * 2')
-      index.updateFile(aPath)
-      index.updateFile(bPath)
-      index.updateFile(cPath)
+      loadFile(index, aPath)
+      loadFile(index, bPath)
+      loadFile(index, cPath)
       const occurrences = index.findAllOccurrences(aPath, 'pi')
       // A: 2. B: destructuring + Str key at explicit form + Sym value = 3
       //   (all three are distinct source positions in the explicit form,
@@ -720,9 +709,9 @@ describe('WorkspaceIndex', () => {
           'piFromA + piFromB',
         ].join('\n'),
       )
-      index.updateFile(aPath)
-      index.updateFile(bPath)
-      index.updateFile(cPath)
+      loadFile(index, aPath)
+      loadFile(index, bPath)
+      loadFile(index, cPath)
       const occurrences = index.findAllOccurrences(aPath, 'pi')
       // A: let pi + shorthand export (deduped) = 2.
       // B: destructuring + shorthand export (deduped) = 2.
@@ -740,9 +729,9 @@ describe('WorkspaceIndex', () => {
       const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
       const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); let pi2 = 99; { pi: pi2 }')
       const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi')
-      index.updateFile(aPath)
-      index.updateFile(bPath)
-      index.updateFile(cPath)
+      loadFile(index, aPath)
+      loadFile(index, bPath)
+      loadFile(index, cPath)
       const occurrences = index.findAllOccurrences(aPath, 'pi')
       // A: 2. B: destructuring binding + nothing else (pi2 is unrelated). = 1
       // C: imports from B — but B is NOT a re-exporter, so nothing in C
@@ -753,36 +742,23 @@ describe('WorkspaceIndex', () => {
       expect(occurrences.filter(o => o.file === cPath)).toHaveLength(0)
     })
 
-    it('indexWorkspace eagerly scans files that have never been updated', () => {
+    it('eager workspace scan picks up files that have never been updated', () => {
       // Only A is explicitly updated — B and C exist on disk but haven't
-      // been indexed. Without indexWorkspace, BFS sees no importers of A.
+      // been indexed. Without an eager scan, BFS sees no importers of A.
+      // The Node-side indexWorkspace wrapper provides that scan.
       const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
       const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
       const cPath = writeFile('c.dvala', 'let { pi } = import("./b"); pi * 2')
-      index.updateFile(aPath)
+      loadFile(index, aPath)
       // Before eager scan: BFS only finds A's own occurrences.
       const before = index.findAllOccurrences(aPath, 'pi')
       expect(before).toHaveLength(2)
       // After eager scan: full chain is indexed.
-      index.indexWorkspace(tmpDir)
+      indexWorkspace(index, tmpDir)
       const after = index.findAllOccurrences(aPath, 'pi')
       expect(after).toHaveLength(6)
       expect(after.filter(o => o.file === bPath)).toHaveLength(2)
       expect(after.filter(o => o.file === cPath)).toHaveLength(2)
-    })
-
-    it('indexWorkspace is a one-shot per root', () => {
-      // Second call must be a no-op — a newly-added file after the initial
-      // scan is NOT picked up by a second indexWorkspace call. Watcher /
-      // explicit updateFile is the caller's responsibility past that point.
-      const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
-      index.indexWorkspace(tmpDir)
-      expect(index.getFileSymbols(aPath)).not.toBeNull()
-
-      const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); pi')
-      index.indexWorkspace(tmpDir)
-      // B exists on disk but wasn't re-scanned.
-      expect(index.getFileSymbols(bPath)).toBeNull()
     })
   })
 

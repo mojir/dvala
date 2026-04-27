@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { loadFile } from './nodeWorkspaceIndexer'
 import { WorkspaceIndex } from './WorkspaceIndex'
 
 describe('rename — non-import destructuring (let + function params)', () => {
@@ -27,7 +28,7 @@ describe('rename — non-import destructuring (let + function params)', () => {
   function renameAt(source: string, line: number, column: number): { name: string | null; count: number } {
     const fp = write(`t-${Math.random().toString(36).slice(2)}.dvala`, source)
     const idx = new WorkspaceIndex()
-    idx.updateFile(fp)
+    loadFile(idx, fp)
     const canon = idx.resolveCanonicalFile(fp, line, column)
     if (!canon) return { name: null, count: 0 }
     const occ = idx.findAllOccurrences(canon.file, canon.name)

@@ -7,11 +7,20 @@ import { createDvala } from '../../src/createDvala'
 import { allBuiltinModules } from '../../src/allModules'
 import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '../../src/evaluator/effectTypes'
-import { WorkspaceIndex } from '../../src/languageService/WorkspaceIndex'
-import type { SymbolDef } from '../../src/languageService/types'
+import { WorkspaceIndex } from '../../src/languageService'
+import type { SymbolDef } from '../../src/languageService'
+import { loadFile as loadIndexedFile, nodeResolveImport } from '../../src/languageService/nodeWorkspaceIndexer'
+import { findCallContext as sharedFindCallContext } from '../../src/shared/callContext'
+import {
+  buildBuiltinCompletions,
+  symbolDefToCompletion as toSharedCompletion,
+} from '../../src/shared/completionBuilder'
+import type { CompletionItem as SharedCompletionItem } from '../../src/shared/completionBuilder'
+import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
+import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
+import type { Diagnostic as SharedDiagnostic, Range as SharedRange } from '../../src/shared/types'
 import { formatSource } from '../../src/tooling'
 import type { TypecheckResult } from '../../src/typechecker/typecheck'
-import { typeToString, expandTypeForDisplay, sanitizeDisplayType, simplify } from '../../src/typechecker'
 import type { SourceMapPosition } from '../../src/parser/types'
 
 // Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
@@ -60,110 +69,76 @@ function buildHoverMarkdown(name: string, ref: Reference): vscode.MarkdownString
   return md
 }
 
-function categoryToCompletionKind(category: string): vscode.CompletionItemKind {
-  switch (category) {
-    case 'special-expression':
-      return vscode.CompletionItemKind.Keyword
-    case 'effect':
-      return vscode.CompletionItemKind.Event
-    case 'shorthand':
-      return vscode.CompletionItemKind.Operator
-    case 'datatype':
-      return vscode.CompletionItemKind.Class
-    case 'prelude':
-      return vscode.CompletionItemKind.Class
-    default:
+/** Map portable kind names to VS Code's CompletionItemKind enum. */
+function sharedKindToVsKind(kind: SharedCompletionItem['kind']): vscode.CompletionItemKind {
+  switch (kind) {
+    case 'function':
       return vscode.CompletionItemKind.Function
+    case 'method':
+      return vscode.CompletionItemKind.Method
+    case 'variable':
+      return vscode.CompletionItemKind.Variable
+    case 'event':
+      return vscode.CompletionItemKind.Event
+    case 'module':
+      return vscode.CompletionItemKind.Module
+    case 'class':
+      return vscode.CompletionItemKind.Class
+    case 'keyword':
+      return vscode.CompletionItemKind.Keyword
+    case 'operator':
+      return vscode.CompletionItemKind.Operator
   }
 }
 
-function buildCompletionItems(): vscode.CompletionItem[] {
-  const seen = new Set<string>()
-  const items: vscode.CompletionItem[] = []
-
-  for (const ref of Object.values(allReference)) {
-    const label = ref.title
-    if (seen.has(label)) continue
-    seen.add(label)
-
-    const item = new vscode.CompletionItem(label, categoryToCompletionKind(ref.category))
-    item.detail = ref.category
-    item.documentation = buildHoverMarkdown(label, ref)
-
-    if (isFunctionReference(ref) && ref.variants.length > 0) {
-      const argNames = ref.variants[0].argumentNames
-      if (argNames.length > 0) {
-        const snippetArgs = argNames.map((name, i) => `\${${i + 1}:${name}}`).join(', ')
-        item.insertText = new vscode.SnippetString(`${label}(${snippetArgs})`)
-      } else {
-        item.insertText = new vscode.SnippetString(`${label}($0)`)
-      }
-    }
-
-    items.push(item)
-  }
-
-  return items
+/** Convert a shared CompletionItem into VS Code's host-specific shape. */
+function toVsCompletion(shared: SharedCompletionItem, documentation?: vscode.MarkdownString): vscode.CompletionItem {
+  const item = new vscode.CompletionItem(shared.label, sharedKindToVsKind(shared.kind))
+  if (shared.detail) item.detail = shared.detail
+  if (shared.sortText) item.sortText = shared.sortText
+  if (shared.insertText) item.insertText = new vscode.SnippetString(shared.insertText)
+  if (documentation) item.documentation = documentation
+  return item
 }
 
 /**
- * Find the function call context at a cursor position.
- * Scans backward to find the unmatched '(' and extracts the function name.
+ * Build the precomputed list of builtin completion items, attaching
+ * VS Code-specific markdown documentation (which the shared builder
+ * intentionally leaves to the host).
+ */
+function buildVsBuiltinCompletions(): vscode.CompletionItem[] {
+  const sharedItems = buildBuiltinCompletions()
+  const refByTitle = new Map<string, Reference>()
+  for (const ref of Object.values(allReference)) refByTitle.set(ref.title, ref)
+  return sharedItems.map(item => {
+    const ref = refByTitle.get(item.label)
+    return toVsCompletion(item, ref ? buildHoverMarkdown(item.label, ref) : undefined)
+  })
+}
+
+const completionItems = buildVsBuiltinCompletions()
+
+/** Map a user-defined SymbolDef to a VS Code completion item via the shared builder. */
+function symbolDefToCompletionItem(def: SymbolDef): vscode.CompletionItem {
+  return toVsCompletion(toSharedCompletion(def))
+}
+
+/**
+ * Find the function call context at a cursor position. Trims the source
+ * to a few lines above the cursor for performance, then delegates to the
+ * shared parser.
  */
 function findCallContext(
   document: vscode.TextDocument,
   position: vscode.Position,
 ): { functionName: string; activeParam: number } | null {
-  // Grab text from a few lines above to the cursor
   const startLine = Math.max(0, position.line - 10)
   const text = document.getText(new vscode.Range(new vscode.Position(startLine, 0), position))
-
-  let depth = 0
-  let commaCount = 0
-  for (let i = text.length - 1; i >= 0; i--) {
-    const ch = text[i]
-    if (ch === ')') depth++
-    else if (ch === '(') {
-      if (depth === 0) {
-        // Found the unmatched opening paren — extract function name before it
-        const before = text.substring(0, i).trimEnd()
-        const nameMatch = before.match(/([a-zA-Z_$][a-zA-Z0-9_$]*)$/)
-        if (nameMatch) {
-          return { functionName: nameMatch[1]!, activeParam: commaCount }
-        }
-        return null
-      }
-      depth--
-    } else if (ch === ',' && depth === 0) commaCount++
-  }
-  return null
-}
-
-const completionItems = buildCompletionItems()
-
-/** Map a user-defined SymbolDef to a VS Code completion item. */
-function symbolDefToCompletionItem(def: SymbolDef): vscode.CompletionItem {
-  const kindMap: Record<string, vscode.CompletionItemKind> = {
-    variable: vscode.CompletionItemKind.Variable,
-    function: vscode.CompletionItemKind.Function,
-    macro: vscode.CompletionItemKind.Method,
-    handler: vscode.CompletionItemKind.Event,
-    parameter: vscode.CompletionItemKind.Variable,
-    import: vscode.CompletionItemKind.Module,
-  }
-
-  const item = new vscode.CompletionItem(def.name, kindMap[def.kind] ?? vscode.CompletionItemKind.Variable)
-  item.detail = def.kind
-  // Sort user symbols after builtins (builtins have default sort)
-  item.sortText = `1_${def.name}`
-
-  // Add snippet with parameter placeholders for functions/macros
-  if (def.params && def.params.length > 0) {
-    const snippetArgs = def.params.map((name, i) => `\${${i + 1}:${name}}`).join(', ')
-    item.insertText = new vscode.SnippetString(`${def.name}(${snippetArgs})`)
-  }
-
-  return item
+  // After trimming, the windowed text starts at line 1 col 1 — so map the
+  // cursor's relative position into the windowed coordinate space.
+  const relativeLine = position.line - startLine + 1
+  const relativeCol = position.character + 1
+  return sharedFindCallContext(text, { line: relativeLine, column: relativeCol })
 }
 
 let outputChannel: vscode.OutputChannel | undefined
@@ -174,72 +149,53 @@ let debounceTimer: ReturnType<typeof setTimeout> | undefined
 // Type system: cached typecheck result per document URI
 const typecheckCache = new Map<string, TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> }>()
 
+/** VS Code positions are 0-based; the shared modules use 1-based positions. */
+function vscodeRangeToShared(range: vscode.Range): SharedRange {
+  return {
+    start: { line: range.start.line + 1, column: range.start.character + 1 },
+    end: { line: range.end.line + 1, column: range.end.character + 1 },
+  }
+}
+
+/** Convert a shared (1-based) diagnostic into VS Code's 0-based shape. */
+function toVsDiagnostic(diag: SharedDiagnostic): vscode.Diagnostic {
+  const range = new vscode.Range(
+    Math.max(0, diag.range.start.line - 1),
+    Math.max(0, diag.range.start.column - 1),
+    Math.max(0, diag.range.end.line - 1),
+    Math.max(0, diag.range.end.column - 1),
+  )
+  const severity =
+    diag.severity === 'error'
+      ? vscode.DiagnosticSeverity.Error
+      : diag.severity === 'warning'
+        ? vscode.DiagnosticSeverity.Warning
+        : vscode.DiagnosticSeverity.Information
+  const vdiag = new vscode.Diagnostic(range, diag.message, severity)
+  vdiag.source = diag.source
+  return vdiag
+}
+
 function getHoverTypeAtPosition(
   cached: TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> },
   position: vscode.Position,
   preferredRange?: vscode.Range,
 ): string | undefined {
-  const line = position.line
-  const col = position.character
-  let bestPreferredType: import('../../src/typechecker/types').Type | undefined
-  let bestPreferredStartDistance = Infinity
-  let bestPreferredSize = Infinity
-  let bestType: import('../../src/typechecker/types').Type | undefined
-  let bestSize = Infinity
-
-  for (const [nodeId, type] of cached.typeMap) {
-    if (type.tag === 'Unknown') continue
-
-    const sourcePos = cached.sourceMap?.get(nodeId)
-    if (!sourcePos) continue
-
-    // Parser/typechecker source maps are already 0-based, matching VS Code positions.
-    const [startLine, startCol] = sourcePos.start
-    const [endLine, endCol] = sourcePos.end
-    if (line < startLine || line > endLine) continue
-
-    const inRange = (line > startLine || col >= startCol) && (line < endLine || col <= endCol)
-    if (!inRange) continue
-
-    const size = (endLine - startLine) * 1000 + (endCol - startCol)
-    if (preferredRange) {
-      const lineDistance = Math.abs(startLine - preferredRange.start.line)
-      const colDistance =
-        lineDistance === 0
-          ? Math.abs(startCol - preferredRange.start.character)
-          : Math.abs(startCol - preferredRange.start.character) + lineDistance * 1000
-
-      if (
-        colDistance < bestPreferredStartDistance ||
-        (colDistance === bestPreferredStartDistance && size < bestPreferredSize)
-      ) {
-        bestPreferredStartDistance = colDistance
-        bestPreferredSize = size
-        bestPreferredType = type
-      }
-    }
-
-    if (size < bestSize) {
-      bestSize = size
-      bestType = type
-    }
-  }
-
-  const selectedType = bestPreferredType ?? bestType
-  return selectedType ? formatHoverType(selectedType) : undefined
-}
-
-function formatHoverType(type: import('../../src/typechecker/types').Type): string {
-  return typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(type))))
+  const type = findTypeAtPosition(
+    cached.typeMap,
+    cached.sourceMap,
+    { line: position.line + 1, column: position.character + 1 },
+    preferredRange ? vscodeRangeToShared(preferredRange) : undefined,
+  )
+  return type ? formatHoverType(type) : undefined
 }
 
 function getHoverTypeAtDefinition(
   cached: TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> },
   def: SymbolDef,
 ): string | undefined {
-  const start = new vscode.Position(def.location.line - 1, def.location.column - 1)
-  const end = new vscode.Position(def.location.line - 1, def.location.column - 1 + def.name.length)
-  return getHoverTypeAtPosition(cached, start, new vscode.Range(start, end))
+  const type = findTypeAtDefinition(cached.typeMap, cached.sourceMap, def)
+  return type ? formatHoverType(type) : undefined
 }
 
 function getDiagnosticCollection(): vscode.DiagnosticCollection {
@@ -500,7 +456,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
       if (fileSymbols) {
         for (const importedPath of fileSymbols.imports.values()) {
-          workspaceIndex.updateFile(importedPath)
+          loadIndexedFile(workspaceIndex, importedPath)
           const importedSymbols = workspaceIndex.getFileSymbols(importedPath)
           if (importedSymbols) {
             for (const exp of importedSymbols.exports) {
@@ -667,7 +623,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
         if (fileSymbols) {
           for (const resolvedPath of fileSymbols.imports.values()) {
-            workspaceIndex.updateFile(resolvedPath)
+            loadIndexedFile(workspaceIndex, resolvedPath)
             const importedSymbols = workspaceIndex.getFileSymbols(resolvedPath)
             const targetDef =
               importedSymbols?.definitions.find(d => d.name === symbolAtPos.name && d.scope === 0) ??
@@ -749,7 +705,7 @@ export function activate(context: vscode.ExtensionContext): void {
   function indexDocument(document: vscode.TextDocument): void {
     if (document.languageId !== 'dvala') return
     const filePath = document.uri.fsPath
-    workspaceIndex.updateFile(filePath, document.getText())
+    workspaceIndex.updateFile(filePath, document.getText(), nodeResolveImport)
     // Clear stale run diagnostics whenever the document changes or is re-opened.
     // Runtime diagnostics are snapshot-specific and quickly become misleading
     // once the source has changed.
@@ -760,29 +716,11 @@ export function activate(context: vscode.ExtensionContext): void {
   /** Push diagnostics (parse errors + unresolved symbols) to VS Code. */
   function refreshDiagnostics(document: vscode.TextDocument): void {
     const { parseErrors, unresolvedRefs } = workspaceIndex.getDiagnostics(document.uri.fsPath)
-    const diagnostics: vscode.Diagnostic[] = []
-
-    for (const err of parseErrors) {
-      if (err.sourceCodeInfo) {
-        const line = Math.max(0, err.sourceCodeInfo.position.line - 1)
-        const col = Math.max(0, err.sourceCodeInfo.position.column - 1)
-        const range = new vscode.Range(line, col, line, col + 1)
-        const diag = new vscode.Diagnostic(range, err.message, vscode.DiagnosticSeverity.Error)
-        diag.source = 'dvala'
-        diagnostics.push(diag)
-      }
-    }
-
-    for (const ref of unresolvedRefs) {
-      const line = Math.max(0, ref.location.line - 1)
-      const col = Math.max(0, ref.location.column - 1)
-      const range = new vscode.Range(line, col, line, col + ref.name.length)
-      const diag = new vscode.Diagnostic(range, `Undefined symbol '${ref.name}'`, vscode.DiagnosticSeverity.Error)
-      diag.source = 'dvala'
-      diagnostics.push(diag)
-    }
-
-    lsDiagnostics.set(document.uri, diagnostics)
+    const sharedDiagnostics: SharedDiagnostic[] = [
+      ...buildParseDiagnostics(parseErrors),
+      ...buildSymbolDiagnostics(unresolvedRefs),
+    ]
+    lsDiagnostics.set(document.uri, sharedDiagnostics.map(toVsDiagnostic))
 
     // Run type checker (non-blocking — parse errors don't prevent type checking)
     if (parseErrors.length === 0) {
@@ -792,25 +730,7 @@ export function activate(context: vscode.ExtensionContext): void {
         })
         // Cache the result for hover (with source map for position lookups)
         typecheckCache.set(document.uri.toString(), result)
-
-        const typeDiags: vscode.Diagnostic[] = []
-        for (const diag of result.diagnostics) {
-          if (diag.sourceCodeInfo) {
-            const line = Math.max(0, diag.sourceCodeInfo.position.line - 1)
-            const col = Math.max(0, diag.sourceCodeInfo.position.column - 1)
-            const range = new vscode.Range(line, col, line, col + 1)
-            const vdiag = new vscode.Diagnostic(
-              range,
-              diag.message,
-              // Type errors are intentionally shown as warnings (not errors) because
-              // they're non-blocking — the code still runs. Same philosophy as TypeScript.
-              diag.severity === 'error' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Information,
-            )
-            vdiag.source = 'dvala-types'
-            typeDiags.push(vdiag)
-          }
-        }
-        typeDiagnostics.set(document.uri, typeDiags)
+        typeDiagnostics.set(document.uri, buildTypeDiagnostics(result).map(toVsDiagnostic))
       } catch {
         // Type checking failed — clear diagnostics, don't crash the extension
         typeDiagnostics.set(document.uri, [])
@@ -842,7 +762,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (fullyIndexed) return
     const uris = await vscode.workspace.findFiles('**/*.dvala', '**/node_modules/**')
     for (const uri of uris) {
-      workspaceIndex.updateFile(uri.fsPath)
+      loadIndexedFile(workspaceIndex, uri.fsPath)
     }
     fullyIndexed = true
   }
@@ -872,14 +792,14 @@ export function activate(context: vscode.ExtensionContext): void {
   // file on disk would leave stale `reverseImports` entries pointing at an
   // outdated version.
   const dvalaWatcher = vscode.workspace.createFileSystemWatcher('**/*.dvala')
-  const onFsCreate = dvalaWatcher.onDidCreate(uri => workspaceIndex.updateFile(uri.fsPath))
+  const onFsCreate = dvalaWatcher.onDidCreate(uri => loadIndexedFile(workspaceIndex, uri.fsPath))
   const onFsChange = dvalaWatcher.onDidChange(uri => {
     // Open documents carry their authoritative content through
     // onDidChangeTextDocument — skip the disk read so we don't clobber a
     // dirty buffer with the saved-on-disk version.
     const openDoc = vscode.workspace.textDocuments.find(d => d.uri.fsPath === uri.fsPath)
     if (openDoc) return
-    workspaceIndex.updateFile(uri.fsPath)
+    loadIndexedFile(workspaceIndex, uri.fsPath)
   })
   const onFsDelete = dvalaWatcher.onDidDelete(uri => workspaceIndex.invalidateFile(uri.fsPath))
 
