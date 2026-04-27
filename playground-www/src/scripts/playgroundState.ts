@@ -42,6 +42,7 @@ export const state: {
   resolveInfoModal: (() => void) | null
   infoModalOnConfirm: (() => void | Promise<void>) | null
   resolveSnapshotModal: (() => void) | null
+  snapshotExecutionControlsVisible: boolean
 } = {
   pendingEffects: [],
   currentEffectIndex: 0,
@@ -55,4 +56,5 @@ export const state: {
   resolveInfoModal: null,
   infoModalOnConfirm: null,
   resolveSnapshotModal: null,
+  snapshotExecutionControlsVisible: false,
 }

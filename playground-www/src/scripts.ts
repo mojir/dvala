@@ -102,6 +102,7 @@ import {
   createModalPanel,
   dismissInfoModal,
   popModal,
+  pushCheckpointPanel,
   pushPanel,
   pushSavePanel,
   showInfoModal,
@@ -331,7 +332,6 @@ let effectPanelBodyEl: HTMLElement | null = null
 let effectPanelFooterEl: HTMLElement | null = null
 let effectNavEl: HTMLElement | null = null
 let effectNavCounterEl: HTMLSpanElement | null = null
-let snapshotExecutionControlsVisible = false
 let isSyncingContextDetail = false
 let contextDetailHasParseError = false
 // Toast hint for effect modals that can't be dismissed with Escape
@@ -1725,7 +1725,7 @@ function syncCodePanelView(sideTab?: string) {
   }
 }
 
-function getCurrentSideTab(): string {
+export function getCurrentSideTab(): string {
   const active = document.querySelector('.side-panel__icon--active')
   if (!active) return getState('active-side-tab')
   const id = active.id
@@ -5054,7 +5054,7 @@ function makeArgRow(content: string, index?: number, copyContent?: string): HTML
   return row
 }
 
-function snapshotLabel(snapshot: Snapshot): string {
+export function snapshotLabel(snapshot: Snapshot): string {
   return `Checkpoint #${snapshot.index} — ${snapshot.message}`
 }
 
@@ -5267,7 +5267,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
   }
 }
 
-function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLElement {
+export function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLElement {
   const { panel, body } = createModalPanel({ size: 'large' })
 
   // Build the snapshot body content
@@ -5350,15 +5350,6 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
   return panel
 }
 
-function pushCheckpointPanel(snapshot: Snapshot) {
-  const panel = createSnapshotPanel(snapshot)
-  pushPanel(panel, snapshotLabel(snapshot), snapshot)
-  // Update control bar label to show new snapshot index
-  if (elements.executionControlBar.style.display === 'flex') {
-    showExecutionControlBarPaused()
-  }
-}
-
 function getSnapshotError(snapshot: Snapshot): DvalaErrorJSON | undefined {
   const meta = snapshot.meta as { error?: DvalaErrorJSON } | undefined
   return meta?.error
@@ -5381,8 +5372,8 @@ function renderSnapshotBreadcrumbs() {
     .join('')
 }
 
-function syncSnapshotExecutionControls() {
-  if (!snapshotExecutionControlsVisible || !state.currentSnapshot) {
+export function syncSnapshotExecutionControls() {
+  if (!state.snapshotExecutionControlsVisible || !state.currentSnapshot) {
     hideExecutionControlBar()
     return
   }
@@ -5394,14 +5385,14 @@ function syncSnapshotExecutionControls() {
   }
 }
 
-function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = snapshotExecutionControlsVisible) {
+function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = state.snapshotExecutionControlsVisible) {
   const content = document.getElementById('snapshot-content')
   const footerHost = document.getElementById('snapshot-footer')
   if (!content || !footerHost) return
 
   // Set current snapshot for the control bar and other functions
   state.currentSnapshot = snapshot
-  snapshotExecutionControlsVisible = showExecutionControls
+  state.snapshotExecutionControlsVisible = showExecutionControls
 
   // Render the snapshot panel content (reuse existing panel builder)
   const error = getSnapshotError(snapshot)
@@ -5452,7 +5443,7 @@ export function closeSnapshotView() {
   activeSnapshotKey = null
   populateSideSnapshotsList()
   state.currentSnapshot = null
-  snapshotExecutionControlsVisible = false
+  state.snapshotExecutionControlsVisible = false
   state.resolveSnapshotModal?.()
   state.resolveSnapshotModal = null
   hideExecutionControlBar()
@@ -5460,15 +5451,6 @@ export function closeSnapshotView() {
   // Sync view — will show empty or editor depending on side tab
   syncCodePanelView()
   syncPlaygroundUrlState(normalizeSideTab(getCurrentSideTab()))
-}
-
-export function restoreInlineSnapshotContext() {
-  state.currentSnapshot = state.snapshotViewStack[state.snapshotViewStack.length - 1]?.snapshot ?? null
-  if (getCurrentSideTab() === 'snapshots' && state.currentSnapshot && snapshotExecutionControlsVisible) {
-    syncSnapshotExecutionControls()
-    return
-  }
-  hideExecutionControlBar()
 }
 
 export function openImportSnapshotModal() {

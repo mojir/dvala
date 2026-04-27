@@ -6,7 +6,16 @@
 import type { Snapshot } from '../../../src/evaluator/effectTypes'
 import { hamburgerIcon } from '../icons'
 import { renderDvalaMarkdown } from '../renderDvalaMarkdown'
-import { closeEffectHandlerMenus, restoreInlineSnapshotContext, updateExecutionControlBarForSnapshot } from '../scripts'
+import {
+  closeEffectHandlerMenus,
+  createSnapshotPanel,
+  getCurrentSideTab,
+  hideExecutionControlBar,
+  showExecutionControlBarPaused,
+  snapshotLabel,
+  syncSnapshotExecutionControls,
+  updateExecutionControlBarForSnapshot,
+} from '../scripts'
 import { elements } from './elements'
 import { state } from './playgroundState'
 
@@ -387,4 +396,22 @@ export function closeAllModals() {
   restoreInlineSnapshotContext()
   state.resolveSnapshotModal?.()
   state.resolveSnapshotModal = null
+}
+
+export function pushCheckpointPanel(snapshot: Snapshot) {
+  const panel = createSnapshotPanel(snapshot)
+  pushPanel(panel, snapshotLabel(snapshot), snapshot)
+  // Update control bar label to show new snapshot index
+  if (elements.executionControlBar.style.display === 'flex') {
+    showExecutionControlBarPaused()
+  }
+}
+
+function restoreInlineSnapshotContext() {
+  state.currentSnapshot = state.snapshotViewStack[state.snapshotViewStack.length - 1]?.snapshot ?? null
+  if (getCurrentSideTab() === 'snapshots' && state.currentSnapshot && state.snapshotExecutionControlsVisible) {
+    syncSnapshotExecutionControls()
+    return
+  }
+  hideExecutionControlBar()
 }
