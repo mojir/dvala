@@ -96,13 +96,19 @@ import { isMac, throttle } from './utils'
 import { createPlaygroundAPI } from './playgroundAPI'
 import { createEffectHandlers } from './createEffectHandlers'
 import { elements } from './scripts/elements'
-import { createModalPanel, modalSizeMap, showToast } from './scripts/modals'
-import type { ModalPanelOptions, ModalSize } from './scripts/modals'
+import {
+  closeInfoModal,
+  createModalPanel,
+  dismissInfoModal,
+  modalSizeMap,
+  showInfoModal,
+  showToast,
+} from './scripts/modals'
+import type { ModalSize } from './scripts/modals'
 import { state } from './scripts/playgroundState'
 import type { ContextEntryKind, PendingEffect } from './scripts/playgroundState'
 
-export { createModalPanel, showToast } from './scripts/modals'
-export type { ModalPanelOptions, ModalSize } from './scripts/modals'
+export { closeInfoModal, createModalPanel, showInfoModal, showToast } from './scripts/modals'
 
 const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
@@ -3890,7 +3896,7 @@ window.onload = async function () {
     if (evt.key === 'Escape') {
       closeMoreMenu()
       closeAddContextMenu()
-      if (resolveInfoModal) {
+      if (state.resolveInfoModal) {
         dismissInfoModal()
       } else if (state.pendingEffects.length > 0) {
         // Effect panel has no close button — Escape can't dismiss it
@@ -3905,7 +3911,7 @@ window.onload = async function () {
       }
       evt.preventDefault()
     }
-    if (evt.key === 'Enter' && resolveInfoModal) {
+    if (evt.key === 'Enter' && state.resolveInfoModal) {
       evt.preventDefault()
       closeInfoModal()
     }
@@ -5387,7 +5393,7 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
 }
 
 /** Push a panel onto the modal stack. Sub-panels slide in from the right. */
-function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEffect?: boolean) {
+export function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEffect?: boolean) {
   if (snapshot !== undefined) state.currentSnapshot = snapshot
   const isRoot = state.modalStack.length === 0
 
@@ -5690,51 +5696,6 @@ export function openImportSnapshotModal() {
     reader.readAsText(file)
   }
   input.click()
-}
-
-let resolveInfoModal: (() => void) | null = null
-let infoModalOnConfirm: (() => void | Promise<void>) | null = null
-
-export function showInfoModal(title: string, message: string, onConfirm?: () => void | Promise<void>): Promise<void> {
-  const actions: ModalPanelOptions['footerActions'] = []
-  if (onConfirm) {
-    actions.push({ label: 'Cancel', action: () => dismissInfoModal() })
-  }
-  actions.push({ label: 'OK', primary: true, action: () => closeInfoModal() })
-
-  const { panel, body } = createModalPanel({
-    size: 'small',
-    footerActions: actions,
-  })
-
-  const messageEl = document.createElement('div')
-  messageEl.className = 'modal-body-row'
-  messageEl.style.whiteSpace = 'pre-line'
-  messageEl.textContent = message
-  body.appendChild(messageEl)
-
-  infoModalOnConfirm = onConfirm ?? null
-  pushPanel(panel, title)
-
-  return new Promise<void>(resolve => {
-    resolveInfoModal = resolve
-  })
-}
-
-export function closeInfoModal() {
-  const onConfirm = infoModalOnConfirm
-  resolveInfoModal?.()
-  resolveInfoModal = null
-  infoModalOnConfirm = null
-  popModal()
-  if (onConfirm) void onConfirm()
-}
-
-function dismissInfoModal() {
-  resolveInfoModal?.()
-  resolveInfoModal = null
-  infoModalOnConfirm = null
-  popModal()
 }
 
 export function exportPlayground() {

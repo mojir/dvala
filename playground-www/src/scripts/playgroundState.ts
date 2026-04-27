@@ -39,6 +39,8 @@ export const state: {
   snapshotViewStack: SnapshotBreadcrumb[]
   activeContextEntryKind: ContextEntryKind
   activeContextBindingName: string | null
+  resolveInfoModal: (() => void) | null
+  infoModalOnConfirm: (() => void | Promise<void>) | null
 } = {
   pendingEffects: [],
   currentEffectIndex: 0,
@@ -49,4 +51,6 @@ export const state: {
   snapshotViewStack: [],
   activeContextEntryKind: getState('current-context-entry-kind'),
   activeContextBindingName: getState('current-context-binding-name'),
+  resolveInfoModal: null,
+  infoModalOnConfirm: null,
 }

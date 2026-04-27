@@ -5,8 +5,9 @@
 
 import { hamburgerIcon } from '../icons'
 import { renderDvalaMarkdown } from '../renderDvalaMarkdown'
-import { closeEffectHandlerMenus, popModal } from '../scripts'
+import { closeEffectHandlerMenus, popModal, pushPanel } from '../scripts'
 import { elements } from './elements'
+import { state } from './playgroundState'
 
 export type ModalSize = 'small' | 'medium' | 'large'
 
@@ -16,7 +17,7 @@ export const modalSizeMap: Record<ModalSize, string> = {
   large: '1200px',
 }
 
-export interface ModalPanelOptions {
+interface ModalPanelOptions {
   title?: string
   icon?: string
   size?: ModalSize
@@ -142,4 +143,46 @@ function dismissToast(toast: HTMLElement) {
   if (!toast.parentElement) return
   toast.style.animation = 'toast-out 0.2s ease forwards'
   toast.addEventListener('animationend', () => toast.remove())
+}
+
+export function showInfoModal(title: string, message: string, onConfirm?: () => void | Promise<void>): Promise<void> {
+  const actions: ModalPanelOptions['footerActions'] = []
+  if (onConfirm) {
+    actions.push({ label: 'Cancel', action: () => dismissInfoModal() })
+  }
+  actions.push({ label: 'OK', primary: true, action: () => closeInfoModal() })
+
+  const { panel, body } = createModalPanel({
+    size: 'small',
+    footerActions: actions,
+  })
+
+  const messageEl = document.createElement('div')
+  messageEl.className = 'modal-body-row'
+  messageEl.style.whiteSpace = 'pre-line'
+  messageEl.textContent = message
+  body.appendChild(messageEl)
+
+  state.infoModalOnConfirm = onConfirm ?? null
+  pushPanel(panel, title)
+
+  return new Promise<void>(resolve => {
+    state.resolveInfoModal = resolve
+  })
+}
+
+export function closeInfoModal() {
+  const onConfirm = state.infoModalOnConfirm
+  state.resolveInfoModal?.()
+  state.resolveInfoModal = null
+  state.infoModalOnConfirm = null
+  popModal()
+  if (onConfirm) void onConfirm()
+}
+
+export function dismissInfoModal() {
+  state.resolveInfoModal?.()
+  state.resolveInfoModal = null
+  state.infoModalOnConfirm = null
+  popModal()
 }
