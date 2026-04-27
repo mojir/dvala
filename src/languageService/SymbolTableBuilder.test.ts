@@ -284,9 +284,7 @@ describe('buildSymbolTable', () => {
     })
 
     it('walks handler transform clause', () => {
-      const { definitions, references } = build(
-        'handler @my.eff(x) -> resume(x) transform result -> result + 1 end',
-      )
+      const { definitions, references } = build('handler @my.eff(x) -> resume(x) transform result -> result + 1 end')
       const result = definitions.find(d => d.name === 'result')
       expect(result?.kind).toBe('parameter')
       const resultRef = references.find(r => r.name === 'result')
@@ -312,9 +310,7 @@ describe('buildSymbolTable', () => {
     })
 
     it('walks do-with-handler blocks', () => {
-      const { references } = build(
-        'let h = handler @my.eff(x) -> resume(x) end; do with h; perform(@my.eff, 1) end',
-      )
+      const { references } = build('let h = handler @my.eff(x) -> resume(x) end; do with h; perform(@my.eff, 1) end')
       expect(references.find(r => r.name === 'h')?.resolvedDef).not.toBeNull()
     })
 

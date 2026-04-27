@@ -249,11 +249,25 @@ describe('number theory', () => {
   })
   describe('cartesianProduct', () => {
     it('should return the cartesian product of two or many lists', () => {
-      expect(runNth('nth:cartesianProduct([1, 2], [3, 4])')).toEqual([[1, 3], [1, 4], [2, 3], [2, 4]])
+      expect(runNth('nth:cartesianProduct([1, 2], [3, 4])')).toEqual([
+        [1, 3],
+        [1, 4],
+        [2, 3],
+        [2, 4],
+      ])
       expect(runNth('nth:cartesianProduct([1, 2], [])')).toEqual([])
       expect(runNth('nth:cartesianProduct([], [3, 4])')).toEqual([])
       expect(runNth('nth:cartesianProduct([], [])')).toEqual([])
-      expect(runNth('nth:cartesianProduct([1, 2], [3, 4], [5, 6])')).toEqual([[1, 3, 5], [1, 3, 6], [1, 4, 5], [1, 4, 6], [2, 3, 5], [2, 3, 6], [2, 4, 5], [2, 4, 6]])
+      expect(runNth('nth:cartesianProduct([1, 2], [3, 4], [5, 6])')).toEqual([
+        [1, 3, 5],
+        [1, 3, 6],
+        [1, 4, 5],
+        [1, 4, 6],
+        [2, 3, 5],
+        [2, 3, 6],
+        [2, 4, 5],
+        [2, 4, 6],
+      ])
     })
   })
   describe('nth:perfectPower', () => {

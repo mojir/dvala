@@ -24,49 +24,8 @@ function isPadovan(num: number): boolean {
 
   // Pre-calculated Padovan numbers (for efficient lookup, verified for correctness)
   const padovanNumbers = [
-    1,
-    1,
-    1,
-    2,
-    2,
-    3,
-    4,
-    5,
-    7,
-    9,
-    12,
-    16,
-    21,
-    28,
-    37,
-    49,
-    65,
-    86,
-    114,
-    151,
-    200,
-    265,
-    351,
-    465,
-    616,
-    816,
-    1081,
-    1432,
-    1897,
-    2513,
-    3329,
-    4410,
-    5842,
-    7739,
-    10252,
-    13581,
-    17991,
-    23833,
-    31572,
-    41824,
-    55405,
-    73396,
-    97229,
+    1, 1, 1, 2, 2, 3, 4, 5, 7, 9, 12, 16, 21, 28, 37, 49, 65, 86, 114, 151, 200, 265, 351, 465, 616, 816, 1081, 1432,
+    1897, 2513, 3329, 4410, 5842, 7739, 10252, 13581, 17991, 23833, 31572, 41824, 55405, 73396, 97229,
   ]
 
   // Direct lookup for known values
@@ -104,12 +63,12 @@ function isPadovan(num: number): boolean {
 }
 
 export const padovanSequence: SequenceDefinition<'padovan'> = {
-  'padovanSeq': length => {
+  padovanSeq: length => {
     const padovan = [1, 1, 1]
     for (let i = 3; i < length; i += 1) {
       padovan[i] = padovan[i - 2]! + padovan[i - 3]!
     }
     return padovan.slice(0, length)
   },
-  'isPadovan': n => isPadovan(n),
+  isPadovan: n => isPadovan(n),
 }

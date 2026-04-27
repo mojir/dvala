@@ -138,7 +138,7 @@
     "lint": "wireit",
     "lint:no-fix": "wireit",
     "typecheck": "wireit",
-    "typecheck:watch": "tsc -p ./tsconfig.compile.json --noEmit --watch",
+    "typecheck:watch": "tsgo -p ./tsconfig.compile.json --noEmit --watch",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run knip && pnpm run build && pnpm run test",
     "check:no-fix": "pnpm run lint:no-fix && pnpm run typecheck && pnpm run knip && pnpm run test",
     "clean": "pnpm run clean-dvala && pnpm run clean-playground && rm -rf .wireit coverage test-results vscode-dvala/out .cache",
@@ -169,32 +169,31 @@
     "knip": "wireit"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@playwright/test": "^1.58.2",
-    "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^25.5.0",
+    "@typescript/native-preview": "7.0.0-dev.20260421.2",
     "@vitest/coverage-v8": "^4.1.0",
     "@vscode/vsce": "^3.7.1",
     "esbuild": "^0.28.0",
-    "eslint": "^10.0.3",
     "glob": "^13.0.6",
     "highlight.js": "^11.11.1",
     "knip": "^6.7.0",
     "minimatch": "^10.2.5",
     "open-cli": "^9.0.0",
+    "oxfmt": "^0.47.0",
+    "oxlint": "^1.62.0",
+    "oxlint-tsgolint": "^0.22.0",
     "rolldown": "^1.0.0-rc.9",
     "serve": "^14.2.6",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.59.0",
     "vitest": "^4.1.0",
     "wireit": "^0.14.12",
     "zod": "^4.3.6"
   },
   "wireit": {
     "lint": {
-      "command": "eslint . --fix",
+      "command": "oxfmt . && oxlint --fix .",
       "files": [
         "src/**/*.ts",
         "common/**/*.ts",
@@ -204,13 +203,14 @@
         "playground-www/src/**/*.ts",
         "reference/**/*.ts",
         "__tests__/**/*.ts",
-        "vscode-dvala/src/**/*.ts",
-        "eslint.config.js"
+        ".oxlintrc.json",
+        ".oxfmtrc.json",
+        ".prettierignore"
       ],
       "output": []
     },
     "lint:no-fix": {
-      "command": "eslint .",
+      "command": "oxfmt --check . && oxlint .",
       "files": [
         "src/**/*.ts",
         "common/**/*.ts",
@@ -220,8 +220,9 @@
         "playground-www/src/**/*.ts",
         "reference/**/*.ts",
         "__tests__/**/*.ts",
-        "vscode-dvala/src/**/*.ts",
-        "eslint.config.js"
+        ".oxlintrc.json",
+        ".oxfmtrc.json",
+        ".prettierignore"
       ],
       "output": []
     },
@@ -246,7 +247,7 @@
       "output": []
     },
     "typecheck": {
-      "command": "tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
+      "command": "tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit",
       "files": [
         "src/**/*.ts",
         "common/**/*.ts",
@@ -287,7 +288,7 @@
       ]
     },
     "build-dvala": {
-      "command": "rolldown -c rolldown.config.mjs && tsc -p tsconfig.json --emitDeclarationOnly --declarationDir dist",
+      "command": "rolldown -c rolldown.config.mjs && tsgo -p tsconfig.json --emitDeclarationOnly --declarationDir dist",
       "files": [
         "src/**",
         "common/**",

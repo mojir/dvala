@@ -15,7 +15,14 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../src/allModules'
-import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, parseTokenStreamRecoverable, tokenizeSource, untokenize } from '../src/tooling'
+import {
+  getAutoCompleter,
+  getUndefinedSymbols,
+  parseTokenStream,
+  parseTokenStreamRecoverable,
+  tokenizeSource,
+  untokenize,
+} from '../src/tooling'
 import { StateHistory } from '../playground-www/src/StateHistory'
 import type { HistoryEntry, HistoryStatus } from '../playground-www/src/StateHistory'
 import { stringifyValue } from '../common/utils'
@@ -30,15 +37,13 @@ function makePlaygroundDvala(debug = false) {
 }
 
 function runValue(result: RunResult): unknown {
-  if (result.type !== 'completed')
-    throw new Error(`Expected completed result, got ${result.type}`)
+  if (result.type !== 'completed') throw new Error(`Expected completed result, got ${result.type}`)
   return result.value
 }
 
 /** Parse a JSON context string just like the playground does. */
 function parseContext(contextJson: string): { scope?: Record<string, unknown> } {
-  if (!contextJson.trim())
-    return {}
+  if (!contextJson.trim()) return {}
 
   const parsed = JSON.parse(contextJson) as Record<string, unknown>
   return {
@@ -275,8 +280,8 @@ describe('state encoding', () => {
     return btoa(encodeURIComponent(JSON.stringify(sharedState)))
   }
 
-  function decodeState(encoded: string): { 'dvala-code': string; 'context': string } {
-    return JSON.parse(decodeURIComponent(atob(encoded))) as { 'dvala-code': string; 'context': string }
+  function decodeState(encoded: string): { 'dvala-code': string; context: string } {
+    return JSON.parse(decodeURIComponent(atob(encoded))) as { 'dvala-code': string; context: string }
   }
 
   it('round-trips code and context', () => {
@@ -326,9 +331,7 @@ describe('built-in examples', () => {
     })
   }
   const runnableExamples = examples.filter(
-    e => !skipIds.has(e.id)
-      && !e.id.startsWith('playground-')
-      && (!e.effectHandlers || e.effectHandlers.length === 0),
+    e => !skipIds.has(e.id) && !e.id.startsWith('playground-') && (!e.effectHandlers || e.effectHandlers.length === 0),
   )
 
   for (const example of runnableExamples) {
@@ -418,7 +421,9 @@ describe('app routes coverage', () => {
     const { allAppRoutes, stubRoutes, dynamicOnlyRoutes } = await import('../common/appRoutes')
     const covered = new Set([...stubRoutes, ...dynamicOnlyRoutes])
     for (const route of allAppRoutes) {
-      expect(covered.has(route), `Route "${route}" is in allAppRoutes but not in stubRoutes or dynamicOnlyRoutes`).toBe(true)
+      expect(covered.has(route), `Route "${route}" is in allAppRoutes but not in stubRoutes or dynamicOnlyRoutes`).toBe(
+        true,
+      )
     }
     expect(covered.size).toBe(allAppRoutes.length)
   })

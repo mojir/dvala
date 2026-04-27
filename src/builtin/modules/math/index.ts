@@ -13,10 +13,7 @@ import mathModuleSource from './math.dvala'
 function getNumberVectorOrMatrixOperation(
   param: unknown,
   sourceCodeInfo: SourceCodeInfo | undefined,
-):
-  | ['number', number]
-  | ['vector', number[]]
-  | ['matrix', number[][]] {
+): ['number', number] | ['vector', number[]] | ['matrix', number[][]] {
   if (isVector(param)) {
     return ['vector', assertVector(param, sourceCodeInfo)]
   }
@@ -40,9 +37,7 @@ function checkedMathFn(fn: (val: number) => number, val: number, sourceCodeInfo:
 
 // Wraps a scalar math function to work element-wise on numbers, vectors, and matrices.
 // Return is cast to Any because number[], number[][] are annotated plain JS arrays (not PersistentVector).
-function unaryMathOp(
-  fn: (val: number) => number,
-): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
+function unaryMathOp(fn: (val: number) => number): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
   return ([param], sourceCodeInfo) => {
     const [operation, operand] = getNumberVectorOrMatrixOperation(param, sourceCodeInfo)
     if (operation === 'number') {
@@ -56,7 +51,7 @@ function unaryMathOp(
 }
 
 const mathUtilsFunctions: BuiltinNormalExpressions = {
-  'sin': {
+  sin: {
     evaluate: unaryMathOp(val => Math.sin(val)),
     arity: toFixedArity(1),
     docs: {
@@ -67,7 +62,8 @@ const mathUtilsFunctions: BuiltinNormalExpressions = {
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `sin` function computes the sine of an angle (in radians), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the sine of each element while preserving the original structure.',
+      description:
+        'The `sin` function computes the sine of an angle (in radians), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the sine of each element while preserving the original structure.',
       seeAlso: ['math.asin', 'math.sinh', 'math.cos', 'math.tan', 'math.toRad'],
       examples: [
         `let { sin } = import("math");
@@ -85,7 +81,7 @@ sin([[1, 2], [3, 4]])`,
       ],
     },
   },
-  'asin': {
+  asin: {
     evaluate: unaryMathOp(val => Math.asin(val)),
     arity: toFixedArity(1),
     docs: {
@@ -96,7 +92,8 @@ sin([[1, 2], [3, 4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `asin` function computes the arcsine (inverse sine) of a `number` in radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the arcsine of each element while preserving the original structure.',
+      description:
+        'The `asin` function computes the arcsine (inverse sine) of a `number` in radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the arcsine of each element while preserving the original structure.',
       seeAlso: ['math.sin', 'math.asinh', 'math.acos', 'math.atan'],
       examples: [
         `let { asin } = import("math");
@@ -112,7 +109,7 @@ asin([[0, 0.5], [-0.5, -1]])`,
       ],
     },
   },
-  'sinh': {
+  sinh: {
     evaluate: unaryMathOp(val => Math.sinh(val)),
     arity: toFixedArity(1),
     docs: {
@@ -123,7 +120,8 @@ asin([[0, 0.5], [-0.5, -1]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `sinh` function computes the hyperbolic sine of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the hyperbolic sine of each element while preserving the original structure.',
+      description:
+        'The `sinh` function computes the hyperbolic sine of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the hyperbolic sine of each element while preserving the original structure.',
       seeAlso: ['math.asinh', 'math.sin', 'math.cosh', 'math.tanh'],
       examples: [
         `let { sinh } = import("math");
@@ -139,7 +137,7 @@ sinh([[0.1, 0.2], [0.3, 0.4]])`,
       ],
     },
   },
-  'asinh': {
+  asinh: {
     evaluate: unaryMathOp(val => Math.asinh(val)),
     arity: toFixedArity(1),
     docs: {
@@ -150,7 +148,8 @@ sinh([[0.1, 0.2], [0.3, 0.4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `asinh` function computes the inverse hyperbolic sine of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the inverse hyperbolic sine of each element while preserving the original structure.',
+      description:
+        'The `asinh` function computes the inverse hyperbolic sine of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the inverse hyperbolic sine of each element while preserving the original structure.',
       seeAlso: ['math.sinh', 'math.asin', 'math.acosh', 'math.atanh'],
       examples: [
         `let { asinh } = import("math");
@@ -166,7 +165,7 @@ asinh([[10, 20], [30, 40]])`,
       ],
     },
   },
-  'cos': {
+  cos: {
     evaluate: unaryMathOp(val => Math.cos(val)),
     arity: toFixedArity(1),
     docs: {
@@ -177,7 +176,8 @@ asinh([[10, 20], [30, 40]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `cos` function computes the cosine of an angle (in radians), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the cosine of each element while preserving the original structure.',
+      description:
+        'The `cos` function computes the cosine of an angle (in radians), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the cosine of each element while preserving the original structure.',
       seeAlso: ['math.acos', 'math.cosh', 'math.sin', 'math.tan', 'math.toRad'],
       examples: [
         `let { cos } = import("math");
@@ -195,7 +195,7 @@ cos([[1, 2], [3, 4]])`,
       ],
     },
   },
-  'acos': {
+  acos: {
     evaluate: unaryMathOp(val => Math.acos(val)),
     arity: toFixedArity(1),
     docs: {
@@ -206,7 +206,8 @@ cos([[1, 2], [3, 4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `acos` function computes the arccosine (inverse cosine) of a `number` in radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the arccosine of each element while preserving the original structure.',
+      description:
+        'The `acos` function computes the arccosine (inverse cosine) of a `number` in radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the arccosine of each element while preserving the original structure.',
       seeAlso: ['math.cos', 'math.acosh', 'math.asin', 'math.atan'],
       examples: [
         `let { acos } = import("math");
@@ -222,7 +223,7 @@ acos([[0.1, 0.2], [0.3, 0.4]])`,
       ],
     },
   },
-  'cosh': {
+  cosh: {
     evaluate: unaryMathOp(val => Math.cosh(val)),
     arity: toFixedArity(1),
     docs: {
@@ -233,7 +234,8 @@ acos([[0.1, 0.2], [0.3, 0.4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `cosh` function computes the hyperbolic cosine of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the hyperbolic cosine of each element while preserving the original structure.',
+      description:
+        'The `cosh` function computes the hyperbolic cosine of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the hyperbolic cosine of each element while preserving the original structure.',
       seeAlso: ['math.acosh', 'math.cos', 'math.sinh', 'math.tanh'],
       examples: [
         `let { cosh } = import("math");
@@ -249,7 +251,7 @@ cosh([[0.1, 0.2], [0.3, 0.4]])`,
       ],
     },
   },
-  'acosh': {
+  acosh: {
     evaluate: unaryMathOp(val => Math.acosh(val)),
     arity: toFixedArity(1),
     docs: {
@@ -260,7 +262,8 @@ cosh([[0.1, 0.2], [0.3, 0.4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `acosh` function computes the inverse hyperbolic cosine of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the inverse hyperbolic cosine of each element while preserving the original structure.',
+      description:
+        'The `acosh` function computes the inverse hyperbolic cosine of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the inverse hyperbolic cosine of each element while preserving the original structure.',
       seeAlso: ['math.cosh', 'math.acos', 'math.asinh', 'math.atanh'],
       examples: [
         `let { acosh } = import("math");
@@ -278,7 +281,7 @@ acosh([[1, 2], [3, 4]])`,
       ],
     },
   },
-  'tan': {
+  tan: {
     evaluate: unaryMathOp(val => Math.tan(val)),
     arity: toFixedArity(1),
     docs: {
@@ -289,7 +292,8 @@ acosh([[1, 2], [3, 4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `tan` function computes the tangent of an angle (in radians), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the tangent of each element while preserving the original structure.',
+      description:
+        'The `tan` function computes the tangent of an angle (in radians), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the tangent of each element while preserving the original structure.',
       seeAlso: ['math.atan', 'math.tanh', 'math.sin', 'math.cos', 'math.toRad'],
       examples: [
         `let { tan } = import("math");
@@ -307,7 +311,7 @@ tan([[1, 2], [3, 4]])`,
       ],
     },
   },
-  'atan': {
+  atan: {
     evaluate: unaryMathOp(val => Math.atan(val)),
     arity: toFixedArity(1),
     docs: {
@@ -318,7 +322,8 @@ tan([[1, 2], [3, 4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `atan` function computes the arctangent (inverse tangent) of a `number` in radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the arctangent of each element while preserving the original structure.',
+      description:
+        'The `atan` function computes the arctangent (inverse tangent) of a `number` in radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the arctangent of each element while preserving the original structure.',
       seeAlso: ['math.tan', 'math.atanh', 'math.asin', 'math.acos'],
       examples: [
         `let { atan } = import("math");
@@ -334,7 +339,7 @@ atan([[0.1, 0.2], [0.3, 0.4]])`,
       ],
     },
   },
-  'tanh': {
+  tanh: {
     evaluate: unaryMathOp(val => Math.tanh(val)),
     arity: toFixedArity(1),
     docs: {
@@ -345,7 +350,8 @@ atan([[0.1, 0.2], [0.3, 0.4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `tanh` function computes the hyperbolic tangent of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the hyperbolic tangent of each element while preserving the original structure.',
+      description:
+        'The `tanh` function computes the hyperbolic tangent of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the hyperbolic tangent of each element while preserving the original structure.',
       seeAlso: ['math.atanh', 'math.tan', 'math.sinh', 'math.cosh'],
       examples: [
         `let { tanh } = import("math");
@@ -359,7 +365,7 @@ tanh(50)`,
       ],
     },
   },
-  'atanh': {
+  atanh: {
     evaluate: unaryMathOp(val => Math.atanh(val)),
     arity: toFixedArity(1),
     docs: {
@@ -370,7 +376,8 @@ tanh(50)`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `atanh` function computes the inverse hyperbolic tangent of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the inverse hyperbolic tangent of each element while preserving the original structure.',
+      description:
+        'The `atanh` function computes the inverse hyperbolic tangent of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the inverse hyperbolic tangent of each element while preserving the original structure.',
       seeAlso: ['math.tanh', 'math.atan', 'math.asinh', 'math.acosh'],
       examples: [
         `let { atanh } = import("math");
@@ -386,7 +393,7 @@ atanh([[0.1, 0.2], [0.3, 0.4]])`,
       ],
     },
   },
-  'ln': {
+  ln: {
     evaluate: unaryMathOp(val => Math.log(val)),
     arity: toFixedArity(1),
     docs: {
@@ -397,7 +404,8 @@ atanh([[0.1, 0.2], [0.3, 0.4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `ln` function computes the natural logarithm (base `e`) of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the natural logarithm of each element while preserving the original structure.',
+      description:
+        'The `ln` function computes the natural logarithm (base `e`) of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the natural logarithm of each element while preserving the original structure.',
       seeAlso: ['math.log2', 'math.log10', '^'],
       examples: [
         `let { ln } = import("math");
@@ -413,7 +421,7 @@ ln([[1, 2], [3, 4]])`,
       ],
     },
   },
-  'log2': {
+  log2: {
     evaluate: unaryMathOp(val => Math.log2(val)),
     arity: toFixedArity(1),
     docs: {
@@ -424,7 +432,8 @@ ln([[1, 2], [3, 4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `log2` function computes the base `2` logarithm of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the base-2 logarithm of each element while preserving the original structure.',
+      description:
+        'The `log2` function computes the base `2` logarithm of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the base-2 logarithm of each element while preserving the original structure.',
       seeAlso: ['math.ln', 'math.log10'],
       examples: [
         `let { log2 } = import("math");
@@ -440,7 +449,7 @@ log2([[1, 2], [3, 4]])`,
       ],
     },
   },
-  'log10': {
+  log10: {
     evaluate: unaryMathOp(val => Math.log10(val)),
     arity: toFixedArity(1),
     docs: {
@@ -451,7 +460,8 @@ log2([[1, 2], [3, 4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `log10` function computes the base `10` logarithm of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the base-10 logarithm of each element while preserving the original structure.',
+      description:
+        'The `log10` function computes the base `10` logarithm of a `number`, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the base-10 logarithm of each element while preserving the original structure.',
       seeAlso: ['math.ln', 'math.log2'],
       examples: [
         `let { log10 } = import("math");
@@ -467,7 +477,7 @@ log10([[1, 2], [3, 4]])`,
       ],
     },
   },
-  'toRad': {
+  toRad: {
     evaluate: unaryMathOp(val => (val * Math.PI) / 180),
     arity: toFixedArity(1),
     docs: {
@@ -478,7 +488,8 @@ log10([[1, 2], [3, 4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `toRad` function converts an angle from degrees to radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it converts each element while preserving the original structure.',
+      description:
+        'The `toRad` function converts an angle from degrees to radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it converts each element while preserving the original structure.',
       seeAlso: ['math.toDeg', 'math.sin', 'math.cos', 'math.tan'],
       examples: [
         `let { toRad } = import("math");
@@ -496,7 +507,7 @@ toRad([[0, 90], [180, 360]])`,
       ],
     },
   },
-  'toDeg': {
+  toDeg: {
     evaluate: unaryMathOp(val => (val * 180) / Math.PI),
     arity: toFixedArity(1),
     docs: {
@@ -507,7 +518,8 @@ toRad([[0, 90], [180, 360]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `toDeg` function converts an angle from radians to degrees, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it converts each element while preserving the original structure.',
+      description:
+        'The `toDeg` function converts an angle from radians to degrees, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it converts each element while preserving the original structure.',
       seeAlso: ['math.toRad'],
       examples: [
         `let { toDeg } = import("math");

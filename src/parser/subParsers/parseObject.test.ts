@@ -113,7 +113,7 @@ describe('parseObject', () => {
 
   describe('quoted symbol keys', () => {
     it('should parse a quoted symbol key and strip quotes', () => {
-      const ctx = createCtx('{ \'foo bar\': 1 }')
+      const ctx = createCtx("{ 'foo bar': 1 }")
       const result = parseObject(ctx)
       const entries = getObjectEntries(result)
       const [key] = asPair(entries[0]!)

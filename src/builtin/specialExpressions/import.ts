@@ -8,9 +8,7 @@ type ImportNode = [typeof NodeTypes.Import, string, number]
 const docs: CustomDocs = {
   category: 'special-expression',
   description: 'Imports all functions from a module as an object. Use destructuring to pick specific functions.',
-  customVariants: [
-    'import(module-name)',
-  ],
+  customVariants: ['import(module-name)'],
   returns: { type: 'object' },
   examples: [
     'let v = import("vector"); v.stdev([1, 2, 3, 4])',

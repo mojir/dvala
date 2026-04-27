@@ -45,8 +45,7 @@ function buildHoverMarkdown(name: string, ref: Reference): vscode.MarkdownString
         md.appendMarkdown('\n')
       }
     }
-  }
-  else if (isCustomReference(ref)) {
+  } else if (isCustomReference(ref)) {
     for (const variant of ref.customVariants) {
       md.appendCodeblock(variant, 'dvala')
     }
@@ -63,12 +62,18 @@ function buildHoverMarkdown(name: string, ref: Reference): vscode.MarkdownString
 
 function categoryToCompletionKind(category: string): vscode.CompletionItemKind {
   switch (category) {
-    case 'special-expression': return vscode.CompletionItemKind.Keyword
-    case 'effect': return vscode.CompletionItemKind.Event
-    case 'shorthand': return vscode.CompletionItemKind.Operator
-    case 'datatype': return vscode.CompletionItemKind.Class
-    case 'prelude': return vscode.CompletionItemKind.Class
-    default: return vscode.CompletionItemKind.Function
+    case 'special-expression':
+      return vscode.CompletionItemKind.Keyword
+    case 'effect':
+      return vscode.CompletionItemKind.Event
+    case 'shorthand':
+      return vscode.CompletionItemKind.Operator
+    case 'datatype':
+      return vscode.CompletionItemKind.Class
+    case 'prelude':
+      return vscode.CompletionItemKind.Class
+    default:
+      return vscode.CompletionItemKind.Function
   }
 }
 
@@ -90,8 +95,7 @@ function buildCompletionItems(): vscode.CompletionItem[] {
       if (argNames.length > 0) {
         const snippetArgs = argNames.map((name, i) => `\${${i + 1}:${name}}`).join(', ')
         item.insertText = new vscode.SnippetString(`${label}(${snippetArgs})`)
-      }
-      else {
+      } else {
         item.insertText = new vscode.SnippetString(`${label}($0)`)
       }
     }
@@ -106,7 +110,10 @@ function buildCompletionItems(): vscode.CompletionItem[] {
  * Find the function call context at a cursor position.
  * Scans backward to find the unmatched '(' and extracts the function name.
  */
-function findCallContext(document: vscode.TextDocument, position: vscode.Position): { functionName: string; activeParam: number } | null {
+function findCallContext(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+): { functionName: string; activeParam: number } | null {
   // Grab text from a few lines above to the cursor
   const startLine = Math.max(0, position.line - 10)
   const text = document.getText(new vscode.Range(new vscode.Position(startLine, 0), position))
@@ -127,8 +134,7 @@ function findCallContext(document: vscode.TextDocument, position: vscode.Positio
         return null
       }
       depth--
-    }
-    else if (ch === ',' && depth === 0) commaCount++
+    } else if (ch === ',' && depth === 0) commaCount++
   }
   return null
 }
@@ -192,19 +198,21 @@ function getHoverTypeAtPosition(
     const [endLine, endCol] = sourcePos.end
     if (line < startLine || line > endLine) continue
 
-    const inRange = (line > startLine || col >= startCol)
-      && (line < endLine || col <= endCol)
+    const inRange = (line > startLine || col >= startCol) && (line < endLine || col <= endCol)
     if (!inRange) continue
 
     const size = (endLine - startLine) * 1000 + (endCol - startCol)
     if (preferredRange) {
       const lineDistance = Math.abs(startLine - preferredRange.start.line)
-      const colDistance = lineDistance === 0
-        ? Math.abs(startCol - preferredRange.start.character)
-        : Math.abs(startCol - preferredRange.start.character) + lineDistance * 1000
+      const colDistance =
+        lineDistance === 0
+          ? Math.abs(startCol - preferredRange.start.character)
+          : Math.abs(startCol - preferredRange.start.character) + lineDistance * 1000
 
-      if (colDistance < bestPreferredStartDistance
-        || (colDistance === bestPreferredStartDistance && size < bestPreferredSize)) {
+      if (
+        colDistance < bestPreferredStartDistance ||
+        (colDistance === bestPreferredStartDistance && size < bestPreferredSize)
+      ) {
         bestPreferredStartDistance = colDistance
         bestPreferredSize = size
         bestPreferredType = type
@@ -255,7 +263,6 @@ function getStatusBarItem(): vscode.StatusBarItem {
   return statusBarItem
 }
 
-
 async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<void> {
   const channel = getOutputChannel()
   channel.clear()
@@ -266,63 +273,82 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
   const dvala = createDvala({ modules: allBuiltinModules, debug: true })
 
   const handlers: Handlers = [
-    { pattern: 'dvala.io.print', handler: async (ctx) => {
-      const str = stringifyValue(ctx.arg, false)
-      channel.append(str)
-      ctx.resume(ctx.arg)
-    } },
-    { pattern: 'dvala.io.error', handler: async (ctx) => {
-      const str = stringifyValue(ctx.arg, false)
-      channel.appendLine(`[stderr] ${str}`)
-      ctx.resume(ctx.arg)
-    } },
-    { pattern: 'dvala.io.read', handler: async (ctx) => {
-      const prompt = typeof ctx.arg === 'string' ? ctx.arg : undefined
-      const result = await vscode.window.showInputBox({ prompt, ignoreFocusOut: true })
-      ctx.resume(result ?? null)
-    } },
-    { pattern: 'dvala.io.pick', handler: async (ctx) => {
-      const arg = ctx.arg as { message?: string; options: string[] }
-      const options = Array.isArray(arg) ? arg : arg.options
-      const message = Array.isArray(arg) ? undefined : arg.message
-      const result = await vscode.window.showQuickPick(options, { placeHolder: message, ignoreFocusOut: true })
-      ctx.resume(result ?? null)
-    } },
-    { pattern: 'dvala.io.confirm', handler: async (ctx) => {
-      const message = typeof ctx.arg === 'string' ? ctx.arg : 'Confirm?'
-      const result = await vscode.window.showQuickPick(['Yes', 'No'], { placeHolder: message, ignoreFocusOut: true })
-      ctx.resume(result === 'Yes')
-    } },
-    { pattern: '*', handler: async (ctx) => {
-      // Pass through to standard handlers for standard effects
-      if (ctx.effectName.startsWith('dvala.error') ||
+    {
+      pattern: 'dvala.io.print',
+      handler: async ctx => {
+        const str = stringifyValue(ctx.arg, false)
+        channel.append(str)
+        ctx.resume(ctx.arg)
+      },
+    },
+    {
+      pattern: 'dvala.io.error',
+      handler: async ctx => {
+        const str = stringifyValue(ctx.arg, false)
+        channel.appendLine(`[stderr] ${str}`)
+        ctx.resume(ctx.arg)
+      },
+    },
+    {
+      pattern: 'dvala.io.read',
+      handler: async ctx => {
+        const prompt = typeof ctx.arg === 'string' ? ctx.arg : undefined
+        const result = await vscode.window.showInputBox({ prompt, ignoreFocusOut: true })
+        ctx.resume(result ?? null)
+      },
+    },
+    {
+      pattern: 'dvala.io.pick',
+      handler: async ctx => {
+        const arg = ctx.arg as { message?: string; options: string[] }
+        const options = Array.isArray(arg) ? arg : arg.options
+        const message = Array.isArray(arg) ? undefined : arg.message
+        const result = await vscode.window.showQuickPick(options, { placeHolder: message, ignoreFocusOut: true })
+        ctx.resume(result ?? null)
+      },
+    },
+    {
+      pattern: 'dvala.io.confirm',
+      handler: async ctx => {
+        const message = typeof ctx.arg === 'string' ? ctx.arg : 'Confirm?'
+        const result = await vscode.window.showQuickPick(['Yes', 'No'], { placeHolder: message, ignoreFocusOut: true })
+        ctx.resume(result === 'Yes')
+      },
+    },
+    {
+      pattern: '*',
+      handler: async ctx => {
+        // Pass through to standard handlers for standard effects
+        if (
+          ctx.effectName.startsWith('dvala.error') ||
           ctx.effectName === 'dvala.io.readStdin' ||
           ctx.effectName.startsWith('dvala.random') ||
           ctx.effectName.startsWith('dvala.time') ||
           ctx.effectName === 'dvala.sleep' ||
           ctx.effectName === 'dvala.checkpoint' ||
-          ctx.effectName === 'dvala.macro.expand') {
-        ctx.next()
-        return
-      }
-      const argStr = stringifyValue(ctx.arg, false)
-      const input = await vscode.window.showInputBox({
-        title: `Unhandled effect: ${ctx.effectName}`,
-        prompt: `Arg: ${argStr || '(none)'}. Enter JSON return value:`,
-        placeHolder: 'null',
-        ignoreFocusOut: true,
-      })
-      if (input === undefined) {
-        ctx.fail(`Unhandled effect "${ctx.effectName}" cancelled by user`)
-        return
-      }
-      try {
-        ctx.resume(JSON.parse(input || 'null'))
-      }
-      catch {
-        ctx.fail(`Invalid JSON for effect "${ctx.effectName}": ${input}`)
-      }
-    } },
+          ctx.effectName === 'dvala.macro.expand'
+        ) {
+          ctx.next()
+          return
+        }
+        const argStr = stringifyValue(ctx.arg, false)
+        const input = await vscode.window.showInputBox({
+          title: `Unhandled effect: ${ctx.effectName}`,
+          prompt: `Arg: ${argStr || '(none)'}. Enter JSON return value:`,
+          placeHolder: 'null',
+          ignoreFocusOut: true,
+        })
+        if (input === undefined) {
+          ctx.fail(`Unhandled effect "${ctx.effectName}" cancelled by user`)
+          return
+        }
+        try {
+          ctx.resume(JSON.parse(input || 'null'))
+        } catch {
+          ctx.fail(`Invalid JSON for effect "${ctx.effectName}": ${input}`)
+        }
+      },
+    },
   ]
 
   const status = getStatusBarItem()
@@ -332,13 +358,11 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
   const collection = getDiagnosticCollection()
   try {
     const runResult = await dvala.runAsync(code, { effectHandlers: handlers })
-    if (runResult.type === 'error')
-      throw runResult.error
+    if (runResult.type === 'error') throw runResult.error
     const value = runResult.type === 'completed' ? runResult.value : runResult.snapshot
     channel.appendLine(`=> ${stringifyValue(value, false)}`)
     if (uri) collection.set(uri, [])
-  }
-  catch (error) {
+  } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     channel.appendLine(`Error: ${message}`)
     if (uri) {
@@ -352,13 +376,11 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
         const diagnostic = new vscode.Diagnostic(range, errorText, vscode.DiagnosticSeverity.Error)
         diagnostic.source = 'dvala'
         collection.set(uri, [diagnostic])
-      }
-      else {
+      } else {
         collection.set(uri, [])
       }
     }
-  }
-  finally {
+  } finally {
     status.hide()
   }
 }
@@ -462,7 +484,7 @@ export function activate(context: vscode.ExtensionContext): void {
     provideCompletionItems(document, position) {
       indexDocument(document)
       const items: vscode.CompletionItem[] = [...completionItems]
-      const seen = new Set(completionItems.map(i => typeof i.label === 'string' ? i.label : i.label.label))
+      const seen = new Set(completionItems.map(i => (typeof i.label === 'string' ? i.label : i.label.label)))
 
       // Add user-defined symbols visible at the cursor position (scope-aware)
       const line1 = position.line + 1
@@ -495,7 +517,8 @@ export function activate(context: vscode.ExtensionContext): void {
   })
 
   // Signature Help — parameter hints when typing inside function calls
-  const signatureHelpProvider = vscode.languages.registerSignatureHelpProvider('dvala',
+  const signatureHelpProvider = vscode.languages.registerSignatureHelpProvider(
+    'dvala',
     {
       provideSignatureHelp(document, position) {
         const callCtx = findCallContext(document, position)
@@ -514,9 +537,7 @@ export function activate(context: vscode.ExtensionContext): void {
               const typeStr = argInfo ? (Array.isArray(argInfo.type) ? argInfo.type.join(' | ') : argInfo.type) : ''
               return typeStr ? `${name}: ${typeStr}` : name
             })
-            const sig = new vscode.SignatureInformation(
-              `${functionName}(${paramLabels.join(', ')})`,
-            )
+            const sig = new vscode.SignatureInformation(`${functionName}(${paramLabels.join(', ')})`)
             sig.parameters = paramLabels.map(label => new vscode.ParameterInformation(label))
             help.signatures.push(sig)
           }
@@ -528,9 +549,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const defs = workspaceIndex.getDefinitions(document.uri.fsPath)
         const funcDef = defs.find(d => d.name === functionName && d.params)
         if (funcDef?.params) {
-          const sig = new vscode.SignatureInformation(
-            `${functionName}(${funcDef.params.join(', ')})`,
-          )
+          const sig = new vscode.SignatureInformation(`${functionName}(${funcDef.params.join(', ')})`)
           sig.parameters = funcDef.params.map(name => new vscode.ParameterInformation(name))
           help.signatures.push(sig)
           return help
@@ -539,7 +558,8 @@ export function activate(context: vscode.ExtensionContext): void {
         return undefined
       },
     },
-    '(', ',',
+    '(',
+    ',',
   )
 
   const hoverProvider = vscode.languages.registerHoverProvider('dvala', {
@@ -557,16 +577,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
       // Look up inferred type from the type cache
       const cached = typecheckCache.get(document.uri.toString())
-      let inferredTypeStr = cached && symbol?.def && symbol.def.location.file === document.uri.fsPath
-        ? getHoverTypeAtDefinition(cached, symbol.def)
-        : undefined
+      let inferredTypeStr =
+        cached && symbol?.def && symbol.def.location.file === document.uri.fsPath
+          ? getHoverTypeAtDefinition(cached, symbol.def)
+          : undefined
 
       if (!inferredTypeStr && cached) {
         inferredTypeStr = getHoverTypeAtPosition(cached, position, range)
       }
 
       if (!inferredTypeStr && word && cached) {
-        const visibleDefs = workspaceIndex.getSymbolsInScope(document.uri.fsPath, position.line + 1, position.character + 1)
+        const visibleDefs = workspaceIndex.getSymbolsInScope(
+          document.uri.fsPath,
+          position.line + 1,
+          position.character + 1,
+        )
         const matchingDef = visibleDefs.find(def => def.name === word && def.location.file === document.uri.fsPath)
         if (matchingDef) {
           inferredTypeStr = getHoverTypeAtDefinition(cached, matchingDef)
@@ -614,8 +639,9 @@ export function activate(context: vscode.ExtensionContext): void {
             try {
               fs.accessSync(candidate)
               return new vscode.Location(vscode.Uri.file(candidate), new vscode.Position(0, 0))
+            } catch {
+              /* try next */
             }
-            catch { /* try next */ }
           }
         }
       }
@@ -628,10 +654,7 @@ export function activate(context: vscode.ExtensionContext): void {
       // First try: cursor is on a reference → navigate to its definition
       const def = workspaceIndex.findDefinition(document.uri.fsPath, line1, col1)
       if (def) {
-        const defPos = new vscode.Position(
-          Math.max(0, def.location.line - 1),
-          Math.max(0, def.location.column - 1),
-        )
+        const defPos = new vscode.Position(Math.max(0, def.location.line - 1), Math.max(0, def.location.column - 1))
         return new vscode.Location(vscode.Uri.file(def.location.file), defPos)
       }
 
@@ -646,8 +669,9 @@ export function activate(context: vscode.ExtensionContext): void {
           for (const resolvedPath of fileSymbols.imports.values()) {
             workspaceIndex.updateFile(resolvedPath)
             const importedSymbols = workspaceIndex.getFileSymbols(resolvedPath)
-            const targetDef = importedSymbols?.definitions.find(d => d.name === symbolAtPos.name && d.scope === 0)
-              ?? importedSymbols?.exports.find(d => d.name === symbolAtPos.name)
+            const targetDef =
+              importedSymbols?.definitions.find(d => d.name === symbolAtPos.name && d.scope === 0) ??
+              importedSymbols?.exports.find(d => d.name === symbolAtPos.name)
             if (targetDef) {
               const targetPos = new vscode.Position(
                 Math.max(0, targetDef.location.line - 1),
@@ -671,29 +695,31 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // "Go to Definition" in the debug Variables pane — sends a custom DAP request
   // to resolve the source location, then opens the file at that position
-  const goToSource = vscode.commands.registerCommand('dvala.debug.goToSource', async (variable: { variable: { variablesReference: number; name: string } }) => {
-    const session = vscode.debug.activeDebugSession
-    if (!session || session.type !== 'dvala') return
+  const goToSource = vscode.commands.registerCommand(
+    'dvala.debug.goToSource',
+    async (variable: { variable: { variablesReference: number; name: string } }) => {
+      const session = vscode.debug.activeDebugSession
+      if (!session || session.type !== 'dvala') return
 
-    const varRef = variable?.variable?.variablesReference
-    const varName = variable?.variable?.name
-    if (!varRef && !varName) return
+      const varRef = variable?.variable?.variablesReference
+      const varName = variable?.variable?.name
+      if (!varRef && !varName) return
 
-    try {
-      const loc = await session.customRequest('dvalaGetSourceLocation', { variablesReference: varRef, name: varName })
-      if (loc?.file) {
-        const uri = vscode.Uri.file(loc.file)
-        const line = Math.max(0, (loc.line ?? 1) - 1)
-        const col = Math.max(0, (loc.column ?? 1) - 1)
-        const pos = new vscode.Position(line, col)
-        const doc = await vscode.workspace.openTextDocument(uri)
-        await vscode.window.showTextDocument(doc, { selection: new vscode.Range(pos, pos) })
+      try {
+        const loc = await session.customRequest('dvalaGetSourceLocation', { variablesReference: varRef, name: varName })
+        if (loc?.file) {
+          const uri = vscode.Uri.file(loc.file)
+          const line = Math.max(0, (loc.line ?? 1) - 1)
+          const col = Math.max(0, (loc.column ?? 1) - 1)
+          const pos = new vscode.Position(line, col)
+          const doc = await vscode.workspace.openTextDocument(uri)
+          await vscode.window.showTextDocument(doc, { selection: new vscode.Range(pos, pos) })
+        }
+      } catch {
+        // No source location for this variable — silently ignore
       }
-    }
-    catch {
-      // No source location for this variable — silently ignore
-    }
-  })
+    },
+  )
 
   // ---------------------------------------------------------------------------
   // Language Service: workspace index, document symbols, diagnostics
@@ -710,7 +736,11 @@ export function activate(context: vscode.ExtensionContext): void {
     fileResolver: (importPath, fromDir) => {
       const resolved = path.resolve(fromDir, importPath)
       for (const candidate of [resolved, `${resolved}.dvala`]) {
-        try { return fs.readFileSync(candidate, 'utf-8') } catch { /* try next */ }
+        try {
+          return fs.readFileSync(candidate, 'utf-8')
+        } catch {
+          /* try next */
+        }
       }
       throw new Error(`File not found: ${importPath}`)
     },
@@ -861,18 +891,17 @@ export function activate(context: vscode.ExtensionContext): void {
       // hasn't opened yet. First invocation pays the scan; subsequent ones
       // are no-ops.
       await ensureWorkspaceIndexed()
-      const target = workspaceIndex.resolveCanonicalFile(
-        document.uri.fsPath,
-        position.line + 1,
-        position.character + 1,
-      )
+      const target = workspaceIndex.resolveCanonicalFile(document.uri.fsPath, position.line + 1, position.character + 1)
       if (!target) return []
 
       const occurrences = workspaceIndex.findAllOccurrences(target.file, target.name)
-      return occurrences.map(occ => new vscode.Location(
-        vscode.Uri.file(occ.file),
-        new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1)),
-      ))
+      return occurrences.map(
+        occ =>
+          new vscode.Location(
+            vscode.Uri.file(occ.file),
+            new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1)),
+          ),
+      )
     },
   })
 
@@ -880,11 +909,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const renameProvider = vscode.languages.registerRenameProvider('dvala', {
     prepareRename(document, position) {
       indexDocument(document)
-      const symbol = workspaceIndex.getSymbolAtPosition(
-        document.uri.fsPath,
-        position.line + 1,
-        position.character + 1,
-      )
+      const symbol = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, position.line + 1, position.character + 1)
       if (!symbol) throw new Error('Cannot rename this element')
 
       // Find the word range at the cursor position
@@ -905,11 +930,7 @@ export function activate(context: vscode.ExtensionContext): void {
       // hasn't opened yet. First invocation pays the scan; subsequent ones
       // are no-ops.
       await ensureWorkspaceIndexed()
-      const target = workspaceIndex.resolveCanonicalFile(
-        document.uri.fsPath,
-        position.line + 1,
-        position.character + 1,
-      )
+      const target = workspaceIndex.resolveCanonicalFile(document.uri.fsPath, position.line + 1, position.character + 1)
       if (!target) return undefined
 
       // The cursor is on an import-kind binding whose source module isn't in
@@ -946,13 +967,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const col = Math.max(0, def.location.column - 1)
         const pos = new vscode.Position(line, col)
         const range = new vscode.Range(pos, pos)
-        return new vscode.DocumentSymbol(
-          def.name,
-          def.kind,
-          symbolKind(def),
-          range,
-          range,
-        )
+        return new vscode.DocumentSymbol(def.name, def.kind, symbolKind(def), range, range)
       })
     },
   })
@@ -971,12 +986,14 @@ export function activate(context: vscode.ExtensionContext): void {
           const line = Math.max(0, def.location.line - 1)
           const col = Math.max(0, def.location.column - 1)
           const pos = new vscode.Position(line, col)
-          results.push(new vscode.SymbolInformation(
-            def.name,
-            symbolKind(def),
-            '',
-            new vscode.Location(vscode.Uri.file(def.location.file), pos),
-          ))
+          results.push(
+            new vscode.SymbolInformation(
+              def.name,
+              symbolKind(def),
+              '',
+              new vscode.Location(vscode.Uri.file(def.location.file), pos),
+            ),
+          )
         }
       }
 
@@ -990,18 +1007,33 @@ export function activate(context: vscode.ExtensionContext): void {
       const source = document.getText()
       const formatted = formatSource(source)
       if (formatted === source) return []
-      const fullRange = new vscode.Range(
-        document.positionAt(0),
-        document.positionAt(source.length),
-      )
+      const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(source.length))
       return [vscode.TextEdit.replace(fullRange, formatted)]
     },
   })
 
   context.subscriptions.push(
-    runFile, runBlock, runSelection, completionProvider, signatureHelpProvider, hoverProvider, definitionProvider, goToSource,
-    referenceProvider, renameProvider, documentSymbolProvider, workspaceSymbolProvider, lsDiagnostics, typeDiagnostics, onDidChange, onDidOpen, onDidClose,
-    dvalaWatcher, onFsCreate, onFsChange, onFsDelete,
+    runFile,
+    runBlock,
+    runSelection,
+    completionProvider,
+    signatureHelpProvider,
+    hoverProvider,
+    definitionProvider,
+    goToSource,
+    referenceProvider,
+    renameProvider,
+    documentSymbolProvider,
+    workspaceSymbolProvider,
+    lsDiagnostics,
+    typeDiagnostics,
+    onDidChange,
+    onDidOpen,
+    onDidClose,
+    dvalaWatcher,
+    onFsCreate,
+    onFsChange,
+    onFsDelete,
     formattingProvider,
   )
 }
@@ -1009,12 +1041,18 @@ export function activate(context: vscode.ExtensionContext): void {
 /** Map SymbolDef.kind to VS Code SymbolKind for the outline view. */
 function symbolKind(def: SymbolDef): vscode.SymbolKind {
   switch (def.kind) {
-    case 'function': return vscode.SymbolKind.Function
-    case 'macro': return vscode.SymbolKind.Method
-    case 'handler': return vscode.SymbolKind.Event
-    case 'import': return vscode.SymbolKind.Module
-    case 'parameter': return vscode.SymbolKind.Variable
-    case 'variable': return vscode.SymbolKind.Variable
+    case 'function':
+      return vscode.SymbolKind.Function
+    case 'macro':
+      return vscode.SymbolKind.Method
+    case 'handler':
+      return vscode.SymbolKind.Event
+    case 'import':
+      return vscode.SymbolKind.Module
+    case 'parameter':
+      return vscode.SymbolKind.Variable
+    case 'variable':
+      return vscode.SymbolKind.Variable
   }
 }
 

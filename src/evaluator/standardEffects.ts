@@ -63,48 +63,36 @@ function isNode(): boolean {
  * - Arrays and objects: JSON.stringify with 2-space indent.
  */
 function formatForOutput(value: unknown): string {
-  if (typeof value === 'string')
-    return value
+  if (typeof value === 'string') return value
 
-  if (value === null)
-    return 'null'
+  if (value === null) return 'null'
 
-  if (typeof value === 'number' || typeof value === 'boolean')
-    return String(value)
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
 
   if (isDvalaFunction(value)) {
-    if (value.functionType === 'Builtin')
-      return `<builtin function ${value.normalBuiltinSymbolType}>`
+    if (value.functionType === 'Builtin') return `<builtin function ${value.normalBuiltinSymbolType}>`
     const kind = value.functionType === 'Macro' ? 'macro' : 'function'
     return `<${kind} ${'name' in value && value.name ? value.name : '\u03BB'}>`
   }
 
-  if (isEffect(value))
-    return `<effect ${value.name}>`
+  if (isEffect(value)) return `<effect ${value.name}>`
 
-  if (isRegularExpression(value))
-    return `/${value.s}/${value.f}`
+  if (isRegularExpression(value)) return `/${value.s}/${value.f}`
 
-  if (typeof value === 'object' && value instanceof RegExp)
-    return `${value}`
+  if (typeof value === 'object' && value instanceof RegExp) return `${value}`
 
   // Arrays and objects — JSON.stringify with special value handling
   return JSON.stringify(replaceSpecialValues(value), null, 2)
 }
 
 function replaceSpecialValues(value: unknown): unknown {
-  if (isDvalaFunction(value))
-    return formatForOutput(value)
-  if (isEffect(value))
-    return formatForOutput(value)
-  if (isRegularExpression(value))
-    return formatForOutput(value)
-  if (Array.isArray(value))
-    return value.map(replaceSpecialValues)
+  if (isDvalaFunction(value)) return formatForOutput(value)
+  if (isEffect(value)) return formatForOutput(value)
+  if (isRegularExpression(value)) return formatForOutput(value)
+  if (Array.isArray(value)) return value.map(replaceSpecialValues)
   if (typeof value === 'object' && value !== null) {
     const result: Record<string, unknown> = {}
-    for (const [key, val] of Object.entries(value))
-      result[key] = replaceSpecialValues(val)
+    for (const [key, val] of Object.entries(value)) result[key] = replaceSpecialValues(val)
     return result
   }
   return value
@@ -124,8 +112,8 @@ function printHandler(arg: Any, k: ContinuationStack): Step {
 
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => {
-    const random = Math.random() * 16 | 0
-    const value = char === 'x' ? random : (random & 0x3 | 0x8)
+    const random = (Math.random() * 16) | 0
+    const value = char === 'x' ? random : (random & 0x3) | 0x8
     return value.toString(16)
   })
 }
@@ -159,7 +147,6 @@ type StandardEffectName =
 // ---------------------------------------------------------------------------
 
 const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
-
   // ── I/O ──────────────────────────────────────────────────────────────────
 
   'dvala.io.print': {
@@ -167,7 +154,8 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(1),
     docs: {
       category: 'effect',
-      description: 'Writes a value to stdout without a trailing newline. Accepts any value — strings are printed as-is, other values are auto-formatted. In Node.js uses `process.stdout.write(str)`, in browsers uses `console.log(str)`. Resumes with the original value (identity).',
+      description:
+        'Writes a value to stdout without a trailing newline. Accepts any value — strings are printed as-is, other values are auto-formatted. In Node.js uses `process.stdout.write(str)`, in browsers uses `console.log(str)`. Resumes with the original value (identity).',
       returns: { type: 'any' },
       args: {
         value: { type: 'any', description: 'Value to print.' },
@@ -196,7 +184,8 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(1),
     docs: {
       category: 'effect',
-      description: 'Writes a value to stderr followed by a newline. Accepts any value — strings are printed as-is, other values are auto-formatted. In Node.js uses `process.stderr.write(str + "\\n")`, in browsers uses `console.error(str)`. Resumes with the original value (identity).',
+      description:
+        'Writes a value to stderr followed by a newline. Accepts any value — strings are printed as-is, other values are auto-formatted. In Node.js uses `process.stderr.write(str + "\\n")`, in browsers uses `console.error(str)`. Resumes with the original value (identity).',
       returns: { type: 'any' },
       args: {
         value: { type: 'any', description: 'Value to write to stderr.' },
@@ -216,30 +205,37 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
       // Browser: window.prompt (synchronous)
       if (typeof globalThis.prompt === 'function') {
-
         const result = globalThis.prompt(message)
         return { type: 'Value', value: result ?? null, k }
       }
 
-      throw new RuntimeError('dvala.io.read is not supported in this environment. In Node.js, register a "dvala.io.read" host handler.', sourceCodeInfo)
+      throw new RuntimeError(
+        'dvala.io.read is not supported in this environment. In Node.js, register a "dvala.io.read" host handler.',
+        sourceCodeInfo,
+      )
     },
     arity: { min: 0, max: 1 },
     docs: {
       category: 'effect',
-      description: 'Reads one line of user input. In browsers uses `window.prompt()`. In Node.js uses `readline`. Resumes with the user\'s input string, or `null` on cancel.',
+      description:
+        "Reads one line of user input. In browsers uses `window.prompt()`. In Node.js uses `readline`. Resumes with the user's input string, or `null` on cancel.",
       returns: { type: ['string', 'null'] },
       args: {
         message: { type: 'string', description: 'Optional prompt message to display.' },
       },
-      variants: [
-        { argumentNames: [] },
-        { argumentNames: ['message'] },
-      ],
+      variants: [{ argumentNames: [] }, { argumentNames: ['message'] }],
       examples: [
         { code: 'let name = perform(@dvala.io.read, "What is your name?"); "Hello, " ++ name', noRun: true },
         { code: 'let input = perform(@dvala.io.read); input ?? "no input"', noRun: true },
       ],
-      seeAlso: ['-effect-dvala.io.readStdin', '-effect-dvala.io.print', '-effect-dvala.io.pick', '-effect-dvala.io.confirm', 'perform', 'effect'],
+      seeAlso: [
+        '-effect-dvala.io.readStdin',
+        '-effect-dvala.io.print',
+        '-effect-dvala.io.pick',
+        '-effect-dvala.io.confirm',
+        'perform',
+        'effect',
+      ],
     },
   },
 
@@ -281,7 +277,10 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
           }
           defaultIndex = optDefault
           if (defaultIndex < 0 || defaultIndex >= items.size) {
-            throw new TypeError(`dvala.io.pick: options.default (${defaultIndex}) is out of bounds for array of length ${items.size}`, sourceCodeInfo)
+            throw new TypeError(
+              `dvala.io.pick: options.default (${defaultIndex}) is out of bounds for array of length ${items.size}`,
+              sourceCodeInfo,
+            )
           }
         }
       }
@@ -308,25 +307,39 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         return { type: 'Value', value: parsed, k }
       }
 
-      throw new RuntimeError('dvala.io.pick is not supported in this environment. In Node.js, register a "dvala.io.pick" host handler.', sourceCodeInfo)
+      throw new RuntimeError(
+        'dvala.io.pick is not supported in this environment. In Node.js, register a "dvala.io.pick" host handler.',
+        sourceCodeInfo,
+      )
     },
     arity: { min: 1, max: 2 },
     docs: {
       category: 'effect',
-      description: 'Presents a list of items and asks the user to choose one. Accepts either a plain array of strings or an object with `items` and optional `options`. Resumes with the index of the chosen item, or `null` if the user cancels.',
+      description:
+        'Presents a list of items and asks the user to choose one. Accepts either a plain array of strings or an object with `items` and optional `options`. Resumes with the index of the chosen item, or `null` if the user cancels.',
       returns: { type: ['integer', 'null'] },
       args: {
-        items: { type: 'array', description: 'Non-empty array of strings to display. Can be passed directly as the arg.' },
-        options: { type: 'object', description: 'Optional settings: `prompt` (string label) and `default` (integer index to use when the user submits an empty input).' },
+        items: {
+          type: 'array',
+          description: 'Non-empty array of strings to display. Can be passed directly as the arg.',
+        },
+        options: {
+          type: 'object',
+          description:
+            'Optional settings: `prompt` (string label) and `default` (integer index to use when the user submits an empty input).',
+        },
       },
-      variants: [
-        { argumentNames: ['items'] },
-        { argumentNames: ['items', 'options'] },
-      ],
+      variants: [{ argumentNames: ['items'] }, { argumentNames: ['items', 'options'] }],
       examples: [
         { code: 'let choice = perform(@dvala.io.pick, ["Red", "Green", "Blue"])', noRun: true },
-        { code: 'let choice = perform(@dvala.io.pick, {items: ["Red", "Green", "Blue"], options: {prompt: "Pick a color:", default: 0}})', noRun: true },
-        { code: 'do\n  let colors = ["Red", "Green", "Blue"];\n  let idx = perform(@dvala.io.pick, colors);\n  if idx != null then nth(colors, idx) else "No selection" end\nend', noRun: true },
+        {
+          code: 'let choice = perform(@dvala.io.pick, {items: ["Red", "Green", "Blue"], options: {prompt: "Pick a color:", default: 0}})',
+          noRun: true,
+        },
+        {
+          code: 'do\n  let colors = ["Red", "Green", "Blue"];\n  let idx = perform(@dvala.io.pick, colors);\n  if idx != null then nth(colors, idx) else "No selection" end\nend',
+          noRun: true,
+        },
       ],
       seeAlso: ['-effect-dvala.io.read', '-effect-dvala.io.confirm', 'perform', 'effect'],
     },
@@ -344,7 +357,10 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
       if (options !== undefined) {
         if (!isPersistentMap(options)) {
-          throw new TypeError(`dvala.io.confirm: second argument must be an object, got ${typeof options}`, sourceCodeInfo)
+          throw new TypeError(
+            `dvala.io.confirm: second argument must be an object, got ${typeof options}`,
+            sourceCodeInfo,
+          )
         }
         if (options.get('default') !== undefined && typeof options.get('default') !== 'boolean') {
           throw new TypeError('dvala.io.confirm: options.default must be a boolean', sourceCodeInfo)
@@ -356,21 +372,25 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         return { type: 'Value', value: globalThis.confirm(question), k }
       }
 
-      throw new RuntimeError('dvala.io.confirm is not supported in this environment. In Node.js, register a "dvala.io.confirm" host handler.', sourceCodeInfo)
+      throw new RuntimeError(
+        'dvala.io.confirm is not supported in this environment. In Node.js, register a "dvala.io.confirm" host handler.',
+        sourceCodeInfo,
+      )
     },
     arity: { min: 1, max: 2 },
     docs: {
       category: 'effect',
-      description: 'Asks the user a yes/no question. In browsers uses `window.confirm()` and returns `true` (OK) or `false` (Cancel). In Node.js, register a host handler. The optional `default` hints the preferred answer to host handlers (e.g. for rendering `[Y/n]` in a CLI), but has no effect on the browser implementation.',
+      description:
+        'Asks the user a yes/no question. In browsers uses `window.confirm()` and returns `true` (OK) or `false` (Cancel). In Node.js, register a host handler. The optional `default` hints the preferred answer to host handlers (e.g. for rendering `[Y/n]` in a CLI), but has no effect on the browser implementation.',
       returns: { type: 'boolean' },
       args: {
         question: { type: 'string', description: 'The yes/no question to present.' },
-        options: { type: 'object', description: 'Optional settings: `default` (boolean, hints the preferred answer for host handlers).' },
+        options: {
+          type: 'object',
+          description: 'Optional settings: `default` (boolean, hints the preferred answer for host handlers).',
+        },
       },
-      variants: [
-        { argumentNames: ['question'] },
-        { argumentNames: ['question', 'options'] },
-      ],
+      variants: [{ argumentNames: ['question'] }, { argumentNames: ['question', 'options'] }],
       examples: [
         { code: 'if perform(@dvala.io.confirm, "Delete all files?") then "Deleted" else "Cancelled" end', noRun: true },
         { code: 'perform(@dvala.io.confirm, {question: "Continue?", options: {default: true}})', noRun: true },
@@ -382,7 +402,10 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
   'dvala.io.readStdin': {
     handler: (_arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Promise<Step> => {
       if (!isNode() || !process.stdin) {
-        throw new RuntimeError('dvala.io.readStdin is not supported in this environment. Node.js is required.', sourceCodeInfo)
+        throw new RuntimeError(
+          'dvala.io.readStdin is not supported in this environment. Node.js is required.',
+          sourceCodeInfo,
+        )
       }
       return new Promise<Step>((resolve, reject) => {
         const chunks: string[] = []
@@ -400,9 +423,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       returns: { type: 'string' },
       args: {},
       variants: [{ argumentNames: [] }],
-      examples: [
-        { code: 'let input = perform(@dvala.io.readStdin); count(input)', noRun: true },
-      ],
+      examples: [{ code: 'let input = perform(@dvala.io.readStdin); count(input)', noRun: true }],
       seeAlso: ['-effect-dvala.io.read', 'perform', 'effect'],
     },
   },
@@ -416,14 +437,20 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(0),
     docs: {
       category: 'effect',
-      description: 'Returns a random floating-point number in the range [0, 1). Equivalent to `Math.random()` in JavaScript.',
+      description:
+        'Returns a random floating-point number in the range [0, 1). Equivalent to `Math.random()` in JavaScript.',
       returns: { type: 'number' },
       args: {},
       variants: [{ argumentNames: [] }],
-      examples: [
-        'perform(@dvala.random)',
+      examples: ['perform(@dvala.random)'],
+      seeAlso: [
+        '-effect-dvala.random.int',
+        '-effect-dvala.random.uuid',
+        '-effect-dvala.random.item',
+        '-effect-dvala.random.shuffle',
+        'perform',
+        'effect',
       ],
-      seeAlso: ['-effect-dvala.random.int', '-effect-dvala.random.uuid', '-effect-dvala.random.item', '-effect-dvala.random.shuffle', 'perform', 'effect'],
     },
   },
 
@@ -438,9 +465,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       returns: { type: 'string' },
       args: {},
       variants: [{ argumentNames: [] }],
-      examples: [
-        'perform(@dvala.random.uuid)',
-      ],
+      examples: ['perform(@dvala.random.uuid)'],
       seeAlso: ['-effect-dvala.random', 'perform', 'effect'],
     },
   },
@@ -448,13 +473,19 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
   'dvala.random.int': {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
       // arg is a PersistentVector [min, max] — access via .get()
-      const min = isPersistentVector(arg) ? arg.get(0) : (Array.isArray(arg) ? arg[0] : undefined)
-      const max = isPersistentVector(arg) ? arg.get(1) : (Array.isArray(arg) ? arg[1] : undefined)
+      const min = isPersistentVector(arg) ? arg.get(0) : Array.isArray(arg) ? arg[0] : undefined
+      const max = isPersistentVector(arg) ? arg.get(1) : Array.isArray(arg) ? arg[1] : undefined
       if (typeof min !== 'number' || !Number.isInteger(min)) {
-        throw new TypeError(`dvala.random.int: min must be an integer, got ${typeof min === 'number' ? min : typeof min}`, sourceCodeInfo)
+        throw new TypeError(
+          `dvala.random.int: min must be an integer, got ${typeof min === 'number' ? min : typeof min}`,
+          sourceCodeInfo,
+        )
       }
       if (typeof max !== 'number' || !Number.isInteger(max)) {
-        throw new TypeError(`dvala.random.int: max must be an integer, got ${typeof max === 'number' ? max : typeof max}`, sourceCodeInfo)
+        throw new TypeError(
+          `dvala.random.int: max must be an integer, got ${typeof max === 'number' ? max : typeof max}`,
+          sourceCodeInfo,
+        )
       }
       if (max <= min) {
         throw new ArithmeticError(`dvala.random.int: max (${max}) must be greater than min (${min})`, sourceCodeInfo)
@@ -467,12 +498,14 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       description: 'Returns a random integer in the range [min, max). Pass a two-element array `[min, max]`.',
       returns: { type: 'integer' },
       args: {
-        range: { type: 'array', description: 'A two-element array [min, max] where min is inclusive and max is exclusive. Both must be integers with max > min.' },
+        range: {
+          type: 'array',
+          description:
+            'A two-element array [min, max] where min is inclusive and max is exclusive. Both must be integers with max > min.',
+        },
       },
       variants: [{ argumentNames: ['range'] }],
-      examples: [
-        'perform(@dvala.random.int, [1, 100])',
-      ],
+      examples: ['perform(@dvala.random.int, [1, 100])'],
       seeAlso: ['-effect-dvala.random', '-effect-dvala.random.item', 'perform', 'effect'],
     },
   },
@@ -488,7 +521,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         throw new TypeError('dvala.random.item: cannot pick from an empty array', sourceCodeInfo)
       }
       const index = Math.floor(Math.random() * size)
-      const value = isPersistentVector(arg) ? arg.get(index) as Any : (arg as Any[])[index] as Any
+      const value = isPersistentVector(arg) ? (arg.get(index) as Any) : ((arg as Any[])[index] as Any)
       return { type: 'Value', value, k }
     },
     arity: toFixedArity(1),
@@ -500,10 +533,14 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         array: { type: 'array', description: 'Non-empty array to pick from.' },
       },
       variants: [{ argumentNames: ['array'] }],
-      examples: [
-        'perform(@dvala.random.item, ["a", "b", "c"])',
+      examples: ['perform(@dvala.random.item, ["a", "b", "c"])'],
+      seeAlso: [
+        '-effect-dvala.random',
+        '-effect-dvala.random.shuffle',
+        '-effect-dvala.random.int',
+        'perform',
+        'effect',
       ],
-      seeAlso: ['-effect-dvala.random', '-effect-dvala.random.shuffle', '-effect-dvala.random.int', 'perform', 'effect'],
     },
   },
 
@@ -525,15 +562,14 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(1),
     docs: {
       category: 'effect',
-      description: 'Returns a new array with the elements of the input array in random order. Uses the Fisher-Yates shuffle algorithm.',
+      description:
+        'Returns a new array with the elements of the input array in random order. Uses the Fisher-Yates shuffle algorithm.',
       returns: { type: 'array' },
       args: {
         array: { type: 'array', description: 'Array to shuffle.' },
       },
       variants: [{ argumentNames: ['array'] }],
-      examples: [
-        'perform(@dvala.random.shuffle, [1, 2, 3, 4, 5])',
-      ],
+      examples: ['perform(@dvala.random.shuffle, [1, 2, 3, 4, 5])'],
       seeAlso: ['-effect-dvala.random', '-effect-dvala.random.item', 'perform', 'effect'],
     },
   },
@@ -547,13 +583,12 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(0),
     docs: {
       category: 'effect',
-      description: 'Returns the current timestamp in milliseconds since the Unix epoch. Equivalent to `Date.now()` in JavaScript.',
+      description:
+        'Returns the current timestamp in milliseconds since the Unix epoch. Equivalent to `Date.now()` in JavaScript.',
       returns: { type: 'number' },
       args: {},
       variants: [{ argumentNames: [] }],
-      examples: [
-        'perform(@dvala.time.now)',
-      ],
+      examples: ['perform(@dvala.time.now)'],
       seeAlso: ['-effect-dvala.time.zone', '-effect-dvala.sleep', 'perform', 'effect'],
     },
   },
@@ -569,9 +604,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       returns: { type: 'string' },
       args: {},
       variants: [{ argumentNames: [] }],
-      examples: [
-        'perform(@dvala.time.zone)',
-      ],
+      examples: ['perform(@dvala.time.zone)'],
       seeAlso: ['-effect-dvala.time.now', 'perform', 'effect'],
     },
   },
@@ -586,18 +619,14 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(1),
     docs: {
       category: 'effect',
-      description: 'Captures a snapshot of the current program state (continuation stack). The snapshot is stored in an in-memory list accessible via `ctx.snapshots` in host handlers. Takes a mandatory message string. The standard fallback resumes with `null`, but host handlers can override the resume value. The snapshot is always captured regardless of whether a handler intercepts.',
+      description:
+        'Captures a snapshot of the current program state (continuation stack). The snapshot is stored in an in-memory list accessible via `ctx.snapshots` in host handlers. Takes a mandatory message string. The standard fallback resumes with `null`, but host handlers can override the resume value. The snapshot is always captured regardless of whether a handler intercepts.',
       returns: { type: 'null' },
       args: {
         message: { type: 'string', description: 'A human-readable label for the checkpoint.' },
       },
-      variants: [
-        { argumentNames: ['message'] },
-      ],
-      examples: [
-        'perform(@dvala.checkpoint, "init")',
-        'perform(@dvala.checkpoint, "analysis-done")',
-      ],
+      variants: [{ argumentNames: ['message'] }],
+      examples: ['perform(@dvala.checkpoint, "init")', 'perform(@dvala.checkpoint, "analysis-done")'],
       seeAlso: ['perform', 'effect'],
     },
   },
@@ -608,7 +637,10 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Promise<Step> => {
       const ms = arg
       if (typeof ms !== 'number' || ms < 0) {
-        throw new TypeError(`dvala.sleep requires a non-negative number argument, got ${typeof ms === 'number' ? ms : typeof ms}`, sourceCodeInfo)
+        throw new TypeError(
+          `dvala.sleep requires a non-negative number argument, got ${typeof ms === 'number' ? ms : typeof ms}`,
+          sourceCodeInfo,
+        )
       }
       return new Promise<Step>(resolve => {
         setTimeout(() => resolve({ type: 'Value', value: null, k }), ms)
@@ -617,7 +649,8 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(1),
     docs: {
       category: 'effect',
-      description: 'Waits for the specified number of milliseconds before resuming. Resumes with `null`. Only works in async execution (`run`) — `runSync` will throw when a Promise surfaces.',
+      description:
+        'Waits for the specified number of milliseconds before resuming. Resumes with `null`. Only works in async execution (`run`) — `runSync` will throw when a Promise surfaces.',
       returns: { type: 'null' },
       args: {
         ms: { type: 'number', description: 'The number of milliseconds to sleep. Must be a non-negative number.' },
@@ -625,7 +658,10 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       variants: [{ argumentNames: ['ms'] }],
       examples: [
         { code: 'do perform(@dvala.sleep, 1000); "awake!" end', noRun: true },
-        { code: 'do perform(@dvala.io.print, "waiting..."); perform(@dvala.sleep, 500); perform(@dvala.io.print, "done!") end', noRun: true },
+        {
+          code: 'do perform(@dvala.io.print, "waiting..."); perform(@dvala.sleep, 500); perform(@dvala.io.print, "done!") end',
+          noRun: true,
+        },
       ],
       seeAlso: ['-effect-dvala.time.now', 'perform', 'effect'],
     },
@@ -640,15 +676,14 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(1),
     docs: {
       category: 'effect',
-      description: 'Requests a host-injected value by name. The host must install an effect handler for `@dvala.host` that resumes with the value. If no handler is installed, a descriptive error is thrown. Use this to receive configuration and bindings from the host environment.',
+      description:
+        'Requests a host-injected value by name. The host must install an effect handler for `@dvala.host` that resumes with the value. If no handler is installed, a descriptive error is thrown. Use this to receive configuration and bindings from the host environment.',
       returns: { type: 'any' },
       args: {
         name: { type: 'string', description: 'The name of the host binding to retrieve.' },
       },
       variants: [{ argumentNames: ['name'] }],
-      examples: [
-        { code: 'let configExists = perform(@dvala.host, "configExists")', noRun: true },
-      ],
+      examples: [{ code: 'let configExists = perform(@dvala.host, "configExists")', noRun: true }],
       seeAlso: ['-effect-dvala.env', '-effect-dvala.args', 'perform', 'effect'],
     },
   },
@@ -668,7 +703,8 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(1),
     docs: {
       category: 'effect',
-      description: 'Reads an environment variable by name. Returns the value as a string, or `null` if the variable is not set. Per-entry only — fetch-all is not supported for security and observability.',
+      description:
+        'Reads an environment variable by name. Returns the value as a string, or `null` if the variable is not set. Per-entry only — fetch-all is not supported for security and observability.',
       returns: { type: ['string', 'null'] },
       args: {
         name: { type: 'string', description: 'The environment variable name, e.g. `"HOME"` or `"PATH"`.' },
@@ -695,7 +731,8 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: toFixedArity(0),
     docs: {
       category: 'effect',
-      description: 'Returns the command-line arguments as an array of strings. The `node` binary and script path are stripped — only user arguments are included. Returns an empty array in non-CLI contexts (e.g. browser).',
+      description:
+        'Returns the command-line arguments as an array of strings. The `node` binary and script path are stripped — only user arguments are included. Returns an empty array in non-CLI contexts (e.g. browser).',
       returns: { type: 'array' },
       args: {},
       variants: [{ argumentNames: [] }],
@@ -706,7 +743,6 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       seeAlso: ['-effect-dvala.host', '-effect-dvala.env', 'perform', 'effect'],
     },
   },
-
 }
 
 // ---------------------------------------------------------------------------
@@ -732,11 +768,12 @@ export function getStandardEffectDefinition(effectName: string): StandardEffectD
  * Validates arity before calling the handler.
  * Returns undefined if the effect is not a standard effect.
  */
-export function getStandardEffectHandler(effectName: string): ((arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => Step | Promise<Step>) | undefined {
+export function getStandardEffectHandler(
+  effectName: string,
+): ((arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => Step | Promise<Step>) | undefined {
   const def = (standardEffects as Record<string, StandardEffectDefinition>)[effectName]
   const handler = def?.handler
-  if (!handler)
-    return undefined
+  if (!handler) return undefined
 
   return (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => {
     return handler(arg, k, sourceCodeInfo)

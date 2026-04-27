@@ -49,21 +49,21 @@ describe('module registration', () => {
 
   describe('user-defined module', () => {
     const temperatureFunctions: BuiltinNormalExpressions = {
-      'cToF': {
+      cToF: {
         evaluate: ([celsius], sourceCodeInfo): number => {
           if (typeof celsius !== 'number') {
             throw new TypeError(`Expected a number${sourceCodeInfo ? ` at ${sourceCodeInfo}` : ''}`)
           }
-          return celsius * 9 / 5 + 32
+          return (celsius * 9) / 5 + 32
         },
         arity: { min: 1, max: 1 },
       },
-      'fToC': {
+      fToC: {
         evaluate: ([fahrenheit], sourceCodeInfo): number => {
           if (typeof fahrenheit !== 'number') {
             throw new TypeError(`Expected a number${sourceCodeInfo ? ` at ${sourceCodeInfo}` : ''}`)
           }
-          return (fahrenheit - 32) * 5 / 9
+          return ((fahrenheit - 32) * 5) / 9
         },
         arity: { min: 1, max: 1 },
       },

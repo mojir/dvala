@@ -14,38 +14,48 @@ describe('misc functions', () => {
         expect((dvala.run('doc(>=(_))') as string).length).toBe(0)
         expect((dvala.run('doc(isNumber)') as string).length).toBeGreaterThan(0)
         expect(dvala.run('doc(2)')).toBe('')
-        expect(dvala.run(`
+        expect(
+          dvala.run(`
           let add = ((a, b) -> a + b) withDoc "Adds two numbers.";
           doc(add)
-        `)).toBe('Adds two numbers.')
+        `),
+        ).toBe('Adds two numbers.')
       })
     })
     describe('withDoc', () => {
       it('should attach a doc string to a function', () => {
-        expect(dvala.run(`
+        expect(
+          dvala.run(`
           let add = ((a, b) -> a + b) withDoc "Adds two numbers.";
           doc(add)
-        `)).toBe('Adds two numbers.')
+        `),
+        ).toBe('Adds two numbers.')
       })
       it('should support operator syntax', () => {
-        expect(dvala.run(`
+        expect(
+          dvala.run(`
           let add = (a, b) -> a + b;
           let documentedAdd = add withDoc "Adds.";
           doc(documentedAdd)
-        `)).toBe('Adds.')
+        `),
+        ).toBe('Adds.')
       })
       it('should not modify the original function', () => {
-        expect(dvala.run(`
+        expect(
+          dvala.run(`
           let add = (a, b) -> a + b;
           let documentedAdd = add withDoc "Adds.";
           doc(add)
-        `)).toBe('')
+        `),
+        ).toBe('')
       })
       it('should preserve function behavior', () => {
-        expect(dvala.run(`
+        expect(
+          dvala.run(`
           let add = ((a, b) -> a + b) withDoc "Adds.";
           add(1, 2)
-        `)).toBe(3)
+        `),
+        ).toBe(3)
       })
     })
     describe('arity', () => {

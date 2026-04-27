@@ -12,8 +12,14 @@ function runMat(code: string) {
 describe('matrix', () => {
   describe('mat:mul', () => {
     it('should perform matrix multiplication of two matrices', () => {
-      expect(runMat('mat:mul([[1, 2], [3, 4]], [[5, 6], [7, 8]])')).toEqual([[19, 22], [43, 50]])
-      expect(runMat('mat:mul([[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10], [11, 12]])')).toEqual([[58, 64], [139, 154]])
+      expect(runMat('mat:mul([[1, 2], [3, 4]], [[5, 6], [7, 8]])')).toEqual([
+        [19, 22],
+        [43, 50],
+      ])
+      expect(runMat('mat:mul([[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10], [11, 12]])')).toEqual([
+        [58, 64],
+        [139, 154],
+      ])
       expect(runMat('mat:mul([[2]], [[3]])')).toEqual([[6]])
       expect(() => runMat('mat:mul([[2, 1]], [[3, 4]])')).toThrow(DvalaError)
     })
@@ -26,8 +32,14 @@ describe('matrix', () => {
   })
   describe('mat:inv', () => {
     it('should return the inverse of a matrix', () => {
-      expect(runMat('mat:inv([[1, 2], [3, 4]])')).toEqual([[-2, 1], [1.5, -0.5]])
-      expect(runMat('mat:inv([[2, 3], [5, 7]])')).toEqual([[-7, 3], [5, -2]])
+      expect(runMat('mat:inv([[1, 2], [3, 4]])')).toEqual([
+        [-2, 1],
+        [1.5, -0.5],
+      ])
+      expect(runMat('mat:inv([[2, 3], [5, 7]])')).toEqual([
+        [-7, 3],
+        [5, -2],
+      ])
     })
     it('should throw an error for non-invertible matrices', () => {
       expect(() => runMat('mat:inv([[1, 2], [2, 4]])')).toThrow(DvalaError)
@@ -35,21 +47,40 @@ describe('matrix', () => {
   })
   describe('mat:adj', () => {
     it('should return the adjugate of a matrix', () => {
-      expect(runMat('mat:adj([[1, 2], [3, 4]])')).toEqual([[4, -2], [-3, 1]])
-      expect(runMat('mat:adj([[2, 3], [5, 7]])')).toEqual([[7, -3], [-5, 2]])
-      expect(runMat('mat:adj([[1, 2, 3], [4, 5, 6], [7,8,9]])')).toEqual([[-3, 6, -3], [6, -12, 6], [-3, 6, -3]])
+      expect(runMat('mat:adj([[1, 2], [3, 4]])')).toEqual([
+        [4, -2],
+        [-3, 1],
+      ])
+      expect(runMat('mat:adj([[2, 3], [5, 7]])')).toEqual([
+        [7, -3],
+        [-5, 2],
+      ])
+      expect(runMat('mat:adj([[1, 2, 3], [4, 5, 6], [7,8,9]])')).toEqual([
+        [-3, 6, -3],
+        [6, -12, 6],
+        [-3, 6, -3],
+      ])
     })
   })
   describe('mat:cofactor', () => {
     it('should return the cofactor of a matrix', () => {
-      expect(runMat('mat:cofactor([[1, 2], [3, 4]])')).toEqual([[4, -3], [-2, 1]])
+      expect(runMat('mat:cofactor([[1, 2], [3, 4]])')).toEqual([
+        [4, -3],
+        [-2, 1],
+      ])
     })
   })
   describe('mat:minor', () => {
     it('should return the minor of a matrix', () => {
       expect(runMat('mat:minor([[1, 2], [3, 4]], 0, 1)')).toEqual([[3]])
-      expect(runMat('mat:minor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], 1, 0)')).toEqual([[2, 3], [8, 9]])
-      expect(runMat('mat:minor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], 2, 2)')).toEqual([[1, 2], [4, 5]])
+      expect(runMat('mat:minor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], 1, 0)')).toEqual([
+        [2, 3],
+        [8, 9],
+      ])
+      expect(runMat('mat:minor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], 2, 2)')).toEqual([
+        [1, 2],
+        [4, 5],
+      ])
     })
   })
   describe('mat:trace', () => {
@@ -235,23 +266,29 @@ describe('matrix', () => {
   })
   describe('mat:isBanded', () => {
     it('should return true for banded matrices', () => {
-      expect(runMat(`mat:isBanded([
+      expect(
+        runMat(`mat:isBanded([
         [1, 1, 1, 0],
         [1, 1, 1, 1],
         [1, 1, 1, 1],
         [0, 1, 1, 1],
-      ], 1, 1)`)).toEqual(false)
-      expect(runMat(`mat:isBanded([
+      ], 1, 1)`),
+      ).toEqual(false)
+      expect(
+        runMat(`mat:isBanded([
         [1, 1, 0],
         [1, 1, 1],
         [0, 1, 1],
-      ], 1, 1)`)).toEqual(true)
-      expect(runMat(`mat:isBanded([
+      ], 1, 1)`),
+      ).toEqual(true)
+      expect(
+        runMat(`mat:isBanded([
         [1, 1, 1, 0],
         [1, 1, 1, 1],
         [1, 1, 1, 1],
         [0, 1, 1, 1],
-      ], 2, 2)`)).toEqual(true)
+      ], 2, 2)`),
+      ).toEqual(true)
     })
   })
   describe('mat:rank', () => {

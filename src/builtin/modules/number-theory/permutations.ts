@@ -40,7 +40,7 @@ function permutations<T>(collection: T[]): T[][] {
 }
 
 export const permutationsNormalExpressions: BuiltinNormalExpressions = {
-  'permutations': {
+  permutations: {
     // Returns a PersistentVector of PersistentVectors (each permutation), cast to Any
     evaluate: ([set], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
@@ -49,7 +49,7 @@ export const permutationsNormalExpressions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'countPermutations': {
+  countPermutations: {
     evaluate: ([n, k], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
       assertNumber(k, sourceCodeInfo, { integer: true, nonNegative: true, lte: n })

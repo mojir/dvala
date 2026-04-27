@@ -44,19 +44,29 @@ describe('mean functions', () => {
     })
     it('should calculate the moving geometric mean of a vector', () => {
       expect(runVec('movingGeometricMean([1, 2, 3, 4, 5, 6], 1)')).toEqual([1, 2, 2.9999999999999996, 4, 5, 6])
-      expect(runVec('movingGeometricMean([1, 2, 3, 4, 5, 6], 3)')).toEqual([1.8171205928321394, 2.8844991406148166, 3.9148676411688634, 4.93242414866094])
+      expect(runVec('movingGeometricMean([1, 2, 3, 4, 5, 6], 3)')).toEqual([
+        1.8171205928321394, 2.8844991406148166, 3.9148676411688634, 4.93242414866094,
+      ])
       expect(() => runVec('movingGeometricMean([1, -2, -3], 2)')).toThrow(DvalaError)
       expect(() => runVec('movingGeometricMean([1], 100)')).toThrow(DvalaError)
       expect(() => runVec('movingGeometricMean([], 1)')).toThrowError(DvalaError)
     })
     it('should calculate the centered moving geometric mean of a vector with padding', () => {
-      expect(runVec('centeredMovingGeometricMean([1, 2, 3, 4, 5], 3)')).toEqual([null, 1.8171205928321394, 2.8844991406148166, 3.9148676411688634, null])
+      expect(runVec('centeredMovingGeometricMean([1, 2, 3, 4, 5], 3)')).toEqual([
+        null,
+        1.8171205928321394,
+        2.8844991406148166,
+        3.9148676411688634,
+        null,
+      ])
       expect(() => runVec('centeredMovingGeometricMean([1, -2, -3], 2)')).toThrow(DvalaError)
       expect(() => runVec('centeredMovingGeometricMean([1], 100)')).toThrow(DvalaError)
       expect(() => runVec('centeredMovingGeometricMean([], 1)')).toThrowError(DvalaError)
     })
     it('should calculate the running geometric mean of a vector', () => {
-      expect(runVec('runningGeometricMean([1, 2, 3, 4, 5, 6])')).toEqual([1, 1.414213562373095, 1.8171205928321394, 2.213363839400643, 2.6051710846973517, 2.993795165523909])
+      expect(runVec('runningGeometricMean([1, 2, 3, 4, 5, 6])')).toEqual([
+        1, 1.414213562373095, 1.8171205928321394, 2.213363839400643, 2.6051710846973517, 2.993795165523909,
+      ])
       expect(() => runVec('runningGeometricMean([])')).toThrowError(DvalaError)
       expect(() => runVec('runningGeometricMean([1, -2, -3])')).toThrow(DvalaError)
     })
@@ -69,17 +79,27 @@ describe('mean functions', () => {
     })
     it('should calculate the moving harmonic mean of a vector', () => {
       expect(runVec('movingHarmonicMean([1, 2, 3, 4, 5, 6], 1)')).toEqual([1, 2, 3, 4, 5, 6])
-      expect(runVec('movingHarmonicMean([1, 2, 3, 4, 5, 6], 3)')).toEqual([1.6363636363636365, 2.7692307692307696, 3.829787234042554, 4.864864864864865])
+      expect(runVec('movingHarmonicMean([1, 2, 3, 4, 5, 6], 3)')).toEqual([
+        1.6363636363636365, 2.7692307692307696, 3.829787234042554, 4.864864864864865,
+      ])
       expect(() => runVec('movingHarmonicMean([1], 100)')).toThrow(DvalaError)
       expect(() => runVec('movingHarmonicMean([], 1)')).toThrowError(DvalaError)
     })
     it('should calculate the centered moving harmonic mean of a vector with padding', () => {
-      expect(runVec('centeredMovingHarmonicMean([1, 2, 3, 4, 5], 3)')).toEqual([null, 1.6363636363636365, 2.7692307692307696, 3.829787234042554, null])
+      expect(runVec('centeredMovingHarmonicMean([1, 2, 3, 4, 5], 3)')).toEqual([
+        null,
+        1.6363636363636365,
+        2.7692307692307696,
+        3.829787234042554,
+        null,
+      ])
       expect(() => runVec('centeredMovingHarmonicMean([1], 100)')).toThrow(DvalaError)
       expect(() => runVec('centeredMovingHarmonicMean([], 1)')).toThrowError(DvalaError)
     })
     it('should calculate the running harmonic mean of a vector', () => {
-      expect(runVec('runningHarmonicMean([1, 2, 3, 4, 5, 6])')).toEqual([1, 1.3333333333333333, 1.6363636363636365, 1.9200000000000004, 2.18978102189781, 2.4489795918367347])
+      expect(runVec('runningHarmonicMean([1, 2, 3, 4, 5, 6])')).toEqual([
+        1, 1.3333333333333333, 1.6363636363636365, 1.9200000000000004, 2.18978102189781, 2.4489795918367347,
+      ])
       expect(() => runVec('runningHarmonicMean([])')).toThrowError(DvalaError)
       expect(() => runVec('runningHarmonicMean([1], 100)')).toThrow(DvalaError)
     })

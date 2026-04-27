@@ -37,8 +37,7 @@ export interface DvalaModule {
 export function moduleDocsFromFunctions(functions: BuiltinNormalExpressions): Record<string, FunctionDocs> {
   return Object.fromEntries(
     Object.entries(functions).map(([k, v]) => {
-      if (!v.docs)
-        throw new Error(`Missing docs for function "${k}"`)
+      if (!v.docs) throw new Error(`Missing docs for function "${k}"`)
       return [k, v.docs]
     }),
   )

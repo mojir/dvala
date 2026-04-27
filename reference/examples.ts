@@ -38,7 +38,8 @@ perform(@dvala.io.print, [1, 2, 3][2]);`,
   {
     id: 'atoms-and-tagged-results',
     name: 'Atoms and tagged results',
-    description: 'Atoms are self-evaluating named constants starting with :. Tags for result handling, as used by settled().',
+    description:
+      'Atoms are self-evaluating named constants starting with :. Tags for result handling, as used by settled().',
     category: 'Basics',
     code: dvala`
 // Atoms are lightweight tags
@@ -61,7 +62,8 @@ perform(@dvala.io.print, :ok == :error);`,
   {
     id: 'template-strings',
     name: 'Template strings',
-    description: 'Template strings use backticks and support ${...} interpolation for embedding expressions directly in strings.',
+    description:
+      'Template strings use backticks and support ${...} interpolation for embedding expressions directly in strings.',
     category: 'Basics',
     code: dvala`
 // Template strings embed expressions with \${...}
@@ -81,9 +83,7 @@ for (i in range(count(items))) ->
     name: 'Using context',
     description: 'Simple example using a host effect handler to perform addition in JavaScript.',
     category: 'Effects & Context',
-    effectHandlers: [
-      { pattern: 'host.plus', handler: 'async ({ arg: [a, b], resume }) => { resume(a + b) }' },
-    ],
+    effectHandlers: [{ pattern: 'host.plus', handler: 'async ({ arg: [a, b], resume }) => { resume(a + b) }' }],
     code: dvala`
 perform(@host.plus, [15, 27])`,
   },
@@ -93,24 +93,33 @@ perform(@host.plus, [15, 27])`,
     description: 'Demonstrates calling async JavaScript from Dvala via effect handlers.',
     category: 'Effects & Context',
     effectHandlers: [
-      { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
+      {
+        pattern: 'host.fetchUser',
+        handler: `async ({ arg: id, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     const user = await response.json();
     resume({ name: user.name, email: user.email, city: user.address.city });
   } catch(e) { fail(e.message) }
-}` },
-      { pattern: 'host.fetchPosts', handler: `async ({ arg: userId, resume, fail }) => {
+}`,
+      },
+      {
+        pattern: 'host.fetchPosts',
+        handler: `async ({ arg: userId, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/posts?userId=' + userId);
     const posts = await response.json();
     resume(posts.slice(0, 3).map(p => ({ title: p.title, body: p.body })));
   } catch(e) { fail(e.message) }
-}` },
-      { pattern: 'host.delay', handler: `async ({ arg: ms, resume }) => {
+}`,
+      },
+      {
+        pattern: 'host.delay',
+        handler: `async ({ arg: ms, resume }) => {
   await new Promise(resolve => setTimeout(resolve, ms));
   resume(ms);
-}` },
+}`,
+      },
     ],
     code: dvala`
 // Call async host effects with perform(effect, args...)
@@ -137,21 +146,27 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);`,
     description: 'A more complex async example with user interactions. Uses prompt for input and fetch for API calls.',
     category: 'Effects & Context',
     effectHandlers: [
-      { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
+      {
+        pattern: 'host.fetchUser',
+        handler: `async ({ arg: id, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     if (!response.ok) { resume(null); return; }
     const user = await response.json();
     resume({ id: user.id, name: user.name, email: user.email, city: user.address.city, company: user.company.name });
   } catch(e) { fail(e.message) }
-}` },
-      { pattern: 'host.fetchTodos', handler: `async ({ arg: userId, resume, fail }) => {
+}`,
+      },
+      {
+        pattern: 'host.fetchTodos',
+        handler: `async ({ arg: userId, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/todos?userId=' + userId);
     const todos = await response.json();
     resume(todos.map(t => ({ title: t.title, completed: t.completed })));
   } catch(e) { fail(e.message) }
-}` },
+}`,
+      },
     ],
     code: dvala`
 // Interactive async example
@@ -597,7 +612,6 @@ perform(@dvala.io.print, "recursive  fib(10) = " ++ str(fib(10)));
 perform(@dvala.io.print, "tail-rec   fib(10) = " ++ str(fibTCO(10)));
 perform(@dvala.io.print, "tail-rec   fib(50) = " ++ str(fibTCO(50)));
 perform(@dvala.io.print, "tail-rec   fib(90) = " ++ str(fibTCO(90)))`,
-
   },
   {
     id: 'sort',
@@ -644,7 +658,11 @@ fizzbuzz join ", "`,
     description: 'Request values from the host using @dvala.host. The host provides an effect handler with the values.',
     category: 'Effects & Context',
     effectHandlers: [
-      { pattern: 'dvala.host', handler: '({ arg, resume, fail }) => { const values = { greeting: "Hello from the host!", version: 42 }; if (arg in values) resume(values[arg]); else fail("Unknown: " + arg) }' },
+      {
+        pattern: 'dvala.host',
+        handler:
+          '({ arg, resume, fail }) => { const values = { greeting: "Hello from the host!", version: 42 }; if (arg in values) resume(values[arg]); else fail("Unknown: " + arg) }',
+      },
     ],
     code: dvala`
 let greeting = perform(@dvala.host, "greeting");
@@ -672,7 +690,8 @@ perform(@dvala.io.print, \`Missing: \${missing}\`);
   {
     id: 'cli-arguments',
     name: 'CLI arguments',
-    description: 'Read command-line arguments with @dvala.args. Returns an array of strings (node and script path are stripped).',
+    description:
+      'Read command-line arguments with @dvala.args. Returns an array of strings (node and script path are stripped).',
     category: 'Effects & Context',
     code: dvala`
 // Get CLI arguments (empty array in the playground)
@@ -688,7 +707,8 @@ end`,
   {
     id: 'playground-demo',
     name: 'Playground Effects Demo',
-    description: 'Showcases playground.* effects — Dvala code that controls the playground UI. Load this in the playground and press Run.',
+    description:
+      'Showcases playground.* effects — Dvala code that controls the playground UI. Load this in the playground and press Run.',
     category: 'Effects & Context',
     code: dvala`
 // Playground Effects Demo
@@ -718,7 +738,8 @@ perform(@playground.ui.showToast, ["Original restored!", "success"]);
   {
     id: 'macros-intro',
     name: 'Macros — Introduction',
-    description: 'Macros receive AST (unevaluated code) and return new AST. Quote...end blocks make AST construction ergonomic.',
+    description:
+      'Macros receive AST (unevaluated code) and return new AST. Quote...end blocks make AST construction ergonomic.',
     category: 'Macros',
     code: dvala`
 // A macro receives its arguments as AST — not evaluated values.
@@ -748,7 +769,8 @@ perform(@dvala.io.print, 21 |> double |> negate);   // -42`,
   {
     id: 'macros-module',
     name: 'Macros — Standard Library',
-    description: 'The macros module ships ready-to-use macros: trace, unless, tap, dbg, and cond. All implemented in pure Dvala.',
+    description:
+      'The macros module ships ready-to-use macros: trace, unless, tap, dbg, and cond. All implemented in pure Dvala.',
     category: 'Macros',
     code: dvala`
 // Dvala's macros module provides a small set of practical macros —
@@ -1051,11 +1073,10 @@ let neg = -num;
   {
     id: 'macro-toolkit',
     name: 'Macro toolkit',
-    description: 'A reusable toolkit: unless, dbg, assert, thread, tryOr — code generation, AST inspection, and macroexpand.',
+    description:
+      'A reusable toolkit: unless, dbg, assert, thread, tryOr — code generation, AST inspection, and macroexpand.',
     category: 'Macros',
-    effectHandlers: [
-      { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
-    ],
+    effectHandlers: [{ pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' }],
     code: dvala`
 // ============================================================
 // Macro Toolkit — a practical collection of utility macros
@@ -1239,20 +1260,27 @@ print("── done ──")`,
   {
     id: 'ast-coverage-extended',
     name: 'AST coverage (extended)',
-    description: 'Comprehensive coverage of operators, destructuring, functions, effects, match patterns, and collections.',
+    description:
+      'Comprehensive coverage of operators, destructuring, functions, effects, match patterns, and collections.',
     category: 'Test Fixtures',
     effectHandlers: [
       // I/O — deterministic, no console output
       { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
       { pattern: 'dvala.io.error', handler: '({ arg, resume }) => { resume(arg) }' },
       { pattern: 'dvala.io.read', handler: '({ resume }) => { resume("test-input") }' },
-      { pattern: 'dvala.io.pick', handler: '({ arg, resume }) => { const items = Array.isArray(arg) ? arg : arg.items; resume(items[0]) }' },
+      {
+        pattern: 'dvala.io.pick',
+        handler: '({ arg, resume }) => { const items = Array.isArray(arg) ? arg : arg.items; resume(items[0]) }',
+      },
       { pattern: 'dvala.io.confirm', handler: '({ resume }) => { resume(true) }' },
       { pattern: 'dvala.io.readStdin', handler: '({ resume }) => { resume("stdin-line") }' },
       // Random — deterministic stubs
       { pattern: 'dvala.random', handler: '({ resume }) => { resume(0.42) }' },
       { pattern: 'dvala.random.uuid', handler: '({ resume }) => { resume("00000000-0000-0000-0000-000000000042") }' },
-      { pattern: 'dvala.random.int', handler: '({ arg, resume }) => { const [lo, hi] = Array.isArray(arg) ? arg : [0, arg]; resume(lo) }' },
+      {
+        pattern: 'dvala.random.int',
+        handler: '({ arg, resume }) => { const [lo, hi] = Array.isArray(arg) ? arg : [0, arg]; resume(lo) }',
+      },
       { pattern: 'dvala.random.shuffle', handler: '({ arg, resume }) => { resume([...arg].reverse()) }' },
       { pattern: 'dvala.random.item', handler: '({ arg, resume }) => { resume(arg[0]) }' },
       // Time — deterministic

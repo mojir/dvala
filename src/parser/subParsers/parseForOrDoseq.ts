@@ -5,7 +5,17 @@ import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
 import { bindingTargetTypes } from '../types'
 import type { SourceCodeInfo, SymbolToken, Token } from '../../tokenizer/token'
-import { asSymbolToken, assertLParenToken, assertOperatorToken, assertRParenToken, assertReservedSymbolToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
+import {
+  asSymbolToken,
+  assertLParenToken,
+  assertOperatorToken,
+  assertRParenToken,
+  assertReservedSymbolToken,
+  isOperatorToken,
+  isRParenToken,
+  isReservedSymbolToken,
+  isSymbolToken,
+} from '../../tokenizer/token'
 import { asUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -79,10 +89,7 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
 
   let whenNode: AstNode | undefined
   let whileNode: AstNode | undefined
-  while (
-    isReservedSymbolToken(token, 'when')
-    || isReservedSymbolToken(token, 'while')
-  ) {
+  while (isReservedSymbolToken(token, 'when') || isReservedSymbolToken(token, 'while')) {
     ctx.advance()
 
     if (token[1] === 'when') {
@@ -94,11 +101,12 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
     }
     token = ctx.peek()
 
-    const symbols: ('when' | 'while')[] = modifiers.includes('&when') && modifiers.includes('&while')
-      ? []
-      : modifiers.includes('&when')
-        ? ['while']
-        : ['when']
+    const symbols: ('when' | 'while')[] =
+      modifiers.includes('&when') && modifiers.includes('&while')
+        ? []
+        : modifiers.includes('&when')
+          ? ['while']
+          : ['when']
 
     assertInternalLoopBindingDelimiter(token, symbols, ctx.peekSourceCodeInfo())
     token = ctx.peek()
@@ -118,12 +126,20 @@ function parseBinding(ctx: ParserContext): [BindingTarget, AstNode] {
 
   const value = ctx.parseExpression()
 
-  const target: BindingTarget = withSourceCodeInfo([bindingTargetTypes.symbol, [name, undefined], 0], firstToken[2], ctx)
+  const target: BindingTarget = withSourceCodeInfo(
+    [bindingTargetTypes.symbol, [name, undefined], 0],
+    firstToken[2],
+    ctx,
+  )
   ctx.setNodeEnd(target[2])
   return [target, value]
 }
 
-function assertInternalLoopBindingDelimiter(token: Token, symbols: InternalLoopBindingDelimiter[], sourceCodeInfo?: SourceCodeInfo): void {
+function assertInternalLoopBindingDelimiter(
+  token: Token,
+  symbols: InternalLoopBindingDelimiter[],
+  sourceCodeInfo?: SourceCodeInfo,
+): void {
   if (!isInternalLoopBindingDelimiter(token, symbols)) {
     const symbolsString = `${[...symbols, ','].map(symbol => `"${symbol}"`).join(', ')} or ")"`
     throw new ParseError(`Expected symbol ${symbolsString}`, sourceCodeInfo)

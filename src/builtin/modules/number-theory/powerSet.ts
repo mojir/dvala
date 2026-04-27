@@ -20,7 +20,7 @@ function powerSet(set: Arr): PersistentVector<unknown>[] {
 }
 
 export const powerSetNormalExpressions: BuiltinNormalExpressions = {
-  'powerSet': {
+  powerSet: {
     // Returns a PersistentVector of PersistentVectors (each subset), cast to Any
     evaluate: ([set], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
@@ -28,7 +28,7 @@ export const powerSetNormalExpressions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'countPowerSet': {
+  countPowerSet: {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
       // 2^53 exceeds MAX_SAFE_INTEGER, so cap at 52

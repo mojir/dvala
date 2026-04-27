@@ -31,8 +31,7 @@ function generateLuckyNumbers(
 
   // Check if we should continue after the first number
   return chain(predicate(1, 0), keepFirst => {
-    if (!keepFirst)
-      return []
+    if (!keepFirst) return []
 
     // Continue the sieve process
     let index = 1 // Start with the second element (index 1, which is 3)
@@ -43,8 +42,7 @@ function generateLuckyNumbers(
 
       // Check if we should continue
       return chain(predicate(luckyNumber, count), keep => {
-        if (!keep)
-          return luckyNumbers
+        if (!keep) return luckyNumbers
 
         // Add to result
         luckyNumbers.push(luckyNumber)
@@ -55,7 +53,8 @@ function generateLuckyNumbers(
         const newFiltered: number[] = []
 
         for (let i = 0; i < filteredNumbers.length; i++) {
-          if ((i + 1) % step !== 0) { // Keep numbers not at positions divisible by step
+          if ((i + 1) % step !== 0) {
+            // Keep numbers not at positions divisible by step
             newFiltered.push(filteredNumbers[i]!)
           }
         }
@@ -139,6 +138,6 @@ function getLuckyNumbers(count: number): number[] {
 }
 
 export const luckySequence: SequenceDefinition<'lucky'> = {
-  'luckySeq': length => getLuckyNumbers(length),
-  'isLucky': n => (generateLuckyNumbers(l => l <= n) as number[]).includes(n),
+  luckySeq: length => getLuckyNumbers(length),
+  isLucky: n => (generateLuckyNumbers(l => l <= n) as number[]).includes(n),
 }

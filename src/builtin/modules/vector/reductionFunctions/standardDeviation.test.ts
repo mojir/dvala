@@ -43,12 +43,16 @@ describe('standard deviation functions', () => {
       expect(() => runVec('sampleStdev([])')).toThrowError(DvalaError)
     })
     it('should calculate the moving sample standard deviation of a vector', () => {
-      expect(runVec('movingSampleStdev([1, 2, 4, 7], 2)')).toEqual([0.7071067811865476, 1.4142135623730951, 2.1213203435596424])
+      expect(runVec('movingSampleStdev([1, 2, 4, 7], 2)')).toEqual([
+        0.7071067811865476, 1.4142135623730951, 2.1213203435596424,
+      ])
       expect(runVec('movingSampleStdev([1, 2, 4, 7], 4)')).toEqual([2.6457513110645907])
     })
     it('should calculate the centered moving sample standard deviation of a vector with padding', () => {
       expect(runVec('centeredMovingSampleStdev([1, 2, 4], 3)')).toEqual([null, 1.5275252316519465, null])
-      expect(runVec('centeredMovingSampleStdev([1, 2, 4], 3, 0, 5)')).toEqual([1, 1.5275252316519465, 1.5275252316519465])
+      expect(runVec('centeredMovingSampleStdev([1, 2, 4], 3, 0, 5)')).toEqual([
+        1, 1.5275252316519465, 1.5275252316519465,
+      ])
       expect(() => runVec('centeredMovingSampleStdev([1, 2, 4], 1)')).toThrowError(DvalaError)
     })
     it('should calculate the running sample standard deviation of a vector', () => {

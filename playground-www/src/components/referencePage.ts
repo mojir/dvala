@@ -33,7 +33,11 @@ const REF_SECTIONS: RefSection[] = [
   { id: 'core', title: 'Core API', description: 'Built-in functions, operators, special expressions, and data types.' },
   { id: 'modules', title: 'Modules', description: 'Importable modules for math, vectors, matrices, and more.' },
   { id: 'effects', title: 'Effects', description: 'Standard algebraic effects for I/O, randomness, and time.' },
-  { id: 'playground', title: 'Playground Effects', description: 'Effects for controlling the playground UI, editor, and execution.' },
+  {
+    id: 'playground',
+    title: 'Playground Effects',
+    description: 'Effects for controlling the playground UI, editor, and execution.',
+  },
 ]
 
 // ─── Shared types and helpers ──────────────────────────────────────────────────
@@ -196,26 +200,27 @@ export function renderReferenceSectionPage(sectionId: string): string {
       groups.get(entry.group)!.push(entry)
     }
 
-    const categoryCards = Array.from(groups.entries()).map(([categoryName, categoryEntries]) => {
-      const catInfo = data.coreCategories.find(c => c.name === categoryName)
-      const desc = catInfo?.description ?? ''
-      return `
+    const categoryCards = Array.from(groups.entries())
+      .map(([categoryName, categoryEntries]) => {
+        const catInfo = data.coreCategories.find(c => c.name === categoryName)
+        const desc = catInfo?.description ?? ''
+        return `
 <a class="ref-card" href="${href(`/ref/core/${encodeURIComponent(categoryName)}`)}" onclick="event.preventDefault();Playground.navigate('/ref/core/${encodeURIComponent(categoryName)}')">
   <span class="ref-card__title">${escapeHtml(categoryName)}</span>
   ${desc ? `<span class="ref-card__desc">${escapeHtml(desc)}</span>` : ''}
   <span class="ref-card__count">${plural(categoryEntries.length, 'function', 'functions')}</span>
 </a>`
-    }).join('\n')
+      })
+      .join('\n')
 
     return `
 <div class="book-page">
   ${renderPageHeader({
-    breadcrumbs: [
-      { label: 'Reference', path: '/ref' },
-      { label: section.title },
-    ],
+    breadcrumbs: [{ label: 'Reference', path: '/ref' }, { label: section.title }],
     actions: refActions(),
-    prev: prevSection ? { path: `/ref/${prevSection.id}`, title: prevSection.title } : { path: '/ref', title: 'Back to Reference' },
+    prev: prevSection
+      ? { path: `/ref/${prevSection.id}`, title: prevSection.title }
+      : { path: '/ref', title: 'Back to Reference' },
     up: { path: '/ref', title: 'Back to Reference' },
     next: nextSection ? { path: `/ref/${nextSection.id}`, title: nextSection.title } : null,
   })}
@@ -235,26 +240,27 @@ export function renderReferenceSectionPage(sectionId: string): string {
       groups.get(entry.group)!.push(entry)
     }
 
-    const moduleCards = Array.from(groups.entries()).map(([moduleName, moduleEntries]) => {
-      const moduleInfo = data.moduleCategories.find(m => m.name === moduleName)
-      const desc = moduleInfo?.description ?? ''
-      return `
+    const moduleCards = Array.from(groups.entries())
+      .map(([moduleName, moduleEntries]) => {
+        const moduleInfo = data.moduleCategories.find(m => m.name === moduleName)
+        const desc = moduleInfo?.description ?? ''
+        return `
 <a class="ref-card" href="${href(`/ref/modules/${moduleName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/modules/${moduleName}')">
   <span class="ref-card__title">${escapeHtml(moduleName)}</span>
   ${desc ? `<span class="ref-card__desc">${escapeHtml(desc)}</span>` : ''}
   <span class="ref-card__count">${plural(moduleEntries.length, 'function', 'functions')}</span>
 </a>`
-    }).join('\n')
+      })
+      .join('\n')
 
     return `
 <div class="book-page">
   ${renderPageHeader({
-    breadcrumbs: [
-      { label: 'Reference', path: '/ref' },
-      { label: section.title },
-    ],
+    breadcrumbs: [{ label: 'Reference', path: '/ref' }, { label: section.title }],
     actions: refActions(),
-    prev: prevSection ? { path: `/ref/${prevSection.id}`, title: prevSection.title } : { path: '/ref', title: 'Back to Reference' },
+    prev: prevSection
+      ? { path: `/ref/${prevSection.id}`, title: prevSection.title }
+      : { path: '/ref', title: 'Back to Reference' },
     up: { path: '/ref', title: 'Back to Reference' },
     next: nextSection ? { path: `/ref/${nextSection.id}`, title: nextSection.title } : null,
   })}
@@ -273,27 +279,34 @@ export function renderReferenceSectionPage(sectionId: string): string {
     groups.get(entry.group)!.push(entry)
   }
 
-  const groupsHtml = Array.from(groups.entries()).map(([groupName, groupEntries]) => `
+  const groupsHtml = Array.from(groups.entries())
+    .map(
+      ([groupName, groupEntries]) => `
     <div class="ref-index__group">
       <h3 class="ref-index__group-title">${escapeHtml(groupName)}</h3>
       <ul class="ref-index__list">
-        ${groupEntries.map(e => `
+        ${groupEntries
+          .map(
+            e => `
         <li class="ref-index__item">
           <a class="ref-index__link" href="${href(`/ref/${e.linkName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${e.linkName}')">${escapeHtml(e.title)}</a>
           <span class="ref-index__desc">${escapeHtml(e.description)}</span>
-        </li>`).join('')}
+        </li>`,
+          )
+          .join('')}
       </ul>
-    </div>`).join('\n')
+    </div>`,
+    )
+    .join('\n')
 
   return `
 <div class="book-page">
   ${renderPageHeader({
-    breadcrumbs: [
-      { label: 'Reference', path: '/ref' },
-      { label: section.title },
-    ],
+    breadcrumbs: [{ label: 'Reference', path: '/ref' }, { label: section.title }],
     actions: refActions(),
-    prev: prevSection ? { path: `/ref/${prevSection.id}`, title: prevSection.title } : { path: '/ref', title: 'Back to Reference' },
+    prev: prevSection
+      ? { path: `/ref/${prevSection.id}`, title: prevSection.title }
+      : { path: '/ref', title: 'Back to Reference' },
     up: { path: '/ref', title: 'Back to Reference' },
     next: nextSection ? { path: `/ref/${nextSection.id}`, title: nextSection.title } : null,
   })}
@@ -329,11 +342,15 @@ export function renderReferenceModulePage(moduleName: string): string {
   const listHtml = `
     ${descHtml}
     <ul class="ref-index__list">
-      ${moduleEntries.map(e => `
+      ${moduleEntries
+        .map(
+          e => `
       <li class="ref-index__item">
         <a class="ref-index__link" href="${href(`/ref/${e.linkName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${e.linkName}')">${escapeHtml(e.title)}</a>
         <span class="ref-index__desc">${escapeHtml(e.description)}</span>
-      </li>`).join('')}
+      </li>`,
+        )
+        .join('')}
     </ul>`
 
   return `
@@ -345,7 +362,9 @@ export function renderReferenceModulePage(moduleName: string): string {
       { label: moduleName },
     ],
     actions: refActions(),
-    prev: prevModule ? { path: `/ref/modules/${prevModule}`, title: prevModule } : { path: '/ref/modules', title: 'Back to Modules' },
+    prev: prevModule
+      ? { path: `/ref/modules/${prevModule}`, title: prevModule }
+      : { path: '/ref/modules', title: 'Back to Modules' },
     up: { path: '/ref/modules', title: 'Back to Modules' },
     next: nextModule ? { path: `/ref/modules/${nextModule}`, title: nextModule } : null,
   })}
@@ -375,11 +394,15 @@ export function renderReferenceCategoryPage(categoryName: string): string {
 
   const listHtml = `
     <ul class="ref-index__list">
-      ${categoryEntries.map(e => `
+      ${categoryEntries
+        .map(
+          e => `
       <li class="ref-index__item">
         <a class="ref-index__link" href="${href(`/ref/${e.linkName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${e.linkName}')">${escapeHtml(e.title)}</a>
         <span class="ref-index__desc">${escapeHtml(e.description)}</span>
-      </li>`).join('')}
+      </li>`,
+        )
+        .join('')}
     </ul>`
 
   return `
@@ -391,7 +414,9 @@ export function renderReferenceCategoryPage(categoryName: string): string {
       { label: categoryName },
     ],
     actions: refActions(),
-    prev: prevCategory ? { path: `/ref/core/${encodeURIComponent(prevCategory)}`, title: prevCategory } : { path: '/ref/core', title: 'Back to Core API' },
+    prev: prevCategory
+      ? { path: `/ref/core/${encodeURIComponent(prevCategory)}`, title: prevCategory }
+      : { path: '/ref/core', title: 'Back to Core API' },
     up: { path: '/ref/core', title: 'Back to Core API' },
     next: nextCategory ? { path: `/ref/core/${encodeURIComponent(nextCategory)}`, title: nextCategory } : null,
   })}

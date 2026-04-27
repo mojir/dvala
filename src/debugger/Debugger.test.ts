@@ -336,7 +336,7 @@ describe('Debugger', () => {
       expect(result.type).toBe('completed')
 
       // At some point we should be inside a() called from b()
-      const deepestStack = callStacks.reduce((a, b) => a.length >= b.length ? a : b, [])
+      const deepestStack = callStacks.reduce((a, b) => (a.length >= b.length ? a : b), [])
       expect(deepestStack.length).toBeGreaterThanOrEqual(2)
     })
 
@@ -1013,8 +1013,7 @@ describe('Debugger', () => {
       })
       dbg.stepInto()
       await d.runAsync(code, { onNodeEval: dbg.onNodeEval })
-      if (captured.value === null)
-        throw new Error('debugger never stopped at a point where x and y were bound')
+      if (captured.value === null) throw new Error('debugger never stopped at a point where x and y were bound')
       expect(captured.value.x).toBe(7)
       expect(captured.value.y).toBe(8)
     })

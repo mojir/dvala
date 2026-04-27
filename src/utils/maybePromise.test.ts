@@ -35,8 +35,7 @@ describe('mapSequential', () => {
   })
 
   it('should handle async callback on middle element', async () => {
-    const result = mapSequential([1, 2, 3], (x, i) =>
-      i === 1 ? Promise.resolve(x * 2) : x * 2)
+    const result = mapSequential([1, 2, 3], (x, i) => (i === 1 ? Promise.resolve(x * 2) : x * 2))
     expect(await result).toEqual([2, 4, 6])
   })
 
@@ -55,8 +54,7 @@ describe('reduceSequential', () => {
   })
 
   it('should handle async callback on middle element', async () => {
-    const result = reduceSequential([1, 2, 3], (acc, x, i) =>
-      i === 1 ? Promise.resolve(acc + x) : acc + x, 0)
+    const result = reduceSequential([1, 2, 3], (acc, x, i) => (i === 1 ? Promise.resolve(acc + x) : acc + x), 0)
     expect(await result).toBe(6)
   })
 })
@@ -83,8 +81,7 @@ describe('forEachSequential', () => {
     const results: number[] = []
     await forEachSequential([1, 2, 3], (x, i) => {
       results.push(x)
-      if (i === 1)
-        return Promise.resolve()
+      if (i === 1) return Promise.resolve()
       return undefined
     })
     expect(results).toEqual([1, 2, 3])
@@ -93,21 +90,41 @@ describe('forEachSequential', () => {
 
 describe('tryCatch', () => {
   it('should return sync value', () => {
-    expect(tryCatch(() => 42, () => -1)).toBe(42)
+    expect(
+      tryCatch(
+        () => 42,
+        () => -1,
+      ),
+    ).toBe(42)
   })
 
   it('should catch sync error', () => {
-    expect(tryCatch(() => {
-      throw new Error('fail')
-    }, () => -1)).toBe(-1)
+    expect(
+      tryCatch(
+        () => {
+          throw new Error('fail')
+        },
+        () => -1,
+      ),
+    ).toBe(-1)
   })
 
   it('should return async value', async () => {
-    expect(await tryCatch(() => Promise.resolve(42), () => -1)).toBe(42)
+    expect(
+      await tryCatch(
+        () => Promise.resolve(42),
+        () => -1,
+      ),
+    ).toBe(42)
   })
 
   it('should catch async rejection', async () => {
-    expect(await tryCatch(() => Promise.reject(new Error('fail')), () => -1)).toBe(-1)
+    expect(
+      await tryCatch(
+        () => Promise.reject(new Error('fail')),
+        () => -1,
+      ),
+    ).toBe(-1)
   })
 })
 
@@ -125,8 +142,7 @@ describe('someSequential', () => {
   })
 
   it('should handle async callback returning false then true', async () => {
-    expect(await someSequential([0, 0, 1], (x, i) =>
-      i === 0 ? Promise.resolve(x > 0) : x > 0)).toBe(true)
+    expect(await someSequential([0, 0, 1], (x, i) => (i === 0 ? Promise.resolve(x > 0) : x > 0))).toBe(true)
   })
 
   it('should return false for async all falsy', async () => {
@@ -134,8 +150,7 @@ describe('someSequential', () => {
   })
 
   it('should handle async on middle element with truthy result', async () => {
-    expect(await someSequential([0, 1, 0], (x, i) =>
-      i === 0 ? Promise.resolve(false) : x > 0)).toBe(true)
+    expect(await someSequential([0, 1, 0], (x, i) => (i === 0 ? Promise.resolve(false) : x > 0))).toBe(true)
   })
 })
 
@@ -157,8 +172,7 @@ describe('everySequential', () => {
   })
 
   it('should handle async on middle element with falsy result', async () => {
-    expect(await everySequential([1, 0, 3], (x, i) =>
-      i === 0 ? Promise.resolve(true) : x > 0)).toBe(false)
+    expect(await everySequential([1, 0, 3], (x, i) => (i === 0 ? Promise.resolve(true) : x > 0))).toBe(false)
   })
 })
 
@@ -176,8 +190,9 @@ describe('filterSequential', () => {
   })
 
   it('should handle async on middle element', async () => {
-    expect(await filterSequential([1, 2, 3, 4], (x, i) =>
-      i === 1 ? Promise.resolve(x % 2 === 0) : x % 2 === 0)).toEqual([2, 4])
+    expect(
+      await filterSequential([1, 2, 3, 4], (x, i) => (i === 1 ? Promise.resolve(x % 2 === 0) : x % 2 === 0)),
+    ).toEqual([2, 4])
   })
 })
 
@@ -203,7 +218,6 @@ describe('findIndexSequential', () => {
   })
 
   it('should handle async on middle element', async () => {
-    expect(await findIndexSequential([1, 2, 3], (x, i) =>
-      i === 0 ? Promise.resolve(false) : x === 2)).toBe(1)
+    expect(await findIndexSequential([1, 2, 3], (x, i) => (i === 0 ? Promise.resolve(false) : x === 2))).toBe(1)
   })
 })

@@ -92,19 +92,16 @@ describe('generateLcov', () => {
   })
 
   it('returns an empty string when there is nothing to report', () => {
-    const empty = generateLcov(
-      new Map(),
-      { positions: new Map(), sources: [] },
-    )
+    const empty = generateLcov(new Map(), { positions: new Map(), sources: [] })
     expect(empty).toBe('')
   })
 
   it('skips nodes with no matching source position in the sourceMap', () => {
     // coverageMap references a nodeId that is not in sourceMap.positions
-    const lcov = generateLcov(
-      new Map([[999, 3]]),
-      { positions: new Map(), sources: [{ path: '/tmp/a.dvala', content: '' }] },
-    )
+    const lcov = generateLcov(new Map([[999, 3]]), {
+      positions: new Map(),
+      sources: [{ path: '/tmp/a.dvala', content: '' }],
+    })
     expect(lcov).toBe('')
   })
 })

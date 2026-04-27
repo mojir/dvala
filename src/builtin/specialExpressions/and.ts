@@ -19,10 +19,7 @@ const docs: FunctionDocs = {
       rest: true,
     },
   },
-  variants: [
-    { argumentNames: ['a', 'b'] },
-    { argumentNames: ['a', 'b', 'c'] },
-  ],
+  variants: [{ argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'c'] }],
   description: `
 Computes logical \`and\`. Evaluation starts from left. As soon as an
 operand evaluates to \`false\`, the result is \`false\`; otherwise the
@@ -45,10 +42,8 @@ export const andSpecialExpression: BuiltinSpecialExpression<Any, AndNode> = {
     let value: Any = true
     for (const param of params) {
       value = asAny(param, sourceCodeInfo)
-      if (!value)
-        break
+      if (!value) break
     }
     return value
   },
-
 }

@@ -146,8 +146,7 @@ export function someSequential<T>(
     if (result instanceof Promise) {
       return chainRemainingSome(result, arr, fn, i)
     }
-    if (result)
-      return true
+    if (result) return true
   }
   return false
 }
@@ -158,11 +157,9 @@ async function chainRemainingSome<T>(
   fn: (elem: T, index: number) => MaybePromise<unknown>,
   startIndex: number,
 ): Promise<boolean> {
-  if (await currentPromise)
-    return true
+  if (await currentPromise) return true
   for (let i = startIndex + 1; i < arr.length; i++) {
-    if (await fn(arr[i]!, i))
-      return true
+    if (await fn(arr[i]!, i)) return true
   }
   return false
 }
@@ -180,8 +177,7 @@ export function everySequential<T>(
     if (result instanceof Promise) {
       return chainRemainingEvery(result, arr, fn, i)
     }
-    if (!result)
-      return false
+    if (!result) return false
   }
   return true
 }
@@ -192,11 +188,9 @@ async function chainRemainingEvery<T>(
   fn: (elem: T, index: number) => MaybePromise<unknown>,
   startIndex: number,
 ): Promise<boolean> {
-  if (!await currentPromise)
-    return false
+  if (!(await currentPromise)) return false
   for (let i = startIndex + 1; i < arr.length; i++) {
-    if (!await fn(arr[i]!, i))
-      return false
+    if (!(await fn(arr[i]!, i))) return false
   }
   return true
 }
@@ -215,8 +209,7 @@ export function filterSequential<T>(
     if (result instanceof Promise) {
       return chainRemainingFilter(result, results, arr, fn, i)
     }
-    if (result)
-      results.push(arr[i]!)
+    if (result) results.push(arr[i]!)
   }
   return results
 }
@@ -228,11 +221,9 @@ async function chainRemainingFilter<T>(
   fn: (elem: T, index: number) => MaybePromise<unknown>,
   startIndex: number,
 ): Promise<T[]> {
-  if (await currentPromise)
-    results.push(arr[startIndex]!)
+  if (await currentPromise) results.push(arr[startIndex]!)
   for (let i = startIndex + 1; i < arr.length; i++) {
-    if (await fn(arr[i]!, i))
-      results.push(arr[i]!)
+    if (await fn(arr[i]!, i)) results.push(arr[i]!)
   }
   return results
 }
@@ -250,8 +241,7 @@ export function findIndexSequential<T>(
     if (result instanceof Promise) {
       return chainRemainingFindIndex(result, arr, fn, i)
     }
-    if (result)
-      return i
+    if (result) return i
   }
   return -1
 }
@@ -262,11 +252,9 @@ async function chainRemainingFindIndex<T>(
   fn: (elem: T, index: number) => MaybePromise<unknown>,
   startIndex: number,
 ): Promise<number> {
-  if (await currentPromise)
-    return startIndex
+  if (await currentPromise) return startIndex
   for (let i = startIndex + 1; i < arr.length; i++) {
-    if (await fn(arr[i]!, i))
-      return i
+    if (await fn(arr[i]!, i)) return i
   }
   return -1
 }

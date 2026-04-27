@@ -16,7 +16,19 @@ import type { Type, PrimitiveName } from './types'
 import { mergeRefinementPredicates } from './refinementMerge'
 import { simplifyRefinedType } from './refinementSolver'
 import { isSubtype } from './subtype'
-import { Never, Unknown, array, indexType, inter, keyofType, neg, normalizeSequenceType, tuple, typeEquals, union } from './types'
+import {
+  Never,
+  Unknown,
+  array,
+  indexType,
+  inter,
+  keyofType,
+  neg,
+  normalizeSequenceType,
+  tuple,
+  typeEquals,
+  union,
+} from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -28,18 +40,22 @@ import { Never, Unknown, array, indexType, inter, keyofType, neg, normalizeSeque
  */
 export function simplify(t: Type): Type {
   switch (t.tag) {
-    case 'Union': return simplifyUnion(t.members.map(simplify))
-    case 'Inter': return simplifyIntersection(t.members.map(simplify))
-    case 'Neg': return simplifyNeg(simplify(t.inner))
-    case 'Function': return {
-      tag: 'Function',
-      params: t.params.map(simplify),
-      ...(t.restParam !== undefined ? { restParam: simplify(t.restParam) } : {}),
-      ret: simplify(t.ret),
-      effects: t.effects,
-      handlerWrapper: t.handlerWrapper,
-      ...(t.asserts !== undefined ? { asserts: t.asserts } : {}),
-    }
+    case 'Union':
+      return simplifyUnion(t.members.map(simplify))
+    case 'Inter':
+      return simplifyIntersection(t.members.map(simplify))
+    case 'Neg':
+      return simplifyNeg(simplify(t.inner))
+    case 'Function':
+      return {
+        tag: 'Function',
+        params: t.params.map(simplify),
+        ...(t.restParam !== undefined ? { restParam: simplify(t.restParam) } : {}),
+        ret: simplify(t.ret),
+        effects: t.effects,
+        handlerWrapper: t.handlerWrapper,
+        ...(t.asserts !== undefined ? { asserts: t.asserts } : {}),
+      }
     case 'Handler': {
       const handled = new Map<string, { argType: Type; retType: Type }>()
       for (const [name, sig] of t.handled) {
@@ -56,8 +72,10 @@ export function simplify(t: Type): Type {
         introduced: t.introduced,
       }
     }
-    case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(simplify) }
-    case 'Array': return { tag: 'Array', element: simplify(t.element) }
+    case 'Tuple':
+      return { tag: 'Tuple', elements: t.elements.map(simplify) }
+    case 'Array':
+      return { tag: 'Array', element: simplify(t.element) }
     case 'Sequence':
       return simplifySequence({
         tag: 'Sequence',
@@ -79,14 +97,17 @@ export function simplify(t: Type): Type {
       }
       return rec
     }
-    case 'Alias': return {
-      tag: 'Alias',
-      name: t.name,
-      args: t.args.map(simplify),
-      expanded: simplify(t.expanded),
-    }
-    case 'Keyof': return keyofType(simplify(t.inner))
-    case 'Index': return indexType(simplify(t.target), simplify(t.key))
+    case 'Alias':
+      return {
+        tag: 'Alias',
+        name: t.name,
+        args: t.args.map(simplify),
+        expanded: simplify(t.expanded),
+      }
+    case 'Keyof':
+      return keyofType(simplify(t.inner))
+    case 'Index':
+      return indexType(simplify(t.target), simplify(t.key))
     // Refinement — three-step pipeline:
     //   1. simplify the base (recursive).
     //   2. if the simplified base is itself Refined, merge stacked
@@ -101,12 +122,7 @@ export function simplify(t: Type): Type {
       const base = simplify(t.base)
       let merged: Extract<Type, { tag: 'Refined' }>
       if (base.tag === 'Refined') {
-        const { predicate, source } = mergeRefinementPredicates(
-          base.binder,
-          base.predicate,
-          t.binder,
-          t.predicate,
-        )
+        const { predicate, source } = mergeRefinementPredicates(base.binder, base.predicate, t.binder, t.predicate)
         merged = { tag: 'Refined', base: base.base, binder: base.binder, predicate, source }
       } else {
         merged = { tag: 'Refined', base, binder: t.binder, predicate: t.predicate, source: t.source }
@@ -114,7 +130,8 @@ export function simplify(t: Type): Type {
       const collapsed = simplifyRefinedType(merged)
       return collapsed ?? merged
     }
-    default: return t
+    default:
+      return t
   }
 }
 
@@ -144,9 +161,7 @@ function absorbSubtypes(members: Type[]): Type[] {
   for (let i = 0; i < members.length; i++) {
     const m = members[i]!
     // Keep m unless some other member (not m itself) is a supertype of m
-    const absorbed = members.some((other, j) =>
-      i !== j && !typeEquals(m, other) && isSubtype(m, other),
-    )
+    const absorbed = members.some((other, j) => i !== j && !typeEquals(m, other) && isSubtype(m, other))
     if (!absorbed) result.push(m)
   }
   return result
@@ -239,10 +254,7 @@ function mergeRecordMembers(members: Type[]): Type {
  * correct for runtime-value narrowing on tagged unions; it would be
  * surprising here where users write intersections to combine shapes.
  */
-function intersectRecordPair(
-  a: Type & { tag: 'Record' },
-  b: Type & { tag: 'Record' },
-): Type {
+function intersectRecordPair(a: Type & { tag: 'Record' }, b: Type & { tag: 'Record' }): Type {
   const fields = new Map<string, Type>()
   const optionalFields = new Set<string>()
   const allKeys = new Set<string>([...a.fields.keys(), ...b.fields.keys()])
@@ -328,9 +340,17 @@ function hasDisjointKinds(members: Type[]): boolean {
  * there would waste work and always return false.
  */
 function isConcreteKindMember(t: Type): boolean {
-  return t.tag === 'Primitive' || t.tag === 'Atom'
-    || t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
-    || t.tag === 'Regex' || t.tag === 'Function' || t.tag === 'AnyFunction'
+  return (
+    t.tag === 'Primitive' ||
+    t.tag === 'Atom' ||
+    t.tag === 'Record' ||
+    t.tag === 'Tuple' ||
+    t.tag === 'Array' ||
+    t.tag === 'Sequence' ||
+    t.tag === 'Regex' ||
+    t.tag === 'Function' ||
+    t.tag === 'AnyFunction'
+  )
 }
 
 /**
@@ -365,9 +385,7 @@ function narrowSupertypes(members: Type[]): Type[] {
     const m = members[i]!
     // Keep m unless some other member (not m itself) is a subtype of m
     // (meaning m is a supertype and should be narrowed away)
-    const redundant = members.some((other, j) =>
-      i !== j && !typeEquals(m, other) && isSubtype(other, m),
-    )
+    const redundant = members.some((other, j) => i !== j && !typeEquals(m, other) && isSubtype(other, m))
     if (!redundant) result.push(m)
   }
   return result

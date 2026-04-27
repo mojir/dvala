@@ -7,7 +7,8 @@ describe('dvala Lexical Scoping', () => {
   // Basic lexical scoping
   describe('basic lexical scoping', () => {
     test('function accesses variable from parent scope', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let bar = do
           let x = 10;
           let foo = (a) -> do a * x end;
@@ -15,11 +16,13 @@ describe('dvala Lexical Scoping', () => {
         end;
         
         bar(1)
-      `)).toBe(10)
+      `),
+      ).toBe(10)
     })
 
     test('outer scope variables are accessible in nested functions', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let outer = 5;
         
         let makeMultiplier = () -> do
@@ -29,14 +32,16 @@ describe('dvala Lexical Scoping', () => {
         
         let multiplier = makeMultiplier();
         multiplier(10)
-      `)).toBe(50)
+      `),
+      ).toBe(50)
     })
   })
 
   // Variable visibility and shadowing
   describe('variable visibility and shadowing', () => {
-    test('inner scope variables don\'t leak to outer scope', () => {
-      expect(dvala.run(`
+    test("inner scope variables don't leak to outer scope", () => {
+      expect(
+        dvala.run(`
         let result = do
           let outer = 10;
           do
@@ -45,36 +50,42 @@ describe('dvala Lexical Scoping', () => {
           end;
         end;
         result
-      `)).toBe(10)
+      `),
+      ).toBe(10)
     })
 
     test('variable shadowing works correctly', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let x = 5;
         let result = do
           let x = 10;
           x;  // Should return the shadowed value
         end;
         result
-      `)).toBe(10)
+      `),
+      ).toBe(10)
     })
 
     test('original variable remains unchanged after shadowing', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let x = 5;
         do
           let x = 10;
           // Shadow x in inner scope
         end;
         x  // Should still be 5
-      `)).toBe(5)
+      `),
+      ).toBe(5)
     })
   })
 
   // Closure behavior
   describe('closure behavior', () => {
     test('closures capture the lexical environment', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let makeCounter = () -> do
           let counter = 0;
           let increment = () -> do
@@ -86,11 +97,13 @@ describe('dvala Lexical Scoping', () => {
         
         let counter = makeCounter();
         counter()  // Should be 1
-      `)).toBe(1)
+      `),
+      ).toBe(1)
     })
 
     test('multiple closure instances maintain separate state', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let makeCounter = () -> do
           let counter = 0;
           let increment = () -> do
@@ -106,14 +119,16 @@ describe('dvala Lexical Scoping', () => {
         counter1();
         counter1();
         counter2();
-      `)).toBe(1)
+      `),
+      ).toBe(1)
     })
   })
 
   // Lambda functions
   describe('lambda functions', () => {
     test('lambda functions capture lexical scope', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let x = 10;
         let addX = y -> x + y;
         
@@ -123,11 +138,13 @@ describe('dvala Lexical Scoping', () => {
         end;
         
         result
-      `)).toBe(15)
+      `),
+      ).toBe(15)
     })
 
     test('nested lambdas with multiple variable captures', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let x = 1;
         let y = 2;
         
@@ -137,23 +154,27 @@ describe('dvala Lexical Scoping', () => {
         end;
         
         nestedFunc(10)(20)(30)
-      `)).toBe(60)
+      `),
+      ).toBe(60)
     })
 
     test('constract is no longer needed for nested lambdas', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let x = 10;
         let nested = x -> y -> x + y;  // With lexical scope, x is captured
         
         nested(5)(3)
-      `)).toBe(8)
+      `),
+      ).toBe(8)
     })
   })
 
   // Recursive functions
   describe('recursive functions', () => {
     test('recursive functions work with lexical scope', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let factorial = (n) -> do
           if n <= 1 then
             1
@@ -163,14 +184,16 @@ describe('dvala Lexical Scoping', () => {
         end;
         
         factorial(5)
-      `)).toBe(120)
+      `),
+      ).toBe(120)
     })
   })
 
   // Function parameters
   describe('function parameters', () => {
     test('function parameters shadow outer variables', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let x = 10;
         
         let test = (x) -> do
@@ -178,11 +201,13 @@ describe('dvala Lexical Scoping', () => {
         end;
         
         test(20)
-      `)).toBe(20)
+      `),
+      ).toBe(20)
     })
 
     test('modified variables in upper scope are visible in inner scope', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let result = do
           let x = 1;
           let inner = do
@@ -193,14 +218,16 @@ describe('dvala Lexical Scoping', () => {
         end;
         
         result
-      `)).toBe(2)
+      `),
+      ).toBe(2)
     })
   })
 
   // Control structures
   describe('control structures', () => {
     test('lexical scoping in if statements', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let x = 10;
         
         if true then
@@ -209,11 +236,13 @@ describe('dvala Lexical Scoping', () => {
         else
           x;  // Should return outer x
         end
-      `)).toBe(20)
+      `),
+      ).toBe(20)
     })
 
     test('lexical scoping in for comprehensions', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let x = "outer";
         
         let result = for (x in ["inner1", "inner2"]) -> do
@@ -221,7 +250,8 @@ describe('dvala Lexical Scoping', () => {
         end;
         
         first(result)
-      `)).toBe('inner1')
+      `),
+      ).toBe('inner1')
     })
   })
 })

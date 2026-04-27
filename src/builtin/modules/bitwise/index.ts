@@ -10,7 +10,7 @@ function getOperatorArgs(a: 'integer', b: 'integer'): Record<string, Argument> {
 }
 
 const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
-  'bitNot': {
+  bitNot: {
     evaluate: ([num], sourceCodeInfo): number => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       return ~num
@@ -24,13 +24,10 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['a'] }],
       description: 'Returns bitwise `not` of `a`.',
       seeAlso: ['&', '|', 'xor', 'bitwise.bitAndNot'],
-      examples: [
-        'let { bitNot } = import("bitwise");\nbitNot(0)',
-        'let { bitNot } = import("bitwise");\nbitNot(255)',
-      ],
+      examples: ['let { bitNot } = import("bitwise");\nbitNot(0)', 'let { bitNot } = import("bitwise");\nbitNot(255)'],
     },
   },
-  'bitAndNot': {
+  bitAndNot: {
     evaluate: ([first, ...rest], sourceCodeInfo): number => {
       assertNumber(first, sourceCodeInfo, { integer: true })
 
@@ -48,10 +45,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
         ...getOperatorArgs('integer', 'integer'),
         c: { type: 'integer', rest: true },
       },
-      variants: [
-        { argumentNames: ['a', 'b'] },
-        { argumentNames: ['a', 'b', 'c'] },
-      ],
+      variants: [{ argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'c'] }],
       description: 'Returns bitwise `and` with complement.',
       seeAlso: ['&', '|', 'xor', 'bitwise.bitNot'],
       examples: [
@@ -61,7 +55,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'bitFlip': {
+  bitFlip: {
     evaluate: ([num, index], sourceCodeInfo): number => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -85,7 +79,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'bitSet': {
+  bitSet: {
     evaluate: ([num, index], sourceCodeInfo): number => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -109,7 +103,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'bitClear': {
+  bitClear: {
     evaluate: ([num, index], sourceCodeInfo): number => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -133,7 +127,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'bitTest': {
+  bitTest: {
     evaluate: ([num, index], sourceCodeInfo): boolean => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })

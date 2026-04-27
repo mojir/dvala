@@ -27,8 +27,7 @@ const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: t
 const dvalaDebug = createDvala({ modules: allBuiltinModules, debug: true, disableAutoCheckpoint: true })
 
 function runValue(result: RunResult): unknown {
-  if (result.type !== 'completed')
-    throw new Error(`Expected completed result, got ${result.type}`)
+  if (result.type !== 'completed') throw new Error(`Expected completed result, got ${result.type}`)
   return result.value
 }
 
@@ -252,7 +251,8 @@ describe('type annotations / predicates', () => {
   })
 
   it('type predicate results used in control flow', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let classify = (x) ->
         if isVector(x) then "vector"
         else if isMatrix(x) then "matrix"
@@ -261,7 +261,8 @@ describe('type annotations / predicates', () => {
         else "other"
         end;
       [classify([1, 2]), classify([[1, 2], [3, 4]]), classify([["a"], ["b"]]), classify("hello")]
-    `)).toEqual(['vector', 'matrix', 'grid', 'other'])
+    `),
+    ).toEqual(['vector', 'matrix', 'grid', 'other'])
   })
 
   it('isVector after map-then-filter with numeric pipeline', () => {
@@ -280,27 +281,32 @@ describe('type annotations / predicates', () => {
 
 describe('pattern matching edge cases', () => {
   it('match with guard clause accessing outer variable', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let threshold = 10;
       match 15
         case x when x > threshold then "above"
         case x then "below"
       end
-    `)).toBe('above')
+    `),
+    ).toBe('above')
   })
 
   it('match with guard clause using function', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let isBig = (x) -> x > 100;
       match 42
         case x when isBig(x) then "big"
         case _ then "small"
       end
-    `)).toBe('small')
+    `),
+    ).toBe('small')
   })
 
   it('match result used in closure', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let categorize = (val) ->
         match val
           case [x, ...xs] then { first: x, rest: xs }
@@ -308,11 +314,13 @@ describe('pattern matching edge cases', () => {
         end;
       let result = categorize([10, 20, 30]);
       result.first + first(result.rest)
-    `)).toBe(30)
+    `),
+    ).toBe(30)
   })
 
   it('nested match expressions', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let classify = (val) ->
         match val
           case [x, y] then
@@ -323,20 +331,24 @@ describe('pattern matching edge cases', () => {
           case _ then "not a pair"
         end;
       [classify([0, 1]), classify([1, 2]), classify([1])]
-    `)).toEqual(['zero-pair', 'non-zero pair', 'not a pair'])
+    `),
+    ).toEqual(['zero-pair', 'non-zero pair', 'not a pair'])
   })
 
   it('match with object rest pattern', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       match { a: 1, b: 2, c: 3 }
         case { a, ...remaining } then remaining
       end
-    `)).toEqual({ b: 2, c: 3 })
+    `),
+    ).toEqual({ b: 2, c: 3 })
   })
 
   it('match with array rest pattern and nested destructure', () => {
-    expect(dvala.run('match [[1, 2], [3, 4], [5, 6]] case [[a, b], ...remaining] then a + b + count(remaining) end'))
-      .toBe(5) // 1 + 2 + 2
+    expect(
+      dvala.run('match [[1, 2], [3, 4], [5, 6]] case [[a, b], ...remaining] then a + b + count(remaining) end'),
+    ).toBe(5) // 1 + 2 + 2
   })
 
   it('match throws MatchError when no pattern matches', () => {
@@ -344,17 +356,20 @@ describe('pattern matching edge cases', () => {
   })
 
   it('match with complex guard and destructuring', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       match { status: 503, message: "Service Unavailable" }
         case { status } when status >= 500 then "server error: " ++ str(status)
         case { status } when status >= 400 then "client error"
         case _ then "ok"
       end
-    `)).toBe('server error: 503')
+    `),
+    ).toBe('server error: 503')
   })
 
   it('match inside loop', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let classifyAll = (items) ->
         map(items, (item) ->
           match item
@@ -364,7 +379,8 @@ describe('pattern matching edge cases', () => {
           end
         );
       classifyAll([1, "hello", null, 42, "world"])
-    `)).toEqual(['num', 'str', 'other', 'num', 'str'])
+    `),
+    ).toEqual(['num', 'str', 'other', 'num', 'str'])
   })
 })
 
@@ -378,47 +394,58 @@ describe('scoping edge cases', () => {
   })
 
   it('inner let shadows outer let', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let x = 10;
       let result = do let x = 20; x end;
       [x, result]
-    `)).toEqual([10, 20])
+    `),
+    ).toEqual([10, 20])
   })
 
   it('closure captures enclosing scope variable', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let makeCounter = (start) -> (step) -> start + step;
       let from10 = makeCounter(10);
       [from10(1), from10(5), from10(10)]
-    `)).toEqual([11, 15, 20])
+    `),
+    ).toEqual([11, 15, 20])
   })
 
   it('closure captures final value of let binding', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let x = 10;
       let f = -> x * 2;
       f()
-    `)).toBe(20)
+    `),
+    ).toBe(20)
   })
 
   it('multiple closures over same variable get consistent values', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let x = 42;
       let f1 = -> x + 1;
       let f2 = -> x + 2;
       [f1(), f2()]
-    `)).toEqual([43, 44])
+    `),
+    ).toEqual([43, 44])
   })
 
   it('closure inside for captures loop variable correctly', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let fns = for (i in [1, 2, 3]) -> (x) -> i * x;
       map(fns, (f) -> f(10))
-    `)).toEqual([10, 20, 30])
+    `),
+    ).toEqual([10, 20, 30])
   })
 
   it('deeply nested closures resolve correctly', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let a = 1;
       let f1 = -> do
         let b = 2;
@@ -429,7 +456,8 @@ describe('scoping edge cases', () => {
         f2()
       end;
       f1()
-    `)).toBe(6)
+    `),
+    ).toBe(6)
   })
 
   it('host bindings visible in closures', () => {
@@ -441,29 +469,35 @@ describe('scoping edge cases', () => {
   })
 
   it('recursive closure works correctly', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let factorial = (n) -> if n <= 1 then 1 else n * factorial(n - 1) end;
       factorial(6)
-    `)).toBe(720)
+    `),
+    ).toBe(720)
   })
 
   it('mutual recursion via lets', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let myEven = (n) -> if n == 0 then true else myOdd(n - 1) end;
       let myOdd = (n) -> if n == 0 then false else myEven(n - 1) end;
       [myEven(4), myOdd(5), myEven(3)]
-    `)).toEqual([true, true, false])
+    `),
+    ).toEqual([true, true, false])
   })
 
   it('do block creates isolated scope', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let x = 1;
       let y = do
         let x = 99;
         x + 1
       end;
       [x, y]
-    `)).toEqual([1, 100])
+    `),
+    ).toEqual([1, 100])
   })
 })
 
@@ -495,15 +529,19 @@ describe('pure mode enforcement', () => {
   })
 
   it('pure loop/recur works', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(
+        `
       loop(i = 0, acc = 0) ->
         if i >= 10 then acc else recur(i + 1, acc + i) end
-    `, { pure: true })).toBe(45)
+    `,
+        { pure: true },
+      ),
+    ).toBe(45)
   })
 
   it('pure for works', () => {
-    expect(dvala.run('for (x in [1, 2, 3, 4, 5] when isOdd(x)) -> x * x', { pure: true }))
-      .toEqual([1, 9, 25])
+    expect(dvala.run('for (x in [1, 2, 3, 4, 5] when isOdd(x)) -> x * x', { pure: true })).toEqual([1, 9, 25])
   })
 
   it('pure destructuring works', () => {
@@ -550,42 +588,39 @@ describe('getUndefinedSymbols', () => {
   })
 
   it('closure references to outer scope are defined', () => {
-    expect(getUndefinedSymbols(`
+    expect(
+      getUndefinedSymbols(`
       let x = 10;
       let f = (y) -> x + y;
       f(1)
-    `)).toEqual(new Set())
+    `),
+    ).toEqual(new Set())
   })
 
   it('match pattern variables are defined within case body', () => {
-    expect(getUndefinedSymbols('match val case [x, y] then x + y end'))
-      .toEqual(new Set(['val']))
+    expect(getUndefinedSymbols('match val case [x, y] then x + y end')).toEqual(new Set(['val']))
   })
 
   it('for loop variable is defined within body', () => {
-    expect(getUndefinedSymbols('for (x in items) -> x * 2'))
-      .toEqual(new Set(['items']))
+    expect(getUndefinedSymbols('for (x in items) -> x * 2')).toEqual(new Set(['items']))
   })
 
   it('loop bindings are defined within loop body', () => {
-    expect(getUndefinedSymbols(
-      'loop(i = 0, acc = start) -> if i >= n then acc else recur(i + 1, acc + i) end',
-    )).toEqual(new Set(['start', 'n']))
+    expect(
+      getUndefinedSymbols('loop(i = 0, acc = start) -> if i >= n then acc else recur(i + 1, acc + i) end'),
+    ).toEqual(new Set(['start', 'n']))
   })
 
   it('destructuring lhs variables are defined', () => {
-    expect(getUndefinedSymbols('let [a, b] = pair; a + b'))
-      .toEqual(new Set(['pair']))
+    expect(getUndefinedSymbols('let [a, b] = pair; a + b')).toEqual(new Set(['pair']))
   })
 
   it('do block variables do not leak', () => {
-    expect(getUndefinedSymbols('do let x = 1; x end; x'))
-      .toEqual(new Set(['x']))
+    expect(getUndefinedSymbols('do let x = 1; x end; x')).toEqual(new Set(['x']))
   })
 
   it('import symbols are defined', () => {
-    expect(getUndefinedSymbols('let v = import("vector"); v.stdev([1, 2, 3])'))
-      .toEqual(new Set())
+    expect(getUndefinedSymbols('let v = import("vector"); v.stdev([1, 2, 3])')).toEqual(new Set())
   })
 
   it('multiple undefined symbols detected', () => {
@@ -662,13 +697,11 @@ describe('destructuring edge cases', () => {
   })
 
   it('object destructuring basic', () => {
-    expect(dvala.run('let { name, age } = { name: "alice", age: 30 }; [name, age]'))
-      .toEqual(['alice', 30])
+    expect(dvala.run('let { name, age } = { name: "alice", age: 30 }; [name, age]')).toEqual(['alice', 30])
   })
 
   it('object destructuring with rest', () => {
-    expect(dvala.run('let { a, ...remaining } = { a: 1, b: 2, c: 3 }; [a, remaining]'))
-      .toEqual([1, { b: 2, c: 3 }])
+    expect(dvala.run('let { a, ...remaining } = { a: 1, b: 2, c: 3 }; [a, remaining]')).toEqual([1, { b: 2, c: 3 }])
   })
 
   it('nested array destructuring', () => {
@@ -692,8 +725,10 @@ describe('destructuring edge cases', () => {
   })
 
   it('destructuring in for loop', () => {
-    expect(dvala.run('map(entries({ a: 1, b: 2 }), (entry) -> nth(entry, 0) ++ "=" ++ str(nth(entry, 1)))'))
-      .toEqual(['a=1', 'b=2'])
+    expect(dvala.run('map(entries({ a: 1, b: 2 }), (entry) -> nth(entry, 0) ++ "=" ++ str(nth(entry, 1)))')).toEqual([
+      'a=1',
+      'b=2',
+    ])
   })
 
   it('destructuring in match pattern', () => {
@@ -705,8 +740,7 @@ describe('destructuring edge cases', () => {
   })
 
   it('destructuring result of function call', () => {
-    expect(dvala.run('let [minVal, maxVal] = [min(3, 1, 2), max(3, 1, 2)]; [minVal, maxVal]'))
-      .toEqual([1, 3])
+    expect(dvala.run('let [minVal, maxVal] = [min(3, 1, 2), max(3, 1, 2)]; [minVal, maxVal]')).toEqual([1, 3])
   })
 })
 
@@ -773,12 +807,14 @@ describe('parser edge cases', () => {
   })
 
   it('multiline expression with semicolons', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let a = 1;
       let b = 2;
       let c = 3;
       a + b + c
-    `)).toBe(6)
+    `),
+    ).toBe(6)
   })
 
   it('accessor on function result', () => {
@@ -787,12 +823,12 @@ describe('parser edge cases', () => {
   })
 
   it('chained method-style calls', () => {
-    expect(dvala.run('reduce(map(filter([1, 2, 3, 4, 5], isOdd), -> $ * 2), +, 0)'))
-      .toBe(18) // (1+3+5)*2 = 18
+    expect(dvala.run('reduce(map(filter([1, 2, 3, 4, 5], isOdd), -> $ * 2), +, 0)')).toBe(18) // (1+3+5)*2 = 18
   })
 
   it('deeply nested if/else', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let classify = (n) ->
         if n > 100 then "huge"
         else if n > 50 then "big"
@@ -801,24 +837,29 @@ describe('parser edge cases', () => {
         else "zero-or-negative"
         end;
       [classify(200), classify(75), classify(25), classify(5), classify(-1)]
-    `)).toEqual(['huge', 'big', 'medium', 'small', 'zero-or-negative'])
+    `),
+    ).toEqual(['huge', 'big', 'medium', 'small', 'zero-or-negative'])
   })
 
   it('if/else if with multiple branches', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let x = 3;
       if x == 1 then "one"
       else if x == 2 then "two"
       else if x == 3 then "three"
       else "other"
       end
-    `)).toBe('three')
+    `),
+    ).toBe('three')
   })
 
   it('if without else throws ParseError', () => {
-    expect(() => dvala.run(`
+    expect(() =>
+      dvala.run(`
       if false then "nope" end
-    `)).toThrow('`if` without `else` is not allowed')
+    `),
+    ).toThrow('`if` without `else` is not allowed')
   })
 })
 
@@ -862,13 +903,19 @@ describe('higher-order function edge cases', () => {
   })
 
   it('sortBy with key function', () => {
-    expect(dvala.run('let { sortBy } = import("sequence"); sortBy([{ n: 3 }, { n: 1 }, { n: 2 }], -> $.n)'))
-      .toEqual([{ n: 1 }, { n: 2 }, { n: 3 }])
+    expect(dvala.run('let { sortBy } = import("sequence"); sortBy([{ n: 3 }, { n: 1 }, { n: 2 }], -> $.n)')).toEqual([
+      { n: 1 },
+      { n: 2 },
+      { n: 3 },
+    ])
   })
 
   it('groupBy', () => {
-    expect(dvala.run('let { groupBy } = import("sequence"); groupBy([1, 2, 3, 4, 5], -> if isEven($) then "even" else "odd" end)'))
-      .toEqual({ odd: [1, 3, 5], even: [2, 4] })
+    expect(
+      dvala.run(
+        'let { groupBy } = import("sequence"); groupBy([1, 2, 3, 4, 5], -> if isEven($) then "even" else "odd" end)',
+      ),
+    ).toEqual({ odd: [1, 3, 5], even: [2, 4] })
   })
 
   it('find with key in object', () => {
@@ -877,7 +924,9 @@ describe('higher-order function edge cases', () => {
   })
 
   it('mapcat (flat-map)', () => {
-    expect(dvala.run('let { mapcat } = import("sequence"); mapcat([[1, 2], [3, 4], [5]], identity)')).toEqual([1, 2, 3, 4, 5])
+    expect(dvala.run('let { mapcat } = import("sequence"); mapcat([[1, 2], [3, 4], [5]], identity)')).toEqual([
+      1, 2, 3, 4, 5,
+    ])
   })
 
   it('takeWhile / dropWhile', () => {
@@ -886,20 +935,29 @@ describe('higher-order function edge cases', () => {
   })
 
   it('map-indexed', () => {
-    expect(dvala.run('let { mapi } = import("collection"); mapi(["a", "b", "c"], (x, i) -> str(i) ++ ":" ++ x)'))
-      .toEqual(['0:a', '1:b', '2:c'])
+    expect(
+      dvala.run('let { mapi } = import("collection"); mapi(["a", "b", "c"], (x, i) -> str(i) ++ ":" ++ x)'),
+    ).toEqual(['0:a', '1:b', '2:c'])
   })
 
   it('zip', () => {
-    expect(dvala.run('let { interleave } = import("sequence"); interleave([1, 2, 3], ["a", "b", "c"])'))
-      .toEqual([1, 'a', 2, 'b', 3, 'c'])
+    expect(dvala.run('let { interleave } = import("sequence"); interleave([1, 2, 3], ["a", "b", "c"])')).toEqual([
+      1,
+      'a',
+      2,
+      'b',
+      3,
+      'c',
+    ])
   })
 
   it('nested HOFs', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let data = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
       map(data, (row) -> filter(row, isEven))
-    `)).toEqual([[2], [4, 6], [8]])
+    `),
+    ).toEqual([[2], [4, 6], [8]])
   })
 
   it('identity function', () => {
@@ -909,8 +967,7 @@ describe('higher-order function edge cases', () => {
   })
 
   it('constantly function', () => {
-    expect(dvala.run('let always42 = constantly(42); [always42(), always42(1), always42("x")]'))
-      .toEqual([42, 42, 42])
+    expect(dvala.run('let always42 = constantly(42); [always42(), always42(1), always42("x")]')).toEqual([42, 42, 42])
   })
 })
 
@@ -1013,8 +1070,12 @@ describe('string operation edge cases', () => {
   })
 
   it('isStartsWith and isEndsWith', () => {
-    expect(dvala.run('let { isStartsWith, isEndsWith } = import("sequence"); isStartsWith("hello world", "hello")')).toBe(true)
-    expect(dvala.run('let { isStartsWith, isEndsWith } = import("sequence"); isEndsWith("hello world", "world")')).toBe(true)
+    expect(
+      dvala.run('let { isStartsWith, isEndsWith } = import("sequence"); isStartsWith("hello world", "hello")'),
+    ).toBe(true)
+    expect(dvala.run('let { isStartsWith, isEndsWith } = import("sequence"); isEndsWith("hello world", "world")')).toBe(
+      true,
+    )
   })
 
   it('contains on string', () => {
@@ -1066,11 +1127,16 @@ describe('collection operation edge cases', () => {
   })
 
   it('entries', () => {
-    expect(dvala.run('entries({ a: 1, b: 2 })')).toEqual([['a', 1], ['b', 2]])
+    expect(dvala.run('entries({ a: 1, b: 2 })')).toEqual([
+      ['a', 1],
+      ['b', 2],
+    ])
   })
 
   it('from-entries via reduce', () => {
-    expect(dvala.run('reduce([["a", 1], ["b", 2]], (acc, pair) -> assoc(acc, nth(pair, 0), nth(pair, 1)), {})')).toEqual({ a: 1, b: 2 })
+    expect(
+      dvala.run('reduce([["a", 1], ["b", 2]], (acc, pair) -> assoc(acc, nth(pair, 0), nth(pair, 1)), {})'),
+    ).toEqual({ a: 1, b: 2 })
   })
 
   it('get and getIn', () => {
@@ -1193,17 +1259,20 @@ describe('math operation edge cases', () => {
 
 describe('complex real-world patterns', () => {
   it('fibonacci with memoization via closure', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let fib = (n) ->
         if n <= 1 then n
         else fib(n - 1) + fib(n - 2)
         end;
       map(range(10), fib)
-    `)).toEqual([0, 1, 1, 2, 3, 5, 8, 13, 21, 34])
+    `),
+    ).toEqual([0, 1, 1, 2, 3, 5, 8, 13, 21, 34])
   })
 
   it('quicksort', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let qsort = (arr) ->
         if count(arr) <= 1 then arr
         else do
@@ -1214,11 +1283,13 @@ describe('complex real-world patterns', () => {
           qsort(lesser) ++ [pivot] ++ qsort(greater)
         end end;
       qsort([3, 6, 8, 10, 1, 2, 1])
-    `)).toEqual([1, 1, 2, 3, 6, 8, 10])
+    `),
+    ).toEqual([1, 1, 2, 3, 6, 8, 10])
   })
 
   it('tree traversal via pattern matching', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let treeSum = (tree) ->
         match tree
           case n when isNumber(n) then n
@@ -1233,11 +1304,13 @@ describe('complex real-world patterns', () => {
         left: { val: 2, left: 3, right: 4 },
         right: { val: 5, right: 6 }
       })
-    `)).toBe(21) // 1+2+3+4+5+6
+    `),
+    ).toBe(21) // 1+2+3+4+5+6
   })
 
   it('pipeline processing', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let data = [
         { name: "alice", score: 85 },
         { name: "bob", score: 92 },
@@ -1246,11 +1319,13 @@ describe('complex real-world patterns', () => {
         { name: "eve", score: 88 }
       ];
       sort(map(filter(data, -> $.score >= 85), -> $.name))
-    `)).toEqual(['alice', 'bob', 'diana', 'eve'])
+    `),
+    ).toEqual(['alice', 'bob', 'diana', 'eve'])
   })
 
   it('state machine via match', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let transition = (state, event) ->
         match [state, event]
           case ["idle", "start"] then "running"
@@ -1263,11 +1338,13 @@ describe('complex real-world patterns', () => {
 
       let events = ["start", "pause", "resume", "stop"];
       reduce(events, transition, "idle")
-    `)).toBe('idle')
+    `),
+    ).toBe('idle')
   })
 
   it('compose multiple transformations', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let { distinct } = import("sequence");
       let process = (data) -> do
         let flat = flatten(data);
@@ -1276,11 +1353,13 @@ describe('complex real-world patterns', () => {
         distinct(sorted)
       end;
       process([[3, -1, 2], [2, 4, -3], [1, 3, 5]])
-    `)).toEqual([1, 2, 3, 4, 5])
+    `),
+    ).toEqual([1, 2, 3, 4, 5])
   })
 
   it('deeply nested data transformation', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let data = {
         users: [
           { name: "alice", tags: ["admin", "user"] },
@@ -1290,6 +1369,7 @@ describe('complex real-world patterns', () => {
       };
       let admins = map(filter(data.users, -> contains($.tags, "admin")), -> $.name);
       admins
-    `)).toEqual(['alice', 'charlie'])
+    `),
+    ).toEqual(['alice', 'charlie'])
   })
 })

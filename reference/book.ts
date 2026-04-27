@@ -52,7 +52,11 @@ export function extractCodeBlocks(markdown: string): CodeBlock[] {
   let match: RegExpExecArray | null
 
   while ((match = codeBlockRegExp.exec(markdown)) !== null) {
-    const options = match[1]!.trim().split(',').map(s => s.trim()).filter(Boolean)
+    const options = match[1]!
+      .trim()
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
     if (!options.includes('no-run')) {
       const lines = match[2]!.split('\n').filter((_, i, arr) => i < arr.length - 1 || arr[i] !== '')
       blocks.push({ lines, throws: options.includes('throws') })
@@ -84,8 +88,7 @@ function loadMarkdownFile(filePath: string): ChapterEntry {
 }
 
 function loadBookItems(): BookItem[] {
-  const entries = fs.readdirSync(pagesDir, { withFileTypes: true })
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const entries = fs.readdirSync(pagesDir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
 
   const items: BookItem[] = []
 
@@ -95,7 +98,8 @@ function loadBookItems(): BookItem[] {
     } else if (entry.isDirectory()) {
       const folderPath = path.join(pagesDir, entry.name)
       const folderTitle = toDisplayName(entry.name)
-      const mdFiles = fs.readdirSync(folderPath)
+      const mdFiles = fs
+        .readdirSync(folderPath)
         .filter(f => f.endsWith('.md'))
         .sort((a, b) => a.localeCompare(b))
 
@@ -113,9 +117,7 @@ function loadBookItems(): BookItem[] {
 export const bookItems: BookItem[] = loadBookItems()
 
 /** Flat list of all chapter entries */
-export const chapters: ChapterEntry[] = bookItems.flatMap(item =>
-  isBookSection(item) ? item.entries : [item],
-)
+export const chapters: ChapterEntry[] = bookItems.flatMap(item => (isBookSection(item) ? item.entries : [item]))
 
 export function getExamples(chapter: ChapterEntry): CodeBlock[] {
   return extractCodeBlocks(chapter.body)

@@ -19,7 +19,14 @@ import type { Any, Arr, Obj } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { BindingSlot } from '../builtin/bindingSlot'
 import type { MatchSlot } from '../builtin/matchSlot'
-import type { AstNode, BindingTarget, FunctionLike, HandlerFunction, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
+import type {
+  AstNode,
+  BindingTarget,
+  FunctionLike,
+  HandlerFunction,
+  NormalExpressionNode,
+  UserDefinedFunction,
+} from '../parser/types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { SourceCodeInfo } from '../tokenizer/token'
@@ -1057,7 +1064,6 @@ export type Frame =
   | SequenceFrame
   // Branching
   | IfBranchFrame
-
   | MatchFrame
   // Short-circuit
   | AndFrame

@@ -10,12 +10,12 @@ import type { BuiltinNormalExpressions } from '../interface'
 
 const blankRegexp = /^\s*$/
 export const stringNormalExpression: BuiltinNormalExpressions = {
-  'str': {
+  str: {
     evaluate: (params: Arr) => {
       let result = ''
       for (const param of params) {
-        const paramStr
-          = param === undefined || param === null
+        const paramStr =
+          param === undefined || param === null
             ? ''
             : isAtom(param)
               ? `:${param.name}`
@@ -35,7 +35,8 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'string' },
       args: { values: { type: 'any', rest: true } },
       variants: [{ argumentNames: ['values'] }],
-      description: 'Concatenats `values` into one string. If `value` equals `null` empty string is returned. Atoms are converted to `":name"` format.',
+      description:
+        'Concatenats `values` into one string. If `value` equals `null` empty string is returned. Atoms are converted to `":name"` format.',
       seeAlso: ['++', 'join', 'string.template', 'string.stringRepeat', 'number'],
       examples: [
         'str("A string", ", and another string", " ...and more")',
@@ -48,12 +49,11 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'number': {
+  number: {
     evaluate: ([str], sourceCodeInfo): number => {
       assertString(str, sourceCodeInfo)
       const number = Number(str)
-      if (Number.isNaN(number))
-        throw new TypeError(`Could not convert '${str}' to a number.`, sourceCodeInfo)
+      if (Number.isNaN(number)) throw new TypeError(`Could not convert '${str}' to a number.`, sourceCodeInfo)
 
       return number
     },
@@ -66,15 +66,11 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['s'] }],
       description: 'Parses `s` to a number.',
       seeAlso: ['str', 'isNumber', 'isInteger'],
-      examples: [
-        'number("10")',
-        'number("010")',
-        'number("-1.01")',
-      ],
+      examples: ['number("10")', 'number("010")', 'number("-1.01")'],
     },
   },
 
-  'lowerCase': {
+  lowerCase: {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.toLowerCase()
@@ -88,14 +84,11 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns `s` converted to lower case.',
       seeAlso: ['upperCase', 'string.capitalize'],
-      examples: [
-        'lowerCase("Albert")',
-        'lowerCase("")',
-      ],
+      examples: ['lowerCase("Albert")', 'lowerCase("")'],
     },
   },
 
-  'upperCase': {
+  upperCase: {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.toUpperCase()
@@ -109,14 +102,11 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns `s` converted to upper case.',
       seeAlso: ['lowerCase', 'string.capitalize'],
-      examples: [
-        'upperCase("Albert")',
-        'upperCase("")',
-      ],
+      examples: ['upperCase("Albert")', 'upperCase("")'],
     },
   },
 
-  'trim': {
+  trim: {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.trim()
@@ -130,15 +120,11 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns a new string with leading and trailing whitespaces removed.',
       seeAlso: ['string.trimLeft', 'string.trimRight', 'isBlank'],
-      examples: [
-        'trim("  Albert  ")',
-        'trim("   ")',
-        'trim("")',
-      ],
+      examples: ['trim("  Albert  ")', 'trim("   ")', 'trim("")'],
     },
   },
 
-  'join': {
+  join: {
     evaluate: ([stringList, delimiter], sourceCodeInfo): string => {
       assertArray(stringList, sourceCodeInfo)
       for (const str of stringList) assertStringOrNumber(str, sourceCodeInfo)
@@ -169,15 +155,14 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'split': {
+  split: {
     evaluate: ([str, stringOrRegExpValue, limit], sourceCodeInfo): Arr => {
       assertString(str, sourceCodeInfo)
       assertStringOrRegularExpression(stringOrRegExpValue, sourceCodeInfo)
-      if (limit !== undefined)
-        assertNumber(limit, sourceCodeInfo, { integer: true, nonNegative: true })
+      if (limit !== undefined) assertNumber(limit, sourceCodeInfo, { integer: true, nonNegative: true })
 
-      const delimiter
-        = typeof stringOrRegExpValue === 'string'
+      const delimiter =
+        typeof stringOrRegExpValue === 'string'
           ? stringOrRegExpValue
           : new RegExp(stringOrRegExpValue.s, stringOrRegExpValue.f)
       return PersistentVector.from(str.split(delimiter, limit))
@@ -194,11 +179,9 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
         delimiter: { type: 'string' },
         limit: { type: 'integer' },
       },
-      variants: [
-        { argumentNames: ['s', 'delimiter'] },
-        { argumentNames: ['s', 'delimiter', 'limit'] },
-      ],
-      description: 'Divides `s` into an array of substrings. The division is done by searching for `delimiter`. If `limit` as provided, at most `limit` number of substrings are returned.',
+      variants: [{ argumentNames: ['s', 'delimiter'] }, { argumentNames: ['s', 'delimiter', 'limit'] }],
+      description:
+        'Divides `s` into an array of substrings. The division is done by searching for `delimiter`. If `limit` as provided, at most `limit` number of substrings are returned.',
       seeAlso: ['join', 'string.splitLines'],
       examples: [
         '"Albert Mojir" split " "',
@@ -209,7 +192,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'isBlank': {
+  isBlank: {
     evaluate: ([value], sourceCodeInfo): boolean => {
       if (value === null) {
         return true
@@ -226,13 +209,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns true if `s` is null or only contains whitespace characters.',
       seeAlso: ['trim', 'isEmpty', 'isString'],
-      examples: [
-        'isBlank("")',
-        'isBlank(null)',
-        'isBlank("\n")',
-        'isBlank(" ")',
-        'isBlank(".")',
-      ],
+      examples: ['isBlank("")', 'isBlank(null)', 'isBlank("\n")', 'isBlank(" ")', 'isBlank(".")'],
     },
   },
 }

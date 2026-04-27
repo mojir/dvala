@@ -23,7 +23,18 @@ import type { AstNode } from '../parser/types'
 import { literalTypeToAstNode } from './constantFold'
 import { solveRefinedSubtype } from './refinementSolver'
 import type { FunctionType, SequenceType, Type, PrimitiveName } from './types'
-import { effectSetToString, functionAcceptsArity, getFunctionParamType, indexType, isEffectSubset, keyofType, sequenceElementAt, sequenceMayHaveIndex, toSequenceType, typeEquals } from './types'
+import {
+  effectSetToString,
+  functionAcceptsArity,
+  getFunctionParamType,
+  indexType,
+  isEffectSubset,
+  keyofType,
+  sequenceElementAt,
+  sequenceMayHaveIndex,
+  toSequenceType,
+  typeEquals,
+} from './types'
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -479,7 +490,8 @@ function areDisjoint(s: Type, t: Type, visited: Set<string>): boolean {
 function isLengthIntervalContained(source: SequenceType, target: SequenceType): boolean {
   if (source.minLength < target.minLength) return false
   if (target.maxLength !== undefined && source.maxLength === undefined) return false
-  if (target.maxLength !== undefined && source.maxLength !== undefined && source.maxLength > target.maxLength) return false
+  if (target.maxLength !== undefined && source.maxLength !== undefined && source.maxLength > target.maxLength)
+    return false
   return true
 }
 
@@ -490,21 +502,35 @@ function isLengthIntervalContained(source: SequenceType, target: SequenceType): 
 /** Check if a literal value matches a primitive type name. */
 function literalMatchesPrimitive(value: string | number | boolean, name: PrimitiveName): boolean {
   switch (name) {
-    case 'Number': return typeof value === 'number'
+    case 'Number':
+      return typeof value === 'number'
     // Integer refines Number to integer-valued literals only.
     // Literal(42) <: Integer holds; Literal(3.14) <: Integer does not.
-    case 'Integer': return typeof value === 'number' && Number.isInteger(value)
-    case 'String': return typeof value === 'string'
-    case 'Boolean': return typeof value === 'boolean'
-    case 'Null': return false // null is not a literal
+    case 'Integer':
+      return typeof value === 'number' && Number.isInteger(value)
+    case 'String':
+      return typeof value === 'string'
+    case 'Boolean':
+      return typeof value === 'boolean'
+    case 'Null':
+      return false // null is not a literal
   }
 }
 
 /** A ground type has no type variables, unions, intersections, or negations. */
 function isGroundType(t: Type): boolean {
-  return t.tag === 'Primitive' || t.tag === 'Atom' || t.tag === 'Literal'
-    || t.tag === 'Record' || t.tag === 'Tuple' || t.tag === 'Array' || t.tag === 'Sequence'
-    || t.tag === 'Regex' || t.tag === 'Function' || t.tag === 'AnyFunction'
+  return (
+    t.tag === 'Primitive' ||
+    t.tag === 'Atom' ||
+    t.tag === 'Literal' ||
+    t.tag === 'Record' ||
+    t.tag === 'Tuple' ||
+    t.tag === 'Array' ||
+    t.tag === 'Sequence' ||
+    t.tag === 'Regex' ||
+    t.tag === 'Function' ||
+    t.tag === 'AnyFunction'
+  )
 }
 
 /** Composite kinds — structured values whose runtime shape is an
@@ -548,7 +574,8 @@ function isEmptyIntersection(members: Type[]): boolean {
     const names = [...new Set(primitives.map(p => p.name))]
     for (let i = 0; i < names.length; i++) {
       for (let j = i + 1; j < names.length; j++) {
-        const a = names[i]!, b = names[j]!
+        const a = names[i]!,
+          b = names[j]!
         if ((a === 'Integer' && b === 'Number') || (a === 'Number' && b === 'Integer')) continue
         return true
       }
@@ -572,27 +599,35 @@ function unfoldRecursive(rec: Type & { tag: 'Recursive' }): Type {
 /** Substitute all occurrences of Var with the given id. */
 function substituteVar(t: Type, varId: number, replacement: Type): Type {
   switch (t.tag) {
-    case 'Var': return t.id === varId ? replacement : t
-    case 'Union': return { tag: 'Union', members: t.members.map(m => substituteVar(m, varId, replacement)) }
-    case 'Inter': return { tag: 'Inter', members: t.members.map(m => substituteVar(m, varId, replacement)) }
-    case 'Neg': return { tag: 'Neg', inner: substituteVar(t.inner, varId, replacement) }
-    case 'Function': return {
-      tag: 'Function',
-      params: t.params.map(p => substituteVar(p, varId, replacement)),
-      ...(t.restParam !== undefined ? { restParam: substituteVar(t.restParam, varId, replacement) } : {}),
-      ret: substituteVar(t.ret, varId, replacement),
-      effects: t.effects,
-      handlerWrapper: t.handlerWrapper,
-    }
-    case 'Tuple': return { tag: 'Tuple', elements: t.elements.map(e => substituteVar(e, varId, replacement)) }
-    case 'Array': return { tag: 'Array', element: substituteVar(t.element, varId, replacement) }
-    case 'Sequence': return {
-      tag: 'Sequence',
-      prefix: t.prefix.map(member => substituteVar(member, varId, replacement)),
-      rest: substituteVar(t.rest, varId, replacement),
-      minLength: t.minLength,
-      ...(t.maxLength !== undefined ? { maxLength: t.maxLength } : {}),
-    }
+    case 'Var':
+      return t.id === varId ? replacement : t
+    case 'Union':
+      return { tag: 'Union', members: t.members.map(m => substituteVar(m, varId, replacement)) }
+    case 'Inter':
+      return { tag: 'Inter', members: t.members.map(m => substituteVar(m, varId, replacement)) }
+    case 'Neg':
+      return { tag: 'Neg', inner: substituteVar(t.inner, varId, replacement) }
+    case 'Function':
+      return {
+        tag: 'Function',
+        params: t.params.map(p => substituteVar(p, varId, replacement)),
+        ...(t.restParam !== undefined ? { restParam: substituteVar(t.restParam, varId, replacement) } : {}),
+        ret: substituteVar(t.ret, varId, replacement),
+        effects: t.effects,
+        handlerWrapper: t.handlerWrapper,
+      }
+    case 'Tuple':
+      return { tag: 'Tuple', elements: t.elements.map(e => substituteVar(e, varId, replacement)) }
+    case 'Array':
+      return { tag: 'Array', element: substituteVar(t.element, varId, replacement) }
+    case 'Sequence':
+      return {
+        tag: 'Sequence',
+        prefix: t.prefix.map(member => substituteVar(member, varId, replacement)),
+        rest: substituteVar(t.rest, varId, replacement),
+        minLength: t.minLength,
+        ...(t.maxLength !== undefined ? { maxLength: t.maxLength } : {}),
+      }
     case 'Record': {
       const fields = new Map<string, Type>()
       for (const [k, v] of t.fields) {
@@ -606,31 +641,36 @@ function substituteVar(t: Type, varId: number, replacement: Type): Type {
       }
       return rec
     }
-    case 'Alias': return {
-      tag: 'Alias',
-      name: t.name,
-      args: t.args.map(a => substituteVar(a, varId, replacement)),
-      expanded: substituteVar(t.expanded, varId, replacement),
-    }
+    case 'Alias':
+      return {
+        tag: 'Alias',
+        name: t.name,
+        args: t.args.map(a => substituteVar(a, varId, replacement)),
+        expanded: substituteVar(t.expanded, varId, replacement),
+      }
     case 'Recursive': {
       // Don't substitute into recursive types that shadow the same variable
       if (t.id === varId) return t
       return { tag: 'Recursive', id: t.id, body: substituteVar(t.body, varId, replacement) }
     }
-    case 'Keyof': return { tag: 'Keyof', inner: substituteVar(t.inner, varId, replacement) }
-    case 'Index': return {
-      tag: 'Index',
-      target: substituteVar(t.target, varId, replacement),
-      key: substituteVar(t.key, varId, replacement),
-    }
-    case 'Refined': return {
-      tag: 'Refined',
-      base: substituteVar(t.base, varId, replacement),
-      binder: t.binder,
-      predicate: t.predicate,
-      source: t.source,
-    }
-    default: return t // Primitive, Atom, Literal, Regex, Unknown, Never
+    case 'Keyof':
+      return { tag: 'Keyof', inner: substituteVar(t.inner, varId, replacement) }
+    case 'Index':
+      return {
+        tag: 'Index',
+        target: substituteVar(t.target, varId, replacement),
+        key: substituteVar(t.key, varId, replacement),
+      }
+    case 'Refined':
+      return {
+        tag: 'Refined',
+        base: substituteVar(t.base, varId, replacement),
+        binder: t.binder,
+        predicate: t.predicate,
+        source: t.source,
+      }
+    default:
+      return t // Primitive, Atom, Literal, Regex, Unknown, Never
   }
 }
 
@@ -644,46 +684,69 @@ function cacheKey(s: Type, t: Type): string {
  * the cycle-detection cache returns false positives. */
 function typeId(t: Type): string {
   switch (t.tag) {
-    case 'Primitive': return `P:${t.name}`
-    case 'Atom': return `A:${t.name}`
-    case 'Literal': return `L:${t.value}`
+    case 'Primitive':
+      return `P:${t.name}`
+    case 'Atom':
+      return `A:${t.name}`
+    case 'Literal':
+      return `L:${t.value}`
     // Includes effects — two functions that differ only in their effect row
     // must get distinct cache keys, otherwise a cached "false" from one can
     // pollute the other via the `visited` set.
-    case 'Function': return `F(${t.params.map(typeId).join(',')}${t.restParam !== undefined ? `|...${typeId(t.restParam)}` : ''})${typeId(t.ret)}${effectSetToString(t.effects)}${t.handlerWrapper ? `|HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}` : ''}`
-    case 'Tuple': return `T[${t.elements.map(typeId).join(',')}]`
+    case 'Function':
+      return `F(${t.params.map(typeId).join(',')}${t.restParam !== undefined ? `|...${typeId(t.restParam)}` : ''})${typeId(t.ret)}${effectSetToString(t.effects)}${t.handlerWrapper ? `|HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}` : ''}`
+    case 'Tuple':
+      return `T[${t.elements.map(typeId).join(',')}]`
     // Includes optionalFields — records that differ only in which fields are
     // optional are distinct types and must not share a cache key.
     case 'Record': {
-      const fieldsStr = [...t.fields.entries()].map(([k, v]) => `${k}${t.optionalFields?.has(k) ? '?' : ''}:${typeId(v)}`).join(',')
+      const fieldsStr = [...t.fields.entries()]
+        .map(([k, v]) => `${k}${t.optionalFields?.has(k) ? '?' : ''}:${typeId(v)}`)
+        .join(',')
       return `R{${fieldsStr}${t.open ? ',..' : ''}}`
     }
-    case 'Array': return `Ar[${typeId(t.element)}]`
-    case 'Sequence': return `Sq[${t.prefix.map(typeId).join(',')}|${typeId(t.rest)}|${t.minLength}|${t.maxLength ?? '*'}]`
-    case 'Regex': return 'Rx'
+    case 'Array':
+      return `Ar[${typeId(t.element)}]`
+    case 'Sequence':
+      return `Sq[${t.prefix.map(typeId).join(',')}|${typeId(t.rest)}|${t.minLength}|${t.maxLength ?? '*'}]`
+    case 'Regex':
+      return 'Rx'
     // Includes `introduced` — same cache-key soundness concern as Function.
-    case 'Handler': return `H(${typeId(t.body)}=>${typeId(t.output)}|${[...t.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}|intro:${effectSetToString(t.introduced)})`
-    case 'AnyFunction': return 'AF'
-    case 'Union': return `U(${t.members.map(typeId).join('|')})`
-    case 'Inter': return `I(${t.members.map(typeId).join('&')})`
-    case 'Neg': return `N:${typeId(t.inner)}`
-    case 'Unknown': return '?'
-    case 'Never': return '!'
-    case 'Var': return `V:${t.id}`
-    case 'Alias': return `Al:${t.name}<${t.args.map(typeId).join(',')}>`
+    case 'Handler':
+      return `H(${typeId(t.body)}=>${typeId(t.output)}|${[...t.handled.entries()].map(([name, sig]) => `${name}:${typeId(sig.argType)}:${typeId(sig.retType)}`).join(',')}|intro:${effectSetToString(t.introduced)})`
+    case 'AnyFunction':
+      return 'AF'
+    case 'Union':
+      return `U(${t.members.map(typeId).join('|')})`
+    case 'Inter':
+      return `I(${t.members.map(typeId).join('&')})`
+    case 'Neg':
+      return `N:${typeId(t.inner)}`
+    case 'Unknown':
+      return '?'
+    case 'Never':
+      return '!'
+    case 'Var':
+      return `V:${t.id}`
+    case 'Alias':
+      return `Al:${t.name}<${t.args.map(typeId).join(',')}>`
     // Include the body — the `id` alone isn't unique across independently
     // constructed recursive types (multiple generators can pick the same
     // counter value). The body's Var references terminate in `V:<id>`, so
     // the recursion bottoms out without visiting the enclosing Recursive.
-    case 'Recursive': return `Rec:${t.id}:${typeId(t.body)}`
-    case 'Keyof': return `K:${typeId(t.inner)}`
-    case 'Index': return `X:${typeId(t.target)}|${typeId(t.key)}`
+    case 'Recursive':
+      return `Rec:${t.id}:${typeId(t.body)}`
+    case 'Keyof':
+      return `K:${typeId(t.inner)}`
+    case 'Index':
+      return `X:${typeId(t.target)}|${typeId(t.key)}`
     // Refinement cache key — base + binder + source-text predicate.
     // Source-text is the authoritative identity for now (same rationale
     // as `typeEquals`: alpha-aware identity ships in Phase 2.2). Keeps
     // two refinements with the same base but different predicates
     // from colliding in the cycle-detection cache.
-    case 'Refined': return `Rf:${typeId(t.base)}|${t.binder}|${t.source}`
+    case 'Refined':
+      return `Rf:${typeId(t.base)}|${t.binder}|${t.source}`
   }
 }
 
@@ -694,10 +757,7 @@ function isSubtypeFunctionArityCompatible(source: FunctionType, target: Function
   return functionAcceptsArity(source, target.params.length)
 }
 
-function tryDischargeRefinedLiteral(
-  source: Type,
-  target: Extract<Type, { tag: 'Refined' }>,
-): boolean | null {
+function tryDischargeRefinedLiteral(source: Type, target: Extract<Type, { tag: 'Refined' }>): boolean | null {
   const literalAst = literalTypeToAstNode(source)
   if (!literalAst) return null
 

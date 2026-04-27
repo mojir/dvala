@@ -3,17 +3,17 @@ import { getUndefinedSymbols } from '../tooling'
 
 describe('analyze', () => {
   it('unresolvedIdentifiers', () => {
-    expect((getUndefinedSymbols('a + 10'))).toEqual(new Set(['a']))
-    expect((getUndefinedSymbols('let a = 10; a + 10'))).toEqual(new Set())
-    expect((getUndefinedSymbols('let a = 10; a + b'))).toEqual(new Set(['b']))
-    expect((getUndefinedSymbols('do let a = 10; a + 2; end; a'))).toEqual(new Set(['a']))
-    expect((getUndefinedSymbols('do let a = 10; a + b; end; a'))).toEqual(new Set(['a', 'b']))
-    expect((getUndefinedSymbols('let a = 10; "a" ++ "b"'))).toEqual(new Set())
-    expect((getUndefinedSymbols('foo(bar)'))).toEqual(new Set(['foo', 'bar']))
-    expect((getUndefinedSymbols('({bar: a + b })'))).toEqual(new Set(['a', 'b']))
-    expect((getUndefinedSymbols('{ bar: a + b }.bar'))).toEqual(new Set(['a', 'b']))
-    expect((getUndefinedSymbols('foo(d, E)'))).toEqual(new Set(['foo', 'd'])) // E is not reported due to that e is a builtin function: (e) -> 2.718281828459045
-    expect((getUndefinedSymbols('foo(d, f)'))).toEqual(new Set(['foo', 'd', 'f']))
+    expect(getUndefinedSymbols('a + 10')).toEqual(new Set(['a']))
+    expect(getUndefinedSymbols('let a = 10; a + 10')).toEqual(new Set())
+    expect(getUndefinedSymbols('let a = 10; a + b')).toEqual(new Set(['b']))
+    expect(getUndefinedSymbols('do let a = 10; a + 2; end; a')).toEqual(new Set(['a']))
+    expect(getUndefinedSymbols('do let a = 10; a + b; end; a')).toEqual(new Set(['a', 'b']))
+    expect(getUndefinedSymbols('let a = 10; "a" ++ "b"')).toEqual(new Set())
+    expect(getUndefinedSymbols('foo(bar)')).toEqual(new Set(['foo', 'bar']))
+    expect(getUndefinedSymbols('({bar: a + b })')).toEqual(new Set(['a', 'b']))
+    expect(getUndefinedSymbols('{ bar: a + b }.bar')).toEqual(new Set(['a', 'b']))
+    expect(getUndefinedSymbols('foo(d, E)')).toEqual(new Set(['foo', 'd'])) // E is not reported due to that e is a builtin function: (e) -> 2.718281828459045
+    expect(getUndefinedSymbols('foo(d, f)')).toEqual(new Set(['foo', 'd', 'f']))
     expect(
       getUndefinedSymbols(`
           let foo = [];
@@ -30,17 +30,21 @@ describe('analyze', () => {
 
   it('do...with handler', () => {
     // handler with no undefined symbols
-    expect(getUndefinedSymbols(`
+    expect(
+      getUndefinedSymbols(`
       do
         with handler @dvala.io.print(arg) -> resume(null) end;
         perform(@dvala.io.print, "hello")
-      end`)).toEqual(new Set([]))
+      end`),
+    ).toEqual(new Set([]))
 
     // undefined symbol in handler clause body
-    expect(getUndefinedSymbols(`
+    expect(
+      getUndefinedSymbols(`
       do
         with handler @dvala.io.print(arg) -> resume(undefinedHandler) end;
         1
-      end`)).toEqual(new Set(['undefinedHandler']))
+      end`),
+    ).toEqual(new Set(['undefinedHandler']))
   })
 })

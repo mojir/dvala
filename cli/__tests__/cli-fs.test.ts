@@ -1,4 +1,3 @@
-
 import { execSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -64,7 +63,9 @@ describe('the cli-fs Integration Tests', () => {
       })
       return result.trim()
     } catch (error: any) {
-      throw new Error(`Dvala CLI failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`, { cause: error })
+      throw new Error(`Dvala CLI failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`, {
+        cause: error,
+      })
     }
   }
 
@@ -101,16 +102,12 @@ describe('the cli-fs Integration Tests', () => {
 
   describe('directory Operations', () => {
     test('should list directory contents', () => {
-      const result = runDvala('let { jsonStringify } = import("json"); let f = import("cliFs"); f.listDir(".") |> jsonStringify')
+      const result = runDvala(
+        'let { jsonStringify } = import("json"); let f = import("cliFs"); f.listDir(".") |> jsonStringify',
+      )
       const files = JSON.parse(result)
 
-      expect(files).toEqual(expect.arrayContaining([
-        'test.txt',
-        'config.json',
-        'data.csv',
-        'subdir',
-        'nested',
-      ]))
+      expect(files).toEqual(expect.arrayContaining(['test.txt', 'config.json', 'data.csv', 'subdir', 'nested']))
     })
 
     test('should create new directory', () => {
@@ -211,7 +208,9 @@ describe('the cli-fs Integration Tests', () => {
       expect(originalExists).toBe(false)
     })
     test('should get stats', () => {
-      const result = runDvala('let { jsonStringify } = import("json"); let f = import("cliFs"); f.getStats("test.txt") |> jsonStringify(_, 2)')
+      const result = runDvala(
+        'let { jsonStringify } = import("json"); let f = import("cliFs"); f.getStats("test.txt") |> jsonStringify(_, 2)',
+      )
       const stats = JSON.parse(result)
 
       expect(stats).toHaveProperty('size')

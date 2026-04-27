@@ -15,8 +15,8 @@ import type { SymbolDef } from './types'
  */
 export function scanTokensForDefinitions(tokens: Token[], filePath: string): SymbolDef[] {
   // Filter to meaningful tokens (skip whitespace, comments, shebangs)
-  const meaningful = tokens.filter(t =>
-    t[0] !== 'Whitespace' && t[0] !== 'SingleLineComment' && t[0] !== 'MultiLineComment' && t[0] !== 'Shebang',
+  const meaningful = tokens.filter(
+    t => t[0] !== 'Whitespace' && t[0] !== 'SingleLineComment' && t[0] !== 'MultiLineComment' && t[0] !== 'Shebang',
   )
 
   const defs: SymbolDef[] = []

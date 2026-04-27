@@ -22,26 +22,28 @@ const emptyK: ContinuationStack = null
 describe('standardEffects', () => {
   describe('standardEffectNames', () => {
     it('should contain all standard effects', () => {
-      expect(standardEffectNames).toEqual(new Set([
-        'dvala.io.print',
-        'dvala.io.error',
-        'dvala.io.read',
-        'dvala.io.pick',
-        'dvala.io.confirm',
-        'dvala.io.readStdin',
-        'dvala.random',
-        'dvala.random.uuid',
-        'dvala.random.int',
-        'dvala.random.item',
-        'dvala.random.shuffle',
-        'dvala.time.now',
-        'dvala.time.zone',
-        'dvala.sleep',
-        'dvala.checkpoint',
-        'dvala.host',
-        'dvala.env',
-        'dvala.args',
-      ]))
+      expect(standardEffectNames).toEqual(
+        new Set([
+          'dvala.io.print',
+          'dvala.io.error',
+          'dvala.io.read',
+          'dvala.io.pick',
+          'dvala.io.confirm',
+          'dvala.io.readStdin',
+          'dvala.random',
+          'dvala.random.uuid',
+          'dvala.random.int',
+          'dvala.random.item',
+          'dvala.random.shuffle',
+          'dvala.time.now',
+          'dvala.time.zone',
+          'dvala.sleep',
+          'dvala.checkpoint',
+          'dvala.host',
+          'dvala.env',
+          'dvala.args',
+        ]),
+      )
     })
   })
 
@@ -273,7 +275,11 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => '')
-        const result = handler(fromJsAny({ items, options: { default: 2 } }), emptyK) as { type: string; value: unknown; k: unknown }
+        const result = handler(fromJsAny({ items, options: { default: 2 } }), emptyK) as {
+          type: string
+          value: unknown
+          k: unknown
+        }
         expect(result.type).toBe('Value')
         expect(result.value).toBe(2)
       } finally {
@@ -384,12 +390,16 @@ describe('standardEffects', () => {
 
     it('should throw when options.default is not an integer (line 278)', () => {
       const handler = getStandardEffectHandler('dvala.io.pick')!
-      expect(() => handler(fromJsAny({ items, options: { default: 1.5 } }), emptyK)).toThrow('default must be an integer')
+      expect(() => handler(fromJsAny({ items, options: { default: 1.5 } }), emptyK)).toThrow(
+        'default must be an integer',
+      )
     })
 
     it('should throw when options.default is a string (line 278)', () => {
       const handler = getStandardEffectHandler('dvala.io.pick')!
-      expect(() => handler(fromJsAny({ items, options: { default: 'foo' } }), emptyK)).toThrow('default must be an integer')
+      expect(() => handler(fromJsAny({ items, options: { default: 'foo' } }), emptyK)).toThrow(
+        'default must be an integer',
+      )
     })
   })
 
@@ -426,7 +436,11 @@ describe('standardEffects', () => {
       const originalConfirm = globalThis.confirm
       try {
         globalThis.confirm = vi.fn(() => true)
-        const result = handler(fromJsAny({ question: 'Proceed?', options: { default: true } }), emptyK) as { type: string; value: unknown; k: unknown }
+        const result = handler(fromJsAny({ question: 'Proceed?', options: { default: true } }), emptyK) as {
+          type: string
+          value: unknown
+          k: unknown
+        }
         expect(result.type).toBe('Value')
         expect(result.value).toBe(true)
       } finally {
@@ -455,7 +469,9 @@ describe('standardEffects', () => {
       const originalConfirm = globalThis.confirm
       try {
         globalThis.confirm = vi.fn(() => true)
-        expect(() => handler(fromJsAny({ question: 'Sure?', options: { default: 1 } }), emptyK)).toThrow('must be a boolean')
+        expect(() => handler(fromJsAny({ question: 'Sure?', options: { default: 1 } }), emptyK)).toThrow(
+          'must be a boolean',
+        )
       } finally {
         globalThis.confirm = originalConfirm
       }
@@ -493,7 +509,7 @@ describe('standardEffects', () => {
         dataHandler('world')
         endHandler()
 
-        const result = await promise as { type: string; value: unknown; k: unknown }
+        const result = (await promise) as { type: string; value: unknown; k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBe('hello world')
         expect(mockStdin.setEncoding).toHaveBeenCalledWith('utf-8')
@@ -765,7 +781,11 @@ describe('standardEffects', () => {
 
     it('should return null for unset environment variables', () => {
       const handler = getStandardEffectHandler('dvala.env')!
-      const result = handler(asAny('DVALA_TEST_NONEXISTENT_VAR_12345'), emptyK) as { type: string; value: unknown; k: unknown }
+      const result = handler(asAny('DVALA_TEST_NONEXISTENT_VAR_12345'), emptyK) as {
+        type: string
+        value: unknown
+        k: unknown
+      }
       expect(result.type).toBe('Value')
       expect(result.value).toBe(null)
     })

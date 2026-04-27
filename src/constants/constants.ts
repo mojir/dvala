@@ -49,7 +49,7 @@ export const NodeTypes = {
 
 const NodeTypesSet = new Set<string>(Object.values(NodeTypes))
 
-export type NodeType = typeof NodeTypes[keyof typeof NodeTypes]
+export type NodeType = (typeof NodeTypes)[keyof typeof NodeTypes]
 
 export function isNodeType(type: unknown): type is NodeType {
   return typeof type === 'string' && NodeTypesSet.has(type)
@@ -76,7 +76,7 @@ const functionTypes = [
 
 const functionTypeSet = new Set(functionTypes)
 
-export type FunctionType = typeof functionTypes[number]
+export type FunctionType = (typeof functionTypes)[number]
 
 export function isFunctionType(type: unknown): type is FunctionType {
   return typeof type === 'string' && functionTypeSet.has(type as FunctionType)

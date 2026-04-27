@@ -95,7 +95,10 @@ describe('string functions', () => {
 
 describe('string-Utils module functions', () => {
   const imp = 'let su = import("string"); '
-  for (const dvala of [createDvala({ modules: [stringUtilsModule] }), createDvala({ modules: [stringUtilsModule], debug: true })]) {
+  for (const dvala of [
+    createDvala({ modules: [stringUtilsModule] }),
+    createDvala({ modules: [stringUtilsModule], debug: true }),
+  ]) {
     describe('trimLeft', () => {
       it('samples', () => {
         expect(dvala.run(`${imp}su.trimLeft("  Albert!  ")`)).toBe('Albert!  ')
@@ -175,18 +178,26 @@ describe('string-Utils module functions', () => {
         expect(dvala.run(`${imp}su.template("$1", "Carl")`)).toBe('Carl')
         expect(dvala.run(`${imp}su.template("$$1", "Carl")`)).toBe('$1')
         expect(dvala.run(`${imp}su.template("$$$1", "Carl")`)).toBe('$Carl')
-        expect(dvala.run(`${imp}su.template("Hi $1, $2, $3, $4, $5, $6, $7, $8 and $9", "A", "B", "C", "D", "E", "F", "G", "H", "I")`)).toBe(
-          'Hi A, B, C, D, E, F, G, H and I',
-        )
+        expect(
+          dvala.run(
+            `${imp}su.template("Hi $1, $2, $3, $4, $5, $6, $7, $8 and $9", "A", "B", "C", "D", "E", "F", "G", "H", "I")`,
+          ),
+        ).toBe('Hi A, B, C, D, E, F, G, H and I')
         expect(() =>
-          dvala.run(`${imp}su.template("Hi $1, $2, $3, $4, $5, $6, $7, $8 and $9", "A", "B", "C", "D", "E", "F", "G", "H")`),
+          dvala.run(
+            `${imp}su.template("Hi $1, $2, $3, $4, $5, $6, $7, $8 and $9", "A", "B", "C", "D", "E", "F", "G", "H")`,
+          ),
         ).toThrow()
-        expect(dvala.run(`${imp}su.template("Hi $1, $2, $3, $4, $5, $6, $7, $8, $9 and $10", "A", "B", "C", "D", "E", "F", "G", "H", "I")`)).toBe(
-          'Hi A, B, C, D, E, F, G, H, I and A0',
-        )
+        expect(
+          dvala.run(
+            `${imp}su.template("Hi $1, $2, $3, $4, $5, $6, $7, $8, $9 and $10", "A", "B", "C", "D", "E", "F", "G", "H", "I")`,
+          ),
+        ).toBe('Hi A, B, C, D, E, F, G, H, I and A0')
         expect(dvala.run(`${imp}su.template("$1", 0)`)).toBe('0')
         expect(() =>
-          dvala.run(`${imp}su.template("Hi $1, $2, $3, $4, $5, $6, $7, $8, $9 $10", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J")`),
+          dvala.run(
+            `${imp}su.template("Hi $1, $2, $3, $4, $5, $6, $7, $8, $9 $10", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J")`,
+          ),
         ).toThrow()
         expect(() => dvala.run(`${imp}su.template()`)).toThrow(DvalaError)
         expect(() => dvala.run(`${imp}su.template("$1", true)`)).toThrow(DvalaError)
@@ -211,19 +222,27 @@ describe('string-Utils module functions', () => {
         expect(dvala.run(`${imp}su.template("No books||||$1 book||||$1 books", 0)`)).toBe('No books')
         expect(dvala.run(`${imp}su.template("No books||||$1 book||||$1 books", 1)`)).toBe('1 book')
         expect(dvala.run(`${imp}su.template("No books||||$1 book||||$1 books", 3)`)).toBe('3 books')
-        expect(dvala.run(`${imp}su.template("No books||||One book||||Two books||||Three books||||$1 books", 0)`)).toBe('No books')
-        expect(dvala.run(`${imp}su.template("No books||||One book||||Two books||||Three books||||$1 books", 1)`)).toBe('One book')
+        expect(dvala.run(`${imp}su.template("No books||||One book||||Two books||||Three books||||$1 books", 0)`)).toBe(
+          'No books',
+        )
+        expect(dvala.run(`${imp}su.template("No books||||One book||||Two books||||Three books||||$1 books", 1)`)).toBe(
+          'One book',
+        )
         expect(dvala.run(`${imp}su.template("No books||||One book||||Two books||||Three books||||$1 books", 2)`)).toBe(
           'Two books',
         )
         expect(dvala.run(`${imp}su.template("No books||||One book||||Two books||||Three books||||$1 books", 3)`)).toBe(
           'Three books',
         )
-        expect(dvala.run(`${imp}su.template("No books||||One book||||Two books||||Three books||||$1 books", 4)`)).toBe('4 books')
+        expect(dvala.run(`${imp}su.template("No books||||One book||||Two books||||Three books||||$1 books", 4)`)).toBe(
+          '4 books',
+        )
         expect(dvala.run(`${imp}su.template("No books||||One book||||Two books||||Three books||||$1 books", 14)`)).toBe(
           '14 books',
         )
-        expect(() => dvala.run(`${imp}su.template("No books||||$1 book||||$1 books||||$1books", -3)`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.template("No books||||$1 book||||$1 books||||$1books", -3)`)).toThrow(
+          DvalaError,
+        )
         expect(() => dvala.run(`${imp}su.template("$1 book||||$1 books")`)).toThrow(DvalaError)
         expect(() => dvala.run(`${imp}su.template("$1 book||||$1 books", "1")`)).toThrow(DvalaError)
         expect(() => dvala.run(`${imp}su.template("$1 book||||$1 books||||$1 chairs", )`)).toThrow(DvalaError)

@@ -9,8 +9,7 @@ export function asArray(value: unknown, sourceCodeInfo?: SourceCodeInfo): Arr {
   return value
 }
 export function assertArray(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is Arr {
-  if (!isPersistentVector(value))
-    throw getAssertionError('array', value, sourceCodeInfo)
+  if (!isPersistentVector(value)) throw getAssertionError('array', value, sourceCodeInfo)
 }
 
 export function isStringArray(value: unknown): value is Arr {
@@ -25,14 +24,13 @@ export function asStringArray(value: unknown, sourceCodeInfo?: SourceCodeInfo): 
   return value
 }
 export function assertStringArray(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is Arr {
-  if (!isStringArray(value))
-    throw getAssertionError('array of strings', value, sourceCodeInfo)
+  if (!isStringArray(value)) throw getAssertionError('array of strings', value, sourceCodeInfo)
 }
 
 export function isCharArray(value: unknown): value is Arr {
   if (!isPersistentVector(value)) return false
   for (const item of value) {
-    if (typeof item !== 'string' || (item).length !== 1) return false
+    if (typeof item !== 'string' || item.length !== 1) return false
   }
   return true
 }
@@ -41,6 +39,5 @@ export function asCharArray(value: unknown, sourceCodeInfo?: SourceCodeInfo): Ar
   return value
 }
 export function assertCharArray(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is Arr {
-  if (!isCharArray(value))
-    throw getAssertionError('array of strings', value, sourceCodeInfo)
+  if (!isCharArray(value)) throw getAssertionError('array of strings', value, sourceCodeInfo)
 }

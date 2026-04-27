@@ -34,10 +34,7 @@ describe('isSymetric', () => {
   })
 
   it('should return false for a matrix with unequal row lengths', () => {
-    const matrix = [
-      [1, 2],
-      [3],
-    ]
+    const matrix = [[1, 2], [3]]
     expect(isSymetric(matrix)).toBe(false)
   })
 })

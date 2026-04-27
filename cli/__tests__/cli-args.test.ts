@@ -1,4 +1,3 @@
-
 import { execSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -38,31 +37,31 @@ describe('cLI argument parsing', () => {
   // =============================================================
   describe('run - options after positional', () => {
     test('should run a simple expression', () => {
-      expect(exec('run \'1 + 2\'')).toBe('3')
+      expect(exec("run '1 + 2'")).toBe('3')
     })
 
     test('should accept --pure after expression', () => {
-      expect(exec('run \'1 + 2\' --pure')).toBe('3')
+      expect(exec("run '1 + 2' --pure")).toBe('3')
     })
 
     test('--pure accepts all core builtins (none are impure)', () => {
-      expect(exec('run \'map([1, 2], inc)\' --pure')).toBe('[ 2, 3 ]')
+      expect(exec("run 'map([1, 2], inc)' --pure")).toBe('[ 2, 3 ]')
     })
 
     test('should accept --silent after expression', () => {
-      expect(exec('run \'1 + 2\' --silent')).toBe('')
+      expect(exec("run '1 + 2' --silent")).toBe('')
     })
 
     test('should accept -s after expression', () => {
-      expect(exec('run \'1 + 2\' -s')).toBe('')
+      expect(exec("run '1 + 2' -s")).toBe('')
     })
 
     test('should accept -c after expression', () => {
-      expect(exec('run \'x + 1\' -c \'{"x": 10}\'')).toBe('11')
+      expect(exec("run 'x + 1' -c '{\"x\": 10}'")).toBe('11')
     })
 
     test('should accept --context=JSON after expression', () => {
-      expect(exec('run \'x + 1\' --context=\'{"x": 10}\'')).toBe('11')
+      expect(exec("run 'x + 1' --context='{\"x\": 10}'")).toBe('11')
     })
   })
 
@@ -71,31 +70,31 @@ describe('cLI argument parsing', () => {
   // =============================================================
   describe('run - options before positional', () => {
     test('should accept --pure before expression', () => {
-      expect(exec('run --pure \'1 + 2\'')).toBe('3')
+      expect(exec("run --pure '1 + 2'")).toBe('3')
     })
 
     test('--pure before expression accepts all core builtins', () => {
-      expect(exec('run --pure \'map([1, 2], inc)\'')).toBe('[ 2, 3 ]')
+      expect(exec("run --pure 'map([1, 2], inc)'")).toBe('[ 2, 3 ]')
     })
 
     test('should accept --silent before expression', () => {
-      expect(exec('run --silent \'1 + 2\'')).toBe('')
+      expect(exec("run --silent '1 + 2'")).toBe('')
     })
 
     test('should accept -s before expression', () => {
-      expect(exec('run -s \'1 + 2\'')).toBe('')
+      expect(exec("run -s '1 + 2'")).toBe('')
     })
 
     test('should accept -c before expression', () => {
-      expect(exec('run -c \'{"x": 10}\' \'x + 1\'')).toBe('11')
+      expect(exec("run -c '{\"x\": 10}' 'x + 1'")).toBe('11')
     })
 
     test('should accept --context=JSON before expression', () => {
-      expect(exec('run --context=\'{"x": 10}\' \'x + 1\'')).toBe('11')
+      expect(exec("run --context='{\"x\": 10}' 'x + 1'")).toBe('11')
     })
 
     test('should accept mixed options before and after expression', () => {
-      expect(exec('run --pure \'1 + 2\' --silent')).toBe('')
+      expect(exec("run --pure '1 + 2' --silent")).toBe('')
     })
   })
 
@@ -104,7 +103,7 @@ describe('cLI argument parsing', () => {
   // =============================================================
   describe('--context with space-separated value', () => {
     test('should accept --context JSON (space-separated)', () => {
-      expect(exec('run \'x + 1\' --context \'{"x": 10}\'')).toBe('11')
+      expect(exec("run 'x + 1' --context '{\"x\": 10}'")).toBe('11')
     })
 
     test('should accept --context-file FILE (space-separated)', () => {

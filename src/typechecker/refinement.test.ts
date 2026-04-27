@@ -143,18 +143,15 @@ describe('refinement types — Phase 1', () => {
 
   describe('syntactic errors route through TypeParseError', () => {
     it('unterminated refinement (missing `}`) produces TypeParseError', () => {
-      expect(() => parseTypeAnnotation('Number & {n | n > 0'))
-        .toThrow(TypeParseError)
+      expect(() => parseTypeAnnotation('Number & {n | n > 0')).toThrow(TypeParseError)
     })
 
     it('missing binder produces TypeParseError', () => {
-      expect(() => parseTypeAnnotation('Number & {| n > 0}'))
-        .toThrow(TypeParseError)
+      expect(() => parseTypeAnnotation('Number & {| n > 0}')).toThrow(TypeParseError)
     })
 
     it('empty predicate body produces TypeParseError', () => {
-      expect(() => parseTypeAnnotation('Number & {n | }'))
-        .toThrow(TypeParseError)
+      expect(() => parseTypeAnnotation('Number & {n | }')).toThrow(TypeParseError)
     })
 
     it('reserved-word binder (`null`/`true`/`false`) produces TypeParseError', () => {
@@ -164,10 +161,8 @@ describe('refinement types — Phase 1', () => {
       // record). The inner predicate parser then can't bind to `null`,
       // so the user would get a confusing "binder on LHS" error later.
       // Reject early with a targeted syntax error instead.
-      expect(() => parseTypeAnnotation('Number & {null | null > 0}'))
-        .toThrow(TypeParseError)
-      expect(() => parseTypeAnnotation('Number & {true | true == true}'))
-        .toThrow(TypeParseError)
+      expect(() => parseTypeAnnotation('Number & {null | null > 0}')).toThrow(TypeParseError)
+      expect(() => parseTypeAnnotation('Number & {true | true == true}')).toThrow(TypeParseError)
     })
   })
 })
@@ -389,9 +384,7 @@ describe('refinement types — Phase 2.1 Refined node', () => {
     it('refined type in a function parameter composes with `+`', () => {
       // `f(5)` with `f: (Number & {n | n > 0}) -> Number` should pass
       // — the refinement is transparent to the Number-level arithmetic.
-      const result = dvala.typecheck(
-        'let f = (x: Number & {n | n > 0}): Number -> x + 1; f(5)',
-      )
+      const result = dvala.typecheck('let f = (x: Number & {n | n > 0}): Number -> x + 1; f(5)')
       expect(result.diagnostics).toHaveLength(0)
     })
 
@@ -412,7 +405,7 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       expect(result.diagnostics).toHaveLength(0)
     })
 
-    it('generic refined alias call-sites don\'t share stale base vars', () => {
+    it("generic refined alias call-sites don't share stale base vars", () => {
       // Companion to the previous test — two direct calls to the same
       // generic-refined `f` where the second would inherit the first's
       // unification if freshenAllVars missed the Refined case.
@@ -493,10 +486,10 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       // should accept 50 and reject (base-mismatch) "hi", same as the
       // unmerged form would have. Phase 2.1 pass-through holds post-merge.
       const dvala = createDvala()
-      expect(dvala.typecheck('let x: Number & {n | n > 0} & {n | n < 100} = 50; x').diagnostics)
-        .toHaveLength(0)
-      expect(dvala.typecheck('let x: Number & {n | n > 0} & {n | n < 100} = "hi"; x').diagnostics.length)
-        .toBeGreaterThan(0)
+      expect(dvala.typecheck('let x: Number & {n | n > 0} & {n | n < 100} = 50; x').diagnostics).toHaveLength(0)
+      expect(
+        dvala.typecheck('let x: Number & {n | n > 0} & {n | n < 100} = "hi"; x').diagnostics.length,
+      ).toBeGreaterThan(0)
     })
 
     it('string-literal content that happens to match the binder name is not renamed', () => {
@@ -1005,7 +998,6 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       const hasRoom = parseTypeAnnotation('String & {s | count(s) >= 1}')
       expect(isSubtype(nonEmpty, hasRoom)).toBe(true)
     })
-
   })
 
   // ---------------------------------------------------------------------------
@@ -1156,11 +1148,13 @@ describe('refinement types — Phase 2.5a (assert narrowing)', () => {
     })
 
     it('without an assert, no Refined type appears in the typeMap', () => {
-      expect(countRefinedInTypeMap(`
+      expect(
+        countRefinedInTypeMap(`
         let test = (x: Number): Number -> do
           x
         end
-      `)).toBe(0)
+      `),
+      ).toBe(0)
     })
   })
 
@@ -1182,12 +1176,14 @@ describe('refinement types — Phase 2.5a (assert narrowing)', () => {
 
     it('multi-variable predicate (`x > y`) does NOT narrow', () => {
       // Two free symbols → outside Phase 2.5a's single-symbol scope.
-      expect(countRefinedInTypeMap(`
+      expect(
+        countRefinedInTypeMap(`
         let test = (x: Number, y: Number): Number -> do
           assert(x > y);
           x
         end
-      `)).toBe(0)
+      `),
+      ).toBe(0)
     })
   })
 
@@ -1196,21 +1192,25 @@ describe('refinement types — Phase 2.5a (assert narrowing)', () => {
       // Out of the Phase 1 accept list — fragment-checker rejects
       // arithmetic on the binder. Runtime `assert` still works; no
       // static narrowing applies.
-      expect(countRefinedInTypeMap(`
+      expect(
+        countRefinedInTypeMap(`
         let test = (x: Number): Number -> do
           assert(x + 1 > 1);
           x
         end
-      `)).toBe(0)
+      `),
+      ).toBe(0)
     })
 
     it('a literal predicate (`assert(true)`) is a no-op for narrowing', () => {
-      expect(countRefinedInTypeMap(`
+      expect(
+        countRefinedInTypeMap(`
         let test = (x: Number): Number -> do
           assert(true);
           x
         end
-      `)).toBe(0)
+      `),
+      ).toBe(0)
     })
   })
 
@@ -1248,13 +1248,15 @@ describe('refinement types — Phase 2.5a (assert narrowing)', () => {
     it('user-shadowed `assert` does NOT trigger narrowing', () => {
       // A locally-bound `assert` may not throw on falsy. Conservative:
       // skip narrowing entirely.
-      expect(countRefinedInTypeMap(`
+      expect(
+        countRefinedInTypeMap(`
         let test = (x: Number): Number -> do
           let assert = (b: Boolean): Boolean -> b;
           assert(x > 0);
           x
         end
-      `)).toBe(0)
+      `),
+      ).toBe(0)
     })
   })
 })
@@ -1324,9 +1326,7 @@ describe('refinement types — Phase 2.5b (if-narrowing on refinements)', () => 
         const pred = t.predicate
         if (pred[0] !== NodeTypes.Call) return false
         const [callee, args] = pred[1] as [AstNode, AstNode[]]
-        return callee[0] === NodeTypes.Builtin
-          && callee[1] === '!'
-          && args.length === 1
+        return callee[0] === NodeTypes.Builtin && callee[1] === '!' && args.length === 1
       })
       expect(negated).toBeDefined()
     })
@@ -1362,11 +1362,7 @@ describe('refinement types — Phase 2.5b (if-narrowing on refinements)', () => 
           if x > 0 && x < 100 then x else 0 end;
         test(50)
       `)
-      const merged = refineds.find(t =>
-        t.binder === 'x'
-        && t.source.includes('x > 0')
-        && t.source.includes('x < 100'),
-      )
+      const merged = refineds.find(t => t.binder === 'x' && t.source.includes('x > 0') && t.source.includes('x < 100'))
       expect(merged).toBeDefined()
     })
 

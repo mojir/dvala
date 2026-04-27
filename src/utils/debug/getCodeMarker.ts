@@ -1,8 +1,7 @@
 import type { SourceCodeInfo } from '../../tokenizer/token'
 
 export function getCodeMarker(sourceCodeInfo: SourceCodeInfo): string {
-  if (!sourceCodeInfo.position || !sourceCodeInfo.code)
-    return ''
+  if (!sourceCodeInfo.position || !sourceCodeInfo.code) return ''
 
   const leftPadding = sourceCodeInfo.position.column - 1
   const rightPadding = sourceCodeInfo.code.length - leftPadding - 1

@@ -29,10 +29,19 @@ describe('variance functions', () => {
     })
     it('should calculate the centered moving variance of a vector with padding', () => {
       expect(runVec('centeredMovingVariance([1, 2, 4, 7, 11, 16], 4)')).toEqual([null, null, 5.25, 11.5, 20.25, null])
-      expect(runVec('centeredMovingVariance([1, 2, 4, 7, 11, 16], 6)')).toEqual([null, null, null, 27.805555555555557, null, null])
+      expect(runVec('centeredMovingVariance([1, 2, 4, 7, 11, 16], 6)')).toEqual([
+        null,
+        null,
+        null,
+        27.805555555555557,
+        null,
+        null,
+      ])
     })
     it('should calculate the running variance of a vector', () => {
-      expect(runVec('runningVariance([1, 2, 3, 4, 5, 6])')).toEqual([0, 0.25, 0.6666666666666666, 1.25, 2, 2.9166666666666665])
+      expect(runVec('runningVariance([1, 2, 3, 4, 5, 6])')).toEqual([
+        0, 0.25, 0.6666666666666666, 1.25, 2, 2.9166666666666665,
+      ])
       expect(runVec('runningVariance([0])')).toEqual([0])
       expect(() => runVec('runningVariance([])')).toThrowError(DvalaError)
     })
@@ -51,8 +60,14 @@ describe('variance functions', () => {
     })
     it('should calculate the centered moving sample variance of a vector with padding', () => {
       expect(runVec('centeredMovingSampleVariance([1, 2, 4], 3)')).toEqual([null, 2.333333333333333, null])
-      expect(runVec('centeredMovingSampleVariance([1, 2, 4], 3, 0, 5)')).toEqual([1, 2.333333333333333, 2.333333333333333])
-      expect(runVec('centeredMovingSampleVariance([1, 2, 4], 3, null, 5)')).toEqual([null, 2.333333333333333, 2.333333333333333])
+      expect(runVec('centeredMovingSampleVariance([1, 2, 4], 3, 0, 5)')).toEqual([
+        1, 2.333333333333333, 2.333333333333333,
+      ])
+      expect(runVec('centeredMovingSampleVariance([1, 2, 4], 3, null, 5)')).toEqual([
+        null,
+        2.333333333333333,
+        2.333333333333333,
+      ])
       expect(runVec('centeredMovingSampleVariance([1, 2, 4], 3, 0)')).toEqual([1, 2.333333333333333, null])
       expect(() => runVec('centeredMovingSampleVariance([1, 2, 4], 1)')).toThrowError(DvalaError)
     })

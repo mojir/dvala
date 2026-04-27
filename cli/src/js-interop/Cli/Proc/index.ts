@@ -81,11 +81,11 @@ export function getProcModule(): DvalaModule {
     name: 'cliProc',
     description: 'Process utilities: working directory, exit, PID, and umask management.',
     functions: {
-      'getCwd': jsFnToExpression(getCwd),
-      'exit': jsFnToExpression(exit),
-      'getPid': jsFnToExpression(getPid),
-      'setUmask': jsFnToExpression(setUmask),
-      'getUmask': jsFnToExpression(getUmask),
+      getCwd: jsFnToExpression(getCwd),
+      exit: jsFnToExpression(exit),
+      getPid: jsFnToExpression(getPid),
+      setUmask: jsFnToExpression(setUmask),
+      getUmask: jsFnToExpression(getUmask),
     },
   }
 }

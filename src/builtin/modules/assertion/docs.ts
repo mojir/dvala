@@ -1,7 +1,7 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
-  'assertNotEqual': {
+  assertNotEqual: {
     type: '(Unknown, Unknown) -> Null',
     category: 'assertion',
     description: 'If `a` is the same as `b` it throws `AssertionError`.',
@@ -21,17 +21,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
       {
-        argumentNames: [
-          'a',
-          'b',
-          'message',
-        ],
+        argumentNames: ['a', 'b', 'message'],
       },
     ],
     examples: [
@@ -43,7 +36,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertEqual'],
     hideOperatorForm: true,
   },
-  'assertEqual': {
+  assertEqual: {
     type: '(Unknown, Unknown) -> Null',
     category: 'assertion',
     description: 'If `a` is not structural equal to `b` it throws `AssertionError`.',
@@ -63,17 +56,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
       {
-        argumentNames: [
-          'a',
-          'b',
-          'message',
-        ],
+        argumentNames: ['a', 'b', 'message'],
       },
     ],
     examples: [
@@ -84,7 +70,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertNotEqual'],
     hideOperatorForm: true,
   },
-  'assertGt': {
+  assertGt: {
     type: '((String | Number), (String | Number)) -> Null',
     category: 'assertion',
     description: 'If `a` is not greater than `b` it throws `AssertionError`.',
@@ -104,17 +90,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
       {
-        argumentNames: [
-          'a',
-          'b',
-          'message',
-        ],
+        argumentNames: ['a', 'b', 'message'],
       },
     ],
     examples: [
@@ -125,7 +104,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertLt', 'assertion.assertGte', 'assertion.assertLte'],
     hideOperatorForm: true,
   },
-  'assertLt': {
+  assertLt: {
     type: '((String | Number), (String | Number)) -> Null',
     category: 'assertion',
     description: 'If `a` is not less than `b` it throws `AssertionError`.',
@@ -145,17 +124,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
       {
-        argumentNames: [
-          'a',
-          'b',
-          'message',
-        ],
+        argumentNames: ['a', 'b', 'message'],
       },
     ],
     examples: [
@@ -166,7 +138,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertGt', 'assertion.assertLte', 'assertion.assertGte'],
     hideOperatorForm: true,
   },
-  'assertGte': {
+  assertGte: {
     type: '((String | Number), (String | Number)) -> Null',
     category: 'assertion',
     description: 'If `a` is less than `b` it throws `AssertionError`.',
@@ -186,17 +158,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
       {
-        argumentNames: [
-          'a',
-          'b',
-          'message',
-        ],
+        argumentNames: ['a', 'b', 'message'],
       },
     ],
     examples: [
@@ -207,7 +172,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertLte', 'assertion.assertGt', 'assertion.assertLt'],
     hideOperatorForm: true,
   },
-  'assertLte': {
+  assertLte: {
     type: '((String | Number), (String | Number)) -> Null',
     category: 'assertion',
     description: 'If `a` is grater than `b` it throws `AssertionError`.',
@@ -227,17 +192,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
       {
-        argumentNames: [
-          'a',
-          'b',
-          'message',
-        ],
+        argumentNames: ['a', 'b', 'message'],
       },
     ],
     examples: [
@@ -248,7 +206,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertGte', 'assertion.assertLt', 'assertion.assertGt'],
     hideOperatorForm: true,
   },
-  'assertTrue': {
+  assertTrue: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `true` it throws `AssertionError`.',
@@ -265,15 +223,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -281,10 +234,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { assertTrue } = import("assertion");\ndo with handler @dvala.error(arg) -> resume(arg) end; assertTrue(false) end',
       'let { assertTrue } = import("assertion");\ndo with handler @dvala.error(arg) -> resume(arg) end; assertTrue(true) end',
     ],
-    seeAlso: ['assertion.assertFalse', 'assertion.assertTruthy', 'assertion.assertFalsy', 'assert', 'assertion.assertBoolean'],
+    seeAlso: [
+      'assertion.assertFalse',
+      'assertion.assertTruthy',
+      'assertion.assertFalsy',
+      'assert',
+      'assertion.assertBoolean',
+    ],
     hideOperatorForm: true,
   },
-  'assertFalse': {
+  assertFalse: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `false` it throws `AssertionError`.',
@@ -301,15 +260,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -320,7 +274,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertTrue', 'assertion.assertFalsy', 'assertion.assertTruthy', 'assertion.assertBoolean'],
     hideOperatorForm: true,
   },
-  'assertTruthy': {
+  assertTruthy: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `truthy` it throws `AssertionError`.',
@@ -337,15 +291,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -360,10 +309,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { assertTruthy } = import("assertion");\ndo with handler @dvala.error(arg) -> resume(arg) end; assertTruthy([]) end',
       'let { assertTruthy } = import("assertion");\ndo with handler @dvala.error(arg) -> resume(arg) end; assertTruthy(nd) end',
     ],
-    seeAlso: ['assertion.assertFalsy', 'assertion.assertTrue', 'assertion.assertFalse', 'assert', 'assertion.assertNull'],
+    seeAlso: [
+      'assertion.assertFalsy',
+      'assertion.assertTrue',
+      'assertion.assertFalse',
+      'assert',
+      'assertion.assertNull',
+    ],
     hideOperatorForm: true,
   },
-  'assertFalsy': {
+  assertFalsy: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `falsy` it throws `AssertionError`.',
@@ -380,15 +335,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -405,7 +355,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertTruthy', 'assertion.assertFalse', 'assertion.assertTrue', 'assertion.assertNull'],
     hideOperatorForm: true,
   },
-  'assertNull': {
+  assertNull: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not `null` it throws `AssertionError`.',
@@ -422,15 +372,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -447,7 +392,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertTruthy', 'assertion.assertFalsy'],
     hideOperatorForm: true,
   },
-  'assertFails': {
+  assertFails: {
     type: '((() -> Unknown)) -> Null',
     category: 'assertion',
     description: 'If `fun` does not fail (perform `dvala.error`), it throws `AssertionError`.',
@@ -464,15 +409,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'fun',
-        ],
+        argumentNames: ['fun'],
       },
       {
-        argumentNames: [
-          'fun',
-          'message',
-        ],
+        argumentNames: ['fun', 'message'],
       },
     ],
     examples: [
@@ -482,7 +422,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertFailsWith', 'assertion.assertSucceeds'],
     hideOperatorForm: true,
   },
-  'assertFailsWith': {
+  assertFailsWith: {
     type: '((() -> Unknown), String) -> Null',
     category: 'assertion',
     description: 'If `fun` does not fail with `error-message`, it throws `AssertionError`.',
@@ -490,29 +430,22 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       type: 'null',
     },
     args: {
-      'fun': {
+      fun: {
         type: 'function',
       },
-      'errorMessage': {
+      errorMessage: {
         type: 'string',
       },
-      'message': {
+      message: {
         type: 'string',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'fun',
-          'errorMessage',
-        ],
+        argumentNames: ['fun', 'errorMessage'],
       },
       {
-        argumentNames: [
-          'fun',
-          'errorMessage',
-          'message',
-        ],
+        argumentNames: ['fun', 'errorMessage', 'message'],
       },
     ],
     examples: [
@@ -522,7 +455,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertFails', 'assertion.assertSucceeds'],
     hideOperatorForm: true,
   },
-  'assertSucceeds': {
+  assertSucceeds: {
     type: '((() -> Unknown)) -> Null',
     category: 'assertion',
     description: 'If `fun` fails (performs `dvala.error`), it throws `AssertionError`.',
@@ -539,15 +472,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'fun',
-        ],
+        argumentNames: ['fun'],
       },
       {
-        argumentNames: [
-          'fun',
-          'message',
-        ],
+        argumentNames: ['fun', 'message'],
       },
     ],
     examples: [
@@ -557,7 +485,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertFails', 'assertion.assertFailsWith'],
     hideOperatorForm: true,
   },
-  'assertArray': {
+  assertArray: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not an `array` it throws `AssertionError`.',
@@ -574,15 +502,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -593,7 +516,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertObject', 'assertion.assertCollection', 'assertion.assertSequence'],
     hideOperatorForm: true,
   },
-  'assertBoolean': {
+  assertBoolean: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `boolean` it throws `AssertionError`.',
@@ -610,15 +533,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -629,7 +547,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertTrue', 'assertion.assertFalse', 'assertion.assertNumber', 'assertion.assertString'],
     hideOperatorForm: true,
   },
-  'assertCollection': {
+  assertCollection: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `collection` (array, object, or string) it throws `AssertionError`.',
@@ -646,15 +564,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -666,7 +579,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertSequence', 'assertion.assertArray', 'assertion.assertObject'],
     hideOperatorForm: true,
   },
-  'assertFunction': {
+  assertFunction: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `function` it throws `AssertionError`.',
@@ -683,15 +596,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -701,7 +609,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertNumber', 'assertion.assertString'],
     hideOperatorForm: true,
   },
-  'assertGrid': {
+  assertGrid: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `grid` it throws `AssertionError`.',
@@ -718,15 +626,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -736,7 +639,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertMatrix', 'assertion.assertVector'],
     hideOperatorForm: true,
   },
-  'assertInteger': {
+  assertInteger: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not an `integer` it throws `AssertionError`.',
@@ -753,15 +656,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -771,7 +669,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertNumber'],
     hideOperatorForm: true,
   },
-  'assertMatrix': {
+  assertMatrix: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `matrix` it throws `AssertionError`.',
@@ -788,15 +686,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -806,7 +699,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertVector', 'assertion.assertGrid'],
     hideOperatorForm: true,
   },
-  'assertNumber': {
+  assertNumber: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `number` it throws `AssertionError`.',
@@ -823,25 +716,25 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
       'let { assertNumber } = import("assertion");\ndo with handler @dvala.error(arg) -> resume(arg) end; assertNumber(42) end',
       'let { assertNumber } = import("assertion");\ndo with handler @dvala.error(arg) -> resume(arg) end; assertNumber("hello", "Expected a number") end',
     ],
-    seeAlso: ['assertion.assertInteger', 'assertion.assertBoolean', 'assertion.assertString', 'assertion.assertFunction'],
+    seeAlso: [
+      'assertion.assertInteger',
+      'assertion.assertBoolean',
+      'assertion.assertString',
+      'assertion.assertFunction',
+    ],
     hideOperatorForm: true,
   },
-  'assertObject': {
+  assertObject: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not an `object` it throws `AssertionError`.',
@@ -858,15 +751,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -876,7 +764,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertArray', 'assertion.assertCollection'],
     hideOperatorForm: true,
   },
-  'assertRegexp': {
+  assertRegexp: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `regexp` it throws `AssertionError`.',
@@ -893,15 +781,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -911,7 +794,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertString'],
     hideOperatorForm: true,
   },
-  'assertSequence': {
+  assertSequence: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `sequence` (array or string) it throws `AssertionError`.',
@@ -928,15 +811,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
@@ -947,7 +825,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assertCollection', 'assertion.assertArray'],
     hideOperatorForm: true,
   },
-  'assertString': {
+  assertString: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `string` it throws `AssertionError`.',
@@ -964,25 +842,25 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [
       'let { assertString } = import("assertion");\ndo with handler @dvala.error(arg) -> resume(arg) end; assertString("hello") end',
       'let { assertString } = import("assertion");\ndo with handler @dvala.error(arg) -> resume(arg) end; assertString(42, "Expected a string") end',
     ],
-    seeAlso: ['assertion.assertNumber', 'assertion.assertBoolean', 'assertion.assertRegexp', 'assertion.assertFunction'],
+    seeAlso: [
+      'assertion.assertNumber',
+      'assertion.assertBoolean',
+      'assertion.assertRegexp',
+      'assertion.assertFunction',
+    ],
     hideOperatorForm: true,
   },
-  'assertVector': {
+  assertVector: {
     type: '(Unknown) -> Null',
     category: 'assertion',
     description: 'If `value` is not a `vector` it throws `AssertionError`.',
@@ -999,15 +877,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'value',
-        ],
+        argumentNames: ['value'],
       },
       {
-        argumentNames: [
-          'value',
-          'message',
-        ],
+        argumentNames: ['value', 'message'],
       },
     ],
     examples: [

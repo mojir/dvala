@@ -37,26 +37,57 @@ describe('ast module', () => {
     })
 
     it('should create effect nodes', () => {
-      expect(run('let { effectNode } = import("ast"); effectNode("dvala.io.print")')).toEqual(['Effect', 'dvala.io.print', 0])
+      expect(run('let { effectNode } = import("ast"); effectNode("dvala.io.print")')).toEqual([
+        'Effect',
+        'dvala.io.print',
+        0,
+      ])
     })
 
     it('should create call nodes', () => {
       const result = run('let { call, builtin, num } = import("ast"); call(builtin("+"), [num(1), num(2)])')
-      expect(result).toEqual(['Call', [['Builtin', '+', 0], [['Num', 1, 0], ['Num', 2, 0]]], 0])
+      expect(result).toEqual([
+        'Call',
+        [
+          ['Builtin', '+', 0],
+          [
+            ['Num', 1, 0],
+            ['Num', 2, 0],
+          ],
+        ],
+        0,
+      ])
     })
 
     it('should create if nodes', () => {
       const result = run('let { ifNode, sym, num } = import("ast"); ifNode(sym("x"), num(1), num(2))')
-      expect(result).toEqual(['If', [['Sym', 'x', 0], ['Num', 1, 0], ['Num', 2, 0]], 0])
+      expect(result).toEqual([
+        'If',
+        [
+          ['Sym', 'x', 0],
+          ['Num', 1, 0],
+          ['Num', 2, 0],
+        ],
+        0,
+      ])
     })
 
     it('should reject if nodes without else', () => {
-      expect(() => run('let { ifNode, sym, num } = import("ast"); ifNode(sym("x"), num(1))')).toThrowError(DvalaTypeError)
+      expect(() => run('let { ifNode, sym, num } = import("ast"); ifNode(sym("x"), num(1))')).toThrowError(
+        DvalaTypeError,
+      )
     })
 
     it('should create block nodes', () => {
       const result = run('let { block, num } = import("ast"); block([num(1), num(2)])')
-      expect(result).toEqual(['Block', [['Num', 1, 0], ['Num', 2, 0]], 0])
+      expect(result).toEqual([
+        'Block',
+        [
+          ['Num', 1, 0],
+          ['Num', 2, 0],
+        ],
+        0,
+      ])
     })
 
     it('should reject empty block nodes', () => {
@@ -74,7 +105,9 @@ describe('ast module', () => {
       expect(run('let { isCall, call, builtin, num } = import("ast"); isCall(call(builtin("+"), [num(1)]))')).toBe(true)
       expect(run('let { isBool, bool } = import("ast"); isBool(bool(true))')).toBe(true)
       expect(run('let { isNil, nil } = import("ast"); isNil(nil())')).toBe(true)
-      expect(run('let { isEffectNode, effectNode } = import("ast"); isEffectNode(effectNode("dvala.io.print"))')).toBe(true)
+      expect(run('let { isEffectNode, effectNode } = import("ast"); isEffectNode(effectNode("dvala.io.print"))')).toBe(
+        true,
+      )
     })
 
     it('should return false for non-matching types', () => {
@@ -121,19 +154,31 @@ describe('ast module', () => {
     })
 
     it('should print binary expressions as infix', () => {
-      expect(run('let { prettyPrint, call, builtin, num } = import("ast"); prettyPrint(call(builtin("+"), [num(1), num(2)]))')).toBe('1 + 2')
+      expect(
+        run(
+          'let { prettyPrint, call, builtin, num } = import("ast"); prettyPrint(call(builtin("+"), [num(1), num(2)]))',
+        ),
+      ).toBe('1 + 2')
     })
 
     it('should print function calls as prefix', () => {
-      expect(run('let { prettyPrint, call, sym, num } = import("ast"); prettyPrint(call(sym("f"), [num(1), num(2)]))')).toBe('f(1, 2)')
+      expect(
+        run('let { prettyPrint, call, sym, num } = import("ast"); prettyPrint(call(sym("f"), [num(1), num(2)]))'),
+      ).toBe('f(1, 2)')
     })
 
     it('should print if expressions', () => {
-      expect(run('let { prettyPrint, ifNode, sym, num } = import("ast"); prettyPrint(ifNode(sym("x"), num(1), num(2)))')).toBe('if x then 1 else 2 end')
+      expect(
+        run('let { prettyPrint, ifNode, sym, num } = import("ast"); prettyPrint(ifNode(sym("x"), num(1), num(2)))'),
+      ).toBe('if x then 1 else 2 end')
     })
 
     it('should print get() as safe property access', () => {
-      expect(run('let { prettyPrint, call, builtin, sym, strNode } = import("ast"); prettyPrint(call(builtin("get"), [sym("obj"), strNode("key")]))')).toBe('obj?.key')
+      expect(
+        run(
+          'let { prettyPrint, call, builtin, sym, strNode } = import("ast"); prettyPrint(call(builtin("get"), [sym("obj"), strNode("key")]))',
+        ),
+      ).toBe('obj?.key')
     })
 
     it('should print code template AST', () => {
@@ -141,11 +186,22 @@ describe('ast module', () => {
     })
 
     it('should print effect references', () => {
-      expect(run('let { prettyPrint, effectNode } = import("ast"); prettyPrint(effectNode("dvala.io.print"))')).toBe('@dvala.io.print')
+      expect(run('let { prettyPrint, effectNode } = import("ast"); prettyPrint(effectNode("dvala.io.print"))')).toBe(
+        '@dvala.io.print',
+      )
     })
 
     it('should reject malformed if nodes without else', () => {
-      expect(() => prettyPrint(['If', [['Sym', 'x', 0], ['Num', 1, 0]], 0])).toThrowError(DvalaTypeError)
+      expect(() =>
+        prettyPrint([
+          'If',
+          [
+            ['Sym', 'x', 0],
+            ['Num', 1, 0],
+          ],
+          0,
+        ]),
+      ).toThrowError(DvalaTypeError)
     })
 
     it('should reject malformed empty block nodes', () => {
@@ -155,7 +211,19 @@ describe('ast module', () => {
 
   describe('evaluation backstops', () => {
     it('should reject malformed if nodes without else', () => {
-      expect(() => evaluateNode(['If', [['Reserved', 'false', 0], ['Num', 1, 0]], 0], createContextStack())).toThrowError(DvalaTypeError)
+      expect(() =>
+        evaluateNode(
+          [
+            'If',
+            [
+              ['Reserved', 'false', 0],
+              ['Num', 1, 0],
+            ],
+            0,
+          ],
+          createContextStack(),
+        ),
+      ).toThrowError(DvalaTypeError)
     })
 
     it('should reject malformed empty block nodes', () => {
@@ -166,12 +234,14 @@ describe('ast module', () => {
   describe('round-trip with macros', () => {
     it('should construct AST that evaluates correctly', () => {
       // Verify that constructors produce AST that macros can return
-      expect(run(`
+      expect(
+        run(`
         let { call, builtin, num } = import("ast");
         let id = macro (ast) -> ast;
         let addNode = call(builtin("+"), [num(20), num(22)]);
         id(20 + 22)
-      `)).toBe(42)
+      `),
+      ).toBe(42)
     })
   })
 })

@@ -16,10 +16,13 @@ import { type Page, expect, test } from '@playwright/test'
 
 /** Wait for the playground to fully initialize (wrapper becomes display:block). */
 async function waitForInit(page: Page) {
-  await page.waitForFunction(() => {
-    const wrapper = document.getElementById('wrapper')
-    return wrapper && wrapper.style.display === 'block'
-  }, { timeout: 4_500 })
+  await page.waitForFunction(
+    () => {
+      const wrapper = document.getElementById('wrapper')
+      return wrapper && wrapper.style.display === 'block'
+    },
+    { timeout: 4_500 },
+  )
 }
 
 /** Navigate to the playground (editor) tab so the editor is visible. */
@@ -106,7 +109,10 @@ test.describe('code execution', () => {
   })
 
   test('runs code with context effect handler', async ({ page }) => {
-    await setContext(page, '{"effectHandlers": [{"pattern": "host.add", "handler": "async ({ arg: [a, b], resume }) => { resume(a + b) }"}]}')
+    await setContext(
+      page,
+      '{"effectHandlers": [{"pattern": "host.add", "handler": "async ({ arg: [a, b], resume }) => { resume(a + b) }"}]}',
+    )
     await setDvalaCode(page, 'perform(@host.add, [15, 27])')
     await clickRun(page)
     await waitForOutput(page)
@@ -200,10 +206,13 @@ test.describe('navigation', () => {
     await page.locator('#tab-bar').getByText('Examples').click()
 
     // The examples page should be rendered into #dynamic-page
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.innerHTML.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.innerHTML.length > 0
+      },
+      { timeout: 5000 },
+    )
     const dynPage = page.locator('#dynamic-page')
     await expect(dynPage).toBeVisible()
     // Check that URL contains /examples
@@ -214,10 +223,13 @@ test.describe('navigation', () => {
     await page.goto('/examples')
     await waitForInit(page)
     // The examples page should be rendered into #dynamic-page
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.innerHTML.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.innerHTML.length > 0
+      },
+      { timeout: 5000 },
+    )
     const dynPage = page.locator('#dynamic-page')
     await expect(dynPage).toBeVisible()
   })
@@ -265,10 +277,13 @@ test.describe('examples', () => {
     await page.evaluate(() => (window as any).Playground.navigate('/examples'))
 
     // Wait for the examples page to render in #dynamic-page
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.querySelector('.book-page') !== null
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.querySelector('.book-page') !== null
+      },
+      { timeout: 5000 },
+    )
 
     // Click the first "Load in playground" button
     const loadButton = page.locator('#dynamic-page [onclick*="Playground.setPlayground"]').first()
@@ -312,7 +327,9 @@ test.describe('share', () => {
     // share() writes the URL to clipboard — intercept clipboard.writeText to capture it
     const shareUrl = await page.evaluate(async () => {
       let captured = ''
-      navigator.clipboard.writeText = async (text: string) => { captured = text }
+      navigator.clipboard.writeText = async (text: string) => {
+        captured = text
+      }
       ;(window as any).Playground.share()
       // Allow the async clipboard promise to resolve
       await new Promise(r => setTimeout(r, 50))
@@ -337,9 +354,12 @@ test.describe('share', () => {
     // Build an encoded state URL the same way the playground does
     const code = '99 + 1'
     const context = '{"bindings":{"z":7}}'
-    const encodedState = await page.evaluate(({ c, ctx }) => {
-      return btoa(encodeURIComponent(JSON.stringify({ 'dvala-code': c, 'context': ctx })))
-    }, { c: code, ctx: context })
+    const encodedState = await page.evaluate(
+      ({ c, ctx }) => {
+        return btoa(encodeURIComponent(JSON.stringify({ 'dvala-code': c, context: ctx })))
+      },
+      { c: code, ctx: context },
+    )
 
     await page.goto(`?state=${encodedState}`)
     await waitForInit(page)
@@ -393,10 +413,13 @@ test.describe('snapshots', () => {
     // Switch to snapshots side tab and verify a saved item exists
     await page.evaluate(() => (window as any).Playground.showSideTab('snapshots'))
     const snapshotsList = page.locator('#side-snapshots-list')
-    await page.waitForFunction(() => {
-      const items = document.querySelectorAll('#side-snapshots-list .explorer-item')
-      return items.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const items = document.querySelectorAll('#side-snapshots-list .explorer-item')
+        return items.length > 0
+      },
+      { timeout: 5000 },
+    )
     await expect(snapshotsList.locator('.explorer-item').first()).toBeVisible()
   })
 })
@@ -447,7 +470,7 @@ test.describe('settings', () => {
       const el = document.getElementById('settings-checkpoint-toggle') as HTMLInputElement | null
       return el?.checked ?? false
     })
-    
+
     if (!wasInterceptEffectsEnabled) {
       await page.evaluate(() => (window as any).Playground.toggleInterceptEffects())
     }
@@ -505,10 +528,13 @@ test.describe('output panel', () => {
     await clickRun(page)
 
     // Wait for two result spans
-    await page.waitForFunction(() => {
-      const spans = document.querySelectorAll('#output-result span.result')
-      return spans.length >= 2
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const spans = document.querySelectorAll('#output-result span.result')
+        return spans.length >= 2
+      },
+      { timeout: 5000 },
+    )
 
     const output = await getOutputText(page)
     expect(output).toContain('1')
@@ -550,10 +576,13 @@ test.describe('api reference navigation', () => {
     await firstResult.click()
 
     // A doc page should be rendered in #dynamic-page
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.innerHTML.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.innerHTML.length > 0
+      },
+      { timeout: 5000 },
+    )
     const dynPage = page.locator('#dynamic-page')
     await expect(dynPage).toBeVisible()
     expect(resultText?.length).toBeGreaterThan(0)
@@ -599,11 +628,14 @@ test.describe('files', () => {
 
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
     // Wait for the saved file to appear as an explorer-item (scratch is always first)
-    await page.waitForFunction(() => {
-      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-      // More than 1 item means scratch + at least one saved file
-      return items.length > 1
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+        // More than 1 item means scratch + at least one saved file
+        return items.length > 1
+      },
+      { timeout: 5000 },
+    )
     const fileList = page.locator('#explorer-file-list')
     await expect(fileList).toContainText('My Test File')
   })
@@ -615,10 +647,13 @@ test.describe('files', () => {
     // Reset playground (scratch), then click the saved file item to load it
     await page.evaluate(() => (window as any).Playground.resetPlayground())
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
-    await page.waitForFunction(() => {
-      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-      return items.length > 1
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+        return items.length > 1
+      },
+      { timeout: 5000 },
+    )
     // Click the second explorer item (first is scratch)
     await page.locator('#explorer-file-list .explorer-item').nth(1).click()
 
@@ -632,10 +667,13 @@ test.describe('files', () => {
     await saveAsFile(page, 'Delete Me')
 
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
-    await page.waitForFunction(() => {
-      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-      return items.length > 1
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+        return items.length > 1
+      },
+      { timeout: 5000 },
+    )
 
     // Delete via JS using the first saved file's onclick attribute to extract id
     await page.evaluate(() => {
@@ -646,17 +684,20 @@ test.describe('files', () => {
         if (onclick.includes('loadSavedFile')) {
           const match = onclick.match(/loadSavedFile\('([^']+)'\)/)
           if (match?.[1]) {
-            (window as any).Playground.deleteSavedFile(match[1])
+            ;(window as any).Playground.deleteSavedFile(match[1])
             return
           }
         }
       }
     })
 
-    await page.waitForFunction(() => {
-      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-      return items.length === 1 // only scratch remains
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+        return items.length === 1 // only scratch remains
+      },
+      { timeout: 5000 },
+    )
     // Only scratch remains
     await expect(page.locator('#explorer-file-list .explorer-item')).toHaveCount(1)
   })
@@ -841,7 +882,10 @@ test.describe('playground effects', () => {
   })
 
   test('editor.setContent replaces editor text', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.setContent, "replaced"); perform(@playground.editor.getContent) end')
+    await setDvalaCode(
+      page,
+      'do perform(@playground.editor.setContent, "replaced"); perform(@playground.editor.getContent) end',
+    )
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -849,7 +893,10 @@ test.describe('playground effects', () => {
   })
 
   test('editor.insertText inserts at explicit position', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.setContent, "hello"); perform(@playground.editor.insertText, [" world", 5]); perform(@playground.editor.getContent) end')
+    await setDvalaCode(
+      page,
+      'do perform(@playground.editor.setContent, "hello"); perform(@playground.editor.insertText, [" world", 5]); perform(@playground.editor.getContent) end',
+    )
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -857,7 +904,10 @@ test.describe('playground effects', () => {
   })
 
   test('editor.insertText inserts at cursor when no position given', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.setContent, "ac"); perform(@playground.editor.setCursor, 1); perform(@playground.editor.insertText, "b"); perform(@playground.editor.getContent) end')
+    await setDvalaCode(
+      page,
+      'do perform(@playground.editor.setContent, "ac"); perform(@playground.editor.setCursor, 1); perform(@playground.editor.insertText, "b"); perform(@playground.editor.getContent) end',
+    )
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -873,7 +923,10 @@ test.describe('playground effects', () => {
   })
 
   test('editor.setCursor and getCursor round-trip', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.setContent, "abcdef"); perform(@playground.editor.setCursor, 3); perform(@playground.editor.getCursor) end')
+    await setDvalaCode(
+      page,
+      'do perform(@playground.editor.setContent, "abcdef"); perform(@playground.editor.setCursor, 3); perform(@playground.editor.getCursor) end',
+    )
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -881,7 +934,10 @@ test.describe('playground effects', () => {
   })
 
   test('editor.setSelection and getSelection round-trip', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.setContent, "hello world"); perform(@playground.editor.setSelection, [6, 11]); perform(@playground.editor.getSelection) end')
+    await setDvalaCode(
+      page,
+      'do perform(@playground.editor.setContent, "hello world"); perform(@playground.editor.setSelection, [6, 11]); perform(@playground.editor.getSelection) end',
+    )
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -889,7 +945,10 @@ test.describe('playground effects', () => {
   })
 
   test('editor.getSelection returns empty string when nothing selected', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.setContent, "abc"); perform(@playground.editor.setCursor, 1); perform(@playground.editor.getSelection) end')
+    await setDvalaCode(
+      page,
+      'do perform(@playground.editor.setContent, "abc"); perform(@playground.editor.setCursor, 1); perform(@playground.editor.getSelection) end',
+    )
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -897,26 +956,38 @@ test.describe('playground effects', () => {
   })
 
   test('editor.typeText types characters into the editor', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.setContent, ""); perform(@playground.editor.typeText, "hi"); perform(@playground.editor.getContent) end')
+    await setDvalaCode(
+      page,
+      'do perform(@playground.editor.setContent, ""); perform(@playground.editor.typeText, "hi"); perform(@playground.editor.getContent) end',
+    )
     await clickRun(page)
     // typeText is async with setTimeout delays — wait longer.
     // Look for the actual expected content, not just span count, since the
     // pre-run typecheck pass adds spans before the result span lands.
-    await page.waitForFunction(() => {
-      const output = document.getElementById('output-result')
-      return !!output && (output.textContent ?? '').includes('hi')
-    }, { timeout: 8000 })
+    await page.waitForFunction(
+      () => {
+        const output = document.getElementById('output-result')
+        return !!output && (output.textContent ?? '').includes('hi')
+      },
+      { timeout: 8000 },
+    )
     const output = await getOutputText(page)
     expect(output).toContain('hi')
   })
 
   test('editor.typeText respects custom delay', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.setContent, ""); perform(@playground.editor.typeText, ["ab", 100]); perform(@playground.editor.getContent) end')
+    await setDvalaCode(
+      page,
+      'do perform(@playground.editor.setContent, ""); perform(@playground.editor.typeText, ["ab", 100]); perform(@playground.editor.getContent) end',
+    )
     await clickRun(page)
-    await page.waitForFunction(() => {
-      const output = document.getElementById('output-result')
-      return !!output && (output.textContent ?? '').includes('ab')
-    }, { timeout: 8000 })
+    await page.waitForFunction(
+      () => {
+        const output = document.getElementById('output-result')
+        return !!output && (output.textContent ?? '').includes('ab')
+      },
+      { timeout: 8000 },
+    )
     const output = await getOutputText(page)
     expect(output).toContain('ab')
   })
@@ -933,7 +1004,10 @@ test.describe('playground effects', () => {
   })
 
   test('context.setContent and getContent round-trip', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.context.setContent, "{}"); perform(@playground.context.getContent) end')
+    await setDvalaCode(
+      page,
+      'do perform(@playground.context.setContent, "{}"); perform(@playground.context.getContent) end',
+    )
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -974,12 +1048,15 @@ test.describe('playground effects', () => {
     await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
 
     // File names are normalized to add .dvala suffix on save, so load uses the full name
-    await setDvalaCode(page, `do
+    await setDvalaCode(
+      page,
+      `do
   perform(@playground.files.save, ["test-prog", "1 + 2"]);
   let names = perform(@playground.files.list);
   let code = perform(@playground.files.load, "test-prog.dvala");
   [names, code]
-end`)
+end`,
+    )
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -1262,7 +1339,7 @@ test.describe('file operations', () => {
 
     // Rename via JS API
     await page.evaluate((id: string) => {
-      (window as any).Playground.renameFile(id)
+      ;(window as any).Playground.renameFile(id)
     }, fileId!)
 
     // Fill in the rename input
@@ -1291,10 +1368,13 @@ test.describe('file operations', () => {
 
     await page.evaluate((id: string) => (window as any).Playground.duplicateFile(id), fileId!)
 
-    await page.waitForFunction(() => {
-      // scratch + original + duplicate = 3 items
-      return document.querySelectorAll('#explorer-file-list .explorer-item').length >= 3
-    }, { timeout: 3000 })
+    await page.waitForFunction(
+      () => {
+        // scratch + original + duplicate = 3 items
+        return document.querySelectorAll('#explorer-file-list .explorer-item').length >= 3
+      },
+      { timeout: 3000 },
+    )
 
     const count = await page.locator('#explorer-file-list .explorer-item').count()
     expect(count).toBeGreaterThanOrEqual(3)
@@ -1357,10 +1437,13 @@ test.describe('tab state persistence', () => {
 
     // Navigate away to book tab
     await page.evaluate(() => (window as any).Playground.navigateToTab('book'))
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.innerHTML.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.innerHTML.length > 0
+      },
+      { timeout: 5000 },
+    )
 
     // Navigate back to editor tab
     await page.evaluate(() => (window as any).Playground.navigateToTab('editor'))
@@ -1380,10 +1463,13 @@ test.describe('tab state persistence', () => {
 
     // Click the Reference tab
     await page.evaluate(() => (window as any).Playground.navigateToTab('ref'))
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.innerHTML.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.innerHTML.length > 0
+      },
+      { timeout: 5000 },
+    )
 
     // Click the Editor tab
     await page.locator('#tab-btn-editor').click()
@@ -1400,20 +1486,26 @@ test.describe('tab state persistence', () => {
 
     // Navigate deep into a ref page
     await page.evaluate(() => (window as any).Playground.navigate('/ref/core/math'))
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.innerHTML.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.innerHTML.length > 0
+      },
+      { timeout: 5000 },
+    )
 
     // Switch to editor tab
     await navigateToPlayground(page)
 
     // Switch back to ref tab — should restore to /ref/core/math, not /ref root
     await page.evaluate(() => (window as any).Playground.navigateToTab('ref'))
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.innerHTML.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.innerHTML.length > 0
+      },
+      { timeout: 5000 },
+    )
 
     expect(page.url()).toContain('/ref/core/math')
   })
@@ -1424,19 +1516,25 @@ test.describe('tab state persistence', () => {
 
     // Navigate to the examples index then into one example
     await page.evaluate(() => (window as any).Playground.navigate('/examples'))
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.querySelector('.book-page') !== null
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.querySelector('.book-page') !== null
+      },
+      { timeout: 5000 },
+    )
 
     // Click the first example link
     const firstLink = page.locator('#dynamic-page a[onclick*="navigate"]').first()
     const href = await firstLink.getAttribute('onclick')
     await firstLink.click()
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.innerHTML.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.innerHTML.length > 0
+      },
+      { timeout: 5000 },
+    )
     const urlAfterExample = page.url()
 
     // Switch to editor tab
@@ -1444,10 +1542,13 @@ test.describe('tab state persistence', () => {
 
     // Switch back to examples — should be on the same example page
     await page.evaluate(() => (window as any).Playground.navigateToTab('examples'))
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.innerHTML.length > 0
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.innerHTML.length > 0
+      },
+      { timeout: 5000 },
+    )
 
     expect(page.url()).toBe(urlAfterExample)
   })
@@ -1463,17 +1564,23 @@ test.describe('breadcrumbs', () => {
     await waitForInit(page)
 
     await page.evaluate(() => (window as any).Playground.navigate('/examples'))
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.querySelector('.book-page') !== null
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.querySelector('.book-page') !== null
+      },
+      { timeout: 5000 },
+    )
 
     // Click the first example
     await page.locator('#dynamic-page a[onclick*="navigate"]').first().click()
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.querySelector('.chapter-header__breadcrumbs') !== null
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.querySelector('.chapter-header__breadcrumbs') !== null
+      },
+      { timeout: 5000 },
+    )
 
     const breadcrumb = page.locator('#dynamic-page .chapter-header__breadcrumbs')
     await expect(breadcrumb).toBeVisible()
@@ -1484,10 +1591,13 @@ test.describe('breadcrumbs', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
-    await page.waitForFunction(() => {
-      const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.querySelector('.chapter-header__breadcrumbs') !== null
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const dynPage = document.getElementById('dynamic-page')
+        return dynPage !== null && dynPage.querySelector('.chapter-header__breadcrumbs') !== null
+      },
+      { timeout: 5000 },
+    )
 
     const breadcrumb = page.locator('#dynamic-page .chapter-header__breadcrumbs')
     await expect(breadcrumb).toContainText('The Book')

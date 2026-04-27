@@ -22,17 +22,35 @@ describe('iqr', () => {
   })
   it('should calculate the moving entropy of a vector', () => {
     expect(runVec('movingEntropy([1, 1, 2, 3, 3, 3], 4)')).toEqual([1.5, 1.5, 0.8112781244591328])
-    expect(runVec('movingEntropy([1, 1, 2, 3, 3, 3], 3)')).toEqual([0.9182958340544896, 1.584962500721156, 0.9182958340544896, 0])
+    expect(runVec('movingEntropy([1, 1, 2, 3, 3, 3], 3)')).toEqual([
+      0.9182958340544896, 1.584962500721156, 0.9182958340544896, 0,
+    ])
     expect(runVec('movingEntropy([1, 2], 2)')).toEqual([1])
     expect(() => runVec('movingEntropy([], 3)')).toThrowError(DvalaError)
   })
   it('should calculate the centered moving entropy of a vector with padding', () => {
-    expect(runVec('centeredMovingEntropy([1, 1, 2, 3, 3, 3], 4)')).toEqual([null, null, 1.5, 1.5, 0.8112781244591328, null])
-    expect(runVec('centeredMovingEntropy([1, 1, 2, 3, 3, 3], 3)')).toEqual([null, 0.9182958340544896, 1.584962500721156, 0.9182958340544896, 0, null])
+    expect(runVec('centeredMovingEntropy([1, 1, 2, 3, 3, 3], 4)')).toEqual([
+      null,
+      null,
+      1.5,
+      1.5,
+      0.8112781244591328,
+      null,
+    ])
+    expect(runVec('centeredMovingEntropy([1, 1, 2, 3, 3, 3], 3)')).toEqual([
+      null,
+      0.9182958340544896,
+      1.584962500721156,
+      0.9182958340544896,
+      0,
+      null,
+    ])
     expect(runVec('centeredMovingEntropy([1, 2], 2)')).toEqual([null, 1])
   })
   it('should calculate the running entropy of a vector', () => {
-    expect(runVec('runningEntropy([1, 1, 2, 3, 3, 3])')).toEqual([0, 0, 0.9182958340544896, 1.5, 1.5219280948873621, 1.4591479170272448])
+    expect(runVec('runningEntropy([1, 1, 2, 3, 3, 3])')).toEqual([
+      0, 0, 0.9182958340544896, 1.5, 1.5219280948873621, 1.4591479170272448,
+    ])
     expect(runVec('runningEntropy([1, 2])')).toEqual([0, 1])
     expect(() => runVec('runningEntropy([])')).toThrowError(DvalaError)
   })

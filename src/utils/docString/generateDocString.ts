@@ -8,11 +8,10 @@ export function generateDocString(reference: DocStringSource): string {
     ${reference.title}
 
     ${reference.description
-        .replace(/`(.+?)`/g, '$1')
-        .replace(/\$(\w+)/g, '$1')
-        .replace(/\*\*\*(.+)\*\*\*/g, '$1')
-        .replace(/\*\*(.+)\*\*/g, '$1')
-    }
+      .replace(/`(.+?)`/g, '$1')
+      .replace(/\$(\w+)/g, '$1')
+      .replace(/\*\*\*(.+)\*\*\*/g, '$1')
+      .replace(/\*\*(.+)\*\*/g, '$1')}
 
     Signature:
     ${signature(reference).join('\n    ')}
@@ -35,39 +34,41 @@ function signature(reference: DocStringSource): string[] {
   const functionForms = variants.map(variant => {
     if (isEffectRef(reference)) {
       // Effect form: perform(@name, payload)
-      const argsStr = variant.argumentNames.length > 0
-        ? `, ${variant.argumentNames.map(argName => {
-          let result = ''
-          const arg = args[argName]!
-          if (arg.rest) {
-            result += '...'
-          }
-          result += argName
-          return result
-        }).join(', ')}`
-        : ''
+      const argsStr =
+        variant.argumentNames.length > 0
+          ? `, ${variant.argumentNames
+              .map(argName => {
+                let result = ''
+                const arg = args[argName]!
+                if (arg.rest) {
+                  result += '...'
+                }
+                result += argName
+                return result
+              })
+              .join(', ')}`
+          : ''
       return `  perform(@${title}${argsStr}) -> ${type(returns)}`
     }
 
-    const form = `  ${title}(${variant.argumentNames.map(argName => {
-      let result = ''
-      const arg = args[argName]!
-      if (arg.rest) {
-        result += '...'
-      }
-      result += argName
-      return result
-    }).join(', ')})`
+    const form = `  ${title}(${variant.argumentNames
+      .map(argName => {
+        let result = ''
+        const arg = args[argName]!
+        if (arg.rest) {
+          result += '...'
+        }
+        result += argName
+        return result
+      })
+      .join(', ')})`
 
     return `${form} -> ${type(returns)}`
   })
 
   const operatorForm = isOperator ? ['', 'Operator:', `  a ${title} b -> ${type(returns)}`] : []
 
-  return [
-    ...functionForms,
-    ...operatorForm,
-  ]
+  return [...functionForms, ...operatorForm]
 }
 
 function type(arg: Argument | TypedValue) {

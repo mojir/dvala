@@ -9,7 +9,7 @@ function kurtosis(vector: number[]): number {
   if (stdDev === 0) {
     throw new Error('Standard deviation is zero, kurtosis is undefined')
   }
-  return vector.reduce((acc, val) => acc + ((val - mean) ** 4), 0) / (vector.length * stdDev ** 4)
+  return vector.reduce((acc, val) => acc + (val - mean) ** 4, 0) / (vector.length * stdDev ** 4)
 }
 
 function excessKurtosis(vector: number[]): number {
@@ -68,16 +68,16 @@ export const kurtosisReductionFunction: ReductionFunctionDefinition<'kurtosis'> 
 }
 
 export const eccessKurtosisReductionFunction: ReductionFunctionDefinition<'excessKurtosis'> = {
-  'excessKurtosis': vector => excessKurtosis(vector),
-  'minLength': 4,
+  excessKurtosis: vector => excessKurtosis(vector),
+  minLength: 4,
 }
 
 export const sampleKurtosisReductionFunction: ReductionFunctionDefinition<'sampleKurtosis'> = {
-  'sampleKurtosis': vector => sampleKurtosis(vector),
-  'minLength': 4,
+  sampleKurtosis: vector => sampleKurtosis(vector),
+  minLength: 4,
 }
 
 export const sampleExcessKurtosisReductionFunction: ReductionFunctionDefinition<'sampleExcessKurtosis'> = {
-  'sampleExcessKurtosis': vector => sampleExcessKurtosis(vector),
-  'minLength': 4,
+  sampleExcessKurtosis: vector => sampleExcessKurtosis(vector),
+  minLength: 4,
 }

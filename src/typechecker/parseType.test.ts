@@ -1,9 +1,31 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { parseTypeAnnotation, parseFunctionTypeAnnotation, registerTypeAlias, resetTypeAliases, TypeParseError } from './parseType'
 import {
-  NumberType, IntegerType, StringType, BooleanType, NullType,
-  Unknown, Never, RegexType,
-  atom, literal, fn, array, tuple, neg, union, effectSet, effectSetToString, handlerType, typeToString,
+  parseTypeAnnotation,
+  parseFunctionTypeAnnotation,
+  registerTypeAlias,
+  resetTypeAliases,
+  TypeParseError,
+} from './parseType'
+import {
+  NumberType,
+  IntegerType,
+  StringType,
+  BooleanType,
+  NullType,
+  Unknown,
+  Never,
+  RegexType,
+  atom,
+  literal,
+  fn,
+  array,
+  tuple,
+  neg,
+  union,
+  effectSet,
+  effectSetToString,
+  handlerType,
+  typeToString,
   typeEquals,
 } from './types'
 import { declareEffect, resetEffectRegistry } from './effectTypes'
@@ -233,27 +255,45 @@ describe('parseType — type aliases', () => {
     registerTypeAlias('Box', [{ name: 'T' }], '{ value: T }')
 
     const t = parseTypeAnnotation('Box<Number>')
-    expect(typeEquals(t, {
-      tag: 'Alias',
-      name: 'Box',
-      args: [NumberType],
-      expanded: { tag: 'Record', fields: new Map([['value', NumberType]]), open: false },
-    })).toBe(true)
+    expect(
+      typeEquals(t, {
+        tag: 'Alias',
+        name: 'Box',
+        args: [NumberType],
+        expanded: { tag: 'Record', fields: new Map([['value', NumberType]]), open: false },
+      }),
+    ).toBe(true)
   })
 
   it('expands generic aliases with multiple type arguments', () => {
     registerTypeAlias('Result', [{ name: 'T' }, { name: 'E' }], '{ tag: :ok, value: T } | { tag: :error, error: E }')
 
     const t = parseTypeAnnotation('Result<Number, String>')
-    expect(typeEquals(t, {
-      tag: 'Alias',
-      name: 'Result',
-      args: [NumberType, StringType],
-      expanded: union(
-        { tag: 'Record', fields: new Map([['tag', atom('ok')], ['value', NumberType]]), open: false },
-        { tag: 'Record', fields: new Map([['tag', atom('error')], ['error', StringType]]), open: false },
-      ),
-    })).toBe(true)
+    expect(
+      typeEquals(t, {
+        tag: 'Alias',
+        name: 'Result',
+        args: [NumberType, StringType],
+        expanded: union(
+          {
+            tag: 'Record',
+            fields: new Map([
+              ['tag', atom('ok')],
+              ['value', NumberType],
+            ]),
+            open: false,
+          },
+          {
+            tag: 'Record',
+            fields: new Map([
+              ['tag', atom('error')],
+              ['error', StringType],
+            ]),
+            open: false,
+          },
+        ),
+      }),
+    ).toBe(true)
   })
 
   it('supports nested generic alias expansion', () => {
@@ -261,15 +301,22 @@ describe('parseType — type aliases', () => {
     registerTypeAlias('MaybeBox', [{ name: 'T' }], 'Box<T> | Null')
 
     const t = parseTypeAnnotation('MaybeBox<Number>')
-    expect(typeEquals(t, {
-      tag: 'Alias',
-      name: 'MaybeBox',
-      args: [NumberType],
-      expanded: union(
-        { tag: 'Alias', name: 'Box', args: [NumberType], expanded: { tag: 'Record', fields: new Map([['value', NumberType]]), open: false } },
-        NullType,
-      ),
-    })).toBe(true)
+    expect(
+      typeEquals(t, {
+        tag: 'Alias',
+        name: 'MaybeBox',
+        args: [NumberType],
+        expanded: union(
+          {
+            tag: 'Alias',
+            name: 'Box',
+            args: [NumberType],
+            expanded: { tag: 'Record', fields: new Map([['value', NumberType]]), open: false },
+          },
+          NullType,
+        ),
+      }),
+    ).toBe(true)
   })
 
   it('errors on wrong number of type arguments', () => {
@@ -334,9 +381,12 @@ describe('parseType — functions', () => {
     declareEffect('test.log', StringType, NullType)
 
     const t = parseTypeAnnotation('Handler<Number, Number, @{test.log}>')
-    expect(typeEquals(t, handlerType(NumberType, NumberType, new Map([
-      ['test.log', { argType: StringType, retType: NullType }],
-    ])))).toBe(true)
+    expect(
+      typeEquals(
+        t,
+        handlerType(NumberType, NumberType, new Map([['test.log', { argType: StringType, retType: NullType }]])),
+      ),
+    ).toBe(true)
   })
 
   // --- Phase 4-A: Handler<…> 4-slot form with @{introduced} ---
@@ -558,12 +608,10 @@ describe('parseFunctionType — asserts return (Phase 2.5c)', () => {
   })
 
   it('rejects when binder does not match any parameter', () => {
-    expect(() =>
-      parseFunctionTypeAnnotation('(x: Number) -> asserts {n | n > 0}'),
-    ).toThrow(TypeParseError)
-    expect(() =>
-      parseFunctionTypeAnnotation('(x: Number) -> asserts {n | n > 0}'),
-    ).toThrow(/binder 'n' does not match any parameter/)
+    expect(() => parseFunctionTypeAnnotation('(x: Number) -> asserts {n | n > 0}')).toThrow(TypeParseError)
+    expect(() => parseFunctionTypeAnnotation('(x: Number) -> asserts {n | n > 0}')).toThrow(
+      /binder 'n' does not match any parameter/,
+    )
   })
 
   // Backtrack-not-throw: `asserts` isn't a reserved type name, so a
@@ -602,7 +650,9 @@ describe('parseFunctionType — asserts return (Phase 2.5c)', () => {
       const parsed = parseFunctionTypeAnnotation(input)
       const rendered = typeToString(parsed.type)
       const reparsed = parseFunctionTypeAnnotation(rendered)
-      expect(typeEquals(parsed.type, reparsed.type), `round-trip failed for ${input}: rendered as ${rendered}`).toBe(true)
+      expect(typeEquals(parsed.type, reparsed.type), `round-trip failed for ${input}: rendered as ${rendered}`).toBe(
+        true,
+      )
     }
   })
 })
@@ -659,8 +709,9 @@ describe('parseType — keyof and indexed access', () => {
   })
 
   it('T[keyof T] on a closed record is the union of field types', () => {
-    expect(typeToString(parseTypeAnnotation('{a: Number, b: String}[keyof {a: Number, b: String}]')))
-      .toBe('Number | String')
+    expect(typeToString(parseTypeAnnotation('{a: Number, b: String}[keyof {a: Number, b: String}]'))).toBe(
+      'Number | String',
+    )
   })
 
   it('closed record with missing key is Never', () => {

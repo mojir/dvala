@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { NO_MATCH, tokenizeBasePrefixedNumber, tokenizeMultiLineComment, tokenizeNumber, tokenizeOperator, tokenizeReservedSymbolToken, tokenizeSingleLineComment, tokenizeSymbol } from './tokenizers'
+import {
+  NO_MATCH,
+  tokenizeBasePrefixedNumber,
+  tokenizeMultiLineComment,
+  tokenizeNumber,
+  tokenizeOperator,
+  tokenizeReservedSymbolToken,
+  tokenizeSingleLineComment,
+  tokenizeSymbol,
+} from './tokenizers'
 
 describe('tokenizers', () => {
   describe('tokenizeSingleLineComment', () => {
@@ -13,8 +22,10 @@ describe('tokenizers', () => {
     it('should tokenize block comment', () => {
       expect(tokenizeMultiLineComment('/* comment */', 0)).toEqual([13, ['MultiLineComment', '/* comment */']])
       expect(tokenizeMultiLineComment('... /* comment */', 4)).toEqual([13, ['MultiLineComment', '/* comment */']])
-      expect(tokenizeMultiLineComment('... /* comment \n comment */ ...', 4))
-        .toEqual([23, ['MultiLineComment', '/* comment \n comment */']])
+      expect(tokenizeMultiLineComment('... /* comment \n comment */ ...', 4)).toEqual([
+        23,
+        ['MultiLineComment', '/* comment \n comment */'],
+      ])
     })
   })
   describe('tokenizeSymbol', () => {
@@ -23,8 +34,8 @@ describe('tokenizers', () => {
       expect(tokenizeSymbol('A_B', 0)).toEqual([3, ['Symbol', 'A_B']])
       expect(tokenizeSymbol('isNumber', 0)).toEqual([8, ['Symbol', 'isNumber']])
       expect(tokenizeSymbol('... A_B', 4)).toEqual([3, ['Symbol', 'A_B']])
-      expect(tokenizeSymbol('... \'A B\'', 4)).toEqual([5, ['Symbol', '\'A B\'']])
-      expect(tokenizeSymbol('... \'A\\\'B\'', 4)).toEqual([6, ['Symbol', '\'A\\\'B\'']])
+      expect(tokenizeSymbol("... 'A B'", 4)).toEqual([5, ['Symbol', "'A B'"]])
+      expect(tokenizeSymbol("... 'A\\'B'", 4)).toEqual([6, ['Symbol', "'A\\'B'"]])
     })
   })
   describe('tokenizeReservedSymbol', () => {

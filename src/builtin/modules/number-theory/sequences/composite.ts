@@ -9,7 +9,7 @@ function isComposite(num: number): boolean {
 }
 
 export const compositeSequence: SequenceDefinition<'composite'> = {
-  'compositeSeq': length => {
+  compositeSeq: length => {
     const composites = []
     let num = 2
     while (composites.length < length) {
@@ -20,5 +20,5 @@ export const compositeSequence: SequenceDefinition<'composite'> = {
     }
     return composites
   },
-  'isComposite': n => isComposite(n),
+  isComposite: n => isComposite(n),
 }

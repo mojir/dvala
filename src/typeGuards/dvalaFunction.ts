@@ -1,12 +1,17 @@
-import type { DvalaFunction, HandlerFunction, MacroFunction, NormalBuiltinFunction, UserDefinedFunction } from '../parser/types'
+import type {
+  DvalaFunction,
+  HandlerFunction,
+  MacroFunction,
+  NormalBuiltinFunction,
+  UserDefinedFunction,
+} from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getAssertionError } from '../utils/getAssertionError'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import { isUnknownRecord } from '.'
 
 export function isDvalaFunction(value: unknown): value is DvalaFunction {
-  if (value === null || typeof value !== 'object')
-    return false
+  if (value === null || typeof value !== 'object') return false
 
   return !!(value as DvalaFunction)[FUNCTION_SYMBOL]
 }
@@ -15,8 +20,7 @@ export function asDvalaFunction(value: unknown, sourceCodeInfo?: SourceCodeInfo)
   return value
 }
 export function assertDvalaFunction(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is DvalaFunction {
-  if (!isDvalaFunction(value))
-    throw getAssertionError('DvalaFunction', value, sourceCodeInfo)
+  if (!isDvalaFunction(value)) throw getAssertionError('DvalaFunction', value, sourceCodeInfo)
 }
 
 export function isUserDefinedFunction(value: unknown): value is UserDefinedFunction {
@@ -30,8 +34,7 @@ export function assertUserDefinedFunction(
   value: unknown,
   sourceCodeInfo?: SourceCodeInfo,
 ): asserts value is UserDefinedFunction {
-  if (!isUserDefinedFunction(value))
-    throw getAssertionError('UserDefinedFunction', value, sourceCodeInfo)
+  if (!isUserDefinedFunction(value)) throw getAssertionError('UserDefinedFunction', value, sourceCodeInfo)
 }
 
 export function isMacroFunction(value: unknown): value is MacroFunction {

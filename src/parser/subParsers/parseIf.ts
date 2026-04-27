@@ -26,12 +26,19 @@ export function parseIf(ctx: ParserContext, token: SymbolToken): IfNode {
       elseExpression = parseImplicitBlock(ctx, ['end'])
     }
   } else {
-    throw new ParseError('`if` without `else` is not allowed — use `when condition do expr end` for side effects, or add an `else` clause', ctx.peekSourceCodeInfo())
+    throw new ParseError(
+      '`if` without `else` is not allowed — use `when condition do expr end` for side effects, or add an `else` clause',
+      ctx.peekSourceCodeInfo(),
+    )
   }
 
   ctx.advance()
 
-  const node = withSourceCodeInfo([NodeTypes.If, [condition, thenExpression, elseExpression], 0], token[2], ctx) as IfNode
+  const node = withSourceCodeInfo(
+    [NodeTypes.If, [condition, thenExpression, elseExpression], 0],
+    token[2],
+    ctx,
+  ) as IfNode
   ctx.setNodeEnd(node[2])
   ctx.builder?.endNode()
   return node
@@ -58,10 +65,17 @@ function parseElseIf(ctx: ParserContext): IfNode {
       elseExpression = parseImplicitBlock(ctx, ['end'])
     }
   } else {
-    throw new ParseError('`if` without `else` is not allowed — use `when condition do expr end` for side effects, or add an `else` clause', ctx.peekSourceCodeInfo())
+    throw new ParseError(
+      '`if` without `else` is not allowed — use `when condition do expr end` for side effects, or add an `else` clause',
+      ctx.peekSourceCodeInfo(),
+    )
   }
 
-  const node = withSourceCodeInfo([NodeTypes.If, [condition, thenExpression, elseExpression], 0], token[2], ctx) as IfNode
+  const node = withSourceCodeInfo(
+    [NodeTypes.If, [condition, thenExpression, elseExpression], 0],
+    token[2],
+    ctx,
+  ) as IfNode
   ctx.setNodeEnd(node[2])
   return node
 }

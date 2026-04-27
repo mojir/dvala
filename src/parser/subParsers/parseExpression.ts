@@ -4,10 +4,24 @@ import { NodeTypes } from '../../constants/constants'
 import type { CstBuilder } from '../../cst/builder'
 import { ParseError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'
-import { isA_BinaryOperatorToken, isEffectNameToken, isLParenToken, isReservedSymbolToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
+import {
+  isA_BinaryOperatorToken,
+  isEffectNameToken,
+  isLParenToken,
+  isReservedSymbolToken,
+  isRParenToken,
+  isSymbolToken,
+} from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
 import { isSpecialSymbolNode } from '../../typeGuards/astNode'
-import { binaryFunctionalOperatorPrecedence, createNamedNormalExpressionNode, exponentiationPrecedence, fromBinaryOperatorToNode, isAtExpressionEnd, withSourceCodeInfo } from '../helpers'
+import {
+  binaryFunctionalOperatorPrecedence,
+  createNamedNormalExpressionNode,
+  exponentiationPrecedence,
+  fromBinaryOperatorToNode,
+  isAtExpressionEnd,
+  withSourceCodeInfo,
+} from '../helpers'
 import { getPrecedence } from '../getPrecedence'
 import { ParserContext } from '../ParserContext'
 import type { AstNode, SymbolNode } from '../types'
@@ -31,7 +45,11 @@ export function createParserContext(tokenStream: TokenStream, allocateId: () => 
   return ctx
 }
 
-export function createCstParserContext(tokenStream: TokenStream, allocateId: () => number, builder: CstBuilder): ParserContext {
+export function createCstParserContext(
+  tokenStream: TokenStream,
+  allocateId: () => number,
+  builder: CstBuilder,
+): ParserContext {
   const ctx = new ParserContext(tokenStream, allocateId, builder)
   ctx.parseExpression = (precedence = 0) => parseExpression(ctx, precedence)
   return ctx
@@ -116,14 +134,19 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       const name = operator[1]
       const newPrecedece = getPrecedence(name, ctx.resolveTokenDebugInfo(operator[2]))
       if (
-        newPrecedece <= precedence
+        newPrecedece <= precedence &&
         // ^ (exponentiation) is right associative
-        && !(newPrecedece === exponentiationPrecedence && precedence === exponentiationPrecedence)) {
+        !(newPrecedece === exponentiationPrecedence && precedence === exponentiationPrecedence)
+      ) {
         break
       }
       ctx.builder?.startNodeAt(checkpoint!, 'BinaryOp')
       const symbol: SymbolNode = specialExpressionTypes[name as SpecialExpressionName]
-        ? withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[name as SpecialExpressionName], 0], operator[2], ctx)
+        ? withSourceCodeInfo(
+            [NodeTypes.Special, specialExpressionTypes[name as SpecialExpressionName], 0],
+            operator[2],
+            ctx,
+          )
         : withSourceCodeInfo([NodeTypes.Builtin, name, 0], operator[2], ctx)
       ctx.advance()
       const right = parseExpression(ctx, newPrecedece)
@@ -141,7 +164,10 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       const operatorSymbol = parseSymbol(ctx)
       const right = parseExpression(ctx, newPrecedence)
       if (isSpecialSymbolNode(operatorSymbol)) {
-        throw new ParseError('Special expressions are not allowed in binary functional operators', ctx.resolveTokenDebugInfo(operator[2]))
+        throw new ParseError(
+          'Special expressions are not allowed in binary functional operators',
+          ctx.resolveTokenDebugInfo(operator[2]),
+        )
       }
       left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2], ctx, { isInfix: true })
       ctx.builder?.endNode()

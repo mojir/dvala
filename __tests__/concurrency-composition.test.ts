@@ -85,9 +85,7 @@ describe('dynamic branch arrays', () => {
 
 describe('race with dynamic branches', () => {
   it('race with for-built branches', async () => {
-    const result = await dvala.runAsync(
-      'race(for(x in [42, 99]) -> (-> x))',
-    )
+    const result = await dvala.runAsync('race(for(x in [42, 99]) -> (-> x))')
 
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
@@ -103,9 +101,7 @@ describe('race with dynamic branches', () => {
 
 describe('settled with dynamic branches', () => {
   it('settled collects tagged results from for-built branches', async () => {
-    const result = await dvala.runAsync(
-      'settled(for(x in [1, 2, 3]) -> (-> x * 10))',
-    )
+    const result = await dvala.runAsync('settled(for(x in [1, 2, 3]) -> (-> x * 10))')
 
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {

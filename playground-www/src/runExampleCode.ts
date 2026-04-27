@@ -60,10 +60,12 @@ const haltOnEffectHandler: HandlerRegistration = {
   pattern: '*',
   handler: (ctx: EffectContext) => {
     // Pass through to standard handlers for non-interactive standard effects
-    if (ctx.effectName.startsWith('dvala.random') ||
-        ctx.effectName.startsWith('dvala.time') ||
-        ctx.effectName === 'dvala.checkpoint' ||
-        ctx.effectName.startsWith('dvala.error')) {
+    if (
+      ctx.effectName.startsWith('dvala.random') ||
+      ctx.effectName.startsWith('dvala.time') ||
+      ctx.effectName === 'dvala.checkpoint' ||
+      ctx.effectName.startsWith('dvala.error')
+    ) {
       ctx.next()
       return
     }
@@ -98,7 +100,10 @@ function compileContextHandlers(handlers?: { pattern: string; handler: string }[
  * print/println return their argument. Other effects cause no output.
  * Optional contextEffectHandlers are installed before the default handlers.
  */
-export function runExampleCode(code: string, contextEffectHandlers?: { pattern: string; handler: string }[]): string | null {
+export function runExampleCode(
+  code: string,
+  contextEffectHandlers?: { pattern: string; handler: string }[],
+): string | null {
   try {
     const contextHandlers = compileContextHandlers(contextEffectHandlers)
     const value = dvala.run(code, {

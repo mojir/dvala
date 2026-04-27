@@ -33,7 +33,7 @@ describe('comment preservation', () => {
     if (missing.length > 0) {
       expect.fail(
         `${missing.length} of ${inputComments.length} comments were dropped. ` +
-        `First missing: ${missing.slice(0, 10).join(', ')}`,
+          `First missing: ${missing.slice(0, 10).join(', ')}`,
       )
     }
 
@@ -44,7 +44,7 @@ describe('comment preservation', () => {
       const dupes = [...counts.entries()].filter(([, c]) => c > 1).map(([n, c]) => `/* ${n} */ ×${c}`)
       expect.fail(
         `${outputComments.length - inputComments.length} duplicate comments in output. ` +
-        `Duplicates: ${dupes.slice(0, 10).join(', ')}`,
+          `Duplicates: ${dupes.slice(0, 10).join(', ')}`,
       )
     }
   })

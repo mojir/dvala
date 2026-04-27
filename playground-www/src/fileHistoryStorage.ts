@@ -25,17 +25,14 @@ export function getFileHistory(fileId: string): PersistedFileHistory | undefined
 
 export function setFileHistory(fileId: string, history: PersistedFileHistory): void {
   historyCache = { ...historyCache, [fileId]: history }
-  if (getDb())
-    idbPut(FILE_HISTORIES_STORE, STATE_KEY, historyCache)
+  if (getDb()) idbPut(FILE_HISTORIES_STORE, STATE_KEY, historyCache)
 }
 
 export function deleteFileHistory(fileId: string): void {
-  if (!(fileId in historyCache))
-    return
+  if (!(fileId in historyCache)) return
   const { [fileId]: _removed, ...rest } = historyCache
   historyCache = rest
-  if (getDb())
-    idbPut(FILE_HISTORIES_STORE, STATE_KEY, historyCache)
+  if (getDb()) idbPut(FILE_HISTORIES_STORE, STATE_KEY, historyCache)
 }
 
 export function pruneFileHistories(validFileIds: string[]): void {
@@ -51,16 +48,13 @@ export function pruneFileHistories(validFileIds: string[]): void {
     }
   })
 
-  if (!changed)
-    return
+  if (!changed) return
 
   historyCache = nextCache
-  if (getDb())
-    idbPut(FILE_HISTORIES_STORE, STATE_KEY, historyCache)
+  if (getDb()) idbPut(FILE_HISTORIES_STORE, STATE_KEY, historyCache)
 }
 
 export function clearAllFileHistories(): void {
   historyCache = {}
-  if (getDb())
-    idbClear(FILE_HISTORIES_STORE)
+  if (getDb()) idbClear(FILE_HISTORIES_STORE)
 }

@@ -8,7 +8,16 @@ import type { OperatorToken, TokenDebugInfo } from '../tokenizer/token'
 import { isOperatorToken, isReservedSymbolToken } from '../tokenizer/token'
 import { isBuiltinSymbolNode } from '../typeGuards/astNode'
 import { assertNumberOfParams } from '../utils/arity'
-import type { AstNode, BindingTarget, BuiltinSymbolNode, CallHints, NormalExpressionNodeExpression, NormalExpressionNodeWithName, SymbolNode, UserDefinedSymbolNode } from './types'
+import type {
+  AstNode,
+  BindingTarget,
+  BuiltinSymbolNode,
+  CallHints,
+  NormalExpressionNodeExpression,
+  NormalExpressionNodeWithName,
+  SymbolNode,
+  UserDefinedSymbolNode,
+} from './types'
 import type { ParserContext } from './ParserContext'
 
 export const exponentiationPrecedence = 12
@@ -21,19 +30,41 @@ export const binaryFunctionalOperatorPrecedence = 3
 // Node types the evaluator never fires onNodeEval for — excluding them gives accurate expr coverage.
 // Includes AST structural leaves (Sym, Builtin, etc.) and binding target types (symbol, literal, etc.).
 const structuralLeafTypes = new Set<string>([
-  NodeTypes.Sym, NodeTypes.Builtin, NodeTypes.Special, NodeTypes.Reserved, NodeTypes.Effect, NodeTypes.Binding,
-  'symbol', 'rest', 'object', 'array', 'literal', 'wildcard',
+  NodeTypes.Sym,
+  NodeTypes.Builtin,
+  NodeTypes.Special,
+  NodeTypes.Reserved,
+  NodeTypes.Effect,
+  NodeTypes.Binding,
+  'symbol',
+  'rest',
+  'object',
+  'array',
+  'literal',
+  'wildcard',
 ])
 
-export function withSourceCodeInfo<T extends AstNode | BindingTarget>(node: T, debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): T {
+export function withSourceCodeInfo<T extends AstNode | BindingTarget>(
+  node: T,
+  debugInfo: TokenDebugInfo | undefined,
+  ctx: ParserContext,
+): T {
   const isLeaf = structuralLeafTypes.has(node[0])
   node[2] = ctx.allocateNodeId(debugInfo, isLeaf || undefined)
   return node
 }
 
-export function stringToSymbolNode(value: string, debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): SymbolNode {
+export function stringToSymbolNode(
+  value: string,
+  debugInfo: TokenDebugInfo | undefined,
+  ctx: ParserContext,
+): SymbolNode {
   if (specialExpressionTypes[value as SpecialExpressionName] !== undefined && value !== 'fn' && value !== 'defn') {
-    const node = withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[value as SpecialExpressionName], 0], debugInfo, ctx) satisfies SymbolNode
+    const node = withSourceCodeInfo(
+      [NodeTypes.Special, specialExpressionTypes[value as SpecialExpressionName], 0],
+      debugInfo,
+      ctx,
+    ) satisfies SymbolNode
     ctx.setNodeEnd(node[2])
     return node
   }
@@ -48,24 +79,17 @@ export function stringToSymbolNode(value: string, debugInfo: TokenDebugInfo | un
 }
 
 export function stringFromQuotedSymbol(value: string): string {
-  return value.substring(1, value.length - 1)
-    .replace(
-      /(\\{2})|(\\')|\\(.)/g,
-      (
-        _,
-        backslash: string,
-        singleQuote: string,
-        normalChar: string,
-      ) => {
-        if (backslash) {
-          return '\\'
-        }
-        if (singleQuote) {
-          return '\''
-        }
-        return `\\${normalChar}`
-      },
-    )
+  return value
+    .substring(1, value.length - 1)
+    .replace(/(\\{2})|(\\')|\\(.)/g, (_, backslash: string, singleQuote: string, normalChar: string) => {
+      if (backslash) {
+        return '\\'
+      }
+      if (singleQuote) {
+        return "'"
+      }
+      return `\\${normalChar}`
+    })
 }
 
 /**
@@ -76,11 +100,25 @@ export function getSymbolName(symbol: SymbolNode): string {
   return symbol[1]
 }
 
-export function createNamedNormalExpressionNode(symbolNode: BuiltinSymbolNode | UserDefinedSymbolNode, params: AstNode[], debugInfo: TokenDebugInfo | undefined, ctx: ParserContext, hints?: CallHints): NormalExpressionNodeWithName {
-  const node: NormalExpressionNodeWithName = withSourceCodeInfo([NodeTypes.Call, [symbolNode, params, hints], 0], debugInfo, ctx)
+export function createNamedNormalExpressionNode(
+  symbolNode: BuiltinSymbolNode | UserDefinedSymbolNode,
+  params: AstNode[],
+  debugInfo: TokenDebugInfo | undefined,
+  ctx: ParserContext,
+  hints?: CallHints,
+): NormalExpressionNodeWithName {
+  const node: NormalExpressionNodeWithName = withSourceCodeInfo(
+    [NodeTypes.Call, [symbolNode, params, hints], 0],
+    debugInfo,
+    ctx,
+  )
 
   if (isBuiltinSymbolNode(symbolNode)) {
-    assertNumberOfParams(normalExpressions[symbolNode[1]]!.arity, node[1][1].length, ctx.resolveTokenDebugInfo(debugInfo))
+    assertNumberOfParams(
+      normalExpressions[symbolNode[1]]!.arity,
+      node[1][1].length,
+      ctx.resolveTokenDebugInfo(debugInfo),
+    )
   }
 
   ctx.setNodeEnd(node[2])
@@ -101,7 +139,14 @@ export function isAtExpressionEnd(ctx: ParserContext): boolean {
   return false
 }
 
-export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: SymbolNode, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): AstNode {
+export function fromBinaryOperatorToNode(
+  operator: OperatorToken,
+  symbolNode: SymbolNode,
+  left: AstNode,
+  right: AstNode,
+  debugInfo: TokenDebugInfo | undefined,
+  ctx: ParserContext,
+): AstNode {
   const operatorName = operator[1]
 
   switch (operatorName) {
@@ -130,7 +175,11 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case '|>': {
       // Value pipe: a |> b  →  b(a) — desugared at parse time so macros on the right see AST.
       // isPipe hint lets the formatter reproduce |> rather than nested call form.
-      const node = withSourceCodeInfo([NodeTypes.Call, [right, [left], { isPipe: true }], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+      const node = withSourceCodeInfo(
+        [NodeTypes.Call, [right, [left], { isPipe: true }], 0],
+        debugInfo,
+        ctx,
+      ) as NormalExpressionNodeExpression
       ctx.setNodeEnd(node[2])
       return node
     }
@@ -165,6 +214,9 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     // Exhaustive check: all operator cases are handled above
     /* v8 ignore next 2 */
     default:
-      throw new ParseError(`Unknown binary operator: ${operatorName satisfies never}`, ctx.resolveTokenDebugInfo(debugInfo))
+      throw new ParseError(
+        `Unknown binary operator: ${operatorName satisfies never}`,
+        ctx.resolveTokenDebugInfo(debugInfo),
+      )
   }
 }

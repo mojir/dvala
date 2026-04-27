@@ -10,16 +10,7 @@ function runNth(code: string) {
 describe('powerSet', () => {
   describe('nth:powerSet', () => {
     it('should return the power set of a set', () => {
-      expect(runNth('nth:powerSet([1, 2, 3])')).toEqual([
-        [],
-        [1],
-        [2],
-        [1, 2],
-        [3],
-        [1, 3],
-        [2, 3],
-        [1, 2, 3],
-      ])
+      expect(runNth('nth:powerSet([1, 2, 3])')).toEqual([[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3]])
     })
   })
   describe('nth:countPowerSet', () => {

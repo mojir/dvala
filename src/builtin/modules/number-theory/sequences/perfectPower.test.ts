@@ -27,21 +27,7 @@ describe('perfect-power', () => {
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:perfectPowerTakeWhile(-> $ <= 100)')).toEqual([
-      1,
-      4,
-      8,
-      9,
-      16,
-      25,
-      27,
-      32,
-      36,
-      49,
-      64,
-      81,
-      100,
-    ])
+    expect(runNth('nth:perfectPowerTakeWhile(-> $ <= 100)')).toEqual([1, 4, 8, 9, 16, 25, 27, 32, 36, 49, 64, 81, 100])
   })
 
   it('should determine if numbers are in the sequence', () => {

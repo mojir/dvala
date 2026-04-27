@@ -20,8 +20,21 @@ import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { expandType, InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
 import { initBuiltinTypes, registerModuleType, resetModuleTypeCache } from './builtinTypes'
-import { declareEffect, initBuiltinEffects, resetUserEffects, restoreEffectRegistry, snapshotEffectRegistry } from './effectTypes'
-import { parseTypeAnnotation, registerTypeAlias, resetTypeAliases, restoreTypeAliases, snapshotTypeAliases, TypeParseError } from './parseType'
+import {
+  declareEffect,
+  initBuiltinEffects,
+  resetUserEffects,
+  restoreEffectRegistry,
+  snapshotEffectRegistry,
+} from './effectTypes'
+import {
+  parseTypeAnnotation,
+  registerTypeAlias,
+  resetTypeAliases,
+  restoreTypeAliases,
+  snapshotTypeAliases,
+  TypeParseError,
+} from './parseType'
 import { installPreludeAliases } from './prelude'
 import { builtin } from '../builtin'
 import { expandMacros } from '../ast/expandMacros'
@@ -118,95 +131,97 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
     // Build a resolveFileType closure for a given base directory.
     // Used both for the top-level context and recursively for nested imports
     // so that transitive file imports (e.g. constants.dvala → macros.dvala) are resolved.
-    const makeResolveFileType = (fromDir: string) => (importPath: string): Type => {
-      const cacheKey = `${fromDir}:${importPath}`
-      const cached = fileTypeCache.get(cacheKey)
-      if (cached) {
-        for (const diagnostic of cached.diagnostics) {
-          pushUniqueDiagnostic(diagnostics, diagnostic, reportedImportDiagnostics)
+    const makeResolveFileType =
+      (fromDir: string) =>
+      (importPath: string): Type => {
+        const cacheKey = `${fromDir}:${importPath}`
+        const cached = fileTypeCache.get(cacheKey)
+        if (cached) {
+          for (const diagnostic of cached.diagnostics) {
+            pushUniqueDiagnostic(diagnostics, diagnostic, reportedImportDiagnostics)
+          }
+          return cached.type
         }
-        return cached.type
-      }
-
-      try {
-        const source = resolver(importPath, fromDir)
-        const resolvedImportPath = resolveImportedFilePath(fromDir, importPath)
-        const ts = tokenize(source, true, resolvedImportPath)
-        const min = minifyTokenStream(ts, { removeWhiteSpace: true })
-        const rawAst = parseToAst(min)
-        // Expand macros before type inference so macro calls get concrete types.
-        // Pass the file resolver so cross-file macros (e.g. import("./macros")) are discovered.
-        const nestedDir = resolveImportedFileDir(fromDir, importPath)
-        const importedAst = expandMacros(rawAst, { fileResolver: resolver, fileResolverBaseDir: nestedDir })
-        const importCtx = new InferenceContext()
-        importCtx.resolveFileType = makeResolveFileType(nestedDir)
-        if (importedAst.typeAnnotations) {
-          importCtx.typeAnnotations = importedAst.typeAnnotations
-        }
-        if (importedAst.typeParams) {
-          importCtx.typeParams = importedAst.typeParams
-        }
-        const importEnv = new TypeEnv()
-        const importTypeMap = new Map<number, Type>()
-        const importDiagnostics: TypeDiagnostic[] = []
-        const effectSnapshot = snapshotEffectRegistry()
-        const typeAliasSnapshot = snapshotTypeAliases()
 
         try {
-          // Imported files need the same declaration setup as top-level files.
-          // Without this, handler/effect/type annotations inside imported modules
-          // silently collapse to Unknown during module interface inference.
-          if (importedAst.typeAliases) {
-            for (const [name, { params, body }] of importedAst.typeAliases) {
-              registerTypeAlias(name, params, body)
-            }
+          const source = resolver(importPath, fromDir)
+          const resolvedImportPath = resolveImportedFilePath(fromDir, importPath)
+          const ts = tokenize(source, true, resolvedImportPath)
+          const min = minifyTokenStream(ts, { removeWhiteSpace: true })
+          const rawAst = parseToAst(min)
+          // Expand macros before type inference so macro calls get concrete types.
+          // Pass the file resolver so cross-file macros (e.g. import("./macros")) are discovered.
+          const nestedDir = resolveImportedFileDir(fromDir, importPath)
+          const importedAst = expandMacros(rawAst, { fileResolver: resolver, fileResolverBaseDir: nestedDir })
+          const importCtx = new InferenceContext()
+          importCtx.resolveFileType = makeResolveFileType(nestedDir)
+          if (importedAst.typeAnnotations) {
+            importCtx.typeAnnotations = importedAst.typeAnnotations
           }
-          if (importedAst.effectDeclarations) {
-            for (const [name, { argType, retType }] of importedAst.effectDeclarations) {
-              // Effect-type annotations can reference bounded aliases; a
-              // bound violation raises TypeParseError. Surface as a
-              // diagnostic on the imported-file side rather than aborting
-              // the outer typecheck.
-              try {
-                declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
-              } catch (error) {
-                if (error instanceof TypeParseError) {
-                  importDiagnostics.push({
-                    message: `Invalid effect type for @${name}: ${error.cleanMessage}`,
-                    severity: 'error',
-                  })
-                } else {
-                  throw error
+          if (importedAst.typeParams) {
+            importCtx.typeParams = importedAst.typeParams
+          }
+          const importEnv = new TypeEnv()
+          const importTypeMap = new Map<number, Type>()
+          const importDiagnostics: TypeDiagnostic[] = []
+          const effectSnapshot = snapshotEffectRegistry()
+          const typeAliasSnapshot = snapshotTypeAliases()
+
+          try {
+            // Imported files need the same declaration setup as top-level files.
+            // Without this, handler/effect/type annotations inside imported modules
+            // silently collapse to Unknown during module interface inference.
+            if (importedAst.typeAliases) {
+              for (const [name, { params, body }] of importedAst.typeAliases) {
+                registerTypeAlias(name, params, body)
+              }
+            }
+            if (importedAst.effectDeclarations) {
+              for (const [name, { argType, retType }] of importedAst.effectDeclarations) {
+                // Effect-type annotations can reference bounded aliases; a
+                // bound violation raises TypeParseError. Surface as a
+                // diagnostic on the imported-file side rather than aborting
+                // the outer typecheck.
+                try {
+                  declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
+                } catch (error) {
+                  if (error instanceof TypeParseError) {
+                    importDiagnostics.push({
+                      message: `Invalid effect type for @${name}: ${error.cleanMessage}`,
+                      severity: 'error',
+                    })
+                  } else {
+                    throw error
+                  }
                 }
               }
             }
-          }
 
-          const resultType = inferNodesRecoveringErrors(
-            importedAst.body,
-            importCtx,
-            importEnv,
-            importTypeMap,
-            importDiagnostics,
-            importedAst.sourceMap ?? rawAst.sourceMap,
-          )
+            const resultType = inferNodesRecoveringErrors(
+              importedAst.body,
+              importCtx,
+              importEnv,
+              importTypeMap,
+              importDiagnostics,
+              importedAst.sourceMap ?? rawAst.sourceMap,
+            )
 
-          const cachedResult = { type: normalizeImportedExportType(resultType), diagnostics: importDiagnostics }
-          fileTypeCache.set(cacheKey, cachedResult)
-          for (const diagnostic of importDiagnostics) {
-            pushUniqueDiagnostic(diagnostics, diagnostic, reportedImportDiagnostics)
+            const cachedResult = { type: normalizeImportedExportType(resultType), diagnostics: importDiagnostics }
+            fileTypeCache.set(cacheKey, cachedResult)
+            for (const diagnostic of importDiagnostics) {
+              pushUniqueDiagnostic(diagnostics, diagnostic, reportedImportDiagnostics)
+            }
+            return cachedResult.type
+          } finally {
+            restoreEffectRegistry(effectSnapshot)
+            restoreTypeAliases(typeAliasSnapshot)
           }
-          return cachedResult.type
-        } finally {
-          restoreEffectRegistry(effectSnapshot)
-          restoreTypeAliases(typeAliasSnapshot)
+        } catch {
+          // File resolution or parsing failed — return Unknown, don't crash
+          fileTypeCache.set(cacheKey, { type: Unknown, diagnostics: [] })
+          return Unknown
         }
-      } catch {
-        // File resolution or parsing failed — return Unknown, don't crash
-        fileTypeCache.set(cacheKey, { type: Unknown, diagnostics: [] })
-        return Unknown
       }
-    }
     ctx.resolveFileType = makeResolveFileType(baseDir)
   }
   // Clear per-document state from previous typecheck passes
@@ -283,7 +298,11 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
  * Typecheck a single expression (for REPL / quick checks).
  * Returns the inferred type and any diagnostics.
  */
-export function typecheckExpr(nodes: AstNode[], sourceMap?: SourceMap, options?: TypecheckOptions): TypecheckResult & { type: Type } {
+export function typecheckExpr(
+  nodes: AstNode[],
+  sourceMap?: SourceMap,
+  options?: TypecheckOptions,
+): TypecheckResult & { type: Type } {
   initTypeSystem()
 
   const ctx = new InferenceContext()
@@ -317,7 +336,11 @@ function resolveNodeSourceInfo(node: AstNode, sourceMap?: SourceMap): SourceCode
   return resolveSourceCodeInfo(nodeId, sourceMap) ?? undefined
 }
 
-function resolveErrorSourceInfo(error: TypeInferenceError, fallbackNode: AstNode, sourceMap?: SourceMap): SourceCodeInfo | undefined {
+function resolveErrorSourceInfo(
+  error: TypeInferenceError,
+  fallbackNode: AstNode,
+  sourceMap?: SourceMap,
+): SourceCodeInfo | undefined {
   if (sourceMap && error.nodeId && error.nodeId > 0) {
     const resolved = resolveSourceCodeInfo(error.nodeId, sourceMap)
     if (resolved) return resolved
@@ -348,11 +371,7 @@ function resolveImportedFilePath(fromDir: string, importPath: string): string {
   return joinPath(normalizedFromDir, normalizedImportPath)
 }
 
-function pushUniqueDiagnostic(
-  diagnostics: TypeDiagnostic[],
-  diagnostic: TypeDiagnostic,
-  seen: Set<string>,
-): void {
+function pushUniqueDiagnostic(diagnostics: TypeDiagnostic[], diagnostic: TypeDiagnostic, seen: Set<string>): void {
   const key = JSON.stringify({
     message: diagnostic.message,
     severity: diagnostic.severity,
@@ -416,10 +435,13 @@ function normalizeHandledSignatures(
   handled: Map<string, { argType: Type; retType: Type }>,
 ): Map<string, { argType: Type; retType: Type }> {
   return new Map(
-    [...handled.entries()].map(([name, sig]) => [name, {
-      argType: expandType(sig.argType, 'negative'),
-      retType: expandType(sig.retType, 'positive'),
-    }]),
+    [...handled.entries()].map(([name, sig]) => [
+      name,
+      {
+        argType: expandType(sig.argType, 'negative'),
+        retType: expandType(sig.retType, 'positive'),
+      },
+    ]),
   )
 }
 
@@ -428,10 +450,10 @@ function normalizeImportedExportType(type: Type): Type {
     case 'Function': {
       const handlerWrapper = type.handlerWrapper
         ? {
-          paramIndex: type.handlerWrapper.paramIndex,
-          handled: normalizeHandledSignatures(type.handlerWrapper.handled),
-          introduced: type.handlerWrapper.introduced,
-        }
+            paramIndex: type.handlerWrapper.paramIndex,
+            handled: normalizeHandledSignatures(type.handlerWrapper.handled),
+            introduced: type.handlerWrapper.introduced,
+          }
         : undefined
       return {
         ...type,
@@ -542,11 +564,8 @@ function getPathRoot(pathLike: string): string {
 function splitPathSegments(pathLike: string): string[] {
   const normalized = normalizePath(pathLike)
   const root = getPathRoot(normalized)
-  const withoutRoot = root === '/'
-    ? normalized.slice(1)
-    : root
-      ? normalized.slice(root.length).replace(/^\//, '')
-      : normalized
+  const withoutRoot =
+    root === '/' ? normalized.slice(1) : root ? normalized.slice(root.length).replace(/^\//, '') : normalized
   return withoutRoot.split('/').filter(Boolean)
 }
 

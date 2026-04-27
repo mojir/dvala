@@ -3,7 +3,7 @@ import { toFixedArity } from '../../../../utils/arity'
 import type { SequenceNormalExpressions } from '.'
 
 export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> = {
-  'polygonalSeq': {
+  polygonalSeq: {
     evaluate: ([sides, n], sourceCodeInfo): number[] => {
       assertNumber(sides, sourceCodeInfo, { integer: true, gte: 3 })
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
@@ -16,12 +16,14 @@ export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> 
     },
     arity: toFixedArity(2),
   },
-  'polygonalTakeWhile': {
+  polygonalTakeWhile: {
     /* v8 ignore next 1 */
-    evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
+    evaluate: () => {
+      throw new Error('unreachable: overridden by dvalaImpl')
+    },
     arity: toFixedArity(2),
   },
-  'polygonalNth': {
+  polygonalNth: {
     evaluate: ([sides, n], sourceCodeInfo): number => {
       assertNumber(sides, sourceCodeInfo, { integer: true, gte: 3 })
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
@@ -29,7 +31,7 @@ export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> 
     },
     arity: toFixedArity(2),
   },
-  'isPolygonal': {
+  isPolygonal: {
     evaluate: ([sides, n], sourceCodeInfo): boolean => {
       assertNumber(n, sourceCodeInfo, { integer: true })
       assertNumber(sides, sourceCodeInfo, { integer: true, gte: 3 })
@@ -44,14 +46,12 @@ export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> 
       const sqrtPart = Math.sqrt(discriminant)
 
       // Discriminant must yield an integer square root
-      if (!Number.isInteger(sqrtPart))
-        return false
+      if (!Number.isInteger(sqrtPart)) return false
 
       const numerator = sqrtPart + b
 
       // Numerator must be divisible by 2*a
-      if (numerator % (2 * a) !== 0)
-        return false
+      if (numerator % (2 * a) !== 0) return false
 
       const x = numerator / (2 * a)
 

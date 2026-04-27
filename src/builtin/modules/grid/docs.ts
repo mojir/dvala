@@ -1,10 +1,11 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
-  'isCellEvery': {
+  isCellEvery: {
     type: '(Unknown[][], (Unknown -> Boolean)) -> Boolean',
     category: 'grid',
-    description: 'Checks if all elements in a grid satisfy a predicate. Returns true only if the predicate returns true for every element in the grid.',
+    description:
+      'Checks if all elements in a grid satisfy a predicate. Returns true only if the predicate returns true for every element in the grid.',
     returns: {
       type: 'boolean',
     },
@@ -18,10 +19,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -31,10 +29,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['collection.isEvery', 'grid.isSome', 'grid.isEveryRow', 'grid.isEveryCol'],
   },
-  'isSome': {
+  isSome: {
     type: '(Unknown[][], (Unknown -> Boolean)) -> Boolean',
     category: 'grid',
-    description: 'Checks if any element in a grid satisfies a predicate. Returns true if the predicate returns true for at least one element in the grid.',
+    description:
+      'Checks if any element in a grid satisfies a predicate. Returns true if the predicate returns true for at least one element in the grid.',
     returns: {
       type: 'boolean',
     },
@@ -48,10 +47,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -61,10 +57,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['collection.isAny', 'grid.isCellEvery', 'grid.isSomeRow', 'grid.isSomeCol'],
   },
-  'isEveryRow': {
+  isEveryRow: {
     type: '(Unknown[][], (Unknown[] -> Boolean)) -> Boolean',
     category: 'grid',
-    description: 'Checks if all rows in a grid satisfy a predicate. Returns true only if the predicate returns true for every row in the grid.',
+    description:
+      'Checks if all rows in a grid satisfy a predicate. Returns true only if the predicate returns true for every row in the grid.',
     returns: {
       type: 'boolean',
     },
@@ -78,10 +75,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -91,10 +85,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.isSomeRow', 'grid.isEveryCol', 'grid.isCellEvery'],
   },
-  'isSomeRow': {
+  isSomeRow: {
     type: '(Unknown[][], (Unknown[] -> Boolean)) -> Boolean',
     category: 'grid',
-    description: 'Checks if any row in a grid satisfies a predicate. Returns true if the predicate returns true for at least one row in the grid.',
+    description:
+      'Checks if any row in a grid satisfies a predicate. Returns true if the predicate returns true for at least one row in the grid.',
     returns: {
       type: 'boolean',
     },
@@ -108,10 +103,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -121,10 +113,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.isEveryRow', 'grid.isSomeCol', 'grid.isSome'],
   },
-  'isEveryCol': {
+  isEveryCol: {
     type: '(Unknown[][], (Unknown[] -> Boolean)) -> Boolean',
     category: 'grid',
-    description: 'Checks if all columns in a grid satisfy a predicate. Returns true only if the predicate returns true for every column in the grid.',
+    description:
+      'Checks if all columns in a grid satisfy a predicate. Returns true only if the predicate returns true for every column in the grid.',
     returns: {
       type: 'boolean',
     },
@@ -138,10 +131,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -151,10 +141,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.isSomeCol', 'grid.isEveryRow', 'grid.isCellEvery'],
   },
-  'isSomeCol': {
+  isSomeCol: {
     type: '(Unknown[][], (Unknown[] -> Boolean)) -> Boolean',
     category: 'grid',
-    description: 'Checks if any column in a grid satisfies a predicate. Returns true if the predicate returns true for at least one column in the grid.',
+    description:
+      'Checks if any column in a grid satisfies a predicate. Returns true if the predicate returns true for at least one column in the grid.',
     returns: {
       type: 'boolean',
     },
@@ -168,10 +159,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -181,7 +169,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.isEveryCol', 'grid.isSomeRow', 'grid.isSome'],
   },
-  'row': {
+  row: {
     type: '(Unknown[][], Number) -> Unknown[]',
     category: 'grid',
     description: 'Returns the row at index `a` in the grid `b`.',
@@ -198,10 +186,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -211,7 +196,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.col', 'grid.shape'],
   },
-  'col': {
+  col: {
     type: '(Unknown[][], Number) -> Unknown[]',
     category: 'grid',
     description: 'Returns the column at index `a` in the grid `b`.',
@@ -228,10 +213,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -241,10 +223,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.row', 'grid.shape'],
   },
-  'shape': {
+  shape: {
     type: '(Unknown[][]) -> Number[]',
     category: 'grid',
-    description: 'Returns the shape of the grid `g` as a `vector` of two numbers, where the first number is the number of rows and the second number is the number of columns.',
+    description:
+      'Returns the shape of the grid `g` as a `vector` of two numbers, where the first number is the number of rows and the second number is the number of columns.',
     returns: {
       type: 'vector',
     },
@@ -256,9 +239,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-        ],
+        argumentNames: ['g'],
       },
     ],
     examples: [
@@ -268,7 +249,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.row', 'grid.col', 'grid.reshape'],
   },
-  'fill': {
+  fill: {
     type: '(Number, Number, Unknown) -> Unknown[][]',
     category: 'grid',
     description: 'Creates a grid of the specified size, filled with the specified value.',
@@ -291,20 +272,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'rows',
-          'cols',
-          'value',
-        ],
+        argumentNames: ['rows', 'cols', 'value'],
       },
     ],
-    examples: [
-      'let { fill } = import("grid");\nfill(2, 3, 0)',
-      'let { fill } = import("grid");\nfill(2, 3, "x")',
-    ],
+    examples: ['let { fill } = import("grid");\nfill(2, 3, 0)', 'let { fill } = import("grid");\nfill(2, 3, "x")'],
     seeAlso: ['grid.generate', 'grid.fromArray'],
   },
-  'generate': {
+  generate: {
     type: '(Number, Number, (Number, Number) -> Unknown) -> Unknown[][]',
     category: 'grid',
     description: 'Generates a grid of the specified size, where each element is generated by the provided function.',
@@ -327,22 +301,17 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'rows',
-          'cols',
-          'generator',
-        ],
+        argumentNames: ['rows', 'cols', 'generator'],
       },
     ],
-    examples: [
-      'let { generate } = import("grid");\ngenerate(3, 3, (i, j) -> i + j)',
-    ],
+    examples: ['let { generate } = import("grid");\ngenerate(3, 3, (i, j) -> i + j)'],
     seeAlso: ['grid.fill', 'grid.fromArray'],
   },
-  'reshape': {
+  reshape: {
     type: '(Unknown[][], Number) -> Unknown[][]',
     category: 'grid',
-    description: 'Reshapes the grid `a` into a new grid with the specified number of rows `b`. The number of columns is automatically calculated based on the total number of elements in the grid.',
+    description:
+      'Reshapes the grid `a` into a new grid with the specified number of rows `b`. The number of columns is automatically calculated based on the total number of elements in the grid.',
     returns: {
       type: 'grid',
     },
@@ -356,10 +325,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -367,7 +333,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.shape', 'grid.fromArray'],
   },
-  'transpose': {
+  transpose: {
     type: '(Unknown[][]) -> Unknown[][]',
     category: 'grid',
     description: 'Transposes the grid `g`, swapping its rows and columns.',
@@ -382,9 +348,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-        ],
+        argumentNames: ['g'],
       },
     ],
     examples: [
@@ -394,7 +358,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.flipH', 'grid.flipV', 'grid.rotate'],
   },
-  'flipH': {
+  flipH: {
     type: '(Unknown[][]) -> Unknown[][]',
     category: 'grid',
     description: 'Flips the grid `g` horizontally.',
@@ -409,9 +373,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-        ],
+        argumentNames: ['g'],
       },
     ],
     examples: [
@@ -421,7 +383,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.flipV', 'grid.transpose', 'grid.rotate'],
   },
-  'flipV': {
+  flipV: {
     type: '(Unknown[][]) -> Unknown[][]',
     category: 'grid',
     description: 'Flips the grid `g` vertically.',
@@ -436,9 +398,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-        ],
+        argumentNames: ['g'],
       },
     ],
     examples: [
@@ -448,10 +408,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.flipH', 'grid.transpose', 'grid.rotate'],
   },
-  'rotate': {
+  rotate: {
     type: '(Unknown[][], Number) -> Unknown[][]',
     category: 'grid',
-    description: 'Rotates the grid `g` by the specified angle. The angle is given in terms of 90-degree rotations. Positive values rotate the grid clockwise, while negative values rotate it counterclockwise.',
+    description:
+      'Rotates the grid `g` by the specified angle. The angle is given in terms of 90-degree rotations. Positive values rotate the grid clockwise, while negative values rotate it counterclockwise.',
     returns: {
       type: 'grid',
     },
@@ -465,10 +426,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -482,10 +440,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.transpose', 'grid.flipH', 'grid.flipV'],
   },
-  'crop': {
+  crop: {
     type: '(Unknown[][], Number[]) -> Unknown[][]',
     category: 'grid',
-    description: 'Crops the grid `g` from the starting index `begin` to the optional ending index `stop`. The crop is inclusive of the starting index and exclusive of the ending index.',
+    description:
+      'Crops the grid `g` from the starting index `begin` to the optional ending index `stop`. The crop is inclusive of the starting index and exclusive of the ending index.',
     returns: {
       type: 'grid',
     },
@@ -505,17 +464,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'begin',
-        ],
+        argumentNames: ['g', 'begin'],
       },
       {
-        argumentNames: [
-          'g',
-          'begin',
-          'stop',
-        ],
+        argumentNames: ['g', 'begin', 'stop'],
       },
     ],
     examples: [
@@ -525,10 +477,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
     seeAlso: ['grid.sliceRows', 'grid.sliceCols'],
   },
-  'sliceRows': {
+  sliceRows: {
     type: '(Unknown[][], Number) -> Unknown[][]',
     category: 'grid',
-    description: 'Slices rows of the grid `g` from the starting index `begin` to the optional ending index `stop`. The slice is inclusive of the starting index and exclusive of the ending index.',
+    description:
+      'Slices rows of the grid `g` from the starting index `begin` to the optional ending index `stop`. The slice is inclusive of the starting index and exclusive of the ending index.',
     returns: {
       type: 'grid',
     },
@@ -548,17 +501,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'begin',
-        ],
+        argumentNames: ['g', 'begin'],
       },
       {
-        argumentNames: [
-          'g',
-          'begin',
-          'stop',
-        ],
+        argumentNames: ['g', 'begin', 'stop'],
       },
     ],
     examples: [
@@ -568,10 +514,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
     seeAlso: ['grid.crop', 'grid.sliceCols', 'grid.spliceRows'],
   },
-  'sliceCols': {
+  sliceCols: {
     type: '(Unknown[][], Number) -> Unknown[][]',
     category: 'grid',
-    description: 'Slices columns of the grid `g` from the starting index `begin` to the optional ending index `stop`. The slice is inclusive of the starting index and exclusive of the ending index.',
+    description:
+      'Slices columns of the grid `g` from the starting index `begin` to the optional ending index `stop`. The slice is inclusive of the starting index and exclusive of the ending index.',
     returns: {
       type: 'grid',
     },
@@ -591,17 +538,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'begin',
-        ],
+        argumentNames: ['g', 'begin'],
       },
       {
-        argumentNames: [
-          'g',
-          'begin',
-          'stop',
-        ],
+        argumentNames: ['g', 'begin', 'stop'],
       },
     ],
     examples: [
@@ -611,10 +551,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
     seeAlso: ['grid.crop', 'grid.sliceRows', 'grid.spliceCols'],
   },
-  'spliceRows': {
+  spliceRows: {
     type: '(Unknown[][], Number, Number, ...Unknown[]) -> Unknown[][]',
     category: 'grid',
-    description: 'Splices rows of the grid `g` starting from the index `begin`. Deletes `deleteCount` rows and inserts the specified `items` at that position.',
+    description:
+      'Splices rows of the grid `g` starting from the index `begin`. Deletes `deleteCount` rows and inserts the specified `items` at that position.',
     returns: {
       type: 'grid',
     },
@@ -639,19 +580,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'begin',
-          'deleteCount',
-        ],
+        argumentNames: ['g', 'begin', 'deleteCount'],
       },
       {
-        argumentNames: [
-          'g',
-          'begin',
-          'deleteCount',
-          'items',
-        ],
+        argumentNames: ['g', 'begin', 'deleteCount', 'items'],
       },
     ],
     examples: [
@@ -661,10 +593,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
     seeAlso: ['grid.spliceCols', 'grid.sliceRows'],
   },
-  'spliceCols': {
+  spliceCols: {
     type: '(Unknown[][], Number, Number, ...Unknown[]) -> Unknown[][]',
     category: 'grid',
-    description: 'Splices columns of the grid `g` starting from the index `begin`. Deletes `deleteCount` columns and inserts the specified `items` at that position.',
+    description:
+      'Splices columns of the grid `g` starting from the index `begin`. Deletes `deleteCount` columns and inserts the specified `items` at that position.',
     returns: {
       type: 'grid',
     },
@@ -689,19 +622,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'begin',
-          'deleteCount',
-        ],
+        argumentNames: ['g', 'begin', 'deleteCount'],
       },
       {
-        argumentNames: [
-          'g',
-          'begin',
-          'deleteCount',
-          'items',
-        ],
+        argumentNames: ['g', 'begin', 'deleteCount', 'items'],
       },
     ],
     examples: [
@@ -711,7 +635,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
     seeAlso: ['grid.spliceRows', 'grid.sliceCols'],
   },
-  'concatRows': {
+  concatRows: {
     type: '(Unknown[][], Unknown[][]) -> Unknown[][]',
     category: 'grid',
     description: 'Concatenates two grids `a` and `b` by rows. The number of columns in both grids must be the same.',
@@ -728,10 +652,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -739,7 +660,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.concatCols', 'grid.pushRows'],
   },
-  'concatCols': {
+  concatCols: {
     type: '(Unknown[][], Unknown[][]) -> Unknown[][]',
     category: 'grid',
     description: 'Concatenates two grids `a` and `b` by columns. The number of rows in both grids must be the same.',
@@ -756,10 +677,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -767,7 +685,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.concatRows', 'grid.pushCols'],
   },
-  'cellMap': {
+  cellMap: {
     type: '(Unknown[][], (Unknown -> Unknown)) -> Unknown[][]',
     category: 'grid',
     description: 'Maps a function `a` over each element of the grid `b`, returning a new grid with the results.',
@@ -784,10 +702,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -795,10 +710,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['map', 'grid.cellMapi', 'grid.cellReduce'],
   },
-  'cellMapi': {
+  cellMapi: {
     type: '(Unknown[][], (Unknown, Number, Number) -> Unknown) -> Unknown[][]',
     category: 'grid',
-    description: 'Maps a function `a` over each element of the grid `b`, passing the row and column index as additional arguments to the function.',
+    description:
+      'Maps a function `a` over each element of the grid `b`, passing the row and column index as additional arguments to the function.',
     returns: {
       type: 'grid',
     },
@@ -812,10 +728,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -823,7 +736,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.cellMap', 'grid.cellReducei', 'map'],
   },
-  'cellReduce': {
+  cellReduce: {
     type: '(Unknown[][], (Unknown, Unknown) -> Unknown, Unknown) -> Unknown',
     category: 'grid',
     description: 'Reduces the grid `a` using the function `b`, returning a single value.',
@@ -831,26 +744,23 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       type: 'any',
     },
     args: {
-      'g': {
+      g: {
         type: 'grid',
         description: 'The grid to reduce.',
       },
-      'f': {
+      f: {
         type: 'function',
-        description: 'The function to reduce the grid. It takes two arguments: the accumulator and the current element.',
+        description:
+          'The function to reduce the grid. It takes two arguments: the accumulator and the current element.',
       },
-      'initialValue': {
+      initialValue: {
         type: 'any',
         description: 'The initial value for the accumulator.',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'f',
-          'initialValue',
-        ],
+        argumentNames: ['g', 'f', 'initialValue'],
       },
     ],
     examples: [
@@ -858,34 +768,32 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['reduce', 'grid.cellReducei', 'grid.cellMap'],
   },
-  'cellReducei': {
+  cellReducei: {
     type: '(Unknown[][], (Unknown, Unknown, Number, Number) -> Unknown, Unknown) -> Unknown',
     category: 'grid',
-    description: 'Reduces the grid `a` using the function `b`, passing the row and column indices as additional arguments to the function.',
+    description:
+      'Reduces the grid `a` using the function `b`, passing the row and column indices as additional arguments to the function.',
     returns: {
       type: 'any',
     },
     args: {
-      'g': {
+      g: {
         type: 'grid',
         description: 'The grid to reduce.',
       },
-      'f': {
+      f: {
         type: 'function',
-        description: 'The function to reduce the grid. It takes four arguments: the accumulator, the current element, the row index, and the column index.',
+        description:
+          'The function to reduce the grid. It takes four arguments: the accumulator, the current element, the row index, and the column index.',
       },
-      'initialValue': {
+      initialValue: {
         type: 'any',
         description: 'The initial value for the accumulator.',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'f',
-          'initialValue',
-        ],
+        argumentNames: ['g', 'f', 'initialValue'],
       },
     ],
     examples: [
@@ -893,7 +801,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.cellReduce', 'grid.cellMapi', 'reduce'],
   },
-  'pushRows': {
+  pushRows: {
     type: '(Unknown[][], ...Unknown[]) -> Unknown[][]',
     category: 'grid',
     description: 'Pushes the specified rows into the grid `g` and returns the new grid.',
@@ -913,10 +821,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'rows',
-        ],
+        argumentNames: ['g', 'rows'],
       },
     ],
     examples: [
@@ -925,7 +830,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
     seeAlso: ['grid.unshiftRows', 'grid.popRow', 'grid.shiftRow', 'grid.concatRows'],
   },
-  'unshiftRows': {
+  unshiftRows: {
     type: '(Unknown[][], ...Unknown[]) -> Unknown[][]',
     category: 'grid',
     description: 'Unshifts the specified rows into the grid `g` and returns the new grid.',
@@ -945,10 +850,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'rows',
-        ],
+        argumentNames: ['g', 'rows'],
       },
     ],
     examples: [
@@ -957,7 +859,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
     seeAlso: ['grid.pushRows', 'grid.shiftRow', 'grid.popRow'],
   },
-  'popRow': {
+  popRow: {
     type: '(Unknown[][]) -> Unknown[][]',
     category: 'grid',
     description: 'Pops the last row from the grid `g` and returns the new grid.',
@@ -972,9 +874,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-        ],
+        argumentNames: ['g'],
       },
     ],
     examples: [
@@ -982,7 +882,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.shiftRow', 'grid.pushRows', 'grid.unshiftRows'],
   },
-  'shiftRow': {
+  shiftRow: {
     type: '(Unknown[][]) -> Unknown[][]',
     category: 'grid',
     description: 'Shifts the first row from the grid `g` and returns the new grid.',
@@ -997,9 +897,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-        ],
+        argumentNames: ['g'],
       },
     ],
     examples: [
@@ -1007,7 +905,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.popRow', 'grid.pushRows', 'grid.unshiftRows'],
   },
-  'pushCols': {
+  pushCols: {
     type: '(Unknown[][], ...Unknown[]) -> Unknown[][]',
     category: 'grid',
     description: 'Pushes the specified columns into the grid `g` and returns the new grid.',
@@ -1027,10 +925,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'cols',
-        ],
+        argumentNames: ['g', 'cols'],
       },
     ],
     examples: [
@@ -1039,7 +934,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
     seeAlso: ['grid.unshiftCols', 'grid.popCol', 'grid.shiftCol', 'grid.concatCols'],
   },
-  'unshiftCols': {
+  unshiftCols: {
     type: '(Unknown[][], ...Unknown[]) -> Unknown[][]',
     category: 'grid',
     description: 'Unshifts the specified columns into the grid `g` and returns the new grid.',
@@ -1059,10 +954,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-          'cols',
-        ],
+        argumentNames: ['g', 'cols'],
       },
     ],
     examples: [
@@ -1071,7 +963,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     hideOperatorForm: true,
     seeAlso: ['grid.pushCols', 'grid.shiftCol', 'grid.popCol'],
   },
-  'popCol': {
+  popCol: {
     type: '(Unknown[][]) -> Unknown[][]',
     category: 'grid',
     description: 'Pops the last column from the grid `g` and returns the new grid.',
@@ -1086,9 +978,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-        ],
+        argumentNames: ['g'],
       },
     ],
     examples: [
@@ -1096,7 +986,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.shiftCol', 'grid.pushCols', 'grid.unshiftCols'],
   },
-  'shiftCol': {
+  shiftCol: {
     type: '(Unknown[][]) -> Unknown[][]',
     category: 'grid',
     description: 'Shifts the first column from the grid `g` and returns the new grid.',
@@ -1111,9 +1001,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'g',
-        ],
+        argumentNames: ['g'],
       },
     ],
     examples: [
@@ -1121,10 +1009,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['grid.popCol', 'grid.pushCols', 'grid.unshiftCols'],
   },
-  'fromArray': {
+  fromArray: {
     type: '(Unknown[], Number) -> Unknown[][]',
     category: 'grid',
-    description: 'Creates a grid from a flat array with specified dimensions. The array is reshaped into the specified number of rows, and the number of columns is automatically calculated based on the total number of elements in the array.',
+    description:
+      'Creates a grid from a flat array with specified dimensions. The array is reshaped into the specified number of rows, and the number of columns is automatically calculated based on the total number of elements in the array.',
     returns: {
       type: 'grid',
     },
@@ -1138,10 +1027,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [

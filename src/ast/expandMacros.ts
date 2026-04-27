@@ -165,12 +165,22 @@ function extractMacroDefName(node: AstNode): string | null {
 }
 
 /** Process a list of nodes: expand macro calls, keep definitions (treeshaking removes them later) */
-function processNodes(nodes: AstNode[], macros: Map<string, unknown>, dvala: ReturnType<typeof createDvala>, positions: SourceMap['positions'] | undefined): AstNode[] {
+function processNodes(
+  nodes: AstNode[],
+  macros: Map<string, unknown>,
+  dvala: ReturnType<typeof createDvala>,
+  positions: SourceMap['positions'] | undefined,
+): AstNode[] {
   return nodes.map(node => expandNodeRecursive(node, macros, dvala, positions))
 }
 
 /** Recursively expand macro calls in an AST node */
-function expandNodeRecursive(node: AstNode, macros: Map<string, unknown>, dvala: ReturnType<typeof createDvala>, positions: SourceMap['positions'] | undefined): AstNode {
+function expandNodeRecursive(
+  node: AstNode,
+  macros: Map<string, unknown>,
+  dvala: ReturnType<typeof createDvala>,
+  positions: SourceMap['positions'] | undefined,
+): AstNode {
   const [type, payload, nodeId] = node
 
   // Check if this is a Call or MacroCall (#name expr) to a known macro
@@ -185,17 +195,19 @@ function expandNodeRecursive(node: AstNode, macros: Map<string, unknown>, dvala:
           // builtins like first(), get(), etc. on the received arguments. The outer PV
           // wrapper prevents fromJS from recursing further.
           const argsAsPV = PersistentVector.from(args.map(arg => fromJS(arg as unknown as Any)))
-          const expanded = dvala.run('let __m__ = perform(@dvala.host, "__m__"); let args = perform(@dvala.host, "args"); macroexpand(__m__, ...args)', {
-            effectHandlers: [hostHandler({ __m__: macroFn, args: argsAsPV })],
-          })
+          const expanded = dvala.run(
+            'let __m__ = perform(@dvala.host, "__m__"); let args = perform(@dvala.host, "args"); macroexpand(__m__, ...args)',
+            {
+              effectHandlers: [hostHandler({ __m__: macroFn, args: argsAsPV })],
+            },
+          )
           if (Array.isArray(expanded) && expanded.length === 3 && typeof expanded[0] === 'string') {
             const expandedNode = expandNodeRecursive(expanded as AstNode, macros, dvala, positions)
             // Stamp every node in the expanded subtree that has no sourceMap position
             // with the call-site's position, so coverage can attribute branches to it.
             if (positions) {
               const callSitePos = positions.get(nodeId)
-              if (callSitePos)
-                stampMissingPositions(expandedNode, callSitePos, positions)
+              if (callSitePos) stampMissingPositions(expandedNode, callSitePos, positions)
             }
             return expandedNode
           }
@@ -229,30 +241,30 @@ function expandNodeRecursive(node: AstNode, macros: Map<string, unknown>, dvala:
  */
 function stampMissingPositions(node: AstNode, pos: SourceMapPosition, positions: SourceMap['positions']): void {
   const nodeId = node[2]
-  if (!positions.has(nodeId))
-    positions.set(nodeId, pos)
+  if (!positions.has(nodeId)) positions.set(nodeId, pos)
 
   const payload = node[1]
   if (Array.isArray(payload)) {
     for (const item of payload) {
-      if (isAstNode(item))
-        stampMissingPositions(item as AstNode, pos, positions)
-      else if (Array.isArray(item))
-        stampNestedPositions(item, pos, positions)
+      if (isAstNode(item)) stampMissingPositions(item as AstNode, pos, positions)
+      else if (Array.isArray(item)) stampNestedPositions(item, pos, positions)
     }
   }
 }
 
 function stampNestedPositions(items: unknown[], pos: SourceMapPosition, positions: SourceMap['positions']): void {
   for (const item of items) {
-    if (isAstNode(item))
-      stampMissingPositions(item as AstNode, pos, positions)
-    else if (Array.isArray(item))
-      stampNestedPositions(item, pos, positions)
+    if (isAstNode(item)) stampMissingPositions(item as AstNode, pos, positions)
+    else if (Array.isArray(item)) stampNestedPositions(item, pos, positions)
   }
 }
 
-function recurseInto(value: unknown, macros: Map<string, unknown>, dvala: ReturnType<typeof createDvala>, positions: SourceMap['positions'] | undefined): unknown {
+function recurseInto(
+  value: unknown,
+  macros: Map<string, unknown>,
+  dvala: ReturnType<typeof createDvala>,
+  positions: SourceMap['positions'] | undefined,
+): unknown {
   if (!Array.isArray(value)) return value
   if (isAstNode(value)) {
     return expandNodeRecursive(value as AstNode, macros, dvala, positions)

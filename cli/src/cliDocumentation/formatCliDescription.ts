@@ -9,10 +9,8 @@ import { createVariableRule, getMdRules } from '../cliFormatterRules'
 const variableRegExp = new RegExp(`\\$${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*`, 'g')
 
 export function formatCliDescription(fmt: Colorizer, description: string, reference: Reference): string {
-  if (isFunctionReference(reference))
-    return formatFunctionDescription(fmt, description, reference)
-  else
-    return formatCommonDescription(fmt, description)
+  if (isFunctionReference(reference)) return formatFunctionDescription(fmt, description, reference)
+  else return formatCommonDescription(fmt, description)
 }
 
 function formatCommonDescription(fmt: Colorizer, description: string) {
@@ -40,8 +38,7 @@ function formatFunctionDescription(fmt: Colorizer, description: string, referenc
 function checkVariables(reference: FunctionReference, variables: Set<string>) {
   variables.forEach(variable => {
     const variableName = variable.slice(1)
-    if (variableName === reference.title)
-      return
+    if (variableName === reference.title) return
 
     if (!isArgumentName(variableName, reference)) {
       // eslint-disable-next-line no-console

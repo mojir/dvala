@@ -41,17 +41,28 @@ describe('step types', () => {
   it('should cover all step type discriminants exhaustively', () => {
     function getStepCategory(step: Step): string {
       switch (step.type) {
-        case 'Value': return 'result'
-        case 'Eval': return 'evaluate'
-        case 'Apply': return 'apply'
-        case 'Perform': return 'effect'
-        case 'Parallel': return 'concurrent'
-        case 'Race': return 'concurrent'
-        case 'ParallelResume': return 'concurrent'
-        case 'BranchComplete': return 'concurrent'
-        case 'ReRunParallelExec': return 'concurrent'
-        case 'ResumeParallelExec': return 'concurrent'
-        case 'Error': return 'error'
+        case 'Value':
+          return 'result'
+        case 'Eval':
+          return 'evaluate'
+        case 'Apply':
+          return 'apply'
+        case 'Perform':
+          return 'effect'
+        case 'Parallel':
+          return 'concurrent'
+        case 'Race':
+          return 'concurrent'
+        case 'ParallelResume':
+          return 'concurrent'
+        case 'BranchComplete':
+          return 'concurrent'
+        case 'ReRunParallelExec':
+          return 'concurrent'
+        case 'ResumeParallelExec':
+          return 'concurrent'
+        case 'Error':
+          return 'error'
         default: {
           const _exhaustive: never = step
           throw new Error(`Unhandled step type: ${(_exhaustive as Step).type}`)

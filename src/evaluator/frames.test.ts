@@ -117,55 +117,104 @@ describe('frame types', () => {
     // If a frame type is added but not handled, TypeScript will flag it.
     function getFrameCategory(frame: Frame): string {
       switch (frame.type) {
-        case 'Sequence': return 'flow'
-        case 'IfBranch': return 'branch'
-        case 'Match': return 'branch'
-        case 'And': return 'short-circuit'
-        case 'Or': return 'short-circuit'
-        case 'Qq': return 'short-circuit'
-        case 'TemplateStringBuild': return 'collection'
-        case 'ArrayBuild': return 'collection'
-        case 'ObjectBuild': return 'collection'
-        case 'LetBind': return 'binding'
-        case 'LetBindComplete': return 'binding'
-        case 'LoopBind': return 'binding'
-        case 'LoopBindComplete': return 'binding'
-        case 'LoopIterate': return 'binding'
-        case 'ForLoop': return 'binding'
-        case 'ForElementBindComplete': return 'binding'
-        case 'ForLetBind': return 'binding'
-        case 'Recur': return 'control'
-        case 'RecurLoopRebind': return 'control'
-        case 'PerformArgs': return 'control'
-        case 'Complement': return 'compound'
-        case 'Comp': return 'compound'
-        case 'Juxt': return 'compound'
-        case 'EveryPred': return 'compound'
-        case 'SomePred': return 'compound'
-        case 'ParallelResume': return 'parallel'
-        case 'ConcurrentArg': return 'parallel'
-        case 'ParallelBranchBarrier': return 'parallel'
-        case 'ReRunParallel': return 'parallel'
-        case 'ResumeParallel': return 'parallel'
-        case 'EvalArgs': return 'call'
-        case 'CallFn': return 'call'
-        case 'FnBody': return 'call'
-        case 'FnArgBind': return 'destructure'
-        case 'FnArgSlotComplete': return 'destructure'
-        case 'FnRestArgComplete': return 'destructure'
-        case 'BindingSlot': return 'destructure'
-        case 'MatchSlot': return 'destructure'
-        case 'FiniteCheck': return 'post'
-        case 'ImportMerge': return 'import'
-        case 'FileResolve': return 'import'
-        case 'AlgebraicHandle': return 'effect'
-        case 'HandlerTransform': return 'effect'
-        case 'HandlerClause': return 'effect'
-        case 'HandlerCleanup': return 'effect'
-        case 'ResumeCall': return 'effect'
-        case 'WithHandlerSetup': return 'effect'
-        case 'MacroEval': return 'macro'
-        case 'CodeTemplateBuild': return 'template'
+        case 'Sequence':
+          return 'flow'
+        case 'IfBranch':
+          return 'branch'
+        case 'Match':
+          return 'branch'
+        case 'And':
+          return 'short-circuit'
+        case 'Or':
+          return 'short-circuit'
+        case 'Qq':
+          return 'short-circuit'
+        case 'TemplateStringBuild':
+          return 'collection'
+        case 'ArrayBuild':
+          return 'collection'
+        case 'ObjectBuild':
+          return 'collection'
+        case 'LetBind':
+          return 'binding'
+        case 'LetBindComplete':
+          return 'binding'
+        case 'LoopBind':
+          return 'binding'
+        case 'LoopBindComplete':
+          return 'binding'
+        case 'LoopIterate':
+          return 'binding'
+        case 'ForLoop':
+          return 'binding'
+        case 'ForElementBindComplete':
+          return 'binding'
+        case 'ForLetBind':
+          return 'binding'
+        case 'Recur':
+          return 'control'
+        case 'RecurLoopRebind':
+          return 'control'
+        case 'PerformArgs':
+          return 'control'
+        case 'Complement':
+          return 'compound'
+        case 'Comp':
+          return 'compound'
+        case 'Juxt':
+          return 'compound'
+        case 'EveryPred':
+          return 'compound'
+        case 'SomePred':
+          return 'compound'
+        case 'ParallelResume':
+          return 'parallel'
+        case 'ConcurrentArg':
+          return 'parallel'
+        case 'ParallelBranchBarrier':
+          return 'parallel'
+        case 'ReRunParallel':
+          return 'parallel'
+        case 'ResumeParallel':
+          return 'parallel'
+        case 'EvalArgs':
+          return 'call'
+        case 'CallFn':
+          return 'call'
+        case 'FnBody':
+          return 'call'
+        case 'FnArgBind':
+          return 'destructure'
+        case 'FnArgSlotComplete':
+          return 'destructure'
+        case 'FnRestArgComplete':
+          return 'destructure'
+        case 'BindingSlot':
+          return 'destructure'
+        case 'MatchSlot':
+          return 'destructure'
+        case 'FiniteCheck':
+          return 'post'
+        case 'ImportMerge':
+          return 'import'
+        case 'FileResolve':
+          return 'import'
+        case 'AlgebraicHandle':
+          return 'effect'
+        case 'HandlerTransform':
+          return 'effect'
+        case 'HandlerClause':
+          return 'effect'
+        case 'HandlerCleanup':
+          return 'effect'
+        case 'ResumeCall':
+          return 'effect'
+        case 'WithHandlerSetup':
+          return 'effect'
+        case 'MacroEval':
+          return 'macro'
+        case 'CodeTemplateBuild':
+          return 'template'
         default: {
           // Exhaustiveness check: if this line is reached, a frame type is missing
           const _exhaustive: never = frame

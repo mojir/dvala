@@ -27,9 +27,29 @@
 
 import type { AssertsInfo, RowVarTail, Type } from './types'
 import {
-  NumberType, IntegerType, StringType, BooleanType, NullType,
-  Unknown, Never, RegexType, AnyFunction, PureEffects,
-  array, atom, effectSet, fn, handlerType, indexType, inter, keyofType, literal, neg, tuple, typeToString, union,
+  NumberType,
+  IntegerType,
+  StringType,
+  BooleanType,
+  NullType,
+  Unknown,
+  Never,
+  RegexType,
+  AnyFunction,
+  PureEffects,
+  array,
+  atom,
+  effectSet,
+  fn,
+  handlerType,
+  indexType,
+  inter,
+  keyofType,
+  literal,
+  neg,
+  tuple,
+  typeToString,
+  union,
 } from './types'
 import { getEffectDeclaration } from './effectTypes'
 import { isSubtype } from './subtype'
@@ -68,10 +88,13 @@ export function resetTypeAliases(): void {
 /** Snapshot the current alias registry so nested import typechecking can restore it. */
 export function snapshotTypeAliases(): TypeAliasRegistrySnapshot {
   return {
-    entries: [...typeAliasRegistry.entries()].map(([name, alias]) => [name, {
-      params: alias.params.map(p => p.bound === undefined ? { name: p.name } : { name: p.name, bound: p.bound }),
-      body: alias.body,
-    }]),
+    entries: [...typeAliasRegistry.entries()].map(([name, alias]) => [
+      name,
+      {
+        params: alias.params.map(p => (p.bound === undefined ? { name: p.name } : { name: p.name, bound: p.bound })),
+        body: alias.body,
+      },
+    ]),
   }
 }
 
@@ -300,7 +323,14 @@ class TypeParser {
               predicate: assertsResult.predicate.predicate,
               source: assertsResult.predicate.source,
             }
-            const funcType = fn(paramsResult.types, BooleanType, PureEffects, undefined, paramsResult.restType, assertsInfo)
+            const funcType = fn(
+              paramsResult.types,
+              BooleanType,
+              PureEffects,
+              undefined,
+              paramsResult.restType,
+              assertsInfo,
+            )
             return {
               type: funcType,
               assertsParam: assertsResult.paramName,
@@ -310,7 +340,13 @@ class TypeParser {
           // Regular return type
           const effects = this.tryParseEffectSet() ?? undefined
           const retType = this.parseType()
-          const funcType = fn(paramsResult.types, returnTypeAnnotation ?? retType, effects, undefined, paramsResult.restType)
+          const funcType = fn(
+            paramsResult.types,
+            returnTypeAnnotation ?? retType,
+            effects,
+            undefined,
+            paramsResult.restType,
+          )
           return { type: funcType }
         }
       }
@@ -592,14 +628,22 @@ class TypeParser {
     if (!name) throw this.error('Expected type')
 
     switch (name) {
-      case 'Number': return NumberType
-      case 'Integer': return IntegerType
-      case 'String': return StringType
-      case 'Boolean': return BooleanType
-      case 'Null': return NullType
-      case 'Regex': return RegexType
-      case 'Function': return AnyFunction
-      case 'Handler': return this.parseHandlerType()
+      case 'Number':
+        return NumberType
+      case 'Integer':
+        return IntegerType
+      case 'String':
+        return StringType
+      case 'Boolean':
+        return BooleanType
+      case 'Null':
+        return NullType
+      case 'Regex':
+        return RegexType
+      case 'Function':
+        return AnyFunction
+      case 'Handler':
+        return this.parseHandlerType()
       // `Sequence` and `Collection` are user-facing type-keyword unions
       // that match the `isSequence` and `isCollection` builtins. Inlined
       // here (rather than exported from types.ts) because:
@@ -609,12 +653,18 @@ class TypeParser {
       //     ...) are all primitives, not unions; adding union-valued
       //     "*Type" consts would mislead callers about what kind of
       //     value they're handling.
-      case 'Sequence': return union(array(Unknown), StringType)
-      case 'Collection': return union(array(Unknown), StringType, { tag: 'Record', fields: new Map(), open: true })
-      case 'Unknown': return Unknown
-      case 'Never': return Never
-      case 'true': return literal(true)
-      case 'false': return literal(false)
+      case 'Sequence':
+        return union(array(Unknown), StringType)
+      case 'Collection':
+        return union(array(Unknown), StringType, { tag: 'Record', fields: new Map(), open: true })
+      case 'Unknown':
+        return Unknown
+      case 'Never':
+        return Never
+      case 'true':
+        return literal(true)
+      case 'false':
+        return literal(false)
       default:
         // Single uppercase letter = type variable (for polymorphic types)
         // Multi-char identifiers starting with uppercase = named type / alias
@@ -739,7 +789,7 @@ class TypeParser {
     // display paths that didn't opt in still see the original shape.
     const record: Type = { tag: 'Record', fields, open }
     if (optionalFields.size > 0) {
-      (record).optionalFields = optionalFields
+      record.optionalFields = optionalFields
     }
     return record
   }
@@ -1134,9 +1184,8 @@ class TypeParser {
     const matched = params.find(p => p.name === predicate.binder)
     if (!matched) {
       const paramNames = params.map(p => p.name).filter((n): n is string => n !== undefined)
-      const hint = paramNames.length > 0
-        ? ` (parameters: ${paramNames.join(', ')})`
-        : ' (function has no named parameters)'
+      const hint =
+        paramNames.length > 0 ? ` (parameters: ${paramNames.join(', ')})` : ' (function has no named parameters)'
       throw new TypeParseError(
         `\`asserts\` binder '${predicate.binder}' does not match any parameter name${hint}`,
         this.input,
@@ -1181,7 +1230,9 @@ class TypeParser {
         const boundParser = new TypeParser(param.bound, this.scopedTypeRefs)
         const boundType = boundParser.parseType()
         if (!boundParser.isAtEnd()) {
-          throw this.error(`Invalid bound on type alias '${name}' parameter '${param.name}': '${boundParser.remaining()}'`)
+          throw this.error(
+            `Invalid bound on type alias '${name}' parameter '${param.name}': '${boundParser.remaining()}'`,
+          )
         }
         const argType = args[i]!
         if (!isSubtype(argType, boundType)) {
@@ -1231,13 +1282,23 @@ class TypeParser {
 
   // --- Lexer helpers ---
 
-  isAtEnd(): boolean { return this.pos >= this.input.length }
-  remaining(): string { return this.input.slice(this.pos) }
+  isAtEnd(): boolean {
+    return this.pos >= this.input.length
+  }
+  remaining(): string {
+    return this.input.slice(this.pos)
+  }
 
-  peek(): string { return this.input[this.pos] ?? '' }
-  peekAt(offset: number): string { return this.input[this.pos + offset] ?? '' }
+  peek(): string {
+    return this.input[this.pos] ?? ''
+  }
+  peekAt(offset: number): string {
+    return this.input[this.pos + offset] ?? ''
+  }
 
-  advance(): void { this.pos++ }
+  advance(): void {
+    this.pos++
+  }
 
   skipWhitespace(): void {
     while (this.pos < this.input.length && ' \t\n\r'.includes(this.input[this.pos]!)) {
@@ -1304,8 +1365,7 @@ class TypeParser {
   }
 
   private isIdentChar(c: string): boolean {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
-      || (c >= '0' && c <= '9') || c === '_'
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c === '_'
   }
 
   private isEffectSegmentChar(c: string): boolean {
@@ -1348,7 +1408,11 @@ export class TypeParseError extends Error {
    * leaking internal parser positions into errors.
    */
   public readonly cleanMessage: string
-  constructor(message: string, public input: string, public position: number) {
+  constructor(
+    message: string,
+    public input: string,
+    public position: number,
+  ) {
     super(`${message} at position ${position} in "${input}"`)
     this.name = 'TypeParseError'
     this.cleanMessage = message
@@ -1374,12 +1438,7 @@ export class TypeParseError extends Error {
  */
 export class RefinementError extends TypeParseError {
   public readonly kind: 'fragment' | 'predicate-type' | 'obligation'
-  constructor(
-    message: string,
-    kind: 'fragment' | 'predicate-type' | 'obligation',
-    input: string,
-    position: number,
-  ) {
+  constructor(message: string, kind: 'fragment' | 'predicate-type' | 'obligation', input: string, position: number) {
     super(message, input, position)
     this.name = 'RefinementError'
     this.kind = kind

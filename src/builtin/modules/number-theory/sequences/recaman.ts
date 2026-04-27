@@ -7,8 +7,7 @@ import type { SequenceDefinition } from '.'
  * @returns Array containing the first n terms of the Recamán sequence
  */
 function generateRecamanSequence(n: number): number[] {
-  if (n === 1)
-    return [0]
+  if (n === 1) return [0]
 
   const sequence: number[] = [0]
   const seen = new Set<number>([0])
@@ -30,6 +29,6 @@ function generateRecamanSequence(n: number): number[] {
 }
 
 export const recamanSequence: SequenceDefinition<'recaman'> = {
-  'recamanSeq': length => generateRecamanSequence(length),
-  'isRecaman': () => true,
+  recamanSeq: length => generateRecamanSequence(length),
+  isRecaman: () => true,
 }

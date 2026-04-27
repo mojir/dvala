@@ -12,15 +12,13 @@ export function testTypeGuars(
   { is, as, assert }: { is: Function | undefined; as: Function; assert: Function },
 ) {
   testData.valid.forEach(validData => {
-    if (is)
-      expect(is(validData)).toBe(true)
+    if (is) expect(is(validData)).toBe(true)
 
     expect(() => assert(validData)).not.toThrow()
     expect(as(validData)).toBe(validData)
   })
   testData.invalid.forEach(validData => {
-    if (is)
-      expect(is(validData)).toBe(false)
+    if (is) expect(is(validData)).toBe(false)
 
     expect(() => assert(validData)).toThrow(DvalaError)
 
@@ -88,7 +86,6 @@ const privateTestData: TestData = {
 let testData: TestData
 
 export function createTestData(): TestData {
-
   testData = JSON.parse(JSON.stringify(privateTestData))
   return testData
 }
@@ -97,12 +94,13 @@ export function checkTestData(): void {
   const stringifiedTestData = JSON.stringify(testData, null, 4)
   const stringifiedPrivateTestData = JSON.stringify(privateTestData, null, 4)
   if (stringifiedTestData !== stringifiedPrivateTestData)
-    throw new Error(`Expected testData to not change got:\n${stringifiedTestData}\nExpected${stringifiedPrivateTestData}`)
+    throw new Error(
+      `Expected testData to not change got:\n${stringifiedTestData}\nExpected${stringifiedPrivateTestData}`,
+    )
 }
 
 export function regexpEquals(udr: unknown, r: RegExp): boolean {
-  if (!isRegularExpression(udr))
-    return false
+  if (!isRegularExpression(udr)) return false
 
   const sortedUdrFlags = udr.f.split('').sort().join('')
   const sortedRFlags = r.flags.split('').sort().join('')

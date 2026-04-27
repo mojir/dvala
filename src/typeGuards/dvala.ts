@@ -15,8 +15,7 @@ export function asAny(value: unknown, sourceCodeInfo?: SourceCodeInfo): Any {
   return value
 }
 export function assertAny(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is Any {
-  if (!isAny(value))
-    throw getAssertionError('not undefined', value, sourceCodeInfo)
+  if (!isAny(value)) throw getAssertionError('not undefined', value, sourceCodeInfo)
 }
 
 export function isSeq(value: unknown): value is Seq {
@@ -27,8 +26,7 @@ export function asSeq(value: unknown, sourceCodeInfo?: SourceCodeInfo): Seq {
   return value
 }
 export function assertSeq(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is Seq {
-  if (!isSeq(value))
-    throw getAssertionError('string or array', value, sourceCodeInfo)
+  if (!isSeq(value)) throw getAssertionError('string or array', value, sourceCodeInfo)
 }
 
 export function isArr(value: unknown): value is Arr {
@@ -43,8 +41,7 @@ export function asObj(value: unknown, sourceCodeInfo?: SourceCodeInfo): Obj {
   return value
 }
 export function assertObj(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is Obj {
-  if (!isObj(value))
-    throw getAssertionError('object', value, sourceCodeInfo)
+  if (!isObj(value)) throw getAssertionError('object', value, sourceCodeInfo)
 }
 
 export function isColl(value: unknown): value is Coll {
@@ -55,13 +52,11 @@ export function asColl(value: unknown, sourceCodeInfo?: SourceCodeInfo): Coll {
   return value
 }
 export function assertColl(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is Coll {
-  if (!isColl(value))
-    throw getAssertionError('string, array or object', value, sourceCodeInfo)
+  if (!isColl(value)) throw getAssertionError('string, array or object', value, sourceCodeInfo)
 }
 
 export function isRegularExpression(regexp: unknown): regexp is RegularExpression {
-  if (regexp === null || typeof regexp !== 'object')
-    return false
+  if (regexp === null || typeof regexp !== 'object') return false
 
   return !!(regexp as RegularExpression)[REGEXP_SYMBOL]
 }
@@ -73,8 +68,7 @@ export function assertRegularExpression(
   value: unknown,
   sourceCodeInfo?: SourceCodeInfo,
 ): asserts value is RegularExpression {
-  if (!isRegularExpression(value))
-    throw getAssertionError('RegularExpression', value, sourceCodeInfo)
+  if (!isRegularExpression(value)) throw getAssertionError('RegularExpression', value, sourceCodeInfo)
 }
 
 export function isStringOrRegularExpression(value: unknown): value is string | RegularExpression {
@@ -91,19 +85,16 @@ export function assertStringOrRegularExpression(
   value: unknown,
   sourceCodeInfo?: SourceCodeInfo,
 ): asserts value is string | RegularExpression {
-  if (!isStringOrRegularExpression(value))
-    throw getAssertionError('string or RegularExpression', value, sourceCodeInfo)
+  if (!isStringOrRegularExpression(value)) throw getAssertionError('string or RegularExpression', value, sourceCodeInfo)
 }
 
 export function isAtom(value: unknown): value is Atom {
-  if (value === null || typeof value !== 'object')
-    return false
+  if (value === null || typeof value !== 'object') return false
   return !!(value as Atom)[ATOM_SYMBOL]
 }
 
 export function isEffect(value: unknown): value is EffectRef {
-  if (value === null || typeof value !== 'object')
-    return false
+  if (value === null || typeof value !== 'object') return false
 
   return !!(value as EffectRef)[EFFECT_SYMBOL]
 }
@@ -111,21 +102,14 @@ export function asEffect(value: unknown, sourceCodeInfo?: SourceCodeInfo): Effec
   assertEffect(value, sourceCodeInfo)
   return value
 }
-export function assertEffect(
-  value: unknown,
-  sourceCodeInfo?: SourceCodeInfo,
-): asserts value is EffectRef {
-  if (!isEffect(value))
-    throw getAssertionError('Effect', value, sourceCodeInfo)
+export function assertEffect(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is EffectRef {
+  if (!isEffect(value)) throw getAssertionError('Effect', value, sourceCodeInfo)
 }
 
 function isFunctionLike(value: unknown): value is FunctionLike {
-  if (typeof value === 'number')
-    return true
-  if (isColl(value))
-    return true
-  if (isDvalaFunction(value))
-    return true
+  if (typeof value === 'number') return true
+  if (isColl(value)) return true
+  if (isDvalaFunction(value)) return true
 
   return false
 }
@@ -134,6 +118,5 @@ export function asFunctionLike(value: unknown, sourceCodeInfo?: SourceCodeInfo):
   return value
 }
 export function assertFunctionLike(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is FunctionLike {
-  if (!isFunctionLike(value))
-    throw getAssertionError('FunctionLike', value, sourceCodeInfo)
+  if (!isFunctionLike(value)) throw getAssertionError('FunctionLike', value, sourceCodeInfo)
 }

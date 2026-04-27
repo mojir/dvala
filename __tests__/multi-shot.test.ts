@@ -77,8 +77,13 @@ describe('multi-shot continuations', () => {
       end
     `)
     // Expected: [[1,10],[1,20],[2,10],[2,20]]
-    const sorted = (result as number[][]).sort((x, y) => (x[0]! - y[0]!) || (x[1]! - y[1]!))
-    expect(sorted).toEqual([[1, 10], [1, 20], [2, 10], [2, 20]])
+    const sorted = (result as number[][]).sort((x, y) => x[0]! - y[0]! || x[1]! - y[1]!)
+    expect(sorted).toEqual([
+      [1, 10],
+      [1, 20],
+      [2, 10],
+      [2, 20],
+    ])
   })
 
   // resume called zero times (abort) still works correctly.
@@ -121,7 +126,10 @@ describe('multi-shot continuations', () => {
         [a, b]
       end
     `)
-    expect(result).toEqual([[1, 2], [2, 4]])
+    expect(result).toEqual([
+      [1, 2],
+      [2, 4],
+    ])
   })
 
   // Deep nesting: 3 binary choices → 2^3 = 8 paths.

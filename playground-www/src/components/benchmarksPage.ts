@@ -87,9 +87,16 @@ function cssVar(name: string, fallback: string): string {
  */
 function pickColor(idx: number, alpha = 1): string {
   const palette: [number, number, number][] = [
-    [54, 162, 235], [255, 99, 132], [75, 192, 192], [255, 159, 64],
-    [153, 102, 255], [255, 205, 86], [99, 200, 99], [201, 76, 76],
-    [148, 84, 199], [80, 145, 195],
+    [54, 162, 235],
+    [255, 99, 132],
+    [75, 192, 192],
+    [255, 159, 64],
+    [153, 102, 255],
+    [255, 205, 86],
+    [99, 200, 99],
+    [201, 76, 76],
+    [148, 84, 199],
+    [80, 145, 195],
   ]
   const [r, g, b] = palette[idx % palette.length]!
   return alpha === 1 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${alpha})`
@@ -133,7 +140,11 @@ async function renderBenchmarksChartsInner(): Promise<void> {
   // Tear down any existing charts before re-rendering. Chart.js leaks
   // canvas listeners if we just blow away the DOM without calling destroy.
   while (liveCharts.length > 0) {
-    try { liveCharts.pop()!.destroy() } catch { /* ignore */ }
+    try {
+      liveCharts.pop()!.destroy()
+    } catch {
+      /* ignore */
+    }
   }
 
   // Cast through `unknown`: rolldown infers a narrow literal-typed shape
@@ -157,26 +168,34 @@ async function renderBenchmarksChartsInner(): Promise<void> {
 
   // Build the panel skeleton: warning banner (if mixed) + run table + per-scenario chart slots.
   container.innerHTML = `
-    ${mixedHardware
-      ? `<div class="benchmarks-warning">⚠ Runs span ${fingerprints.size} different hardware fingerprints — perf differences may reflect machine, not code. Hover a point for its fingerprint.</div>`
-      : ''}
+    ${
+      mixedHardware
+        ? `<div class="benchmarks-warning">⚠ Runs span ${fingerprints.size} different hardware fingerprints — perf differences may reflect machine, not code. Hover a point for its fingerprint.</div>`
+        : ''
+    }
     <details class="benchmarks-runs">
       <summary>Run history (${visibleRuns.length})</summary>
       <table>
         <tr><th>Commit</th><th>Date</th><th>Message</th><th>Machine</th></tr>
-        ${visibleRuns.map(r => {
-          const machineCell = r.machine
-            ? `<code>${escapeHtml(r.machine.fingerprint)}</code> ${escapeHtml(r.machine.cpu)}${r.machine.onBattery === true ? ' 🔋' : ''}`
-            : '—'
-          return `<tr><td><code>${escapeHtml(r.commit)}</code></td><td>${escapeHtml(r.timestamp.slice(0, 19).replace('T', ' '))}</td><td>${escapeHtml(r.commitMessage)}</td><td>${machineCell}</td></tr>`
-        }).join('')}
+        ${visibleRuns
+          .map(r => {
+            const machineCell = r.machine
+              ? `<code>${escapeHtml(r.machine.fingerprint)}</code> ${escapeHtml(r.machine.cpu)}${r.machine.onBattery === true ? ' 🔋' : ''}`
+              : '—'
+            return `<tr><td><code>${escapeHtml(r.commit)}</code></td><td>${escapeHtml(r.timestamp.slice(0, 19).replace('T', ' '))}</td><td>${escapeHtml(r.commitMessage)}</td><td>${machineCell}</td></tr>`
+          })
+          .join('')}
       </table>
     </details>
-    ${h.scenarios.map((_sc, i) => `
+    ${h.scenarios
+      .map(
+        (_sc, i) => `
       <div class="benchmarks-chart">
         <canvas id="benchmarks-canvas-${i}"></canvas>
       </div>
-    `).join('')}
+    `,
+      )
+      .join('')}
   `
 
   // Lazy-load Chart.js, then create one chart per scenario.
@@ -212,7 +231,10 @@ async function renderBenchmarksChartsInner(): Promise<void> {
     for (const run of visibleRuns) {
       const buckets = run.scenarios[sc.id] ?? {}
       for (const name of Object.keys(buckets)) {
-        if (!seen.has(name)) { seen.add(name); names.push(name) }
+        if (!seen.has(name)) {
+          seen.add(name)
+          names.push(name)
+        }
       }
     }
     if (names.length === 0) return
@@ -237,7 +259,10 @@ async function renderBenchmarksChartsInner(): Promise<void> {
     for (const run of visibleRuns) {
       const buckets = run.scenarios[sc.id] ?? {}
       for (const v of Object.values(buckets)) {
-        if (v) { unit = v.unit; break }
+        if (v) {
+          unit = v.unit
+          break
+        }
       }
       if (unit !== 'ms') break
     }
@@ -251,11 +276,17 @@ async function renderBenchmarksChartsInner(): Promise<void> {
         interaction: { mode: 'index', intersect: false },
         plugins: {
           title: { display: true, text: sc.title, font: { size: 14 }, color: textColor },
-          subtitle: { display: true, text: sc.description, font: { size: 11, style: 'italic' }, padding: { bottom: 12 }, color: textColor },
+          subtitle: {
+            display: true,
+            text: sc.description,
+            font: { size: 11, style: 'italic' },
+            padding: { bottom: 12 },
+            color: textColor,
+          },
           legend: { labels: { color: textColor } },
           tooltip: {
             callbacks: {
-              title: (items: { dataIndex: number }[]) => items.length > 0 ? xTooltips[items[0]!.dataIndex] : '',
+              title: (items: { dataIndex: number }[]) => (items.length > 0 ? xTooltips[items[0]!.dataIndex] : ''),
               label: (ctx: { parsed: { y: number | null }; dataset: { label: string } }) => {
                 const v = ctx.parsed.y
                 if (v === null || v === undefined) return `${ctx.dataset.label}: —`
@@ -292,5 +323,5 @@ function trimLeadingEmptyRuns(scenarios: ScenarioMeta[], runs: RunEntry[]): RunE
     }),
   )
 
-  return firstVisibleIndex < 0 || firstVisibleIndex === 0 ? runs : runs.slice(firstVisibleIndex)
+  return firstVisibleIndex <= 0 ? runs : runs.slice(firstVisibleIndex)
 }

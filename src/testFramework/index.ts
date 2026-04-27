@@ -32,7 +32,11 @@ interface RunTestParams {
  * Runs a .test.dvala file and returns structured results.
  * The runner is format-agnostic — use formatTap() or other formatters to render output.
  */
-export async function runTestFile({ testPath: filePath, testNamePattern, coverage }: RunTestParams): Promise<TestRunResult> {
+export async function runTestFile({
+  testPath: filePath,
+  testNamePattern,
+  coverage,
+}: RunTestParams): Promise<TestRunResult> {
   try {
     const source = readDvalaFile(filePath)
 
@@ -85,7 +89,10 @@ export async function runTestFile({ testPath: filePath, testNamePattern, coverag
     // When coverage is requested, accumulate a hit map across file load + all test bodies
     const coverageMap = coverage ? new Map<number, number>() : undefined
     const onNodeEval = coverageMap
-      ? (node: AstNode) => { const id = node[2]; coverageMap.set(id, (coverageMap.get(id) ?? 0) + 1) }
+      ? (node: AstNode) => {
+          const id = node[2]
+          coverageMap.set(id, (coverageMap.get(id) ?? 0) + 1)
+        }
       : undefined
 
     // Evaluate the test file — this populates the collector with test registrations
@@ -96,31 +103,46 @@ export async function runTestFile({ testPath: filePath, testNamePattern, coverag
     })
 
     if (fileResult.type !== 'completed') {
-      const error = fileResult.type === 'error' ? fileResult.error : new Error(`Unexpected result type: ${fileResult.type}`)
+      const error =
+        fileResult.type === 'error' ? fileResult.error : new Error(`Unexpected result type: ${fileResult.type}`)
       return { filePath, results: [], bailout: error }
     }
 
     // Run collected tests with timing
     const tests = collector.tests
     const runStart = performance.now()
-    const results: TestCaseResult[] = await Promise.all(tests.map(async (test: TestEntry) => {
-      if (testNamePattern && !testNamePattern.test(test.fullName)) {
-        return { name: test.fullName, status: 'skipped' as const, reason: `Not matching testNamePattern ${testNamePattern}` }
-      }
-      if (test.skip) {
-        return { name: test.fullName, status: 'skipped' as const }
-      }
-      const start = performance.now()
-      const result = await dvala.runAsync('let __testBody__ = perform(@dvala.host, "__testBody__"); __testBody__()', { effectHandlers: [hostHandler({ __testBody__: test.body })], onNodeEval })
-      const durationMs = performance.now() - start
-      if (result.type === 'error') {
-        return { name: test.fullName, status: 'failed' as const, error: result.error, durationMs }
-      }
-      if (result.type !== 'completed') {
-        return { name: test.fullName, status: 'failed' as const, error: new Error(`Unexpected result type: ${result.type}`), durationMs }
-      }
-      return { name: test.fullName, status: 'passed' as const, durationMs }
-    }))
+    const results: TestCaseResult[] = await Promise.all(
+      tests.map(async (test: TestEntry) => {
+        if (testNamePattern && !testNamePattern.test(test.fullName)) {
+          return {
+            name: test.fullName,
+            status: 'skipped' as const,
+            reason: `Not matching testNamePattern ${testNamePattern}`,
+          }
+        }
+        if (test.skip) {
+          return { name: test.fullName, status: 'skipped' as const }
+        }
+        const start = performance.now()
+        const result = await dvala.runAsync('let __testBody__ = perform(@dvala.host, "__testBody__"); __testBody__()', {
+          effectHandlers: [hostHandler({ __testBody__: test.body })],
+          onNodeEval,
+        })
+        const durationMs = performance.now() - start
+        if (result.type === 'error') {
+          return { name: test.fullName, status: 'failed' as const, error: result.error, durationMs }
+        }
+        if (result.type !== 'completed') {
+          return {
+            name: test.fullName,
+            status: 'failed' as const,
+            error: new Error(`Unexpected result type: ${result.type}`),
+            durationMs,
+          }
+        }
+        return { name: test.fullName, status: 'passed' as const, durationMs }
+      }),
+    )
     const durationMs = performance.now() - runStart
 
     // sourceMap from the last completed result — consistent across all runs within this instance
@@ -144,7 +166,12 @@ export async function runTest(params: RunTestParams): Promise<{ tap: string; suc
  * Discover and run all test files matching a glob pattern.
  * Used by `dvala test` (no args) with dvala.json config.
  */
-export async function runTestSuite(rootDir: string, testGlob: string, testNamePattern?: RegExp, coverage?: boolean): Promise<TestSuiteResult> {
+export async function runTestSuite(
+  rootDir: string,
+  testGlob: string,
+  testNamePattern?: RegExp,
+  coverage?: boolean,
+): Promise<TestSuiteResult> {
   const files = globSync(testGlob, { cwd: rootDir })
     .map(f => path.resolve(rootDir, f))
     .sort()
@@ -157,8 +184,7 @@ export async function runTestSuite(rootDir: string, testGlob: string, testNamePa
 }
 
 function readDvalaFile(dvalaPath: string): string {
-  if (!dvalaPath.endsWith('.dvala'))
-    throw new Error(`Expected .dvala file, got ${dvalaPath}`)
+  if (!dvalaPath.endsWith('.dvala')) throw new Error(`Expected .dvala file, got ${dvalaPath}`)
 
   return fs.readFileSync(dvalaPath, { encoding: 'utf-8' })
 }

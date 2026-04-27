@@ -11,15 +11,12 @@ import { isPersistentVector, PersistentMap, PersistentVector } from '../../utils
 
 function get(coll: Coll, key: string | number): Any | undefined {
   if (isObj(coll)) {
-    if (typeof key === 'string' && collHasKey(coll, key))
-      return toAny(coll.get(key))
+    if (typeof key === 'string' && collHasKey(coll, key)) return toAny(coll.get(key))
   } else if (typeof coll === 'string') {
-    if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.length)
-      return toAny(coll[key])
+    if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.length) return toAny(coll[key])
   } else {
     // PersistentVector
-    if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.size)
-      return toAny(coll.get(key))
+    if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.size) return toAny(coll.get(key))
   }
   return undefined
 }
@@ -37,8 +34,7 @@ function assoc(coll: Coll, key: string | number, value: Any, sourceCodeInfo?: So
       return `${coll.slice(0, key)}${value}${coll.slice(key + 1)}`
     }
     // Append when key equals size (PersistentVector.set() rejects out-of-bounds)
-    if (key === seqLength)
-      return coll.append(value)
+    if (key === seqLength) return coll.append(value)
     return coll.set(key, value)
   }
   assertString(key, sourceCodeInfo)
@@ -46,8 +42,10 @@ function assoc(coll: Coll, key: string | number, value: Any, sourceCodeInfo?: So
 }
 
 export const collectionNormalExpression: BuiltinNormalExpressions = {
-  'filter': {
-    evaluate: () => { throw new Error('filter is implemented in Dvala') },
+  filter: {
+    evaluate: () => {
+      throw new Error('filter is implemented in Dvala')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '((A[], (A) -> Boolean) -> A[]) & (({...}, (Unknown) -> Boolean) -> {...})',
@@ -81,8 +79,10 @@ filter(
       ],
     },
   },
-  'map': {
-    evaluate: () => { throw new Error('map is implemented in Dvala') },
+  map: {
+    evaluate: () => {
+      throw new Error('map is implemented in Dvala')
+    },
     arity: { min: 2 },
     docs: {
       type: '((A[], (A) -> B) -> B[]) & ((A[], A[], (A, A) -> B) -> B[]) & (({...}, (Unknown) -> Unknown) -> {...}) & (({...}, {...}, (Unknown, Unknown) -> Unknown) -> {...})',
@@ -108,8 +108,10 @@ filter(
       ],
     },
   },
-  'reduce': {
-    evaluate: () => { throw new Error('reduce is implemented in Dvala') },
+  reduce: {
+    evaluate: () => {
+      throw new Error('reduce is implemented in Dvala')
+    },
     arity: toFixedArity(3),
     docs: {
       type: '((A[], (B, A) -> B, B) -> B) & (({...}, (B, Unknown) -> B, B) -> B)',
@@ -121,8 +123,16 @@ filter(
         initial: { type: 'any' },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Runs `fun` function on each element of the `coll`, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value.',
-      seeAlso: ['collection.reduceRight', 'collection.reducei', 'collection.reductions', 'map', 'grid.cellReduce', 'grid.cellReducei'],
+      description:
+        'Runs `fun` function on each element of the `coll`, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value.',
+      seeAlso: [
+        'collection.reduceRight',
+        'collection.reducei',
+        'collection.reductions',
+        'map',
+        'grid.cellReduce',
+        'grid.cellReducei',
+      ],
       examples: [
         'reduce([1, 2, 3], +, 0)',
         'reduce([], +, 0)',
@@ -135,13 +145,12 @@ reduce(
       ],
     },
   },
-  'get': {
+  get: {
     evaluate: (params, sourceCodeInfo) => {
       const [coll, key] = params
       const defaultValue = toAny(params.get(2))
       assertStringOrNumber(key, sourceCodeInfo)
-      if (coll === null)
-        return defaultValue
+      if (coll === null) return defaultValue
 
       assertColl(coll, sourceCodeInfo)
       const result = get(coll, key)
@@ -168,15 +177,13 @@ reduce(
       category: 'collection',
       returns: { type: 'any' },
       args: {
-        'a': { type: 'collection' },
-        'b': { type: ['string', 'integer'] },
-        'notFound': { type: 'any', description: 'Default value to return if `b` is not found.' },
+        a: { type: 'collection' },
+        b: { type: ['string', 'integer'] },
+        notFound: { type: 'any', description: 'Default value to return if `b` is not found.' },
       },
-      variants: [
-        { argumentNames: ['a', 'b'] },
-        { argumentNames: ['a', 'b', 'notFound'] },
-      ],
-      description: 'Returns value in `a` mapped at `b`. When both `a` and `b` are concrete and the key is in bounds, the typechecker resolves the return to the precise element / field type; otherwise widens to `Unknown`.',
+      variants: [{ argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'notFound'] }],
+      description:
+        'Returns value in `a` mapped at `b`. When both `a` and `b` are concrete and the key is in bounds, the typechecker resolves the return to the precise element / field type; otherwise widens to `Unknown`.',
       seeAlso: ['collection.getIn', 'contains', 'find', 'nth'],
       examples: [
         '[1, 2, 3] get 1',
@@ -228,18 +235,15 @@ get(
       ],
     },
   },
-  'count': {
+  count: {
     evaluate: ([coll], sourceCodeInfo): number => {
-      if (coll === null)
-        return 0
+      if (coll === null) return 0
 
-      if (typeof coll === 'string')
-        return coll.length
+      if (typeof coll === 'string') return coll.length
 
       assertColl(coll, sourceCodeInfo)
       // Both PersistentVector and PersistentMap expose `.size`
-      if (isPersistentVector(coll))
-        return coll.size
+      if (isPersistentVector(coll)) return coll.size
 
       // Must be PersistentMap (Obj) — cast to access .size
       return (coll as PersistentMap).size
@@ -255,20 +259,12 @@ get(
       variants: [{ argumentNames: ['coll'] }],
       description: 'Returns number of elements in `coll`.',
       seeAlso: ['isEmpty'],
-      examples: [
-        'count([1, 2, 3])',
-        'count([])',
-        'count({ a: 1 })',
-        'count("")',
-        'count("Albert")',
-        'count(null)',
-      ],
+      examples: ['count([1, 2, 3])', 'count([])', 'count({ a: 1 })', 'count("")', 'count("Albert")', 'count(null)'],
     },
   },
-  'contains': {
+  contains: {
     evaluate: ([coll, key], sourceCodeInfo): boolean => {
-      if (coll === null)
-        return false
+      if (coll === null) return false
 
       assertColl(coll, sourceCodeInfo)
       if (isString(coll)) {
@@ -279,8 +275,7 @@ get(
         assertAny(key, sourceCodeInfo)
         // Iterate PersistentVector to find matching element
         for (const elem of coll) {
-          if (deepEqual(asAny(elem), key, sourceCodeInfo))
-            return true
+          if (deepEqual(asAny(elem), key, sourceCodeInfo)) return true
         }
         return false
       }
@@ -297,7 +292,8 @@ get(
         b: { type: ['string', 'integer'] },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns `true` if `a` contains `b`, otherwise returns `false`. For strings, it checks if substring is included.',
+      description:
+        'Returns `true` if `a` contains `b`, otherwise returns `false`. For strings, it checks if substring is included.',
       seeAlso: ['get', 'find', 'indexOf'],
       examples: [
         '[1, 2, 3] contains 1',
@@ -331,7 +327,7 @@ contains(
       ],
     },
   },
-  'assoc': {
+  assoc: {
     evaluate: ([coll, key, value], sourceCodeInfo): Coll => {
       assertColl(coll, sourceCodeInfo)
       assertStringOrNumber(key, sourceCodeInfo)
@@ -349,10 +345,7 @@ contains(
         value: { type: 'any' },
         kvs: { type: 'any', description: 'Key-value pairs to associate.', rest: true },
       },
-      variants: [
-        { argumentNames: ['coll', 'key', 'value'] },
-        { argumentNames: ['coll', 'key', 'value', 'kvs'] },
-      ],
+      variants: [{ argumentNames: ['coll', 'key', 'value'] }, { argumentNames: ['coll', 'key', 'value', 'kvs'] }],
       description: `
 Add or replace the value of element \`key\` to \`value\` in \`coll\`. Repeated for all key-value pairs in \`kvs\`.
 If \`coll\` is an 'array', \`key\` must be \`number\` satisfying \`0 <=\` \`key\` \`<= length\`.`,
@@ -433,10 +426,7 @@ assoc(
         b: { type: 'collection' },
         colls: { type: 'collection', rest: true },
       },
-      variants: [
-        { argumentNames: ['a'] },
-        { argumentNames: ['a', 'colls'] },
-      ],
+      variants: [{ argumentNames: ['a'] }, { argumentNames: ['a', 'colls'] }],
       description: 'Concatenates collections into one collection.',
       seeAlso: ['sequence.mapcat', 'str', 'join', 'push', 'sequence.unshift'],
       examples: [

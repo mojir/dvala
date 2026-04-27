@@ -49,10 +49,7 @@ export function calcHistogram(vector: number[], bins: number): [number, number, 
       // Place maximum value in the last bin
       histogram[bins - 1]![2] += 1
     } else {
-      const binIndex = Math.min(
-        Math.floor((value - min) / binSize),
-        bins - 1,
-      )
+      const binIndex = Math.min(Math.floor((value - min) / binSize), bins - 1)
       histogram[binIndex]![2] += 1
     }
   }

@@ -8,8 +8,7 @@ import { getCliFunctionSignature } from './getCliFunctionSignature'
 import { getCliTitle } from './getCliTitle'
 
 export function getCliDocumentation(fmt: Colorizer, name: string) {
-  if (!isCoreApiName(name))
-    return `No documentation available for ${name}`
+  if (!isCoreApiName(name)) return `No documentation available for ${name}`
 
   const reference = apiReference[name]
 
@@ -19,10 +18,12 @@ ${isFunctionReference(reference) ? getCliFunctionSignature(fmt, reference) : ''}
 Description
 ${formatCliDescription(fmt, reference.description.trim(), reference)}
 
-${isFunctionReference(reference)
-  ? `Arguments
+${
+  isFunctionReference(reference)
+    ? `Arguments
 ${getArgumentInfo(fmt, reference)}`
-  : ''}
+    : ''
+}
 
 Examples
 ${getCliFunctionExamples(fmt, reference)}`

@@ -6,6 +6,6 @@ export const varianceReductionFunction: ReductionFunctionDefinition<'variance'> 
 }
 
 export const sampleVarianceReductionFunction: ReductionFunctionDefinition<'sampleVariance'> = {
-  'sampleVariance': vector => calcSampleVariance(vector),
-  'minLength': 2,
+  sampleVariance: vector => calcSampleVariance(vector),
+  minLength: 2,
 }

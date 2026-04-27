@@ -1,7 +1,31 @@
 import type { SpecialExpressionName } from '../src/builtin'
-import type { BuiltinNormalExpressions, ExampleEntry, FunctionDocs, SpecialExpressionDocs } from '../src/builtin/interface'
+import type {
+  BuiltinNormalExpressions,
+  ExampleEntry,
+  FunctionDocs,
+  SpecialExpressionDocs,
+} from '../src/builtin/interface'
 import type { DvalaModule } from '../src/builtin/modules/interface'
-import type { ArrayApiName, AssertionApiName, BitwiseApiName, Category, CollectionApiName, CoreApiName, CoreNormalExpressionName, DataType, FunctionalApiName, MathApiName, MetaApiName, MiscApiName, ModuleExpressionName, ObjectApiName, PredicateApiName, RegularExpressionApiName, SequenceApiName, StringApiName } from './api'
+import type {
+  ArrayApiName,
+  AssertionApiName,
+  BitwiseApiName,
+  Category,
+  CollectionApiName,
+  CoreApiName,
+  CoreNormalExpressionName,
+  DataType,
+  FunctionalApiName,
+  MathApiName,
+  MetaApiName,
+  MiscApiName,
+  ModuleExpressionName,
+  ObjectApiName,
+  PredicateApiName,
+  RegularExpressionApiName,
+  SequenceApiName,
+  StringApiName,
+} from './api'
 import { specialExpressions } from '../src/builtin'
 import { arrayNormalExpression } from '../src/builtin/core/array'
 // Core categories — all derive reference from co-located docs
@@ -94,25 +118,49 @@ function moduledDocsToReference(module: DvalaModule): Record<string, FunctionRef
 }
 
 // Derive all core category references from co-located docs
-const assertionRef = docsToReference(assertionNormalExpression) as Record<AssertionApiName, FunctionReference<'assertion'>>
-const bitwiseReference = docsToReference(bitwiseNormalExpression) as Record<BitwiseApiName, FunctionReference<'bitwise'>>
+const assertionRef = docsToReference(assertionNormalExpression) as Record<
+  AssertionApiName,
+  FunctionReference<'assertion'>
+>
+const bitwiseReference = docsToReference(bitwiseNormalExpression) as Record<
+  BitwiseApiName,
+  FunctionReference<'bitwise'>
+>
 const arrayRef = docsToReference(arrayNormalExpression) as Record<ArrayApiName, FunctionReference<'array'>>
-const collectionRef = docsToReference(collectionNormalExpression) as Record<CollectionApiName, FunctionReference<'collection'>>
-const functionalRef = docsToReference(functionalNormalExpression) as Record<FunctionalApiName, FunctionReference<'functional'>>
+const collectionRef = docsToReference(collectionNormalExpression) as Record<
+  CollectionApiName,
+  FunctionReference<'collection'>
+>
+const functionalRef = docsToReference(functionalNormalExpression) as Record<
+  FunctionalApiName,
+  FunctionReference<'functional'>
+>
 const mathRef = docsToReference(mathNormalExpression) as Record<MathApiName, FunctionReference<'math'>>
 const emptyRef: Record<string, FunctionReference> = {}
 const emptyEffectRef: Record<string, EffectReference> = {}
-const metaRef = docsToReference(getMetaNormalExpression(emptyRef, emptyEffectRef)) as Record<MetaApiName, FunctionReference<'meta'>>
+const metaRef = docsToReference(getMetaNormalExpression(emptyRef, emptyEffectRef)) as Record<
+  MetaApiName,
+  FunctionReference<'meta'>
+>
 const miscRef = docsToReference(miscNormalExpression) as Record<MiscApiName, FunctionReference<'misc'>>
 const objectRef = docsToReference(objectNormalExpression) as Record<ObjectApiName, FunctionReference<'object'>>
-const predicatesRef = docsToReference(predicatesNormalExpression) as Record<PredicateApiName, FunctionReference<'predicate'>>
-const regexpRef = docsToReference(regexpNormalExpression) as Record<RegularExpressionApiName, FunctionReference<'regular-expression'>>
+const predicatesRef = docsToReference(predicatesNormalExpression) as Record<
+  PredicateApiName,
+  FunctionReference<'predicate'>
+>
+const regexpRef = docsToReference(regexpNormalExpression) as Record<
+  RegularExpressionApiName,
+  FunctionReference<'regular-expression'>
+>
 const sequenceRef = docsToReference(sequenceNormalExpression) as Record<SequenceApiName, FunctionReference<'sequence'>>
 const stringRef = docsToReference(stringNormalExpression) as Record<StringApiName, FunctionReference<'string'>>
 
 // --- Helper: derive special expression reference from co-located docs ---
 
-function specialExpressionDocsToReference(): Record<string, FunctionReference<'special-expression'> | CustomReference<'special-expression'>> {
+function specialExpressionDocsToReference(): Record<
+  string,
+  FunctionReference<'special-expression'> | CustomReference<'special-expression'>
+> {
   const result: Record<string, FunctionReference<'special-expression'> | CustomReference<'special-expression'>> = {}
   for (const [name, type] of Object.entries(specialExpressionTypes)) {
     const expr = specialExpressions[type]
@@ -210,7 +258,13 @@ export interface EffectReference extends CommonReference<'effect' | 'playground-
   variants: Variant[]
 }
 
-export type Reference<T extends Category = Category> = FunctionReference<T> | CustomReference<T> | ShorthandReference | DatatypeReference | PreludeReference | EffectReference
+export type Reference<T extends Category = Category> =
+  | FunctionReference<T>
+  | CustomReference<T>
+  | ShorthandReference
+  | DatatypeReference
+  | PreludeReference
+  | EffectReference
 
 export function isFunctionReference<T extends Category>(ref: Reference<T>): ref is FunctionReference<T> {
   return 'returns' in ref && 'args' in ref && 'variants' in ref && !('effect' in ref)
@@ -304,7 +358,12 @@ const functionReference = {
 }
 
 // Core API reference (always available)
-export const apiReference: Record<CoreApiName, Reference> = sortByCategory({ ...functionReference, ...shorthand, ...datatype, ...prelude })
+export const apiReference: Record<CoreApiName, Reference> = sortByCategory({
+  ...functionReference,
+  ...shorthand,
+  ...datatype,
+  ...prelude,
+})
 
 // Effect reference — derived from co-located docs in standardEffects.ts
 function deriveEffectReference(): Record<string, EffectReference> {
@@ -329,7 +388,11 @@ function deriveEffectReference(): Record<string, EffectReference> {
 export const effectReference: Record<string, EffectReference> = deriveEffectReference()
 
 // All references including modules and effects (for search and full documentation)
-export const allReference: Record<string, Reference> = sortByCategory({ ...apiReference, ...moduleReference, ...effectReference })
+export const allReference: Record<string, Reference> = sortByCategory({
+  ...apiReference,
+  ...moduleReference,
+  ...effectReference,
+})
 
 function sortByCategory<T extends Record<string, Reference>>(ref: T): T {
   return Object.fromEntries(

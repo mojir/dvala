@@ -17,8 +17,7 @@ function isEqual(params: Iterable<unknown>, sourceCodeInfo: SourceCodeInfo | und
   const iter = params[Symbol.iterator]()
   const firstAny = asAny(iter.next().value, sourceCodeInfo)
   for (let next = iter.next(); !next.done; next = iter.next()) {
-    if (!deepEqual(firstAny, asAny(next.value, sourceCodeInfo), sourceCodeInfo))
-      return false
+    if (!deepEqual(firstAny, asAny(next.value, sourceCodeInfo), sourceCodeInfo)) return false
   }
   return true
 }
@@ -39,10 +38,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: 'any' },
         ys: { type: 'any', rest: true },
       },
-      variants: [
-        { argumentNames: ['x'] },
-        { argumentNames: ['x', 'ys'] },
-      ],
+      variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'ys'] }],
       description: 'Returns `true` if all `values` are structaul equal to each other, otherwise result is `false`.',
       seeAlso: ['!='],
       examples: [
@@ -81,28 +77,18 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: 'any' },
         ys: { type: 'any', rest: true },
       },
-      variants: [
-        { argumentNames: ['x'] },
-        { argumentNames: ['x', 'ys'] },
-      ],
-      description: 'Returns `true` if all `values` are not equal to each other, otherwise result is `false`. `(!= a b c)` is same as `(not (== a b c))`.',
+      variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'ys'] }],
+      description:
+        'Returns `true` if all `values` are not equal to each other, otherwise result is `false`. `(!= a b c)` is same as `(not (== a b c))`.',
       seeAlso: ['=='],
-      examples: [
-        '1 != 2',
-        '3 != 3',
-        '!=(3)',
-        '!=(3, 3, 2)',
-        '!=("3", "2", "1", "0",)',
-        '!=(0, -0)',
-      ],
+      examples: ['1 != 2', '3 != 3', '!=(3)', '!=(3, 3, 2)', '!=("3", "2", "1", "0",)', '!=(0, -0)'],
     },
   },
   '>': {
     evaluate: ([first, ...rest], sourceCodeInfo): boolean => {
       let currentValue = asStringOrNumber(first)
       for (const param of rest) {
-        if (compare(currentValue, asStringOrNumber(param), sourceCodeInfo) <= 0)
-          return false
+        if (compare(currentValue, asStringOrNumber(param), sourceCodeInfo) <= 0) return false
 
         currentValue = asStringOrNumber(param)
       }
@@ -119,19 +105,10 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: ['number', 'string'] },
         ys: { type: ['number', 'string'], rest: true },
       },
-      variants: [
-        { argumentNames: ['x'] },
-        { argumentNames: ['x', 'ys'] },
-      ],
+      variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'ys'] }],
       description: 'Returns `true` if `x` and `ys` are in decreasing order, `false` otherwise.',
       seeAlso: ['<', '>=', '<=', 'compare'],
-      examples: [
-        '>(1, 0)',
-        '>(1.01, 1)',
-        '>(1, 1)',
-        '>(4, 3, 2, 1)',
-        '>(3, 2, 2, 1)',
-      ],
+      examples: ['>(1, 0)', '>(1.01, 1)', '>(1, 1)', '>(4, 3, 2, 1)', '>(3, 2, 2, 1)'],
     },
   },
 
@@ -139,8 +116,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first, ...rest], sourceCodeInfo): boolean => {
       let currentValue = asStringOrNumber(first)
       for (const param of rest) {
-        if (compare(currentValue, asStringOrNumber(param), sourceCodeInfo) >= 0)
-          return false
+        if (compare(currentValue, asStringOrNumber(param), sourceCodeInfo) >= 0) return false
 
         currentValue = asStringOrNumber(param)
       }
@@ -157,27 +133,17 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: ['number', 'string'] },
         ys: { type: ['number', 'string'], rest: true },
       },
-      variants: [
-        { argumentNames: ['x'] },
-        { argumentNames: ['x', 'ys'] },
-      ],
+      variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'ys'] }],
       description: 'Returns `true` if `x` and `ys` are in increasing order, `false` otherwise.',
       seeAlso: ['>', '>=', '<=', 'compare'],
-      examples: [
-        '<(0, 1)',
-        '<(1, 1.01)',
-        '<(1, 1)',
-        '<(1, 2, 2, 3)',
-        '<("a", "b")',
-      ],
+      examples: ['<(0, 1)', '<(1, 1.01)', '<(1, 1)', '<(1, 2, 2, 3)', '<("a", "b")'],
     },
   },
   '>=': {
     evaluate: ([first, ...rest], sourceCodeInfo): boolean => {
       let currentValue = asStringOrNumber(first)
       for (const param of rest) {
-        if (compare(currentValue, asStringOrNumber(param), sourceCodeInfo) < 0)
-          return false
+        if (compare(currentValue, asStringOrNumber(param), sourceCodeInfo) < 0) return false
 
         currentValue = asStringOrNumber(param)
       }
@@ -194,29 +160,17 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: ['number', 'string'] },
         ys: { type: ['number', 'string'], rest: true },
       },
-      variants: [
-        { argumentNames: ['x'] },
-        { argumentNames: ['x', 'ys'] },
-      ],
+      variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'ys'] }],
       description: 'Returns `true` if `x` and `ys` are in non increasing order, `false` otherwise.',
       seeAlso: ['>', '<', '<=', 'compare'],
-      examples: [
-        '1 >= 1',
-        '0 >= 1',
-        '>=(1, 0)',
-        '>=(1.01, 1)',
-        '>=(1, 1)',
-        '>=(4, 3, 2, 1)',
-        '>=(3, 2, 2, 1)',
-      ],
+      examples: ['1 >= 1', '0 >= 1', '>=(1, 0)', '>=(1.01, 1)', '>=(1, 1)', '>=(4, 3, 2, 1)', '>=(3, 2, 2, 1)'],
     },
   },
   '<=': {
     evaluate: ([first, ...rest], sourceCodeInfo): boolean => {
       let currentValue = asStringOrNumber(first)
       for (const param of rest) {
-        if (compare(currentValue, asStringOrNumber(param), sourceCodeInfo) > 0)
-          return false
+        if (compare(currentValue, asStringOrNumber(param), sourceCodeInfo) > 0) return false
 
         currentValue = asStringOrNumber(param)
       }
@@ -233,20 +187,10 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: ['number', 'string'] },
         ys: { type: ['number', 'string'], rest: true },
       },
-      variants: [
-        { argumentNames: ['x'] },
-        { argumentNames: ['x', 'ys'] },
-      ],
+      variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'ys'] }],
       description: 'Returns `true` if `x` and `ys` are in non decreasing order, `false` otherwise.',
       seeAlso: ['>', '<', '>=', 'compare'],
-      examples: [
-        '1 <= 1',
-        '<=(0, 1)',
-        '<=(1, 1.01)',
-        '<=(1, 1)',
-        '<=(1, 2, 3, 4)',
-        '<=(1, 2, 2, 3)',
-      ],
+      examples: ['1 <= 1', '<=(0, 1)', '<=(1, 1.01)', '<=(1, 1)', '<=(1, 2, 3, 4)', '<=(1, 2, 2, 3)'],
     },
   },
   // Logical negation. Parser emits `!x` as `Call('!', [x])`, and
@@ -265,15 +209,10 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Logical negation. Usable as a first-class function value, e.g. `filter(bs, !)`.',
       seeAlso: ['&&', '||', 'isBoolean'],
-      examples: [
-        '!true',
-        '!false',
-        '!(1 == 2)',
-        '!!true',
-      ],
+      examples: ['!true', '!false', '!(1 == 2)', '!!true'],
     },
   },
-  'compare': {
+  compare: {
     evaluate: ([a, b], sourceCodeInfo): number => {
       return compare(a, b, sourceCodeInfo)
     },
@@ -287,7 +226,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         b: { type: ['number', 'string', 'atom'] },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Compares two values. Returns `-1` if `a` < `b`, `1` if `a` > `b` and `0` if `a` and `b` have the same sort order. Works on numbers, strings, and atoms. Note: the `<`, `>`, `<=`, `>=` operators only accept numbers and strings, not atoms — use `compare` for atom ordering.',
+      description:
+        'Compares two values. Returns `-1` if `a` < `b`, `1` if `a` > `b` and `0` if `a` and `b` have the same sort order. Works on numbers, strings, and atoms. Note: the `<`, `>`, `<=`, `>=` operators only accept numbers and strings, not atoms — use `compare` for atom ordering.',
       seeAlso: ['<', '>', '<=', '>=', 'sort', 'sequence.sortBy'],
       examples: [
         'compare(0, 1)',
@@ -298,7 +238,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'effectName': {
+  effectName: {
     evaluate: ([first], sourceCodeInfo): string => {
       return asEffect(first, sourceCodeInfo).name
     },
@@ -313,14 +253,13 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['e'] }],
       description: 'Returns the name of an effect reference as a string.',
       seeAlso: ['isEffect', 'qualifiedName', 'qualifiedMatcher'],
-      examples: [
-        'effectName(@dvala.error)',
-        'effectName(@llm.complete)',
-      ],
+      examples: ['effectName(@dvala.error)', 'effectName(@llm.complete)'],
     },
   },
-  'macroexpand': {
-    evaluate: (): never => { throw new Error('macroexpand is handled by the evaluator') },
+  macroexpand: {
+    evaluate: (): never => {
+      throw new Error('macroexpand is handled by the evaluator')
+    },
     arity: { min: 1 },
     docs: {
       type: '(Unknown, Unknown) -> Unknown',
@@ -332,14 +271,18 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['macroFn', 'args'] }],
       hideOperatorForm: true,
-      description: 'Calls a macro\'s body with the given AST arguments and returns the expanded AST as data, without evaluating it. Use quote...end blocks to construct the AST arguments.',
+      description:
+        "Calls a macro's body with the given AST arguments and returns the expanded AST as data, without evaluating it. Use quote...end blocks to construct the AST arguments.",
       examples: [
         'let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end)',
-        { code: 'let { prettyPrint } = import("ast"); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint', noCheck: true },
+        {
+          code: 'let { prettyPrint } = import("ast"); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint',
+          noCheck: true,
+        },
       ],
     },
   },
-  'qualifiedName': {
+  qualifiedName: {
     evaluate: ([first]): string | null => {
       // Effect references have a qualified name
       if (isEffect(first)) {
@@ -357,15 +300,13 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         entity: { type: 'any', description: 'An effect reference or any other value.' },
       },
       variants: [{ argumentNames: ['entity'] }],
-      description: 'Returns the qualified name (dotted DNS-style identifier) of an entity, or null if it has none. Works on effect references.',
+      description:
+        'Returns the qualified name (dotted DNS-style identifier) of an entity, or null if it has none. Works on effect references.',
       seeAlso: ['effectName', 'qualifiedMatcher', 'isEffect'],
-      examples: [
-        'qualifiedName(@dvala.io.print)',
-        'qualifiedName(42)',
-      ],
+      examples: ['qualifiedName(@dvala.io.print)', 'qualifiedName(42)'],
     },
   },
-  'qualifiedMatcher': {
+  qualifiedMatcher: {
     evaluate: ([pattern], sourceCodeInfo): QualifiedMatcherFunction => {
       if (typeof pattern === 'string') {
         return {
@@ -397,10 +338,14 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       category: 'meta',
       returns: { type: 'function' },
       args: {
-        pattern: { type: ['string', 'regexp'], description: 'A wildcard pattern or regexp to match against qualified names.' },
+        pattern: {
+          type: ['string', 'regexp'],
+          description: 'A wildcard pattern or regexp to match against qualified names.',
+        },
       },
       variants: [{ argumentNames: ['pattern'] }],
-      description: 'Returns a predicate function that matches any entity with a qualified name (effect references). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
+      description:
+        'Returns a predicate function that matches any entity with a qualified name (effect references). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
       seeAlso: ['qualifiedName', 'effectName', 'isEffect'],
       examples: [
         'qualifiedMatcher("dvala.*")(@dvala.error)',
@@ -409,30 +354,19 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'typeOf': {
+  typeOf: {
     evaluate: ([value]): string => {
-      if (value === null || value === undefined)
-        return 'null'
-      if (typeof value === 'boolean')
-        return 'boolean'
-      if (typeof value === 'number')
-        return 'number'
-      if (typeof value === 'string')
-        return 'string'
-      if (isAtom(value))
-        return 'atom'
-      if (isEffect(value))
-        return 'effect'
-      if (isRegularExpression(value))
-        return 'regexp'
-      if (isMacroFunction(value))
-        return 'macro'
-      if (isHandlerFunction(value))
-        return 'handler'
-      if (isDvalaFunction(value))
-        return 'function'
-      if (isPersistentVector(value) || Array.isArray(value))
-        return 'array'
+      if (value === null || value === undefined) return 'null'
+      if (typeof value === 'boolean') return 'boolean'
+      if (typeof value === 'number') return 'number'
+      if (typeof value === 'string') return 'string'
+      if (isAtom(value)) return 'atom'
+      if (isEffect(value)) return 'effect'
+      if (isRegularExpression(value)) return 'regexp'
+      if (isMacroFunction(value)) return 'macro'
+      if (isHandlerFunction(value)) return 'handler'
+      if (isDvalaFunction(value)) return 'function'
+      if (isPersistentVector(value) || Array.isArray(value)) return 'array'
       return 'object'
     },
     arity: toFixedArity(1),
@@ -444,8 +378,21 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: 'any', description: 'The value to inspect.' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns a string representing the type of `x`. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"atom"`, `"array"`, `"object"`, `"function"`, `"macro"`, `"regexp"`, and `"effect"`.',
-      seeAlso: ['isNumber', 'isString', 'isBoolean', 'isNull', 'isAtom', 'isArray', 'isObject', 'isFunction', 'isMacro', 'isRegexp', 'isEffect'],
+      description:
+        'Returns a string representing the type of `x`. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"atom"`, `"array"`, `"object"`, `"function"`, `"macro"`, `"regexp"`, and `"effect"`.',
+      seeAlso: [
+        'isNumber',
+        'isString',
+        'isBoolean',
+        'isNull',
+        'isAtom',
+        'isArray',
+        'isObject',
+        'isFunction',
+        'isMacro',
+        'isRegexp',
+        'isEffect',
+      ],
       examples: [
         'typeOf(42)',
         'typeOf("hello")',
@@ -459,8 +406,10 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'raise': {
-    evaluate: () => { throw new Error('raise is implemented in Dvala') },
+  raise: {
+    evaluate: () => {
+      throw new Error('raise is implemented in Dvala')
+    },
     arity: { min: 1, max: 2 },
     docs: {
       type: '((String) -> @{dvala.error} Never) & ((String, Unknown) -> @{dvala.error} Never)',
@@ -472,7 +421,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['message'] }, { argumentNames: ['message', 'data'] }],
       hideOperatorForm: true,
-      description: 'Raises an error by performing `@dvala.error` with a structured payload `{ type: "UserError", message, data }`. Convenience wrapper — use `perform(@dvala.error, ...)` directly for custom error types or additional fields.',
+      description:
+        'Raises an error by performing `@dvala.error` with a structured payload `{ type: "UserError", message, data }`. Convenience wrapper — use `perform(@dvala.error, ...)` directly for custom error types or additional fields.',
       seeAlso: ['perform'],
       examples: [
         'do with handler @dvala.error(err) -> resume("caught") end; raise("oops") end',

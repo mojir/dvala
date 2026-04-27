@@ -9,20 +9,18 @@ import { isPersistentVector, PersistentVector } from '../../utils/persistent'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const sequenceNormalExpression: BuiltinNormalExpressions = {
-  'nth': {
+  nth: {
     evaluate: (params, sourceCodeInfo): Any => {
       const [seq, i] = params
       const defaultValue = toAny(params.get(2))
 
       assertNumber(i, sourceCodeInfo, { integer: true })
 
-      if (seq === null)
-        return defaultValue
+      if (seq === null) return defaultValue
 
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
-        if (i >= 0 && i < seq.length)
-          return toAny(seq[i])
+        if (i >= 0 && i < seq.length) return toAny(seq[i])
         return defaultValue
       }
       if (i >= 0 && i < seq.size) {
@@ -38,17 +36,15 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       category: 'sequence',
       returns: { type: 'any' },
       args: {
-        'a': { type: 'sequence' },
-        'b': { type: 'integer' },
-        'seq': { type: ['sequence', 'null'] },
-        'n': { type: 'integer' },
-        'notFound': { type: 'any' },
+        a: { type: 'sequence' },
+        b: { type: 'integer' },
+        seq: { type: ['sequence', 'null'] },
+        n: { type: 'integer' },
+        notFound: { type: 'any' },
       },
-      variants: [
-        { argumentNames: ['seq', 'n'] },
-        { argumentNames: ['seq', 'n', 'notFound'] },
-      ],
-      description: 'Accesses element `n` of `seq`. Accessing out-of-bounds indices returns `not-found`, if present, else `null`.',
+      variants: [{ argumentNames: ['seq', 'n'] }, { argumentNames: ['seq', 'n', 'notFound'] }],
+      description:
+        'Accesses element `n` of `seq`. Accessing out-of-bounds indices returns `not-found`, if present, else `null`.',
       seeAlso: ['first', 'second', 'last', 'get', 'slice'],
       examples: [
         '[1, 2, 3] nth 1',
@@ -66,14 +62,12 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'first': {
+  first: {
     evaluate: ([array], sourceCodeInfo): Any => {
-      if (array === null)
-        return null
+      if (array === null) return null
 
       assertSeq(array, sourceCodeInfo)
-      if (typeof array === 'string')
-        return toAny(array[0])
+      if (typeof array === 'string') return toAny(array[0])
 
       return toAny(array.get(0))
     },
@@ -86,21 +80,15 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['seq'] }],
       description: 'Returns the first element of `seq`. If `seq` is empty or `null`, `null` is returned.',
       seeAlso: ['second', 'last', 'nth', 'rest', 'next'],
-      examples: [
-        'first(["Albert", "Mojir", 160, [1, 2]])',
-        'first([])',
-        'first(null)',
-      ],
+      examples: ['first(["Albert", "Mojir", 160, [1, 2]])', 'first([])', 'first(null)'],
     },
   },
-  'last': {
+  last: {
     evaluate: ([array], sourceCodeInfo): Any => {
-      if (array === null)
-        return null
+      if (array === null) return null
 
       assertSeq(array, sourceCodeInfo)
-      if (typeof array === 'string')
-        return toAny(array.length > 0 ? array[array.length - 1] : undefined)
+      if (typeof array === 'string') return toAny(array.length > 0 ? array[array.length - 1] : undefined)
 
       return toAny(array.get(array.size - 1))
     },
@@ -113,16 +101,10 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['seq'] }],
       description: 'Returns the last element of `seq`. If `seq` is empty, `null` is returned.',
       seeAlso: ['first', 'second', 'nth', 'pop'],
-      examples: [
-        'last(["Albert", "Mojir", 160, [1, 2]])',
-        'last([1, 2])',
-        'last([1])',
-        'last([])',
-        'last(null)',
-      ],
+      examples: ['last(["Albert", "Mojir", 160, [1, 2]])', 'last([1, 2])', 'last([1])', 'last([])', 'last(null)'],
     },
   },
-  'pop': {
+  pop: {
     evaluate: ([seq], sourceCodeInfo): Seq => {
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
@@ -140,17 +122,13 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['seq'] }],
       description: 'Returns a copy of `seq` with last element removed. If `seq` is empty `null` is returned.',
       seeAlso: ['push', 'last'],
-      examples: [
-        'pop([1, 2, 3])',
-        'pop([])',
-      ],
+      examples: ['pop([1, 2, 3])', 'pop([])'],
     },
   },
-  'indexOf': {
+  indexOf: {
     evaluate: ([seq, value], sourceCodeInfo): number | null => {
       assertAny(value, sourceCodeInfo)
-      if (seq === null)
-        return null
+      if (seq === null) return null
 
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
@@ -185,7 +163,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'push': {
+  push: {
     evaluate: ([seq, ...values], sourceCodeInfo): Seq => {
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
@@ -225,12 +203,11 @@ l`,
       ],
     },
   },
-  'rest': {
+  rest: {
     evaluate: ([seq], sourceCodeInfo): Arr | string => {
       assertSeq(seq, sourceCodeInfo)
       if (isPersistentVector(seq)) {
-        if (seq.size <= 1)
-          return PersistentVector.empty()
+        if (seq.size <= 1) return PersistentVector.empty()
 
         return PersistentVector.from([...seq].slice(1))
       }
@@ -257,17 +234,15 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
       ],
     },
   },
-  'next': {
+  next: {
     evaluate: ([seq], sourceCodeInfo): Arr | string | null => {
       assertSeq(seq, sourceCodeInfo)
       if (isPersistentVector(seq)) {
-        if (seq.size <= 1)
-          return null
+        if (seq.size <= 1) return null
 
         return PersistentVector.from([...seq].slice(1))
       }
-      if (seq.length <= 1)
-        return null
+      if (seq.length <= 1) return null
 
       return seq.substring(1)
     },
@@ -278,7 +253,8 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
       returns: { type: ['sequence', 'null'] },
       args: { seq: { type: 'sequence' } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'If `seq` is an array, returns a new array with all but the first element from `seq`. If `seq` has less than two elements, `null` is returned. For string `seq` returns all but the first characters in `seq`. If length of string `seq` is less than two, `null` is returned.',
+      description:
+        'If `seq` is an array, returns a new array with all but the first element from `seq`. If `seq` has less than two elements, `null` is returned. For string `seq` returns all but the first characters in `seq`. If length of string `seq` is less than two, `null` is returned.',
       seeAlso: ['rest', 'first'],
       examples: [
         'next(["Albert", "Mojir", 160, [1, 2]])',
@@ -290,10 +266,9 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
       ],
     },
   },
-  'reverse': {
+  reverse: {
     evaluate: ([seq], sourceCodeInfo): Any => {
-      if (seq === null)
-        return null
+      if (seq === null) return null
 
       assertSeq(seq, sourceCodeInfo)
       if (isPersistentVector(seq)) {
@@ -309,24 +284,18 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
       returns: { type: ['sequence', 'null'] },
       args: { seq: { type: ['sequence', 'null'] } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'If `seq` is an array, creates a new array with the elements from `seq` in reversed order. If `seq` is a string, returns new reversed string.',
+      description:
+        'If `seq` is an array, creates a new array with the elements from `seq` in reversed order. If `seq` is a string, returns new reversed string.',
       seeAlso: ['sort'],
-      examples: [
-        'reverse(["Albert", "Mojir", 160, [1, 2]])',
-        'reverse([])',
-        'reverse("Albert")',
-        'reverse(null)',
-      ],
+      examples: ['reverse(["Albert", "Mojir", 160, [1, 2]])', 'reverse([])', 'reverse("Albert")', 'reverse(null)'],
     },
   },
-  'second': {
+  second: {
     evaluate: ([seq], sourceCodeInfo): Any => {
-      if (seq === null)
-        return null
+      if (seq === null) return null
 
       assertSeq(seq, sourceCodeInfo)
-      if (typeof seq === 'string')
-        return toAny(seq[1])
+      if (typeof seq === 'string') return toAny(seq[1])
 
       return toAny(seq.get(1))
     },
@@ -337,17 +306,13 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
       returns: { type: 'any' },
       args: { seq: { type: ['sequence', 'null'] } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'Returns the second element of `seq`. If `seq` has less than two elements or is `null`, `null` is returned.',
+      description:
+        'Returns the second element of `seq`. If `seq` has less than two elements or is `null`, `null` is returned.',
       seeAlso: ['first', 'last', 'nth'],
-      examples: [
-        'second(["Albert", "Mojir", 160, [1, 2]])',
-        'second([1])',
-        'second([])',
-        'second(null)',
-      ],
+      examples: ['second(["Albert", "Mojir", 160, [1, 2]])', 'second([1])', 'second([])', 'second(null)'],
     },
   },
-  'slice': {
+  slice: {
     evaluate: (params, sourceCodeInfo): Any => {
       const [seq, from, to] = params
       assertSeq(seq, sourceCodeInfo)
@@ -378,21 +343,16 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
         start: { type: 'integer', description: 'Defaults to `0`.' },
         stop: { type: 'integer', description: 'Defaults to length of sequence + 1.' },
       },
-      variants: [
-        { argumentNames: ['seq', 'start'] },
-        { argumentNames: ['seq', 'start', 'stop'] },
-      ],
+      variants: [{ argumentNames: ['seq', 'start'] }, { argumentNames: ['seq', 'start', 'stop'] }],
       description: 'Returns a copy of a portion of `seq` from index `start` (inclusive) to `stop` (exclusive).',
       seeAlso: ['take', 'drop', 'sequence.splice', 'nth'],
-      examples: [
-        '[1, 2, 3, 4, 5] slice 2',
-        'slice([1, 2, 3, 4, 5], 2, 4)',
-        'slice([1, 2, 3, 4, 5], 2)',
-      ],
+      examples: ['[1, 2, 3, 4, 5] slice 2', 'slice([1, 2, 3, 4, 5], 2, 4)', 'slice([1, 2, 3, 4, 5], 2)'],
     },
   },
-  'some': {
-    evaluate: () => { throw new Error('some is implemented in Dvala') },
+  some: {
+    evaluate: () => {
+      throw new Error('some is implemented in Dvala')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(A[], (A) -> Boolean) -> A',
@@ -405,7 +365,8 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Returns the first element that passes the test implemented by `fun`. I no element was found, `null` is returned.',
+      description:
+        'Returns the first element that passes the test implemented by `fun`. I no element was found, `null` is returned.',
       seeAlso: ['sequence.position', 'collection.isAny', 'find'],
       examples: [
         `
@@ -428,16 +389,21 @@ some(
   [],
   -> $ > 10
 )`,
-        { code: `
+        {
+          code: `
 some(
   null,
   -> $ > 10
-)`, noCheck: true },
+)`,
+          noCheck: true,
+        },
       ],
     },
   },
-  'sort': {
-    evaluate: () => { throw new Error('sort is implemented in Dvala') },
+  sort: {
+    evaluate: () => {
+      throw new Error('sort is implemented in Dvala')
+    },
     arity: { min: 1, max: 2 },
     docs: {
       type: '((A[]) -> A[]) & ((A[], (A, A) -> Number) -> A[])',
@@ -449,11 +415,9 @@ some(
         seq: { type: 'sequence' },
         fun: { type: 'function' },
       },
-      variants: [
-        { argumentNames: ['seq'] },
-        { argumentNames: ['seq', 'fun'] },
-      ],
-      description: 'Returns a new sequence with the elements from `seq` sorted according to `fun`. If no `fun` is supplied, builtin `compare` will be used.',
+      variants: [{ argumentNames: ['seq'] }, { argumentNames: ['seq', 'fun'] }],
+      description:
+        'Returns a new sequence with the elements from `seq` sorted according to `fun`. If no `fun` is supplied, builtin `compare` will be used.',
       seeAlso: ['sequence.sortBy', 'compare', 'reverse', 'vector.sortIndices'],
       examples: [
         '[3, 1, 2] sort (a, b) -> b - a',
@@ -471,13 +435,12 @@ sort(
       ],
     },
   },
-  'take': {
+  take: {
     evaluate: ([input, n], sourceCodeInfo): Seq => {
       assertNumber(n, sourceCodeInfo)
       assertSeq(input, sourceCodeInfo)
       const num = Math.max(Math.ceil(n), 0)
-      if (isPersistentVector(input))
-        return PersistentVector.from([...input].slice(0, num))
+      if (isPersistentVector(input)) return PersistentVector.from([...input].slice(0, num))
 
       return input.slice(0, num)
     },
@@ -504,7 +467,7 @@ sort(
       ],
     },
   },
-  'takeLast': {
+  takeLast: {
     evaluate: ([array, n], sourceCodeInfo): Seq => {
       assertSeq(array, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo)
@@ -530,20 +493,15 @@ sort(
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Constructs a new array with the `n` last elements from `seq`.',
       seeAlso: ['take', 'dropLast'],
-      examples: [
-        'takeLast([1, 2, 3, 4, 5], 3)',
-        '[1, 2, 3, 4, 5] takeLast 3',
-        'takeLast([1, 2, 3, 4, 5], 0)',
-      ],
+      examples: ['takeLast([1, 2, 3, 4, 5], 3)', '[1, 2, 3, 4, 5] takeLast 3', 'takeLast([1, 2, 3, 4, 5], 0)'],
     },
   },
-  'drop': {
+  drop: {
     evaluate: ([input, n], sourceCodeInfo): Seq => {
       assertNumber(n, sourceCodeInfo)
       const num = Math.max(Math.ceil(n), 0)
       assertSeq(input, sourceCodeInfo)
-      if (isPersistentVector(input))
-        return PersistentVector.from([...input].slice(num))
+      if (isPersistentVector(input)) return PersistentVector.from([...input].slice(num))
 
       return input.slice(num)
     },
@@ -561,15 +519,10 @@ sort(
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Constructs a new array/string with the `n` first elements dropped from `seq`.',
       seeAlso: ['dropLast', 'dropWhile', 'take', 'slice', 'sequence.splitAt'],
-      examples: [
-        'drop([1, 2, 3, 4, 5], 3)',
-        '[1, 2, 3, 4, 5] drop 0',
-        'drop("Albert", 2)',
-        'drop("Albert", 50)',
-      ],
+      examples: ['drop([1, 2, 3, 4, 5], 3)', '[1, 2, 3, 4, 5] drop 0', 'drop("Albert", 2)', 'drop("Albert", 50)'],
     },
   },
-  'dropLast': {
+  dropLast: {
     evaluate: ([array, n], sourceCodeInfo): Seq => {
       assertSeq(array, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo)
@@ -595,15 +548,13 @@ sort(
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Constructs a new array with the `n` last elements dropped from `seq`.',
       seeAlso: ['drop', 'takeLast'],
-      examples: [
-        'dropLast([1, 2, 3, 4, 5], 3)',
-        '[1, 2, 3, 4, 5] dropLast 3',
-        'dropLast([1, 2, 3, 4, 5], 0)',
-      ],
+      examples: ['dropLast([1, 2, 3, 4, 5], 3)', '[1, 2, 3, 4, 5] dropLast 3', 'dropLast([1, 2, 3, 4, 5], 0)'],
     },
   },
-  'takeWhile': {
-    evaluate: () => { throw new Error('takeWhile is implemented in Dvala') },
+  takeWhile: {
+    evaluate: () => {
+      throw new Error('takeWhile is implemented in Dvala')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(A[], (A) -> Boolean) -> A[]',
@@ -616,7 +567,8 @@ sort(
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Returns the members of `seq` in order, stopping before the first one for which `predicate` returns a falsy value.',
+      description:
+        'Returns the members of `seq` in order, stopping before the first one for which `predicate` returns a falsy value.',
       seeAlso: ['take', 'dropWhile', 'sequence.splitWith'],
       examples: [
         `takeWhile(
@@ -630,8 +582,10 @@ sort(
       ],
     },
   },
-  'dropWhile': {
-    evaluate: () => { throw new Error('dropWhile is implemented in Dvala') },
+  dropWhile: {
+    evaluate: () => {
+      throw new Error('dropWhile is implemented in Dvala')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(A[], (A) -> Boolean) -> A[]',
@@ -644,7 +598,8 @@ sort(
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Returns the members of `seq` in order, skipping the fist elements for witch the `predicate` returns a truethy value.',
+      description:
+        'Returns the members of `seq` in order, skipping the fist elements for witch the `predicate` returns a truethy value.',
       seeAlso: ['drop', 'takeWhile', 'sequence.splitWith'],
       examples: [
         `dropWhile(

@@ -111,12 +111,12 @@ export interface NormalBuiltinFunction extends GenericDvalaFunction {
 export interface SpecialBuiltinFunction extends GenericDvalaFunction {
   functionType: 'SpecialBuiltin'
   specialBuiltinSymbolType:
-    | typeof specialExpressionTypes['&&']
-    | typeof specialExpressionTypes['||']
-    | typeof specialExpressionTypes['array']
-    | typeof specialExpressionTypes['object']
-    | typeof specialExpressionTypes['recur']
-    | typeof specialExpressionTypes['??']
+    | (typeof specialExpressionTypes)['&&']
+    | (typeof specialExpressionTypes)['||']
+    | (typeof specialExpressionTypes)['array']
+    | (typeof specialExpressionTypes)['object']
+    | (typeof specialExpressionTypes)['recur']
+    | (typeof specialExpressionTypes)['??']
 }
 
 export interface ModuleFunction extends GenericDvalaFunction {
@@ -199,13 +199,21 @@ export type StringNode = AstNode<typeof NodeTypes.Str, string>
 export type AtomNode = AstNode<typeof NodeTypes.Atom, string>
 export type TemplateStringNode = AstNode<typeof NodeTypes.TmplStr, (StringNode | AstNode)[]>
 
-export type ExpressionNode = NormalExpressionNode | SpecialExpressionNode | NumberNode | StringNode | AtomNode | TemplateStringNode
+export type ExpressionNode =
+  | NormalExpressionNode
+  | SpecialExpressionNode
+  | NumberNode
+  | StringNode
+  | AtomNode
+  | TemplateStringNode
 export type UserDefinedSymbolNode = AstNode<typeof NodeTypes.Sym, string>
 export type BuiltinSymbolNode = AstNode<typeof NodeTypes.Builtin, string>
 export type SpecialSymbolNode = AstNode<typeof NodeTypes.Special, SpecialExpressionType>
 export type SymbolNode = UserDefinedSymbolNode | BuiltinSymbolNode | SpecialSymbolNode
 export type ReservedNode = AstNode<typeof NodeTypes.Reserved, ReservedSymbol>
-export type SpecialExpressionNode<T extends [SpecialExpressionType, ...unknown[]] = [SpecialExpressionType, ...unknown[]]> = AstNode<typeof NodeTypes.SpecialExpression, T> // [name, params]
+export type SpecialExpressionNode<
+  T extends [SpecialExpressionType, ...unknown[]] = [SpecialExpressionType, ...unknown[]],
+> = AstNode<typeof NodeTypes.SpecialExpression, T> // [name, params]
 
 /**
  * Formatting hints stored in Call node payloads.
@@ -218,7 +226,10 @@ export interface CallHints {
   isPipe?: boolean
 }
 
-export type NormalExpressionNodeWithName = AstNode<typeof NodeTypes.Call, [BuiltinSymbolNode | UserDefinedSymbolNode, AstNode[], CallHints?]> // [fn, args, hints?]
+export type NormalExpressionNodeWithName = AstNode<
+  typeof NodeTypes.Call,
+  [BuiltinSymbolNode | UserDefinedSymbolNode, AstNode[], CallHints?]
+> // [fn, args, hints?]
 export type NormalExpressionNodeExpression = AstNode<typeof NodeTypes.Call, [AstNode, AstNode[], CallHints?]> // [fn, args, hints?]
 export type NormalExpressionNode = NormalExpressionNodeWithName | NormalExpressionNodeExpression
 export const bindingTargetTypes = {
@@ -230,12 +241,18 @@ export const bindingTargetTypes = {
   wildcard: 'wildcard',
 } as const
 
-type BindingTargetType = typeof bindingTargetTypes[keyof typeof bindingTargetTypes]
+type BindingTargetType = (typeof bindingTargetTypes)[keyof typeof bindingTargetTypes]
 
 type GenericTarget<T extends BindingTargetType, Payload extends unknown[]> = [T, Payload, number]
 
-type SymbolBindingTarget = GenericTarget<typeof bindingTargetTypes.symbol, [SymbolNode, AstNode | undefined /* default value */]>
-type RestBindingTarget = GenericTarget<typeof bindingTargetTypes.rest, [string, AstNode | undefined /* default value */]>
+type SymbolBindingTarget = GenericTarget<
+  typeof bindingTargetTypes.symbol,
+  [SymbolNode, AstNode | undefined /* default value */]
+>
+type RestBindingTarget = GenericTarget<
+  typeof bindingTargetTypes.rest,
+  [string, AstNode | undefined /* default value */]
+>
 /**
  * A single entry in an object binding target. `keyNodeId` holds the
  * source position of the KEY token — distinct from the entry's target
@@ -249,12 +266,24 @@ export interface ObjectBindingEntry {
   target: BindingTarget
 }
 
-type ObjectBindingTarget = GenericTarget<typeof bindingTargetTypes.object, [ObjectBindingEntry[], AstNode | undefined /* default value */]>
-export type ArrayBindingTarget = GenericTarget<typeof bindingTargetTypes.array, [(BindingTarget | null)[], AstNode | undefined /* default value */]>
+type ObjectBindingTarget = GenericTarget<
+  typeof bindingTargetTypes.object,
+  [ObjectBindingEntry[], AstNode | undefined /* default value */]
+>
+export type ArrayBindingTarget = GenericTarget<
+  typeof bindingTargetTypes.array,
+  [(BindingTarget | null)[], AstNode | undefined /* default value */]
+>
 type LiteralBindingTarget = GenericTarget<typeof bindingTargetTypes.literal, [AstNode /* literal expression */]>
 type WildcardBindingTarget = GenericTarget<typeof bindingTargetTypes.wildcard, []>
 
-export type BindingTarget = SymbolBindingTarget | RestBindingTarget | ObjectBindingTarget | ArrayBindingTarget | LiteralBindingTarget | WildcardBindingTarget
+export type BindingTarget =
+  | SymbolBindingTarget
+  | RestBindingTarget
+  | ObjectBindingTarget
+  | ArrayBindingTarget
+  | LiteralBindingTarget
+  | WildcardBindingTarget
 
 export interface SourceMapPosition {
   source: number // index into sources[]

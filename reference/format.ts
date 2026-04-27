@@ -64,10 +64,12 @@ function formatFunctionDoc(ref: FunctionReference): string {
   // Signatures
   lines.push('## Signatures')
   for (const variant of ref.variants) {
-    const argList = variant.argumentNames.map(name => {
-      const arg = ref.args[name]
-      return arg?.rest ? `...${name}` : name
-    }).join(', ')
+    const argList = variant.argumentNames
+      .map(name => {
+        const arg = ref.args[name]
+        return arg?.rest ? `...${name}` : name
+      })
+      .join(', ')
     lines.push(`  ${ref.title}(${argList}) -> ${typeToString(ref.returns)}`)
   }
   if (ref._isOperator) {
@@ -147,12 +149,15 @@ function formatEffectDoc(ref: EffectReference): string {
 
   lines.push('## Signatures')
   for (const variant of ref.variants) {
-    const argList = variant.argumentNames.length > 0
-      ? `, ${variant.argumentNames.map(name => {
-        const arg = ref.args[name]
-        return arg?.rest ? `...${name}` : name
-      }).join(', ')}`
-      : ''
+    const argList =
+      variant.argumentNames.length > 0
+        ? `, ${variant.argumentNames
+            .map(name => {
+              const arg = ref.args[name]
+              return arg?.rest ? `...${name}` : name
+            })
+            .join(', ')}`
+        : ''
     lines.push(`  perform(@${ref.title}${argList}) -> ${typeToString(ref.returns)}`)
   }
   lines.push('')
@@ -241,18 +246,12 @@ function appendExamples(lines: string[], ref: { examples: ExampleEntry[] }): voi
 
 /** Format a Reference into plain-text documentation. */
 export function formatDoc(ref: Reference): string {
-  if (isFunctionReference(ref))
-    return formatFunctionDoc(ref)
-  if (isCustomReference(ref))
-    return formatCustomDoc(ref)
-  if (isEffectReference(ref))
-    return formatEffectDoc(ref)
-  if (isShorthandReference(ref))
-    return formatShorthandDoc(ref)
-  if (isDatatypeReference(ref))
-    return formatDatatypeDoc(ref)
-  if (isPreludeReference(ref))
-    return formatPreludeDoc(ref)
+  if (isFunctionReference(ref)) return formatFunctionDoc(ref)
+  if (isCustomReference(ref)) return formatCustomDoc(ref)
+  if (isEffectReference(ref)) return formatEffectDoc(ref)
+  if (isShorthandReference(ref)) return formatShorthandDoc(ref)
+  if (isDatatypeReference(ref)) return formatDatatypeDoc(ref)
+  if (isPreludeReference(ref)) return formatPreludeDoc(ref)
   return `# ${(ref as Reference).title}\n\n${(ref as Reference).description}`
 }
 
@@ -272,8 +271,8 @@ export function lookupDoc(name: string): { ref: Reference } | { ambiguous: strin
 
   // Fuzzy: search for matching keys
   if (!ref) {
-    const matches = Object.keys(allReference).filter(k =>
-      k === name || k.endsWith(`.${name}`) || allReference[k]!.title === name,
+    const matches = Object.keys(allReference).filter(
+      k => k === name || k.endsWith(`.${name}`) || allReference[k]!.title === name,
     )
     if (matches.length === 1) {
       ref = allReference[matches[0]!]
@@ -296,14 +295,23 @@ export function listCoreExpressions(): string {
   lines.push('## Special Expressions')
   for (const name of Object.keys(specialExpressionTypes).sort()) {
     const ref = allReference[name]
-    const desc = ref ? ` - ${ref.description.split('\n')[0]?.replace(/`(.+?)`/g, '$1').slice(0, 80)}` : ''
+    const desc = ref
+      ? ` - ${ref.description
+          .split('\n')[0]
+          ?.replace(/`(.+?)`/g, '$1')
+          .slice(0, 80)}`
+      : ''
     lines.push(`  ${name}${desc}`)
   }
 
   lines.push('')
   lines.push('## Core Functions')
   for (const [name, ref] of Object.entries(normalExpressionReference)) {
-    const desc = ref.description.split('\n')[0]?.replace(/`(.+?)`/g, '$1').slice(0, 80) ?? ''
+    const desc =
+      ref.description
+        .split('\n')[0]
+        ?.replace(/`(.+?)`/g, '$1')
+        .slice(0, 80) ?? ''
     lines.push(`  ${name} - ${desc}`)
   }
 
@@ -323,12 +331,15 @@ export function listModules(): string {
 /** List all functions in a specific module. Returns null if the module is unknown. */
 export function listModuleExpressions(moduleName: string): string | null {
   const fns = Object.keys(moduleReference).filter(k => k.startsWith(`${moduleName}.`))
-  if (fns.length === 0)
-    return null
+  if (fns.length === 0) return null
 
   const lines = fns.map(name => {
     const ref = moduleReference[name as keyof typeof moduleReference]
-    const desc = ref?.description.split('\n')[0]?.replace(/`(.+?)`/g, '$1').slice(0, 80) ?? ''
+    const desc =
+      ref?.description
+        .split('\n')[0]
+        ?.replace(/`(.+?)`/g, '$1')
+        .slice(0, 80) ?? ''
     return `  ${name} - ${desc}`
   })
   return lines.join('\n')
@@ -363,9 +374,7 @@ export function listDatatypes(): string {
 
 /** Format all example programs. */
 export function formatExamples(): string {
-  const lines = examples.map(ex =>
-    `## ${ex.name}\n${ex.description}\n\`\`\`dvala\n${ex.code}\n\`\`\`\n`,
-  )
+  const lines = examples.map(ex => `## ${ex.name}\n${ex.description}\n\`\`\`dvala\n${ex.code}\n\`\`\`\n`)
   return lines.join('\n')
 }
 

@@ -81,6 +81,9 @@ export function listPrependAll<T>(arr: readonly T[], list: PersistentList<T>): P
 export function listSize<T>(list: PersistentList<T>): number {
   let n = 0
   let node = list
-  while (node !== null) { n++; node = node.tail }
+  while (node !== null) {
+    n++
+    node = node.tail
+  }
   return n
 }

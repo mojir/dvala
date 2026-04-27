@@ -19,9 +19,24 @@ function getNumberOperands(params: Iterable<unknown>, sourceCodeInfo: SourceCode
 // Applies fn and throws if the result is not finite (NaN or Infinity).
 // Core math is scalar-only, so this keeps the runtime checks aligned with the
 // builtin docs and the typechecker.
-function checkedFn(fn: (a: number, b: number) => number, a: number, b: number, sourceCodeInfo: SourceCodeInfo | undefined): number
-function checkedFn(fn: (a: number) => number, a: number, b: undefined, sourceCodeInfo: SourceCodeInfo | undefined): number
-function checkedFn(fn: (...args: number[]) => number, a: number, b: number | undefined, sourceCodeInfo: SourceCodeInfo | undefined): number {
+function checkedFn(
+  fn: (a: number, b: number) => number,
+  a: number,
+  b: number,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+): number
+function checkedFn(
+  fn: (a: number) => number,
+  a: number,
+  b: undefined,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+): number
+function checkedFn(
+  fn: (...args: number[]) => number,
+  a: number,
+  b: number | undefined,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+): number {
   const result = b === undefined ? fn(a) : fn(a, b)
   if (!Number.isFinite(result)) {
     throw new ArithmeticError('Number is not finite', sourceCodeInfo)
@@ -29,9 +44,7 @@ function checkedFn(fn: (...args: number[]) => number, a: number, b: number | und
   return result
 }
 
-function unaryMathOp(
-  fn: (val: number) => number,
-): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
+function unaryMathOp(fn: (val: number) => number): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
   return (params, sourceCodeInfo) => {
     const operands = getNumberOperands(params, sourceCodeInfo)
     return checkedFn(fn, operands[0]!, undefined, sourceCodeInfo)
@@ -52,15 +65,14 @@ function reduceMathOp(
   fn: (a: number, b: number) => number,
 ): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
   return (params, sourceCodeInfo) => {
-    if (params.size === 0)
-      return identity
+    if (params.size === 0) return identity
     const operands = getNumberOperands(params, sourceCodeInfo)
     return operands.reduce((a, b) => fn(a, b), identity)
   }
 }
 
 export const mathNormalExpression: BuiltinNormalExpressions = {
-  'inc': {
+  inc: {
     evaluate: unaryMathOp(val => val + 1),
     arity: toFixedArity(1),
     docs: {
@@ -73,15 +85,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'The `inc` function increments a number by 1.',
       seeAlso: ['dec', '+'],
-      examples: [
-        'inc(0)',
-        'inc(1)',
-        'inc(100.1)',
-        'inc(-2.5)',
-      ],
+      examples: ['inc(0)', 'inc(1)', 'inc(100.1)', 'inc(-2.5)'],
     },
   },
-  'dec': {
+  dec: {
     evaluate: unaryMathOp(val => val - 1),
     arity: toFixedArity(1),
     docs: {
@@ -94,12 +101,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'The `dec` function decrements a number by 1.',
       seeAlso: ['inc', '-'],
-      examples: [
-        'dec(0)',
-        'dec(1)',
-        'dec(100.1)',
-        'dec(-2.5)',
-      ],
+      examples: ['dec(0)', 'dec(1)', 'dec(100.1)', 'dec(-2.5)'],
     },
   },
   '+': {
@@ -117,14 +119,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['xs'] }],
       description: 'The `+` function adds numbers. With no arguments it returns `0`.',
       seeAlso: ['-', '*', '/', 'inc'],
-      examples: [
-        '1 + 2',
-        '1 + 20 + 30',
-        '+(1, 2, 3, 4)',
-        '+()',
-        '+(1)',
-        '-2 + 2',
-      ],
+      examples: ['1 + 2', '1 + 20 + 30', '+(1, 2, 3, 4)', '+()', '+(1)', '-2 + 2'],
     },
   },
   '*': {
@@ -142,15 +137,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['xs'] }],
       description: 'The `*` function multiplies numbers. With no arguments it returns `1`.',
       seeAlso: ['/', '+', '-', '^'],
-      examples: [
-        '6 * 7',
-        '-1 * 4',
-        '*(4, 7)',
-        '*(1, 2, 3, 4, 5)',
-        '*()',
-        '*(8)',
-        '2 * 2',
-      ],
+      examples: ['6 * 7', '-1 * 4', '*(4, 7)', '*(1, 2, 3, 4, 5)', '*()', '*(8)', '2 * 2'],
     },
   },
   '/': {
@@ -178,17 +165,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         xs: { type: 'number', rest: true },
       },
       variants: [{ argumentNames: ['xs'] }],
-      description: 'The `/` function divides numbers. With no arguments it returns `1`, and with one argument it returns the reciprocal.',
+      description:
+        'The `/` function divides numbers. With no arguments it returns `1`, and with one argument it returns the reciprocal.',
       seeAlso: ['*', '+', '-', 'quot', 'mod', '%'],
-      examples: [
-        '12 / 100',
-        '-1 / 4',
-        '/(7, 4)',
-        '/(1, 2, 4, 8)',
-        '/()',
-        '/(8)',
-        '2 / 5',
-      ],
+      examples: ['12 / 100', '-1 / 4', '/(7, 4)', '/(1, 2, 4, 8)', '/()', '/(8)', '2 / 5'],
     },
   },
   '-': {
@@ -200,8 +180,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       const operands = getNumberOperands(params, sourceCodeInfo)
 
       const [first, ...rest] = operands
-      if (rest.length === 0)
-        return checkedFn(val => -val, first!, undefined, sourceCodeInfo)
+      if (rest.length === 0) return checkedFn(val => -val, first!, undefined, sourceCodeInfo)
 
       return rest.reduce((result, param) => checkedFn((a, b) => a - b, result, param, sourceCodeInfo), first!)
     },
@@ -216,19 +195,13 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         xs: { type: 'number', rest: true },
       },
       variants: [{ argumentNames: ['xs'] }],
-      description: 'Computes the difference between the first number and the rest. With one argument it negates the number.',
+      description:
+        'Computes the difference between the first number and the rest. With one argument it negates the number.',
       seeAlso: ['+', '*', '/', 'dec', 'abs'],
-      examples: [
-        '50 - 8',
-        '1 - 1 - 1',
-        '-()',
-        '-(4, 2)',
-        '-(4, 3, 2, 1,)',
-        'let a = 0; let b = 2; a - b',
-      ],
+      examples: ['50 - 8', '1 - 1 - 1', '-()', '-(4, 2)', '-(4, 3, 2, 1,)', 'let a = 0; let b = 2; a - b'],
     },
   },
-  'quot': {
+  quot: {
     evaluate: binaryMathOp((a, b) => Math.trunc(a / b)),
     arity: toFixedArity(2),
     docs: {
@@ -258,7 +231,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'mod': {
+  mod: {
     evaluate: binaryMathOp((a, b) => a - b * Math.floor(a / b)),
     arity: toFixedArity(2),
     docs: {
@@ -272,14 +245,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'The `mod` function computes the modulo of division with the same sign as the divisor.',
       seeAlso: ['%', 'quot', '/'],
-      examples: [
-        'mod(5, 3)',
-        'mod(5.2, 3.1)',
-        'mod(-5, 3)',
-        '5 mod -3',
-        '-5 mod -3',
-        'mod(13.75, 3.25)',
-      ],
+      examples: ['mod(5, 3)', 'mod(5.2, 3.1)', 'mod(-5, 3)', '5 mod -3', '-5 mod -3', 'mod(13.75, 3.25)'],
     },
   },
   '%': {
@@ -296,17 +262,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'The `%` function computes the remainder of division with the same sign as the dividend.',
       seeAlso: ['mod', 'quot', '/'],
-      examples: [
-        '5 % 3',
-        '5.2 % 3.1',
-        '-5 % 3',
-        '%(5, -3)',
-        '%(-5, -3)',
-        '%(13.75, 3.25)',
-      ],
+      examples: ['5 % 3', '5.2 % 3.1', '-5 % 3', '%(5, -3)', '%(-5, -3)', '%(13.75, 3.25)'],
     },
   },
-  'sqrt': {
+  sqrt: {
     evaluate: unaryMathOp(val => Math.sqrt(val)),
     arity: toFixedArity(1),
     docs: {
@@ -319,15 +278,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'The `sqrt` function calculates the square root of a number.',
       seeAlso: ['cbrt', '^'],
-      examples: [
-        'sqrt(0)',
-        'sqrt(9)',
-        'sqrt(2)',
-        'sqrt(1)',
-      ],
+      examples: ['sqrt(0)', 'sqrt(9)', 'sqrt(2)', 'sqrt(1)'],
     },
   },
-  'cbrt': {
+  cbrt: {
     evaluate: unaryMathOp(val => Math.cbrt(val)),
     arity: toFixedArity(1),
     docs: {
@@ -340,13 +294,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'The `cbrt` function calculates the cube root of a number.',
       seeAlso: ['sqrt', '^'],
-      examples: [
-        'cbrt(0)',
-        'cbrt(27)',
-        'cbrt(2)',
-        'cbrt(1)',
-        'cbrt(-8)',
-      ],
+      examples: ['cbrt(0)', 'cbrt(27)', 'cbrt(2)', 'cbrt(1)', 'cbrt(-8)'],
     },
   },
   '^': {
@@ -363,17 +311,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'The `^` function computes exponentiation, raising the first number to the power of the second.',
       seeAlso: ['sqrt', 'cbrt', '*', 'math.ln'],
-      examples: [
-        '2 ^ 3',
-        '2 ^ 0',
-        '2 ^ -3',
-        '^(-2, 3)',
-        '^(-2, -3)',
-        '^(16, 0.5)',
-      ],
+      examples: ['2 ^ 3', '2 ^ 0', '2 ^ -3', '^(-2, 3)', '^(-2, -3)', '^(16, 0.5)'],
     },
   },
-  'round': {
+  round: {
     evaluate: ([value, decimals], sourceCodeInfo): Any => {
       const [operand] = getNumberOperands([value], sourceCodeInfo)
       if (decimals === undefined || decimals === 0) {
@@ -397,11 +338,9 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         a: { type: 'number' },
         b: { type: 'integer' },
       },
-      variants: [
-        { argumentNames: ['a'] },
-        { argumentNames: ['a', 'b'] },
-      ],
-      description: 'The `round` function rounds a number to the nearest integer or to a specified number of decimal places.',
+      variants: [{ argumentNames: ['a'] }, { argumentNames: ['a', 'b'] }],
+      description:
+        'The `round` function rounds a number to the nearest integer or to a specified number of decimal places.',
       seeAlso: ['floor', 'ceil', 'trunc'],
       examples: [
         'round(2)',
@@ -416,7 +355,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'trunc': {
+  trunc: {
     evaluate: unaryMathOp(val => Math.trunc(val)),
     arity: toFixedArity(1),
     docs: {
@@ -427,7 +366,8 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `trunc` function truncates a number toward zero, removing its decimal portion without rounding.',
+      description:
+        'The `trunc` function truncates a number toward zero, removing its decimal portion without rounding.',
       seeAlso: ['round', 'floor', 'ceil', 'quot'],
       examples: [
         'trunc(2)',
@@ -440,7 +380,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'floor': {
+  floor: {
     evaluate: unaryMathOp(val => Math.floor(val)),
     arity: toFixedArity(1),
     docs: {
@@ -453,18 +393,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'The `floor` function returns the largest integer less than or equal to a number.',
       seeAlso: ['ceil', 'round', 'trunc'],
-      examples: [
-        'floor(2)',
-        'floor(2.49)',
-        'floor(2.5)',
-        'floor(-2.49)',
-        'floor(-2.5)',
-        'floor(-2.501)',
-        'floor(0.4)',
-      ],
+      examples: ['floor(2)', 'floor(2.49)', 'floor(2.5)', 'floor(-2.49)', 'floor(-2.5)', 'floor(-2.501)', 'floor(0.4)'],
     },
   },
-  'ceil': {
+  ceil: {
     evaluate: unaryMathOp(val => Math.ceil(val)),
     arity: toFixedArity(1),
     docs: {
@@ -477,18 +409,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'The `ceil` function returns the smallest integer greater than or equal to a number.',
       seeAlso: ['floor', 'round', 'trunc'],
-      examples: [
-        'ceil(2)',
-        'ceil(2.49)',
-        'ceil(2.5)',
-        'ceil(-2.49)',
-        'ceil(-2.5)',
-        'ceil(-2.501)',
-        'ceil(0.4)',
-      ],
+      examples: ['ceil(2)', 'ceil(2.49)', 'ceil(2.5)', 'ceil(-2.49)', 'ceil(-2.5)', 'ceil(-2.501)', 'ceil(0.4)'],
     },
   },
-  'min': {
+  min: {
     evaluate: (params, sourceCodeInfo): number => {
       if (params.size === 1 && isVector(params.get(0))) {
         const vector = assertNonEmptyVector(params.get(0), sourceCodeInfo)
@@ -512,22 +436,13 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         xs: { type: 'number', rest: true },
         vector: { type: 'vector' },
       },
-      variants: [
-        { argumentNames: ['xs'] },
-        { argumentNames: ['vector'] },
-      ],
+      variants: [{ argumentNames: ['xs'] }, { argumentNames: ['vector'] }],
       description: 'Returns the smallest value. Accepts either multiple numbers or a single vector of numbers.',
       seeAlso: ['max', 'vector.span', 'vector.minIndex'],
-      examples: [
-        '2 min 3',
-        'min(2, 0, 1)',
-        'min(2, -1, 1)',
-        'min([2, 0, -1])',
-        '12 min 14',
-      ],
+      examples: ['2 min 3', 'min(2, 0, 1)', 'min(2, -1, 1)', 'min([2, 0, -1])', '12 min 14'],
     },
   },
-  'max': {
+  max: {
     evaluate: (params, sourceCodeInfo): number => {
       if (params.size === 1 && isVector(params.get(0))) {
         const vector = assertNonEmptyVector(params.get(0), sourceCodeInfo)
@@ -551,22 +466,13 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         xs: { type: 'number', rest: true },
         vector: { type: 'vector' },
       },
-      variants: [
-        { argumentNames: ['xs'] },
-        { argumentNames: ['vector'] },
-      ],
+      variants: [{ argumentNames: ['xs'] }, { argumentNames: ['vector'] }],
       description: 'Returns the largest value. Accepts either multiple numbers or a single vector of numbers.',
       seeAlso: ['min', 'vector.span', 'vector.maxIndex'],
-      examples: [
-        '2 max 3',
-        'max(2, 0, 1)',
-        'max(2, -1, 1)',
-        'max([2, 0, -1])',
-        '4 max 2',
-      ],
+      examples: ['2 max 3', 'max(2, 0, 1)', 'max(2, -1, 1)', 'max([2, 0, -1])', '4 max 2'],
     },
   },
-  'abs': {
+  abs: {
     evaluate: unaryMathOp(val => Math.abs(val)),
     arity: toFixedArity(1),
     docs: {
@@ -579,15 +485,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'The `abs` function returns the absolute value of a number.',
       seeAlso: ['sign', '-'],
-      examples: [
-        'abs(-2.3)',
-        'abs(0)',
-        'abs(2.5)',
-        'abs(-0)',
-      ],
+      examples: ['abs(-2.3)', 'abs(0)', 'abs(2.5)', 'abs(-0)'],
     },
   },
-  'sign': {
+  sign: {
     evaluate: unaryMathOp(val => Math.sign(val)),
     arity: toFixedArity(1),
     docs: {
@@ -602,15 +503,10 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         x: { type: 'number' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `sign` function returns the sign of a number: `-1` for negative, `0` for zero, and `1` for positive.',
+      description:
+        'The `sign` function returns the sign of a number: `-1` for negative, `0` for zero, and `1` for positive.',
       seeAlso: ['abs'],
-      examples: [
-        'sign(-2.3)',
-        'sign(-0)',
-        'sign(0)',
-        'sign(12312)',
-        'sign(-2)',
-      ],
+      examples: ['sign(-2.3)', 'sign(-0)', 'sign(0)', 'sign(12312)', 'sign(-2)'],
     },
   },
 }

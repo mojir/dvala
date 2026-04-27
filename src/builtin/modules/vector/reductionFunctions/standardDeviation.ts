@@ -6,6 +6,6 @@ export const stdevReductionFunction: ReductionFunctionDefinition<'stdev'> = {
 }
 
 export const sampleStdevReductionFunction: ReductionFunctionDefinition<'sampleStdev'> = {
-  'sampleStdev': vector => calcSampleStdDev(vector),
-  'minLength': 2,
+  sampleStdev: vector => calcSampleStdDev(vector),
+  minLength: 2,
 }

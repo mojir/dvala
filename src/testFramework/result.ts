@@ -29,8 +29,7 @@ export interface TestRunResult {
 }
 
 export function isSuccess(result: TestRunResult): boolean {
-  if (result.bailout)
-    return false
+  if (result.bailout) return false
   return result.results.every(r => r.status !== 'failed')
 }
 

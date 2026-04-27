@@ -29,7 +29,10 @@ afterEach(() => {
 // top-level expression node as a display string.
 async function inferLastTypeString(source: string): Promise<string> {
   const { createDvala } = await import('../createDvala')
-  const { expandType, typeVarObjectIdForDisplay: _unused } = await import('./infer') as unknown as { expandType: (t: unknown) => unknown; typeVarObjectIdForDisplay?: unknown }
+  const { expandType, typeVarObjectIdForDisplay: _unused } = (await import('./infer')) as unknown as {
+    expandType: (t: unknown) => unknown
+    typeVarObjectIdForDisplay?: unknown
+  }
   const { typeToString } = await import('./types')
   const { simplify } = await import('./simplify')
   const dvala = createDvala()

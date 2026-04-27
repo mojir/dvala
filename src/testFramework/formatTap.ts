@@ -76,8 +76,7 @@ export function getErrorYaml(error: unknown): string {
 
 function getLocation(sourceCodeInfo: SourceCodeInfo): string {
   const terms: string[] = []
-  if (sourceCodeInfo.filePath)
-    terms.push(sourceCodeInfo.filePath)
+  if (sourceCodeInfo.filePath) terms.push(sourceCodeInfo.filePath)
 
   if (sourceCodeInfo.position) {
     terms.push(`${sourceCodeInfo.position.line}`)

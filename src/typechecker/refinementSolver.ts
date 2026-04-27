@@ -7,46 +7,37 @@ type DomainSubject = 'self' | 'count'
 
 type Domain =
   | {
-    kind: 'interval'
-    subject: DomainSubject
-    integral: boolean
-    min: number | null
-    minInclusive: boolean
-    max: number | null
-    maxInclusive: boolean
-  }
+      kind: 'interval'
+      subject: DomainSubject
+      integral: boolean
+      min: number | null
+      minInclusive: boolean
+      max: number | null
+      maxInclusive: boolean
+    }
   | {
-    kind: 'set'
-    subject: DomainSubject
-    values: Type[]
-  }
+      kind: 'set'
+      subject: DomainSubject
+      values: Type[]
+    }
   | {
-    kind: 'excludedSet'
-    subject: DomainSubject
-    excluded: Type[]
-  }
+      kind: 'excludedSet'
+      subject: DomainSubject
+      excluded: Type[]
+    }
   | {
-    kind: 'intervalExclusion'
-    subject: DomainSubject
-    interval: Extract<Domain, { kind: 'interval' }>
-    excluded: Type[]
-  }
+      kind: 'intervalExclusion'
+      subject: DomainSubject
+      interval: Extract<Domain, { kind: 'interval' }>
+      excluded: Type[]
+    }
 
-type RefinementSolveVerdict =
-  | { tag: 'Proved' }
-  | { tag: 'Disproved'; witness: Type }
-  | { tag: 'OutOfFragment' }
+type RefinementSolveVerdict = { tag: 'Proved' } | { tag: 'Disproved'; witness: Type } | { tag: 'OutOfFragment' }
 
 const MAX_FINITE_INTEGER_DOMAIN_SIZE = 8
 
-export function solveRefinedSubtype(
-  source: Type,
-  target: Extract<Type, { tag: 'Refined' }>,
-): RefinementSolveVerdict {
-  const targetDomain = applyIntegralConstraint(
-    analyzeRefinementPredicate(target.predicate, target.binder),
-    target.base,
-  )
+export function solveRefinedSubtype(source: Type, target: Extract<Type, { tag: 'Refined' }>): RefinementSolveVerdict {
+  const targetDomain = applyIntegralConstraint(analyzeRefinementPredicate(target.predicate, target.binder), target.base)
   if (!targetDomain) return { tag: 'OutOfFragment' }
 
   const sourceDomain = extractSourceDomain(source)
@@ -62,10 +53,7 @@ export function solveRefinedSubtype(
 }
 
 export function simplifyRefinedType(refined: Extract<Type, { tag: 'Refined' }>): Type | null {
-  const domain = applyIntegralConstraint(
-    analyzeRefinementPredicate(refined.predicate, refined.binder),
-    refined.base,
-  )
+  const domain = applyIntegralConstraint(analyzeRefinementPredicate(refined.predicate, refined.binder), refined.base)
   if (!domain) return null
   if (isDomainEmpty(domain)) return { tag: 'Never' }
 
@@ -179,11 +167,11 @@ function classifySubject(node: AstNode, binder: string): DomainSubject | null {
   if (node[0] !== NodeTypes.Call || !Array.isArray(node[1])) return null
   const [callee, args] = node[1] as [AstNode, AstNode[]]
   if (
-    callee[0] === NodeTypes.Builtin
-    && callee[1] === 'count'
-    && args.length === 1
-    && args[0]![0] === NodeTypes.Sym
-    && args[0]![1] === binder
+    callee[0] === NodeTypes.Builtin &&
+    callee[1] === 'count' &&
+    args.length === 1 &&
+    args[0]![0] === NodeTypes.Sym &&
+    args[0]![1] === binder
   ) {
     return 'count'
   }
@@ -202,15 +190,18 @@ function relationDomain(subject: DomainSubject, operator: string, rhs: AstNode):
     if (operator === '!=') return { kind: 'excludedSet', subject, excluded: [rhsType] }
     const relation = intervalFromRelation(subject, operator, rhsType.value)
     if (!relation || relation.kind !== 'interval') return null
-    return normalizeInterval({
-      kind: 'interval',
-      subject,
-      integral: true,
-      min: 0,
-      minInclusive: true,
-      max: null,
-      maxInclusive: false,
-    }, relation)
+    return normalizeInterval(
+      {
+        kind: 'interval',
+        subject,
+        integral: true,
+        min: 0,
+        minInclusive: true,
+        max: null,
+        maxInclusive: false,
+      },
+      relation,
+    )
   }
 
   if (operator === '==' || operator === '!=') {
@@ -225,15 +216,55 @@ function relationDomain(subject: DomainSubject, operator: string, rhs: AstNode):
 function intervalFromRelation(subject: DomainSubject, operator: string, value: number): Domain | null {
   switch (operator) {
     case '==':
-      return { kind: 'interval', subject, integral: subject === 'count', min: value, minInclusive: true, max: value, maxInclusive: true }
+      return {
+        kind: 'interval',
+        subject,
+        integral: subject === 'count',
+        min: value,
+        minInclusive: true,
+        max: value,
+        maxInclusive: true,
+      }
     case '>':
-      return { kind: 'interval', subject, integral: subject === 'count', min: value, minInclusive: false, max: null, maxInclusive: false }
+      return {
+        kind: 'interval',
+        subject,
+        integral: subject === 'count',
+        min: value,
+        minInclusive: false,
+        max: null,
+        maxInclusive: false,
+      }
     case '>=':
-      return { kind: 'interval', subject, integral: subject === 'count', min: value, minInclusive: true, max: null, maxInclusive: false }
+      return {
+        kind: 'interval',
+        subject,
+        integral: subject === 'count',
+        min: value,
+        minInclusive: true,
+        max: null,
+        maxInclusive: false,
+      }
     case '<':
-      return { kind: 'interval', subject, integral: subject === 'count', min: null, minInclusive: false, max: value, maxInclusive: false }
+      return {
+        kind: 'interval',
+        subject,
+        integral: subject === 'count',
+        min: null,
+        minInclusive: false,
+        max: value,
+        maxInclusive: false,
+      }
     case '<=':
-      return { kind: 'interval', subject, integral: subject === 'count', min: null, minInclusive: false, max: value, maxInclusive: true }
+      return {
+        kind: 'interval',
+        subject,
+        integral: subject === 'count',
+        min: null,
+        minInclusive: false,
+        max: value,
+        maxInclusive: true,
+      }
     default:
       return null
   }
@@ -280,13 +311,19 @@ function intersectDomains(left: Domain, right: Domain): Domain | null {
   }
   if (left.kind === 'intervalExclusion' && right.kind === 'interval') {
     const narrowed = normalizeInterval(left.interval, right)
-    return narrowed?.kind === 'interval' ? toIntervalExclusion(narrowed, { kind: 'excludedSet', subject: left.subject, excluded: left.excluded }) : null
+    return narrowed?.kind === 'interval'
+      ? toIntervalExclusion(narrowed, { kind: 'excludedSet', subject: left.subject, excluded: left.excluded })
+      : null
   }
   if (left.kind === 'interval' && right.kind === 'intervalExclusion') {
     return intersectDomains(right, left)
   }
   if (left.kind === 'intervalExclusion' && right.kind === 'excludedSet') {
-    return toIntervalExclusion(left.interval, { kind: 'excludedSet', subject: left.subject, excluded: mergeExcludedValues(left.excluded, right.excluded) })
+    return toIntervalExclusion(left.interval, {
+      kind: 'excludedSet',
+      subject: left.subject,
+      excluded: mergeExcludedValues(left.excluded, right.excluded),
+    })
   }
   if (left.kind === 'excludedSet' && right.kind === 'intervalExclusion') {
     return intersectDomains(right, left)
@@ -371,7 +408,10 @@ function normalizeInterval(left: Domain, right: Domain): Domain | null {
   }
 }
 
-function tighterMin(left: Extract<Domain, { kind: 'interval' }>, right: Extract<Domain, { kind: 'interval' }>): { value: number | null; inclusive: boolean } {
+function tighterMin(
+  left: Extract<Domain, { kind: 'interval' }>,
+  right: Extract<Domain, { kind: 'interval' }>,
+): { value: number | null; inclusive: boolean } {
   if (left.min === null) return { value: right.min, inclusive: right.minInclusive }
   if (right.min === null) return { value: left.min, inclusive: left.minInclusive }
   if (left.min > right.min) return { value: left.min, inclusive: left.minInclusive }
@@ -379,7 +419,10 @@ function tighterMin(left: Extract<Domain, { kind: 'interval' }>, right: Extract<
   return { value: left.min, inclusive: left.minInclusive && right.minInclusive }
 }
 
-function tighterMax(left: Extract<Domain, { kind: 'interval' }>, right: Extract<Domain, { kind: 'interval' }>): { value: number | null; inclusive: boolean } {
+function tighterMax(
+  left: Extract<Domain, { kind: 'interval' }>,
+  right: Extract<Domain, { kind: 'interval' }>,
+): { value: number | null; inclusive: boolean } {
   if (left.max === null) return { value: right.max, inclusive: right.maxInclusive }
   if (right.max === null) return { value: left.max, inclusive: left.maxInclusive }
   if (left.max < right.max) return { value: left.max, inclusive: left.maxInclusive }
@@ -409,8 +452,10 @@ function isDomainSubset(source: Domain, target: Domain): boolean {
     return intervalSubsetOfInterval(source, target)
   }
   if (source.kind === 'interval' && target.kind === 'intervalExclusion') {
-    return intervalSubsetOfInterval(source, target.interval)
-      && intervalAvoidsExcludedValue(source, { kind: 'excludedSet', subject: target.subject, excluded: target.excluded })
+    return (
+      intervalSubsetOfInterval(source, target.interval) &&
+      intervalAvoidsExcludedValue(source, { kind: 'excludedSet', subject: target.subject, excluded: target.excluded })
+    )
   }
   if (source.kind === 'interval' && target.kind === 'excludedSet') {
     return intervalAvoidsExcludedValue(source, target)
@@ -424,14 +469,18 @@ function isDomainSubset(source: Domain, target: Domain): boolean {
     return intervalSubsetOfInterval(source.interval, target)
   }
   if (source.kind === 'intervalExclusion' && target.kind === 'intervalExclusion') {
-    return intervalSubsetOfInterval(source.interval, target.interval)
-      && intervalExclusionAvoidsExcludedValues(source, target.excluded)
+    return (
+      intervalSubsetOfInterval(source.interval, target.interval) &&
+      intervalExclusionAvoidsExcludedValues(source, target.excluded)
+    )
   }
   if (source.kind === 'intervalExclusion' && target.kind === 'excludedSet') {
     return intervalExclusionAvoidsExcludedValues(source, target.excluded)
   }
   if (source.kind === 'excludedSet' && target.kind === 'excludedSet') {
-    return target.excluded.every(targetValue => source.excluded.some(sourceValue => typeEquals(sourceValue, targetValue)))
+    return target.excluded.every(targetValue =>
+      source.excluded.some(sourceValue => typeEquals(sourceValue, targetValue)),
+    )
   }
   return false
 }
@@ -459,8 +508,10 @@ function intervalSubsetOfInterval(
   //     (i.e. the only failure case is source-inclusive vs target-exclusive
   //     at the same numeric value — source includes the boundary point that
   //     target excludes, so source has values target doesn't).
-  return boundaryAtLeastAsRestrictive(source.min, source.minInclusive, target.min, target.minInclusive, 'lower')
-    && boundaryAtLeastAsRestrictive(source.max, source.maxInclusive, target.max, target.maxInclusive, 'upper')
+  return (
+    boundaryAtLeastAsRestrictive(source.min, source.minInclusive, target.min, target.minInclusive, 'lower') &&
+    boundaryAtLeastAsRestrictive(source.max, source.maxInclusive, target.max, target.maxInclusive, 'upper')
+  )
 }
 
 /**
@@ -510,8 +561,10 @@ function isDomainEmpty(domain: Domain): boolean {
   if (domain.kind === 'set') return domain.values.length === 0
   if (domain.kind === 'excludedSet') return false
   if (domain.kind === 'intervalExclusion') {
-    return isIntervalSingleton(domain.interval)
-      && domain.excluded.some(value => typeEquals(value, literal(intervalSingletonValue(domain.interval)!)))
+    return (
+      isIntervalSingleton(domain.interval) &&
+      domain.excluded.some(value => typeEquals(value, literal(intervalSingletonValue(domain.interval)!)))
+    )
   }
   if (domain.integral) return firstIntegerInInterval(domain) === null
   if (domain.min === null || domain.max === null) return false
@@ -526,11 +579,13 @@ function isIntervalSingleton(interval: Extract<Domain, { kind: 'interval' }>): b
     const last = lastIntegerInInterval(interval)
     return first !== null && last !== null && first === last
   }
-  return interval.min !== null
-    && interval.max !== null
-    && interval.min === interval.max
-    && interval.minInclusive
-    && interval.maxInclusive
+  return (
+    interval.min !== null &&
+    interval.max !== null &&
+    interval.min === interval.max &&
+    interval.minInclusive &&
+    interval.maxInclusive
+  )
 }
 
 function intervalSingletonValue(interval: Extract<Domain, { kind: 'interval' }>): number | null {
@@ -547,7 +602,10 @@ function pickWitnessOutside(sourceType: Type, source: Domain, target: Domain): T
   if (finiteSource && source.kind !== 'set') return pickWitnessOutside(sourceType, finiteSource, target)
 
   if (source.kind === 'set') {
-    return source.values.find(value => !isDomainSubset({ kind: 'set', subject: source.subject, values: [value] }, target)) ?? null
+    return (
+      source.values.find(value => !isDomainSubset({ kind: 'set', subject: source.subject, values: [value] }, target)) ??
+      null
+    )
   }
   if (source.kind === 'excludedSet' && target.kind === 'set') {
     return pickExcludedSetWitness(sourceType, source, target)
@@ -581,10 +639,7 @@ function pickWitnessOutside(sourceType: Type, source: Domain, target: Domain): T
   return null
 }
 
-function intervalWitnessCandidates(
-  source: Extract<Domain, { kind: 'interval' }>,
-  target: Domain,
-): number[] {
+function intervalWitnessCandidates(source: Extract<Domain, { kind: 'interval' }>, target: Domain): number[] {
   const delta = source.integral || source.subject === 'count' ? 1 : 0.5
   const candidates = new Set<number>()
   const maybeAdd = (value: number | null | undefined): void => {
@@ -635,7 +690,8 @@ function intervalWitnessCandidates(
 
 function domainContainsNumber(domain: Domain, value: number): boolean {
   if (domain.kind === 'interval') return numberInInterval(value, domain)
-  if (domain.kind === 'intervalExclusion') return numberInInterval(value, domain.interval) && !excludedSetContains(domainAsExcludedSet(domain), literal(value))
+  if (domain.kind === 'intervalExclusion')
+    return numberInInterval(value, domain.interval) && !excludedSetContains(domainAsExcludedSet(domain), literal(value))
   if (domain.kind === 'set') {
     return domain.values.some(domainValue => domainValue.tag === 'Literal' && domainValue.value === value)
   }
@@ -671,9 +727,11 @@ function mergeExcludedValues(left: Type[], right: Type[]): Type[] {
 
 function valueInDomain(value: Type, domain: Extract<Domain, { kind: 'intervalExclusion' }>): boolean {
   const numericValue = numericLiteralValue(value)
-  return numericValue !== null
-    && numberInInterval(numericValue, domain.interval)
-    && !excludedSetContains(domainAsExcludedSet(domain), value)
+  return (
+    numericValue !== null &&
+    numberInInterval(numericValue, domain.interval) &&
+    !excludedSetContains(domainAsExcludedSet(domain), value)
+  )
 }
 
 function numericLiteralValue(value: Type): number | null {
@@ -710,7 +768,12 @@ function pickExcludedSetWitness(
     ...witnessCandidatesForDomain(base, source.subject),
     ...witnessCandidatesForValues([...source.excluded, ...target.values]),
   ]
-  return candidates.find(candidate => !excludedSetContains(source, candidate) && !target.values.some(value => typeEquals(value, candidate))) ?? null
+  return (
+    candidates.find(
+      candidate =>
+        !excludedSetContains(source, candidate) && !target.values.some(value => typeEquals(value, candidate)),
+    ) ?? null
+  )
 }
 
 function pickExcludedSetNumericWitness(
@@ -789,7 +852,9 @@ function witnessCandidatesForValues(values: Type[]): Type[] {
   return []
 }
 
-function domainAsExcludedSet(domain: Extract<Domain, { kind: 'intervalExclusion' }>): Extract<Domain, { kind: 'excludedSet' }> {
+function domainAsExcludedSet(
+  domain: Extract<Domain, { kind: 'intervalExclusion' }>,
+): Extract<Domain, { kind: 'excludedSet' }> {
   return { kind: 'excludedSet', subject: domain.subject, excluded: domain.excluded }
 }
 
@@ -828,27 +893,33 @@ function witnessForExcludedSetInterval(
 }
 
 function firstIntegerInInterval(interval: Extract<Domain, { kind: 'interval' }>): number | null {
-  const start = interval.min === null
-    ? Number.MIN_SAFE_INTEGER
-    : interval.minInclusive ? Math.ceil(interval.min) : Math.floor(interval.min) + 1
+  const start =
+    interval.min === null
+      ? Number.MIN_SAFE_INTEGER
+      : interval.minInclusive
+        ? Math.ceil(interval.min)
+        : Math.floor(interval.min) + 1
   if (!Number.isFinite(start)) return null
   return numberInInterval(start, { ...interval, integral: false }) ? start : null
 }
 
 function lastIntegerInInterval(interval: Extract<Domain, { kind: 'interval' }>): number | null {
-  const end = interval.max === null
-    ? Number.MAX_SAFE_INTEGER
-    : interval.maxInclusive ? Math.floor(interval.max) : Math.ceil(interval.max) - 1
+  const end =
+    interval.max === null
+      ? Number.MAX_SAFE_INTEGER
+      : interval.maxInclusive
+        ? Math.floor(interval.max)
+        : Math.ceil(interval.max) - 1
   if (!Number.isFinite(end)) return null
   return numberInInterval(end, { ...interval, integral: false }) ? end : null
 }
 
 function exactRealSingletonValue(interval: Extract<Domain, { kind: 'interval' }>): number | null {
-  return interval.min !== null
-    && interval.max !== null
-    && interval.minInclusive
-    && interval.maxInclusive
-    && interval.min === interval.max
+  return interval.min !== null &&
+    interval.max !== null &&
+    interval.minInclusive &&
+    interval.maxInclusive &&
+    interval.min === interval.max
     ? interval.min
     : null
 }

@@ -282,7 +282,10 @@ describe('collection functions', () => {
 
 describe('collection-Utils module functions', () => {
   const imp = 'let cu = import("collection"); '
-  for (const mdvala of [createDvala({ modules: [collectionUtilsModule] }), createDvala({ modules: [collectionUtilsModule], debug: true })]) {
+  for (const mdvala of [
+    createDvala({ modules: [collectionUtilsModule] }),
+    createDvala({ modules: [collectionUtilsModule], debug: true }),
+  ]) {
     describe('filteri', () => {
       it('samples', () => {
         expect(mdvala.run(`${imp}cu.filteri([1, "2", 3], -> isOdd($2))`)).toEqual(['2'])
@@ -313,7 +316,9 @@ describe('collection-Utils module functions', () => {
       it('samples', () => {
         expect(mdvala.run(`${imp}cu.reducei([1, 2, 3, 4, 5], -> $ + $3, 0)`)).toBe(10)
         expect(mdvala.run(`${imp}cu.reducei([], -> $ + $3, 0)`)).toBe(0)
-        expect(mdvala.run(`${imp}cu.reducei("Albert", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('0A1l2b3e4r5t')
+        expect(mdvala.run(`${imp}cu.reducei("Albert", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe(
+          '0A1l2b3e4r5t',
+        )
         expect(mdvala.run(`${imp}cu.reducei("", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('')
         expect(mdvala.run(`${imp}cu.reducei({ a: 1, b: 2 }, -> $ ++ $3, "")`)).toBe('ab')
         expect(mdvala.run(`${imp}cu.reducei({}, -> $ ++ $3, "")`)).toBe('')
@@ -354,7 +359,9 @@ describe('collection-Utils module functions', () => {
       it('samples', () => {
         expect(mdvala.run(`${imp}cu.reduceiRight([1, 2, 3, 4, 5], -> $ + $3, 0)`)).toBe(10)
         expect(mdvala.run(`${imp}cu.reduceiRight([], -> $ + $3, 0)`)).toBe(0)
-        expect(mdvala.run(`${imp}cu.reduceiRight("Albert", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('5t4r3e2b1l0A')
+        expect(mdvala.run(`${imp}cu.reduceiRight("Albert", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe(
+          '5t4r3e2b1l0A',
+        )
         expect(mdvala.run(`${imp}cu.reduceiRight("", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('')
         expect(mdvala.run(`${imp}cu.reduceiRight({ a: 1, b: 2 }, -> $ ++ $3, "")`)).toBe('ba')
         expect(mdvala.run(`${imp}cu.reduceiRight({}, -> $ ++ $3, "")`)).toBe('')
@@ -484,11 +491,23 @@ describe('collection-Utils module functions', () => {
         expect(mdvala.run(`${imp}cu.assocIn([1, 2, 3], [0], "1")`)).toEqual(['1', 2, 3])
         expect(mdvala.run(`${imp}cu.assocIn([1, 2, [1, 2, 3]], [2, 1], "2")`)).toEqual([1, 2, [1, '2', 3]])
         expect(mdvala.run(`${imp}cu.assocIn([1, 2, "albert"], [2, 0], "A")`)).toEqual([1, 2, 'Albert'])
-        expect(mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, "name"], "A")`)).toEqual([1, 2, { name: 'A' }])
-        expect(mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, "name", 0], "A")`)).toEqual([1, 2, { name: 'Albert' }])
-        expect(() => mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], ["2", "name", 0], "A")`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, "name"], "A")`)).toEqual([
+          1,
+          2,
+          { name: 'A' },
+        ])
+        expect(mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, "name", 0], "A")`)).toEqual([
+          1,
+          2,
+          { name: 'Albert' },
+        ])
+        expect(() => mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], ["2", "name", 0], "A")`)).toThrow(
+          DvalaError,
+        )
         expect(() => mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, 1, 0], "A")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, "name", "a"], "A")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, "name", "a"], "A")`)).toThrow(
+          DvalaError,
+        )
       })
     })
 
@@ -612,14 +631,10 @@ describe('collection-Utils module functions', () => {
     describe('update', () => {
       it('samples', () => {
         expect(
-          mdvala.run(
-            `${imp}let x = "Albert"; cu.update(x, 3, val -> if isNull(val) then "!" else upperCase(val) end)`,
-          ),
+          mdvala.run(`${imp}let x = "Albert"; cu.update(x, 3, val -> if isNull(val) then "!" else upperCase(val) end)`),
         ).toEqual('AlbErt')
         expect(
-          mdvala.run(
-            `${imp}let x = "Albert"; cu.update(x, 6, val -> if isNull(val) then "!" else upperCase(val) end)`,
-          ),
+          mdvala.run(`${imp}let x = "Albert"; cu.update(x, 6, val -> if isNull(val) then "!" else upperCase(val) end)`),
         ).toEqual('Albert!')
 
         expect(mdvala.run(`${imp}let x = [0, 1, 2, 3]; cu.update(x, 3, inc)`)).toEqual([0, 1, 2, 4])
@@ -627,13 +642,17 @@ describe('collection-Utils module functions', () => {
 
         expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update(x, "a", inc)`)).toEqual({ a: 2, b: 2 })
         expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update(x, "a", +, 10)`)).toEqual({ a: 11, b: 2 })
-        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update(x, "a", val -> if isEven(val) then 0 else inc(val) end)`)).toEqual({
+        expect(
+          mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update(x, "a", val -> if isEven(val) then 0 else inc(val) end)`),
+        ).toEqual({
           a: 2,
           b: 2,
         })
         expect(() => mdvala.run(`${imp}let x = {a: 1, b: 2}; "c"(x)`)).toThrow(KeyError)
         expect(mdvala.run(`${imp}cu.update({}, "a", val -> if isNull(val) then 0 else null end)`)).toEqual({ a: 0 })
-        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update(x, "c", val -> if isNull(val) then 0 else inc(val) end)`)).toEqual({
+        expect(
+          mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update(x, "c", val -> if isNull(val) then 0 else inc(val) end)`),
+        ).toEqual({
           a: 1,
           b: 2,
           c: 0,
@@ -660,26 +679,44 @@ describe('collection-Utils module functions', () => {
 
         expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["a"], inc)`)).toEqual({ a: 2, b: 2 })
         expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["a"], +, 10)`)).toEqual({ a: 11, b: 2 })
-        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["a"], val -> if isEven(val) then 0 else inc(val) end)`)).toEqual({
+        expect(
+          mdvala.run(
+            `${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["a"], val -> if isEven(val) then 0 else inc(val) end)`,
+          ),
+        ).toEqual({
           a: 2,
           b: 2,
         })
         expect(mdvala.run(`${imp}cu.updateIn({}, ["a"], val -> if isNull(val) then 0 else null end)`)).toEqual({ a: 0 })
-        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["c"], val -> if isNull(val) then 0 else inc(val) end)`)).toEqual({
+        expect(
+          mdvala.run(
+            `${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["c"], val -> if isNull(val) then 0 else inc(val) end)`,
+          ),
+        ).toEqual({
           a: 1,
           b: 2,
           c: 0,
         })
-        expect(mdvala.run(`${imp}cu.updateIn({a: [1, 2, 3]}, ["a", 1], val -> if isNull(val) then 0 else null end)`)).toEqual({
+        expect(
+          mdvala.run(`${imp}cu.updateIn({a: [1, 2, 3]}, ["a", 1], val -> if isNull(val) then 0 else null end)`),
+        ).toEqual({
           a: [1, null, 3],
         })
-        expect(mdvala.run(`${imp}cu.updateIn({a: [1, null, 3]}, ["a", 1], val -> if isNull(val) then 0 else null end)`)).toEqual({
+        expect(
+          mdvala.run(`${imp}cu.updateIn({a: [1, null, 3]}, ["a", 1], val -> if isNull(val) then 0 else null end)`),
+        ).toEqual({
           a: [1, 0, 3],
         })
-        expect(mdvala.run(`${imp}cu.updateIn({a: [1, "Albert", 3]}, ["a", 1, 0], val -> if isNull(val) then "?" else "!" end)`)).toEqual({
+        expect(
+          mdvala.run(
+            `${imp}cu.updateIn({a: [1, "Albert", 3]}, ["a", 1, 0], val -> if isNull(val) then "?" else "!" end)`,
+          ),
+        ).toEqual({
           a: [1, '!lbert', 3],
         })
-        expect(mdvala.run(`${imp}cu.updateIn({a: [1, "", 3]}, ["a", 1, 0], val -> if isNull(val) then "?" else "!" end)`)).toEqual({
+        expect(
+          mdvala.run(`${imp}cu.updateIn({a: [1, "", 3]}, ["a", 1, 0], val -> if isNull(val) then "?" else "!" end)`),
+        ).toEqual({
           a: [1, '?', 3],
         })
       })

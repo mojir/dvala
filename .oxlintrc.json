@@ -1,0 +1,96 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "ignorePatterns": [
+    ".wireit",
+    "dist",
+    "build",
+    "e2e",
+    "playwright.config.ts",
+    "rolldown.config.mjs",
+    "rolldown.config.*.mjs",
+    "rolldown.plugins.mjs",
+    "coverage",
+    "README.md",
+    "CLAUDE.md",
+    "docs",
+    "design",
+    "playground-builder/src/components/tutorials",
+    "playground-builder/build",
+    "playground-www/build",
+    "scripts",
+    "vscode-dvala",
+    "benchmarks"
+  ],
+  "plugins": ["typescript", "import", "oxc"],
+  "rules": {
+    "no-labels": "off",
+    "no-console": "warn",
+    "no-underscore-dangle": "off",
+    "no-await-in-loop": "off",
+    "no-unreachable": "off",
+    "no-eval": "off",
+    "prefer-const": "error",
+    "object-shorthand": "error",
+    "prefer-template": "error",
+    "eqeqeq": "error",
+    "import/no-unassigned-import": "off",
+    "oxc/approx-constant": "off",
+    "oxc/no-map-spread": "off",
+    "oxc/only-used-in-recursion": "off",
+
+    "typescript/restrict-template-expressions": "off",
+    "typescript/no-non-null-assertion": "off",
+    "typescript/no-explicit-any": "off",
+    "typescript/no-unsafe-argument": "off",
+    "typescript/no-unsafe-assignment": "off",
+    "typescript/no-unsafe-call": "off",
+    "typescript/no-unsafe-member-access": "off",
+    "typescript/no-unsafe-return": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/no-unnecessary-type-assertion": "off",
+    "typescript/no-unnecessary-type-arguments": "off",
+    "typescript/no-unnecessary-type-conversion": "off",
+    "typescript/no-unnecessary-template-expression": "off",
+    "typescript/no-unnecessary-type-parameters": "off",
+    "typescript/no-misused-spread": "off",
+    "typescript/require-array-sort-compare": "off",
+    "oxc/no-accumulating-spread": "off",
+    "oxc/const-comparisons": "off",
+    "no-useless-concat": "off",
+    "no-new": "off",
+    "typescript/no-unsafe-function-type": "off",
+    "typescript/require-await": "off",
+    "typescript/no-base-to-string": "off",
+    "typescript/restrict-plus-operands": "off",
+    "typescript/consistent-return": "off",
+    "typescript/consistent-type-definitions": "off",
+    "typescript/no-shadow": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/array-type": ["error", { "default": "array" }],
+    "typescript/consistent-generic-constructors": ["error", "constructor"],
+    "typescript/consistent-indexed-object-style": "error",
+    "typescript/consistent-type-assertions": [
+      "error",
+      {
+        "assertionStyle": "as",
+        "objectLiteralTypeAssertions": "never"
+      }
+    ],
+    "typescript/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ]
+  },
+  "options": {
+    "typeAware": true
+  }
+}

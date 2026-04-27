@@ -4,7 +4,8 @@ import { createDvala } from '../../src/createDvala'
 const dvala = createDvala({ debug: true })
 describe('determinant.', () => {
   it('should compile', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
 // Determinant function for square matrices
 let determinant = matrix -> do
   // Check if input is an array
@@ -92,6 +93,7 @@ end;
 // 3x3 invertible matrix
 let matrix4 = [[2, 3, 4], [1, 2, 3], [3, 4, 1]];
 determinant(matrix4);
-   `)).toBe(-4)
+   `),
+    ).toBe(-4)
   })
 })

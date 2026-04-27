@@ -61,11 +61,7 @@ const otherOperators = [
   ';', // statement terminator
 ] as const
 
-const symbolicOperators = [
-  ...binaryOperators,
-  ...unaryPrefixOperators,
-  ...otherOperators,
-] as const
+const symbolicOperators = [...binaryOperators, ...unaryPrefixOperators, ...otherOperators] as const
 
 const nonFunctionOperators = [
   'comment',
@@ -85,8 +81,8 @@ export function isFunctionOperator(operator: string): boolean {
   return !nonFunctionOperatorSet.has(operator)
 }
 
-export type SymbolicBinaryOperator = typeof binaryOperators[number]
-export type SymbolicOperator = typeof symbolicOperators[number]
+export type SymbolicBinaryOperator = (typeof binaryOperators)[number]
+export type SymbolicOperator = (typeof symbolicOperators)[number]
 
 const binaryOperatorSet = new Set(binaryOperators)
 export function isBinaryOperator(operator: string): operator is SymbolicBinaryOperator {

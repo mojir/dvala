@@ -175,8 +175,7 @@ describe('CLI commands', () => {
     it('generates lcov coverage report with --coverage', () => {
       // Coverage is written to reportsDirectory relative to the project root (exampleProjectDir).
       const coverageDir = path.join(exampleProjectDir, 'coverage')
-      if (fs.existsSync(coverageDir))
-        fs.rmSync(coverageDir, { recursive: true })
+      if (fs.existsSync(coverageDir)) fs.rmSync(coverageDir, { recursive: true })
 
       try {
         const result = exec(`test ${exampleProjectDir} --coverage`)
@@ -192,8 +191,7 @@ describe('CLI commands', () => {
         expect(lcov).toContain('end_of_record')
       } finally {
         // Clean up — avoid leaving generated files in the examples directory
-        if (fs.existsSync(coverageDir))
-          fs.rmSync(coverageDir, { recursive: true })
+        if (fs.existsSync(coverageDir)) fs.rmSync(coverageDir, { recursive: true })
       }
     })
   })
@@ -224,7 +222,9 @@ describe('CLI commands', () => {
             answerIdx++
           }
         })
-        child.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
+        child.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString()
+        })
         child.on('close', (code: number) => resolve({ code, stdout, stderr }))
       })
     }

@@ -50,7 +50,7 @@ export function createTestModule(collector: TestCollector): DvalaModule {
   }
 
   const testNormalExpressions: BuiltinNormalExpressions = {
-    'test': {
+    test: {
       evaluate: ([name, body], sourceCodeInfo): null => {
         assertString(name, sourceCodeInfo)
         if (!isDvalaFunction(body)) {
@@ -66,7 +66,7 @@ export function createTestModule(collector: TestCollector): DvalaModule {
       arity: { min: 2, max: 2 },
     },
     // describe is implemented in test.dvala — it calls _pushDescribe, body(), _popDescribe
-    'describe': {
+    describe: {
       /* v8 ignore next 1 */
       evaluate: () => null,
       arity: { min: 2, max: 2 },
@@ -75,8 +75,7 @@ export function createTestModule(collector: TestCollector): DvalaModule {
   }
 
   for (const [key, docs] of Object.entries(moduleDocs)) {
-    if (testNormalExpressions[key])
-      testNormalExpressions[key].docs = docs
+    if (testNormalExpressions[key]) testNormalExpressions[key].docs = docs
   }
 
   return {

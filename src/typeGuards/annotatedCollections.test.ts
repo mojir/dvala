@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { DvalaError } from '../errors'
-import { assert2dVector, assert3dVector, assertGrid, assertMatrix, assertNonEmptyVector, assertSquareMatrix, assertVector, is2dVector, is3dVector, isGrid, isMatrix, isSquareMatrix, isVector } from './annotatedCollections'
+import {
+  assert2dVector,
+  assert3dVector,
+  assertGrid,
+  assertMatrix,
+  assertNonEmptyVector,
+  assertSquareMatrix,
+  assertVector,
+  is2dVector,
+  is3dVector,
+  isGrid,
+  isMatrix,
+  isSquareMatrix,
+  isVector,
+} from './annotatedCollections'
 
 describe('annotatedArrays', () => {
   it('should correctly identify vectors', () => {
@@ -21,39 +35,113 @@ describe('annotatedArrays', () => {
   })
 
   it('should correctly identify grids', () => {
-    expect(isGrid([[1, 2], [3, 4]])).toBe(true)
+    expect(
+      isGrid([
+        [1, 2],
+        [3, 4],
+      ]),
+    ).toBe(true)
     expect(isGrid([[1, 2], [3]])).toBe(false)
     expect(isGrid([])).toBe(false)
     expect(isGrid('not an array')).toBe(false)
   })
 
   it('should assert grids correctly', () => {
-    expect(() => assertGrid([[1, 2], [3, 4]], undefined)).not.toThrow()
+    expect(() =>
+      assertGrid(
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        undefined,
+      ),
+    ).not.toThrow()
     expect(() => assertGrid([[1, 2], [3]], undefined)).toThrow('Expected a grid, but got 1,2,3')
   })
 
   it('should correctly identify matrices', () => {
-    expect(isMatrix([[1, 2], [3, 4]])).toBe(true)
-    expect(isMatrix([[1, 2], [3, '4']])).toBe(false)
-    expect(isMatrix([['a', 'b'], [1, 2]])).toBe(false)
+    expect(
+      isMatrix([
+        [1, 2],
+        [3, 4],
+      ]),
+    ).toBe(true)
+    expect(
+      isMatrix([
+        [1, 2],
+        [3, '4'],
+      ]),
+    ).toBe(false)
+    expect(
+      isMatrix([
+        ['a', 'b'],
+        [1, 2],
+      ]),
+    ).toBe(false)
     expect(isMatrix([])).toBe(false)
     expect(isMatrix('not an array')).toBe(false)
   })
 
   it('should assert matrices correctly', () => {
-    expect(() => assertMatrix([[1, 2], [3, 4]], undefined)).not.toThrow()
-    expect(() => assertMatrix([[1, 2], [3, '4']], undefined)).toThrow('Expected a matrix, but got 1,2,3,4')
+    expect(() =>
+      assertMatrix(
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        undefined,
+      ),
+    ).not.toThrow()
+    expect(() =>
+      assertMatrix(
+        [
+          [1, 2],
+          [3, '4'],
+        ],
+        undefined,
+      ),
+    ).toThrow('Expected a matrix, but got 1,2,3,4')
   })
 
   it('should correctly identify square matrices', () => {
-    expect(isSquareMatrix([[1, 2], [3, 4]])).toBe(true)
-    expect(isSquareMatrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]])).toBe(true)
-    expect(isSquareMatrix([[1, 2], [3, 2], [3, 2]])).toBe(false)
-    expect(isSquareMatrix([[1, 2], [3, 4, 5]])).toBe(false)
+    expect(
+      isSquareMatrix([
+        [1, 2],
+        [3, 4],
+      ]),
+    ).toBe(true)
+    expect(
+      isSquareMatrix([
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+      ]),
+    ).toBe(true)
+    expect(
+      isSquareMatrix([
+        [1, 2],
+        [3, 2],
+        [3, 2],
+      ]),
+    ).toBe(false)
+    expect(
+      isSquareMatrix([
+        [1, 2],
+        [3, 4, 5],
+      ]),
+    ).toBe(false)
   })
 
   it('should assert square matrices correctly', () => {
-    expect(() => assertSquareMatrix([[1, 2], [3, 4]], undefined)).not.toThrow(DvalaError)
+    expect(() =>
+      assertSquareMatrix(
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        undefined,
+      ),
+    ).not.toThrow(DvalaError)
     expect(() => assertSquareMatrix([[1, 2], [3]], undefined)).toThrow(DvalaError)
     expect(() => assertSquareMatrix([[1, 2]], undefined)).toThrow(DvalaError)
   })

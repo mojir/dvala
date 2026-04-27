@@ -44,7 +44,7 @@ export function determinant(matrix: number[][]): number {
 
     // Swap rows if necessary
     if (maxRow !== i) {
-      [A[i], A[maxRow]] = [A[maxRow]!, A[i]!] // ES6 array destructuring for swap
+      ;[A[i], A[maxRow]] = [A[maxRow]!, A[i]!] // ES6 array destructuring for swap
       sign = -sign // Each row swap changes the sign
     }
 

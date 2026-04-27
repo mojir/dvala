@@ -15,10 +15,12 @@ const docs: CustomDocs = {
   ],
   description: `
   Binds local variables s to \`value\`. \`value\` can be any expression. The scope of the variables is the body of the let expression.`,
-  examples: [`
+  examples: [
+    `
 let a = 1 + 2 + 3 + 4;
 let b = -> $ * ( $ + 1 );
-b(a)`],
+b(a)`,
+  ],
 }
 
 export const letSpecialExpression: BuiltinSpecialExpression<Any, LetNode> = {

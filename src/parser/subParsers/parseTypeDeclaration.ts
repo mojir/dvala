@@ -73,7 +73,10 @@ function parseTypeDeclarationBody(ctx: ParserContext): AstNode {
       }
       const paramName = paramToken[1]
       if (seenNames.has(paramName)) {
-        throw new ParseError(`Duplicate type parameter '${paramName}' in generic parameter list`, ctx.peekSourceCodeInfo())
+        throw new ParseError(
+          `Duplicate type parameter '${paramName}' in generic parameter list`,
+          ctx.peekSourceCodeInfo(),
+        )
       }
       seenNames.add(paramName)
       ctx.advance()

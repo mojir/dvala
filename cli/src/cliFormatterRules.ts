@@ -6,7 +6,11 @@ import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../
 import { tokenizeSource } from '../../src/tooling'
 import { Colors } from './colorizer'
 
-export type FormatterRule = (text: string, index: number, formatter: TextFormatter) => {
+export type FormatterRule = (
+  text: string,
+  index: number,
+  formatter: TextFormatter,
+) => {
   count: number
   formattedText: string
 }
@@ -24,8 +28,7 @@ export function createVariableRule(
     if (startMatch) {
       const count = startMatch[0].length
       const variableName = startMatch[0].slice(1)
-      if (!variableNamePredicate(variableName))
-        return noMatch
+      if (!variableNamePredicate(variableName)) return noMatch
 
       const formattedText = formatVariableName(variableName)
       return { count, formattedText }
@@ -41,14 +44,10 @@ const getNumberRule: (cli: Colorizer) => FormatterRule = fmt => (text, index) =>
     const count = startMatch[0].length
     const characterBefor = text[index - 1]
     const characterAfter = text[index + count]
-    if (characterBefor && new RegExp(polishSymbolCharacterClass).test(characterBefor))
-      return noMatch
-    if (characterBefor && numberRegExp.test(characterBefor))
-      return noMatch
-    if (characterAfter && new RegExp(polishSymbolCharacterClass).test(characterAfter))
-      return noMatch
-    if (characterAfter && numberRegExp.test(characterAfter))
-      return noMatch
+    if (characterBefor && new RegExp(polishSymbolCharacterClass).test(characterBefor)) return noMatch
+    if (characterBefor && numberRegExp.test(characterBefor)) return noMatch
+    if (characterAfter && new RegExp(polishSymbolCharacterClass).test(characterAfter)) return noMatch
+    if (characterAfter && numberRegExp.test(characterAfter)) return noMatch
 
     const number = startMatch[0]
     const formattedText = fmt.yellow.bright(number)
@@ -159,8 +158,7 @@ const getInlineCodeRule: (fmt: Colorizer) => FormatterRule = fmt => (text, index
       body += text[index + count]
       count += 1
     }
-    if (text[index + count] !== '`')
-      throw new Error(`No end \` found for rule inlineCodeRule: ${text}`)
+    if (text[index + count] !== '`') throw new Error(`No end \` found for rule inlineCodeRule: ${text}`)
 
     count += 1
     const formattedText = getInlineCodeFormatter(fmt)(body)
@@ -231,12 +229,7 @@ const boldRule = createRule({
 })
 
 export function getMdRules(fmt: Colorizer): FormatterRule[] {
-  return [
-    getInlineCodeRule(fmt),
-    italicRule,
-    boldRule,
-    getNumberRule(fmt),
-  ]
+  return [getInlineCodeRule(fmt), italicRule, boldRule, getNumberRule(fmt)]
 }
 
 function createRule({
@@ -271,23 +264,14 @@ function createRule({
           count += 1
         }
         endMatch = endPattern.exec(text.slice(index + count))
-        if (!endMatch)
-          throw new Error(`No end pattern found for rule ${name},  ${endPattern}`)
+        if (!endMatch) throw new Error(`No end pattern found for rule ${name},  ${endPattern}`)
 
         count += endMatch[0].length
         body += keepPatterns && formatPatterns ? endMatch[0] : ''
       }
-      const formattedText = `${
-        keepPatterns && !formatPatterns ? startMatch[0] : ''
-      }${
-        startTag
-      }${
+      const formattedText = `${keepPatterns && !formatPatterns ? startMatch[0] : ''}${startTag}${
         body ? (stopRecursion ? body : formatter(body)) : ''
-      }${
-        endTag
-      }${
-        endMatch && keepPatterns && !formatPatterns ? endMatch[0] : ''
-      }`
+      }${endTag}${endMatch && keepPatterns && !formatPatterns ? endMatch[0] : ''}`
       return { count, formattedText }
     }
     return { count: 0, formattedText: '' }

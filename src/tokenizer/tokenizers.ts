@@ -1,9 +1,39 @@
 import { isSymbolicOperator } from './operators'
-import type { AtomToken, BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroPrefixToken, MultiLineCommentToken, NumberToken, OperatorToken, QuoteSpliceToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, ShebangToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type {
+  AtomToken,
+  BasePrefixedNumberToken,
+  EffectNameToken,
+  ErrorToken,
+  LBraceToken,
+  LBracketToken,
+  LParenToken,
+  MacroPrefixToken,
+  MultiLineCommentToken,
+  NumberToken,
+  OperatorToken,
+  QuoteSpliceToken,
+  RBraceToken,
+  RBracketToken,
+  RParenToken,
+  RegexpShorthandToken,
+  ReservedSymbolToken,
+  ShebangToken,
+  SingleLineCommentToken,
+  StringToken,
+  SymbolToken,
+  TemplateStringToken,
+  Token,
+  TokenDescriptor,
+  WhitespaceToken,
+} from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
-type Tokenizer<T extends Token> = (input: string, position: number, prevToken?: Token) => TokenDescriptor<T | ErrorToken>
+type Tokenizer<T extends Token> = (
+  input: string,
+  position: number,
+  prevToken?: Token,
+) => TokenDescriptor<T | ErrorToken>
 
 const jsIdentifierFirstCharRegExp = /[a-zA-Z_$]/
 const jsIdentifierCharRegExp = /[a-zA-Z0-9_$]/
@@ -11,22 +41,15 @@ const whitespaceRegExp = /\s/
 
 export const NO_MATCH: TokenDescriptor<never> = [0]
 
-const tokenizeLParen: Tokenizer<LParenToken> = (input, position) =>
-  tokenizeToken('LParen', '(', input, position)
-const tokenizeRParen: Tokenizer<RParenToken> = (input, position) =>
-  tokenizeToken('RParen', ')', input, position)
-const tokenizeLBracket: Tokenizer<LBracketToken> = (input, position) =>
-  tokenizeToken('LBracket', '[', input, position)
-const tokenizeRBracket: Tokenizer<RBracketToken> = (input, position) =>
-  tokenizeToken('RBracket', ']', input, position)
-const tokenizeLBrace: Tokenizer<LBraceToken> = (input, position) =>
-  tokenizeToken('LBrace', '{', input, position)
-const tokenizeRBrace: Tokenizer<RBraceToken> = (input, position) =>
-  tokenizeToken('RBrace', '}', input, position)
+const tokenizeLParen: Tokenizer<LParenToken> = (input, position) => tokenizeToken('LParen', '(', input, position)
+const tokenizeRParen: Tokenizer<RParenToken> = (input, position) => tokenizeToken('RParen', ')', input, position)
+const tokenizeLBracket: Tokenizer<LBracketToken> = (input, position) => tokenizeToken('LBracket', '[', input, position)
+const tokenizeRBracket: Tokenizer<RBracketToken> = (input, position) => tokenizeToken('RBracket', ']', input, position)
+const tokenizeLBrace: Tokenizer<LBraceToken> = (input, position) => tokenizeToken('LBrace', '{', input, position)
+const tokenizeRBrace: Tokenizer<RBraceToken> = (input, position) => tokenizeToken('RBrace', '}', input, position)
 
 const tokenizeString: Tokenizer<StringToken> = (input, position) => {
-  if (input[position] !== '"')
-    return NO_MATCH
+  if (input[position] !== '"') return NO_MATCH
 
   let value = '"'
   let length = 1
@@ -53,12 +76,10 @@ const tokenizeString: Tokenizer<StringToken> = (input, position) => {
 }
 
 const tokenizeRegexpShorthand: Tokenizer<RegexpShorthandToken> = (input, position) => {
-  if (input[position] !== '#')
-    return NO_MATCH
+  if (input[position] !== '#') return NO_MATCH
 
   const [stringLength, token] = tokenizeString(input, position + 1)
-  if (!token)
-    return NO_MATCH
+  if (!token) return NO_MATCH
 
   if (token[0] === 'Error') {
     const errorToken: ErrorToken = ['Error', `#${token[1]}`, undefined, `Unclosed regexp at position ${position}`]
@@ -122,10 +143,8 @@ function tokenizeToken<T extends Token>(
   input: string,
   position: number,
 ): TokenDescriptor<T> {
-  if (value === input.slice(position, position + value.length))
-    return [value.length, [type, value] as T]
-  else
-    return NO_MATCH
+  if (value === input.slice(position, position + value.length)) return [value.length, [type, value] as T]
+  else return NO_MATCH
 }
 
 const tokenizeWhitespace: Tokenizer<WhitespaceToken> = (input, position) => {
@@ -157,8 +176,16 @@ export const tokenizeNumber: Tokenizer<NumberToken> = (input, position, prevToke
   // Only allow -/+ prefix when NOT after an expression (number, symbol, closing bracket)
   if ((negate || plusPrefix) && prevToken) {
     const prevType = prevToken[0]
-    if (prevType === 'Number' || prevType === 'BasePrefixedNumber' || prevType === 'Symbol' || prevType === 'Atom'
-      || prevType === 'ReservedSymbol' || prevType === 'RParen' || prevType === 'RBracket' || prevType === 'RBrace') {
+    if (
+      prevType === 'Number' ||
+      prevType === 'BasePrefixedNumber' ||
+      prevType === 'Symbol' ||
+      prevType === 'Atom' ||
+      prevType === 'ReservedSymbol' ||
+      prevType === 'RParen' ||
+      prevType === 'RBracket' ||
+      prevType === 'RBrace'
+    ) {
       return NO_MATCH
     }
   }
@@ -173,14 +200,20 @@ export const tokenizeNumber: Tokenizer<NumberToken> = (input, position, prevToke
         if (i === start) {
           return NO_MATCH
         }
-        return [i - position + 1, ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`]]
+        return [
+          i - position + 1,
+          ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`],
+        ]
       }
     } else if (char === '.') {
       if (i === start) {
         return NO_MATCH
       }
       if (hasDecimalPoint || hasExponent) {
-        return [i - position + 1, ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`]]
+        return [
+          i - position + 1,
+          ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`],
+        ]
       }
       hasDecimalPoint = true
     } else if (char === 'e' || char === 'E') {
@@ -189,11 +222,17 @@ export const tokenizeNumber: Tokenizer<NumberToken> = (input, position, prevToke
       }
 
       if (hasExponent) {
-        return [i - position + 1, ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`]]
+        return [
+          i - position + 1,
+          ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`],
+        ]
       }
 
       if (input[i - 1] === '.' || input[i - 1] === '+' || input[i - 1] === '-') {
-        return [i - position + 1, ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`]]
+        return [
+          i - position + 1,
+          ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`],
+        ]
       }
 
       if (input[i + 1] === '+' || input[i + 1] === '-') {
@@ -217,7 +256,10 @@ export const tokenizeNumber: Tokenizer<NumberToken> = (input, position, prevToke
 
   const nextChar = input[i]
   if (nextChar && nextChar !== ':' && !postNumberRegExp.test(nextChar)) {
-    return [i - position + 1, ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`]]
+    return [
+      i - position + 1,
+      ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`],
+    ]
   }
 
   return [length, ['Number', input.substring(position, i)]]
@@ -230,13 +272,14 @@ export const tokenizeBasePrefixedNumber: Tokenizer<BasePrefixedNumberToken> = (i
 
   const baseChar = input[position + 1]
 
-  const type = baseChar === 'b' || baseChar === 'B'
-    ? 'binary'
-    : baseChar === 'o' || baseChar === 'O'
-      ? 'octal'
-      : baseChar === 'x' || baseChar === 'X'
-        ? 'hex'
-        : null
+  const type =
+    baseChar === 'b' || baseChar === 'B'
+      ? 'binary'
+      : baseChar === 'o' || baseChar === 'O'
+        ? 'octal'
+        : baseChar === 'x' || baseChar === 'X'
+          ? 'hex'
+          : null
 
   if (type === null) {
     return NO_MATCH
@@ -310,11 +353,11 @@ const tokenizeEffectName: Tokenizer<EffectNameToken> = (input, position) => {
 export const tokenizeSymbol: Tokenizer<SymbolToken> = (input, position) => {
   let value = input[position]!
 
-  if (value === '\'') {
+  if (value === "'") {
     let length = 1
     let char = input[position + length]
     let escaping = false
-    while (char !== '\'' || escaping) {
+    while (char !== "'" || escaping) {
       if (char === undefined)
         return [length, ['Error', value, undefined, `Unclosed quoted symbol at position ${position}`]]
 
@@ -330,7 +373,7 @@ export const tokenizeSymbol: Tokenizer<SymbolToken> = (input, position) => {
       }
       char = input[position + length]
     }
-    value += '\'' // closing quote
+    value += "'" // closing quote
     return [length + 1, ['Symbol', value]]
   }
 
@@ -357,7 +400,7 @@ export const tokenizeReservedSymbolToken: Tokenizer<ReservedSymbolToken> = (inpu
     return NO_MATCH
   }
   let rawName = symbolMeta[1][1]
-  rawName = rawName.startsWith('\'') ? rawName.slice(1, rawName.length - 1) : rawName
+  rawName = rawName.startsWith("'") ? rawName.slice(1, rawName.length - 1) : rawName
 
   const symbolName = rawName as ReservedSymbol
   const info = reservedSymbolRecord[symbolName]
@@ -389,7 +432,10 @@ export const tokenizeMultiLineComment: Tokenizer<MultiLineCommentToken> = (input
   if (input[position] === '/' && input[position + 1] === '*') {
     let length = 2
     let value = '/*'
-    while ((input[position + length] !== '*' || input[position + length + 1] !== '/') && position + length + 1 < input.length) {
+    while (
+      (input[position + length] !== '*' || input[position + length + 1] !== '/') &&
+      position + length + 1 < input.length
+    ) {
       value += input[position + length]
       length += 1
     }
@@ -425,15 +471,13 @@ export const tokenizeShebang: Tokenizer<ShebangToken> = (input, position) => {
  * The opening { is consumed — the parser finds the matching } via RBrace tokens.
  */
 const tokenizeQuoteSplice: Tokenizer<QuoteSpliceToken> = (input, position) => {
-  if (input[position] !== '$')
-    return NO_MATCH
+  if (input[position] !== '$') return NO_MATCH
 
   let caretCount = 0
   while (input[position + 1 + caretCount] === '^') {
     caretCount++
   }
-  if (caretCount === 0 || input[position + 1 + caretCount] !== '{')
-    return NO_MATCH
+  if (caretCount === 0 || input[position + 1 + caretCount] !== '{') return NO_MATCH
 
   // Consumed: $ + N carets + {
   const length = 1 + caretCount + 1
@@ -442,8 +486,7 @@ const tokenizeQuoteSplice: Tokenizer<QuoteSpliceToken> = (input, position) => {
 }
 
 const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position) => {
-  if (input[position] !== '`')
-    return NO_MATCH
+  if (input[position] !== '`') return NO_MATCH
 
   let value = '`'
   let length = 1
@@ -490,7 +533,7 @@ const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position)
               break
             }
           }
-        } else if (c === '\'') {
+        } else if (c === "'") {
           // Quoted symbol inside interpolation — scan to matching closing '
           value += c
           length += 1
@@ -503,7 +546,7 @@ const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position)
               escaping = false
             } else if (sc === '\\') {
               escaping = true
-            } else if (sc === '\'') {
+            } else if (sc === "'") {
               break
             }
           }
@@ -511,7 +554,10 @@ const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position)
           // Nested template string — delegate recursively
           const [nestedLength, nestedToken] = tokenizeTemplateString(input, position + length)
           if (nestedLength === 0 || !nestedToken) {
-            return [length, ['Error', value, undefined, `Unclosed nested template string at position ${position + length}`]]
+            return [
+              length,
+              ['Error', value, undefined, `Unclosed nested template string at position ${position + length}`],
+            ]
           }
           if (nestedToken[0] === 'Error') {
             return [length + nestedLength, ['Error', value + nestedToken[1], undefined, nestedToken[3]]]
@@ -525,7 +571,10 @@ const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position)
       }
 
       if (braceDepth > 0) {
-        return [length, ['Error', value, undefined, `Unclosed interpolation in template string at position ${position}`]]
+        return [
+          length,
+          ['Error', value, undefined, `Unclosed interpolation in template string at position ${position}`],
+        ]
       }
     } else {
       value += char

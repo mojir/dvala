@@ -13,8 +13,10 @@ import type { DvalaModule } from '../interface'
 import sequenceModuleSource from './sequence.dvala'
 
 const sequenceUtilsFunctions: BuiltinNormalExpressions = {
-  'mapcat': {
-    evaluate: () => { throw new Error('mapcat is implemented in Dvala') },
+  mapcat: {
+    evaluate: () => {
+      throw new Error('mapcat is implemented in Dvala')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown -> Unknown[])) -> Unknown[]',
@@ -46,8 +48,10 @@ mapcat(
       ],
     },
   },
-  'position': {
-    evaluate: () => { throw new Error('position: Dvala implementation should be used instead') },
+  position: {
+    evaluate: () => {
+      throw new Error('position: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '((Unknown[] | Null), (Unknown -> Boolean)) -> (Number | Null)',
@@ -60,7 +64,8 @@ mapcat(
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Returns the index of the first elements that passes the test implemented by `fun`. If no element was found, `null` is returned.',
+      description:
+        'Returns the index of the first elements that passes the test implemented by `fun`. If no element was found, `null` is returned.',
       seeAlso: ['indexOf', 'some', 'find'],
       examples: [
         `
@@ -90,11 +95,10 @@ su.position(
       ],
     },
   },
-  'lastIndexOf': {
+  lastIndexOf: {
     evaluate: ([seq, value], sourceCodeInfo): number | null => {
       assertAny(value, sourceCodeInfo)
-      if (seq === null)
-        return null
+      if (seq === null) return null
 
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
@@ -106,8 +110,7 @@ su.position(
         let lastIndex = -1
         let i = 0
         for (const item of seq) {
-          if (deepEqual(asAny(item, sourceCodeInfo), value, sourceCodeInfo))
-            lastIndex = i
+          if (deepEqual(asAny(item, sourceCodeInfo), value, sourceCodeInfo)) lastIndex = i
           i++
         }
         return lastIndex !== -1 ? lastIndex : null
@@ -136,7 +139,7 @@ su.position(
       ],
     },
   },
-  'splice': {
+  splice: {
     evaluate: (params, sourceCodeInfo): Any => {
       const seq = asSeq(params.get(0), sourceCodeInfo)
       const start = asNumber(params.get(1), sourceCodeInfo, { integer: true })
@@ -156,8 +159,7 @@ su.position(
             for (const r of rest) result = result.append(r as Any)
             restInserted = true
           }
-          if (i < from || i >= from + deleteCount)
-            result = result.append(item as Any)
+          if (i < from || i >= from + deleteCount) result = result.append(item as Any)
           i++
         }
         // Append rest at end if from was beyond the seq length
@@ -185,7 +187,8 @@ su.position(
         { argumentNames: ['seq', 'start', 'deleteCount'] },
         { argumentNames: ['seq', 'start', 'deleteCount', 'items'] },
       ],
-      description: 'Returns a a spliced array. Removes `deleteCount` elements from `seq` starting at `start` and replaces them with `items`. If `start` is negative, it is counting from the end of the array.',
+      description:
+        'Returns a a spliced array. Removes `deleteCount` elements from `seq` starting at `start` and replaces them with `items`. If `start` is negative, it is counting from the end of the array.',
       seeAlso: ['slice', 'sequence.removeAt'],
       examples: [
         'let su = import("sequence"); su.splice([1, 2, 3, 4, 5], 2, 2, "x")',
@@ -194,8 +197,10 @@ su.position(
       ],
     },
   },
-  'sortBy': {
-    evaluate: () => { throw new Error('sortBy: Dvala implementation should be used instead') },
+  sortBy: {
+    evaluate: () => {
+      throw new Error('sortBy: Dvala implementation should be used instead')
+    },
     arity: { min: 2, max: 3 },
     docs: {
       type: '(Unknown[], (Unknown -> Unknown)) -> Unknown[]',
@@ -208,11 +213,9 @@ su.position(
         keyfn: { type: 'function' },
         comparer: { type: 'function' },
       },
-      variants: [
-        { argumentNames: ['seq', 'keyfn'] },
-        { argumentNames: ['seq', 'keyfn', 'comparer'] },
-      ],
-      description: 'Returns a sorted sequence of the items in `seq`, where the sort order is determined by comparing `(keyfn item)`. If no `comparer` is supplied, uses builtin `compare`.',
+      variants: [{ argumentNames: ['seq', 'keyfn'] }, { argumentNames: ['seq', 'keyfn', 'comparer'] }],
+      description:
+        'Returns a sorted sequence of the items in `seq`, where the sort order is determined by comparing `(keyfn item)`. If no `comparer` is supplied, uses builtin `compare`.',
       seeAlso: ['sort', 'compare'],
       examples: [
         'let su = import("sequence"); su.sortBy(["Albert", "Mojir", "Nina"], count)',
@@ -221,7 +224,7 @@ su.position(
       ],
     },
   },
-  'unshift': {
+  unshift: {
     evaluate: ([seq, ...values], sourceCodeInfo): Seq => {
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
@@ -264,7 +267,7 @@ l`,
       ],
     },
   },
-  'distinct': {
+  distinct: {
     evaluate: ([input], sourceCodeInfo): Seq => {
       assertSeq(input, sourceCodeInfo)
 
@@ -274,10 +277,12 @@ l`,
           assertAny(item, sourceCodeInfo)
           let found = false
           for (const existingItem of result) {
-            if (deepEqual(existingItem, item, sourceCodeInfo)) { found = true; break }
+            if (deepEqual(existingItem, item, sourceCodeInfo)) {
+              found = true
+              break
+            }
           }
-          if (!found)
-            result = result.append(item)
+          if (!found) result = result.append(item)
         }
         return result
       }
@@ -302,8 +307,10 @@ l`,
       ],
     },
   },
-  'remove': {
-    evaluate: () => { throw new Error('remove: Dvala implementation should be used instead') },
+  remove: {
+    evaluate: () => {
+      throw new Error('remove: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown -> Boolean)) -> Unknown[]',
@@ -325,15 +332,14 @@ l`,
       ],
     },
   },
-  'removeAt': {
+  removeAt: {
     evaluate: ([input, index], sourceCodeInfo): Seq => {
       assertNumber(index, sourceCodeInfo, { integer: true })
       assertSeq(input, sourceCodeInfo)
 
       const inputLen = typeof input === 'string' ? input.length : input.size
       const at = index < 0 ? inputLen + index : index
-      if (at < 0 || at >= inputLen)
-        return input
+      if (at < 0 || at >= inputLen) return input
 
       if (isPersistentVector(input)) {
         let result = PersistentVector.empty<Any>()
@@ -358,7 +364,8 @@ l`,
         n: { type: 'number' },
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
-      description: 'Returns a new sequence of all items in `seq` except item at position `n`. If `n` is negative, it is counting from the end of the sequence.',
+      description:
+        'Returns a new sequence of all items in `seq` except item at position `n`. If `n` is negative, it is counting from the end of the sequence.',
       seeAlso: ['sequence.remove', 'sequence.splice'],
       examples: [
         'let su = import("sequence"); su.removeAt([1, 2, 3, 1, 3, 5], 2)',
@@ -369,7 +376,7 @@ l`,
       ],
     },
   },
-  'splitAt': {
+  splitAt: {
     evaluate: ([seq, pos], sourceCodeInfo): Arr => {
       assertNumber(pos, sourceCodeInfo, { integer: true })
       assertSeq(seq, sourceCodeInfo)
@@ -413,8 +420,10 @@ l`,
     },
   },
 
-  'splitWith': {
-    evaluate: () => { throw new Error('splitWith: Dvala implementation should be used instead') },
+  splitWith: {
+    evaluate: () => {
+      throw new Error('splitWith: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown -> Boolean)) -> Unknown[]',
@@ -437,7 +446,7 @@ l`,
     },
   },
 
-  'frequencies': {
+  frequencies: {
     evaluate: ([seq], sourceCodeInfo): Obj => {
       assertSeq(seq, sourceCodeInfo)
 
@@ -458,7 +467,8 @@ l`,
       returns: { type: 'object' },
       args: { seq: { type: 'sequence' } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'Returns an object from distinct items in `seq` to the number of times they appear. Note that all items in `seq` must be valid object keys i.e. strings.',
+      description:
+        'Returns an object from distinct items in `seq` to the number of times they appear. Note that all items in `seq` must be valid object keys i.e. strings.',
       seeAlso: ['sequence.groupBy', 'sequence.distinct', 'vector.countValues'],
       examples: [
         'let su = import("sequence"); su.frequencies(["Albert", "Mojir", "Nina", "Mojir"])',
@@ -467,8 +477,10 @@ l`,
     },
   },
 
-  'groupBy': {
-    evaluate: () => { throw new Error('groupBy: Dvala implementation should be used instead') },
+  groupBy: {
+    evaluate: () => {
+      throw new Error('groupBy: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown -> String)) -> {String: Unknown[]}',
@@ -481,7 +493,8 @@ l`,
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Returns an object of the elements of `seq` keyed by the result of `fun` on each element. The value at each key will be an array of the corresponding elements.',
+      description:
+        'Returns an object of the elements of `seq` keyed by the result of `fun` on each element. The value at each key will be an array of the corresponding elements.',
       seeAlso: ['sequence.frequencies', 'sequence.partitionBy'],
       examples: [
         'let su = import("sequence"); su.groupBy([{ name: "Albert" }, { name: "Albert" }, { name: "Mojir" }], "name")',
@@ -491,14 +504,17 @@ l`,
     },
   },
 
-  'partition': {
+  partition: {
     evaluate: (params, sourceCodeInfo): Arr => {
       const seq = asSeq(params.get(0), sourceCodeInfo)
       const n = toNonNegativeInteger(asNumber(params.get(1), sourceCodeInfo))
       const step = params.size >= 3 ? toNonNegativeInteger(asNumber(params.get(2), sourceCodeInfo)) : n
-      const pad = params.size === 4
-        ? params.get(3) === null ? PersistentVector.empty<Any>() : asArray(params.get(3), sourceCodeInfo)
-        : undefined
+      const pad =
+        params.size === 4
+          ? params.get(3) === null
+            ? PersistentVector.empty<Any>()
+            : asArray(params.get(3), sourceCodeInfo)
+          : undefined
 
       return partitionHelper(n, step, seq, pad, sourceCodeInfo)
     },
@@ -520,7 +536,8 @@ l`,
         { argumentNames: ['seq', 'n', 'step'] },
         { argumentNames: ['seq', 'n', 'step', 'pad'] },
       ],
-      description: 'Returns an array of sequences of `n` items each, at offsets `step` apart. If `step` is not supplied, defaults to `n`. If a `pad` array is supplied, use its elements as necessary to complete last partition upto `n` items. In case there are not enough padding elements, return a partition with less than `n` items.',
+      description:
+        'Returns an array of sequences of `n` items each, at offsets `step` apart. If `step` is not supplied, defaults to `n`. If a `pad` array is supplied, use its elements as necessary to complete last partition upto `n` items. In case there are not enough padding elements, return a partition with less than `n` items.',
       seeAlso: ['sequence.partitionAll', 'sequence.partitionBy'],
       examples: [
         'let su = import("sequence"); su.partition(range(20), 4)',
@@ -543,7 +560,7 @@ l`,
     },
   },
 
-  'partitionAll': {
+  partitionAll: {
     evaluate: (params, sourceCodeInfo): Arr => {
       const seq = asSeq(params.get(0), sourceCodeInfo)
       const n = toNonNegativeInteger(asNumber(params.get(1), sourceCodeInfo))
@@ -563,11 +580,9 @@ l`,
         n: { type: 'number' },
         step: { type: 'number' },
       },
-      variants: [
-        { argumentNames: ['seq', 'n'] },
-        { argumentNames: ['seq', 'n', 'step'] },
-      ],
-      description: 'Returns an array of sequences like partition, but may include partitions with fewer than n items at the end.',
+      variants: [{ argumentNames: ['seq', 'n'] }, { argumentNames: ['seq', 'n', 'step'] }],
+      description:
+        'Returns an array of sequences like partition, but may include partitions with fewer than n items at the end.',
       seeAlso: ['sequence.partition', 'sequence.partitionBy'],
       examples: [
         'let su = import("sequence"); su.partitionAll([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 4)',
@@ -578,8 +593,10 @@ l`,
     },
   },
 
-  'partitionBy': {
-    evaluate: () => { throw new Error('partitionBy: Dvala implementation should be used instead') },
+  partitionBy: {
+    evaluate: () => {
+      throw new Error('partitionBy: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown -> Unknown)) -> Unknown[]',
@@ -592,7 +609,8 @@ l`,
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Applies `fun` to each value in `seq`, splitting it each time `fun` returns a new value. Returns an array of sequences.',
+      description:
+        'Applies `fun` to each value in `seq`, splitting it each time `fun` returns a new value. Returns an array of sequences.',
       seeAlso: ['sequence.partition', 'sequence.partitionAll', 'sequence.groupBy'],
       examples: [
         'let su = import("sequence"); su.partitionBy([1, 2, 3, 4, 5], isOdd)',
@@ -602,7 +620,7 @@ l`,
       ],
     },
   },
-  'isEndsWith': {
+  isEndsWith: {
     evaluate: ([str, search], sourceCodeInfo): boolean => {
       assertSeq(str, sourceCodeInfo)
 
@@ -638,7 +656,7 @@ l`,
       ],
     },
   },
-  'isStartsWith': {
+  isStartsWith: {
     evaluate: ([seq, search], sourceCodeInfo): boolean => {
       assertSeq(seq, sourceCodeInfo)
 
@@ -673,24 +691,24 @@ l`,
       ],
     },
   },
-  'interleave': {
+  interleave: {
     evaluate: ([...seqs], sourceCodeInfo): Seq => {
       const isStringSeq = typeof seqs[0] === 'string'
 
       // Normalize all sequences to a common form for iteration
       const normalizedSeqs: (string[] | Arr)[] = isStringSeq
         ? seqs.map(seq => {
-          assertString(seq, sourceCodeInfo)
-          return seq.split('')
-        })
+            assertString(seq, sourceCodeInfo)
+            return seq.split('')
+          })
         : seqs.map(seq => {
-          assertArray(seq, sourceCodeInfo)
-          return seq
-        })
+            assertArray(seq, sourceCodeInfo)
+            return seq
+          })
 
       // Get length/size of each normalized seq
-      const getLen = (s: string[] | Arr): number => Array.isArray(s) ? s.length : s.size
-      const getItem = (s: string[] | Arr, i: number): unknown => Array.isArray(s) ? s[i] : s.get(i)
+      const getLen = (s: string[] | Arr): number => (Array.isArray(s) ? s.length : s.size)
+      const getItem = (s: string[] | Arr, i: number): unknown => (Array.isArray(s) ? s[i] : s.get(i))
 
       const maxLength = Math.min(...normalizedSeqs.map(getLen))
       let result = PersistentVector.empty<Any>()
@@ -698,8 +716,7 @@ l`,
         for (const seq of normalizedSeqs) {
           // Defensive: i is bounded by maxLength which is min of all seq lengths
           /* v8 ignore next 2 */
-          if (i < getLen(seq))
-            result = result.append(getItem(seq, i) as Any)
+          if (i < getLen(seq)) result = result.append(getItem(seq, i) as Any)
         }
       }
       return isStringSeq ? [...result].join('') : result
@@ -715,7 +732,8 @@ l`,
         seqs: { type: 'sequence', rest: true },
       },
       variants: [{ argumentNames: ['seqs'] }],
-      description: 'Returns a sequence of the first item from each of the `seqs`, then the second item from each of the `seqs`, until all items from the shortest seq are exhausted.',
+      description:
+        'Returns a sequence of the first item from each of the `seqs`, then the second item from each of the `seqs`, until all items from the shortest seq are exhausted.',
       seeAlso: ['sequence.interpose', 'zipmap'],
       examples: [
         'let su = import("sequence"); su.interleave([1, 2, 3], [4, 5, 6])',
@@ -730,7 +748,7 @@ l`,
       ],
     },
   },
-  'interpose': {
+  interpose: {
     evaluate: ([seq, separator], sourceCodeInfo): Seq => {
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
@@ -738,16 +756,14 @@ l`,
         return seq.split('').join(separator)
       }
 
-      if (seq.size === 0)
-        return PersistentVector.empty<Any>()
+      if (seq.size === 0) return PersistentVector.empty<Any>()
 
       let result = PersistentVector.empty<Any>()
       let i = 0
       for (const item of seq) {
         result = result.append(item as Any)
         // Append separator between items, not after the last one
-        if (i < seq.size - 1)
-          result = result.append(separator as Any)
+        if (i < seq.size - 1) result = result.append(separator as Any)
         i++
       }
       return result
@@ -764,7 +780,8 @@ l`,
         separator: { type: 'any' },
       },
       variants: [{ argumentNames: ['seq', 'separator'] }],
-      description: 'Returns a sequence of the elements of `seq` separated by `separator`. If `seq` is a string, the separator must be a string.',
+      description:
+        'Returns a sequence of the elements of `seq` separated by `separator`. If `seq` is a string, the separator must be a string.',
       seeAlso: ['sequence.interleave', 'join'],
       examples: [
         'let su = import("sequence"); su.interpose("Albert", "-")',
@@ -776,7 +793,13 @@ l`,
   },
 }
 
-function partitionHelper(n: number, step: number, seq: Seq, pad: Arr | undefined, sourceCodeInfo?: SourceCodeInfo): Arr {
+function partitionHelper(
+  n: number,
+  step: number,
+  seq: Seq,
+  pad: Arr | undefined,
+  sourceCodeInfo?: SourceCodeInfo,
+): Arr {
   assertNumber(step, sourceCodeInfo, { positive: true })
   const isStringSeq = typeof seq === 'string'
   const seqLen = isStringSeq ? seq.length : seq.size
@@ -792,8 +815,7 @@ function partitionHelper(n: number, step: number, seq: Seq, pad: Arr | undefined
           start += step
           continue outer
         }
-        if (padIndex >= pad.size)
-          break
+        if (padIndex >= pad.size) break
 
         innerArr = innerArr.append(pad.get(padIndex) as Any)
       } else {

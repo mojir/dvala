@@ -22,20 +22,51 @@ function createDvala(options?: Parameters<typeof createDvalaRaw>[0]) {
 }
 import type { EffectSet, Type } from './types'
 import {
-  NumberType, StringType, NullType, BooleanType,
-  Unknown, Never,
-  atom, literal, fn, record, array, tuple, sequence, union, inter, neg, handlerType,
-  PureEffects, effectSet, effectSetWithRowVar, typeToString,
+  NumberType,
+  StringType,
+  NullType,
+  BooleanType,
+  Unknown,
+  Never,
+  atom,
+  literal,
+  fn,
+  record,
+  array,
+  tuple,
+  sequence,
+  union,
+  inter,
+  neg,
+  handlerType,
+  PureEffects,
+  effectSet,
+  effectSetWithRowVar,
+  typeToString,
 } from './types'
 import {
-  InferenceContext, TypeEnv,
-  inferExpr, constrain, constrainEffectSet, expandEffectSet, expandType, expandTypeForDisplay, freshenAnnotationVars, sanitizeDisplayType,
+  InferenceContext,
+  TypeEnv,
+  inferExpr,
+  constrain,
+  constrainEffectSet,
+  expandEffectSet,
+  expandType,
+  expandTypeForDisplay,
+  freshenAnnotationVars,
+  sanitizeDisplayType,
   TypeInferenceError,
 } from './infer'
 import { parseTypeAnnotation } from './parseType'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
-import { getBuiltinType, initBuiltinTypes, isTypeGuard, registerModuleType, resetBuiltinTypeCache } from './builtinTypes'
+import {
+  getBuiltinType,
+  initBuiltinTypes,
+  isTypeGuard,
+  registerModuleType,
+  resetBuiltinTypeCache,
+} from './builtinTypes'
 import { declareEffect } from './effectTypes'
 import { allBuiltinModules } from '../allModules'
 
@@ -227,7 +258,9 @@ describe('constrain', () => {
 
   it('record constraint rejects extra fields for closed rhs', () => {
     const ctx = new InferenceContext()
-    expect(() => constrain(ctx, record({ x: NumberType, y: NumberType }), record({ x: NumberType }))).toThrow(TypeInferenceError)
+    expect(() => constrain(ctx, record({ x: NumberType, y: NumberType }), record({ x: NumberType }))).toThrow(
+      TypeInferenceError,
+    )
   })
 
   it('record constraint rejects open lhs for closed rhs', () => {
@@ -239,10 +272,7 @@ describe('constrain', () => {
     const ctx = new InferenceContext()
     const retVar = ctx.freshVar()
     // Overloaded: (Number -> Number) & (Number[] -> Number[])
-    const overloaded = inter(
-      fn([NumberType], NumberType),
-      fn([array(NumberType)], array(NumberType)),
-    )
+    const overloaded = inter(fn([NumberType], NumberType), fn([array(NumberType)], array(NumberType)))
     // Call with Number → should match first overload, retVar gets lower bound Number
     constrain(ctx, overloaded, fn([literal(42)], retVar))
     expect(retVar.lowerBounds).toContain(NumberType)
@@ -251,10 +281,7 @@ describe('constrain', () => {
   it('intersection on left: overloaded function picks array overload', () => {
     const ctx = new InferenceContext()
     const retVar = ctx.freshVar()
-    const overloaded = inter(
-      fn([NumberType], NumberType),
-      fn([array(NumberType)], array(NumberType)),
-    )
+    const overloaded = inter(fn([NumberType], NumberType), fn([array(NumberType)], array(NumberType)))
     // Call with Number[] → should match second overload
     constrain(ctx, overloaded, fn([array(literal(42))], retVar))
     expect(retVar.lowerBounds.length).toBeGreaterThan(0)
@@ -263,10 +290,7 @@ describe('constrain', () => {
   it('intersection on left: no matching overload throws', () => {
     const ctx = new InferenceContext()
     const retVar = ctx.freshVar()
-    const overloaded = inter(
-      fn([NumberType], NumberType),
-      fn([array(NumberType)], array(NumberType)),
-    )
+    const overloaded = inter(fn([NumberType], NumberType), fn([array(NumberType)], array(NumberType)))
     // Call with String → no overload matches
     expect(() => constrain(ctx, overloaded, fn([StringType], retVar))).toThrow(TypeInferenceError)
   })
@@ -295,7 +319,11 @@ describe('constrain', () => {
     const ctx = new InferenceContext()
     const retVar = ctx.freshVar()
 
-    constrain(ctx, fn([NumberType], NumberType, undefined, undefined, NumberType), fn([NumberType, NumberType, NumberType], retVar))
+    constrain(
+      ctx,
+      fn([NumberType], NumberType, undefined, undefined, NumberType),
+      fn([NumberType, NumberType, NumberType], retVar),
+    )
 
     expect(retVar.lowerBounds).toContainEqual(NumberType)
   })
@@ -304,7 +332,9 @@ describe('constrain', () => {
     const ctx = new InferenceContext()
     const retVar = ctx.freshVar()
 
-    expect(() => constrain(ctx, fn([NumberType], NumberType, undefined, undefined, NumberType), fn([], retVar))).toThrow(TypeInferenceError)
+    expect(() =>
+      constrain(ctx, fn([NumberType], NumberType, undefined, undefined, NumberType), fn([], retVar)),
+    ).toThrow(TypeInferenceError)
   })
 })
 
@@ -669,7 +699,9 @@ describe('inference — match narrowing', () => {
   })
 
   it('match narrows tagged object unions by nested literal fields', () => {
-    const t = inferAndExpand('let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end')
+    const t = inferAndExpand(
+      'let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end',
+    )
     expect(isSubtype(t, NumberType)).toBe(true)
   })
 
@@ -679,7 +711,9 @@ describe('inference — match narrowing', () => {
   })
 
   it('match rest bindings remain usable as arrays in branch bodies', () => {
-    const t = inferAndExpand('let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then count(rest) case _ then 0 end')
+    const t = inferAndExpand(
+      'let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then count(rest) case _ then 0 end',
+    )
     expect(isSubtype(t, NumberType)).toBe(true)
   })
 
@@ -703,42 +737,50 @@ describe('inference — match narrowing', () => {
 
 describe('inference — exhaustiveness', () => {
   it('exhaustive match on atoms: remainder is Never', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x = if true then :ok else :error end;
       match x
         case :ok then 1
         case :error then 0
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('exhaustive match on Boolean works through the Boolean primitive space', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x = isNumber(42);
       match x
         case true then 1
         case false then 0
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('non-exhaustive match on atoms reports the remaining cases', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x = if true then :ok else :error end;
       match x
         case :ok then 1
       end
-    `)).toThrow('Non-exhaustive match')
+    `),
+    ).toThrow('Non-exhaustive match')
   })
 
   it('exhaustive tagged object matches consume each variant by nested literal fields', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end;
       match event
         case {type: "click", x, y} then x + y
         case {type: "keydown", key} then count(key)
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 })
 
@@ -1064,7 +1106,7 @@ describe('inference — effect row variables (Phase 4-A Phase B)', () => {
     expect(expanded.effects.has('a')).toBe(true)
   })
 
-  it('bidirectional var-to-var edges terminate; both ends see each other\'s bounds', () => {
+  it("bidirectional var-to-var edges terminate; both ends see each other's bounds", () => {
     // Create a cycle σ ⇄ ρ (same semantic as a union at `addEffects`).
     // Bounds pushed into one must reach the other without infinite recursion.
     const ctx = new InferenceContext()
@@ -1136,11 +1178,13 @@ describe('inference — effect declarations and handler typing', () => {
 
   it('handler clause infers without errors', () => {
     // Just verify handler clauses are walked without throwing
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       handler
         @my.eff(x) -> resume(x)
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('with-handler subtracts effects and infers body type', () => {
@@ -1183,11 +1227,13 @@ describe('inference — effect declarations and handler typing', () => {
 
   it('resume argument is checked against the effect return type', () => {
     declareEffect('test.resumeTyped', NumberType, StringType)
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       handler
         @test.resumeTyped(x) -> resume(42)
       end
-    `)).toThrow('42 is not a subtype of String')
+    `),
+    ).toThrow('42 is not a subtype of String')
   })
 
   it('with-handler returns the handler output type', () => {
@@ -1306,7 +1352,9 @@ describe('inference — effect declarations and handler typing', () => {
 
 describe('typecheck — imported handler parity', () => {
   const files = new Map<string, string>([
-    ['./handlers.dvala', `
+    [
+      './handlers.dvala',
+      `
       effect @test.log(String) -> Null;
 
       let h =
@@ -1315,8 +1363,11 @@ describe('typecheck — imported handler parity', () => {
         end;
 
       { h };
-    `],
-    ['./logging.dvala', `
+    `,
+    ],
+    [
+      './logging.dvala',
+      `
       let withLogging = (thunk) -> do
         let h =
           handler
@@ -1330,7 +1381,8 @@ describe('typecheck — imported handler parity', () => {
       end;
 
       { withLogging };
-    `],
+    `,
+    ],
   ])
 
   const dvala = createDvala({
@@ -1344,7 +1396,8 @@ describe('typecheck — imported handler parity', () => {
   })
 
   it('imported handlers infer the same as local handlers', () => {
-    const local = dvala.typecheck(`
+    const local = dvala.typecheck(
+      `
       effect @test.log(String) -> Null;
       type PureNumberFn = ((Number) -> Number);
 
@@ -1360,9 +1413,12 @@ describe('typecheck — imported handler parity', () => {
       end;
 
       resultFn
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
-    const imported = dvala.typecheck(`
+    const imported = dvala.typecheck(
+      `
       effect @test.log(String) -> Null;
       type PureNumberFn = ((Number) -> Number);
       let { h } = import("./handlers");
@@ -1374,14 +1430,17 @@ describe('typecheck — imported handler parity', () => {
       end;
 
       resultFn
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
     expect(local.diagnostics).toHaveLength(0)
     expect(imported.diagnostics).toHaveLength(0)
   })
 
   it('imported callable handlers infer the same as local handlers', () => {
-    const local = dvala.typecheck(`
+    const local = dvala.typecheck(
+      `
       effect @test.log(String) -> Null;
       let h =
         handler
@@ -1394,9 +1453,12 @@ describe('typecheck — imported handler parity', () => {
       end);
 
       result
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
-    const imported = dvala.typecheck(`
+    const imported = dvala.typecheck(
+      `
       effect @test.log(String) -> Null;
       let { h } = import("./handlers");
 
@@ -1406,14 +1468,17 @@ describe('typecheck — imported handler parity', () => {
       end);
 
       result
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
     expect(local.diagnostics).toHaveLength(0)
     expect(imported.diagnostics).toHaveLength(0)
   })
 
   it('perform infers from imported active handlers without a local effect declaration', () => {
-    const result = dvala.typecheck(`
+    const result = dvala.typecheck(
+      `
       let { h } = import("./handlers");
 
       let value: Number = do
@@ -1423,13 +1488,16 @@ describe('typecheck — imported handler parity', () => {
       end;
 
       value
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
     expect(result.diagnostics).toHaveLength(0)
   })
 
   it('callable imported handlers infer thunk effects without a local effect declaration', () => {
-    const result = dvala.typecheck(`
+    const result = dvala.typecheck(
+      `
       let { h } = import("./handlers");
 
       let value: Number = h(-> do
@@ -1438,55 +1506,69 @@ describe('typecheck — imported handler parity', () => {
       end);
 
       value
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
     expect(result.diagnostics).toHaveLength(0)
   })
 
   it('imported handler signatures still enforce perform arg types without a local declaration', () => {
-    const result = dvala.typecheck(`
+    const result = dvala.typecheck(
+      `
       let { h } = import("./handlers");
 
       do
         with h;
         perform(@test.log, 42)
       end
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
     expect(result.diagnostics.length).toBeGreaterThan(0)
   })
 
   it('imported handler wrappers propagate handled signatures into callback literals', () => {
-    const result = dvala.typecheck(`
+    const result = dvala.typecheck(
+      `
       let { withLogging } = import("./logging");
 
       withLogging(-> do
         perform(@test.log, "hello");
         1
       end)
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
     expect(result.diagnostics).toHaveLength(0)
   })
 
   it('imported handler wrappers infer perform results from resume values', () => {
-    const result = dvala.typecheck(`
+    const result = dvala.typecheck(
+      `
       let { withLogging } = import("./logging");
 
       withLogging(-> do
         let a: Null = perform(@test.log, "hello");
         a
       end)
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
     expect(result.diagnostics).toHaveLength(0)
   })
 
   it('imported handler wrappers preserve concrete handled payload types', () => {
-    const result = dvala.typecheck(`
+    const result = dvala.typecheck(
+      `
       let { withLogging } = import("./logging");
       withLogging
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
     const lastType = [...result.typeMap.values()].at(-1)
     const expanded = lastType ? expandType(lastType, 'positive') : undefined
@@ -1556,14 +1638,17 @@ describe('typecheck — imported handler parity', () => {
   })
 
   it('imported handler wrappers enforce perform arg types inside callback literals', () => {
-    const result = dvala.typecheck(`
+    const result = dvala.typecheck(
+      `
       let { withLogging } = import("./logging");
 
       withLogging(-> do
         perform(@test.log, 10);
         1
       end)
-    `, { fileResolverBaseDir: '.' })
+    `,
+      { fileResolverBaseDir: '.' },
+    )
 
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('not a subtype of String')
@@ -1665,13 +1750,17 @@ describe('constrain — function param mismatches', () => {
   it('function arity mismatch throws', () => {
     const ctx = new InferenceContext()
     // (Number) -> Number  constrained against  (Number, Number) -> Number
-    expect(() => constrain(ctx, fn([NumberType], NumberType), fn([NumberType, NumberType], NumberType))).toThrow(TypeInferenceError)
+    expect(() => constrain(ctx, fn([NumberType], NumberType), fn([NumberType, NumberType], NumberType))).toThrow(
+      TypeInferenceError,
+    )
   })
 
   it('rest param rhs without rest lhs throws', () => {
     const ctx = new InferenceContext()
     // fn without rest constrained against fn with rest
-    expect(() => constrain(ctx, fn([NumberType], NumberType), fn([NumberType], NumberType, undefined, undefined, NumberType))).toThrow(TypeInferenceError)
+    expect(() =>
+      constrain(ctx, fn([NumberType], NumberType), fn([NumberType], NumberType, undefined, undefined, NumberType)),
+    ).toThrow(TypeInferenceError)
   })
 
   it('rest param constrains element types', () => {
@@ -1680,7 +1769,11 @@ describe('constrain — function param mismatches', () => {
     // lhs has StringType rest, rhs has restVar rest
     // constrain does: constrain(rhs.restParam, lhs.restParam) = constrain(restVar, StringType)
     // so restVar (lhs in inner call) gets upper bound StringType
-    constrain(ctx, fn([NumberType], NumberType, undefined, undefined, StringType), fn([NumberType], NumberType, undefined, undefined, restVar))
+    constrain(
+      ctx,
+      fn([NumberType], NumberType, undefined, undefined, StringType),
+      fn([NumberType], NumberType, undefined, undefined, restVar),
+    )
     expect(restVar.upperBounds).toContainEqual(StringType)
   })
 })
@@ -1759,7 +1852,11 @@ describe('constrain — negation and misc', () => {
   it('handler <: handler with missing clause throws', () => {
     const ctx = new InferenceContext()
     const lhs = handlerType(NumberType, NumberType, new Map())
-    const rhs = handlerType(NumberType, NumberType, new Map([['test.eff', { argType: NumberType, retType: StringType }]]))
+    const rhs = handlerType(
+      NumberType,
+      NumberType,
+      new Map([['test.eff', { argType: NumberType, retType: StringType }]]),
+    )
     expect(() => constrain(ctx, lhs, rhs)).toThrow(TypeInferenceError)
   })
 
@@ -1783,8 +1880,24 @@ describe('constrain — negation and misc', () => {
     // RowVar ids), but `constrainEffectSet` records the necessary edge —
     // so we must not throw structurally when either tail carries a row var.
     const ctx = new InferenceContext()
-    const rho1 = { tag: 'RowVar' as const, id: 1, level: 0, lowerBounds: [], upperBounds: [], lowerVarBounds: [], upperVarBounds: [] }
-    const rho2 = { tag: 'RowVar' as const, id: 2, level: 0, lowerBounds: [], upperBounds: [], lowerVarBounds: [], upperVarBounds: [] }
+    const rho1 = {
+      tag: 'RowVar' as const,
+      id: 1,
+      level: 0,
+      lowerBounds: [],
+      upperBounds: [],
+      lowerVarBounds: [],
+      upperVarBounds: [],
+    }
+    const rho2 = {
+      tag: 'RowVar' as const,
+      id: 2,
+      level: 0,
+      lowerBounds: [],
+      upperBounds: [],
+      lowerVarBounds: [],
+      upperVarBounds: [],
+    }
     const lhs = handlerType(NumberType, NumberType, new Map(), effectSetWithRowVar(['a'], rho1))
     const rhs = handlerType(NumberType, NumberType, new Map(), effectSetWithRowVar(['a'], rho2))
     expect(() => constrain(ctx, lhs, rhs)).not.toThrow()
@@ -2021,21 +2134,25 @@ describe('inference — bindMatchCasePattern for various patterns', () => {
 
 describe('inference — sequence subtraction for exhaustiveness', () => {
   it('exhaustive match on sequences with different lengths', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let xs = if true then [1] else [1, 2] end;
       match xs
         case [x, y = 0] then x + y
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('non-exhaustive sequence match throws', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let xs = if true then [1] else [1, 2] else [1, 2, 3] end;
       match xs
         case [x, y] then x + y
       end
-    `)).toThrow()
+    `),
+    ).toThrow()
   })
 })
 
@@ -2129,13 +2246,15 @@ describe('inference — match analysis with complex types', () => {
   })
 
   it('match on alias type expands correctly', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let val = if true then :ok else :error end;
       match val
         case :ok then 1
         case :error then 0
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 })
 
@@ -2196,38 +2315,48 @@ describe('inference — let binding error recovery', () => {
 describe('inference — bindUnknownPattern paths', () => {
   it('match object destructuring against Unknown-typed loop result', () => {
     // loop() infers as Unknown, so match destructuring triggers bindUnknownPattern
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x = loop(i = 0) -> if i > 0 then {name: "Alice"} else recur(i + 1) end;
       match x case {name} then name case _ then "default" end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('match array destructuring against Unknown-typed loop result', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x = loop(i = 0) -> if i > 0 then [1, 2] else recur(i + 1) end;
       match x case [a, b] then 1 case _ then 0 end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('match rest destructuring against Unknown-typed value', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x = loop(i = 0) -> if i > 0 then [1, 2, 3] else recur(i + 1) end;
       match x case [h, ...t] then h case _ then null end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('match nested object against Unknown-typed value', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x = loop(i = 0) -> if i > 0 then {inner: {val: 42}} else recur(i + 1) end;
       match x case {inner: {val}} then val case _ then null end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('match symbol pattern against Unknown-typed value', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x = loop(i = 0) -> if i > 0 then 42 else recur(i + 1) end;
       match x case n then n end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 })
 
@@ -2237,13 +2366,15 @@ describe('inference — bindUnknownPattern paths', () => {
 
 describe('inference — sequence match type disjointness', () => {
   it('match on sequences with disjoint lengths is exhaustive', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let xs = if true then [1] else [1, 2] end;
       match xs
         case [x] then x
         case [x, y] then x + y
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('match on sequences with overlapping lengths warns on redundancy', () => {
@@ -2268,7 +2399,13 @@ describe('inference — sequence prefix constraint', () => {
   it('sequence with prefix elements constrains correctly', () => {
     const ctx = new InferenceContext()
     const v = ctx.freshVar()
-    const lhs = { tag: 'Sequence' as const, prefix: [literal(1), literal(2)], rest: NumberType, minLength: 2, maxLength: 3 }
+    const lhs = {
+      tag: 'Sequence' as const,
+      prefix: [literal(1), literal(2)],
+      rest: NumberType,
+      minLength: 2,
+      maxLength: 3,
+    }
     const rhs = { tag: 'Sequence' as const, prefix: [v, NumberType], rest: NumberType, minLength: 2, maxLength: 3 }
     constrain(ctx, lhs, rhs)
     expect(v.lowerBounds).toContainEqual(literal(1))
@@ -2308,33 +2445,39 @@ describe('inference — intersectMatchTypes union handling', () => {
 
 describe('inference — trackable match remainder for complex types', () => {
   it('exhaustive match on tuple of literals', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let pair = if true then [1, 2] else [3, 4] end;
       match pair
         case [1, 2] then "a"
         case [3, 4] then "b"
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('exhaustive match on tuple of literals with all cases covered', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let pair = if true then [1, 2] else [3, 4] end;
       match pair
         case [1, 2] then "a"
         case [3, 4] then "b"
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('exhaustive match on record with literal fields', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let obj = if true then {type: :a} else {type: :b} end;
       match obj
         case {type: :a} then 1
         case {type: :b} then 2
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 })
 
@@ -2344,13 +2487,15 @@ describe('inference — trackable match remainder for complex types', () => {
 
 describe('inference — disjoint match type detection', () => {
   it('records with disjoint field values are detected', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let event = if true then {type: "click"} else {type: "keydown"} end;
       match event
         case {type: "click"} then 1
         case {type: "keydown"} then 2
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('records with extra field mismatches are disjoint', () => {
@@ -2606,10 +2751,12 @@ describe('inference — match pattern against incompatible types', () => {
 
 describe('inference — match analysis with complex type shapes', () => {
   it('match on intersection type expands correctly', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x: Number & String = 42;
       match x case n then n end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 
   it('match on alias type expands through alias', () => {
@@ -2642,7 +2789,11 @@ describe('inference — tuple constraint handling', () => {
     const ctx = new InferenceContext()
     const v1 = ctx.freshVar()
     const v2 = ctx.freshVar()
-    constrain(ctx, { tag: 'Tuple' as const, elements: [literal(1), literal('a')] }, { tag: 'Tuple' as const, elements: [v1, v2] })
+    constrain(
+      ctx,
+      { tag: 'Tuple' as const, elements: [literal(1), literal('a')] },
+      { tag: 'Tuple' as const, elements: [v1, v2] },
+    )
     expect(v1.lowerBounds).toContainEqual(literal(1))
     expect(v2.lowerBounds).toContainEqual(literal('a'))
   })
@@ -3015,7 +3166,9 @@ describe('inference — constrain tuple edge cases', () => {
     // Not directly testable through Dvala syntax since tuples are inferred as arrays
     // But we can test the constrain function directly
     const ctx = new InferenceContext()
-    expect(() => constrain(ctx, tuple([NumberType, StringType, NumberType]), tuple([NumberType]))).toThrow(TypeInferenceError)
+    expect(() => constrain(ctx, tuple([NumberType, StringType, NumberType]), tuple([NumberType]))).toThrow(
+      TypeInferenceError,
+    )
   })
 })
 
@@ -3077,14 +3230,26 @@ describe('inference — function arity constraints', () => {
     const ctx = new InferenceContext()
     const retVar = ctx.freshVar()
     // lhs has 1 param + rest, rhs has 2 params + rest — lhs.params.length (1) <= rhs.params.length (2) → ok
-    expect(() => constrain(ctx, fn([NumberType], NumberType, undefined, undefined, NumberType), fn([NumberType, NumberType], NumberType, undefined, undefined, retVar))).not.toThrow()
+    expect(() =>
+      constrain(
+        ctx,
+        fn([NumberType], NumberType, undefined, undefined, NumberType),
+        fn([NumberType, NumberType], NumberType, undefined, undefined, retVar),
+      ),
+    ).not.toThrow()
   })
 
   it('rest param function with too many fixed params throws', () => {
     const ctx = new InferenceContext()
     const retVar = ctx.freshVar()
     // lhs has 3 params + rest, rhs has 1 param + rest — lhs.params.length (3) > rhs.params.length (1) → fail
-    expect(() => constrain(ctx, fn([NumberType, NumberType, NumberType], NumberType, undefined, undefined, NumberType), fn([NumberType], NumberType, undefined, undefined, retVar))).toThrow(TypeInferenceError)
+    expect(() =>
+      constrain(
+        ctx,
+        fn([NumberType, NumberType, NumberType], NumberType, undefined, undefined, NumberType),
+        fn([NumberType], NumberType, undefined, undefined, retVar),
+      ),
+    ).toThrow(TypeInferenceError)
   })
 })
 
@@ -3413,12 +3578,14 @@ describe('inference — subtractType edge cases', () => {
   })
 
   it('subtracting equal types returns Never', () => {
-    expect(() => inferType(`
+    expect(() =>
+      inferType(`
       let x = 42;
       match x
         case 42 then "found"
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 })
 

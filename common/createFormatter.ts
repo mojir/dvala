@@ -9,12 +9,10 @@ export function createFormatter(rules: FormatterRule[], options?: { prefix?: str
     let newText = text
     let index = 0
 
-    whileLoop:
-    while (index < newText.length) {
+    whileLoop: while (index < newText.length) {
       for (const rule of rules) {
         const { count, formattedText } = rule(newText, index, format)
-        if (!count)
-          continue
+        if (!count) continue
         newText = `${newText.slice(0, index)}${formattedText}${newText.slice(index + count)}`
         index += formattedText.length
         continue whileLoop

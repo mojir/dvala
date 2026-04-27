@@ -64,7 +64,9 @@ describe('auto: standard effects docs metadata', () => {
       const argKeys = new Set(Object.keys(docs.args))
       for (const variant of docs.variants) {
         for (const argName of variant.argumentNames) {
-          expect(argKeys.has(argName), `variant uses '${argName}' but args only has [${Array.from(argKeys)}]`).toBe(true)
+          expect(argKeys.has(argName), `variant uses '${argName}' but args only has [${Array.from(argKeys)}]`).toBe(
+            true,
+          )
         }
       }
     })
@@ -110,8 +112,7 @@ describe('auto: standard effects docs metadata', () => {
 describe('auto: standard effects seeAlso validity', () => {
   for (const [effectName, def] of Object.entries(allStandardEffectDefinitions)) {
     const { docs } = def
-    if (!docs.seeAlso || docs.seeAlso.length === 0)
-      continue
+    if (!docs.seeAlso || docs.seeAlso.length === 0) continue
 
     for (const target of docs.seeAlso) {
       it(`${effectName}: seeAlso '${target}' exists in allReference`, () => {
@@ -127,20 +128,17 @@ describe('auto: standard effects seeAlso validity', () => {
 describe('auto: standard effects seeAlso symmetry', () => {
   for (const [effectName, def] of Object.entries(allStandardEffectDefinitions)) {
     const { docs } = def
-    if (!docs.seeAlso)
-      continue
+    if (!docs.seeAlso) continue
 
     const myRefKey = `-effect-${effectName}`
 
     for (const target of docs.seeAlso) {
       // Only check symmetry for effect→effect references
-      if (!target.startsWith('-effect-'))
-        continue
+      if (!target.startsWith('-effect-')) continue
 
       const targetEffectName = target.slice('-effect-'.length)
       const targetDef = allStandardEffectDefinitions[targetEffectName]
-      if (!targetDef)
-        continue
+      if (!targetDef) continue
 
       it(`${effectName} ↔ ${targetEffectName}: seeAlso is symmetric`, () => {
         const targetSeeAlso = targetDef.docs.seeAlso ?? []
@@ -228,9 +226,7 @@ describe('auto: findMatchingHandlers registration order', () => {
   })
 
   it('returns empty array for no match', () => {
-    const handlers = [
-      { pattern: 'llm.*', handler: async () => {} },
-    ]
+    const handlers = [{ pattern: 'llm.*', handler: async () => {} }]
     const matches = findMatchingHandlers('dvala.io.print', handlers)
     expect(matches).toEqual([])
   })
@@ -274,29 +270,35 @@ describe('auto: effect + control flow', () => {
   })
 
   it('effect in if/else if test', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       if >(perform(@test.eff, 1), 5) then "big"
       else "small"
       end
-    `))
+    `),
+    )
     expect(result).toBe('big')
   })
 
   it('effect in if/else if result', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       if true then perform(@test.eff, 7)
       else 0
       end
-    `))
+    `),
+    )
     expect(result).toBe(70)
   })
 
   it('effect in match body', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       match 42
         case 42 then perform(@test.eff, 6)
       end
-    `))
+    `),
+    )
     expect(result).toBe(60)
   })
 
@@ -332,14 +334,17 @@ describe('auto: effect + control flow', () => {
   })
 
   it('effect in for comprehension', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       for (x in [1, 2, 3]) -> perform(@test.eff, x)
-    `))
+    `),
+    )
     expect(result).toEqual([10, 20, 30])
   })
 
   it('effect in loop body', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       loop (i = 0, acc = 0) -> do
         if ==(i, 3) then
           acc
@@ -347,31 +352,37 @@ describe('auto: effect + control flow', () => {
           recur(+(i, 1), +(acc, perform(@test.eff, i)))
         end
       end
-    `))
+    `),
+    )
     expect(result).toBe(30) // 0 + 10 + 20
   })
 
   it('effect in fn body', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       let f = (x) -> perform(@test.eff, x);
       f(8)
-    `))
+    `),
+    )
     expect(result).toBe(80)
   })
 
   it('effect in handle/with error handler (no error)', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       do
         with handler @dvala.error(arg) -> resume(0) end;
         perform(@test.eff, 9)
 
       end
-    `))
+    `),
+    )
     expect(result).toBe(90)
   })
 
   it('effect in handle/with error handler body', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       do
         do
           with handler @dvala.error(arg) -> resume(perform(@test.eff, 4)) end;
@@ -379,7 +390,8 @@ describe('auto: effect + control flow', () => {
 
         end
       end
-    `))
+    `),
+    )
     expect(result).toBe(40)
   })
 })
@@ -411,7 +423,9 @@ describe('auto: effect + higher-order functions', () => {
   })
 
   it('effect in mapcat callback', () => {
-    const result = dvala.run(wrap('let { mapcat } = import("sequence"); mapcat([1, 2, 3], (x) -> [perform(@test.double, x)])'))
+    const result = dvala.run(
+      wrap('let { mapcat } = import("sequence"); mapcat([1, 2, 3], (x) -> [perform(@test.double, x)])'),
+    )
     expect(result).toEqual([2, 4, 6])
   })
 
@@ -426,16 +440,20 @@ describe('auto: effect + higher-order functions', () => {
   })
 
   it('effect in sort comparator', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       sort([3, 1, 2], (a, b) -> -(perform(@test.double, a), perform(@test.double, b)))
-    `))
+    `),
+    )
     expect(result).toEqual([1, 2, 3])
   })
 
   it('effect in for / map equivalent', () => {
-    const result = dvala.run(wrap(`
+    const result = dvala.run(
+      wrap(`
       for (x in [1, 2, 3]) -> perform(@test.double, x)
-    `))
+    `),
+    )
     expect(result).toEqual([2, 4, 6])
   })
 })
@@ -514,14 +532,16 @@ describe('auto: effect handler scoping', () => {
 
   // Handler scope ends after handle/with block
   it('handler scope ends after handle/with block', () => {
-    expect(() => dvala.run(`
+    expect(() =>
+      dvala.run(`
       do
         with handler @test.eff(arg) -> resume(arg) end;
         null
 
       end;
       perform(@test.eff, "should fail")
-    `)).toThrow('Unhandled effect')
+    `),
+    ).toThrow('Unhandled effect')
   })
 
   it('handler can access outer bindings', () => {
@@ -541,14 +561,7 @@ describe('auto: effect handler scoping', () => {
 // 10. Effect Identity Semantics
 // ---------------------------------------------------------------------------
 describe('auto: effect identity semantics', () => {
-  const effectNames = [
-    'dvala.error',
-    'dvala.io.print',
-    'llm.complete',
-    'com.myco.approve',
-    'simple',
-    'a.b.c.d.e',
-  ]
+  const effectNames = ['dvala.error', 'dvala.io.print', 'llm.complete', 'com.myco.approve', 'simple', 'a.b.c.d.e']
 
   // Same name → same reference
   for (const name of effectNames) {
@@ -618,34 +631,48 @@ describe('auto: suspend/resume round-trip', () => {
 
   for (const { label, value, code } of resumeValues) {
     it(`suspend then resume with ${label}`, async () => {
-      const r1 = await dvala.runAsync(`
+      const r1 = await dvala.runAsync(
+        `
         let x = perform(@my.wait);
         ${code}
-      `, {
-        effectHandlers: [
-          { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
-        ],
-      })
+      `,
+        {
+          effectHandlers: [
+            {
+              pattern: 'my.wait',
+              handler: async ({ suspend }) => {
+                suspend()
+              },
+            },
+          ],
+        },
+      )
       expect(r1.type).toBe('suspended')
-      if (r1.type !== 'suspended')
-        return
+      if (r1.type !== 'suspended') return
 
       const r2 = await resumeContinuation(r1.snapshot, value)
       expect(r2.type).toBe('completed')
     })
 
     it(`suspend then resume with ${label} through JSON round-trip`, async () => {
-      const r1 = await dvala.runAsync(`
+      const r1 = await dvala.runAsync(
+        `
         let x = perform(@my.wait);
         ${code}
-      `, {
-        effectHandlers: [
-          { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
-        ],
-      })
+      `,
+        {
+          effectHandlers: [
+            {
+              pattern: 'my.wait',
+              handler: async ({ suspend }) => {
+                suspend()
+              },
+            },
+          ],
+        },
+      )
       expect(r1.type).toBe('suspended')
-      if (r1.type !== 'suspended')
-        return
+      if (r1.type !== 'suspended') return
 
       // Simulate persistence: JSON round-trip
       const json = JSON.stringify(r1.snapshot)
@@ -657,46 +684,64 @@ describe('auto: suspend/resume round-trip', () => {
   }
 
   it('resume preserves computation context', async () => {
-    const r1 = await dvala.runAsync(`
+    const r1 = await dvala.runAsync(
+      `
       let a = 10;
       let b = perform(@my.wait);
       let c = 32;
       a + b
-    `, {
-      effectHandlers: [
-        { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
-      ],
-    })
+    `,
+      {
+        effectHandlers: [
+          {
+            pattern: 'my.wait',
+            handler: async ({ suspend }) => {
+              suspend()
+            },
+          },
+        ],
+      },
+    )
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended')
-      return
+    if (r1.type !== 'suspended') return
 
     const r2 = await resumeContinuation(r1.snapshot, 32)
     expect(r2).toEqual({ type: 'completed', value: 42 })
   })
 
   it('double suspend/resume chain', async () => {
-    const r1 = await dvala.runAsync(`
+    const r1 = await dvala.runAsync(
+      `
       let a = perform(@my.wait);
       let b = perform(@my.wait);
       a ++ " " ++ b
-    `, {
-      effectHandlers: [
-        { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
-      ],
-    })
+    `,
+      {
+        effectHandlers: [
+          {
+            pattern: 'my.wait',
+            handler: async ({ suspend }) => {
+              suspend()
+            },
+          },
+        ],
+      },
+    )
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended')
-      return
+    if (r1.type !== 'suspended') return
 
     const r2 = await resumeContinuation(r1.snapshot, 'hello', {
       handlers: [
-        { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
+        {
+          pattern: 'my.wait',
+          handler: async ({ suspend }) => {
+            suspend()
+          },
+        },
       ],
     })
     expect(r2.type).toBe('suspended')
-    if (r2.type !== 'suspended')
-      return
+    if (r2.type !== 'suspended') return
 
     const r3 = await resumeContinuation(r2.snapshot, 'world')
     expect(r3).toEqual({ type: 'completed', value: 'hello world' })
@@ -817,86 +862,128 @@ describe('auto: effect + error propagation', () => {
 describe('auto: host handler patterns', () => {
   it('wildcard handler matches all effects', async () => {
     const captured: string[] = []
-    const result = await dvala.runAsync(`
+    const result = await dvala.runAsync(
+      `
       perform(@a.b, 1);
       perform(@c.d, 2);
       perform(@e, 3)
-    `, {
-      effectHandlers: [
-        { pattern: '*', handler: async ({ effectName, arg, resume: r }) => {
-          captured.push(effectName)
-          r(arg!)
-        } },
-      ],
-    })
+    `,
+      {
+        effectHandlers: [
+          {
+            pattern: '*',
+            handler: async ({ effectName, arg, resume: r }) => {
+              captured.push(effectName)
+              r(arg!)
+            },
+          },
+        ],
+      },
+    )
     expect(result.type).toBe('completed')
     expect(captured).toEqual(['a.b', 'c.d', 'e'])
   })
 
   it('prefix wildcard handler matches subtree', async () => {
     const captured: string[] = []
-    const result = await dvala.runAsync(`
+    const result = await dvala.runAsync(
+      `
       perform(@dvala.io.print, "msg");
       perform(@dvala.random)
-    `, {
-      effectHandlers: [
-        { pattern: 'dvala.*', handler: async ({ effectName, resume: r }) => {
-          captured.push(effectName)
-          r(null)
-        } },
-      ],
-    })
+    `,
+      {
+        effectHandlers: [
+          {
+            pattern: 'dvala.*',
+            handler: async ({ effectName, resume: r }) => {
+              captured.push(effectName)
+              r(null)
+            },
+          },
+        ],
+      },
+    )
     expect(result.type).toBe('completed')
     expect(captured).toEqual(['dvala.io.print', 'dvala.random'])
   })
 
   it('exact handler takes priority over wildcard (by registration order)', async () => {
-    const result = await dvala.runAsync(`
+    const result = await dvala.runAsync(
+      `
       perform(@my.eff, 5)
-    `, {
-      effectHandlers: [
-        { pattern: '*', handler: async ({ resume: r }) => { r('wildcard') } },
+    `,
+      {
+        effectHandlers: [
+          {
+            pattern: '*',
+            handler: async ({ resume: r }) => {
+              r('wildcard')
+            },
+          },
 
-        { pattern: 'my.eff', handler: async ({ resume: r }) => { r('exact') } },
-      ],
-    })
+          {
+            pattern: 'my.eff',
+            handler: async ({ resume: r }) => {
+              r('exact')
+            },
+          },
+        ],
+      },
+    )
     // Registration order: * comes first, so it matches first
     expect(result).toMatchObject({ type: 'completed', value: 'wildcard' })
   })
 
   it('next() passes to next matching handler', async () => {
     const log: string[] = []
-    const result = await dvala.runAsync(`
+    const result = await dvala.runAsync(
+      `
       perform(@my.eff, "data")
-    `, {
-      effectHandlers: [
-        { pattern: '*', handler: async ({ next }) => {
-          log.push('wildcard')
-          next()
-        } },
+    `,
+      {
+        effectHandlers: [
+          {
+            pattern: '*',
+            handler: async ({ next }) => {
+              log.push('wildcard')
+              next()
+            },
+          },
 
-        { pattern: 'my.eff', handler: async ({ arg, resume: r }) => {
-          log.push('exact')
-          r(arg!)
-        } },
-      ],
-    })
+          {
+            pattern: 'my.eff',
+            handler: async ({ arg, resume: r }) => {
+              log.push('exact')
+              r(arg!)
+            },
+          },
+        ],
+      },
+    )
     expect(result).toMatchObject({ type: 'completed', value: 'data' })
     expect(log).toEqual(['wildcard', 'exact'])
   })
 
   it('fail() produces error result', async () => {
-    const result = await dvala.runAsync(`
+    const result = await dvala.runAsync(
+      `
       do
         with handler @dvala.error(arg) -> resume("caught: " ++ arg.message) end;
         perform(@my.eff)
 
       end
-    `, {
-      effectHandlers: [
-        { pattern: 'my.eff', handler: async ({ fail }) => { fail('handler failed') } },
-      ],
-    })
+    `,
+      {
+        effectHandlers: [
+          {
+            pattern: 'my.eff',
+            handler: async ({ fail }) => {
+              fail('handler failed')
+            },
+          },
+        ],
+      },
+    )
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
       expect(result.value).toContain('caught: handler failed')
@@ -904,15 +991,21 @@ describe('auto: host handler patterns', () => {
   })
 
   it('suspend with meta', async () => {
-    const result = await dvala.runAsync(`
+    const result = await dvala.runAsync(
+      `
       perform(@my.wait, "please approve")
-    `, {
-      effectHandlers: [
-        { pattern: 'my.wait', handler: async ({ arg, suspend }) => {
-          suspend({ payload: arg })
-        } },
-      ],
-    })
+    `,
+      {
+        effectHandlers: [
+          {
+            pattern: 'my.wait',
+            handler: async ({ arg, suspend }) => {
+              suspend({ payload: arg })
+            },
+          },
+        ],
+      },
+    )
     expect(result.type).toBe('suspended')
     if (result.type === 'suspended') {
       expect(result.snapshot.meta).toEqual({ payload: 'please approve' })
@@ -920,17 +1013,25 @@ describe('auto: host handler patterns', () => {
   })
 
   it('local handler always takes priority over host handler', async () => {
-    const result = await dvala.runAsync(`
+    const result = await dvala.runAsync(
+      `
       do
         with handler @my.eff(arg) -> resume("local: " ++ arg) end;
         perform(@my.eff, "data")
 
       end
-    `, {
-      effectHandlers: [
-        { pattern: 'my.eff', handler: async ({ resume: r }) => { r('host') } },
-      ],
-    })
+    `,
+      {
+        effectHandlers: [
+          {
+            pattern: 'my.eff',
+            handler: async ({ resume: r }) => {
+              r('host')
+            },
+          },
+        ],
+      },
+    )
     expect(result).toMatchObject({ type: 'completed', value: 'local: data' })
   })
 
@@ -938,10 +1039,13 @@ describe('auto: host handler patterns', () => {
     let receivedSignal = false
     await dvala.runAsync('perform(@my.check)', {
       effectHandlers: [
-        { pattern: 'my.check', handler: async ({ signal, resume: r }) => {
-          receivedSignal = signal instanceof AbortSignal
-          r(null)
-        } },
+        {
+          pattern: 'my.check',
+          handler: async ({ signal, resume: r }) => {
+            receivedSignal = signal instanceof AbortSignal
+            r(null)
+          },
+        },
       ],
     })
     expect(receivedSignal).toBe(true)
@@ -1098,9 +1202,7 @@ describe('auto: standard sync effects via runSync', () => {
 
   for (const { name, args } of syncEffects) {
     it(`${name} callable via runSync`, () => {
-      const code = args
-        ? `perform(effect(${name}), ${args})`
-        : `perform(effect(${name}))`
+      const code = args ? `perform(effect(${name}), ${args})` : `perform(effect(${name}))`
       const result = dvala.run(code)
       // Should not throw — result can be anything depending on the effect
       expect(result !== undefined || result === undefined).toBe(true)

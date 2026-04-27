@@ -6,7 +6,7 @@ import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
 
 const timeFunctions: BuiltinNormalExpressions = {
-  'epochToIsoDate': {
+  epochToIsoDate: {
     evaluate: ([ms], sourceCodeInfo): string => {
       assertNumber(ms, sourceCodeInfo)
       return new Date(ms).toISOString()
@@ -26,7 +26,7 @@ const timeFunctions: BuiltinNormalExpressions = {
       ],
     },
   },
-  'isoDateToEpoch': {
+  isoDateToEpoch: {
     evaluate: ([dateTime], sourceCodeInfo): number => {
       assertString(dateTime, sourceCodeInfo)
       const ms = new Date(dateTime).valueOf()

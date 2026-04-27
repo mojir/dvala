@@ -4,7 +4,9 @@ import { isUnknownRecord } from '../typeGuards'
 import type { MaybePromise } from '../utils/maybePromise'
 import type { ContextStack } from './ContextStack'
 
-interface ContextEntry { value: Any }
+interface ContextEntry {
+  value: Any
+}
 export type Context = Record<string, ContextEntry>
 
 export type EvaluateNode = (node: AstNode, contextStack: ContextStack) => MaybePromise<Any>

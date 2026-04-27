@@ -66,9 +66,7 @@ export function getUndefinedSymbols(
   source: string,
   options?: { scope?: Record<string, unknown>; modules?: DvalaModule[] },
 ): Set<string> {
-  const modulesMap = options?.modules
-    ? new Map(options.modules.map(m => [m.name, m]))
-    : undefined
+  const modulesMap = options?.modules ? new Map(options.modules.map(m => [m.name, m])) : undefined
   // Build a globalContext from the scope so those symbols are treated as defined.
   const globalContext = options?.scope
     ? Object.fromEntries(Object.keys(options.scope).map(k => [k, { value: null }]))
@@ -88,9 +86,7 @@ export function getUndefinedSymbols(
  * @param params - Optional params (bindings to include as suggestions)
  */
 export function getAutoCompleter(program: string, position: number, params: AutoCompleterParams = {}): AutoCompleter {
-  const effectNames = params.effectNames
-    ? [...standardEffectNames, ...params.effectNames]
-    : [...standardEffectNames]
+  const effectNames = params.effectNames ? [...standardEffectNames, ...params.effectNames] : [...standardEffectNames]
   return new AutoCompleter(program, position, { ...params, effectNames })
 }
 

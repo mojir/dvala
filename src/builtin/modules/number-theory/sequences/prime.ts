@@ -20,7 +20,7 @@ export function isPrime(num: number): boolean {
 }
 
 export const primeSequence: SequenceDefinition<'prime'> = {
-  'primeSeq': length => {
+  primeSeq: length => {
     const primes = []
     let num = 2
     while (primes.length < length) {
@@ -31,5 +31,5 @@ export const primeSequence: SequenceDefinition<'prime'> = {
     }
     return primes
   },
-  'isPrime': n => isPrime(n),
+  isPrime: n => isPrime(n),
 }

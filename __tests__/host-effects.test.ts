@@ -19,10 +19,9 @@ describe('host interaction effects', () => {
     })
 
     it('should resolve multiple host bindings', async () => {
-      const result = await dvala.runAsync(
-        'perform(@dvala.host, "a") + perform(@dvala.host, "b")',
-        { effectHandlers: [hostHandler({ a: 10, b: 32 })] },
-      )
+      const result = await dvala.runAsync('perform(@dvala.host, "a") + perform(@dvala.host, "b")', {
+        effectHandlers: [hostHandler({ a: 10, b: 32 })],
+      })
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
         expect(result.value).toBe(42)
@@ -78,12 +77,14 @@ describe('host interaction effects', () => {
 
     it('should work with custom host handler function', async () => {
       const result = await dvala.runAsync('perform(@dvala.host, "config")', {
-        effectHandlers: [{
-          pattern: 'dvala.host',
-          handler: ({ arg, resume }) => {
-            if (arg === 'config') resume({ debug: true })
+        effectHandlers: [
+          {
+            pattern: 'dvala.host',
+            handler: ({ arg, resume }) => {
+              if (arg === 'config') resume({ debug: true })
+            },
           },
-        }],
+        ],
       })
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
@@ -93,10 +94,9 @@ describe('host interaction effects', () => {
     })
 
     it('should work with let binding pattern', async () => {
-      const result = await dvala.runAsync(
-        'let x = perform(@dvala.host, "x"); x * 2',
-        { effectHandlers: [hostHandler({ x: 21 })] },
-      )
+      const result = await dvala.runAsync('let x = perform(@dvala.host, "x"); x * 2', {
+        effectHandlers: [hostHandler({ x: 21 })],
+      })
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
         expect(result.value).toBe(42)
@@ -146,13 +146,15 @@ describe('host interaction effects', () => {
 
     it('should allow host to override with custom handler', async () => {
       const result = await dvala.runAsync('perform(@dvala.env, "SECRET")', {
-        effectHandlers: [{
-          pattern: 'dvala.env',
-          handler: ({ arg, resume }) => {
-            if (arg === 'SECRET') resume('hidden')
-            else resume(null)
+        effectHandlers: [
+          {
+            pattern: 'dvala.env',
+            handler: ({ arg, resume }) => {
+              if (arg === 'SECRET') resume('hidden')
+              else resume(null)
+            },
           },
-        }],
+        ],
       })
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
@@ -180,12 +182,14 @@ describe('host interaction effects', () => {
 
     it('should allow host to override with custom handler', async () => {
       const result = await dvala.runAsync('perform(@dvala.args)', {
-        effectHandlers: [{
-          pattern: 'dvala.args',
-          handler: ({ resume }) => {
-            resume(['file.txt', '--verbose'])
+        effectHandlers: [
+          {
+            pattern: 'dvala.args',
+            handler: ({ resume }) => {
+              resume(['file.txt', '--verbose'])
+            },
           },
-        }],
+        ],
       })
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
@@ -195,15 +199,14 @@ describe('host interaction effects', () => {
     })
 
     it('should allow destructuring args', async () => {
-      const result = await dvala.runAsync(
-        'let [first, ...rest] = perform(@dvala.args); { first, rest }',
-        {
-          effectHandlers: [{
+      const result = await dvala.runAsync('let [first, ...rest] = perform(@dvala.args); { first, rest }', {
+        effectHandlers: [
+          {
             pattern: 'dvala.args',
             handler: ({ resume }) => resume(['a', 'b', 'c']),
-          }],
-        },
-      )
+          },
+        ],
+      })
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
         const val = result.value as Record<string, unknown>

@@ -9,14 +9,14 @@
  */
 
 // FNV-1a constants (32-bit)
-const FNV_OFFSET_BASIS = 0x811C9DC5
+const FNV_OFFSET_BASIS = 0x811c9dc5
 const FNV_PRIME = 0x01000193
 
 /**
  * Mix a single byte into an FNV-1a hash state.
  */
 function fnvMixByte(hash: number, byte: number): number {
-  return Math.imul(hash ^ (byte & 0xFF), FNV_PRIME)
+  return Math.imul(hash ^ (byte & 0xff), FNV_PRIME)
 }
 
 /**

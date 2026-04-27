@@ -8,9 +8,7 @@ function getDvalaErrorMessage(message: string, sourceCodeInfo?: SourceCodeInfo) 
     return message
   }
   const location = `${sourceCodeInfo.position.line}:${sourceCodeInfo.position.column}`
-  const filePathLine = sourceCodeInfo.filePath
-    ? `\n${sourceCodeInfo.filePath}:${location}`
-    : `\nLocation ${location}`
+  const filePathLine = sourceCodeInfo.filePath ? `\n${sourceCodeInfo.filePath}:${location}` : `\nLocation ${location}`
   const codeLine = `\n${sourceCodeInfo.code}`
   const codeMarker = `\n${getCodeMarker(sourceCodeInfo)}`
   return `${message}${filePathLine}${codeLine}${codeMarker}`
@@ -38,9 +36,7 @@ export class DvalaError extends Error {
   /** Call stack entries attached when the error propagates out of the evaluator. */
   public callStack?: CallStackEntry[]
   constructor(err: unknown, sourceCodeInfo: SourceCodeInfo | undefined) {
-    const message = err instanceof Error
-      ? err.message
-      : `${err}`
+    const message = err instanceof Error ? err.message : `${err}`
 
     super(getDvalaErrorMessage(message, sourceCodeInfo))
     this.shortMessage = message
@@ -55,8 +51,7 @@ export class DvalaError extends Error {
    * (not when caught by an algebraic handler).
    */
   public attachCallStack(entries: CallStackEntry[]): void {
-    if (entries.length === 0)
-      return
+    if (entries.length === 0) return
     this.callStack = entries
     // Rebuild the full message with the call stack appended
     const stackStr = entries

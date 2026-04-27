@@ -8,7 +8,11 @@ import { typeToString } from './types'
 import * as path from 'path'
 import * as fs from 'fs'
 
-function getHoverTypeStringAt(result: ReturnType<ReturnType<typeof createDvala>['typecheck']>, line: number, col: number): string | undefined {
+function getHoverTypeStringAt(
+  result: ReturnType<ReturnType<typeof createDvala>['typecheck']>,
+  line: number,
+  col: number,
+): string | undefined {
   let bestType: (typeof result.typeMap extends Map<number, infer T> ? T : never) | undefined
   let bestSize = Infinity
 
@@ -21,8 +25,7 @@ function getHoverTypeStringAt(result: ReturnType<ReturnType<typeof createDvala>[
     const [endLine, endCol] = sourcePos.end
     if (line < startLine || line > endLine) continue
 
-    const inRange = (line > startLine || col >= startCol)
-      && (line < endLine || col <= endCol)
+    const inRange = (line > startLine || col >= startCol) && (line < endLine || col <= endCol)
     if (!inRange) continue
 
     const size = (endLine - startLine) * 1000 + (endCol - startCol)
@@ -46,7 +49,11 @@ describe('typecheck — file imports', () => {
     fileResolver: (importPath: string, fromDir: string) => {
       const resolved = path.resolve(fromDir, importPath)
       for (const candidate of [resolved, `${resolved}.dvala`]) {
-        try { return fs.readFileSync(candidate, 'utf-8') } catch { /* try next */ }
+        try {
+          return fs.readFileSync(candidate, 'utf-8')
+        } catch {
+          /* try next */
+        }
       }
       throw new Error(`File not found: ${importPath}`)
     },

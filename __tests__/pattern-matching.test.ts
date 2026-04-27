@@ -99,25 +99,31 @@ describe('pattern matching (match)', () => {
 
     describe('object patterns', () => {
       it('should match and bind object properties', () => {
-        expect(l.run('match { name: "Alice", age: 30 } case { name, age } then name ++ " is " ++ str(age) end')).toBe('Alice is 30')
+        expect(l.run('match { name: "Alice", age: 30 } case { name, age } then name ++ " is " ++ str(age) end')).toBe(
+          'Alice is 30',
+        )
       })
 
       it('should match object with literal property values', () => {
-        expect(l.run(`
+        expect(
+          l.run(`
 match { type: "click", x: 10, y: 20 }
   case { type: "click", x, y } then x + y
   case { type: "keydown", key } then key
   case _ then "unknown"
-end`)).toBe(30)
+end`),
+        ).toBe(30)
       })
 
-      it('should match second case when first literal doesn\'t match', () => {
-        expect(l.run(`
+      it("should match second case when first literal doesn't match", () => {
+        expect(
+          l.run(`
 match { type: "keydown", key: "Enter" }
   case { type: "click", x, y } then x + y
   case { type: "keydown", key } then key
   case _ then "unknown"
-end`)).toBe('Enter')
+end`),
+        ).toBe('Enter')
       })
 
       it('should match object with rest pattern', () => {
@@ -130,17 +136,21 @@ end`)).toBe('Enter')
       })
 
       it('should match object with nested object patterns', () => {
-        expect(l.run(`
+        expect(
+          l.run(`
 match { user: { name: "Alice", profile: { email: "alice@example.com" } } }
   case { user: { name, profile: { email } } } then name ++ ": " ++ email
-end`)).toBe('Alice: alice@example.com')
+end`),
+        ).toBe('Alice: alice@example.com')
       })
 
       it('should match object with nested array patterns', () => {
-        expect(l.run(`
+        expect(
+          l.run(`
 match { scores: [10, 20, 30] }
   case { scores: [hd, ...tl] } then hd
-end`)).toBe(10)
+end`),
+        ).toBe(10)
       })
 
       it('should handle default values in object patterns', () => {
@@ -155,57 +165,69 @@ end`)).toBe(10)
 
     describe('guard clauses (when)', () => {
       it('should check guard after pattern match', () => {
-        expect(l.run(`
+        expect(
+          l.run(`
 match 5
   case x when x > 10 then "big"
   case x when x > 0 then "small positive"
   case x then "non-positive"
-end`)).toBe('small positive')
+end`),
+        ).toBe('small positive')
       })
 
       it('should use bound variables in guard', () => {
-        expect(l.run(`
+        expect(
+          l.run(`
 match { age: 25 }
   case { age } when age >= 18 then "adult"
   case { age } then "minor"
-end`)).toBe('adult')
+end`),
+        ).toBe('adult')
       })
 
       it('should fall through to next case when guard fails', () => {
-        expect(l.run(`
+        expect(
+          l.run(`
 match { role: "admin", name: "Alice" }
   case { role: "admin", name } when name == "Bob" then "Admin Bob"
   case { role: "admin", name } then "Admin: " ++ name
   case _ then "unknown"
-end`)).toBe('Admin: Alice')
+end`),
+        ).toBe('Admin: Alice')
       })
 
       it('should combine with literal patterns and guards', () => {
-        expect(l.run(`
+        expect(
+          l.run(`
 match [1, 2, 3]
   case [x, y, z] when x + y + z > 10 then "big sum"
   case [x, y, z] when x + y + z > 5 then "medium sum"
   case [x, y, z] then "small sum: " ++ str(x + y + z)
-end`)).toBe('medium sum')
+end`),
+        ).toBe('medium sum')
       })
     })
 
     describe('mixed patterns', () => {
       it('should handle complex nested matching', () => {
-        expect(l.run(`
+        expect(
+          l.run(`
 match { data: { users: [{ name: "Alice" }, { name: "Bob" }] } }
   case { data: { users: [hd, ...tl] } } then hd
-end`)).toEqual({ name: 'Alice' })
+end`),
+        ).toEqual({ name: 'Alice' })
       })
 
       it('should try patterns in order and return first match', () => {
-        expect(l.run(`
+        expect(
+          l.run(`
 match [1, 2]
   case [] then "empty"
   case [x] then "one"
   case [x, y] then "two: " ++ str(x) ++ ", " ++ str(y)
   case _ then "many"
-end`)).toBe('two: 1, 2')
+end`),
+        ).toBe('two: 1, 2')
       })
 
       it('should throw MatchError when no pattern matches', () => {
@@ -331,15 +353,11 @@ let describePoint = (point) ->
 
     describe('undefined symbols analysis', () => {
       it('should recognize bound pattern variables as defined', () => {
-        expect(getUndefinedSymbols('match val case x then x end')).toEqual(
-          new Set(['val']),
-        )
+        expect(getUndefinedSymbols('match val case x then x end')).toEqual(new Set(['val']))
       })
 
       it('should recognize destructured variables as defined', () => {
-        expect(getUndefinedSymbols('match val case { name, age } then name ++ str(age) end')).toEqual(
-          new Set(['val']),
-        )
+        expect(getUndefinedSymbols('match val case { name, age } then name ++ str(age) end')).toEqual(new Set(['val']))
       })
 
       it('should handle guard expressions', () => {
@@ -349,9 +367,7 @@ let describePoint = (point) ->
       })
 
       it('should not leak pattern variables across cases', () => {
-        expect(getUndefinedSymbols('match val case x then x case y then y end')).toEqual(
-          new Set(['val']),
-        )
+        expect(getUndefinedSymbols('match val case x then x case y then y end')).toEqual(new Set(['val']))
       })
     })
   }

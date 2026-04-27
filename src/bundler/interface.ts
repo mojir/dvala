@@ -19,10 +19,10 @@ export interface DvalaBundle {
 
 export function isDvalaBundle(value: unknown): value is DvalaBundle {
   return (
-    typeof value === 'object'
-    && value !== null
-    && (value as DvalaBundle).version === 1
-    && typeof (value as DvalaBundle).ast === 'object'
-    && Array.isArray((value as DvalaBundle).ast?.body)
+    typeof value === 'object' &&
+    value !== null &&
+    (value as DvalaBundle).version === 1 &&
+    typeof (value as DvalaBundle).ast === 'object' &&
+    Array.isArray((value as DvalaBundle).ast?.body)
   )
 }

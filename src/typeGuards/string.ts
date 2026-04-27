@@ -3,23 +3,20 @@ import { getAssertionError } from '../utils/getAssertionError'
 
 type StringAssertionOptions =
   | {
-    nonEmpty?: true
-    char?: never
-  }
+      nonEmpty?: true
+      char?: never
+    }
   | {
-    nonEmpty?: never
-    char?: true
-  }
+      nonEmpty?: never
+      char?: true
+    }
 
 export function isString(value: unknown, options: StringAssertionOptions = {}): value is string {
-  if (typeof value !== 'string')
-    return false
+  if (typeof value !== 'string') return false
 
-  if (options.nonEmpty && value.length === 0)
-    return false
+  if (options.nonEmpty && value.length === 0) return false
 
-  if (options.char && value.length !== 1)
-    return false
+  if (options.char && value.length !== 1) return false
 
   return true
 }
@@ -58,6 +55,5 @@ export function assertStringOrNumber(
   value: unknown,
   sourceCodeInfo?: SourceCodeInfo,
 ): asserts value is string | number {
-  if (!isStringOrNumber(value))
-    throw getAssertionError('string or number', value, sourceCodeInfo)
+  if (!isStringOrNumber(value)) throw getAssertionError('string or number', value, sourceCodeInfo)
 }

@@ -30,64 +30,77 @@ describe('algebraic handler — handler...end expression', () => {
 
 describe('algebraic handler — h(-> body) callable', () => {
   it('installs handler around thunk body', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @dvala.error(msg) -> "caught" end;
       h(-> 0 / 0)
-    `)).toBe('caught')
+    `),
+    ).toBe('caught')
   })
 
   it('returns body value when no effect fires', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @dvala.error(msg) -> "caught" end;
       h(-> 42)
-    `)).toBe(42)
+    `),
+    ).toBe(42)
   })
 })
 
 describe('algebraic handler — abort semantics', () => {
   it('clause without resume aborts the handle block', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @dvala.error(msg) -> "aborted" end;
       h(-> do
         let x = 0 / 0;
         x + 1
       end)
-    `)).toBe('aborted')
+    `),
+    ).toBe('aborted')
   })
 
   it('abort bypasses transform clause', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler
         @dvala.error(msg) -> { ok: false }
       transform
         x -> { ok: true, data: x }
       end;
       h(-> 0 / 0)
-    `)).toEqual({ ok: false })
+    `),
+    ).toEqual({ ok: false })
   })
 
   it('normal completion applies transform', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler
         @dvala.error(msg) -> { ok: false }
       transform
         x -> { ok: true, data: x }
       end;
       h(-> 42)
-    `)).toEqual({ ok: true, data: 42 })
+    `),
+    ).toEqual({ ok: true, data: 42 })
   })
 })
 
 describe('algebraic handler — resume', () => {
   it('resume continues at perform site with given value', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @dvala.error(msg) -> resume(0) end;
       h(-> (0 / 0) + 1)
-    `)).toBe(1)
+    `),
+    ).toBe(1)
   })
 
   it('resume returns the continuation result', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler
         @my.eff(v) -> do
           let result = resume(v * 2);
@@ -95,32 +108,39 @@ describe('algebraic handler — resume', () => {
         end
       end;
       h(-> perform(@my.eff, 5) + 10)
-    `)).toBe(20)
+    `),
+    ).toBe(20)
   })
 
   it('resume returns transformed result', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler
         @my.eff(v) -> resume(v)
       transform
         x -> x * 10
       end;
       h(-> perform(@my.eff, 3))
-    `)).toBe(30)
+    `),
+    ).toBe(30)
   })
 
   it('resume with null argument', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @my.eff() -> resume(null) end;
       h(-> do perform(@my.eff); 42 end)
-    `)).toBe(42)
+    `),
+    ).toBe(42)
   })
 
   it('resume with no argument defaults to null', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @my.eff() -> resume() end;
       h(-> do perform(@my.eff); 99 end)
-    `)).toBe(99)
+    `),
+    ).toBe(99)
   })
 })
 
@@ -138,35 +158,42 @@ describe('algebraic handler — multi-shot continuations', () => {
 
 describe('algebraic handler — transform clause', () => {
   it('applies to normal completion', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler transform x -> x * 10 end;
       h(-> 1 + 2)
-    `)).toBe(30)
+    `),
+    ).toBe(30)
   })
 
   it('applies inside resume (reinstalled handler)', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler
         @my.eff(x) -> resume(x)
       transform
         x -> x * 10
       end;
       h(-> 42)
-    `)).toBe(420)
+    `),
+    ).toBe(420)
   })
 
   it('identity transform when not specified', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @my.eff(x) -> resume(x) end;
       h(-> perform(@my.eff, 42))
-    `)).toBe(42)
+    `),
+    ).toBe(42)
   })
 })
 
 describe('algebraic handler — deep reinstallation', () => {
   it('handler is reinstalled around continuation on resume', () => {
     // From design doc trace: result should be 3002
-    expect(run(`
+    expect(
+      run(`
       let h = handler
         @eff(v) -> do
           let result = resume(v);
@@ -180,11 +207,13 @@ describe('algebraic handler — deep reinstallation', () => {
         let y = perform(@eff, 20);
         x + y
       end)
-    `)).toBe(3002)
+    `),
+    ).toBe(3002)
   })
 
   it('each resume creates fresh handler scope', () => {
-    expect(run(`
+    expect(
+      run(`
       let counter = handler
         @inc() -> do
           let result = resume(null);
@@ -197,13 +226,15 @@ describe('algebraic handler — deep reinstallation', () => {
         perform(@inc);
         0
       end)
-    `)).toBe(3)
+    `),
+    ).toBe(3)
   })
 })
 
 describe('algebraic handler — implicit propagation', () => {
   it('unmatched effects propagate to outer handler', () => {
-    expect(run(`
+    expect(
+      run(`
       let inner = handler @inner(v) -> resume(v) end;
       let outer = handler @outer(v) -> resume(v * 3) end;
       outer(-> inner(-> do
@@ -211,13 +242,15 @@ describe('algebraic handler — implicit propagation', () => {
         let y = perform(@outer, 20);
         x + y
       end))
-    `)).toBe(70)
+    `),
+    ).toBe(70)
   })
 })
 
 describe('algebraic handler — intercept and forward', () => {
   it('clause body can re-perform to outer handler', () => {
-    expect(run(`
+    expect(
+      run(`
       let logger = handler
         @fetch(url) -> do
           let result = perform(@fetch, url);
@@ -228,13 +261,15 @@ describe('algebraic handler — intercept and forward', () => {
         @fetch(url) -> resume("data:" ++ url)
       end;
       fetcher(-> logger(-> perform(@fetch, "/users")))
-    `)).toBe('data:/users')
+    `),
+    ).toBe('data:/users')
   })
 })
 
 describe('algebraic handler — pure state threading', () => {
   it('accumulates log messages without mutation', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler
         @log(msg) -> do
           let [result, logs] = resume(null);
@@ -248,13 +283,15 @@ describe('algebraic handler — pure state threading', () => {
         perform(@log, "b");
         42
       end)
-    `)).toEqual([42, ['a', 'b']])
+    `),
+    ).toEqual([42, ['a', 'b']])
   })
 })
 
 describe('algebraic handler — resume as first-class value', () => {
   it('bare resume returns a callable', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler
         @my.eff(x) -> do
           let r = resume;
@@ -262,7 +299,8 @@ describe('algebraic handler — resume as first-class value', () => {
         end
       end;
       h(-> perform(@my.eff, 5))
-    `)).toBe(10)
+    `),
+    ).toBe(10)
   })
 
   it('resume outside handler clause throws', () => {
@@ -276,17 +314,21 @@ describe('algebraic handler — resume as first-class value', () => {
 
 describe('algebraic handler — error handling', () => {
   it('dvala.error is catchable as named clause', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @dvala.error(msg) -> "caught" end;
       h(-> 0 / 0)
-    `)).toBe('caught')
+    `),
+    ).toBe('caught')
   })
 
   it('dvala.error clause can resume', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @dvala.error(msg) -> resume(0) end;
       h(-> (0 / 0) + 1)
-    `)).toBe(1)
+    `),
+    ).toBe(1)
   })
 })
 
@@ -296,48 +338,57 @@ describe('algebraic handler — error handling', () => {
 
 describe('with h; — basic installation', () => {
   it('installs handler for rest of block', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let h = handler @dvala.error(msg) -> "caught" end;
         with h;
         0 / 0
       end
-    `)).toBe('caught')
+    `),
+    ).toBe('caught')
   })
 
   it('returns body value when no effect fires', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let h = handler @dvala.error(msg) -> "caught" end;
         with h;
         42
       end
-    `)).toBe(42)
+    `),
+    ).toBe(42)
   })
 
   it('handler applies transform on normal completion', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let h = handler transform x -> x * 100 end;
         with h;
         42
       end
-    `)).toBe(4200)
+    `),
+    ).toBe(4200)
   })
 
   it('with non-handler value throws runtime error', () => {
-    expect(() => run(`
+    expect(() =>
+      run(`
       do
         with 42;
         1
       end
-    `)).toThrow(/handler value/)
+    `),
+    ).toThrow(/handler value/)
   })
 })
 
 describe('with h; — flat stacking', () => {
   it('multiple handlers stack without nesting', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let h1 = handler @a() -> resume("A") end;
         let h2 = handler @b() -> resume("B") end;
@@ -345,11 +396,13 @@ describe('with h; — flat stacking', () => {
         with h2;
         perform(@a) ++ perform(@b)
       end
-    `)).toBe('AB')
+    `),
+    ).toBe('AB')
   })
 
   it('inner handler takes precedence for same effect', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let h1 = handler @eff() -> resume("outer") end;
         let h2 = handler @eff() -> resume("inner") end;
@@ -357,11 +410,13 @@ describe('with h; — flat stacking', () => {
         with h2;
         perform(@eff)
       end
-    `)).toBe('inner')
+    `),
+    ).toBe('inner')
   })
 
   it('unmatched effects propagate through stacked handlers', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let h1 = handler @a() -> resume("A") end;
         let h2 = handler @b() -> resume("B") end;
@@ -369,13 +424,15 @@ describe('with h; — flat stacking', () => {
         with h1;
         perform(@b)
       end
-    `)).toBe('B')
+    `),
+    ).toBe('B')
   })
 })
 
 describe('with h; — interleaving with let', () => {
   it('handlers can depend on earlier bindings', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let x = 10;
         let h = handler @my.eff(v) -> resume(v + x) end;
@@ -383,11 +440,13 @@ describe('with h; — interleaving with let', () => {
         let y = perform(@my.eff, 5);
         y * 2
       end
-    `)).toBe(30)
+    `),
+    ).toBe(30)
   })
 
   it('let bindings after with are in handler scope', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let h = handler @dvala.error(msg) -> resume(0) end;
         with h;
@@ -395,13 +454,15 @@ describe('with h; — interleaving with let', () => {
         let y = x + 10;
         y
       end
-    `)).toBe(10)
+    `),
+    ).toBe(10)
   })
 })
 
 describe('with h; — recur inside loops (no function boundary)', () => {
   it('recur works inside with h; block', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let h = handler @dvala.error(msg) -> resume(0) end;
         with h;
@@ -410,11 +471,13 @@ describe('with h; — recur inside loops (no function boundary)', () => {
           else recur(i + 1, acc + i)
           end
       end
-    `)).toBe(10)
+    `),
+    ).toBe(10)
   })
 
   it('handler catches effects inside recur loop', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         let counter = handler
           @inc() -> do
@@ -431,18 +494,21 @@ describe('with h; — recur inside loops (no function boundary)', () => {
           end
           end
       end
-    `)).toBe(3)
+    `),
+    ).toBe(3)
   })
 })
 
 describe('with h; — inline handler expression', () => {
   it('supports inline handler...end after with', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         with (handler @dvala.error(msg) -> 0 end);
         0 / 0
       end
-    `)).toBe(0)
+    `),
+    ).toBe(0)
   })
 })
 
@@ -497,7 +563,8 @@ describe('parseHandler — error paths', () => {
 
 describe('parseHandler — do...end body forms', () => {
   it('clause body with do...end', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler
         @my.eff(x) -> do
           let y = x * 2;
@@ -505,11 +572,13 @@ describe('parseHandler — do...end body forms', () => {
         end
       end;
       h(-> perform(@my.eff, 5))
-    `)).toBe(10)
+    `),
+    ).toBe(10)
   })
 
   it('transform body with do...end', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler
       transform x -> do
         let y = x * 10;
@@ -517,50 +586,60 @@ describe('parseHandler — do...end body forms', () => {
       end
       end;
       h(-> 4)
-    `)).toBe(41)
+    `),
+    ).toBe(41)
   })
 
   it('clause with no params (empty parens)', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @my.eff() -> resume(42) end;
       h(-> perform(@my.eff))
-    `)).toBe(42)
+    `),
+    ).toBe(42)
   })
 
   it('clause with multiple params', () => {
-    expect(run(`
+    expect(
+      run(`
       let h = handler @my.eff(a, b) -> resume(a + b) end;
       h(-> perform(@my.eff, [10, 20]))
-    `)).toBe(30)
+    `),
+    ).toBe(30)
   })
 })
 
 describe('parseDo — with h; edge cases', () => {
   it('with as first statement in do block', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         with handler @dvala.error(msg) -> 0 end;
         0 / 0
       end
-    `)).toBe(0)
+    `),
+    ).toBe(0)
   })
 
   it('empty body after with', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         with handler transform x -> x end;
       end
-    `)).toBeNull()
+    `),
+    ).toBeNull()
   })
 
   it('nested with in with body', () => {
-    expect(run(`
+    expect(
+      run(`
       do
         with handler @a() -> resume("A") end;
         with handler @b() -> resume("B") end;
         perform(@a) ++ perform(@b)
       end
-    `)).toBe('AB')
+    `),
+    ).toBe('AB')
   })
 })
-

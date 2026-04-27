@@ -28,7 +28,23 @@ export { macrosModule } from './builtin/modules/macros'
 export { timeModule } from './builtin/modules/time'
 
 // Reference data and types
-export { apiReference, isCustomReference, isDatatypeReference, isFunctionReference, isPreludeReference, isShorthandReference } from '../reference'
-export type { Argument, CommonReference, CustomReference, DatatypeReference, FunctionReference, PreludeReference, Reference, ShorthandReference } from '../reference'
+export {
+  apiReference,
+  isCustomReference,
+  isDatatypeReference,
+  isFunctionReference,
+  isPreludeReference,
+  isShorthandReference,
+} from '../reference'
+export type {
+  Argument,
+  CommonReference,
+  CustomReference,
+  DatatypeReference,
+  FunctionReference,
+  PreludeReference,
+  Reference,
+  ShorthandReference,
+} from '../reference'
 export type { ApiName, DatatypeName, FunctionName, PreludeName, ShorthandName } from '../reference/api'
 export { isApiName, isDataType } from '../reference/api'

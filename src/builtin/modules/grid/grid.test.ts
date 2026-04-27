@@ -147,9 +147,7 @@ describe('grid', () => {
   })
   describe('grid:crop', () => {
     it('should crop the grid', () => {
-      expect(runGrid(`grid:crop(${exampleGrid1}, [1, 1], [2, 2])`)).toEqual([
-        ['mother'],
-      ])
+      expect(runGrid(`grid:crop(${exampleGrid1}, [1, 1], [2, 2])`)).toEqual([['mother']])
       expect(runGrid(`grid:crop(${exampleGrid1}, [1, 1])`)).toEqual([
         ['mother', 20],
         ['son', 30],
@@ -160,16 +158,12 @@ describe('grid', () => {
   })
   describe('grid:sliceRows', () => {
     it('should slice the rows of the grid', () => {
-      expect(runGrid(`grid:sliceRows(${exampleGrid1}, 1, 2)`)).toEqual([
-        ['Nina', 'mother', 20],
-      ])
+      expect(runGrid(`grid:sliceRows(${exampleGrid1}, 1, 2)`)).toEqual([['Nina', 'mother', 20]])
       expect(runGrid(`grid:sliceRows(${exampleGrid1}, 1)`)).toEqual([
         ['Nina', 'mother', 20],
         ['Kian', 'son', 30],
       ])
-      expect(runGrid(`grid:sliceRows(${exampleGrid1}, 1, -1)`)).toEqual([
-        ['Nina', 'mother', 20],
-      ])
+      expect(runGrid(`grid:sliceRows(${exampleGrid1}, 1, -1)`)).toEqual([['Nina', 'mother', 20]])
       expect(runGrid(`grid:sliceRows(${exampleGrid1}, -2)`)).toEqual([
         ['Nina', 'mother', 20],
         ['Kian', 'son', 30],
@@ -178,33 +172,19 @@ describe('grid', () => {
   })
   describe('grid:sliceCols', () => {
     it('should slice the columns of the grid', () => {
-      expect(runGrid(`grid:sliceCols(${exampleGrid1}, 1, 2)`)).toEqual([
-        ['father'],
-        ['mother'],
-        ['son'],
-      ])
+      expect(runGrid(`grid:sliceCols(${exampleGrid1}, 1, 2)`)).toEqual([['father'], ['mother'], ['son']])
       expect(runGrid(`grid:sliceCols(${exampleGrid1}, 1)`)).toEqual([
         ['father', 10],
         ['mother', 20],
         ['son', 30],
       ])
-      expect(runGrid(`grid:sliceCols(${exampleGrid1}, 1, -1)`)).toEqual([
-        ['father'],
-        ['mother'],
-        ['son'],
-      ])
-      expect(runGrid(`grid:sliceCols(${exampleGrid1}, -1)`)).toEqual([
-        [10],
-        [20],
-        [30],
-      ])
+      expect(runGrid(`grid:sliceCols(${exampleGrid1}, 1, -1)`)).toEqual([['father'], ['mother'], ['son']])
+      expect(runGrid(`grid:sliceCols(${exampleGrid1}, -1)`)).toEqual([[10], [20], [30]])
     })
   })
   describe('grid:spliceRows', () => {
     it('should splice the rows of the grid', () => {
-      expect(runGrid(`grid:spliceRows(${exampleGrid1}, 1, 2)`)).toEqual([
-        ['Albert', 'father', 10],
-      ])
+      expect(runGrid(`grid:spliceRows(${exampleGrid1}, 1, 2)`)).toEqual([['Albert', 'father', 10]])
       expect(runGrid(`grid:spliceRows(${exampleGrid1}, 1, 1, ["Nazanin", "mother", 40])`)).toEqual([
         ['Albert', 'father', 10],
         ['Nazanin', 'mother', 40],
@@ -215,11 +195,7 @@ describe('grid', () => {
   })
   describe('grid:spliceCols', () => {
     it('should splice the columns of the grid', () => {
-      expect(runGrid(`grid:spliceCols(${exampleGrid1}, 1, 2)`)).toEqual([
-        ['Albert'],
-        ['Nina'],
-        ['Kian'],
-      ])
+      expect(runGrid(`grid:spliceCols(${exampleGrid1}, 1, 2)`)).toEqual([['Albert'], ['Nina'], ['Kian']])
       expect(runGrid(`grid:spliceCols(${exampleGrid1}, 1, 1, ["f", "m", "s"])`)).toEqual([
         ['Albert', 'f', 10],
         ['Nina', 'm', 20],
@@ -259,7 +235,10 @@ describe('grid', () => {
       ])
     })
     it('should map multiple grids', () => {
-      expect(runGrid(`grid:cellMap(${exampleGrid3}, ${exampleGrid3}, +)`)).toEqual([[2, 4], [6, 8]])
+      expect(runGrid(`grid:cellMap(${exampleGrid3}, ${exampleGrid3}, +)`)).toEqual([
+        [2, 4],
+        [6, 8],
+      ])
     })
     it('should throw on different dimensions', () => {
       expect(() => runGrid(`grid:cellMap(${exampleGrid3}, [[1], [2]], +)`)).toThrow(DvalaError)
@@ -435,9 +414,11 @@ describe('import with destructuring', () => {
   })
 
   it('should work with function composition', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let { transpose, row } = import("grid");
       row(transpose([[1, 2], [3, 4]]), 1)
-    `)).toEqual([2, 4])
+    `),
+    ).toEqual([2, 4])
   })
 })

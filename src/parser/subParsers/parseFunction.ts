@@ -3,7 +3,13 @@ import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
-import { assertLParenToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
+import {
+  assertLParenToken,
+  isOperatorToken,
+  isRParenToken,
+  isReservedSymbolToken,
+  isSymbolToken,
+} from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseBindingTarget } from './parseBindingTarget'
@@ -31,16 +37,14 @@ const maxShorthandLambdaArity = 20
 // expressions and ARE valid as body starters. The list below is only the
 // reserved symbols that are purely terminators or mid-construct
 // continuations.
-const nonExpressionReservedSymbols = new Set([
-  'end', 'else', 'then', 'case', 'in', 'as', '_',
-])
+const nonExpressionReservedSymbols = new Set(['end', 'else', 'then', 'case', 'in', 'as', '_'])
 
 function assertNonEmptyFunctionBody(ctx: ParserContext): void {
   const token = ctx.peek()
   if (isReservedSymbolToken(token) && nonExpressionReservedSymbols.has(token[1])) {
     throw new ParseError(
-      `Empty function body — '${token[1]}' cannot start an expression. `
-      + 'Provide a body expression or use `do ... end` for an explicit block.',
+      `Empty function body — '${token[1]}' cannot start an expression. ` +
+        'Provide a body expression or use `do ... end` for an explicit block.',
       ctx.peekSourceCodeInfo(),
     )
   }
@@ -75,14 +79,7 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
     nodes = [ctx.parseExpression()]
   }
 
-  const node = withSourceCodeInfo([
-    NodeTypes.Function,
-    [
-      functionArguments,
-      nodes,
-    ],
-    0,
-  ], firstToken[2], ctx) as LambdaNode
+  const node = withSourceCodeInfo([NodeTypes.Function, [functionArguments, nodes], 0], firstToken[2], ctx) as LambdaNode
   ctx.setNodeEnd(node[2])
 
   // Store return type annotation keyed by the function node's ID
@@ -172,7 +169,7 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
         }
         arity = Math.max(arity, Number(number))
         if (arity > maxShorthandLambdaArity)
-          throw new ParseError('Can\'t specify more than 20 arguments', ctx.resolveTokenDebugInfo(firstToken[2]))
+          throw new ParseError("Can't specify more than 20 arguments", ctx.resolveTokenDebugInfo(firstToken[2]))
       }
     }
   }
@@ -181,14 +178,20 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   const functionArguments: BindingTarget[] = []
   for (let i = 1; i <= arity; i += 1) {
     const name = i === 1 ? '$' : `$${i}`
-    functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.Sym, name, 0] as UserDefinedSymbolNode, undefined], 0], firstToken[2], ctx))
+    functionArguments.push(
+      withSourceCodeInfo(
+        [bindingTargetTypes.symbol, [[NodeTypes.Sym, name, 0] as UserDefinedSymbolNode, undefined], 0],
+        firstToken[2],
+        ctx,
+      ),
+    )
   }
 
-  const node: LambdaNode = withSourceCodeInfo([NodeTypes.Function, [
-    functionArguments,
-    nodes,
-    { isShorthand: true },
-  ], 0], firstToken[2], ctx)
+  const node: LambdaNode = withSourceCodeInfo(
+    [NodeTypes.Function, [functionArguments, nodes, { isShorthand: true }], 0],
+    firstToken[2],
+    ctx,
+  )
 
   ctx.setNodeEnd(node[2])
   ctx.builder?.endNode()

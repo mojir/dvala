@@ -1,6 +1,11 @@
 import { RuntimeError } from '../../../errors'
 import type { Any } from '../../../interface'
-import { assertMatrix, assertSquareMatrix, assertVector, isSquareMatrix } from '../../../typeGuards/annotatedCollections'
+import {
+  assertMatrix,
+  assertSquareMatrix,
+  assertVector,
+  isSquareMatrix,
+} from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import { approxZero } from '../../../utils'
 import { toFixedArity } from '../../../utils/arity'
@@ -27,26 +32,29 @@ import { trace } from './helpers/trace'
 import matrixModuleSource from './matrix.dvala'
 
 const matrixNormalExpression: BuiltinNormalExpressions = {
-  'mul': {
+  mul: {
     evaluate: ([matrix1_, matrix2_], sourceCodeInfo): Any => {
       const matrix1 = assertMatrix(matrix1_, sourceCodeInfo)
       const matrix2 = assertMatrix(matrix2_, sourceCodeInfo)
       try {
         return matrixMultiply(matrix1, matrix2) as unknown as Any
       } catch (_error) {
-        throw new RuntimeError(`The number of columns in the first matrix must be equal to the number of rows in the second matrix, but got ${matrix1[0]!.length} and ${matrix2.length}`, sourceCodeInfo)
+        throw new RuntimeError(
+          `The number of columns in the first matrix must be equal to the number of rows in the second matrix, but got ${matrix1[0]!.length} and ${matrix2.length}`,
+          sourceCodeInfo,
+        )
       }
     },
     arity: toFixedArity(2),
   },
-  'det': {
+  det: {
     evaluate: ([matrix_], sourceCodeInfo): number => {
       const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
       return determinant(matrix)
     },
     arity: toFixedArity(1),
   },
-  'inv': {
+  inv: {
     evaluate: ([matrix_], sourceCodeInfo): Any => {
       const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
       const result = inverse(matrix)
@@ -57,21 +65,21 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'adj': {
+  adj: {
     evaluate: ([matrix_], sourceCodeInfo): Any => {
       const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
       return adjugate(matrix) as unknown as Any
     },
     arity: toFixedArity(1),
   },
-  'cofactor': {
+  cofactor: {
     evaluate: ([matrix_], sourceCodeInfo): Any => {
       const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
       return cofactor(matrix) as unknown as Any
     },
     arity: toFixedArity(1),
   },
-  'minor': {
+  minor: {
     evaluate: ([matrix_, row, col], sourceCodeInfo): Any => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       assertNumber(row, sourceCodeInfo, { integer: true, nonNegative: true, lte: matrix.length })
@@ -81,70 +89,70 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(3),
   },
-  'trace': {
+  trace: {
     evaluate: ([matrix_], sourceCodeInfo): number => {
       const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
       return trace(matrix)
     },
     arity: toFixedArity(1),
   },
-  'isSymmetric': {
+  isSymmetric: {
     evaluate: ([matrix_], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isSymetric(matrix)
     },
     arity: toFixedArity(1),
   },
-  'isTriangular': {
+  isTriangular: {
     evaluate: ([matrix_], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isTriangular(matrix)
     },
     arity: toFixedArity(1),
   },
-  'isUpperTriangular': {
+  isUpperTriangular: {
     evaluate: ([matrix_], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isTriangularUpper(matrix)
     },
     arity: toFixedArity(1),
   },
-  'isLowerTriangular': {
+  isLowerTriangular: {
     evaluate: ([matrix_], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isTriangularLower(matrix)
     },
     arity: toFixedArity(1),
   },
-  'isDiagonal': {
+  isDiagonal: {
     evaluate: ([matrix_], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isDiagonal(matrix)
     },
     arity: toFixedArity(1),
   },
-  'isSquare': {
+  isSquare: {
     evaluate: ([matrix_], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isSquare(matrix)
     },
     arity: toFixedArity(1),
   },
-  'isOrthogonalMatrix': {
+  isOrthogonalMatrix: {
     evaluate: ([matrix_], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isOrthogonal(matrix)
     },
     arity: toFixedArity(1),
   },
-  'isIdentity': {
+  isIdentity: {
     evaluate: ([matrix_], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isIdentity(matrix)
     },
     arity: toFixedArity(1),
   },
-  'isInvertible': {
+  isInvertible: {
     evaluate: ([matrix_], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       if (!isSquareMatrix(matrix)) {
@@ -154,7 +162,7 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'hilbert': {
+  hilbert: {
     evaluate: ([size], sourceCodeInfo): Any => {
       assertNumber(size, sourceCodeInfo, { integer: true, positive: true })
       const result: number[][] = []
@@ -169,14 +177,14 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'vandermonde': {
+  vandermonde: {
     evaluate: ([vector_], sourceCodeInfo): Any => {
       const vector = assertVector(vector_, sourceCodeInfo)
       const result: number[][] = []
       for (let i = 0; i < vector.length; i += 1) {
         const row: number[] = []
         for (let j = 0; j < vector.length; j += 1) {
-          row.push((vector[i]!) ** j)
+          row.push(vector[i]! ** j)
         }
         result.push(row)
       }
@@ -184,7 +192,7 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'band': {
+  band: {
     evaluate: ([n, lband, uband], sourceCodeInfo): Any => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(lband, sourceCodeInfo, { integer: true, nonNegative: true, lt: n })
@@ -193,7 +201,7 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(3),
   },
-  'isBanded': {
+  isBanded: {
     evaluate: ([matrix_, lband, uband], sourceCodeInfo): boolean => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       const maxBand = Math.max(matrix.length, matrix[0]!.length)
@@ -203,7 +211,7 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(3),
   },
-  'rank': {
+  rank: {
     evaluate: ([matrix_], sourceCodeInfo): number => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       const [, result] = gaussJordanElimination(matrix)
@@ -212,7 +220,7 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(1),
   },
   // Frobenius norm
-  'frobeniusNorm': {
+  frobeniusNorm: {
     evaluate: ([matrix_], sourceCodeInfo): number => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return Math.sqrt(matrix.reduce((sum, row) => sum + row.reduce((rowSum, cell) => rowSum + cell * cell, 0), 0))
@@ -220,7 +228,7 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(1),
   },
   // oneNorm (column norm)
-  'oneNorm': {
+  oneNorm: {
     evaluate: ([matrix_], sourceCodeInfo): number => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return norm1(matrix)
@@ -228,15 +236,22 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(1),
   },
   // Infinity norm
-  'infNorm': {
+  infNorm: {
     evaluate: ([matrix_], sourceCodeInfo): number => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
-      return matrix.reduce((max, row) => Math.max(max, row.reduce((sum, cell) => sum + Math.abs(cell), 0)), 0)
+      return matrix.reduce(
+        (max, row) =>
+          Math.max(
+            max,
+            row.reduce((sum, cell) => sum + Math.abs(cell), 0),
+          ),
+        0,
+      )
     },
     arity: toFixedArity(1),
   },
   // Max norm
-  'maxNorm': {
+  maxNorm: {
     evaluate: ([matrix_], sourceCodeInfo): number => {
       const matrix = assertMatrix(matrix_, sourceCodeInfo)
 
@@ -252,8 +267,7 @@ const matrixNormalExpression: BuiltinNormalExpressions = {
 for (const [key, docs] of Object.entries(moduleDocs)) {
   // Defensive: all doc keys correspond to existing expressions
   /* v8 ignore next 2 */
-  if (matrixNormalExpression[key])
-    matrixNormalExpression[key].docs = docs
+  if (matrixNormalExpression[key]) matrixNormalExpression[key].docs = docs
 }
 
 export const matrixModule: DvalaModule = {

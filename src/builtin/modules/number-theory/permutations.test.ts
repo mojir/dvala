@@ -22,12 +22,8 @@ describe('permutations', () => {
         ['a', 'b'],
         ['b', 'a'],
       ])
-      expect(runNth('nth:permutations(["a"])')).toEqual([
-        ['a'],
-      ])
-      expect(runNth('nth:permutations([])')).toEqual([
-        [],
-      ])
+      expect(runNth('nth:permutations(["a"])')).toEqual([['a']])
+      expect(runNth('nth:permutations([])')).toEqual([[]])
     })
   })
   describe('nth:countPermutations', () => {

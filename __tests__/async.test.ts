@@ -4,8 +4,7 @@ import type { RunResult } from '../src/evaluator/effectTypes'
 import type { DvalaFunction } from '../src/parser/types'
 
 function value(result: RunResult): unknown {
-  if (result.type !== 'completed')
-    throw new Error(`Expected completed, got ${result.type}`)
+  if (result.type !== 'completed') throw new Error(`Expected completed, got ${result.type}`)
   return result.value
 }
 

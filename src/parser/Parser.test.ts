@@ -66,9 +66,9 @@ describe('parser', () => {
     expect(() => dvalaDebug.run('"\\t\\r\\n\\b\\f"')).not.toThrow()
     expect(() => dvalaDebug.run('E')).not.toThrow()
     expect(() => dvalaDebug.run('123')).not.toThrow()
-    expect(() => dvalaDebug.run('let \'a\\\\b\' = 1;')).not.toThrow()
-    expect(() => dvalaDebug.run('let \'a\\\'b\' = 1;')).not.toThrow()
-    expect(() => dvalaDebug.run('let \'a\\ab\' = 1;')).not.toThrow()
+    expect(() => dvalaDebug.run("let 'a\\\\b' = 1;")).not.toThrow()
+    expect(() => dvalaDebug.run("let 'a\\'b' = 1;")).not.toThrow()
+    expect(() => dvalaDebug.run("let 'a\\ab' = 1;")).not.toThrow()
     expect(() => dvalaDebug.run('`')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('let a = (b) -> do 1, end;')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('match 1 case 1 then 1; 2 end')).not.toThrow()
@@ -223,7 +223,7 @@ describe('parser', () => {
       expect(dvala.run('16 >>> 3')).toBe(2)
       expect(dvala.run('1 >>> 1')).toBe(0)
       expect(dvala.run('1 >>> 2')).toBe(0)
-      expect(dvala.run('-16 >>> 2')).toBe(0x3FFFFFFC)
+      expect(dvala.run('-16 >>> 2')).toBe(0x3ffffffc)
       expect(dvala.run('64 >>> 3 >>> 2')).toBe(2)
     })
   })
@@ -390,9 +390,7 @@ describe('parser', () => {
       expect(dvala.run('-5.2e-1')).toBe(-0.52)
       expect(dvala.run('5')).toBe(5)
       expect(dvala.run('-10')).toBe(-10)
-      expect(tokenizeSource('-10').tokens).toEqual([
-        ['Number', '-10'],
-      ])
+      expect(tokenizeSource('-10').tokens).toEqual([['Number', '-10']])
     })
   })
   describe('strings', () => {
@@ -456,40 +454,14 @@ describe('parser', () => {
     test('samples', () => {
       expect(dvalaDebug.run('2 + 3')).toBe(5)
       expect(tokenizeSource('2 + 3', true).tokens).toEqual([
-        [
-          'Number',
-          '2',
-          [0, 0],
-        ],
-        [
-          'Whitespace',
-          ' ',
-          [0, 1],
-        ],
-        [
-          'Operator',
-          '+',
-          [0, 2],
-        ],
-        [
-          'Whitespace',
-          ' ',
-          [0, 3],
-        ],
-        [
-          'Number',
-          '3',
-          [0, 4],
-        ],
+        ['Number', '2', [0, 0]],
+        ['Whitespace', ' ', [0, 1]],
+        ['Operator', '+', [0, 2]],
+        ['Whitespace', ' ', [0, 3]],
+        ['Number', '3', [0, 4]],
       ])
       expect(dvalaDebug.run('-2')).toBe(-2)
-      expect(tokenizeSource('-2', true).tokens).toEqual([
-        [
-          'Number',
-          '-2',
-          [0, 0],
-        ],
-      ])
+      expect(tokenizeSource('-2', true).tokens).toEqual([['Number', '-2', [0, 0]]])
     })
   })
 
@@ -641,35 +613,43 @@ describe('parser', () => {
   })
 
   test('multinine comment', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
 /*******************************************
  *         Simple Dvala program             *
  ******************************************/
 
-10 + 20`)).toBe(30)
+10 + 20`),
+    ).toBe(30)
   })
 
   describe('block', () => {
     test('as operand', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         do
           let a = 1 + 2 * 3;
           a
-        end + 3`)).toBe(10)
+        end + 3`),
+      ).toBe(10)
     })
     test('scope', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
       let a = 1;
       do
         let a = 2;
       end;
-      a`)).toBe(1)
+      a`),
+      ).toBe(1)
 
-      expect(() => dvala.run(`
+      expect(() =>
+        dvala.run(`
       do
         let a = 2;
       end;
-      a`)).toThrow(DvalaError) // a is not defined
+      a`),
+      ).toThrow(DvalaError) // a is not defined
     })
   })
 
@@ -682,7 +662,10 @@ describe('parser', () => {
 
     it('supports nested arrays', () => {
       expect(dvala.run('[1, [2, 3], 4]')).toEqual([1, [2, 3], 4])
-      expect(dvala.run('[[1, 2], [3, 4]]')).toEqual([[1, 2], [3, 4]])
+      expect(dvala.run('[[1, 2], [3, 4]]')).toEqual([
+        [1, 2],
+        [3, 4],
+      ])
     })
 
     it('supports object literals', () => {
@@ -742,61 +725,75 @@ describe('parser', () => {
 
   describe('loop expressions', () => {
     it('supports loop expressions', () => {
-      expect(dvala.run(`
-        loop(n = 10, acc = 0) -> if n == 0 then acc else recur(n - 1, acc + n) end`)).toBe(55)
+      expect(
+        dvala.run(`
+        loop(n = 10, acc = 0) -> if n == 0 then acc else recur(n - 1, acc + n) end`),
+      ).toBe(55)
     })
   })
 
   describe('function', () => {
     test('basic', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
 let foo = () -> do
   42
 end;
 
-foo()`)).toBe(42)
+foo()`),
+      ).toBe(42)
     })
 
     test('empty block, no it is an object', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
 let foo = () -> {};
 
-foo()`)).toEqual({})
+foo()`),
+      ).toEqual({})
     })
     test('with rest arguments///', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
 let foo = (...x) -> do
   '+' apply (x filter -> $ > 0)
 end;
 
-foo(-1, 0, 1, 2, 3)`)).toBe(6)
+foo(-1, 0, 1, 2, 3)`),
+      ).toBe(6)
     })
 
     test('with default arguments', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
 let foo = (a = 10, b = 20) -> do
   a + b
 end;
 
-foo()`)).toBe(30)
+foo()`),
+      ).toBe(30)
     })
 
     test('with default arguments 1', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
 let foo = (a = 10, b = 20) -> do
   a + b
 end;
 
-foo(0)`)).toBe(20)
+foo(0)`),
+      ).toBe(20)
     })
 
     test('with default arguments 2', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
 let foo = (a = 10, b = 20) -> do
   a + b
 end;
 
-foo(1, 2)`)).toBe(3)
+foo(1, 2)`),
+      ).toBe(3)
     })
     test('errors', () => {
       expect(() => dvala.run('function foo(...rest = 1) rest end')).toThrow(DvalaError)
@@ -805,84 +802,110 @@ foo(1, 2)`)).toBe(3)
   })
 
   test('if/else if expression', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       let val = 8;
 
       if val < 5 then "S"
       else if val < 10 then "M"
       else if val < 15 then "L"
       else null
-      end`)).toBe('M')
+      end`),
+    ).toBe('M')
 
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
         let val = 20;
 
         if val < 5 then "S"
         else if val < 10 then "M"
         else if val < 15 then "L"
         else null
-        end`)).toBe(null)
+        end`),
+    ).toBe(null)
   })
   test('match expression', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
     match "-"
       case "-" then 1
-    end`)).toBe(1)
-    expect(dvala.run(`
+    end`),
+    ).toBe(1)
+    expect(
+      dvala.run(`
       let x = 1;
       match x
         case 0 then "zero"
         case 1 then "one"
         case 2 then "two"
-      end`)).toBe('one')
-    expect(() => dvala.run(`
+      end`),
+    ).toBe('one')
+    expect(() =>
+      dvala.run(`
       let x = 10;
       match x
         case 0 then "zero"
         case 1 then "one"
         case 2 then "two"
-      end`)).toThrow(MatchError)
+      end`),
+    ).toThrow(MatchError)
   })
 
   test('simple for (formerly doseq).', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
       for (x in "Al", y in [1, 2]) -> do
         x repeat y
-      end`)).toEqual([['A'], ['A', 'A'], ['l'], ['l', 'l']])
+      end`),
+    ).toEqual([['A'], ['A', 'A'], ['l'], ['l', 'l']])
   })
 
   describe('for', () => {
     test('empty collections', () => {
-      expect(() => dvala.run(`
+      expect(() =>
+        dvala.run(`
         for (x in [] 1) -> do
           x
-        end`)).toThrow(DvalaError)
-      expect(() => dvala.run(`
+        end`),
+      ).toThrow(DvalaError)
+      expect(() =>
+        dvala.run(`
           for (x in [1, 2, 3] while x < 1 1) -> do
             x
-          end`)).toThrow(DvalaError)
-      expect(dvala.run(`
+          end`),
+      ).toThrow(DvalaError)
+      expect(
+        dvala.run(`
         for (x in []) -> do
           x
-        end`)).toEqual([])
-      expect(dvala.run(`
+        end`),
+      ).toEqual([])
+      expect(
+        dvala.run(`
         for (x in [1, 2, 3], y in []) -> do
           x
-        end`)).toEqual([])
-      expect(dvala.run(`
+        end`),
+      ).toEqual([])
+      expect(
+        dvala.run(`
         for (x in [], y in [1, 2, 3]) -> do
           x
-        end`)).toEqual([])
+        end`),
+      ).toEqual([])
     })
     test('string and object iteration', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         for (x in "Al", y in [1, 2]) -> do
           x repeat y
-        end`)).toEqual([['A'], ['A', 'A'], ['l'], ['l', 'l']])
-      expect(dvala.run(`
+        end`),
+      ).toEqual([['A'], ['A', 'A'], ['l'], ['l', 'l']])
+      expect(
+        dvala.run(`
         for (x in { a: 10, b: 20 }, y in [1, 2]) -> do
            repeat(x, y)
-        end`)).toEqual([
+        end`),
+      ).toEqual([
         [['a', 10]],
         [
           ['a', 10],
@@ -896,40 +919,52 @@ foo(1, 2)`)).toBe(3)
       ])
     })
     test('basic iteration with computation', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         for (x in [1, 2], y in [1, 10]) -> do
           x * y
-        end`)).toEqual([1, 10, 2, 20])
+        end`),
+      ).toEqual([1, 10, 2, 20])
     })
     test('with computed bindings using let', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         for (x in [1, 2] let z = x * x * x) -> do
           z
-        end`)).toEqual([1, 8])
+        end`),
+      ).toEqual([1, 8])
     })
     test('using previous bindings of subsequent iterations', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         for (x in [1, 2], y in [x, 2 * x]) -> do
           x * y
-        end`)).toEqual([1, 2, 4, 8])
+        end`),
+      ).toEqual([1, 2, 4, 8])
     })
     test('with when conditions', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         for (x in [0, 1, 2, 3, 4, 5] let a = x * 3 let y = a when isEven(y) while y < 10) -> do
           y
-        end`)).toEqual([0, 6])
+        end`),
+      ).toEqual([0, 6])
     })
     test('with while conditions (early termination)', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         for (x in [0, 1, 2, 3, 4, 5] let y = x * 3 while isEven(y)) -> do
           y
-        end`)).toEqual([0])
+        end`),
+      ).toEqual([0])
     })
     test('multiple iterations with while', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         for (x in [1, 2, 3], y in [1, 2, 3] while x <= y, z in [1, 2, 3]) -> do
           [x, y, z]
-        end`)).toEqual([
+        end`),
+      ).toEqual([
         [1, 1, 1],
         [1, 1, 2],
         [1, 1, 3],
@@ -957,7 +992,7 @@ foo(1, 2)`)).toBe(3)
         // accept; the runtime semantics are the user's problem.
         expect(() => dvala.run('let { pi as p, e as p } = { pi: 1, e: 2 }; p')).not.toThrow()
       })
-      it('accepts external key that matches another entry\'s local name', () => {
+      it("accepts external key that matches another entry's local name", () => {
         // `{ pi as p, q as pi }` — first external key is `pi`, second is `q`.
         // The second entry's LOCAL is named `pi` but that's not a key, so
         // the external-key dedup passes. Previously this was falsely rejected.
@@ -966,7 +1001,7 @@ foo(1, 2)`)).toBe(3)
     })
     describe('destructuring', () => {
       const values = {
-        'anObject': {
+        anObject: {
           name: 'John Doe',
           age: 42,
           married: true,
@@ -983,86 +1018,135 @@ foo(1, 2)`)).toBe(3)
         },
       }
       test('samples.', () => {
-        expect(dvala.run(`
+        expect(
+          dvala.run(`
           let foo = ({ a as b = 10 }) -> do
             b
           end;
 
           foo({ b: 1})
-        `)).toBe(10)
-        expect(dvala.run(`
+        `),
+        ).toBe(10)
+        expect(
+          dvala.run(
+            `
           let { children: [{ age as firstChildAge }] } = anObject;
           firstChildAge
-        `, { scope: values })).toBe(10)
+        `,
+            { scope: values },
+          ),
+        ).toBe(10)
 
-        expect(dvala.run(`
+        expect(
+          dvala.run(
+            `
           let { children: [{ age as firstChildAge, name }] } = anObject;
           [firstChildAge, name]
-        `, { scope: values })).toEqual([10, 'Alice'])
+        `,
+            { scope: values },
+          ),
+        ).toEqual([10, 'Alice'])
 
-        expect(dvala.run(`
+        expect(
+          dvala.run(
+            `
           let { children: [, { age, name }] } = anObject;
           [age, name]
-        `, { scope: values })).toEqual([7, 'Bob'])
+        `,
+            { scope: values },
+          ),
+        ).toEqual([7, 'Bob'])
 
-        expect(dvala.run(`
+        expect(
+          dvala.run(
+            `
           let foo = ([a, b] = [1, 2]) -> do
             a + b
           end;
 
         foo()
-        `, { scope: values })).toEqual(3)
+        `,
+            { scope: values },
+          ),
+        ).toEqual(3)
 
-        expect(dvala.run(`
+        expect(
+          dvala.run(
+            `
           let foo = ([{ value as a }, { value as b }] = [{ value: 1 }, { value: 2 }]) -> do
             a + b
           end;
 
           foo()
-          `, { scope: values })).toEqual(3)
+          `,
+            { scope: values },
+          ),
+        ).toEqual(3)
 
-        expect(dvala.run(`
+        expect(
+          dvala.run(
+            `
           let foo = ([{ value as a } = { value: 10 }, { value as b } = { value: 20 }] = [{ value: 1 }, { value: 2 }]) -> do
             a + b
           end;
 
             foo([])
-            `, { scope: values })).toEqual(30)
+            `,
+            { scope: values },
+          ),
+        ).toEqual(30)
 
-        expect(dvala.run(`
+        expect(
+          dvala.run(
+            `
           let foo = ({ value = 10 }) -> do
             value
           end;
 
           foo({})
-          `, { scope: values })).toEqual(10)
+          `,
+            { scope: values },
+          ),
+        ).toEqual(10)
 
-        expect(dvala.run(`
+        expect(
+          dvala.run(
+            `
           let foo = ([{ value as a } = { value: 10 }, { value as b = 200 } = { value: 20 }] = [{ value: 1 }, { value: 2 }]) -> do
             a + b
           end;
 
             foo([{ value: 1 }])
-            `, { scope: values })).toEqual(21)
+            `,
+            { scope: values },
+          ),
+        ).toEqual(21)
 
-        expect(dvala.run(`
+        expect(
+          dvala.run(
+            `
           let foo = ([{ value as a } = { value: 10 }, { value as b = 200 } = { value: 20 }] = [{ value: 1 }, { value: 2 }]) -> do
             a + b
           end;
 
             foo([{ value: 1 }, { value: 200 }])
-            `, { scope: values })).toEqual(201)
+            `,
+            { scope: values },
+          ),
+        ).toEqual(201)
       })
     })
     test('complex example with three iterations', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         for (
           x in [1, 2, 3],
           y in [1, 2, 3],
           z in [1, 2, 3] while x <= y
         ) -> do
           [x, y, z]
-        end`)).toEqual([
+        end`),
+      ).toEqual([
         [1, 1, 1],
         [1, 1, 2],
         [1, 1, 3],
@@ -1084,7 +1168,8 @@ foo(1, 2)`)).toBe(3)
       ])
     })
     test('real world example', () => {
-      expect(dvala.run(`// Imagine these are coming from a database
+      expect(
+        dvala.run(`// Imagine these are coming from a database
         let products = [
           { id: "P1", name: "Phone", price: 500, category: "electronics", stockLevel: 23 },
           { id: "P2", name: "Headphones", price: 150, category: "electronics", stockLevel: 42 },
@@ -1132,7 +1217,8 @@ foo(1, 2)`)).toBe(3)
             savingsAmount: discount * finalPrice,
             savingsPercentage: discount * 100
           }
-        end`)).toEqual([
+        end`),
+      ).toEqual([
         {
           bundle: [
             {
@@ -1234,7 +1320,6 @@ foo(1, 2)`)).toBe(3)
       ]
 
       for (const expression of expressions) {
-
         expect(dvala.run(expression)).toBeCloseTo(eval(expression.replace(/\^/g, '**')))
       }
     })
@@ -1256,18 +1341,21 @@ foo(1, 2)`)).toBe(3)
     })
 
     it('supports recursion via self', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let fib = (n, a = 0, b = 1) ->
           if n == 0 then a
           else if n == 1 then b
           else self(n - 1, b, a + b)
           end;
 
-        fib(10)`)).toBe(55)
+        fib(10)`),
+      ).toBe(55)
     })
 
     it('supports recursion via self (with match)', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let fib = (n, a = 0, b = 1) ->
           match n
             case 0 then a
@@ -1275,7 +1363,8 @@ foo(1, 2)`)).toBe(3)
             case _ then self(n - 1, b, a + b)
           end;
 
-        fib(10)`)).toBe(55)
+        fib(10)`),
+      ).toBe(55)
     })
     it('supports single argument without parentheses', () => {
       expect(dvala.run('(x -> x + 1)(1)')).toBe(2)
@@ -1283,7 +1372,7 @@ foo(1, 2)`)).toBe(3)
     })
 
     it('supports shorthand lambda function definitions', () => {
-    // Testing the provided lambda function example
+      // Testing the provided lambda function example
       expect(dvala.run('(-> 1)()')).toBe(1)
       expect(dvala.run('(-> $)(1)')).toBe(1)
       expect(dvala.run('(-> do $ + $2 end)(3, 4)')).toBe(7)
@@ -1311,8 +1400,12 @@ foo(1, 2)`)).toBe(3)
     })
 
     it('supports lambda functions as return values', () => {
-      expect(dvala.run('((op) -> if op == "add" then ((x, y) -> x + y) else ((x, y) -> x - y) end)("add")(5, 3)')).toBe(8)
-      expect(dvala.run('((op) -> if op == "add" then ((x, y) -> x + y) else ((x, y) -> x - y) end)("subtract")(5, 3)')).toBe(2)
+      expect(dvala.run('((op) -> if op == "add" then ((x, y) -> x + y) else ((x, y) -> x - y) end)("add")(5, 3)')).toBe(
+        8,
+      )
+      expect(
+        dvala.run('((op) -> if op == "add" then ((x, y) -> x + y) else ((x, y) -> x - y) end)("subtract")(5, 3)'),
+      ).toBe(2)
     })
   })
 })

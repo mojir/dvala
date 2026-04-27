@@ -18,58 +18,68 @@ describe('verifyAssertionFunctionBodies', () => {
   })
 
   it('accepts a multi-statement body once an earlier assert proves the predicate', () => {
-    const diagnostics = verifyAssertionFunctionBodies(parseProgram(`
+    const diagnostics = verifyAssertionFunctionBodies(
+      parseProgram(`
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> do
         assert(x > 0);
         true
       end;
       1
-    `))
+    `),
+    )
 
     expect(diagnostics).toHaveLength(0)
   })
 
   it('accepts an if-body when both normal-return paths prove the predicate', () => {
-    const diagnostics = verifyAssertionFunctionBodies(parseProgram(`
+    const diagnostics = verifyAssertionFunctionBodies(
+      parseProgram(`
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
         if x > 0 then true else assert(x > 0) end;
       1
-    `))
+    `),
+    )
 
     expect(diagnostics).toHaveLength(0)
   })
 
   it('accepts verified helper calls with the same asserted predicate', () => {
-    const diagnostics = verifyAssertionFunctionBodies(parseProgram(`
+    const diagnostics = verifyAssertionFunctionBodies(
+      parseProgram(`
       let assertPositiveBase: (x: Number) -> asserts {x | x > 0} = (x) -> assert(x > 0);
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> do
         assertPositiveBase(x);
         true
       end;
       1
-    `))
+    `),
+    )
 
     expect(diagnostics).toHaveLength(0)
   })
 
   it('ignores recursive-looking calls that only appear inside nested lambdas', () => {
-    const diagnostics = verifyAssertionFunctionBodies(parseProgram(`
+    const diagnostics = verifyAssertionFunctionBodies(
+      parseProgram(`
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> do
         let delayed = () -> assertPositive(x);
         assert(x > 0)
       end;
       1
-    `))
+    `),
+    )
 
     expect(diagnostics).toHaveLength(0)
   })
 
   it('rejects helper calls that do not prove the current binder', () => {
-    const diagnostics = verifyAssertionFunctionBodies(parseProgram(`
+    const diagnostics = verifyAssertionFunctionBodies(
+      parseProgram(`
       let assertPositiveBase: (x: Number) -> asserts {x | x > 0} = (x) -> assert(x > 0);
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> assertPositiveBase(1);
       1
-    `))
+    `),
+    )
 
     expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
   })
@@ -99,47 +109,55 @@ describe('verifyAssertionFunctionBodies', () => {
   })
 
   it('verifies assertion functions nested inside top-level blocks', () => {
-    const diagnostics = verifyAssertionFunctionBodies(parseProgram(`
+    const diagnostics = verifyAssertionFunctionBodies(
+      parseProgram(`
       do
         let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> assert(x > 0);
         1
       end
-    `))
+    `),
+    )
 
     expect(diagnostics).toHaveLength(0)
   })
 
   it('handles non-terminal if statements in assertion bodies', () => {
-    const diagnostics = verifyAssertionFunctionBodies(parseProgram(`
+    const diagnostics = verifyAssertionFunctionBodies(
+      parseProgram(`
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> do
         if x > 0 then true else assert(x > 0) end;
         true
       end;
       1
-    `))
+    `),
+    )
 
     expect(diagnostics).toHaveLength(0)
   })
 
   it('keeps later statements trivially proven after an earlier exact assert', () => {
-    const diagnostics = verifyAssertionFunctionBodies(parseProgram(`
+    const diagnostics = verifyAssertionFunctionBodies(
+      parseProgram(`
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> do
         assert(x > 0);
         if false then false else true end;
         true
       end;
       1
-    `))
+    `),
+    )
 
     expect(diagnostics).toHaveLength(0)
   })
 
   it('rejects helper calls whose asserted predicate differs from the target predicate', () => {
-    const diagnostics = verifyAssertionFunctionBodies(parseProgram(`
+    const diagnostics = verifyAssertionFunctionBodies(
+      parseProgram(`
       let assertStrictlyPositive: (x: Number) -> asserts {x | x > 1} = (x) -> assert(x > 1);
       let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) -> assertStrictlyPositive(x);
       1
-    `))
+    `),
+    )
 
     expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
   })

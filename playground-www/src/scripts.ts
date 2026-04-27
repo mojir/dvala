@@ -13,7 +13,15 @@ import { retrigger } from '../../src/retrigger'
 import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
-import { buildDocTree, formatSource, getAutoCompleter, getUndefinedSymbols, parseToCst, parseTokenStream, tokenizeSource } from '../../src/tooling'
+import {
+  buildDocTree,
+  formatSource,
+  getAutoCompleter,
+  getUndefinedSymbols,
+  parseToCst,
+  parseTokenStream,
+  tokenizeSource,
+} from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
 import { createAstTreeViewer } from './components/astTreeViewer'
@@ -26,7 +34,14 @@ import { renderShell } from './shell'
 import * as router from './router'
 import { renderDocPage } from './components/docPage'
 import { renderExampleDetailPage, renderExampleIndexPage } from './components/examplePage'
-import { getRefEntries, REF_SECTIONS, renderReferenceCategoryPage, renderReferenceIndexPage, renderReferenceModulePage, renderReferenceSectionPage } from './components/referencePage'
+import {
+  getRefEntries,
+  REF_SECTIONS,
+  renderReferenceCategoryPage,
+  renderReferenceIndexPage,
+  renderReferenceModulePage,
+  renderReferenceSectionPage,
+} from './components/referencePage'
 import type { RefEntry } from './components/referencePage'
 import { getFeatureCard, renderStartPage } from './components/startPage'
 import { renderDvalaMarkdown } from './renderDvalaMarkdown'
@@ -84,10 +99,14 @@ import { createEffectHandlers } from './createEffectHandlers'
 
 const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
-const getDvala = (forceDebug?: 'debug') => forceDebug || getState('debug') ? dvalaDebug : dvalaNoDebug
+const getDvala = (forceDebug?: 'debug') => (forceDebug || getState('debug') ? dvalaDebug : dvalaNoDebug)
 const MAX_FILE_HISTORY_STEPS = 99
 const CONTEXT_UI_STATE_KEY = '__playground'
-const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntryFromState(), syncDvalaCodeHistoryButtons, MAX_FILE_HISTORY_STEPS)
+const dvalaCodeHistory = new StateHistory(
+  createDvalaCodeHistoryEntryFromState(),
+  syncDvalaCodeHistoryButtons,
+  MAX_FILE_HISTORY_STEPS,
+)
 let activeDvalaCodeHistoryFileId: string | null = null
 let closeEditorMenuListener: ((event: MouseEvent) => void) | null = null
 
@@ -111,11 +130,14 @@ function syncDvalaCodeHistoryButtons(status: HistoryStatus = dvalaCodeHistory.ge
 }
 
 function persistActiveDvalaCodeHistory() {
-  if (activeDvalaCodeHistoryFileId)
-    setFileHistory(activeDvalaCodeHistoryFileId, dvalaCodeHistory.serialize())
+  if (activeDvalaCodeHistoryFileId) setFileHistory(activeDvalaCodeHistoryFileId, dvalaCodeHistory.serialize())
 }
 
-function switchDvalaCodeHistory(fileId: string | null, initialEntry = createDvalaCodeHistoryEntryFromState(), reset = false) {
+function switchDvalaCodeHistory(
+  fileId: string | null,
+  initialEntry = createDvalaCodeHistoryEntryFromState(),
+  reset = false,
+) {
   persistActiveDvalaCodeHistory()
   // Scratch has no file ID but still gets its history persisted under '<scratch>'
   const effectiveId = fileId ?? '<scratch>'
@@ -261,91 +283,213 @@ animationStyles.textContent = `
 document.head.appendChild(animationStyles)
 
 const elements = {
-  get wrapper() { return document.getElementById('wrapper') as HTMLElement },
-  get mainPanel() { return document.getElementById('main-panel') as HTMLElement },
-  get dvalaPanel() { return document.getElementById('dvala-panel') as HTMLElement },
-  get outputPanel() { return document.getElementById('output-panel') as HTMLElement },
-  get moreMenu() { return document.getElementById('more-menu') as HTMLElement },
-  get filesHeaderMenu() { return document.getElementById('files-header-menu') as HTMLElement },
-  get addContextMenu() { return document.getElementById('add-context-menu') as HTMLElement },
-  get newContextName() { return document.getElementById('new-context-name') as HTMLInputElement },
-  get newContextValue() { return document.getElementById('new-context-value') as HTMLTextAreaElement },
-  get newContextError() { return document.getElementById('new-context-error') as HTMLSpanElement },
-  get contextTextArea() { return document.getElementById('context-textarea') as HTMLTextAreaElement },
-  get contextEntryList() { return document.getElementById('context-entry-list') as HTMLDivElement },
-  get contextDetailView() { return document.getElementById('context-detail-view') as HTMLDivElement },
-  get contextDetailTextArea() { return document.getElementById('context-detail-textarea') as HTMLTextAreaElement },
-  get outputResult() { return document.getElementById('output-result') as HTMLElement },
-  get dvalaTextArea() { return document.getElementById('dvala-textarea') as HTMLTextAreaElement },
-  get resizeDevider1() { return document.getElementById('resize-divider-1') as HTMLElement },
-  get resizeDevider2() { return document.getElementById('resize-divider-2') as HTMLElement },
-  get dvalaPanelDebugInfo() { return document.getElementById('dvala-panel-debug-info') as HTMLDivElement },
-  get contextUndoButton() { return document.getElementById('context-undo-button') as HTMLAnchorElement },
-  get contextRedoButton() { return document.getElementById('context-redo-button') as HTMLAnchorElement },
-  get dvalaCodeUndoButton() { return document.getElementById('dvala-code-undo-button') as HTMLAnchorElement },
-  get dvalaCodeRedoButton() { return document.getElementById('dvala-code-redo-button') as HTMLAnchorElement },
-  get editorToolbarTitle() { return document.getElementById('editor-toolbar-title') as HTMLSpanElement },
-  get contextTitle() { return document.getElementById('context-title') as HTMLDivElement },
-  get dvalaCodeTitle() { return document.getElementById('dvala-code-title') as HTMLDivElement },
-  get dvalaCodeTitleString() { return document.getElementById('dvala-code-title-string') as HTMLSpanElement },
-  get dvalaCodeTitleInput() { return document.getElementById('dvala-code-title-input') as HTMLInputElement },
-  get dvalaCodePendingIndicator() { return document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement },
-  get dvalaCodeLockedIndicator() { return document.getElementById('dvala-code-locked-indicator') as HTMLSpanElement },
-  get saveScratchButton() { return document.getElementById('save-scratch-btn') as HTMLAnchorElement },
-  get snapshotModal() { return document.getElementById('snapshot-modal') as HTMLDivElement },
-  get snapshotPanelContainer() { return document.getElementById('snapshot-panel-container') as HTMLDivElement },
-  get importOptionsModal() { return document.getElementById('import-options-modal') as HTMLDivElement },
-  get importOptCode() { return document.getElementById('import-opt-code') as HTMLInputElement },
-  get importOptCodeLabel() { return document.getElementById('import-opt-code-label') as HTMLLabelElement },
-  get importOptContext() { return document.getElementById('import-opt-context') as HTMLInputElement },
-  get importOptContextLabel() { return document.getElementById('import-opt-context-label') as HTMLLabelElement },
-  get importOptSettings() { return document.getElementById('import-opt-settings') as HTMLInputElement },
-  get importOptSettingsLabel() { return document.getElementById('import-opt-settings-label') as HTMLLabelElement },
-  get importOptSavedSnapshots() { return document.getElementById('import-opt-saved-snapshots') as HTMLInputElement },
-  get importOptSavedSnapshotsLabel() { return document.getElementById('import-opt-saved-snapshots-label') as HTMLLabelElement },
-  get importOptRecentSnapshots() { return document.getElementById('import-opt-recent-snapshots') as HTMLInputElement },
-  get importOptRecentSnapshotsLabel() { return document.getElementById('import-opt-recent-snapshots-label') as HTMLLabelElement },
-  get importOptLayout() { return document.getElementById('import-opt-layout') as HTMLInputElement },
-  get importOptLayoutLabel() { return document.getElementById('import-opt-layout-label') as HTMLLabelElement },
-  get importOptSavedFiles() { return document.getElementById('import-opt-saved-files') as HTMLInputElement },
-  get importOptSavedFilesLabel() { return document.getElementById('import-opt-saved-files-label') as HTMLLabelElement },
-  get importResultModal() { return document.getElementById('import-result-modal') as HTMLDivElement },
-  get importResultContent() { return document.getElementById('import-result-content') as HTMLDivElement },
-  get exportModal() { return document.getElementById('export-modal') as HTMLDivElement },
-  get exportOptCode() { return document.getElementById('export-opt-code') as HTMLInputElement },
-  get exportOptContext() { return document.getElementById('export-opt-context') as HTMLInputElement },
-  get exportOptSettings() { return document.getElementById('export-opt-settings') as HTMLInputElement },
-  get exportOptSavedSnapshots() { return document.getElementById('export-opt-saved-snapshots') as HTMLInputElement },
-  get exportOptRecentSnapshots() { return document.getElementById('export-opt-recent-snapshots') as HTMLInputElement },
-  get exportOptLayout() { return document.getElementById('export-opt-layout') as HTMLInputElement },
-  get exportOptSavedFiles() { return document.getElementById('export-opt-saved-files') as HTMLInputElement },
-  get toastContainer() { return document.getElementById('toast-container') as HTMLDivElement },
-  get executionControlBar() { return document.getElementById('execution-control-bar') as HTMLDivElement },
-  get executionStatus() { return document.getElementById('execution-status') as HTMLSpanElement },
-  get execPlayBtn() { return document.getElementById('exec-play-btn') as HTMLButtonElement },
-  get execPauseBtn() { return document.getElementById('exec-pause-btn') as HTMLButtonElement },
-  get execStopBtn() { return document.getElementById('exec-stop-btn') as HTMLButtonElement },
+  get wrapper() {
+    return document.getElementById('wrapper') as HTMLElement
+  },
+  get mainPanel() {
+    return document.getElementById('main-panel') as HTMLElement
+  },
+  get dvalaPanel() {
+    return document.getElementById('dvala-panel') as HTMLElement
+  },
+  get outputPanel() {
+    return document.getElementById('output-panel') as HTMLElement
+  },
+  get moreMenu() {
+    return document.getElementById('more-menu') as HTMLElement
+  },
+  get filesHeaderMenu() {
+    return document.getElementById('files-header-menu') as HTMLElement
+  },
+  get addContextMenu() {
+    return document.getElementById('add-context-menu') as HTMLElement
+  },
+  get newContextName() {
+    return document.getElementById('new-context-name') as HTMLInputElement
+  },
+  get newContextValue() {
+    return document.getElementById('new-context-value') as HTMLTextAreaElement
+  },
+  get newContextError() {
+    return document.getElementById('new-context-error') as HTMLSpanElement
+  },
+  get contextTextArea() {
+    return document.getElementById('context-textarea') as HTMLTextAreaElement
+  },
+  get contextEntryList() {
+    return document.getElementById('context-entry-list') as HTMLDivElement
+  },
+  get contextDetailView() {
+    return document.getElementById('context-detail-view') as HTMLDivElement
+  },
+  get contextDetailTextArea() {
+    return document.getElementById('context-detail-textarea') as HTMLTextAreaElement
+  },
+  get outputResult() {
+    return document.getElementById('output-result') as HTMLElement
+  },
+  get dvalaTextArea() {
+    return document.getElementById('dvala-textarea') as HTMLTextAreaElement
+  },
+  get resizeDevider1() {
+    return document.getElementById('resize-divider-1') as HTMLElement
+  },
+  get resizeDevider2() {
+    return document.getElementById('resize-divider-2') as HTMLElement
+  },
+  get dvalaPanelDebugInfo() {
+    return document.getElementById('dvala-panel-debug-info') as HTMLDivElement
+  },
+  get contextUndoButton() {
+    return document.getElementById('context-undo-button') as HTMLAnchorElement
+  },
+  get contextRedoButton() {
+    return document.getElementById('context-redo-button') as HTMLAnchorElement
+  },
+  get dvalaCodeUndoButton() {
+    return document.getElementById('dvala-code-undo-button') as HTMLAnchorElement
+  },
+  get dvalaCodeRedoButton() {
+    return document.getElementById('dvala-code-redo-button') as HTMLAnchorElement
+  },
+  get editorToolbarTitle() {
+    return document.getElementById('editor-toolbar-title') as HTMLSpanElement
+  },
+  get contextTitle() {
+    return document.getElementById('context-title') as HTMLDivElement
+  },
+  get dvalaCodeTitle() {
+    return document.getElementById('dvala-code-title') as HTMLDivElement
+  },
+  get dvalaCodeTitleString() {
+    return document.getElementById('dvala-code-title-string') as HTMLSpanElement
+  },
+  get dvalaCodeTitleInput() {
+    return document.getElementById('dvala-code-title-input') as HTMLInputElement
+  },
+  get dvalaCodePendingIndicator() {
+    return document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement
+  },
+  get dvalaCodeLockedIndicator() {
+    return document.getElementById('dvala-code-locked-indicator') as HTMLSpanElement
+  },
+  get saveScratchButton() {
+    return document.getElementById('save-scratch-btn') as HTMLAnchorElement
+  },
+  get snapshotModal() {
+    return document.getElementById('snapshot-modal') as HTMLDivElement
+  },
+  get snapshotPanelContainer() {
+    return document.getElementById('snapshot-panel-container') as HTMLDivElement
+  },
+  get importOptionsModal() {
+    return document.getElementById('import-options-modal') as HTMLDivElement
+  },
+  get importOptCode() {
+    return document.getElementById('import-opt-code') as HTMLInputElement
+  },
+  get importOptCodeLabel() {
+    return document.getElementById('import-opt-code-label') as HTMLLabelElement
+  },
+  get importOptContext() {
+    return document.getElementById('import-opt-context') as HTMLInputElement
+  },
+  get importOptContextLabel() {
+    return document.getElementById('import-opt-context-label') as HTMLLabelElement
+  },
+  get importOptSettings() {
+    return document.getElementById('import-opt-settings') as HTMLInputElement
+  },
+  get importOptSettingsLabel() {
+    return document.getElementById('import-opt-settings-label') as HTMLLabelElement
+  },
+  get importOptSavedSnapshots() {
+    return document.getElementById('import-opt-saved-snapshots') as HTMLInputElement
+  },
+  get importOptSavedSnapshotsLabel() {
+    return document.getElementById('import-opt-saved-snapshots-label') as HTMLLabelElement
+  },
+  get importOptRecentSnapshots() {
+    return document.getElementById('import-opt-recent-snapshots') as HTMLInputElement
+  },
+  get importOptRecentSnapshotsLabel() {
+    return document.getElementById('import-opt-recent-snapshots-label') as HTMLLabelElement
+  },
+  get importOptLayout() {
+    return document.getElementById('import-opt-layout') as HTMLInputElement
+  },
+  get importOptLayoutLabel() {
+    return document.getElementById('import-opt-layout-label') as HTMLLabelElement
+  },
+  get importOptSavedFiles() {
+    return document.getElementById('import-opt-saved-files') as HTMLInputElement
+  },
+  get importOptSavedFilesLabel() {
+    return document.getElementById('import-opt-saved-files-label') as HTMLLabelElement
+  },
+  get importResultModal() {
+    return document.getElementById('import-result-modal') as HTMLDivElement
+  },
+  get importResultContent() {
+    return document.getElementById('import-result-content') as HTMLDivElement
+  },
+  get exportModal() {
+    return document.getElementById('export-modal') as HTMLDivElement
+  },
+  get exportOptCode() {
+    return document.getElementById('export-opt-code') as HTMLInputElement
+  },
+  get exportOptContext() {
+    return document.getElementById('export-opt-context') as HTMLInputElement
+  },
+  get exportOptSettings() {
+    return document.getElementById('export-opt-settings') as HTMLInputElement
+  },
+  get exportOptSavedSnapshots() {
+    return document.getElementById('export-opt-saved-snapshots') as HTMLInputElement
+  },
+  get exportOptRecentSnapshots() {
+    return document.getElementById('export-opt-recent-snapshots') as HTMLInputElement
+  },
+  get exportOptLayout() {
+    return document.getElementById('export-opt-layout') as HTMLInputElement
+  },
+  get exportOptSavedFiles() {
+    return document.getElementById('export-opt-saved-files') as HTMLInputElement
+  },
+  get toastContainer() {
+    return document.getElementById('toast-container') as HTMLDivElement
+  },
+  get executionControlBar() {
+    return document.getElementById('execution-control-bar') as HTMLDivElement
+  },
+  get executionStatus() {
+    return document.getElementById('execution-status') as HTMLSpanElement
+  },
+  get execPlayBtn() {
+    return document.getElementById('exec-play-btn') as HTMLButtonElement
+  },
+  get execPauseBtn() {
+    return document.getElementById('exec-pause-btn') as HTMLButtonElement
+  },
+  get execStopBtn() {
+    return document.getElementById('exec-stop-btn') as HTMLButtonElement
+  },
 }
 
-type MoveParams = {
-  id: 'resize-divider-1'
-  startMoveX: number
-  percentBeforeMove: number
-} | {
-  id: 'resize-divider-2'
-  startMoveY: number
-  percentBeforeMove: number
-}
+type MoveParams =
+  | {
+      id: 'resize-divider-1'
+      startMoveX: number
+      percentBeforeMove: number
+    }
+  | {
+      id: 'resize-divider-2'
+      startMoveY: number
+      percentBeforeMove: number
+    }
 
-type OutputType =
-  | 'error'
-  | 'output'
-  | 'result'
-  | 'analyze'
-  | 'tokenize'
-  | 'parse'
-  | 'comment'
-  | 'warn'
+type OutputType = 'error' | 'output' | 'result' | 'analyze' | 'tokenize' | 'parse' | 'comment' | 'warn'
 
 let moveParams: MoveParams | null = null
 
@@ -374,7 +518,13 @@ let activeContextEntryKind: ContextEntryKind = getState('current-context-entry-k
 let activeContextBindingName: string | null = getState('current-context-binding-name')
 let isSyncingContextDetail = false
 let contextDetailHasParseError = false
-const modalStack: { panel: HTMLElement; label: string; icon?: string; snapshot: Snapshot | null; isEffect?: boolean }[] = []
+const modalStack: {
+  panel: HTMLElement
+  label: string
+  icon?: string
+  snapshot: Snapshot | null
+  isEffect?: boolean
+}[] = []
 let overlayCloseAnimation: Animation | null = null
 
 // Toast hint for effect modals that can't be dismissed with Escape
@@ -430,7 +580,7 @@ function positionEditorMenu(menu: HTMLElement, triggerEl: HTMLElement, offsetY =
 
 function closeAllEditorMenus() {
   document.querySelectorAll('.editor-menu').forEach(el => {
-    (el as HTMLElement).style.display = 'none'
+    ;(el as HTMLElement).style.display = 'none'
   })
   if (closeEditorMenuListener) {
     document.removeEventListener('click', closeEditorMenuListener)
@@ -450,13 +600,11 @@ function toggleEditorMenu(menuId: string, triggerEl: HTMLElement, offsetY = 0) {
   menu.style.display = 'block'
   closeEditorMenuListener = event => {
     const target = event.target as Node | null
-    if (!target || (!menu.contains(target) && !triggerEl.contains(target)))
-      closeAllEditorMenus()
+    if (!target || (!menu.contains(target) && !triggerEl.contains(target))) closeAllEditorMenus()
   }
 
   setTimeout(() => {
-    if (closeEditorMenuListener)
-      document.addEventListener('click', closeEditorMenuListener)
+    if (closeEditorMenuListener) document.addEventListener('click', closeEditorMenuListener)
   }, 0)
 }
 
@@ -488,13 +636,16 @@ export function toggleTocMenu(event: Event): void {
             onSelect: () => {
               const alreadyOnChapter = router.currentPath() === `/book/${entry.id}`
               if (!alreadyOnChapter) router.navigate(`/book/${entry.id}`)
-              setTimeout(() => {
-                const el = document.getElementById(slug)
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth' })
-                  history.replaceState(null, '', `${location.pathname}#${slug}`)
-                }
-              }, alreadyOnChapter ? 0 : 80)
+              setTimeout(
+                () => {
+                  const el = document.getElementById(slug)
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth' })
+                    history.replaceState(null, '', `${location.pathname}#${slug}`)
+                  }
+                },
+                alreadyOnChapter ? 0 : 80,
+              )
             },
           }
         })
@@ -530,7 +681,8 @@ export async function downloadBookPdf(event: Event): Promise<void> {
   }
   const { panel } = createModalPanel({
     size: 'small',
-    markdown: '# PDF not available\n\nThe book PDF is built at release time and isn\'t present in this environment. Run `npm run pdf` locally to generate it, or grab the latest from the [releases page](https://github.com/mojir/dvala/releases).',
+    markdown:
+      "# PDF not available\n\nThe book PDF is built at release time and isn't present in this environment. Run `npm run pdf` locally to generate it, or grab the latest from the [releases page](https://github.com/mojir/dvala/releases).",
     onClose: () => popModal(),
   })
   pushPanel(panel, 'PDF not available')
@@ -556,7 +708,10 @@ function extractContentBlocks(raw: string): { hash: string; text: string; isCode
   let buf = ''
 
   const flushProse = () => {
-    const clean = buf.replace(/[*_`[\]()!]/g, '').replace(/\s+/g, ' ').trim()
+    const clean = buf
+      .replace(/[*_`[\]()!]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
     if (clean.length > 30) out.push({ hash: currentHash, text: clean, isCode: false })
     buf = ''
   }
@@ -576,7 +731,10 @@ function extractContentBlocks(raw: string): { hash: string; text: string; isCode
       }
       continue
     }
-    if (inCode) { buf += (buf ? '\n' : '') + line; continue }
+    if (inCode) {
+      buf += (buf ? '\n' : '') + line
+      continue
+    }
     // Update current section anchor on h2
     if (/^##\s/.test(line)) {
       flushProse()
@@ -584,10 +742,17 @@ function extractContentBlocks(raw: string): { hash: string; text: string; isCode
       continue
     }
     if (/^#+\s/.test(line)) continue
-    if (line.trim() === '') { flushProse() } else { buf += (buf ? ' ' : '') + line }
+    if (line.trim() === '') {
+      flushProse()
+    } else {
+      buf += (buf ? ' ' : '') + line
+    }
   }
   // Flush any trailing buffer
-  if (inCode) { const code = buf.trim(); if (code.length > 10) out.push({ hash: currentHash, text: code, isCode: true }) } else flushProse()
+  if (inCode) {
+    const code = buf.trim()
+    if (code.length > 10) out.push({ hash: currentHash, text: code, isCode: true })
+  } else flushProse()
   return out
 }
 
@@ -597,10 +762,24 @@ function getBookSearchIndex(): BookSearchEntry[] {
   _bookSearchIndex = []
   for (const section of bookSections) {
     for (const entry of section.entries) {
-      _bookSearchIndex.push({ type: 'chapter', label: entry.title, context: section.name, snippet: '', chapterId: entry.id, hash: '' })
+      _bookSearchIndex.push({
+        type: 'chapter',
+        label: entry.title,
+        context: section.name,
+        snippet: '',
+        chapterId: entry.id,
+        hash: '',
+      })
       for (const m of entry.raw.matchAll(/^##\s+(.+)$/gm)) {
         const text = m[1]!.trim()
-        _bookSearchIndex.push({ type: 'section', label: text, context: entry.title, snippet: '', chapterId: entry.id, hash: slugifyHeading(text) })
+        _bookSearchIndex.push({
+          type: 'section',
+          label: text,
+          context: entry.title,
+          snippet: '',
+          chapterId: entry.id,
+          hash: slugifyHeading(text),
+        })
       }
       // Index prose and code blocks at lower priority
       for (const { hash, text, isCode } of extractContentBlocks(entry.raw)) {
@@ -650,7 +829,9 @@ function getRefExampleCode(entry: RefEntry): string {
     refExampleCodeCache = new Map()
     const allRefs = { ...data.api, ...data.modules, ...data.effects, ...playgroundEffectReference }
     for (const ref of Object.values(allRefs)) {
-      const code = ref.examples.map((ex: string | { code: string }) => typeof ex === 'string' ? ex : ex.code).join('\n')
+      const code = ref.examples
+        .map((ex: string | { code: string }) => (typeof ex === 'string' ? ex : ex.code))
+        .join('\n')
       refExampleCodeCache.set(ref.title, code)
     }
   }
@@ -668,7 +849,12 @@ function getCurrentDomain(): string {
 
 // Pre-lowercased search indices — built lazily, rebuilt if data changes
 
-interface BookSearchCache { labelLower: string; contextLower: string; snippetLower: string; entry: BookSearchEntry }
+interface BookSearchCache {
+  labelLower: string
+  contextLower: string
+  snippetLower: string
+  entry: BookSearchEntry
+}
 let bookSearchCache: BookSearchCache[] | null = null
 
 function getBookSearchCache(): BookSearchCache[] {
@@ -683,7 +869,11 @@ function getBookSearchCache(): BookSearchCache[] {
   return bookSearchCache
 }
 
-interface ExampleSearchCache { nameLower: string; codeLower: string; ex: Example }
+interface ExampleSearchCache {
+  nameLower: string
+  codeLower: string
+  ex: Example
+}
 let exampleSearchCache: ExampleSearchCache[] | null = null
 let exampleSearchDataRef: typeof window.referenceData = undefined
 
@@ -700,7 +890,11 @@ function getExampleSearchCache(): ExampleSearchCache[] {
   return exampleSearchCache
 }
 
-interface RefSearchCache { textLower: string; codeLower: string; entry: RefEntry }
+interface RefSearchCache {
+  textLower: string
+  codeLower: string
+  entry: RefEntry
+}
 let refSearchCache: RefSearchCache[] | null = null
 let refSearchDataRef: typeof window.referenceData = undefined
 
@@ -708,7 +902,10 @@ function getRefSearchCache(): RefSearchCache[] {
   const data = window.referenceData
   if (data !== refSearchDataRef || !refSearchCache) {
     refSearchDataRef = data
-    if (!data) { refSearchCache = []; return refSearchCache }
+    if (!data) {
+      refSearchCache = []
+      return refSearchCache
+    }
     const entries = getRefEntries(data)
     refSearchCache = entries.map(e => ({
       textLower: `${e.title} ${e.description} ${e.group}`.toLowerCase(),
@@ -733,15 +930,17 @@ function searchBook(q: string): { priority: SearchResult<UnifiedHit>[]; secondar
       if (c.labelLower.includes(q) || c.contextLower.includes(q)) {
         priority.push({
           data: { path: `/book/${e.chapterId}`, domain: 'book', bookEntry: e } satisfies UnifiedHit,
-          label: e.label, context: e.context,
-          modifier: e.type === 'section' ? 'section' as const : undefined,
+          label: e.label,
+          context: e.context,
+          modifier: e.type === 'section' ? ('section' as const) : undefined,
         })
       }
     } else if (secondary.length < MAX_SECONDARY) {
       if (c.snippetLower.includes(q) || c.labelLower.includes(q)) {
         secondary.push({
           data: { path: `/book/${e.chapterId}`, domain: 'book', bookEntry: e } satisfies UnifiedHit,
-          label: e.label, context: e.context,
+          label: e.label,
+          context: e.context,
           modifier: e.type === 'code' ? 'code' : 'content',
         })
       }
@@ -761,7 +960,12 @@ function searchExamples(q: string): { priority: SearchResult<UnifiedHit>[]; seco
       priority.push({ data: { path: `/examples/${ex.id}`, domain: 'examples' }, label: ex.name, context: ex.category })
     }
     if (secondary.length < MAX_SECONDARY && c.codeLower.includes(q)) {
-      secondary.push({ data: { path: `/examples/${ex.id}`, domain: 'examples' }, label: extractSnippet(ex.code, q), context: ex.name, modifier: 'code' })
+      secondary.push({
+        data: { path: `/examples/${ex.id}`, domain: 'examples' },
+        label: extractSnippet(ex.code, q),
+        context: ex.name,
+        modifier: 'code',
+      })
     }
   }
   return { priority, secondary }
@@ -775,10 +979,19 @@ function searchReference(q: string): { priority: SearchResult<UnifiedHit>[]; sec
   for (const c of cache) {
     const e = c.entry
     if (c.textLower.includes(q)) {
-      priority.push({ data: { path: `/ref/${e.linkName}`, domain: 'reference' }, label: e.title, context: `${e.section} › ${e.group}` })
+      priority.push({
+        data: { path: `/ref/${e.linkName}`, domain: 'reference' },
+        label: e.title,
+        context: `${e.section} › ${e.group}`,
+      })
     }
     if (secondary.length < MAX_SECONDARY && c.codeLower.includes(q)) {
-      secondary.push({ data: { path: `/ref/${e.linkName}`, domain: 'reference' }, label: extractSnippet(getRefExampleCode(e), q), context: e.title, modifier: 'code' })
+      secondary.push({
+        data: { path: `/ref/${e.linkName}`, domain: 'reference' },
+        label: extractSnippet(getRefExampleCode(e), q),
+        context: e.title,
+        modifier: 'code',
+      })
     }
   }
   return { priority, secondary }
@@ -838,13 +1051,16 @@ function navigateToHit(hit: UnifiedHit): void {
   if (hit.bookEntry?.hash) {
     const alreadyOnChapter = router.currentPath() === `/book/${hit.bookEntry.chapterId}`
     if (!alreadyOnChapter) router.navigate(`/book/${hit.bookEntry.chapterId}`)
-    setTimeout(() => {
-      const el = document.getElementById(hit.bookEntry!.hash)
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' })
-        history.replaceState(null, '', `${location.pathname}#${hit.bookEntry!.hash}`)
-      }
-    }, alreadyOnChapter ? 0 : 80)
+    setTimeout(
+      () => {
+        const el = document.getElementById(hit.bookEntry!.hash)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' })
+          history.replaceState(null, '', `${location.pathname}#${hit.bookEntry!.hash}`)
+        }
+      },
+      alreadyOnChapter ? 0 : 80,
+    )
     return
   }
   router.navigate(hit.path)
@@ -872,28 +1088,25 @@ function initChapterScrollSpy(): void {
   const setActive = (id: string) => {
     if (id === activeId) return
     activeId = id
-    for (const [slug, a] of linkMap)
-      a.classList.toggle('chapter-subtoc__link--active', slug === id)
+    for (const [slug, a] of linkMap) a.classList.toggle('chapter-subtoc__link--active', slug === id)
   }
 
   // Use IntersectionObserver to track which heading is near the top of the viewport.
   chapterScrollSpyObserver = new IntersectionObserver(
     entries => {
       for (const entry of entries) {
-        if (entry.isIntersecting)
-          setActive(entry.target.id)
+        if (entry.isIntersecting) setActive(entry.target.id)
       }
       // If nothing is intersecting (scrolled past all headings), keep the last active.
     },
     { rootMargin: '-10% 0px -80% 0px', threshold: 0 },
   )
 
-  for (const heading of headings)
-    chapterScrollSpyObserver.observe(heading)
+  for (const heading of headings) chapterScrollSpyObserver.observe(heading)
 
   // On load, find the last heading that has already scrolled past the observer's threshold
   // (matching the rootMargin '-10% 0px -80% 0px' used above, i.e. 10% from the top).
-  const scrolledPast = headings.filter(h => h.getBoundingClientRect().top < window.innerHeight * 0.10)
+  const scrolledPast = headings.filter(h => h.getBoundingClientRect().top < window.innerHeight * 0.1)
   const initial = scrolledPast.at(-1) ?? headings[0]
   if (initial) setActive(initial.id)
 }
@@ -901,7 +1114,10 @@ function initChapterScrollSpy(): void {
 export function toggleNavMenu(event: Event): void {
   event.stopPropagation()
   const existing = document.getElementById('nav-menu-dropdown')
-  if (existing) { existing.remove(); return }
+  if (existing) {
+    existing.remove()
+    return
+  }
 
   const btn = event.currentTarget as HTMLElement
   const menu = document.createElement('div')
@@ -919,7 +1135,10 @@ export function toggleNavMenu(event: Event): void {
     const el = document.createElement('button')
     el.className = 'nav-menu-dropdown__item'
     el.textContent = item.label
-    el.addEventListener('click', () => { menu.remove(); item.action() })
+    el.addEventListener('click', () => {
+      menu.remove()
+      item.action()
+    })
     menu.appendChild(el)
   }
 
@@ -934,7 +1153,9 @@ export function toggleNavMenu(event: Event): void {
     document.removeEventListener('keydown', closeOnKey)
   }
   const closeOnClick = () => close()
-  const closeOnKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+  const closeOnKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') close()
+  }
 
   setTimeout(() => {
     document.addEventListener('click', closeOnClick)
@@ -979,16 +1200,18 @@ export function toggleRefTocMenu(event: Event): void {
 
     // For modules/core: each group links to its own detail page; others link to the section page
     const items: TocItem[] = Array.from(groups.entries()).map(([groupName]) => {
-      const groupPath = section.id === 'modules'
-        ? `/ref/modules/${groupName}`
-        : section.id === 'core'
-          ? `/ref/core/${encodeURIComponent(groupName)}`
-          : `/ref/${section.id}`
-      const isActive = section.id === 'modules'
-        ? currentSubPath === `modules/${groupName}`
-        : section.id === 'core'
-          ? currentSubPath === `core/${encodeURIComponent(groupName)}`
-          : currentSubPath === section.id
+      const groupPath =
+        section.id === 'modules'
+          ? `/ref/modules/${groupName}`
+          : section.id === 'core'
+            ? `/ref/core/${encodeURIComponent(groupName)}`
+            : `/ref/${section.id}`
+      const isActive =
+        section.id === 'modules'
+          ? currentSubPath === `modules/${groupName}`
+          : section.id === 'core'
+            ? currentSubPath === `core/${encodeURIComponent(groupName)}`
+            : currentSubPath === section.id
       return {
         label: groupName,
         type: 'subitem' as const,
@@ -1054,14 +1277,10 @@ export function showSettingsTab(id: string) {
   document.getElementById(`settings-tab-btn-${id}`)?.classList.add('active')
   document.getElementById(`settings-tab-${id}`)?.classList.add('active')
   const targetPath = `/settings/${id}`
-  if (router.currentPath() !== targetPath)
-    router.navigate(targetPath, true)
-  if (id === 'actions')
-    updateStorageUsage()
-  if (id === 'developer')
-    renderColorPalette()
-  if (id === 'benchmarks')
-    void renderBenchmarksCharts()
+  if (router.currentPath() !== targetPath) router.navigate(targetPath, true)
+  if (id === 'actions') updateStorageUsage()
+  if (id === 'developer') renderColorPalette()
+  if (id === 'benchmarks') void renderBenchmarksCharts()
 }
 
 function renderColorPalette(): void {
@@ -1072,7 +1291,12 @@ function renderColorPalette(): void {
   const groups: { title: string; prefix: string; type: 'swatch' | 'text' }[] = [
     { title: 'Surfaces & Backgrounds', prefix: '--color-surface,--color-bg,--color-code-bg', type: 'swatch' },
     { title: 'Text', prefix: '--color-text', type: 'text' },
-    { title: 'Accent & Semantic', prefix: '--color-primary,--color-accent,--color-error,--color-success,--color-purple,--color-terminal,--color-toggle-on', type: 'swatch' },
+    {
+      title: 'Accent & Semantic',
+      prefix:
+        '--color-primary,--color-accent,--color-error,--color-success,--color-purple,--color-terminal,--color-toggle-on',
+      type: 'swatch',
+    },
     { title: 'Borders', prefix: '--color-border', type: 'swatch' },
     { title: 'Scrollbar', prefix: '--color-scrollbar', type: 'swatch' },
     { title: 'Overlays & Shadows', prefix: '--color-overlay,--color-shadow,--color-selection', type: 'swatch' },
@@ -1095,7 +1319,9 @@ function renderColorPalette(): void {
           }
         }
       }
-    } catch { /* cross-origin sheets */ }
+    } catch {
+      /* cross-origin sheets */
+    }
   }
 
   let html = ''
@@ -1134,17 +1360,23 @@ function formatTime(date: Date): string {
 
 const ICONS = {
   play: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4v16l14-8z"/></svg>',
-  trash: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 256 256"><path fill="currentColor" d="M216 48h-36V36a28 28 0 0 0-28-28h-48a28 28 0 0 0-28 28v12H40a12 12 0 0 0 0 24h4v136a20 20 0 0 0 20 20h128a20 20 0 0 0 20-20V72h4a12 12 0 0 0 0-24M100 36a4 4 0 0 1 4-4h48a4 4 0 0 1 4 4v12h-56Zm88 168H68V72h120Zm-72-100v64a12 12 0 0 1-24 0v-64a12 12 0 0 1 24 0m48 0v64a12 12 0 0 1-24 0v-64a12 12 0 0 1 24 0"/></svg>',
+  trash:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 256 256"><path fill="currentColor" d="M216 48h-36V36a28 28 0 0 0-28-28h-48a28 28 0 0 0-28 28v12H40a12 12 0 0 0 0 24h4v136a20 20 0 0 0 20 20h128a20 20 0 0 0 20-20V72h4a12 12 0 0 0 0-24M100 36a4 4 0 0 1 4-4h48a4 4 0 0 1 4 4v12h-56Zm88 168H68V72h120Zm-72-100v64a12 12 0 0 1-24 0v-64a12 12 0 0 1 24 0m48 0v64a12 12 0 0 1-24 0v-64a12 12 0 0 1 24 0"/></svg>',
   menu: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0 2c-1.1 0-2 .9-2 2s.9 2 2 2s2-.9 2-2s-.9-2-2-2m0 6c-1.1 0-2 .9-2 2s.9 2 2 2s2-.9 2-2s-.9-2-2-2"/></svg>',
   lock: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg>',
-  unlock: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 0 1 7.917-.768M12 17v2"/></svg>',
+  unlock:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 0 1 7.917-.768M12 17v2"/></svg>',
   eye: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 12s4-8 11-8s11 8 11 8s-4 8-11 8s-11-8-11-8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-  download: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5l5 5l5-5m-5 5V3"/></svg>',
+  download:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5l5 5l5-5m-5 5V3"/></svg>',
   save: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2M17 21v-8H7v8M7 3v5h8"/></svg>',
-  duplicate: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"/></svg>',
+  duplicate:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"/></svg>',
   edit: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/><path fill="currentColor" d="M20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>',
-  warning: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.06L1.87 20.5c-.38.65.09 1.5.87 1.5h18.52c.78 0 1.25-.85.87-1.5zm0 4.69c.41 0 .75.34.75.75v5.5a.75.75 0 0 1-1.5 0V8.5c0-.41.34-.75.75-.75m0 10.5a1 1 0 1 1 0-2a1 1 0 0 1 0 2"/></svg>',
-  share: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 1 0-3-3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 1 0 0 6c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66a2.92 2.92 0 1 0 2.92-2.92"/></svg>',
+  warning:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.06L1.87 20.5c-.38.65.09 1.5.87 1.5h18.52c.78 0 1.25-.85.87-1.5zm0 4.69c.41 0 .75.34.75.75v5.5a.75.75 0 0 1-1.5 0V8.5c0-.41.34-.75.75-.75m0 10.5a1 1 0 1 1 0-2a1 1 0 0 1 0 2"/></svg>',
+  share:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 1 0-3-3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 1 0 0 6c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66a2.92 2.92 0 1 0 2.92-2.92"/></svg>',
 }
 
 export function closeContextMenu(): void {
@@ -1154,11 +1386,14 @@ export function closeContextMenu(): void {
 // Prevent all href="#" anchors from scrolling to top / navigating.
 // Uses capture phase so it fires before onclick handlers and before
 // the browser processes the default action.
-document.addEventListener('click', e => {
-  const anchor = e.composedPath().find(el => el instanceof HTMLAnchorElement)
-  if (anchor?.getAttribute('href') === '#')
-    e.preventDefault()
-}, true)
+document.addEventListener(
+  'click',
+  e => {
+    const anchor = e.composedPath().find(el => el instanceof HTMLAnchorElement)
+    if (anchor?.getAttribute('href') === '#') e.preventDefault()
+  },
+  true,
+)
 
 function getTerminalSnapshotLabel(index: number): string {
   const ordinals = ['Last', '2nd Last', '3rd Last']
@@ -1230,21 +1465,23 @@ function populateSavedFilesList(options: { animateNewId?: string } = {}) {
 export function loadSavedFile(id: string) {
   const file = getSavedFiles().find(entry => entry.id === id)
   if (!file) return
-  if (isScratchActive())
-    persistScratchFromCurrentState()
+  if (isScratchActive()) persistScratchFromCurrentState()
   closeSnapshotViewIfNeeded()
   if (getState('current-file-id') === id) return
   cancelScratchEditedClear()
   flushPendingAutoSave()
-  saveState({
-    'dvala-code': file.code,
-    'context': file.context,
-    'current-file-id': file.id,
-    'dvala-code-edited': false,
-    'dvala-code-selection-start': 0,
-    'dvala-code-selection-end': 0,
-    'dvala-code-scroll-top': 0,
-  }, false)
+  saveState(
+    {
+      'dvala-code': file.code,
+      context: file.context,
+      'current-file-id': file.id,
+      'dvala-code-edited': false,
+      'dvala-code-selection-start': 0,
+      'dvala-code-selection-end': 0,
+      'dvala-code-scroll-top': 0,
+    },
+    false,
+  )
   activateCurrentFileHistory(false)
   elements.dvalaTextArea.value = file.code
   updateContextState(file.context, false)
@@ -1285,10 +1522,13 @@ function hasScratchContent(): boolean {
 
 function persistScratchFromCurrentState() {
   if (!isScratchActive()) return
-  saveState({
-    'scratch-code': getState('dvala-code'),
-    'scratch-context': getState('context'),
-  }, false)
+  saveState(
+    {
+      'scratch-code': getState('dvala-code'),
+      'scratch-context': getState('context'),
+    },
+    false,
+  )
 }
 
 function closeSnapshotViewIfNeeded() {
@@ -1299,7 +1539,16 @@ function closeSnapshotViewIfNeeded() {
   hideExecutionControlBar()
 }
 
-function openScratchInEditor(options: { code?: string; context?: string; toast?: string; focusCode?: boolean; navigateToPlayground?: boolean; force?: boolean } = {}) {
+function openScratchInEditor(
+  options: {
+    code?: string
+    context?: string
+    toast?: string
+    focusCode?: boolean
+    navigateToPlayground?: boolean
+    force?: boolean
+  } = {},
+) {
   // Guard: if loading new code into scratch and it already has content, confirm first.
   // The `force` flag skips this — used when the caller has already confirmed (e.g. clearScratch).
   if (!options.force && options.code !== undefined && hasScratchContent() && getState('dvala-code-edited')) {
@@ -1314,42 +1563,45 @@ function openScratchInEditor(options: { code?: string; context?: string; toast?:
 
   flushPendingAutoSave()
 
-  saveState({
-    'scratch-code': code,
-    'scratch-context': context,
-  }, false)
+  saveState(
+    {
+      'scratch-code': code,
+      'scratch-context': context,
+    },
+    false,
+  )
 
   closeSnapshotViewIfNeeded()
 
-  saveState({
-    'active-side-tab': 'files',
-    context,
-    'context-scroll-top': 0,
-    'context-selection-start': 0,
-    'context-selection-end': 0,
-    'current-file-id': null,
-    'dvala-code': code,
-    'dvala-code-edited': false,
-    'dvala-code-scroll-top': 0,
-    'dvala-code-selection-start': 0,
-    'dvala-code-selection-end': 0,
-    'focused-panel': 'dvala-code',
-  }, false)
+  saveState(
+    {
+      'active-side-tab': 'files',
+      context,
+      'context-scroll-top': 0,
+      'context-selection-start': 0,
+      'context-selection-end': 0,
+      'current-file-id': null,
+      'dvala-code': code,
+      'dvala-code-edited': false,
+      'dvala-code-scroll-top': 0,
+      'dvala-code-selection-start': 0,
+      'dvala-code-selection-end': 0,
+      'focused-panel': 'dvala-code',
+    },
+    false,
+  )
 
   activateCurrentFileHistory(true)
 
-  if (options.navigateToPlayground)
-    router.navigate('/editor')
+  if (options.navigateToPlayground) router.navigate('/editor')
 
   syncPlaygroundUrlState('files')
   applyState()
   populateExplorerFileList()
 
-  if (options.focusCode)
-    focusDvalaCode()
+  if (options.focusCode) focusDvalaCode()
 
-  if (options.toast)
-    showToast(options.toast)
+  if (options.toast) showToast(options.toast)
 }
 
 function normalizeSideTab(tabId: string | null | undefined): SideTabId {
@@ -1377,26 +1629,19 @@ function syncPlaygroundUrlState(tabId: SideTabId) {
   const url = new URL(window.location.href)
   url.searchParams.set('view', tabId)
 
-  if (tabId === 'files' && getState('current-file-id'))
-    url.searchParams.set('fileId', getState('current-file-id')!)
-  else
-    url.searchParams.delete('fileId')
+  if (tabId === 'files' && getState('current-file-id')) url.searchParams.set('fileId', getState('current-file-id')!)
+  else url.searchParams.delete('fileId')
 
   const snapshotId = tabId === 'snapshots' ? getActiveSnapshotUrlId() : null
-  if (snapshotId)
-    url.searchParams.set('snapshotId', snapshotId)
-  else
-    url.searchParams.delete('snapshotId')
+  if (snapshotId) url.searchParams.set('snapshotId', snapshotId)
+  else url.searchParams.delete('snapshotId')
 
-  if (tabId === 'context' && activeContextBindingName)
-    url.searchParams.set('bindingName', activeContextBindingName)
-  else
-    url.searchParams.delete('bindingName')
+  if (tabId === 'context' && activeContextBindingName) url.searchParams.set('bindingName', activeContextBindingName)
+  else url.searchParams.delete('bindingName')
 
   if (tabId === 'context' && activeContextEntryKind === 'effect-handler')
     url.searchParams.set('contextEntryKind', 'effect-handler')
-  else
-    url.searchParams.delete('contextEntryKind')
+  else url.searchParams.delete('contextEntryKind')
 
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
 }
@@ -1423,18 +1668,42 @@ function populateSideSnapshotsList() {
   if (terminalEntries.length > 0) {
     items.push('<div class="explorer-group-label">Completed Files</div>')
     const ordinals = ['Last', '2nd Last', '3rd Last']
-    const visibleCount = sideSnapshotsShowAll ? terminalEntries.length : Math.min(SIDE_SNAPSHOTS_VISIBLE, terminalEntries.length)
+    const visibleCount = sideSnapshotsShowAll
+      ? terminalEntries.length
+      : Math.min(SIDE_SNAPSHOTS_VISIBLE, terminalEntries.length)
     for (let i = 0; i < visibleCount; i++) {
       const entry = terminalEntries[i]!
       const label = `${ordinals[i] ?? `${i + 1}th Last`} Run`
-      const colorVar = entry.resultType === 'error' ? 'var(--color-error)' : entry.resultType === 'halted' ? 'var(--color-primary)' : 'var(--color-success)'
+      const colorVar =
+        entry.resultType === 'error'
+          ? 'var(--color-error)'
+          : entry.resultType === 'halted'
+            ? 'var(--color-primary)'
+            : 'var(--color-success)'
       const activeClass = activeSnapshotKey === `terminal:${i}` ? ' explorer-item--active' : ''
       const menuId = `side-terminal-menu-${i}`
       const menuItems: EditorMenuItem[] = [
-        { action: `Playground.closeExplorerMenus();Playground.openTerminalSnapshot(${i})`, icon: ICONS.eye, label: 'Open' },
-        { action: `Playground.closeExplorerMenus();Playground.saveTerminalSnapshotToSaved(${i})`, icon: ICONS.save, label: 'Save' },
-        { action: `Playground.closeExplorerMenus();Playground.downloadTerminalSnapshotByIndex(${i})`, icon: ICONS.download, label: 'Download' },
-        { action: `Playground.closeExplorerMenus();Playground.clearTerminalSnapshot(${i})`, danger: true, icon: ICONS.trash, label: 'Delete' },
+        {
+          action: `Playground.closeExplorerMenus();Playground.openTerminalSnapshot(${i})`,
+          icon: ICONS.eye,
+          label: 'Open',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.saveTerminalSnapshotToSaved(${i})`,
+          icon: ICONS.save,
+          label: 'Save',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.downloadTerminalSnapshotByIndex(${i})`,
+          icon: ICONS.download,
+          label: 'Download',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.clearTerminalSnapshot(${i})`,
+          danger: true,
+          icon: ICONS.trash,
+          label: 'Delete',
+        },
       ]
       items.push(`
         <div class="explorer-item${activeClass}" onclick="Playground.openTerminalSnapshot(${i})" title="${escapeHtml(label)}">
@@ -1450,7 +1719,9 @@ function populateSideSnapshotsList() {
       if (sideSnapshotsShowAll) {
         items.push('<div class="explorer-show-more" onclick="Playground.toggleSideSnapshotsShowAll()">Show less</div>')
       } else {
-        items.push(`<div class="explorer-show-more" onclick="Playground.toggleSideSnapshotsShowAll()">Show all (${terminalEntries.length})</div>`)
+        items.push(
+          `<div class="explorer-show-more" onclick="Playground.toggleSideSnapshotsShowAll()">Show all (${terminalEntries.length})</div>`,
+        )
       }
     }
   }
@@ -1464,10 +1735,27 @@ function populateSideSnapshotsList() {
       const isSuspended = entry.snapshot.terminal !== true
       const menuId = `side-saved-menu-${i}`
       const menuItems: EditorMenuItem[] = [
-        { action: `Playground.closeExplorerMenus();Playground.openSavedSnapshot(${i})`, icon: ICONS.eye, label: 'Open' },
-        { action: `Playground.closeExplorerMenus();Playground.toggleSnapshotLock(${i})`, icon: entry.locked ? ICONS.unlock : ICONS.lock, label: entry.locked ? 'Unlock' : 'Lock' },
-        { action: `Playground.closeExplorerMenus();Playground.downloadSavedSnapshotByIndex(${i})`, icon: ICONS.download, label: 'Download' },
-        { action: `Playground.closeExplorerMenus();Playground.deleteSavedSnapshot(${i})`, danger: true, icon: ICONS.trash, label: 'Delete' },
+        {
+          action: `Playground.closeExplorerMenus();Playground.openSavedSnapshot(${i})`,
+          icon: ICONS.eye,
+          label: 'Open',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.toggleSnapshotLock(${i})`,
+          icon: entry.locked ? ICONS.unlock : ICONS.lock,
+          label: entry.locked ? 'Unlock' : 'Lock',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.downloadSavedSnapshotByIndex(${i})`,
+          icon: ICONS.download,
+          label: 'Download',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.deleteSavedSnapshot(${i})`,
+          danger: true,
+          icon: ICONS.trash,
+          label: 'Delete',
+        },
       ]
       const runButton = isSuspended
         ? `<button class="explorer-item__btn" onclick="event.stopPropagation();Playground.runSavedSnapshot(${i})" title="Run snapshot">${ICONS.play}</button>`
@@ -1492,7 +1780,7 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   const normalizedTabId = normalizeSideTab(tabId)
   // Hide all side tabs, show the selected one
   document.querySelectorAll('.side-panel__tab').forEach(el => {
-    (el as HTMLElement).style.display = 'none'
+    ;(el as HTMLElement).style.display = 'none'
   })
   const tab = document.getElementById(`side-tab-${normalizedTabId}`)
   if (tab) tab.style.display = ''
@@ -1513,7 +1801,7 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   document.querySelectorAll('[id^="side-header-"]').forEach(el => {
     if (el.id === 'side-panel-header') return
     if (el.id.startsWith('side-header-actions-') || el.id.startsWith('side-header-')) {
-      (el as HTMLElement).style.display = 'none'
+      ;(el as HTMLElement).style.display = 'none'
     }
   })
 
@@ -1523,11 +1811,9 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   const actions = document.getElementById(`side-header-actions-${normalizedTabId}`)
   if (actions) actions.style.display = ''
 
-  if (options.persist !== false)
-    saveState({ 'active-side-tab': normalizedTabId }, false)
+  if (options.persist !== false) saveState({ 'active-side-tab': normalizedTabId }, false)
 
-  if (options.syncUrl !== false)
-    syncPlaygroundUrlState(normalizedTabId)
+  if (options.syncUrl !== false) syncPlaygroundUrlState(normalizedTabId)
 
   // Sync the code panel view and header
   syncCodePanelView(normalizedTabId)
@@ -1535,7 +1821,13 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
 }
 
 /** Sync the code panel: show editor, snapshot, or empty view + update header accordingly. */
-function setEditorEmptyState(emptyView: HTMLElement, title: string, description: string, buttonLabel: string, action: string) {
+function setEditorEmptyState(
+  emptyView: HTMLElement,
+  title: string,
+  description: string,
+  buttonLabel: string,
+  action: string,
+) {
   emptyView.innerHTML = `
     <div class="dvala-empty-view__content">
       <div class="dvala-empty-view__title">${escapeHtml(title)}</div>
@@ -1656,7 +1948,10 @@ function getUniqueSavedFileName(name: string, existingNames: Iterable<string>): 
  */
 function createUntitledFile(code = '', context = ''): string {
   const files = getSavedFiles()
-  const name = getUniqueSavedFileName('Untitled File', files.map(entry => entry.name))
+  const name = getUniqueSavedFileName(
+    'Untitled File',
+    files.map(entry => entry.name),
+  )
   const now = Date.now()
   const createdFile: SavedFile = {
     id: crypto.randomUUID(),
@@ -1738,20 +2033,47 @@ function populateExplorerFileList() {
     return
   }
 
-  list.innerHTML = [renderScratchExplorerItem(), ...files.map(entry => {
-    const isActive = entry.id === currentId
-    const activeClass = isActive ? ' explorer-item--active' : ''
-    const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
-    const menuId = `explorer-menu-${entry.id}`
-    const menuItems: EditorMenuItem[] = [
-      { action: `Playground.closeExplorerMenus();Playground.renameFile('${entry.id}')`, icon: ICONS.edit, label: 'Rename' },
-      { action: `Playground.closeExplorerMenus();Playground.duplicateFile('${entry.id}')`, icon: ICONS.duplicate, label: 'Duplicate' },
-      { action: `Playground.closeExplorerMenus();Playground.toggleFileLock('${entry.id}')`, icon: entry.locked ? ICONS.unlock : ICONS.lock, label: entry.locked ? 'Unlock' : 'Lock' },
-      { action: `Playground.closeExplorerMenus();Playground.downloadFile('${entry.id}')`, icon: ICONS.download, label: 'Export' },
-      { action: `Playground.closeExplorerMenus();Playground.shareFile('${entry.id}')`, icon: ICONS.share, label: 'Share' },
-      { action: `Playground.closeExplorerMenus();Playground.deleteSavedFile('${entry.id}')`, danger: true, icon: ICONS.trash, label: 'Delete' },
-    ]
-    return `
+  list.innerHTML = [
+    renderScratchExplorerItem(),
+    ...files.map(entry => {
+      const isActive = entry.id === currentId
+      const activeClass = isActive ? ' explorer-item--active' : ''
+      const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
+      const menuId = `explorer-menu-${entry.id}`
+      const menuItems: EditorMenuItem[] = [
+        {
+          action: `Playground.closeExplorerMenus();Playground.renameFile('${entry.id}')`,
+          icon: ICONS.edit,
+          label: 'Rename',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.duplicateFile('${entry.id}')`,
+          icon: ICONS.duplicate,
+          label: 'Duplicate',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.toggleFileLock('${entry.id}')`,
+          icon: entry.locked ? ICONS.unlock : ICONS.lock,
+          label: entry.locked ? 'Unlock' : 'Lock',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.downloadFile('${entry.id}')`,
+          icon: ICONS.download,
+          label: 'Export',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.shareFile('${entry.id}')`,
+          icon: ICONS.share,
+          label: 'Share',
+        },
+        {
+          action: `Playground.closeExplorerMenus();Playground.deleteSavedFile('${entry.id}')`,
+          danger: true,
+          icon: ICONS.trash,
+          label: 'Delete',
+        },
+      ]
+      return `
       <div class="explorer-item${activeClass}" onclick="Playground.loadSavedFile('${entry.id}')" title="${escapeHtml(entry.name)}">
         <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(entry.name)}</span>
         ${lockHtml}
@@ -1760,7 +2082,8 @@ function populateExplorerFileList() {
           ${renderEditorMenu({ id: menuId, items: menuItems })}
         </span>
       </div>`
-  })].join('')
+    }),
+  ].join('')
 
   renderFileStats()
 }
@@ -1773,7 +2096,9 @@ export function renameFile(id: string) {
     const normalizedName = normalizeSavedFileName(name)
     const duplicate = files.find(entry => entry.name === normalizedName && entry.id !== id)
     const doRename = () => {
-      const updated = files.map(entry => entry.id === id ? { ...entry, name: normalizedName, updatedAt: Date.now() } : entry).filter(entry => !duplicate || entry.id !== duplicate.id)
+      const updated = files
+        .map(entry => (entry.id === id ? { ...entry, name: normalizedName, updatedAt: Date.now() } : entry))
+        .filter(entry => !duplicate || entry.id !== duplicate.id)
       setSavedFiles(updated)
       updateCSS()
       populateSavedFilesList()
@@ -1801,7 +2126,8 @@ export function shareFile(id: string) {
         label: 'Copy link',
         primary: true,
         action: () => {
-          const includeContext = (document.getElementById('share-include-context') as HTMLInputElement)?.checked ?? false
+          const includeContext =
+            (document.getElementById('share-include-context') as HTMLInputElement)?.checked ?? false
           const sharedState: Record<string, unknown> = { 'dvala-code': file.code }
           if (includeContext && file.context.trim()) {
             sharedState['context'] = file.context
@@ -1816,7 +2142,9 @@ export function shareFile(id: string) {
           const href = `${base}editor?${params.toString()}`
           if (href.length > MAX_URL_LENGTH) {
             popModal()
-            showToast('File is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
+            showToast('File is too large to share as a URL. Try reducing the code or context size.', {
+              severity: 'error',
+            })
             return
           }
           void navigator.clipboard.writeText(href).then(() => {
@@ -1869,10 +2197,13 @@ export function saveScratch() {
 
 export function clearScratch() {
   const clear = () => {
-    saveState({
-      'scratch-code': '',
-      'scratch-context': '',
-    }, false)
+    saveState(
+      {
+        'scratch-code': '',
+        'scratch-context': '',
+      },
+      false,
+    )
 
     if (isScratchActive())
       openScratchInEditor({ code: '', context: '', focusCode: true, toast: 'Scratch cleared', force: true })
@@ -1921,7 +2252,7 @@ export function downloadFile(id: string) {
 
 export function toggleFileLock(id: string) {
   const files = getSavedFiles()
-  const updated = files.map(entry => entry.id === id ? { ...entry, locked: !entry.locked } : entry)
+  const updated = files.map(entry => (entry.id === id ? { ...entry, locked: !entry.locked } : entry))
   setSavedFiles(updated)
   populateSavedFilesList()
   if (id === getState('current-file-id')) updateCSS()
@@ -1935,18 +2266,22 @@ export function clearAllSavedFiles() {
 }
 
 export function clearUnlockedFiles() {
-  void showInfoModal('Remove unlocked files', 'This will delete all unlocked files. Locked files will be kept.', async () => {
-    const unlocked = getSavedFiles().filter(p => !p.locked)
-    await Promise.all(unlocked.map(entry => animateFileCardRemoval(entry.id)))
-    unlocked.forEach(entry => deleteFileHistory(entry.id))
-    const kept = getSavedFiles().filter(p => p.locked)
-    setSavedFiles(kept)
-    if (!kept.find(p => p.id === getState('current-file-id'))) {
-      clearActiveFileSelection()
-    }
-    populateSavedFilesList()
-    showToast('Unlocked files cleared')
-  })
+  void showInfoModal(
+    'Remove unlocked files',
+    'This will delete all unlocked files. Locked files will be kept.',
+    async () => {
+      const unlocked = getSavedFiles().filter(p => !p.locked)
+      await Promise.all(unlocked.map(entry => animateFileCardRemoval(entry.id)))
+      unlocked.forEach(entry => deleteFileHistory(entry.id))
+      const kept = getSavedFiles().filter(p => p.locked)
+      setSavedFiles(kept)
+      if (!kept.find(p => p.id === getState('current-file-id'))) {
+        clearActiveFileSelection()
+      }
+      populateSavedFilesList()
+      showToast('Unlocked files cleared')
+    },
+  )
 }
 
 export function openImportFileModal() {
@@ -1998,7 +2333,10 @@ export function duplicateFile(id: string) {
   const file = getSavedFiles().find(entry => entry.id === id)
   if (!file) return
   const now = Date.now()
-  const name = getUniqueSavedFileName(`Copy of ${file.name}`, getSavedFiles().map(entry => entry.name))
+  const name = getUniqueSavedFileName(
+    `Copy of ${file.name}`,
+    getSavedFiles().map(entry => entry.name),
+  )
   const copy: SavedFile = {
     id: crypto.randomUUID(),
     name,
@@ -2009,14 +2347,17 @@ export function duplicateFile(id: string) {
     locked: false,
   }
   setSavedFiles([copy, ...getSavedFiles()])
-  saveState({
-    'dvala-code': copy.code,
-    'context': copy.context,
-    'current-file-id': copy.id,
-    'dvala-code-selection-start': 0,
-    'dvala-code-selection-end': 0,
-    'dvala-code-scroll-top': 0,
-  }, false)
+  saveState(
+    {
+      'dvala-code': copy.code,
+      context: copy.context,
+      'current-file-id': copy.id,
+      'dvala-code-selection-start': 0,
+      'dvala-code-selection-end': 0,
+      'dvala-code-scroll-top': 0,
+    },
+    false,
+  )
   activateCurrentFileHistory(true)
   elements.dvalaTextArea.value = copy.code
   updateContextState(copy.context, false)
@@ -2037,8 +2378,7 @@ export function saveAs() {
     const doSave = () => {
       const filtered = duplicate ? files.filter(entry => entry.id !== duplicate.id) : files
       const now = Date.now()
-      if (!currentId)
-        persistScratchFromCurrentState()
+      if (!currentId) persistScratchFromCurrentState()
       const createdFile: SavedFile = {
         id: crypto.randomUUID(),
         name: normalizedName,
@@ -2071,7 +2411,10 @@ function showNameInputModal(
   onCancel?: () => void,
   options?: { prefix?: string },
 ) {
-  const dismiss = () => { popModal(); onCancel?.() }
+  const dismiss = () => {
+    popModal()
+    onCancel?.()
+  }
 
   const input = document.createElement('input')
   input.type = 'text'
@@ -2117,7 +2460,8 @@ function showNameInputModal(
     const prefix = document.createElement('span')
     prefix.textContent = options.prefix
     prefix.setAttribute('aria-hidden', 'true')
-    prefix.style.cssText = 'display:inline-flex; align-items:center; justify-content:center; padding:0 0.65rem; border:1px solid var(--color-scrollbar-track); border-right:none; border-radius:4px 0 0 4px; background:var(--color-surface); color:var(--color-text-dim); font-family:var(--font-mono); font-size:0.9rem; flex-shrink:0; user-select:none;'
+    prefix.style.cssText =
+      'display:inline-flex; align-items:center; justify-content:center; padding:0 0.65rem; border:1px solid var(--color-scrollbar-track); border-right:none; border-radius:4px 0 0 4px; background:var(--color-surface); color:var(--color-text-dim); font-family:var(--font-mono); font-size:0.9rem; flex-shrink:0; user-select:none;'
 
     row.appendChild(prefix)
   }
@@ -2126,7 +2470,10 @@ function showNameInputModal(
   body.appendChild(row)
 
   pushPanel(panel, title)
-  setTimeout(() => { input.focus(); input.select() }, 0)
+  setTimeout(() => {
+    input.focus()
+    input.select()
+  }, 0)
 }
 
 export function openContextJsonModal() {
@@ -2136,9 +2483,7 @@ export function openContextJsonModal() {
   try {
     const runtimeContext = getRuntimeContextObject(getParsedContext())
 
-    formattedContext = Object.keys(runtimeContext).length > 0
-      ? JSON.stringify(runtimeContext, null, 2)
-      : '{}'
+    formattedContext = Object.keys(runtimeContext).length > 0 ? JSON.stringify(runtimeContext, null, 2) : '{}'
   } catch {
     formattedContext = getState('context')
   }
@@ -2158,8 +2503,7 @@ export function openContextJsonModal() {
   })
 
   const copyButton = panel.querySelector<HTMLButtonElement>('.modal-panel__footer .button')
-  if (copyButton)
-    copyButton.innerHTML = `${copyIcon} Copy`
+  if (copyButton) copyButton.innerHTML = `${copyIcon} Copy`
 
   body.style.padding = '0'
 
@@ -2217,9 +2561,7 @@ function flushPendingAutoSave() {
   const id = getState('current-file-id')
   if (id) {
     const updated = getSavedFiles().map(p =>
-      p.id === id
-        ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
-        : p,
+      p.id === id ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() } : p,
     )
     setSavedFiles(updated)
   }
@@ -2245,9 +2587,7 @@ function scheduleAutoSave() {
     const id = getState('current-file-id')
     if (!id) return
     const updated = getSavedFiles().map(p =>
-      p.id === id
-        ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
-        : p,
+      p.id === id ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() } : p,
     )
     setSavedFiles(updated)
     populateSavedFilesList()
@@ -2293,7 +2633,13 @@ export function saveTerminalSnapshotToSaved(index: number) {
   promptSnapshotName(async name => {
     const savedEntries = getSavedSnapshots()
     const deduped = savedEntries.filter(e => e.snapshot.id !== entry.snapshot.id)
-    deduped.unshift({ kind: 'saved', snapshot: entry.snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
+    deduped.unshift({
+      kind: 'saved',
+      snapshot: entry.snapshot,
+      savedAt: Date.now(),
+      locked: false,
+      name: name || undefined,
+    })
     setSavedSnapshots(deduped)
 
     // Animate removal from terminal snapshots
@@ -2337,7 +2683,11 @@ export async function deleteSavedSnapshot(index: number) {
   }
 
   if (entry.locked) {
-    void showInfoModal('Delete locked snapshot', 'This snapshot is locked. Are you sure you want to delete it?', doDelete)
+    void showInfoModal(
+      'Delete locked snapshot',
+      'This snapshot is locked. Are you sure you want to delete it?',
+      doDelete,
+    )
   } else {
     await doDelete()
   }
@@ -2353,20 +2703,24 @@ export function toggleSnapshotLock(index: number) {
 }
 
 export function clearUnlockedSnapshots() {
-  void showInfoModal('Remove unlocked snapshots', 'This will delete all unlocked snapshots. Locked snapshots will be kept.', async () => {
-    const terminalEntries = getTerminalSnapshots()
-    const savedEntries = getSavedSnapshots()
-    const unlockedSavedIndices = savedEntries.map((e, i) => e.locked ? -1 : i).filter(i => i >= 0)
-    // Animate all unlocked cards simultaneously
-    await Promise.all([
-      ...terminalEntries.map((_, i) => animateCardRemoval('terminal', i)),
-      ...unlockedSavedIndices.map(i => animateCardRemoval('saved', i)),
-    ])
-    setTerminalSnapshots([])
-    setSavedSnapshots(savedEntries.filter(e => e.locked))
-    populateSnapshotsList()
-    showToast('Unlocked snapshots cleared')
-  })
+  void showInfoModal(
+    'Remove unlocked snapshots',
+    'This will delete all unlocked snapshots. Locked snapshots will be kept.',
+    async () => {
+      const terminalEntries = getTerminalSnapshots()
+      const savedEntries = getSavedSnapshots()
+      const unlockedSavedIndices = savedEntries.map((e, i) => (e.locked ? -1 : i)).filter(i => i >= 0)
+      // Animate all unlocked cards simultaneously
+      await Promise.all([
+        ...terminalEntries.map((_, i) => animateCardRemoval('terminal', i)),
+        ...unlockedSavedIndices.map(i => animateCardRemoval('saved', i)),
+      ])
+      setTerminalSnapshots([])
+      setSavedSnapshots(savedEntries.filter(e => e.locked))
+      populateSnapshotsList()
+      showToast('Unlocked snapshots cleared')
+    },
+  )
 }
 
 export function openAddContextMenu() {
@@ -2391,11 +2745,9 @@ export function share() {
     view: getState('active-side-tab'),
   })
   const currentFileId = getState('current-file-id')
-  if (currentFileId)
-    params.set('fileId', currentFileId)
+  if (currentFileId) params.set('fileId', currentFileId)
   const currentSnapshotId = getActiveSnapshotUrlId()
-  if (currentSnapshotId)
-    params.set('snapshotId', currentSnapshotId)
+  if (currentSnapshotId) params.set('snapshotId', currentSnapshotId)
   const href = `${base}editor?${params.toString()}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Content is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
@@ -2444,13 +2796,12 @@ function populateSidebarVersion(): void {
 function onDocumentClick(event: Event) {
   const target = event.target as HTMLInputElement | undefined
 
-  if (!target?.closest('#add-context-menu') && elements.addContextMenu.style.display === 'block')
-    closeAddContextMenu()
+  if (!target?.closest('#add-context-menu') && elements.addContextMenu.style.display === 'block') closeAddContextMenu()
 
   // Close modal more-menus when clicking outside
   if (!target?.closest('.modal-more-menu') && !target?.closest('.modal-header__more-btn')) {
     document.querySelectorAll('.modal-more-menu').forEach(menu => {
-      (menu as HTMLElement).style.display = 'none'
+      ;(menu as HTMLElement).style.display = 'none'
     })
     closeEffectHandlerMenus()
   }
@@ -2484,17 +2835,20 @@ export const undoDvalaCodeHistory = throttle(() => {
   try {
     const historyEntry = dvalaCodeHistory.undo()
     persistActiveDvalaCodeHistory()
-    saveState({
-      'dvala-code': historyEntry.text,
-      'dvala-code-selection-start': historyEntry.selectionStart,
-      'dvala-code-selection-end': historyEntry.selectionEnd,
-    }, false)
+    saveState(
+      {
+        'dvala-code': historyEntry.text,
+        'dvala-code-selection-start': historyEntry.selectionStart,
+        'dvala-code-selection-end': historyEntry.selectionEnd,
+      },
+      false,
+    )
     applyState()
     focusDvalaCode()
   } catch {
     // no-op
   }
-  setTimeout(() => ignoreSelectionChange = false)
+  setTimeout(() => (ignoreSelectionChange = false))
 })
 
 export const redoDvalaCodeHistory = throttle(() => {
@@ -2503,17 +2857,20 @@ export const redoDvalaCodeHistory = throttle(() => {
   try {
     const historyEntry = dvalaCodeHistory.redo()
     persistActiveDvalaCodeHistory()
-    saveState({
-      'dvala-code': historyEntry.text,
-      'dvala-code-selection-start': historyEntry.selectionStart,
-      'dvala-code-selection-end': historyEntry.selectionEnd,
-    }, false)
+    saveState(
+      {
+        'dvala-code': historyEntry.text,
+        'dvala-code-selection-start': historyEntry.selectionStart,
+        'dvala-code-selection-end': historyEntry.selectionEnd,
+      },
+      false,
+    )
     applyState()
     focusDvalaCode()
   } catch {
     // no-op
   }
-  setTimeout(() => ignoreSelectionChange = false)
+  setTimeout(() => (ignoreSelectionChange = false))
 })
 
 function formatStorageSize(bytes: number): string {
@@ -2528,11 +2885,13 @@ function updateStorageUsage() {
     localEl.textContent = formatStorageSize(bytes)
   }
   if (idbEl) {
-    const bytes = new TextEncoder().encode(JSON.stringify({
-      saved: getSavedSnapshots(),
-      terminal: getTerminalSnapshots(),
-      files: getSavedFiles(),
-    })).length
+    const bytes = new TextEncoder().encode(
+      JSON.stringify({
+        saved: getSavedSnapshots(),
+        terminal: getTerminalSnapshots(),
+        files: getSavedFiles(),
+      }),
+    ).length
     idbEl.textContent = formatStorageSize(bytes)
   }
 }
@@ -2546,17 +2905,21 @@ export function clearLocalStorageData() {
 }
 
 export function clearIndexedDbData() {
-  void showInfoModal('Clear IndexedDB', 'This will delete all saved snapshots, recent snapshots, and saved files.', () => {
-    clearAllSnapshots()
-    clearAllFiles()
-    clearAllFileHistories()
-    saveState({ 'current-file-id': null }, false)
-    activateCurrentFileHistory(true)
-    populateSnapshotsList()
-    populateSavedFilesList()
-    updateCSS()
-    updateStorageUsage()
-  })
+  void showInfoModal(
+    'Clear IndexedDB',
+    'This will delete all saved snapshots, recent snapshots, and saved files.',
+    () => {
+      clearAllSnapshots()
+      clearAllFiles()
+      clearAllFileHistories()
+      saveState({ 'current-file-id': null }, false)
+      activateCurrentFileHistory(true)
+      populateSnapshotsList()
+      populateSavedFilesList()
+      updateCSS()
+      updateStorageUsage()
+    },
+  )
 }
 
 function updateContextState(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom', syncDetail = true) {
@@ -2564,26 +2927,26 @@ function updateContextState(value: string, pushToHistory: boolean, scroll?: 'top
   elements.contextTextArea.value = value
 
   if (pushToHistory && value !== previousValue) {
-    saveState({
-      'context': value,
-      'context-selection-start': elements.contextTextArea.selectionStart,
-      'context-selection-end': elements.contextTextArea.selectionEnd,
-    }, true)
+    saveState(
+      {
+        context: value,
+        'context-selection-start': elements.contextTextArea.selectionStart,
+        'context-selection-end': elements.contextTextArea.selectionEnd,
+      },
+      true,
+    )
     scheduleAutoSave()
   } else if (value !== previousValue) {
     saveState({ context: value }, false)
   }
 
-  if (scroll === 'top')
-    elements.contextTextArea.scrollTo(0, 0)
+  if (scroll === 'top') elements.contextTextArea.scrollTo(0, 0)
   else if (scroll === 'bottom')
     elements.contextTextArea.scrollTo({ top: elements.contextTextArea.scrollHeight, behavior: 'smooth' })
 
   renderContextEntryList()
-  if (syncDetail && getCurrentSideTab() === 'context')
-    syncCodePanelView('context')
-  else if (syncDetail)
-    syncContextDetailEditor()
+  if (syncDetail && getCurrentSideTab() === 'context') syncCodePanelView('context')
+  else if (syncDetail) syncContextDetailEditor()
 
   updateCSS()
 }
@@ -2597,18 +2960,19 @@ function getParsedContext(): Record<string, unknown> {
 }
 
 function persistActiveContextSelection(syncUrl = getCurrentSideTab() === 'context') {
-  saveState({
-    'current-context-binding-name': activeContextBindingName,
-    'current-context-entry-kind': activeContextEntryKind,
-  }, false)
-  if (syncUrl)
-    syncPlaygroundUrlState('context')
+  saveState(
+    {
+      'current-context-binding-name': activeContextBindingName,
+      'current-context-entry-kind': activeContextEntryKind,
+    },
+    false,
+  )
+  if (syncUrl) syncPlaygroundUrlState('context')
 }
 
 function getContextBindings(context: Record<string, unknown>): UnknownRecord {
   const bindings = context.bindings
-  if (!bindings || typeof bindings !== 'object' || Array.isArray(bindings))
-    return {}
+  if (!bindings || typeof bindings !== 'object' || Array.isArray(bindings)) return {}
 
   return asUnknownRecord(bindings)
 }
@@ -2623,12 +2987,10 @@ function sortContextEffectHandlers(handlers: StoredContextEffectHandler[]): Stor
 
 function getContextEffectHandlers(context: Record<string, unknown>): StoredContextEffectHandler[] {
   const effectHandlers = context[CONTEXT_EFFECT_HANDLERS_KEY]
-  if (!Array.isArray(effectHandlers))
-    return []
+  if (!Array.isArray(effectHandlers)) return []
 
   return effectHandlers.filter((entry): entry is StoredContextEffectHandler => {
-    if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
-      return false
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return false
 
     const record = asUnknownRecord(entry)
     return typeof record.pattern === 'string' && Object.prototype.hasOwnProperty.call(record, 'handler')
@@ -2641,14 +3003,14 @@ function getContextEffectHandler(context: Record<string, unknown>, pattern: stri
 
 function getRuntimeContextObject(context: Record<string, unknown>): Record<string, unknown> {
   const runtimeContext = { ...context }
-  const runtimeEffectHandlers = getContextEffectHandlers(context).filter(({ pattern }) => isContextEffectHandlerActive(context, pattern))
+  const runtimeEffectHandlers = getContextEffectHandlers(context).filter(({ pattern }) =>
+    isContextEffectHandlerActive(context, pattern),
+  )
 
   delete runtimeContext.bindings
 
-  if (runtimeEffectHandlers.length > 0)
-    runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY] = runtimeEffectHandlers
-  else
-    delete runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY]
+  if (runtimeEffectHandlers.length > 0) runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY] = runtimeEffectHandlers
+  else delete runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY]
 
   delete runtimeContext[CONTEXT_UI_STATE_KEY]
   return runtimeContext
@@ -2656,16 +3018,14 @@ function getRuntimeContextObject(context: Record<string, unknown>): Record<strin
 
 function getContextUiState(context: Record<string, unknown>): UnknownRecord {
   const uiState = context[CONTEXT_UI_STATE_KEY]
-  if (!uiState || typeof uiState !== 'object' || Array.isArray(uiState))
-    return {}
+  if (!uiState || typeof uiState !== 'object' || Array.isArray(uiState)) return {}
 
   return asUnknownRecord(uiState)
 }
 
 function getContextUiSectionState(context: Record<string, unknown>, key: ContextUiSectionKey): UnknownRecord {
   const section = getContextUiState(context)[key]
-  if (!section || typeof section !== 'object' || Array.isArray(section))
-    return {}
+  if (!section || typeof section !== 'object' || Array.isArray(section)) return {}
 
   return asUnknownRecord(section)
 }
@@ -2680,16 +3040,14 @@ function getContextEffectHandlerUiState(context: Record<string, unknown>): Unkno
 
 function getContextBindingUiEntry(context: Record<string, unknown>, name: string): UnknownRecord {
   const bindingEntry = getContextBindingUiState(context)[name]
-  if (!bindingEntry || typeof bindingEntry !== 'object' || Array.isArray(bindingEntry))
-    return {}
+  if (!bindingEntry || typeof bindingEntry !== 'object' || Array.isArray(bindingEntry)) return {}
 
   return asUnknownRecord(bindingEntry)
 }
 
 function getContextEffectHandlerUiEntry(context: Record<string, unknown>, pattern: string): UnknownRecord {
   const handlerEntry = getContextEffectHandlerUiState(context)[pattern]
-  if (!handlerEntry || typeof handlerEntry !== 'object' || Array.isArray(handlerEntry))
-    return {}
+  if (!handlerEntry || typeof handlerEntry !== 'object' || Array.isArray(handlerEntry)) return {}
 
   return asUnknownRecord(handlerEntry)
 }
@@ -2706,62 +3064,73 @@ function getContextEffectHandlerInvalidDraft(context: Record<string, unknown>, p
 
 function getContextBindingNames(context: Record<string, unknown>): string[] {
   const bindingNames = Object.keys(getContextBindings(context))
-  const invalidDraftNames = Object.keys(getContextBindingUiState(context)).filter(name => getContextBindingInvalidDraft(context, name) !== null)
+  const invalidDraftNames = Object.keys(getContextBindingUiState(context)).filter(
+    name => getContextBindingInvalidDraft(context, name) !== null,
+  )
 
-  return [...new Set([...bindingNames, ...invalidDraftNames])]
-    .sort(compareContextEntryNames)
+  return [...new Set([...bindingNames, ...invalidDraftNames])].sort(compareContextEntryNames)
 }
 
 function getContextEffectHandlerNames(context: Record<string, unknown>): string[] {
   const handlerNames = getContextEffectHandlers(context).map(({ pattern }) => pattern)
-  const invalidDraftNames = Object.keys(getContextEffectHandlerUiState(context)).filter(name => getContextEffectHandlerInvalidDraft(context, name) !== null)
+  const invalidDraftNames = Object.keys(getContextEffectHandlerUiState(context)).filter(
+    name => getContextEffectHandlerInvalidDraft(context, name) !== null,
+  )
 
-  return [...new Set([...handlerNames, ...invalidDraftNames])]
-    .sort(compareContextEntryNames)
+  return [...new Set([...handlerNames, ...invalidDraftNames])].sort(compareContextEntryNames)
 }
 
-function updateContextUiSectionEntry(context: Record<string, unknown>, key: ContextUiSectionKey, name: string, updater: (entry: UnknownRecord) => UnknownRecord) {
+function updateContextUiSectionEntry(
+  context: Record<string, unknown>,
+  key: ContextUiSectionKey,
+  name: string,
+  updater: (entry: UnknownRecord) => UnknownRecord,
+) {
   const uiState = { ...getContextUiState(context) }
   const sectionState = { ...getContextUiSectionState(context, key) }
   const currentEntry = sectionState[name]
-  const nextEntry = updater(currentEntry && typeof currentEntry === 'object' && !Array.isArray(currentEntry) ? { ...asUnknownRecord(currentEntry) } : {})
+  const nextEntry = updater(
+    currentEntry && typeof currentEntry === 'object' && !Array.isArray(currentEntry)
+      ? { ...asUnknownRecord(currentEntry) }
+      : {},
+  )
 
-  if (Object.keys(nextEntry).length > 0)
-    sectionState[name] = nextEntry
-  else
-    delete sectionState[name]
+  if (Object.keys(nextEntry).length > 0) sectionState[name] = nextEntry
+  else delete sectionState[name]
 
-  if (Object.keys(sectionState).length > 0)
-    uiState[key] = sectionState
-  else
-    delete uiState[key]
+  if (Object.keys(sectionState).length > 0) uiState[key] = sectionState
+  else delete uiState[key]
 
-  if (Object.keys(uiState).length > 0)
-    context[CONTEXT_UI_STATE_KEY] = uiState
-  else
-    delete context[CONTEXT_UI_STATE_KEY]
+  if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
+  else delete context[CONTEXT_UI_STATE_KEY]
 }
 
-function updateContextBindingUiEntry(context: Record<string, unknown>, name: string, updater: (entry: UnknownRecord) => UnknownRecord) {
+function updateContextBindingUiEntry(
+  context: Record<string, unknown>,
+  name: string,
+  updater: (entry: UnknownRecord) => UnknownRecord,
+) {
   updateContextUiSectionEntry(context, 'bindings', name, updater)
 }
 
-function updateContextEffectHandlerUiEntry(context: Record<string, unknown>, pattern: string, updater: (entry: UnknownRecord) => UnknownRecord) {
+function updateContextEffectHandlerUiEntry(
+  context: Record<string, unknown>,
+  pattern: string,
+  updater: (entry: UnknownRecord) => UnknownRecord,
+) {
   updateContextUiSectionEntry(context, 'effectHandlers', pattern, updater)
 }
 
 function isContextBindingActive(context: Record<string, unknown>, name: string): boolean {
   const bindingState = getContextBindingUiState(context)[name]
-  if (!bindingState || typeof bindingState !== 'object' || Array.isArray(bindingState))
-    return true
+  if (!bindingState || typeof bindingState !== 'object' || Array.isArray(bindingState)) return true
 
   return asUnknownRecord(bindingState).active !== false
 }
 
 function isContextEffectHandlerActive(context: Record<string, unknown>, pattern: string): boolean {
   const handlerState = getContextEffectHandlerUiState(context)[pattern]
-  if (!handlerState || typeof handlerState !== 'object' || Array.isArray(handlerState))
-    return true
+  if (!handlerState || typeof handlerState !== 'object' || Array.isArray(handlerState)) return true
 
   return asUnknownRecord(handlerState).active !== false
 }
@@ -2772,27 +3141,20 @@ function formatContextJson(context: Record<string, unknown>): string {
   const bindingUiState = getContextBindingUiState(nextContext)
   const effectHandlerUiState = getContextEffectHandlerUiState(nextContext)
 
-  if (Object.keys(bindingUiState).length > 0)
-    uiState.bindings = bindingUiState
-  else
-    delete uiState.bindings
+  if (Object.keys(bindingUiState).length > 0) uiState.bindings = bindingUiState
+  else delete uiState.bindings
 
-  if (Object.keys(effectHandlerUiState).length > 0)
-    uiState.effectHandlers = effectHandlerUiState
-  else
-    delete uiState.effectHandlers
+  if (Object.keys(effectHandlerUiState).length > 0) uiState.effectHandlers = effectHandlerUiState
+  else delete uiState.effectHandlers
 
-  if (Object.keys(uiState).length > 0)
-    nextContext[CONTEXT_UI_STATE_KEY] = uiState
-  else
-    delete nextContext[CONTEXT_UI_STATE_KEY]
+  if (Object.keys(uiState).length > 0) nextContext[CONTEXT_UI_STATE_KEY] = uiState
+  else delete nextContext[CONTEXT_UI_STATE_KEY]
 
   return JSON.stringify(nextContext, null, 2)
 }
 
 function contextEntryExists(context: Record<string, unknown>, kind: ContextEntryKind, name: string): boolean {
-  if (kind === 'binding')
-    return getContextBindingNames(context).includes(name)
+  if (kind === 'binding') return getContextBindingNames(context).includes(name)
 
   return getContextEffectHandlerNames(context).includes(name)
 }
@@ -2811,9 +3173,10 @@ function ensureActiveContextSelection(context: Record<string, unknown>) {
     return
   }
 
-  const nextSelection = bindingNames.length > 0
-    ? { kind: 'binding' as const, name: bindingNames[0] ?? null }
-    : { kind: 'effect-handler' as const, name: effectHandlerNames[0] ?? null }
+  const nextSelection =
+    bindingNames.length > 0
+      ? { kind: 'binding' as const, name: bindingNames[0] ?? null }
+      : { kind: 'effect-handler' as const, name: effectHandlerNames[0] ?? null }
 
   if (activeContextBindingName !== nextSelection.name || activeContextEntryKind !== nextSelection.kind) {
     activeContextBindingName = nextSelection.name
@@ -2824,20 +3187,16 @@ function ensureActiveContextSelection(context: Record<string, unknown>) {
 
 function setContextBindingActive(context: Record<string, unknown>, name: string, active: boolean) {
   updateContextBindingUiEntry(context, name, entry => {
-    if (active)
-      delete entry.active
-    else
-      entry.active = false
+    if (active) delete entry.active
+    else entry.active = false
     return entry
   })
 }
 
 function setContextEffectHandlerActive(context: Record<string, unknown>, pattern: string, active: boolean) {
   updateContextEffectHandlerUiEntry(context, pattern, entry => {
-    if (active)
-      delete entry.active
-    else
-      entry.active = false
+    if (active) delete entry.active
+    else entry.active = false
     return entry
   })
 }
@@ -2848,15 +3207,13 @@ function syncContextDetailValidity(isValid: boolean) {
 
 function compileContextEffectHandlerSource(value: string): EffectHandler {
   const fn = eval(`(${value})`) as unknown
-  if (typeof fn !== 'function')
-    throw new TypeError('Effect handler must be a JavaScript function')
+  if (typeof fn !== 'function') throw new TypeError('Effect handler must be a JavaScript function')
 
   return fn as EffectHandler
 }
 
 function isStoredContextEffectHandlerValid(value: unknown): boolean {
-  if (typeof value !== 'string')
-    return false
+  if (typeof value !== 'string') return false
 
   try {
     compileContextEffectHandlerSource(value)
@@ -2868,11 +3225,9 @@ function isStoredContextEffectHandlerValid(value: unknown): boolean {
 
 function hasContextEffectHandlerParseError(context: Record<string, unknown>, pattern: string): boolean {
   const handler = getContextEffectHandler(context, pattern)
-  if (getContextEffectHandlerInvalidDraft(context, pattern) !== null)
-    return true
+  if (getContextEffectHandlerInvalidDraft(context, pattern) !== null) return true
 
-  if (!handler)
-    return false
+  if (!handler) return false
 
   if (activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern && contextDetailHasParseError)
     return true
@@ -2889,7 +3244,11 @@ function syncContextDetailEditor() {
 
   isSyncingContextDetail = true
   contextDetailHasParseError = false
-  if (activeContextEntryKind === 'binding' && activeName && Object.prototype.hasOwnProperty.call(bindings, activeName)) {
+  if (
+    activeContextEntryKind === 'binding' &&
+    activeName &&
+    Object.prototype.hasOwnProperty.call(bindings, activeName)
+  ) {
     elements.contextDetailTextArea.readOnly = false
     const invalidDraft = getContextBindingInvalidDraft(context, activeName)
     if (invalidDraft !== null) {
@@ -2981,14 +3340,14 @@ function renderContextEntryList() {
   elements.contextEntryList.innerHTML = items.join('')
 
   // Show a red dot on the sidebar context icon when any entry has a parse error.
-  const hasAnyError =
-    getContextEffectHandlerNames(context).some(pattern => hasContextEffectHandlerParseError(context, pattern))
+  const hasAnyError = getContextEffectHandlerNames(context).some(pattern =>
+    hasContextEffectHandlerParseError(context, pattern),
+  )
   document.getElementById('side-icon-context')?.classList.toggle('side-panel__icon--has-error', hasAnyError)
 }
 
 function commitContextDetailEdits(): boolean {
-  if (isSyncingContextDetail || !activeContextBindingName)
-    return true
+  if (isSyncingContextDetail || !activeContextBindingName) return true
 
   if (activeContextEntryKind === 'effect-handler') {
     try {
@@ -3003,29 +3362,23 @@ function commitContextDetailEdits(): boolean {
       })
       const nextContext = formatContextJson(context)
       contextDetailHasParseError = false
-      if (nextContext !== getState('context'))
-        updateContextState(nextContext, true, undefined, false)
-      else
-        renderContextEntryList()
+      if (nextContext !== getState('context')) updateContextState(nextContext, true, undefined, false)
+      else renderContextEntryList()
       syncContextDetailValidity(true)
       return true
     } catch (_error) {
       const context = getParsedContext()
       const handlers = getContextEffectHandlers(context).filter(({ pattern }) => pattern !== activeContextBindingName)
-      if (handlers.length > 0)
-        context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
-      else
-        delete context[CONTEXT_EFFECT_HANDLERS_KEY]
+      if (handlers.length > 0) context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+      else delete context[CONTEXT_EFFECT_HANDLERS_KEY]
       updateContextEffectHandlerUiEntry(context, activeContextBindingName, entry => {
         entry.invalidHandler = elements.contextDetailTextArea.value
         return entry
       })
       const nextContext = formatContextJson(context)
       contextDetailHasParseError = true
-      if (nextContext !== getState('context'))
-        updateContextState(nextContext, true, undefined, false)
-      else
-        renderContextEntryList()
+      if (nextContext !== getState('context')) updateContextState(nextContext, true, undefined, false)
+      else renderContextEntryList()
       syncContextDetailValidity(false)
       return false
     }
@@ -3043,10 +3396,8 @@ function commitContextDetailEdits(): boolean {
     })
     const nextContext = formatContextJson(context)
     contextDetailHasParseError = false
-    if (nextContext !== getState('context'))
-      updateContextState(nextContext, true, undefined, false)
-    else
-      renderContextEntryList()
+    if (nextContext !== getState('context')) updateContextState(nextContext, true, undefined, false)
+    else renderContextEntryList()
     syncContextDetailValidity(true)
     return true
   } catch (_error) {
@@ -3060,10 +3411,8 @@ function commitContextDetailEdits(): boolean {
     })
     const nextContext = formatContextJson(context)
     contextDetailHasParseError = true
-    if (nextContext !== getState('context'))
-      updateContextState(nextContext, true, undefined, false)
-    else
-      renderContextEntryList()
+    if (nextContext !== getState('context')) updateContextState(nextContext, true, undefined, false)
+    else renderContextEntryList()
     syncContextDetailValidity(false)
     return false
   }
@@ -3079,8 +3428,7 @@ export function selectContextBinding(name: string) {
 
   // Commit edits using the *current* kind before switching — setting activeContextEntryKind
   // beforehand would cause commitContextDetailEdits to misinterpret the active editor content.
-  if (!contextDetailHasParseError && !commitContextDetailEdits())
-    return
+  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
 
   activeContextEntryKind = 'binding'
   activeContextBindingName = name
@@ -3101,8 +3449,7 @@ export function selectContextEffectHandler(pattern: string) {
 
   // Commit edits using the *current* kind before switching — setting activeContextEntryKind
   // beforehand would cause commitContextDetailEdits to misinterpret the active editor content.
-  if (!contextDetailHasParseError && !commitContextDetailEdits())
-    return
+  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
 
   activeContextEntryKind = 'effect-handler'
   activeContextBindingName = pattern
@@ -3115,8 +3462,7 @@ export function selectContextEffectHandler(pattern: string) {
 }
 
 export function toggleContextBindingActive(name: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits())
-    return
+  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
 
   const context = getParsedContext()
   setContextBindingActive(context, name, !isContextBindingActive(context, name))
@@ -3124,8 +3470,7 @@ export function toggleContextBindingActive(name: string) {
 }
 
 export function toggleContextEffectHandlerActive(pattern: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits())
-    return
+  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
 
   const context = getParsedContext()
   setContextEffectHandlerActive(context, pattern, !isContextEffectHandlerActive(context, pattern))
@@ -3133,8 +3478,7 @@ export function toggleContextEffectHandlerActive(pattern: string) {
 }
 
 export function removeContextBinding(name: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits())
-    return
+  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
 
   const context = getParsedContext()
   const bindings = { ...getContextBindings(context) }
@@ -3144,60 +3488,45 @@ export function removeContextBinding(name: string) {
   const bindingUiState = { ...getContextBindingUiState(context) }
   delete bindingUiState[name]
   const uiState = { ...getContextUiState(context) }
-  if (Object.keys(bindingUiState).length > 0)
-    uiState.bindings = bindingUiState
-  else
-    delete uiState.bindings
+  if (Object.keys(bindingUiState).length > 0) uiState.bindings = bindingUiState
+  else delete uiState.bindings
 
-  if (Object.keys(uiState).length > 0)
-    context[CONTEXT_UI_STATE_KEY] = uiState
-  else
-    delete context[CONTEXT_UI_STATE_KEY]
+  if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
+  else delete context[CONTEXT_UI_STATE_KEY]
 
-  if (activeContextBindingName === name)
-    activeContextBindingName = null
+  if (activeContextBindingName === name) activeContextBindingName = null
 
   updateContextState(formatContextJson(context), true)
 }
 
 export function removeContextEffectHandler(pattern: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits())
-    return
+  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
 
   const context = getParsedContext()
   const handlers = getContextEffectHandlers(context).filter(entry => entry.pattern !== pattern)
-  if (handlers.length > 0)
-    context[CONTEXT_EFFECT_HANDLERS_KEY] = handlers
-  else
-    delete context[CONTEXT_EFFECT_HANDLERS_KEY]
+  if (handlers.length > 0) context[CONTEXT_EFFECT_HANDLERS_KEY] = handlers
+  else delete context[CONTEXT_EFFECT_HANDLERS_KEY]
 
   const effectHandlerUiState = { ...getContextEffectHandlerUiState(context) }
   delete effectHandlerUiState[pattern]
   const uiState = { ...getContextUiState(context) }
-  if (Object.keys(effectHandlerUiState).length > 0)
-    uiState.effectHandlers = effectHandlerUiState
-  else
-    delete uiState.effectHandlers
+  if (Object.keys(effectHandlerUiState).length > 0) uiState.effectHandlers = effectHandlerUiState
+  else delete uiState.effectHandlers
 
-  if (Object.keys(uiState).length > 0)
-    context[CONTEXT_UI_STATE_KEY] = uiState
-  else
-    delete context[CONTEXT_UI_STATE_KEY]
+  if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
+  else delete context[CONTEXT_UI_STATE_KEY]
 
-  if (activeContextBindingName === pattern)
-    activeContextBindingName = null
+  if (activeContextBindingName === pattern) activeContextBindingName = null
 
   updateContextState(formatContextJson(context), true)
 }
 
 export function renameContextBinding(name: string) {
   const hasInvalidActiveBinding = contextDetailHasParseError
-  if (activeContextBindingName !== name && !hasInvalidActiveBinding && !commitContextDetailEdits())
-    return
+  if (activeContextBindingName !== name && !hasInvalidActiveBinding && !commitContextDetailEdits()) return
 
   showNameInputModal('Rename binding', name, newName => {
-    if (newName === name)
-      return
+    if (newName === name) return
 
     const context = getParsedContext()
     if (getContextBindingNames(context).includes(newName)) {
@@ -3220,18 +3549,13 @@ export function renameContextBinding(name: string) {
     }
 
     const uiState = { ...getContextUiState(context) }
-    if (Object.keys(bindingUiState).length > 0)
-      uiState.bindings = bindingUiState
-    else
-      delete uiState.bindings
+    if (Object.keys(bindingUiState).length > 0) uiState.bindings = bindingUiState
+    else delete uiState.bindings
 
-    if (Object.keys(uiState).length > 0)
-      context[CONTEXT_UI_STATE_KEY] = uiState
-    else
-      delete context[CONTEXT_UI_STATE_KEY]
+    if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
+    else delete context[CONTEXT_UI_STATE_KEY]
 
-    if (activeContextBindingName === name)
-      activeContextBindingName = newName
+    if (activeContextBindingName === name) activeContextBindingName = newName
 
     updateContextState(formatContextJson(context), true)
     focusContext()
@@ -3240,61 +3564,56 @@ export function renameContextBinding(name: string) {
 
 export function renameContextEffectHandler(pattern: string) {
   const hasInvalidActiveBinding = contextDetailHasParseError
-  if (activeContextBindingName !== pattern && !hasInvalidActiveBinding && !commitContextDetailEdits())
-    return
+  if (activeContextBindingName !== pattern && !hasInvalidActiveBinding && !commitContextDetailEdits()) return
 
-  showNameInputModal('Rename effect handler', pattern, newPattern => {
-    if (newPattern === pattern)
-      return
+  showNameInputModal(
+    'Rename effect handler',
+    pattern,
+    newPattern => {
+      if (newPattern === pattern) return
 
-    const context = getParsedContext()
-    if (getContextEffectHandlerNames(context).includes(newPattern)) {
-      showToast(`Effect handler "${newPattern}" already exists`, { severity: 'error' })
-      setTimeout(() => renameContextEffectHandler(pattern), 0)
-      return
-    }
+      const context = getParsedContext()
+      if (getContextEffectHandlerNames(context).includes(newPattern)) {
+        showToast(`Effect handler "${newPattern}" already exists`, { severity: 'error' })
+        setTimeout(() => renameContextEffectHandler(pattern), 0)
+        return
+      }
 
-    const handlers = getContextEffectHandlers(context).map(entry => {
-      if (entry.pattern !== pattern)
-        return entry
+      const handlers = getContextEffectHandlers(context).map(entry => {
+        if (entry.pattern !== pattern) return entry
 
-      return { ...entry, pattern: newPattern }
-    })
+        return { ...entry, pattern: newPattern }
+      })
 
-    if (handlers.length > 0)
-      context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
-    else
-      delete context[CONTEXT_EFFECT_HANDLERS_KEY]
+      if (handlers.length > 0) context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+      else delete context[CONTEXT_EFFECT_HANDLERS_KEY]
 
-    const effectHandlerUiState = { ...getContextEffectHandlerUiState(context) }
-    if (Object.prototype.hasOwnProperty.call(effectHandlerUiState, pattern)) {
-      effectHandlerUiState[newPattern] = effectHandlerUiState[pattern]
-      delete effectHandlerUiState[pattern]
-    }
+      const effectHandlerUiState = { ...getContextEffectHandlerUiState(context) }
+      if (Object.prototype.hasOwnProperty.call(effectHandlerUiState, pattern)) {
+        effectHandlerUiState[newPattern] = effectHandlerUiState[pattern]
+        delete effectHandlerUiState[pattern]
+      }
 
-    const uiState = { ...getContextUiState(context) }
-    if (Object.keys(effectHandlerUiState).length > 0)
-      uiState.effectHandlers = effectHandlerUiState
-    else
-      delete uiState.effectHandlers
+      const uiState = { ...getContextUiState(context) }
+      if (Object.keys(effectHandlerUiState).length > 0) uiState.effectHandlers = effectHandlerUiState
+      else delete uiState.effectHandlers
 
-    if (Object.keys(uiState).length > 0)
-      context[CONTEXT_UI_STATE_KEY] = uiState
-    else
-      delete context[CONTEXT_UI_STATE_KEY]
+      if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
+      else delete context[CONTEXT_UI_STATE_KEY]
 
-    if (activeContextBindingName === pattern)
-      activeContextBindingName = newPattern
+      if (activeContextBindingName === pattern) activeContextBindingName = newPattern
 
-    updateContextState(formatContextJson(context), true)
-    focusContext()
-  }, undefined, { prefix: '@' })
+      updateContextState(formatContextJson(context), true)
+      focusContext()
+    },
+    undefined,
+    { prefix: '@' },
+  )
 }
 
 export function promptAddContextBinding() {
   const hasInvalidActiveBinding = contextDetailHasParseError
-  if (!hasInvalidActiveBinding && !commitContextDetailEdits())
-    return
+  if (!hasInvalidActiveBinding && !commitContextDetailEdits()) return
 
   showNameInputModal('Add binding', '', name => {
     const context = getParsedContext()
@@ -3314,8 +3633,7 @@ export function promptAddContextBinding() {
 
     updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveBinding)
 
-    if (hasInvalidActiveBinding)
-      showToast(`Added binding "${name}"`)
+    if (hasInvalidActiveBinding) showToast(`Added binding "${name}"`)
 
     focusContext()
   })
@@ -3323,33 +3641,37 @@ export function promptAddContextBinding() {
 
 export function promptAddContextEffectHandler() {
   const hasInvalidActiveEntry = contextDetailHasParseError
-  if (!hasInvalidActiveEntry && !commitContextDetailEdits())
-    return
+  if (!hasInvalidActiveEntry && !commitContextDetailEdits()) return
 
-  showNameInputModal('Add effect handler', '', pattern => {
-    const context = getParsedContext()
-    if (getContextEffectHandlerNames(context).includes(pattern)) {
-      showToast(`Effect handler "${pattern}" already exists`, { severity: 'error' })
-      setTimeout(() => promptAddContextEffectHandler(), 0)
-      return
-    }
+  showNameInputModal(
+    'Add effect handler',
+    '',
+    pattern => {
+      const context = getParsedContext()
+      if (getContextEffectHandlerNames(context).includes(pattern)) {
+        showToast(`Effect handler "${pattern}" already exists`, { severity: 'error' })
+        setTimeout(() => promptAddContextEffectHandler(), 0)
+        return
+      }
 
-    const handlers = getContextEffectHandlers(context)
-    handlers.push({ pattern, handler: DEFAULT_CONTEXT_EFFECT_HANDLER_SOURCE })
-    context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+      const handlers = getContextEffectHandlers(context)
+      handlers.push({ pattern, handler: DEFAULT_CONTEXT_EFFECT_HANDLER_SOURCE })
+      context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
 
-    if (!hasInvalidActiveEntry) {
-      activeContextEntryKind = 'effect-handler'
-      activeContextBindingName = pattern
-    }
+      if (!hasInvalidActiveEntry) {
+        activeContextEntryKind = 'effect-handler'
+        activeContextBindingName = pattern
+      }
 
-    updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveEntry)
+      updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveEntry)
 
-    if (hasInvalidActiveEntry)
-      showToast(`Added effect handler "${pattern}"`)
+      if (hasInvalidActiveEntry) showToast(`Added effect handler "${pattern}"`)
 
-    focusContext()
-  }, undefined, { prefix: '@' })
+      focusContext()
+    },
+    undefined,
+    { prefix: '@' },
+  )
 }
 
 export function addContextEntry() {
@@ -3421,13 +3743,23 @@ export function addSampleContext() {
   context.bindings = Object.assign(sampleBindings, context.bindings)
 
   const sampleEffectHandlers: { pattern: string; handler: string }[] = [
-    { pattern: 'host.greet', handler: 'async ({ arg, resume }) => { const [name] = Array.isArray(arg) ? arg : [arg]; resume(`Hello, ${name}!`) }' },
-    { pattern: 'host.add', handler: 'async ({ arg, resume }) => { const [a, b] = Array.isArray(arg) ? arg : [arg]; resume(a + b) }' },
-    { pattern: 'host.delay', handler: `async ({ arg, resume }) => {
+    {
+      pattern: 'host.greet',
+      handler:
+        'async ({ arg, resume }) => { const [name] = Array.isArray(arg) ? arg : [arg]; resume(`Hello, ${name}!`) }',
+    },
+    {
+      pattern: 'host.add',
+      handler: 'async ({ arg, resume }) => { const [a, b] = Array.isArray(arg) ? arg : [arg]; resume(a + b) }',
+    },
+    {
+      pattern: 'host.delay',
+      handler: `async ({ arg, resume }) => {
   const [ms] = Array.isArray(arg) ? arg : [arg];
   await new Promise(resolve => setTimeout(resolve, ms));
   resume(ms);
-}` },
+}`,
+    },
   ]
 
   const existing = (context.effectHandlers ?? []) as { pattern: string; handler: string }[]
@@ -3439,18 +3771,20 @@ export function addSampleContext() {
 
 export function newFile() {
   flushPendingAutoSave()
-  if (isScratchActive())
-    persistScratchFromCurrentState()
+  if (isScratchActive()) persistScratchFromCurrentState()
   const id = createUntitledFile()
-  saveState({
-    'active-side-tab': 'files',
-    'dvala-code': '',
-    'current-file-id': id,
-    'dvala-code-edited': false,
-    'dvala-code-selection-start': 0,
-    'dvala-code-selection-end': 0,
-    'dvala-code-scroll-top': 0,
-  }, false)
+  saveState(
+    {
+      'active-side-tab': 'files',
+      'dvala-code': '',
+      'current-file-id': id,
+      'dvala-code-edited': false,
+      'dvala-code-selection-start': 0,
+      'dvala-code-selection-end': 0,
+      'dvala-code-scroll-top': 0,
+    },
+    false,
+  )
   activateCurrentFileHistory(true)
   elements.dvalaTextArea.value = ''
   syntaxOverlay.update()
@@ -3480,19 +3814,21 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
   syntaxOverlay?.update()
 
   if (pushToHistory) {
-    saveState({
-      'dvala-code': value,
-      'dvala-code-selection-start': elements.dvalaTextArea.selectionStart,
-      'dvala-code-selection-end': elements.dvalaTextArea.selectionEnd,
-    }, false)
+    saveState(
+      {
+        'dvala-code': value,
+        'dvala-code-selection-start': elements.dvalaTextArea.selectionStart,
+        'dvala-code-selection-end': elements.dvalaTextArea.selectionEnd,
+      },
+      false,
+    )
     pushActiveDvalaCodeHistoryEntry()
     scheduleAutoSave()
   } else {
     saveState({ 'dvala-code': value }, false)
   }
 
-  if (scroll === 'top')
-    syntaxOverlay?.scrollContainer.scrollTo(0, 0)
+  if (scroll === 'top') syntaxOverlay?.scrollContainer.scrollTo(0, 0)
   else if (scroll === 'bottom')
     syntaxOverlay?.scrollContainer.scrollTo({ top: syntaxOverlay.scrollContainer.scrollHeight, behavior: 'smooth' })
 }
@@ -3546,9 +3882,7 @@ window.onload = async function () {
   // Apply the theme attribute before rendering the shell to avoid a flash of the wrong theme.
   // We can't call updateCSS() here because the DOM elements it references don't exist yet.
   const lightModePref = getState('light-mode')
-  const isLight = lightModePref !== null
-    ? lightModePref
-    : window.matchMedia('(prefers-color-scheme: light)').matches
+  const isLight = lightModePref !== null ? lightModePref : window.matchMedia('(prefers-color-scheme: light)').matches
   document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark')
 
   renderShell()
@@ -3575,7 +3909,9 @@ window.onload = async function () {
 
   elements.mainPanel.addEventListener('scroll', () => {
     // Close context/editor menus on scroll, but keep settings open (user may scroll while adjusting settings)
-    document.querySelectorAll<HTMLElement>('.editor-menu:not(#settings-dropdown)').forEach(el => { el.style.display = 'none' })
+    document.querySelectorAll<HTMLElement>('.editor-menu:not(#settings-dropdown)').forEach(el => {
+      el.style.display = 'none'
+    })
   })
 
   window.addEventListener('resize', () => {
@@ -3593,16 +3929,20 @@ window.onload = async function () {
     }
   }
 
-  elements.resizeDevider1.addEventListener('touchstart', event => {
-    event.preventDefault()
-    const touch = event.touches[0]!
-    document.body.classList.add('no-select')
-    moveParams = {
-      id: 'resize-divider-1',
-      startMoveX: touch.clientX,
-      percentBeforeMove: getState('resize-divider-1-percent'),
-    }
-  }, { passive: false })
+  elements.resizeDevider1.addEventListener(
+    'touchstart',
+    event => {
+      event.preventDefault()
+      const touch = event.touches[0]!
+      document.body.classList.add('no-select')
+      moveParams = {
+        id: 'resize-divider-1',
+        startMoveX: touch.clientX,
+        percentBeforeMove: getState('resize-divider-1-percent'),
+      }
+    },
+    { passive: false },
+  )
 
   elements.resizeDevider2.onmousedown = event => {
     event.preventDefault()
@@ -3614,16 +3954,20 @@ window.onload = async function () {
     }
   }
 
-  elements.resizeDevider2.addEventListener('touchstart', event => {
-    event.preventDefault()
-    const touch = event.touches[0]!
-    document.body.classList.add('no-select')
-    moveParams = {
-      id: 'resize-divider-2',
-      startMoveY: touch.clientY,
-      percentBeforeMove: getState('resize-divider-2-percent'),
-    }
-  }, { passive: false })
+  elements.resizeDevider2.addEventListener(
+    'touchstart',
+    event => {
+      event.preventDefault()
+      const touch = event.touches[0]!
+      document.body.classList.add('no-select')
+      moveParams = {
+        id: 'resize-divider-2',
+        startMoveY: touch.clientY,
+        percentBeforeMove: getState('resize-divider-2-percent'),
+      }
+    },
+    { passive: false },
+  )
 
   window.onresize = layout
   window.onmouseup = () => {
@@ -3650,29 +3994,23 @@ window.onload = async function () {
 
   const applyMoveEvent = (clientX: number, clientY: number) => {
     const { windowWidth, windowHeight } = calculateDimensions()
-    if (moveParams === null)
-      return
+    if (moveParams === null) return
 
     if (moveParams.id === 'resize-divider-1') {
-      let resizeDivider1XPercent
-        = moveParams.percentBeforeMove + ((clientX - moveParams.startMoveX) / windowWidth) * 100
-      if (resizeDivider1XPercent < 10)
-        resizeDivider1XPercent = 10
+      let resizeDivider1XPercent =
+        moveParams.percentBeforeMove + ((clientX - moveParams.startMoveX) / windowWidth) * 100
+      if (resizeDivider1XPercent < 10) resizeDivider1XPercent = 10
 
-      if (resizeDivider1XPercent > 50)
-        resizeDivider1XPercent = 50
+      if (resizeDivider1XPercent > 50) resizeDivider1XPercent = 50
 
       updateState({ 'resize-divider-1-percent': resizeDivider1XPercent })
       applyLayout()
     } else if (moveParams.id === 'resize-divider-2') {
       const tabPlayground = document.getElementById('tab-editor')
       const tabHeight = tabPlayground?.clientHeight ?? windowHeight
-      let resizeDivider2YPercent
-        = moveParams.percentBeforeMove + ((clientY - moveParams.startMoveY) / tabHeight) * 100
-      if (resizeDivider2YPercent < 10)
-        resizeDivider2YPercent = 10
-      if (resizeDivider2YPercent > 90)
-        resizeDivider2YPercent = 90
+      let resizeDivider2YPercent = moveParams.percentBeforeMove + ((clientY - moveParams.startMoveY) / tabHeight) * 100
+      if (resizeDivider2YPercent < 10) resizeDivider2YPercent = 10
+      if (resizeDivider2YPercent > 90) resizeDivider2YPercent = 90
 
       updateState({ 'resize-divider-2-percent': resizeDivider2YPercent })
       applyLayout()
@@ -3683,20 +4021,23 @@ window.onload = async function () {
     applyMoveEvent(event.clientX, event.clientY)
   }
 
-  window.addEventListener('touchmove', (event: TouchEvent) => {
-    if (moveParams === null) return
-    // Prevent page scroll while dragging a divider
-    event.preventDefault()
-    const touch = event.touches[0]!
-    applyMoveEvent(touch.clientX, touch.clientY)
-  }, { passive: false })
+  window.addEventListener(
+    'touchmove',
+    (event: TouchEvent) => {
+      if (moveParams === null) return
+      // Prevent page scroll while dragging a divider
+      event.preventDefault()
+      const touch = event.touches[0]!
+      applyMoveEvent(touch.clientX, touch.clientY)
+    },
+    { passive: false },
+  )
 
   window.addEventListener('keydown', evt => {
     // Unified effect panel: delegate key events to the current effect's handler first
     if (pendingEffects.length > 0) {
       const entry = pendingEffects[currentEffectIndex]
-      if (entry?.onKeyDown?.(evt))
-        return
+      if (entry?.onKeyDown?.(evt)) return
     }
 
     if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
@@ -3708,10 +4049,8 @@ window.onload = async function () {
       switch (evt.key) {
         case 'r':
           evt.preventDefault()
-          if (evt.shiftKey)
-            void runSync()
-          else
-            void run()
+          if (evt.shiftKey) runSync()
+          else void run()
           break
         case 'a':
           evt.preventDefault()
@@ -3884,7 +4223,6 @@ window.onload = async function () {
   router.init(appPath => {
     routeToPath(appPath)
   })
-
 }
 
 function getDataFromUrl() {
@@ -3897,27 +4235,32 @@ function getDataFromUrl() {
   if (activeView === 'context') {
     activeContextBindingName = urlBindingName ?? getState('current-context-binding-name')
     activeContextEntryKind = urlBindingName ? urlContextEntryKind : getState('current-context-entry-kind')
-    saveState({
-      'current-context-binding-name': activeContextBindingName,
-      'current-context-entry-kind': activeContextEntryKind,
-    }, false)
+    saveState(
+      {
+        'current-context-binding-name': activeContextBindingName,
+        'current-context-entry-kind': activeContextEntryKind,
+      },
+      false,
+    )
   }
 
   const urlFileId = urlParams.get('fileId')
   if (activeView === 'files' && urlFileId && getState('current-file-id') !== urlFileId) {
     const file = getSavedFiles().find(entry => entry.id === urlFileId)
     if (file) {
-      if (isScratchActive())
-        persistScratchFromCurrentState()
-      saveState({
-        'context': file.context,
-        'current-file-id': file.id,
-        'dvala-code': file.code,
-        'dvala-code-edited': false,
-        'dvala-code-scroll-top': 0,
-        'dvala-code-selection-end': 0,
-        'dvala-code-selection-start': 0,
-      }, false)
+      if (isScratchActive()) persistScratchFromCurrentState()
+      saveState(
+        {
+          context: file.context,
+          'current-file-id': file.id,
+          'dvala-code': file.code,
+          'dvala-code-edited': false,
+          'dvala-code-scroll-top': 0,
+          'dvala-code-selection-end': 0,
+          'dvala-code-selection-start': 0,
+        },
+        false,
+      )
     }
   }
 
@@ -3980,8 +4323,7 @@ function getDataFromUrl() {
         activateCurrentFileHistory(true)
         if (applyEncodedState(btoa(encodeURIComponent(JSON.stringify(incomingState)))))
           showToast('State loaded from URL')
-        else
-          showToast('Failed to apply state', { severity: 'error' })
+        else showToast('Failed to apply state', { severity: 'error' })
         applyState()
       })
     }
@@ -3991,14 +4333,34 @@ function getDataFromUrl() {
       const { panel, body } = createModalPanel({
         size: 'small',
         footerActions: [
-          { label: 'Ignore context', action: () => { popModal(); applyImport('ignore') } },
-          { label: 'Replace', action: () => { popModal(); applyImport('replace') } },
-          { label: 'Append', primary: true, action: () => { popModal(); applyImport('append') } },
+          {
+            label: 'Ignore context',
+            action: () => {
+              popModal()
+              applyImport('ignore')
+            },
+          },
+          {
+            label: 'Replace',
+            action: () => {
+              popModal()
+              applyImport('replace')
+            },
+          },
+          {
+            label: 'Append',
+            primary: true,
+            action: () => {
+              popModal()
+              applyImport('append')
+            },
+          },
         ],
       })
       const msg = document.createElement('div')
       msg.className = 'modal-body-row'
-      msg.textContent = 'The shared link includes context data, and you already have context. What should happen with the incoming context?'
+      msg.textContent =
+        'The shared link includes context data, and you already have context. What should happen with the incoming context?'
       body.appendChild(msg)
       pushPanel(panel, 'Import context')
     } else {
@@ -4038,8 +4400,8 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   const onTabStop = rowLength % 2 === 0
 
   if (
-    (!['Shift', 'Control', 'Meta', 'Alt', 'Escape', 'Tab'].includes(evt.key) && evt.code !== 'Space')
-    || (evt.code === 'Space' && !evt.altKey)
+    (!['Shift', 'Control', 'Meta', 'Alt', 'Escape', 'Tab'].includes(evt.key) && evt.code !== 'Space') ||
+    (evt.code === 'Space' && !evt.altKey)
   ) {
     autoCompleter = null
   }
@@ -4047,7 +4409,9 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   if (evt.code === 'Space' && evt.altKey) {
     evt.preventDefault()
     if (!autoCompleter) {
-      autoCompleter = getAutoCompleter(target.value, start, { effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
+      autoCompleter = getAutoCompleter(target.value, start, {
+        effectNames: getPlaygroundEffectHandlers().map(h => h.pattern),
+      })
     }
     const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
     if (suggestion) {
@@ -4073,7 +4437,9 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
         // If cursor is directly after non-whitespace, try autocomplete first
         const charBefore = start > 0 ? target.value[start - 1] : ''
         if (charBefore && !/\s/.test(charBefore)) {
-          const completer = getAutoCompleter(target.value, start, { effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
+          const completer = getAutoCompleter(target.value, start, {
+            effectNames: getPlaygroundEffectHandlers().map(h => h.pattern),
+          })
           if (completer.getSuggestions().length > 0) {
             autoCompleter = completer
             const suggestion = autoCompleter.getNextSuggestion()
@@ -4166,7 +4532,7 @@ export function navigateToTab(section: string): void {
 /** Switch the visible tab pane. */
 function activateTab(tabId: string): void {
   document.querySelectorAll('.tab-pane').forEach(el => {
-    (el as HTMLElement).style.display = 'none'
+    ;(el as HTMLElement).style.display = 'none'
   })
   const pane = document.getElementById(`tab-${tabId}`)
   if (pane) pane.style.display = ''
@@ -4208,8 +4574,7 @@ function routeToPath(appPath: string): void {
   highlightTabButton(tabButton)
 
   // Remember the last visited path for this tab section (used by navigateToTab)
-  if (tabButton !== 'editor' && tabButton in lastTabPath)
-    lastTabPath[tabButton] = appPath || '/'
+  if (tabButton !== 'editor' && tabButton in lastTabPath) lastTabPath[tabButton] = appPath || '/'
 
   // Editor tab doesn't need dynamic content rendering — just re-sync the URL to reflect
   // the current side panel state (e.g. ?view=context), which is lost when navigating away.
@@ -4373,7 +4738,10 @@ export async function run() {
     timeoutId = setTimeout(() => reject(new Error('Execution timed out (5s). Infinite loop?')), TIMEOUT_MS)
   })
   const pauseTimeout = () => {
-    if (timeoutId !== null) { clearTimeout(timeoutId); timeoutId = null }
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId)
+      timeoutId = null
+    }
   }
   const resetTimeout = () => {
     if (timeoutId !== null) clearTimeout(timeoutId)
@@ -4399,9 +4767,11 @@ export async function run() {
     const pure = getState('pure')
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
     const runResult = await Promise.race([
-      getDvala().runAsync(code, pure
-        ? { pure: true, disableAutoCheckpoint, terminalSnapshot: true }
-        : { effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
+      getDvala().runAsync(
+        code,
+        pure
+          ? { pure: true, disableAutoCheckpoint, terminalSnapshot: true }
+          : { effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
       ),
       timeoutPromise,
     ])
@@ -4472,10 +4842,7 @@ export function runSync() {
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
-    const result = getDvala().run(code, pure
-      ? { pure: true }
-      : { effectHandlers: getSyncEffectHandlers() },
-    )
+    const result = getDvala().run(code, pure ? { pure: true } : { effectHandlers: getSyncEffectHandlers() })
     const content = stringifyValue(result, false)
     appendOutput(content, 'result')
   } catch (error) {
@@ -4571,7 +4938,9 @@ export function showFeatureCard(id: string) {
     size: 'medium',
     icon: card.icon,
     markdown: card.markdown,
-    onClose: () => { popModal() },
+    onClose: () => {
+      popModal()
+    },
   })
   pushPanel(panel, card.title)
 }
@@ -4597,7 +4966,10 @@ export function parse() {
 function showAstTreeModal(ast: Ast, title: string) {
   const { panel, body } = createModalPanel({
     size: 'large',
-    onClose: () => { popModal(); focusDvalaCode() },
+    onClose: () => {
+      popModal()
+      focusDvalaCode()
+    },
   })
 
   const treeViewer = createAstTreeViewer({ ast })
@@ -4646,7 +5018,10 @@ export function docTree() {
 }
 
 function showRawJsonModal(content: string, title: string) {
-  const dismiss = () => { popModal(); focusDvalaCode() }
+  const dismiss = () => {
+    popModal()
+    focusDvalaCode()
+  }
 
   const { panel, body } = createModalPanel({
     size: 'large',
@@ -4664,8 +5039,7 @@ function showRawJsonModal(content: string, title: string) {
   })
 
   const copyButton = panel.querySelector<HTMLButtonElement>('.modal-panel__footer .button')
-  if (copyButton)
-    copyButton.innerHTML = `${copyIcon} Copy`
+  if (copyButton) copyButton.innerHTML = `${copyIcon} Copy`
 
   body.style.padding = '0'
 
@@ -4686,7 +5060,9 @@ function showRawJsonModal(content: string, title: string) {
   body.appendChild(pre)
 
   pushPanel(panel, title)
-  setTimeout(() => { pre.focus() }, 0)
+  setTimeout(() => {
+    pre.focus()
+  }, 0)
 }
 
 export function tokenize() {
@@ -4821,18 +5197,21 @@ function makeArgRow(content: string, index?: number, copyContent?: string): HTML
   if (index !== undefined) {
     const num = document.createElement('span')
     num.textContent = String(index + 1)
-    num.style.cssText = 'font-size:0.65rem; color: var(--color-text-faintest); font-family:sans-serif; font-weight:bold; min-width:1rem; flex-shrink:0;'
+    num.style.cssText =
+      'font-size:0.65rem; color: var(--color-text-faintest); font-family:sans-serif; font-weight:bold; min-width:1rem; flex-shrink:0;'
     row.appendChild(num)
   }
   const code = document.createElement('code')
   code.textContent = content
   if (index !== undefined) {
-    code.style.cssText = 'white-space:nowrap; font-size:0.75rem; color: var(--color-text); overflow:hidden; text-overflow:ellipsis; min-width:0; flex: 1 1 0;'
+    code.style.cssText =
+      'white-space:nowrap; font-size:0.75rem; color: var(--color-text); overflow:hidden; text-overflow:ellipsis; min-width:0; flex: 1 1 0;'
 
     const textToCopy = copyContent ?? content
     const copyBtn = document.createElement('span')
     copyBtn.innerHTML = copyIcon
-    copyBtn.style.cssText = 'font-size:0.9rem; display:inline-flex; align-items:center; justify-content:center; height:1.4rem; overflow:hidden; color:var(--color-text-faintest); cursor:pointer; flex-shrink:0; margin-left:1rem; opacity:0; transition:opacity 0.15s ease;'
+    copyBtn.style.cssText =
+      'font-size:0.9rem; display:inline-flex; align-items:center; justify-content:center; height:1.4rem; overflow:hidden; color:var(--color-text-faintest); cursor:pointer; flex-shrink:0; margin-left:1rem; opacity:0; transition:opacity 0.15s ease;'
     copyBtn.addEventListener('click', e => {
       e.stopPropagation()
       void navigator.clipboard.writeText(textToCopy)
@@ -4891,7 +5270,6 @@ function buildBreadcrumbs(panel: HTMLElement) {
     }
     container.appendChild(span)
   })
-
 }
 
 function popToLevel(targetIndex: number) {
@@ -4903,10 +5281,12 @@ function popToLevel(targetIndex: number) {
   // Animate the top panel out to the right
   if (modalStack.length > targetIndex + 1) {
     const { panel } = modalStack.pop()!
-    panel.animate(
-      [{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }],
-      { duration: 250, easing: 'ease' },
-    ).onfinish = () => { panel.remove() }
+    panel.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], {
+      duration: 250,
+      easing: 'ease',
+    }).onfinish = () => {
+      panel.remove()
+    }
   }
   currentSnapshot = modalStack[modalStack.length - 1]?.snapshot ?? null
   // Update control bar based on current snapshot state
@@ -4928,7 +5308,8 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
 
     const errorLabel = document.createElement('span')
     errorLabel.textContent = 'ERROR'
-    errorLabel.style.cssText = 'font-size: 0.75rem; font-weight: bold; color: var(--color-error); text-transform: uppercase; letter-spacing: 0.05em; font-family: sans-serif;'
+    errorLabel.style.cssText =
+      'font-size: 0.75rem; font-weight: bold; color: var(--color-error); text-transform: uppercase; letter-spacing: 0.05em; font-family: sans-serif;'
     errorSection.appendChild(errorLabel)
 
     const codeWrapper = document.createElement('div')
@@ -4938,7 +5319,8 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     const errorPre = document.createElement('pre')
     errorPre.className = 'fancy-scroll'
     errorPre.textContent = error.message
-    errorPre.style.cssText = 'background: var(--color-surface-dim); color: var(--color-text); padding: 0.5rem; font-size: 0.875rem; font-family: monospace; overflow: auto; max-height: 8rem; white-space: pre-wrap; word-break: break-word; margin: 0; border: none;'
+    errorPre.style.cssText =
+      'background: var(--color-surface-dim); color: var(--color-text); padding: 0.5rem; font-size: 0.875rem; font-family: monospace; overflow: auto; max-height: 8rem; white-space: pre-wrap; word-break: break-word; margin: 0; border: none;'
     codeWrapper.appendChild(errorPre)
 
     const actionBar = document.createElement('div')
@@ -4948,7 +5330,8 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     const copyBtn = document.createElement('div')
     copyBtn.className = 'example-action-btn'
     copyBtn.style.cssText = 'padding: 0.5rem; font-size: 1.125rem; cursor: pointer;'
-    copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2m0 16H8V7h11z"/></svg>'
+    copyBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2m0 16H8V7h11z"/></svg>'
     copyBtn.addEventListener('click', () => {
       void navigator.clipboard.writeText(error.message)
     })
@@ -5002,7 +5385,8 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
   // Meta
   const metaContainer = ref('meta-container')
   if (snapshot.meta === undefined) {
-    metaContainer.innerHTML = '<span style="font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;">(no metadata)</span>'
+    metaContainer.innerHTML =
+      '<span style="font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;">(no metadata)</span>'
   } else {
     const metaJson = JSON.stringify(snapshot.meta, null, 2)
     metaContainer.innerHTML = renderCodeBlock({ code: metaJson, language: 'json', noRun: true, noEdit: true })
@@ -5016,18 +5400,27 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     ['ID', snapshot.id],
     ['Index', String(snapshot.index)],
     ['Run ID', snapshot.executionId],
-    ['Timestamp', (() => {
-      const d = new Date(snapshot.timestamp)
-      const pad = (n: number) => String(n).padStart(2, '0')
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-    })()],
-    ['Size', snapshotBytes >= 1024 * 1024 ? `${(snapshotBytes / (1024 * 1024)).toFixed(2)} MB` : `${(snapshotBytes / 1024).toFixed(2)} KB`],
+    [
+      'Timestamp',
+      (() => {
+        const d = new Date(snapshot.timestamp)
+        const pad = (n: number) => String(n).padStart(2, '0')
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+      })(),
+    ],
+    [
+      'Size',
+      snapshotBytes >= 1024 * 1024
+        ? `${(snapshotBytes / (1024 * 1024)).toFixed(2)} MB`
+        : `${(snapshotBytes / 1024).toFixed(2)} KB`,
+    ],
   ]
   techRows.forEach(([label, value]) => {
     const row = makeArgRow(value)
     const labelEl = document.createElement('span')
     labelEl.textContent = label
-    labelEl.style.cssText = 'font-size:0.7rem; color: var(--color-text-faintest); font-weight:bold; font-family:sans-serif;'
+    labelEl.style.cssText =
+      'font-size:0.7rem; color: var(--color-text-faintest); font-weight:bold; font-family:sans-serif;'
     row.insertBefore(labelEl, row.firstChild)
     techEl.appendChild(row)
   })
@@ -5045,7 +5438,8 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
   } else {
     cpSnapshots.forEach(cpSnapshot => {
       const card = document.createElement('div')
-      card.style.cssText = 'display:flex; flex-direction:row; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; border:1px solid var(--color-scrollbar-track); cursor:pointer; transition:border-color 0.15s ease, background 0.15s ease;'
+      card.style.cssText =
+        'display:flex; flex-direction:row; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; border:1px solid var(--color-scrollbar-track); cursor:pointer; transition:border-color 0.15s ease, background 0.15s ease;'
       card.addEventListener('mouseenter', () => {
         card.style.borderColor = 'var(--color-text-dim)'
         card.style.background = 'var(--color-surface-hover)'
@@ -5058,7 +5452,8 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
 
       const badge = document.createElement('span')
       badge.textContent = `#${cpSnapshot.index}`
-      badge.style.cssText = 'font-size:0.7rem; font-weight:bold; font-family:sans-serif; color:var(--color-text-secondary); background:var(--color-surface); padding:0.1rem 0.35rem; flex-shrink:0;'
+      badge.style.cssText =
+        'font-size:0.7rem; font-weight:bold; font-family:sans-serif; color:var(--color-text-secondary); background:var(--color-surface); padding:0.1rem 0.35rem; flex-shrink:0;'
       card.appendChild(badge)
 
       const info = document.createElement('div')
@@ -5067,13 +5462,15 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
       if (cpSnapshot.meta !== null && cpSnapshot.meta !== undefined) {
         const meta = document.createElement('code')
         meta.textContent = JSON.stringify(cpSnapshot.meta)
-        meta.style.cssText = 'font-size:0.75rem; color:var(--color-text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
+        meta.style.cssText =
+          'font-size:0.75rem; color:var(--color-text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
         info.appendChild(meta)
       }
 
       const msg = document.createElement('span')
       msg.textContent = cpSnapshot.message
-      msg.style.cssText = 'font-size:0.75rem; color:var(--color-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
+      msg.style.cssText =
+        'font-size:0.75rem; color:var(--color-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
       info.appendChild(msg)
 
       const ts = document.createElement('span')
@@ -5087,9 +5484,14 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
 
       const playIcon = document.createElement('span')
       playIcon.innerHTML = ICONS.play
-      playIcon.style.cssText = 'margin-left:auto; flex-shrink:0; font-size:1.1rem; color:var(--color-text-secondary); transition:color 0.15s ease;'
-      playIcon.addEventListener('mouseenter', () => { playIcon.style.color = 'var(--color-text-bright)' })
-      playIcon.addEventListener('mouseleave', () => { playIcon.style.color = 'var(--color-text-secondary)' })
+      playIcon.style.cssText =
+        'margin-left:auto; flex-shrink:0; font-size:1.1rem; color:var(--color-text-secondary); transition:color 0.15s ease;'
+      playIcon.addEventListener('mouseenter', () => {
+        playIcon.style.color = 'var(--color-text-bright)'
+      })
+      playIcon.addEventListener('mouseleave', () => {
+        playIcon.style.color = 'var(--color-text-secondary)'
+      })
       playIcon.addEventListener('click', evt => {
         evt.stopPropagation()
         currentSnapshot = cpSnapshot
@@ -5100,7 +5502,6 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
       checkpointsEl.appendChild(card)
     })
   }
-
 }
 
 function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLElement {
@@ -5153,7 +5554,9 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
 
   const q = (ref: string) => panel.querySelector(`[data-ref="${ref}"]`) as HTMLElement
 
-  q('resume-btn').addEventListener('click', () => { void resumeSnapshot() })
+  q('resume-btn').addEventListener('click', () => {
+    void resumeSnapshot()
+  })
 
   q('save-btn').addEventListener('click', () => {
     const snap = currentSnapshot
@@ -5167,8 +5570,12 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
       showToast(`Snapshot saved (${existing.length} total)`)
     })
   })
-  q('share-btn').addEventListener('click', () => { shareSnapshot() })
-  q('download-btn').addEventListener('click', () => { downloadSnapshot() })
+  q('share-btn').addEventListener('click', () => {
+    shareSnapshot()
+  })
+  q('download-btn').addEventListener('click', () => {
+    downloadSnapshot()
+  })
   q('copy-json-btn').addEventListener('click', () => {
     if (currentSnapshot) {
       void navigator.clipboard.writeText(JSON.stringify(currentSnapshot, null, 2))
@@ -5205,15 +5612,16 @@ function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEff
 
   panel.style.display = 'flex'
   elements.snapshotPanelContainer.appendChild(panel)
-  modalStack.push({ panel, label, icon: panel.dataset.icon, snapshot: snapshot ?? (currentSnapshot ?? null), isEffect })
+  modalStack.push({ panel, label, icon: panel.dataset.icon, snapshot: snapshot ?? currentSnapshot ?? null, isEffect })
   buildBreadcrumbs(panel)
 
   if (!isRoot) {
     // Slide in from right
-    panel.animate(
-      [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
-      { duration: 250, easing: 'ease', fill: 'forwards' },
-    )
+    panel.animate([{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }], {
+      duration: 250,
+      easing: 'ease',
+      fill: 'forwards',
+    })
   } else {
     const size = panel.dataset.size as ModalSize | undefined
     elements.snapshotPanelContainer.style.maxWidth = isEffect ? '480px' : size ? modalSizeMap[size] : ''
@@ -5222,8 +5630,9 @@ function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEff
     if (!isReplacement) {
       const container = elements.snapshotPanelContainer
       container.style.opacity = '0'
-      container.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease' })
-        .onfinish = () => { container.style.opacity = '1' }
+      container.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease' }).onfinish = () => {
+        container.style.opacity = '1'
+      }
     }
   }
 }
@@ -5248,7 +5657,11 @@ interface ModalPanelOptions {
   onClose?: () => void
 }
 
-function createModalPanel(options?: ModalPanelOptions): { panel: HTMLElement; body: HTMLElement; footer: HTMLElement | null } {
+function createModalPanel(options?: ModalPanelOptions): {
+  panel: HTMLElement
+  body: HTMLElement
+  footer: HTMLElement | null
+} {
   const panel = document.createElement('div')
   panel.className = 'modal-panel'
   if (options?.size) {
@@ -5302,7 +5715,7 @@ function createModalPanel(options?: ModalPanelOptions): { panel: HTMLElement; bo
     closeBtn.className = 'modal-header__close-btn'
     closeBtn.textContent = '✕'
     closeBtn.title = 'Close'
-    closeBtn.addEventListener('click', () => options?.onClose ? options.onClose() : popModal())
+    closeBtn.addEventListener('click', () => (options?.onClose ? options.onClose() : popModal()))
     header.appendChild(closeBtn)
   }
 
@@ -5351,7 +5764,10 @@ function pushSavePanel(onSave: (name: string) => void) {
   `
   const input = panel.querySelector('input') as HTMLInputElement
   const dismissSavePanel = () => popModal()
-  const doSave = () => { onSave(input.value.trim()); dismissSavePanel() }
+  const doSave = () => {
+    onSave(input.value.trim())
+    dismissSavePanel()
+  }
   panel.querySelector('.cancel-btn')!.addEventListener('click', dismissSavePanel)
   panel.querySelector('.save-btn')!.addEventListener('click', doSave)
   input.addEventListener('keydown', e => {
@@ -5391,13 +5807,15 @@ function renderSnapshotBreadcrumbs() {
   const container = document.getElementById('dvala-header-snapshot')
   if (!container) return
 
-  container.innerHTML = snapshotViewStack.map((bc, i) => {
-    const isLast = i === snapshotViewStack.length - 1
-    if (isLast) {
-      return `<span class="snapshot-breadcrumbs__current">${escapeHtml(bc.label)}</span>`
-    }
-    return `<a class="snapshot-breadcrumbs__link" href="#" onclick="event.preventDefault();Playground.navigateSnapshotBreadcrumb(${i})">${escapeHtml(bc.label)}</a><span class="snapshot-breadcrumbs__sep">›</span>`
-  }).join('')
+  container.innerHTML = snapshotViewStack
+    .map((bc, i) => {
+      const isLast = i === snapshotViewStack.length - 1
+      if (isLast) {
+        return `<span class="snapshot-breadcrumbs__current">${escapeHtml(bc.label)}</span>`
+      }
+      return `<a class="snapshot-breadcrumbs__link" href="#" onclick="event.preventDefault();Playground.navigateSnapshotBreadcrumb(${i})">${escapeHtml(bc.label)}</a><span class="snapshot-breadcrumbs__sep">›</span>`
+    })
+    .join('')
 }
 
 function syncSnapshotExecutionControls() {
@@ -5524,8 +5942,12 @@ export function popModal() {
 
   // Slide out to the right
   const { panel } = modalStack.pop()!
-  panel.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], { duration: 250, easing: 'ease' })
-    .onfinish = () => { panel.remove() }
+  panel.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], {
+    duration: 250,
+    easing: 'ease',
+  }).onfinish = () => {
+    panel.remove()
+  }
   currentSnapshot = modalStack[modalStack.length - 1]?.snapshot ?? null
   // Update control bar based on current snapshot state
   if (elements.executionControlBar.style.display === 'flex') {
@@ -5603,8 +6025,7 @@ export function showToast(message: string, options?: { severity?: 'info' | 'erro
 }
 
 function dismissToast(toast: HTMLElement) {
-  if (!toast.parentElement)
-    return
+  if (!toast.parentElement) return
   toast.style.animation = 'toast-out 0.2s ease forwards'
   toast.addEventListener('animationend', () => toast.remove())
 }
@@ -5612,11 +6033,7 @@ function dismissToast(toast: HTMLElement) {
 let resolveInfoModal: (() => void) | null = null
 let infoModalOnConfirm: (() => void | Promise<void>) | null = null
 
-export function showInfoModal(
-  title: string,
-  message: string,
-  onConfirm?: () => void | Promise<void>,
-): Promise<void> {
+export function showInfoModal(title: string, message: string, onConfirm?: () => void | Promise<void>): Promise<void> {
   const actions: ModalPanelOptions['footerActions'] = []
   if (onConfirm) {
     actions.push({ label: 'Cancel', action: () => dismissInfoModal() })
@@ -5668,18 +6085,19 @@ export function closeExportModal() {
 
 export function doExport() {
   const settingsKeys = [
-    'debug', 'pure', 'intercept-effects', 'intercept-checkpoint', 'intercept-error', 'intercept-unhandled',
-    'disable-standard-handlers', 'disable-playground-effects', 'disable-auto-checkpoint',
+    'debug',
+    'pure',
+    'intercept-effects',
+    'intercept-checkpoint',
+    'intercept-error',
+    'intercept-unhandled',
+    'disable-standard-handlers',
+    'disable-playground-effects',
+    'disable-auto-checkpoint',
   ]
-  const codeKeys = [
-    'dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end',
-  ]
-  const contextKeys = [
-    'context', 'context-scroll-top', 'context-selection-start', 'context-selection-end',
-  ]
-  const layoutKeys = [
-    'sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent',
-  ]
+  const codeKeys = ['dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end']
+  const contextKeys = ['context', 'context-scroll-top', 'context-selection-start', 'context-selection-end']
+  const layoutKeys = ['sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent']
 
   const includeCode = elements.exportOptCode.checked
   const includeContext = elements.exportOptContext.checked
@@ -5699,27 +6117,32 @@ export function doExport() {
   const data: Record<string, string> = {}
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)!
-    if (allowedKeys.has(key))
-      data[key] = localStorage.getItem(key)!
+    if (allowedKeys.has(key)) data[key] = localStorage.getItem(key)!
   }
-  for (const [flag, keys] of [[includeSettings, settingsKeys], [includeLayout, layoutKeys]] as [boolean, string[]][]) {
+  for (const [flag, keys] of [
+    [includeSettings, settingsKeys],
+    [includeLayout, layoutKeys],
+  ] as [boolean, string[]][]) {
     if (flag) {
       for (const k of keys) {
         const storageKey = `playground-${k}`
-        if (!(storageKey in data))
-          data[storageKey] = JSON.stringify(defaultState[k as keyof typeof defaultState])
+        if (!(storageKey in data)) data[storageKey] = JSON.stringify(defaultState[k as keyof typeof defaultState])
       }
     }
   }
 
-  const payload = JSON.stringify({
-    version: 1,
-    exportedAt: Date.now(),
-    data,
-    ...(includeSaved ? { savedSnapshots: getSavedSnapshots() } : {}),
-    ...(includeRecent ? { recentSnapshots: getTerminalSnapshots() } : {}),
-    ...(includeFiles ? { savedFiles: getSavedFiles() } : {}),
-  }, null, 2)
+  const payload = JSON.stringify(
+    {
+      version: 1,
+      exportedAt: Date.now(),
+      data,
+      ...(includeSaved ? { savedSnapshots: getSavedSnapshots() } : {}),
+      ...(includeRecent ? { recentSnapshots: getTerminalSnapshots() } : {}),
+      ...(includeFiles ? { savedFiles: getSavedFiles() } : {}),
+    },
+    null,
+    2,
+  )
 
   const now = new Date()
   const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`
@@ -5731,7 +6154,9 @@ export function doExport() {
 async function saveFile(content: string, filename: string): Promise<void> {
   if ('showSaveFilePicker' in window) {
     try {
-      const handle = await (window as Window & typeof globalThis & { showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle> }).showSaveFilePicker({
+      const handle = await (
+        window as Window & typeof globalThis & { showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle> }
+      ).showSaveFilePicker({
         suggestedName: filename,
         startIn: 'downloads',
         types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
@@ -5763,11 +6188,11 @@ type ExportPayload = {
 
 function isExportPayload(value: unknown): value is ExportPayload {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'version' in value
-    && 'data' in value
-    && typeof (value as Record<string, unknown>).data === 'object'
+    typeof value === 'object' &&
+    value !== null &&
+    'version' in value &&
+    'data' in value &&
+    typeof (value as Record<string, unknown>).data === 'object'
   )
 }
 
@@ -5777,7 +6202,17 @@ let importNeedsReload = false
 const importCategoryKeys = {
   code: ['dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end'],
   context: ['context', 'context-scroll-top', 'context-selection-start', 'context-selection-end'],
-  settings: ['debug', 'pure', 'intercept-effects', 'intercept-checkpoint', 'intercept-error', 'intercept-unhandled', 'disable-standard-handlers', 'disable-playground-effects', 'disable-auto-checkpoint'],
+  settings: [
+    'debug',
+    'pure',
+    'intercept-effects',
+    'intercept-checkpoint',
+    'intercept-error',
+    'intercept-unhandled',
+    'disable-standard-handlers',
+    'disable-playground-effects',
+    'disable-auto-checkpoint',
+  ],
   layout: ['sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent'],
 }
 
@@ -5877,8 +6312,7 @@ export function doImport() {
       setSavedSnapshots([...getSavedSnapshots(), ...toAdd])
       imported.push(`${toAdd.length} saved snapshot${toAdd.length !== 1 ? 's' : ''}`)
     }
-    if (conflicts > 0)
-      skipped.push(`${conflicts} saved snapshot${conflicts !== 1 ? 's' : ''} (already exist)`)
+    if (conflicts > 0) skipped.push(`${conflicts} saved snapshot${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
   if (elements.importOptRecentSnapshots.checked && payload.recentSnapshots) {
@@ -5889,8 +6323,7 @@ export function doImport() {
       setTerminalSnapshots([...getTerminalSnapshots(), ...toAdd])
       imported.push(`${toAdd.length} recent snapshot${toAdd.length !== 1 ? 's' : ''}`)
     }
-    if (conflicts > 0)
-      skipped.push(`${conflicts} recent snapshot${conflicts !== 1 ? 's' : ''} (already exist)`)
+    if (conflicts > 0) skipped.push(`${conflicts} recent snapshot${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
   const payloadFiles = payload.savedFiles
@@ -5909,20 +6342,21 @@ export function doImport() {
       setSavedFiles([...getSavedFiles(), ...toAdd])
       imported.push(`${toAdd.length} saved file${toAdd.length !== 1 ? 's' : ''}`)
     }
-    if (conflicts > 0)
-      skipped.push(`${conflicts} saved file${conflicts !== 1 ? 's' : ''} (already exist)`)
+    if (conflicts > 0) skipped.push(`${conflicts} saved file${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
   populateSnapshotsList()
   populateSavedFilesList()
   pendingImportPayload = null
 
-  const importedHtml = imported.length > 0
-    ? `<p style="margin:0 0 0.5rem 0; color: var(--color-text);">Imported:</p><ul style="margin:0 0 0.75rem 0; padding-left:1.25rem;">${imported.map(s => `<li>${s}</li>`).join('')}</ul>`
-    : '<p style="margin:0 0 0.75rem 0;">Nothing was imported.</p>'
-  const skippedHtml = skipped.length > 0
-    ? `<p style="margin:0 0 0.5rem 0; color: var(--color-text);">Skipped:</p><ul style="margin:0; padding-left:1.25rem;">${skipped.map(s => `<li>${s}</li>`).join('')}</ul>`
-    : ''
+  const importedHtml =
+    imported.length > 0
+      ? `<p style="margin:0 0 0.5rem 0; color: var(--color-text);">Imported:</p><ul style="margin:0 0 0.75rem 0; padding-left:1.25rem;">${imported.map(s => `<li>${s}</li>`).join('')}</ul>`
+      : '<p style="margin:0 0 0.75rem 0;">Nothing was imported.</p>'
+  const skippedHtml =
+    skipped.length > 0
+      ? `<p style="margin:0 0 0.5rem 0; color: var(--color-text);">Skipped:</p><ul style="margin:0; padding-left:1.25rem;">${skipped.map(s => `<li>${s}</li>`).join('')}</ul>`
+      : ''
   const reloadHtml = importNeedsReload
     ? '<p style="margin:0.75rem 0 0 0; color: var(--color-text-faintest);">The page will reload when you close this.</p>'
     : ''
@@ -5989,7 +6423,11 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
 
   populateSnapshotsList({ animateNewTerminal: true })
   markSnapshotIconNew()
-  const toastMessages = { completed: 'File completed — snapshot captured', error: 'File failed — snapshot captured', halted: 'File halted — snapshot captured' }
+  const toastMessages = {
+    completed: 'File completed — snapshot captured',
+    error: 'File failed — snapshot captured',
+    halted: 'File halted — snapshot captured',
+  }
   showToast(toastMessages[resultType], resultType === 'error' ? { severity: 'error' } : undefined)
 }
 
@@ -6044,8 +6482,7 @@ function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
 }
 
 export function saveCheckpoint() {
-  if (!currentCheckpointSnapshot)
-    return
+  if (!currentCheckpointSnapshot) return
   const snapshot = currentCheckpointSnapshot
   promptSnapshotName(name => {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
@@ -6059,14 +6496,15 @@ export function saveCheckpoint() {
 }
 
 export function downloadCheckpoint() {
-  if (!currentCheckpointSnapshot)
-    return
-  void saveFile(JSON.stringify(currentCheckpointSnapshot, null, 2), `checkpoint-${currentCheckpointSnapshot.index}.json`)
+  if (!currentCheckpointSnapshot) return
+  void saveFile(
+    JSON.stringify(currentCheckpointSnapshot, null, 2),
+    `checkpoint-${currentCheckpointSnapshot.index}.json`,
+  )
 }
 
 export function shareCheckpoint() {
-  if (!currentCheckpointSnapshot)
-    return
+  if (!currentCheckpointSnapshot) return
   const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(currentCheckpointSnapshot)}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Checkpoint is too large to share as a URL. Use Download instead.', { severity: 'error' })
@@ -6084,8 +6522,7 @@ export function shareCheckpoint() {
 }
 
 export function shareSnapshot() {
-  if (!currentSnapshot)
-    return
+  if (!currentSnapshot) return
   const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(currentSnapshot)}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Snapshot is too large to share as a URL. Use Download instead.', { severity: 'error' })
@@ -6103,15 +6540,13 @@ export function shareSnapshot() {
 }
 
 export function downloadSnapshot() {
-  if (!currentSnapshot)
-    return
+  if (!currentSnapshot) return
   void saveFile(JSON.stringify(currentSnapshot, null, 2), `snapshot-${currentSnapshot.index}.json`)
   showToast('Snapshot downloaded')
 }
 
 export function saveSnapshot() {
-  if (!currentSnapshot)
-    return
+  if (!currentSnapshot) return
   const snapshot = currentSnapshot
   promptSnapshotName(name => {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
@@ -6125,8 +6560,7 @@ export function saveSnapshot() {
 }
 
 export async function resumeSnapshot() {
-  if (!currentSnapshot)
-    return
+  if (!currentSnapshot) return
   const snapshot = currentSnapshot
   closeAllModals()
   addOutputSeparator()
@@ -6137,17 +6571,17 @@ export async function resumeSnapshot() {
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
     const runResult = snapshot.effectName
       ? await retrigger(snapshot, {
-        handlers: dvalaParams.effectHandlers,
-        modules: allBuiltinModules,
-        disableAutoCheckpoint,
-        terminalSnapshot: true,
-      })
+          handlers: dvalaParams.effectHandlers,
+          modules: allBuiltinModules,
+          disableAutoCheckpoint,
+          terminalSnapshot: true,
+        })
       : await resume(snapshot, null, {
-        handlers: dvalaParams.effectHandlers,
-        modules: allBuiltinModules,
-        disableAutoCheckpoint,
-        terminalSnapshot: true,
-      })
+          handlers: dvalaParams.effectHandlers,
+          modules: allBuiltinModules,
+          disableAutoCheckpoint,
+          terminalSnapshot: true,
+        })
     if (runResult.type === 'error') {
       if (runResult.snapshot) {
         saveTerminalSnapshot(runResult.snapshot, 'error')
@@ -6181,12 +6615,14 @@ export async function resumeSnapshot() {
 
 function disabledHandlersFallback(ctx: EffectContext): void {
   // Pass through to standard handlers for standard effects
-  if (ctx.effectName === 'dvala.checkpoint' ||
-      ctx.effectName.startsWith('dvala.error') ||
-      ctx.effectName.startsWith('dvala.random') ||
-      ctx.effectName.startsWith('dvala.time') ||
-      ctx.effectName === 'dvala.sleep' ||
-      ctx.effectName.startsWith('dvala.io.')) {
+  if (
+    ctx.effectName === 'dvala.checkpoint' ||
+    ctx.effectName.startsWith('dvala.error') ||
+    ctx.effectName.startsWith('dvala.random') ||
+    ctx.effectName.startsWith('dvala.time') ||
+    ctx.effectName === 'dvala.sleep' ||
+    ctx.effectName.startsWith('dvala.io.')
+  ) {
     ctx.next()
     return
   }
@@ -6224,7 +6660,12 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
     })
   }
   // Pass through to standard handlers for non-interactive standard effects
-  if (ctx.effectName === 'dvala.io.readStdin' || ctx.effectName.startsWith('dvala.random') || ctx.effectName.startsWith('dvala.time') || ctx.effectName === 'dvala.sleep') {
+  if (
+    ctx.effectName === 'dvala.io.readStdin' ||
+    ctx.effectName.startsWith('dvala.random') ||
+    ctx.effectName.startsWith('dvala.time') ||
+    ctx.effectName === 'dvala.sleep'
+  ) {
     ctx.next()
     return
   }
@@ -6244,20 +6685,20 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
 function registerPendingEffect(entry: PendingEffect): void {
   pendingEffects.push(entry)
 
-  entry.ctx.signal.addEventListener('abort', () => {
-    const idx = pendingEffects.indexOf(entry)
-    if (idx === -1)
-      return // already resolved
-    entry.ctx.suspend()
-    entry.resolve()
-    pendingEffects.splice(idx, 1)
-    if (currentEffectIndex >= pendingEffects.length)
-      currentEffectIndex = Math.max(0, pendingEffects.length - 1)
-    if (pendingEffects.length === 0)
-      closeEffectPanel()
-    else
-      renderCurrentEffect()
-  }, { once: true })
+  entry.ctx.signal.addEventListener(
+    'abort',
+    () => {
+      const idx = pendingEffects.indexOf(entry)
+      if (idx === -1) return // already resolved
+      entry.ctx.suspend()
+      entry.resolve()
+      pendingEffects.splice(idx, 1)
+      if (currentEffectIndex >= pendingEffects.length) currentEffectIndex = Math.max(0, pendingEffects.length - 1)
+      if (pendingEffects.length === 0) closeEffectPanel()
+      else renderCurrentEffect()
+    },
+    { once: true },
+  )
 
   if (!effectBatchScheduled) {
     effectBatchScheduled = true
@@ -6328,20 +6769,17 @@ function closeEffectPanel(): void {
 
 function renderCurrentEffect(): void {
   const entry = pendingEffects[currentEffectIndex]
-  if (!entry || !effectPanelBodyEl || !effectPanelFooterEl)
-    return
+  if (!entry || !effectPanelBodyEl || !effectPanelFooterEl) return
 
   // Update breadcrumb label in modalStack to match current effect's title
   const stackEntry = modalStack[modalStack.length - 1]
-  if (stackEntry)
-    stackEntry.label = entry.title
+  if (stackEntry) stackEntry.label = entry.title
 
   // Nav
   const total = pendingEffects.length
   if (effectNavEl) {
     effectNavEl.style.display = total > 1 ? 'flex' : 'none'
-    if (effectNavCounterEl)
-      effectNavCounterEl.textContent = `${currentEffectIndex + 1} / ${total}`
+    if (effectNavCounterEl) effectNavCounterEl.textContent = `${currentEffectIndex + 1} / ${total}`
     const prev = effectNavEl.firstElementChild as HTMLElement
     const next = effectNavEl.lastElementChild as HTMLElement
     prev.style.opacity = currentEffectIndex > 0 ? '1' : '0.3'
@@ -6359,23 +6797,18 @@ function renderCurrentEffect(): void {
 
 export function navigateEffect(delta: number): void {
   const next = currentEffectIndex + delta
-  if (next < 0 || next >= pendingEffects.length)
-    return
+  if (next < 0 || next >= pendingEffects.length) return
   currentEffectIndex = next
   renderCurrentEffect()
 }
 
 function resolveCurrentEffect(): void {
   const entry = pendingEffects[currentEffectIndex]
-  if (!entry)
-    return
+  if (!entry) return
   pendingEffects.splice(currentEffectIndex, 1)
-  if (currentEffectIndex >= pendingEffects.length)
-    currentEffectIndex = Math.max(0, pendingEffects.length - 1)
-  if (pendingEffects.length === 0)
-    closeEffectPanel()
-  else
-    renderCurrentEffect()
+  if (currentEffectIndex >= pendingEffects.length) currentEffectIndex = Math.max(0, pendingEffects.length - 1)
+  if (pendingEffects.length === 0) closeEffectPanel()
+  else renderCurrentEffect()
 }
 
 // ---------------------------------------------------------------------------
@@ -6426,8 +6859,7 @@ function makeCheckpointEffect(ctx: EffectContext, snapshot: Snapshot, resolve: (
       }
     },
     renderFooter(el) {
-      if (failEffect.renderFooterOverride(el))
-        return
+      if (failEffect.renderFooterOverride(el)) return
       const failBtn = document.createElement('button')
       failBtn.className = 'button button--danger'
       failBtn.textContent = 'Fail…'
@@ -6440,8 +6872,7 @@ function makeCheckpointEffect(ctx: EffectContext, snapshot: Snapshot, resolve: (
       el.appendChild(btn)
     },
     onKeyDown(evt) {
-      if (failEffect.onKeyDown(evt))
-        return true
+      if (failEffect.onKeyDown(evt)) return true
       if (evt.key === 'Enter') {
         evt.preventDefault()
         submit()
@@ -6462,13 +6893,11 @@ function makeFailHelper(ctx: EffectContext, resolve: () => void) {
   let inputEl: HTMLTextAreaElement | null = null
 
   const rerender = () => {
-    if (!effectPanelFooterEl)
-      return
+    if (!effectPanelFooterEl) return
     effectPanelFooterEl.innerHTML = ''
     const current = pendingEffects[pendingEffects.length - 1]
     current?.renderFooter(effectPanelFooterEl)
-    if (active)
-      void Promise.resolve().then(() => inputEl?.focus())
+    if (active) void Promise.resolve().then(() => inputEl?.focus())
   }
 
   const enter = () => {
@@ -6554,12 +6983,10 @@ function makeUnhandledEffect(ctx: EffectContext, resolve: () => void): PendingEf
   let errorEl: HTMLSpanElement | null = null
 
   const rerenderFooter = () => {
-    if (!effectPanelFooterEl)
-      return
+    if (!effectPanelFooterEl) return
     effectPanelFooterEl.innerHTML = ''
     entry.renderFooter(effectPanelFooterEl)
-    if (inputMode !== null)
-      void Promise.resolve().then(() => inputEl?.focus())
+    if (inputMode !== null) void Promise.resolve().then(() => inputEl?.focus())
   }
 
   const ignore = () => {
@@ -6584,7 +7011,7 @@ function makeUnhandledEffect(ctx: EffectContext, resolve: () => void): PendingEf
     const raw = inputEl?.value.trim() ?? ''
     if (inputMode === 'resume') {
       try {
-        const value = raw === '' ? null : JSON.parse(raw) as Any
+        const value = raw === '' ? null : (JSON.parse(raw) as Any)
         ctx.resume(value)
         resolve()
         resolveCurrentEffect()
@@ -6755,8 +7182,7 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
         void Promise.resolve().then(() => textarea.focus())
       },
       renderFooter(el) {
-        if (failEffect.renderFooterOverride(el))
-          return
+        if (failEffect.renderFooterOverride(el)) return
         const failBtn = document.createElement('button')
         failBtn.className = 'button button--danger'
         failBtn.textContent = 'Fail…'
@@ -6769,8 +7195,7 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
         el.appendChild(btn)
       },
       onKeyDown(evt) {
-        if (failEffect.onKeyDown(evt))
-          return true
+        if (failEffect.onKeyDown(evt)) return true
         if (evt.key === 'Enter' && !evt.shiftKey && !evt.ctrlKey && !evt.metaKey && !evt.altKey) {
           evt.preventDefault()
           evt.stopPropagation()
@@ -6819,13 +7244,14 @@ function ioErrorHandler(ctx: EffectContext): Promise<void> {
         const copyBtn = document.createElement('span')
         copyBtn.className = 'println-copy-btn'
         copyBtn.innerHTML = copyIcon
-        copyBtn.addEventListener('click', () => { void navigator.clipboard.writeText(text) })
+        copyBtn.addEventListener('click', () => {
+          void navigator.clipboard.writeText(text)
+        })
         outputWrap.appendChild(copyBtn)
         el.appendChild(outputWrap)
       },
       renderFooter(el) {
-        if (failEffect.renderFooterOverride(el))
-          return
+        if (failEffect.renderFooterOverride(el)) return
         const failBtn = document.createElement('button')
         failBtn.className = 'button button--danger'
         failBtn.textContent = 'Fail…'
@@ -6838,8 +7264,7 @@ function ioErrorHandler(ctx: EffectContext): Promise<void> {
         el.appendChild(btn)
       },
       onKeyDown(evt) {
-        if (failEffect.onKeyDown(evt))
-          return true
+        if (failEffect.onKeyDown(evt)) return true
         if (evt.key === 'Enter' || evt.key === 'Escape') {
           evt.preventDefault()
           submit()
@@ -6855,8 +7280,10 @@ function ioErrorHandler(ctx: EffectContext): Promise<void> {
 function ioPickHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
     const argRaw = ctx.arg
-    const items: string[] = Array.isArray(argRaw) ? argRaw as string[] : (argRaw as { items: string[] }).items
-    const options = Array.isArray(argRaw) ? undefined : (argRaw as { options?: { prompt?: string; default?: number } }).options
+    const items: string[] = Array.isArray(argRaw) ? (argRaw as string[]) : (argRaw as { items: string[] }).items
+    const options = Array.isArray(argRaw)
+      ? undefined
+      : (argRaw as { options?: { prompt?: string; default?: number } }).options
     const promptText = options?.prompt ?? 'Choose an item:'
     const defaultIndex = options?.default ?? null
     let focusedIndex: number | null = defaultIndex
@@ -6867,8 +7294,7 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
       rowEls.forEach((row, i) => {
         row.style.background = i === index ? 'var(--color-surface-hover)' : ''
       })
-      if (index !== null)
-        rowEls[index]?.scrollIntoView({ block: 'nearest' })
+      if (index !== null) rowEls[index]?.scrollIntoView({ block: 'nearest' })
     }
 
     const submit = (index: number | null) => {
@@ -6887,9 +7313,14 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
         rowEls = []
         items.forEach((item, i) => {
           const row = document.createElement('div')
-          row.style.cssText = 'display:flex; align-items:center; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
-          row.onmouseenter = () => { if (focusedIndex !== i) row.style.background = 'var(--color-surface-hover)' }
-          row.onmouseleave = () => { row.style.background = i === focusedIndex ? 'var(--color-surface-hover)' : '' }
+          row.style.cssText =
+            'display:flex; align-items:center; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
+          row.onmouseenter = () => {
+            if (focusedIndex !== i) row.style.background = 'var(--color-surface-hover)'
+          }
+          row.onmouseleave = () => {
+            row.style.background = i === focusedIndex ? 'var(--color-surface-hover)' : ''
+          }
           const labelSpan = document.createElement('span')
           labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
           labelSpan.textContent = item
@@ -6901,8 +7332,7 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
         setFocus(focusedIndex)
       },
       renderFooter(el) {
-        if (failEffect.renderFooterOverride(el))
-          return
+        if (failEffect.renderFooterOverride(el)) return
         const failBtn = document.createElement('button')
         failBtn.className = 'button button--danger'
         failBtn.textContent = 'Fail…'
@@ -6910,8 +7340,7 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
         el.appendChild(failBtn)
       },
       onKeyDown(evt) {
-        if (failEffect.onKeyDown(evt))
-          return true
+        if (failEffect.onKeyDown(evt)) return true
         if (evt.key === 'ArrowDown') {
           evt.preventDefault()
           setFocus(focusedIndex === null ? 0 : Math.min(focusedIndex + 1, items.length - 1))
@@ -6924,10 +7353,8 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
         }
         if (evt.key === 'Enter') {
           evt.preventDefault()
-          if (focusedIndex !== null)
-            submit(focusedIndex)
-          else
-            showToast('Use arrow keys to select', { severity: 'error' })
+          if (focusedIndex !== null) submit(focusedIndex)
+          else showToast('Use arrow keys to select', { severity: 'error' })
           return true
         }
         return false
@@ -6946,7 +7373,10 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
     const defaultIndex = defaultValue === true ? 0 : defaultValue === false ? 1 : null
     let focusedIndex: number | null = defaultIndex
     let rowEls: HTMLElement[] = []
-    const choiceItems = [{ label: 'Yes', value: true }, { label: 'No', value: false }]
+    const choiceItems = [
+      { label: 'Yes', value: true },
+      { label: 'No', value: false },
+    ]
 
     const setFocus = (index: number | null) => {
       focusedIndex = index
@@ -6971,9 +7401,14 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
         rowEls = []
         choiceItems.forEach((item, i) => {
           const row = document.createElement('div')
-          row.style.cssText = 'display:flex; align-items:center; gap:0.75rem; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
-          row.onmouseenter = () => { if (focusedIndex !== i) row.style.background = 'var(--color-surface-hover)' }
-          row.onmouseleave = () => { row.style.background = i === focusedIndex ? 'var(--color-surface-hover)' : '' }
+          row.style.cssText =
+            'display:flex; align-items:center; gap:0.75rem; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
+          row.onmouseenter = () => {
+            if (focusedIndex !== i) row.style.background = 'var(--color-surface-hover)'
+          }
+          row.onmouseleave = () => {
+            row.style.background = i === focusedIndex ? 'var(--color-surface-hover)' : ''
+          }
           const labelSpan = document.createElement('span')
           labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
           labelSpan.textContent = item.label
@@ -6985,8 +7420,7 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
         setFocus(focusedIndex)
       },
       renderFooter(el) {
-        if (failEffect.renderFooterOverride(el))
-          return
+        if (failEffect.renderFooterOverride(el)) return
         const failBtn = document.createElement('button')
         failBtn.className = 'button button--danger'
         failBtn.textContent = 'Fail…'
@@ -6994,8 +7428,7 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
         el.appendChild(failBtn)
       },
       onKeyDown(evt) {
-        if (failEffect.onKeyDown(evt))
-          return true
+        if (failEffect.onKeyDown(evt)) return true
         if (evt.key === 'ArrowDown') {
           evt.preventDefault()
           setFocus(focusedIndex === null ? 0 : Math.min(focusedIndex + 1, 1))
@@ -7008,10 +7441,8 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
         }
         if (evt.key === 'Enter') {
           evt.preventDefault()
-          if (focusedIndex !== null)
-            submit(choiceItems[focusedIndex]!.value)
-          else
-            showToast('Use arrow keys to select', { severity: 'error' })
+          if (focusedIndex !== null) submit(choiceItems[focusedIndex]!.value)
+          else showToast('Use arrow keys to select', { severity: 'error' })
           return true
         }
         return false
@@ -7026,19 +7457,16 @@ const effectHandlerMenuIds = ['io-pick-more-menu', 'io-confirm-more-menu', 'read
 export function closeEffectHandlerMenus() {
   effectHandlerMenuIds.forEach(id => {
     const el = document.getElementById(id)
-    if (el)
-      el.style.display = 'none'
+    if (el) el.style.display = 'none'
   })
 }
 
 export function toggleEffectHandlerMenu(id: string) {
   const menu = document.getElementById(id)
-  if (!menu)
-    return
+  if (!menu) return
   const wasHidden = menu.style.display !== 'flex'
   closeEffectHandlerMenus()
-  if (wasHidden)
-    menu.style.display = 'flex'
+  if (wasHidden) menu.style.display = 'flex'
 }
 
 export function suspendCurrentEffectHandler() {
@@ -7149,7 +7577,7 @@ function syncIoPickHandler(ctx: EffectContext): void {
   }
   const trimmed = result.trim()
   if (trimmed === '') {
-    ctx.resume((defaultIndex !== undefined ? defaultIndex : null))
+    ctx.resume(defaultIndex !== undefined ? defaultIndex : null)
     return
   }
   const parsed = Number(trimmed)
@@ -7187,7 +7615,12 @@ function syncDefaultEffectHandler(ctx: EffectContext): void {
     return
   }
   // Pass through to standard handlers for non-interactive standard effects
-  if (ctx.effectName === 'dvala.io.readStdin' || ctx.effectName.startsWith('dvala.random') || ctx.effectName.startsWith('dvala.time') || ctx.effectName === 'dvala.sleep') {
+  if (
+    ctx.effectName === 'dvala.io.readStdin' ||
+    ctx.effectName.startsWith('dvala.random') ||
+    ctx.effectName.startsWith('dvala.time') ||
+    ctx.effectName === 'dvala.sleep'
+  ) {
     ctx.next()
     return
   }
@@ -7196,12 +7629,14 @@ function syncDefaultEffectHandler(ctx: EffectContext): void {
 
 function syncDisabledHandlersFallback(ctx: EffectContext): void {
   // Pass through to standard handlers for standard effects
-  if (ctx.effectName === 'dvala.checkpoint' ||
-      ctx.effectName.startsWith('dvala.error') ||
-      ctx.effectName.startsWith('dvala.random') ||
-      ctx.effectName.startsWith('dvala.time') ||
-      ctx.effectName === 'dvala.sleep' ||
-      ctx.effectName.startsWith('dvala.io.')) {
+  if (
+    ctx.effectName === 'dvala.checkpoint' ||
+    ctx.effectName.startsWith('dvala.error') ||
+    ctx.effectName.startsWith('dvala.random') ||
+    ctx.effectName.startsWith('dvala.time') ||
+    ctx.effectName === 'dvala.sleep' ||
+    ctx.effectName.startsWith('dvala.io.')
+  ) {
     ctx.next()
     return
   }
@@ -7229,10 +7664,7 @@ function getSyncEffectHandlers(): HandlerRegistration[] {
 function getDvalaParamsFromContext(): { effectHandlers: HandlerRegistration[] } {
   const contextString = getState('context')
   try {
-    const parsedContext
-      = contextString.trim().length > 0
-        ? JSON.parse(contextString) as UnknownRecord
-        : {}
+    const parsedContext = contextString.trim().length > 0 ? (JSON.parse(contextString) as UnknownRecord) : {}
 
     const runtimeContext = getRuntimeContextObject(parsedContext)
     const parsedHandlers = (runtimeContext.effectHandlers ?? []) as { pattern: string; handler: unknown }[]
@@ -7252,36 +7684,27 @@ function getDvalaParamsFromContext(): { effectHandlers: HandlerRegistration[] } 
       // Still add playground effects unless separately disabled
       if (!getState('disable-playground-effects')) {
         for (const reg of getPlaygroundEffectHandlers()) {
-          if (!hasPattern(reg.pattern))
-            effectHandlers.push(reg)
+          if (!hasPattern(reg.pattern)) effectHandlers.push(reg)
         }
       }
-      if (!hasPattern('*'))
-        effectHandlers.push({ pattern: '*', handler: disabledHandlersFallback })
+      if (!hasPattern('*')) effectHandlers.push({ pattern: '*', handler: disabledHandlersFallback })
       return { effectHandlers }
     }
 
-    if (!hasPattern('dvala.io.pick'))
-      effectHandlers.push({ pattern: 'dvala.io.pick', handler: ioPickHandler })
-    if (!hasPattern('dvala.io.confirm'))
-      effectHandlers.push({ pattern: 'dvala.io.confirm', handler: ioConfirmHandler })
-    if (!hasPattern('dvala.io.read'))
-      effectHandlers.push({ pattern: 'dvala.io.read', handler: readlineHandler })
-    if (!hasPattern('dvala.io.print'))
-      effectHandlers.push({ pattern: 'dvala.io.print', handler: outputPrintHandler })
-    if (!hasPattern('dvala.io.error'))
-      effectHandlers.push({ pattern: 'dvala.io.error', handler: ioErrorHandler })
+    if (!hasPattern('dvala.io.pick')) effectHandlers.push({ pattern: 'dvala.io.pick', handler: ioPickHandler })
+    if (!hasPattern('dvala.io.confirm')) effectHandlers.push({ pattern: 'dvala.io.confirm', handler: ioConfirmHandler })
+    if (!hasPattern('dvala.io.read')) effectHandlers.push({ pattern: 'dvala.io.read', handler: readlineHandler })
+    if (!hasPattern('dvala.io.print')) effectHandlers.push({ pattern: 'dvala.io.print', handler: outputPrintHandler })
+    if (!hasPattern('dvala.io.error')) effectHandlers.push({ pattern: 'dvala.io.error', handler: ioErrorHandler })
 
     // Playground effects (playground.*)
     if (!getState('disable-playground-effects')) {
       for (const reg of getPlaygroundEffectHandlers()) {
-        if (!hasPattern(reg.pattern))
-          effectHandlers.push(reg)
+        if (!hasPattern(reg.pattern)) effectHandlers.push(reg)
       }
     }
 
-    if (!hasPattern('*'))
-      effectHandlers.push({ pattern: '*', handler: defaultEffectHandler })
+    if (!hasPattern('*')) effectHandlers.push({ pattern: '*', handler: defaultEffectHandler })
 
     return { effectHandlers }
   } catch (err) {
@@ -7326,18 +7749,15 @@ function applyState(scrollToTop = false) {
   elements.dvalaTextArea.selectionStart = dvalaTextAreaSelectionStart
   elements.dvalaTextArea.selectionEnd = dvalaTextAreaSelectionEnd
 
-  if (activeDvalaCodeHistoryFileId !== getState('current-file-id'))
-    activateCurrentFileHistory(false)
+  if (activeDvalaCodeHistoryFileId !== getState('current-file-id')) activateCurrentFileHistory(false)
 
   showSideTab(getState('active-side-tab'), { persist: false, syncUrl: false })
   updateCSS()
   layout()
 
   setTimeout(() => {
-    if (getState('focused-panel') === 'context')
-      focusContext()
-    else if (getState('focused-panel') === 'dvala-code')
-      focusDvalaCode()
+    if (getState('focused-panel') === 'context') focusContext()
+    else if (getState('focused-panel') === 'dvala-code') focusDvalaCode()
 
     elements.contextTextArea.scrollTop = getState('context-scroll-top')
     syntaxOverlay.scrollContainer.scrollTop = getState('dvala-code-scroll-top')
@@ -7348,13 +7768,12 @@ function applyState(scrollToTop = false) {
 function updateCSS() {
   // Apply or remove the light theme attribute based on stored preference or OS setting.
   const lightModePref = getState('light-mode')
-  const isLight = lightModePref !== null
-    ? lightModePref
-    : window.matchMedia('(prefers-color-scheme: light)').matches
+  const isLight = lightModePref !== null ? lightModePref : window.matchMedia('(prefers-color-scheme: light)').matches
   document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark')
 
   // Sync the theme segmented control: null=System, true=Light, false=Dark
-  const activeThemeId = lightModePref === null ? 'theme-btn-system' : lightModePref ? 'theme-btn-light' : 'theme-btn-dark'
+  const activeThemeId =
+    lightModePref === null ? 'theme-btn-system' : lightModePref ? 'theme-btn-light' : 'theme-btn-dark'
   for (const id of ['theme-btn-system', 'theme-btn-light', 'theme-btn-dark'])
     document.getElementById(id)?.classList.toggle('theme-segment__btn--active', id === activeThemeId)
 
@@ -7368,11 +7787,9 @@ function updateCSS() {
   elements.dvalaPanelDebugInfo?.classList.toggle('active', debug)
 
   const debugToggle = document.getElementById('settings-debug-toggle') as HTMLInputElement | null
-  if (debugToggle)
-    debugToggle.checked = debug
+  if (debugToggle) debugToggle.checked = debug
   const pureToggle = document.getElementById('settings-pure-toggle') as HTMLInputElement | null
-  if (pureToggle)
-    pureToggle.checked = getState('pure')
+  if (pureToggle) pureToggle.checked = getState('pure')
   const pure = getState('pure')
   const disableHandlers = getState('disable-standard-handlers')
   const disabled = pure
@@ -7385,7 +7802,10 @@ function updateCSS() {
     interceptEffectsToggle.checked = !interceptDisabled && interceptEffects
     interceptEffectsToggle.disabled = interceptDisabled
     interceptEffectsToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', interceptDisabled)
-    interceptEffectsToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', interceptDisabled)
+    interceptEffectsToggle
+      .closest('[class]')
+      ?.closest('[class]')
+      ?.classList.toggle('settings-toggle-row-disabled', interceptDisabled)
   }
 
   // Sub-toggles container visibility
@@ -7403,7 +7823,9 @@ function updateCSS() {
   if (checkpointToggle) {
     checkpointToggle.checked = getState('intercept-checkpoint')
   }
-  const interceptUnhandledToggle = document.getElementById('settings-intercept-unhandled-toggle') as HTMLInputElement | null
+  const interceptUnhandledToggle = document.getElementById(
+    'settings-intercept-unhandled-toggle',
+  ) as HTMLInputElement | null
   if (interceptUnhandledToggle) {
     interceptUnhandledToggle.checked = getState('intercept-unhandled')
   }
@@ -7413,9 +7835,14 @@ function updateCSS() {
     disableHandlersToggle.checked = !disabled && disableHandlers
     disableHandlersToggle.disabled = disabled
     disableHandlersToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
-    disableHandlersToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
+    disableHandlersToggle
+      .closest('[class]')
+      ?.closest('[class]')
+      ?.classList.toggle('settings-toggle-row-disabled', disabled)
   }
-  const disablePlaygroundEffectsToggle = document.getElementById('settings-disable-playground-effects-toggle') as HTMLInputElement | null
+  const disablePlaygroundEffectsToggle = document.getElementById(
+    'settings-disable-playground-effects-toggle',
+  ) as HTMLInputElement | null
   if (disablePlaygroundEffectsToggle) {
     disablePlaygroundEffectsToggle.checked = getState('disable-playground-effects')
   }
@@ -7425,18 +7852,18 @@ function updateCSS() {
     autoCheckpointToggle.checked = !disabled && getState('disable-auto-checkpoint')
     autoCheckpointToggle.disabled = disabled
     autoCheckpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
-    autoCheckpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
+    autoCheckpointToggle
+      .closest('[class]')
+      ?.closest('[class]')
+      ?.classList.toggle('settings-toggle-row-disabled', disabled)
   }
 
   const playgroundDevToggle = document.getElementById('settings-playground-developer-toggle') as HTMLInputElement | null
-  if (playgroundDevToggle)
-    playgroundDevToggle.checked = getState('playground-developer')
+  if (playgroundDevToggle) playgroundDevToggle.checked = getState('playground-developer')
   const devTabBtn = document.getElementById('settings-tab-btn-developer')
-  if (devTabBtn)
-    devTabBtn.style.display = getState('playground-developer') ? '' : 'none'
+  if (devTabBtn) devTabBtn.style.display = getState('playground-developer') ? '' : 'none'
   const benchmarksTabBtn = document.getElementById('settings-tab-btn-benchmarks')
-  if (benchmarksTabBtn)
-    benchmarksTabBtn.style.display = getState('playground-developer') ? '' : 'none'
+  if (benchmarksTabBtn) benchmarksTabBtn.style.display = getState('playground-developer') ? '' : 'none'
 
   const currentFileId = getState('current-file-id')
   const currentFile = currentFileId ? getSavedFiles().find(entry => entry.id === currentFileId) : null
@@ -7444,25 +7871,29 @@ function updateCSS() {
   const isContextTab = getCurrentSideTab() === 'context'
   const context = isContextTab ? getParsedContext() : null
   const contextBindings = context ? getContextBindings(context) : null
-  const contextEffectHandler = activeContextBindingName && context ? getContextEffectHandler(context, activeContextBindingName) : null
-  const contextTitle = activeContextBindingName && context && (
-    (activeContextEntryKind === 'binding' && ((contextBindings && Object.prototype.hasOwnProperty.call(contextBindings, activeContextBindingName))
-      || getContextBindingInvalidDraft(context, activeContextBindingName) !== null))
-    || (activeContextEntryKind === 'effect-handler' && (contextEffectHandler !== null || getContextEffectHandlerInvalidDraft(context, activeContextBindingName) !== null))
-  )
-    ? activeContextBindingName
-    : ''
-  const currentFileTitle = currentFile
-    ? currentFile.name
-    : SCRATCH_TITLE
-  const showCodePendingIndicator = !isContextTab && !isLocked && (autoSaveTimer !== null || (currentFileId === null && scratchEditedTimer !== null))
+  const contextEffectHandler =
+    activeContextBindingName && context ? getContextEffectHandler(context, activeContextBindingName) : null
+  const contextTitle =
+    activeContextBindingName &&
+    context &&
+    ((activeContextEntryKind === 'binding' &&
+      ((contextBindings && Object.prototype.hasOwnProperty.call(contextBindings, activeContextBindingName)) ||
+        getContextBindingInvalidDraft(context, activeContextBindingName) !== null)) ||
+      (activeContextEntryKind === 'effect-handler' &&
+        (contextEffectHandler !== null ||
+          getContextEffectHandlerInvalidDraft(context, activeContextBindingName) !== null)))
+      ? activeContextBindingName
+      : ''
+  const currentFileTitle = currentFile ? currentFile.name : SCRATCH_TITLE
+  const showCodePendingIndicator =
+    !isContextTab && !isLocked && (autoSaveTimer !== null || (currentFileId === null && scratchEditedTimer !== null))
   const showSaveScratchButton = currentFileId === null && hasScratchContent() && getCurrentSideTab() !== 'snapshots'
   // Title string: only shown for context tab (shows binding/handler name)
   elements.dvalaCodeTitleString.textContent = isContextTab ? contextTitle : ''
   elements.dvalaCodeTitleString.style.display = isContextTab ? '' : 'none'
   elements.editorToolbarTitle.textContent = currentFileTitle
   // Context entry names (bindings, effect handlers) also use monospace
-  const fileTitleFontFamily = (!isContextTab || contextTitle) ? 'var(--font-mono)' : ''
+  const fileTitleFontFamily = !isContextTab || contextTitle ? 'var(--font-mono)' : ''
   elements.dvalaCodeTitleString.style.fontFamily = fileTitleFontFamily
   elements.dvalaCodeTitleInput.style.fontFamily = fileTitleFontFamily
   elements.editorToolbarTitle.style.fontFamily = !isContextTab ? 'var(--font-mono)' : ''
@@ -7472,17 +7903,21 @@ function updateCSS() {
   elements.saveScratchButton.style.display = showSaveScratchButton ? 'inline-flex' : 'none'
   syncDvalaCodeHistoryButtons()
   // Pending indicator: only shown for context tab (file edits tracked via toolbar pill)
-  elements.dvalaCodePendingIndicator.style.display = (isContextTab && showCodePendingIndicator) ? 'inline-block' : 'none'
-  if (elements.contextTitle) elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
-
+  elements.dvalaCodePendingIndicator.style.display = isContextTab && showCodePendingIndicator ? 'inline-block' : 'none'
+  if (elements.contextTitle) elements.contextTitle.style.color = getState('focused-panel') === 'context' ? 'white' : ''
 }
 
-export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', historyEvent: 'replace' | 'push' | 'none' = 'push', tab?: string) {
+export function showPage(
+  id: string,
+  scroll: 'smooth' | 'instant' | 'none',
+  historyEvent: 'replace' | 'push' | 'none' = 'push',
+  tab?: string,
+) {
   setTimeout(() => {
     inactivateAll()
 
     const page = document.getElementById(id)
-    const linkElementId = `${(!id || id === 'index') ? 'home-page' : id}_link`
+    const linkElementId = `${!id || id === 'index' ? 'home-page' : id}_link`
     const link = document.getElementById(linkElementId)
 
     elements.mainPanel.scrollTo({ top: 0 })
@@ -7499,26 +7934,21 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
     }
     if (link) {
       link.classList.add('active-sidebar-entry')
-      if (scroll !== 'none')
-        link.scrollIntoView({ block: 'center', behavior: scroll })
+      if (scroll !== 'none') link.scrollIntoView({ block: 'center', behavior: scroll })
     }
 
-    if (historyEvent === 'replace')
-      router.navigate(pageIdToAppPath(id), true)
-    else if (historyEvent === 'push')
-      router.navigate(pageIdToAppPath(id))
+    if (historyEvent === 'replace') router.navigate(pageIdToAppPath(id), true)
+    else if (historyEvent === 'push') router.navigate(pageIdToAppPath(id))
     // historyEvent === 'none': don't update URL
   }, 0)
 }
 
 function inactivateAll() {
   let els = document.getElementsByClassName('active-content')
-  while (els[0])
-    els[0].classList.remove('active-content')
+  while (els[0]) els[0].classList.remove('active-content')
 
   els = document.getElementsByClassName('active-sidebar-entry')
-  while (els[0])
-    els[0].classList.remove('active-sidebar-entry')
+  while (els[0]) els[0].classList.remove('active-sidebar-entry')
 }
 
 export function addToPlayground(name: string, encodedExample: string) {
@@ -7544,7 +7974,13 @@ export function copyCode(encodedCode: string) {
 
 export function loadEncodedCode(encodedCode: string) {
   const code = decodeURIComponent(atob(encodedCode))
-  openScratchInEditor({ code, context: '', focusCode: true, navigateToPlayground: true, toast: 'Code loaded in editor' })
+  openScratchInEditor({
+    code,
+    context: '',
+    focusCode: true,
+    navigateToPlayground: true,
+    toast: 'Code loaded in editor',
+  })
 }
 
 export function setPlayground(name: string, encodedExample: string) {
@@ -7593,10 +8029,7 @@ ${code}
 
   void showInfoModal(`Load "${name}"`, message, () => {
     // Merge example handlers into current context, replacing conflicts
-    const mergedHandlers = [
-      ...currentHandlers.filter(h => !examplePatterns.includes(h.pattern)),
-      ...exampleHandlers,
-    ]
+    const mergedHandlers = [...currentHandlers.filter(h => !examplePatterns.includes(h.pattern)), ...exampleHandlers]
     const newContext: Record<string, unknown> = { ...currentContext }
     newContext[CONTEXT_EFFECT_HANDLERS_KEY] = mergedHandlers
     const contextJson = formatContextJson(newContext)

@@ -40,7 +40,10 @@ interface TocDropdownOptions {
  */
 export function toggleTocDropdown(btn: HTMLElement, options: TocDropdownOptions): void {
   const existing = document.getElementById(options.id)
-  if (existing) { existing.remove(); return }
+  if (existing) {
+    existing.remove()
+    return
+  }
 
   const dropdown = document.createElement('div')
   dropdown.id = options.id
@@ -50,7 +53,10 @@ export function toggleTocDropdown(btn: HTMLElement, options: TocDropdownOptions)
   const overview = document.createElement('a')
   overview.className = 'chapter-toc-dropdown__item chapter-toc-dropdown__item--overview'
   overview.textContent = options.overview.label
-  overview.addEventListener('click', () => { dropdown.remove(); options.overview.onSelect() })
+  overview.addEventListener('click', () => {
+    dropdown.remove()
+    options.overview.onSelect()
+  })
   dropdown.appendChild(overview)
 
   let activeEl: HTMLElement | null = null
@@ -68,7 +74,10 @@ export function toggleTocDropdown(btn: HTMLElement, options: TocDropdownOptions)
       const el = document.createElement('a')
       el.className = `${baseClass}${activeClass}`
       el.innerHTML = (item.active ? CHECK : EMPTY_CHECK) + escapeHtml(item.label)
-      el.addEventListener('click', () => { dropdown.remove(); item.onSelect() })
+      el.addEventListener('click', () => {
+        dropdown.remove()
+        item.onSelect()
+      })
       dropdown.appendChild(el)
       if (item.active) activeEl = el
     }

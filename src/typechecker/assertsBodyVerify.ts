@@ -111,7 +111,7 @@ function findWithHandlerNodes(nodes: AstNode[]): AstNode[] {
 }
 
 function findRecursiveAssertionFunctions(infos: AssertionFunctionInfo[]): Set<AssertionFunctionInfo> {
-  const byName = new Map(infos.flatMap(info => info.name ? [[info.name, info]] : []))
+  const byName = new Map(infos.flatMap(info => (info.name ? [[info.name, info]] : [])))
   const edges = new Map<AssertionFunctionInfo, Set<AssertionFunctionInfo>>()
   for (const info of infos) {
     const callees = new Set<AssertionFunctionInfo>()
@@ -236,7 +236,13 @@ function statementGuarantees(
   }
   if (node[0] === NodeTypes.If) {
     const [cond, thenNode, elseNode] = node[1] as [AstNode, AstNode, AstNode | undefined]
-    const thenProven = terminalProves(thenNode, info, assertionFunctions, proven || predicateMatchesTarget(cond, info), stack)
+    const thenProven = terminalProves(
+      thenNode,
+      info,
+      assertionFunctions,
+      proven || predicateMatchesTarget(cond, info),
+      stack,
+    )
     const elseProven = terminalProves(elseNode ?? thenNode, info, assertionFunctions, proven, stack)
     return thenProven && elseProven
   }
@@ -259,7 +265,13 @@ function terminalProves(
   }
   if (node[0] === NodeTypes.If) {
     const [cond, thenNode, elseNode] = node[1] as [AstNode, AstNode, AstNode | undefined]
-    const thenProven = terminalProves(thenNode, info, assertionFunctions, proven || predicateMatchesTarget(cond, info), stack)
+    const thenProven = terminalProves(
+      thenNode,
+      info,
+      assertionFunctions,
+      proven || predicateMatchesTarget(cond, info),
+      stack,
+    )
     const elseProven = terminalProves(elseNode ?? thenNode, info, assertionFunctions, proven, stack)
     return thenProven && elseProven
   }
@@ -315,8 +327,7 @@ function matchProves(
   // anything else doesn't establish that the case binding aliases
   // the asserted parameter — bail out of the substitution layer in
   // that case.
-  const scrutineeIsAssertedParam
-    = scrutinee[0] === NodeTypes.Sym && scrutinee[1] === info.asserts.binder
+  const scrutineeIsAssertedParam = scrutinee[0] === NodeTypes.Sym && scrutinee[1] === info.asserts.binder
   return cases.every(([binding, body, guard]) => {
     let caseInfo = info
     if (scrutineeIsAssertedParam) {
@@ -466,11 +477,7 @@ function establishesTargetPredicate(
   // with. Sound: the helper is verified to establish its predicate
   // for whatever its argument is; alpha-renaming is a no-op on
   // semantics.
-  const helperRenamed = renameBinderInPredicate(
-    helper.asserts.predicate,
-    helper.asserts.binder,
-    info.asserts.binder,
-  )
+  const helperRenamed = renameBinderInPredicate(helper.asserts.predicate, helper.asserts.binder, info.asserts.binder)
   const helperSourceRenamed = `${info.asserts.binder} | ${prettyPrint(helperRenamed).trim()}`
   if (helperSourceRenamed !== info.asserts.source) return false
   const helperArg = argNodes[helper.asserts.paramIndex]
@@ -548,7 +555,7 @@ function isAstNode(value: unknown): value is AstNode {
 function getSymbolBindingName(binding: BindingTarget): string | undefined {
   if (binding[0] !== bindingTargetTypes.symbol) return undefined
   const [nameNode] = binding[1] as [AstNode, AstNode | undefined]
-  return nameNode[0] === NodeTypes.Sym ? nameNode[1] as string : undefined
+  return nameNode[0] === NodeTypes.Sym ? (nameNode[1] as string) : undefined
 }
 
 function resolveNodeSourceInfo(node: AstNode, ast: Ast) {

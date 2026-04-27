@@ -1,9 +1,4 @@
 {
   "extends": "./tsconfig.json",
-  "include": [
-    "types/**/*",
-    "playground-builder/**/*",
-    "reference/**/*",
-    "common/**/*"
-  ]
+  "include": ["types/**/*", "playground-builder/**/*", "reference/**/*", "common/**/*"]
 }

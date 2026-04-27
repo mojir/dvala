@@ -332,7 +332,10 @@ describe('WorkspaceIndex', () => {
       // resolves to a different SymbolDef than the import-kind destructuring
       // def, so the resolvedDef-identity filter keeps it out of the result.
       const libPath = writeFile('lib.dvala', 'let pi = 3.14; { pi }')
-      const mainPath = writeFile('main.dvala', 'let { pi } = import("./lib"); let f = () -> do let pi = 99; pi end; pi * 2')
+      const mainPath = writeFile(
+        'main.dvala',
+        'let { pi } = import("./lib"); let f = () -> do let pi = 99; pi end; pi * 2',
+      )
       index.updateFile(libPath)
       index.updateFile(mainPath)
       const occurrences = index.findAllOccurrences(libPath, 'pi')
@@ -709,11 +712,14 @@ describe('WorkspaceIndex', () => {
       // to let `pi` be rebound twice in one file.
       const aPath = writeFile('a.dvala', 'let pi = 3.14; { pi }')
       const bPath = writeFile('b.dvala', 'let { pi } = import("./a"); { pi }')
-      const cPath = writeFile('c.dvala', [
-        'let piFromA = do let { pi } = import("./a"); pi end;',
-        'let piFromB = do let { pi } = import("./b"); pi end;',
-        'piFromA + piFromB',
-      ].join('\n'))
+      const cPath = writeFile(
+        'c.dvala',
+        [
+          'let piFromA = do let { pi } = import("./a"); pi end;',
+          'let piFromB = do let { pi } = import("./b"); pi end;',
+          'piFromA + piFromB',
+        ].join('\n'),
+      )
       index.updateFile(aPath)
       index.updateFile(bPath)
       index.updateFile(cPath)

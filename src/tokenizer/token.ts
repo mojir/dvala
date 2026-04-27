@@ -113,7 +113,10 @@ export function isSymbolToken<T extends string>(token: Token | undefined, symbol
   return true
 }
 
-function assertSymbolToken<T extends string>(token: Token | undefined, symbolName?: T): asserts token is SymbolToken<T> {
+function assertSymbolToken<T extends string>(
+  token: Token | undefined,
+  symbolName?: T,
+): asserts token is SymbolToken<T> {
   if (!isSymbolToken(token, symbolName)) {
     throwUnexpectedToken('Symbol', undefined, token)
   }
@@ -136,7 +139,10 @@ export function asEffectNameToken(token: Token | undefined): EffectNameToken {
   return token
 }
 
-export function isReservedSymbolToken<T extends ReservedSymbol>(token: Token | undefined, symbolName?: T): token is ReservedSymbolToken<T> {
+export function isReservedSymbolToken<T extends ReservedSymbol>(
+  token: Token | undefined,
+  symbolName?: T,
+): token is ReservedSymbolToken<T> {
   if (token?.[0] !== 'ReservedSymbol') {
     return false
   }
@@ -145,12 +151,18 @@ export function isReservedSymbolToken<T extends ReservedSymbol>(token: Token | u
   }
   return true
 }
-export function assertReservedSymbolToken<T extends ReservedSymbol>(token: Token | undefined, symbolName?: T): asserts token is ReservedSymbolToken<T> {
+export function assertReservedSymbolToken<T extends ReservedSymbol>(
+  token: Token | undefined,
+  symbolName?: T,
+): asserts token is ReservedSymbolToken<T> {
   if (!isReservedSymbolToken(token, symbolName)) {
     throwUnexpectedToken('ReservedSymbol', symbolName, token)
   }
 }
-export function asReservedSymbolToken<T extends ReservedSymbol>(token: Token | undefined, symbolName?: T): ReservedSymbolToken<T> {
+export function asReservedSymbolToken<T extends ReservedSymbol>(
+  token: Token | undefined,
+  symbolName?: T,
+): ReservedSymbolToken<T> {
   assertReservedSymbolToken(token, symbolName)
   return token
 }
@@ -167,7 +179,10 @@ export function isMultiLineCommentToken(token: Token | undefined): token is Mult
   return token?.[0] === 'MultiLineComment'
 }
 
-export function isOperatorToken<T extends SymbolicOperator>(token: Token | undefined, operatorName?: T): token is OperatorToken<T> {
+export function isOperatorToken<T extends SymbolicOperator>(
+  token: Token | undefined,
+  operatorName?: T,
+): token is OperatorToken<T> {
   if (token?.[0] !== 'Operator') {
     return false
   }
@@ -176,12 +191,18 @@ export function isOperatorToken<T extends SymbolicOperator>(token: Token | undef
   }
   return true
 }
-export function assertOperatorToken<T extends SymbolicOperator>(token: Token | undefined, operatorName?: T): asserts token is OperatorToken<T> {
+export function assertOperatorToken<T extends SymbolicOperator>(
+  token: Token | undefined,
+  operatorName?: T,
+): asserts token is OperatorToken<T> {
   if (!isOperatorToken(token, operatorName)) {
     throwUnexpectedToken('Operator', operatorName, token)
   }
 }
-export function asOperatorToken<T extends SymbolicOperator>(token: Token | undefined, operatorName?: T): OperatorToken<T> {
+export function asOperatorToken<T extends SymbolicOperator>(
+  token: Token | undefined,
+  operatorName?: T,
+): OperatorToken<T> {
   assertOperatorToken(token, operatorName)
   return token
 }
@@ -356,7 +377,11 @@ export function asTemplateStringToken(token: Token | undefined): TemplateStringT
 }
 
 /** Convert lightweight token debug info to SourceCodeInfo for error reporting. */
-export function debugInfoToSourceCodeInfo(debugInfo: TokenDebugInfo | undefined, source?: string, filePath?: string): SourceCodeInfo | undefined {
+export function debugInfoToSourceCodeInfo(
+  debugInfo: TokenDebugInfo | undefined,
+  source?: string,
+  filePath?: string,
+): SourceCodeInfo | undefined {
   if (!debugInfo) return undefined
   const [line, column] = debugInfo
   const code = source ? (source.split('\n')[line] ?? '') : ''
@@ -373,9 +398,16 @@ export function sourceCodeInfoToDebugInfo(sci: SourceCodeInfo | undefined): Toke
   return [sci.position.line - 1, sci.position.column - 1]
 }
 
-function throwUnexpectedToken(expected: TokenType, expectedValue: string | undefined, actual: Token | undefined): never {
+function throwUnexpectedToken(
+  expected: TokenType,
+  expectedValue: string | undefined,
+  actual: Token | undefined,
+): never {
   const actualOutput = actual ? `${actual[0]} '${actual[1]}'` : 'end of input'
   // Minimal location info from token debug info (no source text available here)
   const sourceCodeInfo = actual?.[2] ? debugInfoToSourceCodeInfo(actual[2]) : undefined
-  throw new TokenizerError(`Unexpected token: ${actualOutput}, expected ${expected}${expectedValue ? ` '${expectedValue}'` : ''}`, sourceCodeInfo)
+  throw new TokenizerError(
+    `Unexpected token: ${actualOutput}, expected ${expected}${expectedValue ? ` '${expectedValue}'` : ''}`,
+    sourceCodeInfo,
+  )
 }

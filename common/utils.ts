@@ -6,38 +6,29 @@ export function stringifyValue(value: unknown, html: boolean): string {
   const gt = html ? '&gt;' : '>'
   const lt = html ? '&lt;' : '<'
   if (isDvalaFunction(value)) {
-    if (value.functionType === 'Builtin')
-      return `${lt}builtin function ${value.normalBuiltinSymbolType}${gt}`
+    if (value.functionType === 'Builtin') return `${lt}builtin function ${value.normalBuiltinSymbolType}${gt}`
     const kind = value.functionType === 'Macro' ? 'macro' : 'function'
     return `${lt}${kind} ${'name' in value && value.name ? value.name : '\u03BB'}${gt}`
   }
-  if (value === null)
-    return 'null'
+  if (value === null) return 'null'
 
-  if (typeof value === 'object' && value instanceof Error)
-    return value.toString()
+  if (typeof value === 'object' && value instanceof Error) return value.toString()
 
-  if (typeof value === 'object' && value instanceof RegExp)
-    return `${value}`
+  if (typeof value === 'object' && value instanceof RegExp) return `${value}`
 
   if (typeof value === 'number') {
     return `${value}`
   }
 
-  if (isAtom(value))
-    return `:${value.name}`
+  if (isAtom(value)) return `:${value.name}`
 
-  if (isEffect(value))
-    return `${lt}effect ${value.name}${gt}`
+  if (isEffect(value)) return `${lt}effect ${value.name}${gt}`
 
-  if (isRegularExpression(value))
-    return `/${value.s}/${value.f}`
+  if (isRegularExpression(value)) return `/${value.s}/${value.f}`
 
-  if (typeof value === 'string')
-    return `"${value}"`
+  if (typeof value === 'string') return `"${value}"`
 
-  if (Array.isArray(value) && isMatrix(value))
-    return stringifyMatrix(value)
+  if (Array.isArray(value) && isMatrix(value)) return stringifyMatrix(value)
 
   return smartStringify(replaceInfinities(value), 0)
 }

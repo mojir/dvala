@@ -1,30 +1,47 @@
 export { categories, coreCategoryDescriptions, coreCategories, isDataType } from '../src/builtin/interface'
 export type { Category, DataType } from '../src/builtin/interface'
 
-function getNumberTheorySequenceNames<T extends string>(name: T): [`numberTheory.${T}Seq`, `numberTheory.${T}Nth`, `numberTheory.${T}TakeWhile`, `numberTheory.is${Capitalize<T>}`] {
-  return [`numberTheory.${name}Seq`, `numberTheory.${name}Nth`, `numberTheory.${name}TakeWhile`, `numberTheory.is${name.charAt(0).toUpperCase()}${name.slice(1)}` as `numberTheory.is${Capitalize<T>}`]
+function getNumberTheorySequenceNames<T extends string>(
+  name: T,
+): [`numberTheory.${T}Seq`, `numberTheory.${T}Nth`, `numberTheory.${T}TakeWhile`, `numberTheory.is${Capitalize<T>}`] {
+  return [
+    `numberTheory.${name}Seq`,
+    `numberTheory.${name}Nth`,
+    `numberTheory.${name}TakeWhile`,
+    `numberTheory.is${name.charAt(0).toUpperCase()}${name.slice(1)}` as `numberTheory.is${Capitalize<T>}`,
+  ]
 }
 
-function getVectorReductionNames<T extends string>(name: T): [`vector.${T}`, `vector.moving${Capitalize<T>}`, `vector.centeredMoving${Capitalize<T>}`, `vector.running${Capitalize<T>}`] {
+function getVectorReductionNames<T extends string>(
+  name: T,
+): [
+  `vector.${T}`,
+  `vector.moving${Capitalize<T>}`,
+  `vector.centeredMoving${Capitalize<T>}`,
+  `vector.running${Capitalize<T>}`,
+] {
   const capName = name.charAt(0).toUpperCase() + name.slice(1)
-  return [`vector.${name}`, `vector.moving${capName}`, `vector.centeredMoving${capName}`, `vector.running${capName}`] as [`vector.${T}`, `vector.moving${Capitalize<T>}`, `vector.centeredMoving${Capitalize<T>}`, `vector.running${Capitalize<T>}`]
+  return [
+    `vector.${name}`,
+    `vector.moving${capName}`,
+    `vector.centeredMoving${capName}`,
+    `vector.running${capName}`,
+  ] as [
+    `vector.${T}`,
+    `vector.moving${Capitalize<T>}`,
+    `vector.centeredMoving${Capitalize<T>}`,
+    `vector.running${Capitalize<T>}`,
+  ]
 }
 
-function getVectorMovingNames<T extends string>(name: T): [`vector.moving-${string}`, `vector.centered-moving-${string}`, `vector.running-${string}`] {
+function getVectorMovingNames<T extends string>(
+  name: T,
+): [`vector.moving-${string}`, `vector.centered-moving-${string}`, `vector.running-${string}`] {
   return [`vector.moving-${name}`, `vector.centered-moving-${name}`, `vector.running-${name}`]
 }
 
 const api = {
-  collection: [
-    'filter',
-    'map',
-    'reduce',
-    'count',
-    'get',
-    'contains',
-    'assoc',
-    '++',
-  ] as const,
+  collection: ['filter', 'map', 'reduce', 'count', 'get', 'contains', 'assoc', '++'] as const,
   collectionUtils: [
     'collection.filteri',
     'collection.mapi',
@@ -43,11 +60,7 @@ const api = {
     'collection.isAny',
     'collection.notAny',
   ] as const,
-  array: [
-    'range',
-    'repeat',
-    'flatten',
-  ] as const,
+  array: ['range', 'repeat', 'flatten'] as const,
   sequence: [
     'nth',
     'push',
@@ -132,13 +145,7 @@ const api = {
     'math.toRad',
     'math.toDeg',
   ] as const,
-  functional: [
-    '|>',
-    'apply',
-    'identity',
-    'comp',
-    'constantly',
-  ] as const,
+  functional: ['|>', 'apply', 'identity', 'comp', 'constantly'] as const,
   functionalUtils: [
     'functional.juxt',
     'functional.complement',
@@ -146,37 +153,9 @@ const api = {
     'functional.somePred',
     'functional.fnull',
   ] as const,
-  meta: [
-    'doc',
-    'arity',
-    'effectName',
-    'qualifiedName',
-    'qualifiedMatcher',
-  ] as const,
-  misc: [
-    '!=',
-    '==',
-    '<',
-    '>',
-    '<=',
-    '>=',
-    'not',
-    'boolean',
-    'compare',
-    'typeOf',
-    'raise',
-  ] as const,
-  object: [
-    'dissoc',
-    'keys',
-    'vals',
-    'entries',
-    'find',
-    'merge',
-    'mergeWith',
-    'zipmap',
-    'selectKeys',
-  ] as const,
+  meta: ['doc', 'arity', 'effectName', 'qualifiedName', 'qualifiedMatcher'] as const,
+  misc: ['!=', '==', '<', '>', '<=', '>=', 'not', 'boolean', 'compare', 'typeOf', 'raise'] as const,
+  object: ['dissoc', 'keys', 'vals', 'entries', 'find', 'merge', 'mergeWith', 'zipmap', 'selectKeys'] as const,
   predicate: [
     'isBoolean',
     'isNull',
@@ -203,22 +182,8 @@ const api = {
     'isGrid',
     'isMatrix',
   ] as const,
-  regularExpression: [
-    'regexp',
-    'reMatch',
-    'replace',
-    'replaceAll',
-  ] as const,
-  string: [
-    'str',
-    'number',
-    'lowerCase',
-    'upperCase',
-    'trim',
-    'split',
-    'join',
-    'isBlank',
-  ] as const,
+  regularExpression: ['regexp', 'reMatch', 'replace', 'replaceAll'] as const,
+  string: ['str', 'number', 'lowerCase', 'upperCase', 'trim', 'split', 'join', 'isBlank'] as const,
   stringUtils: [
     'string.stringRepeat',
     'string.fromCharCode',
@@ -235,14 +200,7 @@ const api = {
     'string.decodeUriComponent',
     'string.capitalize',
   ] as const,
-  bitwise: [
-    '<<',
-    '>>',
-    '>>>',
-    '&',
-    '|',
-    'xor',
-  ] as const,
+  bitwise: ['<<', '>>', '>>>', '&', '|', 'xor'] as const,
   bitwiseUtils: [
     'bitwise.bitNot',
     'bitwise.bitAndNot',
@@ -251,9 +209,7 @@ const api = {
     'bitwise.bitSet',
     'bitwise.bitTest',
   ] as const,
-  assertion: [
-    'assert',
-  ] as const,
+  assertion: ['assert'] as const,
   assertionUtils: [
     'assertion.assertEqual',
     'assertion.assertNotEqual',
@@ -1052,18 +1008,9 @@ const api = {
     'convert.kToC',
     'convert.kToF',
   ] as const,
-  json: [
-    'json.jsonParse',
-    'json.jsonStringify',
-  ] as const,
-  time: [
-    'time.epochToIso-date',
-    'time.iso-dateToEpoch',
-  ] as const,
-  handler: [
-    'handler.retry',
-    'handler.fallback',
-  ] as const,
+  json: ['json.jsonParse', 'json.jsonStringify'] as const,
+  time: ['time.epochToIso-date', 'time.iso-dateToEpoch'] as const,
+  handler: ['handler.retry', 'handler.fallback'] as const,
   ast: [
     'ast.num',
     'ast.strNode',
@@ -1092,18 +1039,8 @@ const api = {
     'ast.payload',
     'ast.prettyPrint',
   ] as const,
-  macros: [
-    'macros.trace',
-    'macros.unless',
-    'macros.tap',
-    'macros.dbg',
-    'macros.cond',
-  ] as const,
-  shorthand: [
-    '-short-regexp',
-    '-short-fn',
-    '-short-object',
-  ] as const satisfies `-short-${string}`[],
+  macros: ['macros.trace', 'macros.unless', 'macros.tap', 'macros.dbg', 'macros.cond'] as const,
+  shorthand: ['-short-regexp', '-short-fn', '-short-object'] as const satisfies `-short-${string}`[],
   prelude: [
     '-prelude-Positive',
     '-prelude-NonNegative',
@@ -1132,89 +1069,86 @@ const api = {
   ] as const satisfies `-type-${string}`[],
 } as const
 
-export type CollectionApiName = typeof api.collection[number]
-export type ArrayApiName = typeof api.array[number]
-export type SequenceApiName = typeof api.sequence[number]
-export type MathApiName = typeof api.math[number]
-export type FunctionalApiName = typeof api.functional[number]
-export type MiscApiName = typeof api.misc[number]
-export type MetaApiName = typeof api.meta[number]
-export type ObjectApiName = typeof api.object[number]
-export type PredicateApiName = typeof api.predicate[number]
-export type RegularExpressionApiName = typeof api.regularExpression[number]
+export type CollectionApiName = (typeof api.collection)[number]
+export type ArrayApiName = (typeof api.array)[number]
+export type SequenceApiName = (typeof api.sequence)[number]
+export type MathApiName = (typeof api.math)[number]
+export type FunctionalApiName = (typeof api.functional)[number]
+export type MiscApiName = (typeof api.misc)[number]
+export type MetaApiName = (typeof api.meta)[number]
+export type ObjectApiName = (typeof api.object)[number]
+export type PredicateApiName = (typeof api.predicate)[number]
+export type RegularExpressionApiName = (typeof api.regularExpression)[number]
 type SpecialExpressionsApiName = string
-export type StringApiName = typeof api.string[number]
-type StringUtilsApiName = typeof api.stringUtils[number]
-type CollectionUtilsApiName = typeof api.collectionUtils[number]
-type SequenceUtilsApiName = typeof api.sequenceUtils[number]
-export type BitwiseApiName = typeof api.bitwise[number]
-type BitwiseUtilsApiName = typeof api.bitwiseUtils[number]
-export type AssertionApiName = typeof api.assertion[number]
-type AssertionUtilsApiName = typeof api.assertionUtils[number]
-type GridApiName = typeof api.grid[number]
-type MatrixApiName = typeof api.matrix[number]
-type NumberTheoryApiName = typeof api.numberTheory[number]
-type VectorUtilsApiName = typeof api.vectorUtils[number]
-type LinAlgApiName = typeof api.linAlg[number]
-type MathUtilsApiName = typeof api.mathUtils[number]
-type FunctionalUtilsApiName = typeof api.functionalUtils[number]
-type ConvertApiName = typeof api.convert[number]
-type JsonApiName = typeof api.json[number]
-type TimeApiName = typeof api.time[number]
-type HandlerApiName = typeof api.handler[number]
-type AstApiName = typeof api.ast[number]
-type MacrosApiName = typeof api.macros[number]
+export type StringApiName = (typeof api.string)[number]
+type StringUtilsApiName = (typeof api.stringUtils)[number]
+type CollectionUtilsApiName = (typeof api.collectionUtils)[number]
+type SequenceUtilsApiName = (typeof api.sequenceUtils)[number]
+export type BitwiseApiName = (typeof api.bitwise)[number]
+type BitwiseUtilsApiName = (typeof api.bitwiseUtils)[number]
+export type AssertionApiName = (typeof api.assertion)[number]
+type AssertionUtilsApiName = (typeof api.assertionUtils)[number]
+type GridApiName = (typeof api.grid)[number]
+type MatrixApiName = (typeof api.matrix)[number]
+type NumberTheoryApiName = (typeof api.numberTheory)[number]
+type VectorUtilsApiName = (typeof api.vectorUtils)[number]
+type LinAlgApiName = (typeof api.linAlg)[number]
+type MathUtilsApiName = (typeof api.mathUtils)[number]
+type FunctionalUtilsApiName = (typeof api.functionalUtils)[number]
+type ConvertApiName = (typeof api.convert)[number]
+type JsonApiName = (typeof api.json)[number]
+type TimeApiName = (typeof api.time)[number]
+type HandlerApiName = (typeof api.handler)[number]
+type AstApiName = (typeof api.ast)[number]
+type MacrosApiName = (typeof api.macros)[number]
 
 // Core functions - always available without import
-export type CoreNormalExpressionName
-  = | CollectionApiName
-    | ArrayApiName
-    | SequenceApiName
-    | MathApiName
-    | FunctionalApiName
-    | MetaApiName
-    | MiscApiName
-    | ObjectApiName
-    | PredicateApiName
-    | RegularExpressionApiName
-    | StringApiName
-    | BitwiseApiName
-    | AssertionApiName
+export type CoreNormalExpressionName =
+  | CollectionApiName
+  | ArrayApiName
+  | SequenceApiName
+  | MathApiName
+  | FunctionalApiName
+  | MetaApiName
+  | MiscApiName
+  | ObjectApiName
+  | PredicateApiName
+  | RegularExpressionApiName
+  | StringApiName
+  | BitwiseApiName
+  | AssertionApiName
 
 // Module functions - require import()
-export type ModuleExpressionName
-  = | MatrixApiName
-    | VectorUtilsApiName
-    | LinAlgApiName
-    | GridApiName
-    | NumberTheoryApiName
-    | MathUtilsApiName
-    | FunctionalUtilsApiName
-    | AssertionUtilsApiName
-    | StringUtilsApiName
-    | CollectionUtilsApiName
-    | SequenceUtilsApiName
-    | BitwiseUtilsApiName
-    | ConvertApiName
-    | JsonApiName
-    | TimeApiName
-    | HandlerApiName
-    | AstApiName
-    | MacrosApiName
-type NormalExpressionName
-  = | CoreNormalExpressionName
-    | ModuleExpressionName
+export type ModuleExpressionName =
+  | MatrixApiName
+  | VectorUtilsApiName
+  | LinAlgApiName
+  | GridApiName
+  | NumberTheoryApiName
+  | MathUtilsApiName
+  | FunctionalUtilsApiName
+  | AssertionUtilsApiName
+  | StringUtilsApiName
+  | CollectionUtilsApiName
+  | SequenceUtilsApiName
+  | BitwiseUtilsApiName
+  | ConvertApiName
+  | JsonApiName
+  | TimeApiName
+  | HandlerApiName
+  | AstApiName
+  | MacrosApiName
+type NormalExpressionName = CoreNormalExpressionName | ModuleExpressionName
 
-export type FunctionName
+export type FunctionName =
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  = | NormalExpressionName
-    | SpecialExpressionsApiName
+  NormalExpressionName | SpecialExpressionsApiName
 
-export type ShorthandName = typeof api.shorthand[number]
+export type ShorthandName = (typeof api.shorthand)[number]
 
-export type DatatypeName = typeof api.datatype[number]
+export type DatatypeName = (typeof api.datatype)[number]
 
-export type PreludeName = typeof api.prelude[number]
+export type PreludeName = (typeof api.prelude)[number]
 
 // Core API function names (always available)
 const coreApiFunctionNames = [
@@ -1251,28 +1185,15 @@ const moduleApiFunctionNames = [
   ...api.json,
   ...api.time,
 ] as const
-const apiFunctionNames = [
-  ...coreApiFunctionNames,
-  ...moduleApiFunctionNames,
-] as const
+const apiFunctionNames = [...coreApiFunctionNames, ...moduleApiFunctionNames] as const
 
 // Core API names (core functions + shorthand + datatype + prelude)
-const coreApiNames = [
-  ...coreApiFunctionNames,
-  ...api.shorthand,
-  ...api.datatype,
-  ...api.prelude,
-] as const
+const coreApiNames = [...coreApiFunctionNames, ...api.shorthand, ...api.datatype, ...api.prelude] as const
 
-const apiNames = [
-  ...apiFunctionNames,
-  ...api.shorthand,
-  ...api.datatype,
-  ...api.prelude,
-] as const
+const apiNames = [...apiFunctionNames, ...api.shorthand, ...api.datatype, ...api.prelude] as const
 
-export type CoreApiName = typeof coreApiNames[number]
-export type ApiName = typeof apiNames[number]
+export type CoreApiName = (typeof coreApiNames)[number]
+export type ApiName = (typeof apiNames)[number]
 
 export function isApiName(arg: string): arg is ApiName {
   return apiNames.includes(arg as ApiName)

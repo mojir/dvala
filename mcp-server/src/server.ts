@@ -4,7 +4,16 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import { version } from '../../package.json'
 import { stringifyValue } from '../../common/utils'
-import { formatDoc, formatExamples, getModuleNames, listCoreExpressions, listDatatypes, listModuleExpressions, listModules, lookupDoc } from '../../reference/format'
+import {
+  formatDoc,
+  formatExamples,
+  getModuleNames,
+  listCoreExpressions,
+  listDatatypes,
+  listModuleExpressions,
+  listModules,
+  lookupDoc,
+} from '../../reference/format'
 import { allBuiltinModules } from '../../src/allModules'
 import { createDvala } from '../../src/createDvala'
 import '../../src/initReferenceData'
@@ -35,12 +44,9 @@ server.tool(
 )
 
 // --- Tool: listModules ---
-server.tool(
-  'listModules',
-  'List all available Dvala modules',
-  {},
-  async () => ({ content: [{ type: 'text', text: listModules() }] }),
-)
+server.tool('listModules', 'List all available Dvala modules', {}, async () => ({
+  content: [{ type: 'text', text: listModules() }],
+}))
 
 // --- Tool: listModuleExpressions ---
 server.tool(
@@ -63,14 +69,25 @@ server.tool(
 server.tool(
   'getDoc',
   'Get full documentation for a Dvala function, special expression, effect, shorthand, or datatype.',
-  { name: z.string().describe('The name of the function or expression, e.g. "map", "if", "grid.transpose", "dvala.io.print"') },
+  {
+    name: z
+      .string()
+      .describe('The name of the function or expression, e.g. "map", "if", "grid.transpose", "dvala.io.print"'),
+  },
   async ({ name }) => {
     const result = lookupDoc(name)
     if ('error' in result) {
       return { content: [{ type: 'text', text: result.error }], isError: true }
     }
     if ('ambiguous' in result) {
-      return { content: [{ type: 'text', text: `Multiple matches for "${name}":\n${result.ambiguous.map(m => `  ${m}`).join('\n')}\n\nPlease be more specific.` }] }
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Multiple matches for "${name}":\n${result.ambiguous.map(m => `  ${m}`).join('\n')}\n\nPlease be more specific.`,
+          },
+        ],
+      }
     }
     return { content: [{ type: 'text', text: formatDoc(result.ref) }] }
   },
@@ -82,7 +99,10 @@ server.tool(
   'Execute Dvala code and return the result. The code runs in a sandboxed environment with all modules loaded.',
   {
     code: z.string().describe('Dvala source code to execute'),
-    scope: z.record(z.string(), z.unknown()).optional().describe('Optional variable scope available in the code, e.g. {"x": 42}'),
+    scope: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe('Optional variable scope available in the code, e.g. {"x": 42}'),
   },
   async ({ code, scope }) => {
     try {
@@ -101,7 +121,10 @@ server.tool(
   'Execute Dvala code with debug mode enabled (captures source positions for better error messages).',
   {
     code: z.string().describe('Dvala source code to execute'),
-    scope: z.record(z.string(), z.unknown()).optional().describe('Optional variable scope available in the code, e.g. {"x": 42}'),
+    scope: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe('Optional variable scope available in the code, e.g. {"x": 42}'),
   },
   async ({ code, scope }) => {
     try {
@@ -209,20 +232,14 @@ server.tool(
 )
 
 // --- Tool: getExamples ---
-server.tool(
-  'getExamples',
-  'Get built-in example Dvala programs that demonstrate language features',
-  {},
-  async () => ({ content: [{ type: 'text', text: formatExamples() }] }),
-)
+server.tool('getExamples', 'Get built-in example Dvala programs that demonstrate language features', {}, async () => ({
+  content: [{ type: 'text', text: formatExamples() }],
+}))
 
 // --- Tool: listDatatypes ---
-server.tool(
-  'listDatatypes',
-  'List all Dvala datatypes with descriptions',
-  {},
-  async () => ({ content: [{ type: 'text', text: listDatatypes() }] }),
-)
+server.tool('listDatatypes', 'List all Dvala datatypes with descriptions', {}, async () => ({
+  content: [{ type: 'text', text: listDatatypes() }],
+}))
 
 // ---------------------------------------------------------------------------
 // Start

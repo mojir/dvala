@@ -241,11 +241,7 @@ export class Debugger {
   // Internal
   // -------------------------------------------------------------------------
 
-  private async evaluateCondition(
-    condition: string,
-    node: AstNode,
-    continuation: Continuation,
-  ): Promise<void> {
+  private async evaluateCondition(condition: string, node: AstNode, continuation: Continuation): Promise<void> {
     try {
       const result = await this.conditionEvaluator!(condition, continuation)
       // Stop only if the condition evaluates to a truthy value
@@ -275,5 +271,4 @@ export class Debugger {
       resolve()
     }
   }
-
 }

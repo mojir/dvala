@@ -10,7 +10,16 @@ import path from 'node:path'
 import { stringifyValue } from '../../common/utils'
 import { version } from '../../package.json'
 import { apiReference, isFunctionReference } from '../../reference'
-import { formatDoc, formatExamples, getModuleNames, listCoreExpressions, listDatatypes, listModuleExpressions, listModules, lookupDoc } from '../../reference/format'
+import {
+  formatDoc,
+  formatExamples,
+  getModuleNames,
+  listCoreExpressions,
+  listDatatypes,
+  listModuleExpressions,
+  listModules,
+  lookupDoc,
+} from '../../reference/format'
 import { allBuiltinModules } from '../../src/allModules'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { expandMacros } from '../../src/ast/expandMacros'
@@ -153,11 +162,36 @@ interface VersionConfig {
   subcommand: 'version'
 }
 
-type Config = ReplConfig | RunConfig | TestConfig | BuildConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | CheckConfig | InitConfig | ExamplesConfig | HelpConfig | VersionConfig
+type Config =
+  | ReplConfig
+  | RunConfig
+  | TestConfig
+  | BuildConfig
+  | DocConfig
+  | ListConfig
+  | TokenizeConfig
+  | ParseConfig
+  | CheckConfig
+  | InitConfig
+  | ExamplesConfig
+  | HelpConfig
+  | VersionConfig
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
-const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap', '--no-expand-macros', '--no-tree-shake', '--no-check', '--coverage'])
+const booleanFlags = new Set([
+  '-s',
+  '--silent',
+  '--pure',
+  '--debug',
+  '--modules',
+  '--datatypes',
+  '--no-sourcemap',
+  '--no-expand-macros',
+  '--no-tree-shake',
+  '--no-check',
+  '--coverage',
+])
 
 const commands = [':help', ':quit', ':builtins', ':context', ':reload']
 const expressionRegExp = new RegExp(`^(.*\\(\\s*)(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*)$`)
@@ -185,7 +219,12 @@ function createFileResolver(): (importPath: string, fromDir: string) => string {
   }
 }
 
-function makeDvala(context: Record<string, unknown>, pure: boolean, noCheck = false, fileResolverBaseDir = process.cwd()) {
+function makeDvala(
+  context: Record<string, unknown>,
+  pure: boolean,
+  noCheck = false,
+  fileResolverBaseDir = process.cwd(),
+) {
   const runner = createDvala({
     debug: true,
     modules: [...allBuiltinModules, ...cliModules],
@@ -194,16 +233,13 @@ function makeDvala(context: Record<string, unknown>, pure: boolean, noCheck = fa
     typecheck: !noCheck,
     onTypeDiagnostic: d => {
       // Print type diagnostics as warnings to stderr
-      const loc = d.sourceCodeInfo
-        ? ` at ${d.sourceCodeInfo.position.line}:${d.sourceCodeInfo.position.column}`
-        : ''
+      const loc = d.sourceCodeInfo ? ` at ${d.sourceCodeInfo.position.line}:${d.sourceCodeInfo.position.column}` : ''
       process.stderr.write(`\x1b[33m[type ${d.severity}]${loc}: ${d.message}\x1b[0m\n`)
     },
   })
   return {
-    run: (program: string | DvalaBundle, filePath?: string) => runner.run(program, pure
-      ? { scope: context, pure: true, filePath }
-      : { scope: context, filePath }),
+    run: (program: string | DvalaBundle, filePath?: string) =>
+      runner.run(program, pure ? { scope: context, pure: true, filePath } : { scope: context, filePath }),
   }
 }
 
@@ -239,7 +275,9 @@ switch (config.subcommand) {
     try {
       const resolved = resolveProjectConfig(config.directory)
       if (!resolved) {
-        printErrorMessage('No dvala.json found. Specify a project directory or create a dvala.json in the project root.')
+        printErrorMessage(
+          'No dvala.json found. Specify a project directory or create a dvala.json in the project root.',
+        )
         process.exit(1)
       }
       // Merge dvala.json build config with CLI overrides
@@ -270,7 +308,15 @@ switch (config.subcommand) {
     break
   }
   case 'test': {
-    runDvalaTest(config.filename, config.testPattern, config.reporter, config.outputFile, config.coverage, config.coverageReporter, config.coverageDir)
+    runDvalaTest(
+      config.filename,
+      config.testPattern,
+      config.reporter,
+      config.outputFile,
+      config.coverage,
+      config.coverageReporter,
+      config.coverageDir,
+    )
       .then(() => process.exit(0))
       .catch(error => {
         printErrorMessage(`${error}`)
@@ -301,7 +347,9 @@ switch (config.subcommand) {
       process.exit(1)
     }
     if ('ambiguous' in result) {
-      console.log(`Multiple matches for "${config.name}":\n${result.ambiguous.map(m => `  ${m}`).join('\n')}\n\nPlease be more specific.`)
+      console.log(
+        `Multiple matches for "${config.name}":\n${result.ambiguous.map(m => `  ${m}`).join('\n')}\n\nPlease be more specific.`,
+      )
       process.exit(1)
     }
     console.log(formatDoc(result.ref))
@@ -430,7 +478,11 @@ function resolveEntrySource(subcommand: string): { code: string; filePath: strin
   return { code: fs.readFileSync(entryPath, 'utf-8'), filePath: entryPath }
 }
 
-function resolveSourceInput(subcommand: string, positional: Maybe<string>, file: Maybe<string>): { code: string; filePath: Maybe<string>; fileResolverBaseDir: string } {
+function resolveSourceInput(
+  subcommand: string,
+  positional: Maybe<string>,
+  file: Maybe<string>,
+): { code: string; filePath: Maybe<string>; fileResolverBaseDir: string } {
   if (positional) {
     return { code: positional, filePath: null, fileResolverBaseDir: process.cwd() }
   }
@@ -450,7 +502,11 @@ function resolveSourceInput(subcommand: string, positional: Maybe<string>, file:
   }
 }
 
-function resolveRunProgram(subcommand: string, positional: Maybe<string>, file: Maybe<string>): { program: string | DvalaBundle; filePath: Maybe<string>; fileResolverBaseDir: string } {
+function resolveRunProgram(
+  subcommand: string,
+  positional: Maybe<string>,
+  file: Maybe<string>,
+): { program: string | DvalaBundle; filePath: Maybe<string>; fileResolverBaseDir: string } {
   if (positional) {
     return { program: positional, filePath: null, fileResolverBaseDir: process.cwd() }
   }
@@ -533,7 +589,15 @@ function isFilePath(arg: Maybe<string>): arg is string {
   return !fs.statSync(arg).isDirectory()
 }
 
-async function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<string>, reporter: TestReporter, outputFile: Maybe<string>, coverage: boolean, coverageReporterOverride: Maybe<CoverageReporter[]>, coverageDirOverride: Maybe<string>) {
+async function runDvalaTest(
+  testPath: Maybe<string>,
+  testNamePattern: Maybe<string>,
+  reporter: TestReporter,
+  outputFile: Maybe<string>,
+  coverage: boolean,
+  coverageReporterOverride: Maybe<CoverageReporter[]>,
+  coverageDirOverride: Maybe<string>,
+) {
   const pattern = testNamePattern !== null ? new RegExp(testNamePattern) : undefined
 
   if (isFilePath(testPath)) {
@@ -559,7 +623,9 @@ async function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<stri
     // Project mode — discover tests via dvala.json
     const resolved = resolveProjectConfig(testPath)
     if (!resolved) {
-      printErrorMessage('No dvala.json found. Either specify a test file, a project directory, or create a dvala.json in the project root.')
+      printErrorMessage(
+        'No dvala.json found. Either specify a test file, a project directory, or create a dvala.json in the project root.',
+      )
       process.exit(1)
     }
     const suiteResult = await runTestSuite(resolved.rootDir, resolved.config.tests, pattern, coverage)
@@ -572,23 +638,34 @@ async function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<stri
     // Console output for each file
     let success = true
     for (const fileResult of suiteResult.files) {
-      const consoleResult = reporter === 'tap'
-        ? formatTap(fileResult)
-        : formatConsole(fileResult, { verbose: reporter === 'verbose', color: useColor })
+      const consoleResult =
+        reporter === 'tap'
+          ? formatTap(fileResult)
+          : formatConsole(fileResult, { verbose: reporter === 'verbose', color: useColor })
       const consoleOutput = 'tap' in consoleResult ? consoleResult.tap : consoleResult.text
       console.log(`\n${consoleOutput}`)
-      if (!consoleResult.success)
-        success = false
+      if (!consoleResult.success) success = false
     }
 
     // Suite summary
     const totalTests = suiteResult.files.reduce((sum, f) => sum + f.results.length, 0)
-    const totalPassed = suiteResult.files.reduce((sum, f) => sum + f.results.filter(r => r.status === 'passed').length, 0)
-    const totalFailed = suiteResult.files.reduce((sum, f) => sum + f.results.filter(r => r.status === 'failed').length, 0)
-    const totalSkipped = suiteResult.files.reduce((sum, f) => sum + f.results.filter(r => r.status === 'skipped').length, 0)
+    const totalPassed = suiteResult.files.reduce(
+      (sum, f) => sum + f.results.filter(r => r.status === 'passed').length,
+      0,
+    )
+    const totalFailed = suiteResult.files.reduce(
+      (sum, f) => sum + f.results.filter(r => r.status === 'failed').length,
+      0,
+    )
+    const totalSkipped = suiteResult.files.reduce(
+      (sum, f) => sum + f.results.filter(r => r.status === 'skipped').length,
+      0,
+    )
     const duration = (suiteResult.durationMs / 1000).toFixed(3)
 
-    console.log(`\n${suiteResult.files.length} test files | ${totalTests} tests | ${totalPassed} passed | ${totalFailed} failed | ${totalSkipped} skipped (${duration}s)`)
+    console.log(
+      `\n${suiteResult.files.length} test files | ${totalTests} tests | ${totalPassed} passed | ${totalFailed} failed | ${totalSkipped} skipped (${duration}s)`,
+    )
 
     // File output — concatenate results for all files
     if (outputFile) {
@@ -609,8 +686,7 @@ async function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<stri
       writeCoverage(suiteResult.files, coverageConfig, resolved.rootDir)
     }
 
-    if (!success)
-      process.exit(1)
+    if (!success) process.exit(1)
   }
 }
 
@@ -629,7 +705,12 @@ function writeCoverage(results: TestRunResult[], coverageConfig: CoverageConfig,
     allFiles = [...new Set(matched)]
   }
 
-  const filter: CoverageFilter = { include: coverageConfig.include, exclude: coverageConfig.exclude, rootDir: baseDir, allFiles }
+  const filter: CoverageFilter = {
+    include: coverageConfig.include,
+    exclude: coverageConfig.exclude,
+    rootDir: baseDir,
+    allFiles,
+  }
   // Text summary always goes to stdout regardless of reporter config
   printCoverageText(results, filter)
 
@@ -666,7 +747,14 @@ function printCoverageText(results: TestRunResult[], filter?: CoverageFilter): v
   const cwd = process.cwd()
 
   // Build flat list of rows grouped by directory
-  type Row = { dir: string; file: string; linePct: number; exprPct: number; uncovered: string; s: typeof summaries[0] }
+  type Row = {
+    dir: string
+    file: string
+    linePct: number
+    exprPct: number
+    uncovered: string
+    s: (typeof summaries)[0]
+  }
   const rows: Row[] = summaries.map(s => {
     const rel = path.relative(cwd, s.path)
     const dir = path.dirname(rel)
@@ -674,8 +762,7 @@ function printCoverageText(results: TestRunResult[], filter?: CoverageFilter): v
     const linePct = s.linesFound > 0 ? (s.linesHit / s.linesFound) * 100 : 100
     const exprPct = s.exprsFound > 0 ? (s.exprsHit / s.exprsFound) * 100 : 100
     let uncovered = s.uncoveredLines.join(',')
-    if (uncovered.length > MAX_UNCOVERED_WIDTH)
-      uncovered = `${uncovered.slice(0, MAX_UNCOVERED_WIDTH - 1)}…`
+    if (uncovered.length > MAX_UNCOVERED_WIDTH) uncovered = `${uncovered.slice(0, MAX_UNCOVERED_WIDTH - 1)}…`
     return { dir, file, linePct, exprPct, uncovered, s }
   })
 
@@ -695,7 +782,12 @@ function printCoverageText(results: TestRunResult[], filter?: CoverageFilter): v
 
   const dirHeaders = [...new Set(rows.map(r => r.dir))].map(d => ` ${d}`)
   const fileEntries = rows.map(r => `  ${r.file}`)
-  const fileColWidth = Math.max(FILE_COL.length, 'All files'.length, ...dirHeaders.map(s => s.length), ...fileEntries.map(s => s.length))
+  const fileColWidth = Math.max(
+    FILE_COL.length,
+    'All files'.length,
+    ...dirHeaders.map(s => s.length),
+    ...fileEntries.map(s => s.length),
+  )
   const pctColWidth = Math.max(LINE_COL.length, EXPR_COL.length, 6) // "100.00"
   const uncovColWidth = Math.max(UNCOV_COL.length, MAX_UNCOVERED_WIDTH)
 
@@ -710,7 +802,9 @@ function printCoverageText(results: TestRunResult[], filter?: CoverageFilter): v
   }
 
   console.log(`\n${sep}`)
-  console.log(`${FILE_COL.padEnd(fileColWidth)} | ${LINE_COL.padStart(pctColWidth)} | ${EXPR_COL.padStart(pctColWidth)} | ${UNCOV_COL.padEnd(uncovColWidth)}`)
+  console.log(
+    `${FILE_COL.padEnd(fileColWidth)} | ${LINE_COL.padStart(pctColWidth)} | ${EXPR_COL.padStart(pctColWidth)} | ${UNCOV_COL.padEnd(uncovColWidth)}`,
+  )
   console.log(sep)
   console.log(row('All files', totalLinePct, totalExprPct, ''))
 
@@ -718,24 +812,25 @@ function printCoverageText(results: TestRunResult[], filter?: CoverageFilter): v
   const byDir = new Map<string, Row[]>()
   for (const r of rows) {
     let group = byDir.get(r.dir)
-    if (!group) { group = []; byDir.set(r.dir, group) }
+    if (!group) {
+      group = []
+      byDir.set(r.dir, group)
+    }
     group.push(r)
   }
 
   // Root-level files first, then subdirectories
-  const sortedDirs = [...byDir.keys()].sort((a, b) => a === '.' ? -1 : b === '.' ? 1 : a.localeCompare(b))
+  const sortedDirs = [...byDir.keys()].sort((a, b) => (a === '.' ? -1 : b === '.' ? 1 : a.localeCompare(b)))
   for (const dir of sortedDirs) {
     const files = byDir.get(dir)!
     if (dir === '.') {
       // Root-level files: same indent as directory headers, no directory row
-      for (const f of files)
-        console.log(row(` ${f.file}`, f.linePct, f.exprPct, f.uncovered))
+      for (const f of files) console.log(row(` ${f.file}`, f.linePct, f.exprPct, f.uncovered))
     } else {
       const dirLinePct = files.reduce((s, f) => s + f.linePct, 0) / files.length
       const dirExprPct = files.reduce((s, f) => s + f.exprPct, 0) / files.length
       console.log(row(` ${dir}`, dirLinePct, dirExprPct, ''))
-      for (const f of files)
-        console.log(row(`  ${f.file}`, f.linePct, f.exprPct, f.uncovered))
+      for (const f of files) console.log(row(`  ${f.file}`, f.linePct, f.exprPct, f.uncovered))
     }
   }
 
@@ -744,9 +839,8 @@ function printCoverageText(results: TestRunResult[], filter?: CoverageFilter): v
 
 function reportSingleFile(result: TestRunResult, reporter: TestReporter, outputFile: Maybe<string>) {
   // Console output — always human-readable
-  const consoleResult = reporter === 'tap'
-    ? formatTap(result)
-    : formatConsole(result, { verbose: reporter === 'verbose', color: useColor })
+  const consoleResult =
+    reporter === 'tap' ? formatTap(result) : formatConsole(result, { verbose: reporter === 'verbose', color: useColor })
   const consoleOutput = 'tap' in consoleResult ? consoleResult.tap : consoleResult.text
   console.log(`\n${consoleOutput}`)
 
@@ -758,15 +852,12 @@ function reportSingleFile(result: TestRunResult, reporter: TestReporter, outputF
     console.log(`Test results written to ${outputFile}`)
   }
 
-  if (!consoleResult.success)
-    process.exit(1)
+  if (!consoleResult.success) process.exit(1)
 }
 
 function inferFormat(filename: string): TestReporter {
-  if (filename.endsWith('.xml'))
-    return 'junit'
-  if (filename.endsWith('.html'))
-    return 'html'
+  if (filename.endsWith('.xml')) return 'junit'
+  if (filename.endsWith('.html')) return 'html'
   return 'tap'
 }
 
@@ -787,54 +878,69 @@ function formatToFile(result: TestRunResult, format: TestReporter): string {
  */
 function getCliIoEffectHandlers(readLine: (msg: string) => Promise<string>) {
   return [
-    { pattern: 'dvala.io.read', handler: async ({ arg, resume }: { arg: unknown; resume: (v: unknown) => void }) => {
-      const message = typeof arg === 'string' ? arg : ''
-      const answer = await readLine(message)
-      resume(answer)
-    } },
-    { pattern: 'dvala.io.pick', handler: async ({ arg, resume }: { arg: unknown; resume: (v: unknown) => void }) => {
-      // Support both plain array and { items, options } format
-      const items: string[] = Array.isArray(arg) ? arg as string[] : (arg as { items: string[] }).items
-      const options = Array.isArray(arg) ? undefined : (arg as { options?: { prompt?: string; default?: number } }).options
-      const header = options?.prompt ?? 'Pick one:'
-      const defaultIndex = options?.default
-      for (let i = 0; i < items.length; i++) {
-        console.log(`  ${i}) ${items[i]}`)
-      }
-      const defaultHint = defaultIndex !== undefined ? ` [default: ${defaultIndex}]` : ''
-      const answer = await readLine(`${header}${defaultHint} `)
-      const trimmed = answer.trim()
-      if (trimmed === '') {
-        resume(defaultIndex !== undefined ? defaultIndex : null)
-      } else {
-        resume(Number(trimmed))
-      }
-    } },
-    { pattern: 'dvala.io.confirm', handler: async ({ arg, resume }: { arg: unknown; resume: (v: unknown) => void }) => {
-      // arg is either a string or { question, options: { default } }
-      const question = typeof arg === 'string' ? arg : (arg as { question: string }).question ?? 'Confirm?'
-      const defaultValue = typeof arg === 'string' ? undefined : (arg as { options?: { default?: boolean } }).options?.default
-      const hint = defaultValue === true ? '(Y/n)' : defaultValue === false ? '(y/N)' : '(y/n)'
-      const answer = await readLine(`${question} ${hint}: `)
-      const trimmed = answer.trim()
-      if (trimmed === '' && defaultValue !== undefined) {
-        resume(defaultValue)
-      } else {
-        resume(trimmed.toLowerCase().startsWith('y'))
-      }
-    } },
+    {
+      pattern: 'dvala.io.read',
+      handler: async ({ arg, resume }: { arg: unknown; resume: (v: unknown) => void }) => {
+        const message = typeof arg === 'string' ? arg : ''
+        const answer = await readLine(message)
+        resume(answer)
+      },
+    },
+    {
+      pattern: 'dvala.io.pick',
+      handler: async ({ arg, resume }: { arg: unknown; resume: (v: unknown) => void }) => {
+        // Support both plain array and { items, options } format
+        const items: string[] = Array.isArray(arg) ? (arg as string[]) : (arg as { items: string[] }).items
+        const options = Array.isArray(arg)
+          ? undefined
+          : (arg as { options?: { prompt?: string; default?: number } }).options
+        const header = options?.prompt ?? 'Pick one:'
+        const defaultIndex = options?.default
+        for (let i = 0; i < items.length; i++) {
+          console.log(`  ${i}) ${items[i]}`)
+        }
+        const defaultHint = defaultIndex !== undefined ? ` [default: ${defaultIndex}]` : ''
+        const answer = await readLine(`${header}${defaultHint} `)
+        const trimmed = answer.trim()
+        if (trimmed === '') {
+          resume(defaultIndex !== undefined ? defaultIndex : null)
+        } else {
+          resume(Number(trimmed))
+        }
+      },
+    },
+    {
+      pattern: 'dvala.io.confirm',
+      handler: async ({ arg, resume }: { arg: unknown; resume: (v: unknown) => void }) => {
+        // arg is either a string or { question, options: { default } }
+        const question = typeof arg === 'string' ? arg : ((arg as { question: string }).question ?? 'Confirm?')
+        const defaultValue =
+          typeof arg === 'string' ? undefined : (arg as { options?: { default?: boolean } }).options?.default
+        const hint = defaultValue === true ? '(Y/n)' : defaultValue === false ? '(y/N)' : '(y/n)'
+        const answer = await readLine(`${question} ${hint}: `)
+        const trimmed = answer.trim()
+        if (trimmed === '' && defaultValue !== undefined) {
+          resume(defaultValue)
+        } else {
+          resume(trimmed.toLowerCase().startsWith('y'))
+        }
+      },
+    },
   ]
 }
 
-async function execute(expression: string, scope: Record<string, unknown>, readLine: (msg: string) => Promise<string>): Promise<Record<string, unknown>> {
+async function execute(
+  expression: string,
+  scope: Record<string, unknown>,
+  readLine: (msg: string) => Promise<string>,
+): Promise<Record<string, unknown>> {
   const _dvala = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
   try {
     const runResult = await _dvala.runAsync(expression, {
       scope,
       effectHandlers: getCliIoEffectHandlers(readLine),
     })
-    if (runResult.type === 'error')
-      throw runResult.error
+    if (runResult.type === 'error') throw runResult.error
     const result = runResult.type === 'completed' ? runResult.value : null
     historyResults.unshift(result)
     if (historyResults.length > 9) {
@@ -873,10 +979,7 @@ async function runInit(): Promise<void> {
 
   const _dvala = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
   const runResult = await _dvala.runAsync(initScript, {
-    effectHandlers: [
-      hostHandler({ configExists, dirName }),
-      ...getCliIoEffectHandlers(readLine),
-    ],
+    effectHandlers: [hostHandler({ configExists, dirName }), ...getCliIoEffectHandlers(readLine)],
   })
 
   rl.close()
@@ -890,8 +993,7 @@ async function runInit(): Promise<void> {
     }
     throw runResult.error
   }
-  if (runResult.type !== 'completed')
-    throw new Error('Init script did not complete')
+  if (runResult.type !== 'completed') throw new Error('Init script did not complete')
 
   const result = runResult.value as { name: string; entryFile: boolean; tests: boolean; repl: boolean; vscode: boolean }
   const projectName = result.name || dirName
@@ -961,15 +1063,13 @@ async function runInit(): Promise<void> {
 }
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof Error)
-    return error.message
+  if (error instanceof Error) return error.message
 
   return 'Unknown error'
 }
 
 function setReplHistoryVariables(bindings: Record<string, unknown>): void {
-  for (let i = 1; i <= 9; i++)
-    delete bindings[`*${i}*`]
+  for (let i = 1; i <= 9; i++) delete bindings[`*${i}*`]
   historyResults.forEach((value, i) => {
     bindings[`*${i + 1}*`] = value
   })
@@ -1008,8 +1108,7 @@ function parseContextOptions(args: string[], startIndex: number): { options: Con
   let i = startIndex
   while (i < args.length) {
     const parsed = parseOption(args, i)
-    if (!parsed)
-      break
+    if (!parsed) break
 
     switch (parsed.option) {
       case '-c':
@@ -1057,8 +1156,7 @@ function parsePrintOptions(args: string[], startIndex: number): { options: Print
   let i = startIndex
   while (i < args.length) {
     const parsed = parseOption(args, i)
-    if (!parsed)
-      break
+    if (!parsed) break
 
     switch (parsed.option) {
       case '-s':
@@ -1073,7 +1171,18 @@ function parsePrintOptions(args: string[], startIndex: number): { options: Print
   return { options, nextIndex: i }
 }
 
-function parseRunOptions(args: string[], startIndex: number): { context: Record<string, unknown>; printResult: boolean; pure: boolean; noCheck: boolean; file: Maybe<string>; positional: Maybe<string>; nextIndex: number } {
+function parseRunOptions(
+  args: string[],
+  startIndex: number,
+): {
+  context: Record<string, unknown>
+  printResult: boolean
+  pure: boolean
+  noCheck: boolean
+  file: Maybe<string>
+  positional: Maybe<string>
+  nextIndex: number
+} {
   let context: Record<string, unknown> = {}
   let printResult = true
   let pure = false
@@ -1276,7 +1385,9 @@ function processArguments(args: string[]): Config {
             const reporters = parsed.argument.split(',').map(r => r.trim()) as CoverageReporter[]
             const invalid = reporters.filter(r => !validCoverageReporters.includes(r))
             if (invalid.length > 0) {
-              printErrorMessage(`Invalid coverage reporter(s): ${invalid.join(', ')}. Must be one of: ${validCoverageReporters.join(', ')}`)
+              printErrorMessage(
+                `Invalid coverage reporter(s): ${invalid.join(', ')}. Must be one of: ${validCoverageReporters.join(', ')}`,
+              )
               process.exit(1)
             }
             coverageReporter = reporters
@@ -1297,7 +1408,16 @@ function processArguments(args: string[]): Config {
         }
       }
       // filename is optional — if omitted, dvala.json project mode is used
-      return { subcommand: 'test', filename, testPattern, reporter, outputFile, coverage, coverageReporter, coverageDir }
+      return {
+        subcommand: 'test',
+        filename,
+        testPattern,
+        reporter,
+        outputFile,
+        coverage,
+        coverageReporter,
+        coverageDir,
+      }
     }
     case 'repl': {
       let loadFilename: Maybe<string> = null
@@ -1441,9 +1561,7 @@ function processArguments(args: string[]): Config {
 }
 
 function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<string>, loadFilename: Maybe<string>) {
-  const prompt = projectName
-    ? fmt.bright.gray(`${projectName}> `)
-    : PROMPT
+  const prompt = projectName ? fmt.bright.gray(`${projectName}> `) : PROMPT
 
   if (projectName) {
     console.log(`Welcome to Dvala v${version} — ${fmt.bright.white(projectName)}`)
@@ -1507,7 +1625,9 @@ function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<st
           rl.close()
           break
         default:
-          printErrorMessage(`Unrecognized command ${Colors.Italic}${line}${Colors.ResetItalic}, try ${Colors.Italic}:help${Colors.ResetItalic}`)
+          printErrorMessage(
+            `Unrecognized command ${Colors.Italic}${line}${Colors.ResetItalic}, try ${Colors.Italic}:help${Colors.ResetItalic}`,
+          )
       }
     } else if (line) {
       bindings = await execute(line, bindings, readLine)
@@ -1520,8 +1640,7 @@ function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<st
 }
 
 function printBuiltins() {
-  Object
-    .values(apiReference)
+  Object.values(apiReference)
     .sort((a, b) => a.title.localeCompare(b.title))
     .forEach(reference => {
       console.log(`
@@ -1531,24 +1650,26 @@ ${getDocString(reference)}`)
 }
 
 function getDocString(reference: Reference) {
-  if (isFunctionReference(reference))
-    return `${getCliFunctionSignature(fmt, reference)}`
+  if (isFunctionReference(reference)) return `${getCliFunctionSignature(fmt, reference)}`
   return ''
 }
 
 function printHelp() {
-  console.log(`
+  console.log(
+    `
 :builtins                 Print all builtin functions
 :context                  Print context
 :reload                   Reload the project REPL file
 :help                     Print this help message
 :help [builtin function]  Print help for [builtin function]
 :quit                     Quit
-`.trim())
+`.trim(),
+  )
 }
 
 function printUsage() {
-  console.log(`
+  console.log(
+    `
 Usage: dvala [subcommand] [options]
 
 Subcommands:
@@ -1603,7 +1724,8 @@ Global options:
   --version                       Print dvala version
 
 With no subcommand, starts an interactive REPL.
-`.trim())
+`.trim(),
+  )
 }
 
 function printContext(bindings: Record<string, unknown>) {
@@ -1621,11 +1743,9 @@ function printContext(bindings: Record<string, unknown>) {
 
 function completer(line: string) {
   const helpMatch = line.match(/:help\s+(.*)/)
-  if (helpMatch)
-    return [expressions.filter(c => c.startsWith(helpMatch[1]!)).map(c => `:help ${c} `), line]
+  if (helpMatch) return [expressions.filter(c => c.startsWith(helpMatch[1]!)).map(c => `:help ${c} `), line]
 
-  if (line.startsWith(':'))
-    return [commands.filter(c => c.startsWith(line)).map(c => `${c} `), line]
+  if (line.startsWith(':')) return [commands.filter(c => c.startsWith(line)).map(c => `${c} `), line]
 
   const expressionMatch = expressionRegExp.exec(line)
 
@@ -1637,8 +1757,7 @@ function completer(line: string) {
   const names = [...new Set([...Object.keys(replBindings)])]
   const nameMatch = nameRegExp.exec(line)
 
-  if (nameMatch)
-    return [names.filter(c => c.startsWith(nameMatch[2]!)).map(c => `${nameMatch[1]}${c} `), line]
+  if (nameMatch) return [names.filter(c => c.startsWith(nameMatch[2]!)).map(c => `${nameMatch[1]}${c} `), line]
 
   return [[], line]
 }

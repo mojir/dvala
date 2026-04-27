@@ -18,7 +18,7 @@ import type { DvalaModule } from '../interface'
 import functionalModuleSource from './functional.dvala'
 
 const functionalUtilsNormalExpression: BuiltinNormalExpressions = {
-  'juxt': {
+  juxt: {
     evaluate: (params, sourceCodeInfo): JuxtFunction => {
       for (const param of params) assertFunctionLike(param, sourceCodeInfo)
       const arity = getCommonArityFromFunctions([...params] as FunctionLike[])
@@ -44,10 +44,7 @@ const functionalUtilsNormalExpression: BuiltinNormalExpressions = {
         fun: { type: 'function' },
         fns: { type: 'function', rest: true },
       },
-      variants: [
-        { argumentNames: ['fun'] },
-        { argumentNames: ['fun', 'fns'] },
-      ],
+      variants: [{ argumentNames: ['fun'] }, { argumentNames: ['fun', 'fns'] }],
       description: `Takes one or many function and returns a function that is the juxtaposition of those functions.
 The returned function takes a variable number of args,
 and returns a vector containing the result of applying each function to the args (left-to-right).`,
@@ -74,7 +71,7 @@ juxt(+, *, min, max) apply range(1, 11)`,
     },
   },
 
-  'complement': {
+  complement: {
     evaluate: ([fn], sourceCodeInfo): ComplementFunction => {
       const fun = asFunctionLike(fn, sourceCodeInfo)
       return {
@@ -92,7 +89,8 @@ juxt(+, *, min, max) apply range(1, 11)`,
       returns: { type: 'function' },
       args: { fun: { type: 'function' } },
       variants: [{ argumentNames: ['fun'] }],
-      description: 'Takes a function `fun` and returns a new function that takes the same arguments as f, has the same effects, if any, and returns the opposite truth value.',
+      description:
+        'Takes a function `fun` and returns a new function that takes the same arguments as f, has the same effects, if any, and returns the opposite truth value.',
       seeAlso: ['comp', 'functional.everyPred', 'functional.somePred'],
       examples: [
         'let { complement } = import("functional");\ncomplement(>)(1, 3)',
@@ -103,7 +101,7 @@ juxt(+, *, min, max) apply range(1, 11)`,
     },
   },
 
-  'everyPred': {
+  everyPred: {
     evaluate: (params, sourceCodeInfo): EveryPredFunction => {
       return {
         [FUNCTION_SYMBOL]: true,
@@ -122,10 +120,7 @@ juxt(+, *, min, max) apply range(1, 11)`,
         fun: { type: 'function' },
         fns: { type: 'function', rest: true },
       },
-      variants: [
-        { argumentNames: ['fun'] },
-        { argumentNames: ['fun', 'fns'] },
-      ],
+      variants: [{ argumentNames: ['fun'] }, { argumentNames: ['fun', 'fns'] }],
       description: `
 Takes a number of predicates and returns a function that returns \`true\` if all predicates
 return a truthy value against all of its arguments, else it returns \`false\`.`,
@@ -146,7 +141,7 @@ everyPred(isString, -> count($) > 3)(
     },
   },
 
-  'somePred': {
+  somePred: {
     evaluate: (params, sourceCodeInfo): SomePredFunction => {
       return {
         [FUNCTION_SYMBOL]: true,
@@ -165,11 +160,9 @@ everyPred(isString, -> count($) > 3)(
         fun: { type: 'function' },
         fns: { type: 'function', rest: true },
       },
-      variants: [
-        { argumentNames: ['fun'] },
-        { argumentNames: ['fun', 'fns'] },
-      ],
-      description: 'Takes a number of `predicates` and returns a function that returns `true` if at least one of the `predicates` return a truthy `true` value against at least one of its arguments, else it returns `false`.',
+      variants: [{ argumentNames: ['fun'] }, { argumentNames: ['fun', 'fns'] }],
+      description:
+        'Takes a number of `predicates` and returns a function that returns `true` if at least one of the `predicates` return a truthy `true` value against at least one of its arguments, else it returns `false`.',
       seeAlso: ['functional.everyPred', 'functional.complement', 'collection.isAny'],
       examples: [
         'let { somePred } = import("functional");\nsomePred(isString, -> count($) > 3)("Albert", "Mojir")',
@@ -181,7 +174,7 @@ everyPred(isString, -> count($) > 3)(
     },
   },
 
-  'fnull': {
+  fnull: {
     evaluate: (rawParams, sourceCodeInfo): FNullFunction => {
       const fn = rawParams.get(0)
       const fun = asFunctionLike(fn, sourceCodeInfo)
@@ -210,11 +203,9 @@ everyPred(isString, -> count($) > 3)(
         arg: { type: 'any' },
         args: { type: 'any', rest: true },
       },
-      variants: [
-        { argumentNames: ['fun', 'arg'] },
-        { argumentNames: ['fun', 'arg', 'args'] },
-      ],
-      description: 'Takes a function `fun`, and returns a function that calls `fun`, replacing a null argument to the corresponding argument.',
+      variants: [{ argumentNames: ['fun', 'arg'] }, { argumentNames: ['fun', 'arg', 'args'] }],
+      description:
+        'Takes a function `fun`, and returns a function that calls `fun`, replacing a null argument to the corresponding argument.',
       seeAlso: ['identity', 'constantly'],
       examples: [
         'let { fnull } = import("functional");\nfnull(inc, 0)(1)',

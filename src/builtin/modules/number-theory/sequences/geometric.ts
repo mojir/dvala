@@ -10,11 +10,7 @@ import type { SequenceNormalExpressions } from '.'
  * @param number The number to check
  * @returns true if the number is in the sequence, false otherwise
  */
-function isInGeometricSequence(
-  initialTerm: number,
-  ratio: number,
-  number: number,
-): boolean {
+function isInGeometricSequence(initialTerm: number, ratio: number, number: number): boolean {
   // Handle special cases
   if (approxEqual(initialTerm, 0)) {
     return approxEqual(number, 0)
@@ -50,9 +46,7 @@ function isInGeometricSequence(
 
     // For negative ratios, alternating terms have alternating signs
     // Check if sign matches what we expect based on the power
-    const expectedSign = roundedLogResult % 2 === 0
-      ? Math.sign(initialTerm)
-      : Math.sign(initialTerm) * Math.sign(ratio)
+    const expectedSign = roundedLogResult % 2 === 0 ? Math.sign(initialTerm) : Math.sign(initialTerm) * Math.sign(ratio)
 
     return Math.sign(number) === expectedSign
   }
@@ -79,7 +73,7 @@ function isInGeometricSequence(
   return approxEqual(calculatedValue, number)
 }
 export const geometricNormalExpressions: SequenceNormalExpressions<'geometric'> = {
-  'geometricSeq': {
+  geometricSeq: {
     evaluate: ([start, ratio, length], sourceCodeInfo): number[] => {
       assertNumber(start, sourceCodeInfo, { finite: true })
       assertNumber(ratio, sourceCodeInfo, { finite: true })
@@ -89,12 +83,14 @@ export const geometricNormalExpressions: SequenceNormalExpressions<'geometric'> 
     },
     arity: toFixedArity(3),
   },
-  'geometricTakeWhile': {
+  geometricTakeWhile: {
     /* v8 ignore next 1 */
-    evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
+    evaluate: () => {
+      throw new Error('unreachable: overridden by dvalaImpl')
+    },
     arity: toFixedArity(3),
   },
-  'geometricNth': {
+  geometricNth: {
     evaluate: ([start, ratio, n], sourceCodeInfo): number => {
       assertNumber(start, sourceCodeInfo, { finite: true })
       assertNumber(ratio, sourceCodeInfo, { finite: true })
@@ -103,7 +99,7 @@ export const geometricNormalExpressions: SequenceNormalExpressions<'geometric'> 
     },
     arity: toFixedArity(3),
   },
-  'isGeometric': {
+  isGeometric: {
     evaluate: ([start, ratio, n], sourceCodeInfo): boolean => {
       assertNumber(n, sourceCodeInfo)
       assertNumber(start, sourceCodeInfo, { finite: true })

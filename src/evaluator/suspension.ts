@@ -71,17 +71,22 @@ interface SuspensionBlobData {
 }
 
 // Marker objects embedded in the serialized data
-interface CSRef { __csRef: number }
+interface CSRef {
+  __csRef: number
+}
 /** Marker for a serialized PersistentVector */
-interface PVMarker { __pv: unknown[] }
+interface PVMarker {
+  __pv: unknown[]
+}
 /** Marker for a serialized PersistentMap */
-interface PMMarker { __pm: Record<string, unknown> }
+interface PMMarker {
+  __pm: Record<string, unknown>
+}
 
 function isCSRef(value: unknown): value is CSRef {
-  return value !== null
-    && typeof value === 'object'
-    && '__csRef' in value
-    && typeof (value as CSRef).__csRef === 'number'
+  return (
+    value !== null && typeof value === 'object' && '__csRef' in value && typeof (value as CSRef).__csRef === 'number'
+  )
 }
 function isPVMarker(value: unknown): value is PVMarker {
   return value !== null && typeof value === 'object' && '__pv' in value
@@ -98,10 +103,12 @@ function isPMMarker(value: unknown): value is PMMarker {
  * serialization context.
  */
 function isSuspensionBlobData(value: unknown): value is SuspensionBlobData {
-  return value !== null
-    && typeof value === 'object'
-    && '__suspensionBlob' in value
-    && (value as SuspensionBlobData).__suspensionBlob === true
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    '__suspensionBlob' in value &&
+    (value as SuspensionBlobData).__suspensionBlob
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -208,20 +215,18 @@ export function serializeToObject(k: ContinuationStack, meta?: unknown, initialS
   }
 
   // Serialize all collected ContextStacks
-  const serializedContextStacks: SerializedContextStack[] = Array.from(csMap.entries()).map(
-    ([cs, id]) => ({
-      id,
-      contexts: cs.getContextsRaw().map((ctx, ctxIdx) => {
-        const serialized: Record<string, unknown> = {}
-        for (const [name, entry] of Object.entries(ctx)) {
-          serialized[name] = { value: serializeValue(entry.value, `cs[${id}].contexts[${ctxIdx}].${name}`) }
-        }
-        return serialized
-      }),
-      globalContextIndex: cs.getGlobalContextIndex(),
-      pure: cs.pure,
+  const serializedContextStacks: SerializedContextStack[] = Array.from(csMap.entries()).map(([cs, id]) => ({
+    id,
+    contexts: cs.getContextsRaw().map((ctx, ctxIdx) => {
+      const serialized: Record<string, unknown> = {}
+      for (const [name, entry] of Object.entries(ctx)) {
+        serialized[name] = { value: serializeValue(entry.value, `cs[${id}].contexts[${ctxIdx}].${name}`) }
+      }
+      return serialized
     }),
-  )
+    globalContextIndex: cs.getGlobalContextIndex(),
+    pure: cs.pure,
+  }))
 
   // Serialize the continuation stack
   const serializedK = serializeValue(k, 'k')
@@ -304,10 +309,7 @@ export function serializeSuspensionBlob(
  * The continuation is empty (cannot resume), but checkpoints are preserved
  * for time travel debugging.
  */
-export function serializeTerminalSnapshot(
-  snapshots: unknown[],
-  nextSnapshotIndex: number,
-): SuspensionBlobData {
+export function serializeTerminalSnapshot(snapshots: unknown[], nextSnapshotIndex: number): SuspensionBlobData {
   const base: SuspensionBlobData = {
     __suspensionBlob: true,
     version: SUSPENSION_VERSION,
@@ -479,8 +481,8 @@ export function deserializeFromObject(
   const resolvedK = resolveValue(data.k) as ContinuationStack
 
   // Resolve meta
-  const resolvedMeta = data.meta !== undefined ? resolveValue(data.meta) as Any : undefined
-  const resolvedInitialStep = data.initialStep !== undefined ? resolveValue(data.initialStep) as Step : undefined
+  const resolvedMeta = data.meta !== undefined ? (resolveValue(data.meta) as Any) : undefined
+  const resolvedInitialStep = data.initialStep !== undefined ? (resolveValue(data.initialStep) as Step) : undefined
 
   return {
     k: resolvedK,
@@ -502,7 +504,5 @@ export function extractCheckpointSnapshots(continuation: unknown): Snapshot[] {
     return []
   }
   const pool = data.pool && Object.keys(data.pool).length > 0 ? data.pool : undefined
-  return data.snapshots.map(s =>
-    pool ? expandPoolRefs(s, pool) as Snapshot : s as Snapshot,
-  )
+  return data.snapshots.map(s => (pool ? (expandPoolRefs(s, pool) as Snapshot) : (s as Snapshot)))
 }

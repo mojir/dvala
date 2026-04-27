@@ -4,8 +4,7 @@ import type { PlaygroundAPI } from './playgroundAPI'
 
 // Derive camelCase effect names from PlaygroundAPI at the type level
 type LeafPaths<T, Prefix extends string = ''> = {
-  [K in keyof T & string]:
-  T[K] extends (...args: never[]) => unknown
+  [K in keyof T & string]: T[K] extends (...args: never[]) => unknown
     ? `${Prefix}${K}`
     : T[K] extends object
       ? LeafPaths<T[K], `${Prefix}${K}.`>
@@ -27,7 +26,10 @@ interface EffectDef {
 // Infers literal name types via `const` and errors if any PlaygroundEffectName is missing.
 // The error message includes the missing effect names.
 function definePlaygroundEffects<const T extends readonly EffectDef[]>(
-  effects: T & ([PlaygroundEffectName] extends [T[number]['name']] ? unknown : `Missing effects: ${Exclude<PlaygroundEffectName, T[number]['name']>}`),
+  effects: T &
+    ([PlaygroundEffectName] extends [T[number]['name']]
+      ? unknown
+      : `Missing effects: ${Exclude<PlaygroundEffectName, T[number]['name']>}`),
 ): T {
   return effects
 }
@@ -46,7 +48,10 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       description: 'Show a toast notification. Rate-limited to one per 200 ms.',
       args: {
         message: { type: 'string', description: 'The message to display.' },
-        level: { type: 'string', description: 'Toast level: `"info"`, `"success"`, `"warning"`, or `"error"`. Defaults to `"info"`.' },
+        level: {
+          type: 'string',
+          description: 'Toast level: `"info"`, `"success"`, `"warning"`, or `"error"`. Defaults to `"info"`.',
+        },
       },
       returns: { type: 'null' },
       variants: [{ argumentNames: ['message'] }, { argumentNames: ['message', 'level'] }],
@@ -63,9 +68,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       args: {},
       returns: { type: 'string' },
       variants: [{ argumentNames: [] }],
-      examples: [
-        { code: 'let code = perform(@playground.editor.getContent)', noRun: true },
-      ],
+      examples: [{ code: 'let code = perform(@playground.editor.getContent)', noRun: true }],
     },
     {
       name: 'playground.editor.setContent',
@@ -76,9 +79,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       },
       returns: { type: 'null' },
       variants: [{ argumentNames: ['code'] }],
-      examples: [
-        { code: 'perform(@playground.editor.setContent, "1 + 2")', noRun: true },
-      ],
+      examples: [{ code: 'perform(@playground.editor.setContent, "1 + 2")', noRun: true }],
     },
     {
       name: 'playground.editor.insertText',
@@ -86,7 +87,10 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       description: 'Insert text at a position (defaults to cursor).',
       args: {
         text: { type: 'string', description: 'Text to insert.' },
-        position: { type: 'integer', description: 'Character position to insert at. Defaults to current cursor position.' },
+        position: {
+          type: 'integer',
+          description: 'Character position to insert at. Defaults to current cursor position.',
+        },
       },
       returns: { type: 'null' },
       variants: [{ argumentNames: ['text'] }, { argumentNames: ['text', 'position'] }],
@@ -117,9 +121,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       args: {},
       returns: { type: 'string' },
       variants: [{ argumentNames: [] }],
-      examples: [
-        { code: 'let sel = perform(@playground.editor.getSelection)', noRun: true },
-      ],
+      examples: [{ code: 'let sel = perform(@playground.editor.getSelection)', noRun: true }],
     },
     {
       name: 'playground.editor.setSelection',
@@ -131,9 +133,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       },
       returns: { type: 'null' },
       variants: [{ argumentNames: ['start', 'end'] }],
-      examples: [
-        { code: 'perform(@playground.editor.setSelection, [0, 10])', noRun: true },
-      ],
+      examples: [{ code: 'perform(@playground.editor.setSelection, [0, 10])', noRun: true }],
     },
     {
       name: 'playground.editor.getCursor',
@@ -142,9 +142,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       args: {},
       returns: { type: 'integer' },
       variants: [{ argumentNames: [] }],
-      examples: [
-        { code: 'let pos = perform(@playground.editor.getCursor)', noRun: true },
-      ],
+      examples: [{ code: 'let pos = perform(@playground.editor.getCursor)', noRun: true }],
     },
     {
       name: 'playground.editor.setCursor',
@@ -155,9 +153,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       },
       returns: { type: 'null' },
       variants: [{ argumentNames: ['position'] }],
-      examples: [
-        { code: 'perform(@playground.editor.setCursor, 0)', noRun: true },
-      ],
+      examples: [{ code: 'perform(@playground.editor.setCursor, 0)', noRun: true }],
     },
 
     // ── Context ──
@@ -168,9 +164,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       args: {},
       returns: { type: 'string' },
       variants: [{ argumentNames: [] }],
-      examples: [
-        { code: 'let ctx = perform(@playground.context.getContent)', noRun: true },
-      ],
+      examples: [{ code: 'let ctx = perform(@playground.context.getContent)', noRun: true }],
     },
     {
       name: 'playground.context.setContent',
@@ -181,9 +175,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       },
       returns: { type: 'null' },
       variants: [{ argumentNames: ['json'] }],
-      examples: [
-        { code: 'perform(@playground.context.setContent, "{}")', noRun: true },
-      ],
+      examples: [{ code: 'perform(@playground.context.setContent, "{}")', noRun: true }],
     },
 
     // ── Execution ──
@@ -196,9 +188,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       },
       returns: { type: 'any' },
       variants: [{ argumentNames: ['code'] }],
-      examples: [
-        { code: 'let result = perform(@playground.exec.run, "1 + 2")', noRun: true },
-      ],
+      examples: [{ code: 'let result = perform(@playground.exec.run, "1 + 2")', noRun: true }],
     },
 
     // ── Files ──
@@ -226,9 +216,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       },
       returns: { type: 'string' },
       variants: [{ argumentNames: ['name'] }],
-      examples: [
-        { code: 'let code = perform(@playground.files.load, "my-file")', noRun: true },
-      ],
+      examples: [{ code: 'let code = perform(@playground.files.load, "my-file")', noRun: true }],
     },
     {
       name: 'playground.files.list',
@@ -237,9 +225,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       args: {},
       returns: { type: 'string', array: true },
       variants: [{ argumentNames: [] }],
-      examples: [
-        { code: 'let names = perform(@playground.files.list)', noRun: true },
-      ],
+      examples: [{ code: 'let names = perform(@playground.files.list)', noRun: true }],
     },
 
     // ── Router ──
@@ -252,9 +238,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       },
       returns: { type: 'null' },
       variants: [{ argumentNames: ['route'] }],
-      examples: [
-        { code: 'perform(@playground.router.goto, "examples")', noRun: true },
-      ],
+      examples: [{ code: 'perform(@playground.router.goto, "examples")', noRun: true }],
     },
     {
       name: 'playground.router.back',
@@ -263,9 +247,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       args: {},
       returns: { type: 'null' },
       variants: [{ argumentNames: [] }],
-      examples: [
-        { code: 'perform(@playground.router.back)', noRun: true },
-      ],
+      examples: [{ code: 'perform(@playground.router.back)', noRun: true }],
     },
   ])
 

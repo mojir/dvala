@@ -27,12 +27,7 @@ describe('perfect-cube', () => {
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:perfectCubeTakeWhile(-> $ < 100)')).toEqual([
-      1,
-      8,
-      27,
-      64,
-    ])
+    expect(runNth('nth:perfectCubeTakeWhile(-> $ < 100)')).toEqual([1, 8, 27, 64])
   })
 
   it('should determine if numbers are in the sequence', () => {

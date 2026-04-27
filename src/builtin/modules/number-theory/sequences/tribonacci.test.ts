@@ -14,19 +14,7 @@ describe('tribonacci', () => {
     expect(runNth('nth:tribonacciSeq(2)')).toEqual([0, 1])
     expect(runNth('nth:tribonacciSeq(3)')).toEqual([0, 1, 1])
     expect(runNth('nth:tribonacciSeq(4)')).toEqual([0, 1, 1, 2])
-    expect(runNth('nth:tribonacciSeq(11)')).toEqual([
-      0,
-      1,
-      1,
-      2,
-      4,
-      7,
-      13,
-      24,
-      44,
-      81,
-      149,
-    ])
+    expect(runNth('nth:tribonacciSeq(11)')).toEqual([0, 1, 1, 2, 4, 7, 13, 24, 44, 81, 149])
     expect(() => runNth('nth:tribonacciSeq(0)')).toThrow(DvalaError)
   })
 

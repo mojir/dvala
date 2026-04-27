@@ -183,7 +183,10 @@ export function assertSquareMatrix(matrix: unknown, sourceCodeInfo: SourceCodeIn
     throw new TypeError(`Expected a matrix, but got ${matrix}`, sourceCodeInfo)
   }
   if (plain.length !== (plain[0] as number[]).length) {
-    throw new TypeError(`Expected square matrix, but got ${plain.length} and ${(plain[0] as number[]).length}`, sourceCodeInfo)
+    throw new TypeError(
+      `Expected square matrix, but got ${plain.length} and ${(plain[0] as number[]).length}`,
+      sourceCodeInfo,
+    )
   }
   return plain
 }
@@ -193,7 +196,7 @@ export function isSquareMatrix(matrix: unknown): matrix is number[][] {
   if (!isMatrix(plain)) {
     return false
   }
-  if ((plain).length !== (plain)[0]!.length) {
+  if (plain.length !== plain[0]!.length) {
     return false
   }
   return true

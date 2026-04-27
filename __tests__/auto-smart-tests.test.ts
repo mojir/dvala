@@ -81,15 +81,13 @@ const minValidFor: Record<string, string> = {
  */
 function getWrongValue(types: DataType | DataType[]): string | null {
   const typeArr = Array.isArray(types) ? types : [types]
-  if (typeArr.includes('any') || typeArr.includes('never'))
-    return null
+  if (typeArr.includes('any') || typeArr.includes('never')) return null
 
   const candidates = ['42', '"wrong"', 'true', '[]', '{}', '(-> null)', '#""#', 'null']
 
   for (const candidate of candidates) {
     const accepted = typeArr.some(t => (typeAccepts[t] ?? []).includes(candidate))
-    if (!accepted)
-      return candidate
+    if (!accepted) return candidate
   }
   return null
 }
@@ -180,13 +178,7 @@ const skipModuleWrongTypeTests: Record<string, Set<string>> = {
 }
 
 /** Functions to skip for example determinism tests (side effects, randomness, time) */
-const skipDeterminismTests = new Set([
-  'write!',
-  'inst-ms!',
-  'uuid!',
-  'rand!',
-  'rand-int!',
-])
+const skipDeterminismTests = new Set(['write!', 'inst-ms!', 'uuid!', 'rand!', 'rand-int!'])
 
 const skipModuleDeterminismTests: Record<string, Set<string>> = {
   effectHandler: new Set(['chooseRandom']),
@@ -198,8 +190,7 @@ const skipModuleDeterminismTests: Record<string, Set<string>> = {
 
 describe('auto: docs metadata consistency (core)', () => {
   for (const [name, expr] of Object.entries(normalExpressions)) {
-    if (!expr.docs)
-      continue
+    if (!expr.docs) continue
     const docs = expr.docs
     const { arity } = expr
 
@@ -239,16 +230,14 @@ describe('auto: docs metadata consistency (core)', () => {
             // Non-variadic variant: arg count must be within arity range
             const argCount = variant.argumentNames.length
             if (arity.min !== undefined) {
-              expect(
-                argCount >= arity.min,
-                `${name}: variant has ${argCount} args but arity.min is ${arity.min}`,
-              ).toBe(true)
+              expect(argCount >= arity.min, `${name}: variant has ${argCount} args but arity.min is ${arity.min}`).toBe(
+                true,
+              )
             }
             if (arity.max !== undefined) {
-              expect(
-                argCount <= arity.max,
-                `${name}: variant has ${argCount} args but arity.max is ${arity.max}`,
-              ).toBe(true)
+              expect(argCount <= arity.max, `${name}: variant has ${argCount} args but arity.max is ${arity.max}`).toBe(
+                true,
+              )
             }
           } else {
             // Variadic variant: non-rest args must be >= arity.min
@@ -297,8 +286,7 @@ const skipSpecialExpressionExamples = new Set([
 describe('auto: docs metadata consistency (special expressions)', () => {
   for (const [name, type] of Object.entries(specialExpressionTypes)) {
     const expr = specialExpressions[type as keyof typeof specialExpressions]
-    if (!expr?.docs)
-      continue
+    if (!expr?.docs) continue
     const docs = expr.docs
 
     describe(name, () => {
@@ -323,25 +311,18 @@ describe('auto: docs metadata consistency (special expressions)', () => {
       }
 
       it('has at least one example', () => {
-        if (skipSpecialExpressionExamples.has(name))
-          return
+        if (skipSpecialExpressionExamples.has(name)) return
         expect(docs.examples.length, `${name}: no examples`).toBeGreaterThan(0)
       })
 
       it('description ends with a period', () => {
-        expect(
-          docs.description.trimEnd().endsWith('.'),
-          `${name}: description does not end with a period`,
-        ).toBe(true)
+        expect(docs.description.trimEnd().endsWith('.'), `${name}: description does not end with a period`).toBe(true)
       })
 
       if (docs.seeAlso) {
         it('seeAlso targets exist', () => {
           for (const target of docs.seeAlso!) {
-            expect(
-              allReference[target],
-              `${name}: seeAlso references "${target}" which does not exist`,
-            ).toBeDefined()
+            expect(allReference[target], `${name}: seeAlso references "${target}" which does not exist`).toBeDefined()
           }
         })
       }
@@ -351,19 +332,16 @@ describe('auto: docs metadata consistency (special expressions)', () => {
 
 describe('auto: docs metadata consistency (modules)', () => {
   for (const mod of allBuiltinModules) {
-    if (!mod.docs)
-      continue
+    if (!mod.docs) continue
 
     // Skip modules where no docs entries have corresponding TS functions
     const hasTsFunctions = Object.keys(mod.docs).some(fnName => mod.functions[fnName])
-    if (!hasTsFunctions)
-      continue
+    if (!hasTsFunctions) continue
 
     describe(mod.name, () => {
       for (const [fnName, docs] of Object.entries(mod.docs!)) {
         const expr = mod.functions[fnName]
-        if (!expr)
-          continue
+        if (!expr) continue
 
         describe(fnName, () => {
           it('variant argumentNames are all keys in args', () => {
@@ -448,16 +426,13 @@ describe('auto: docs metadata consistency (modules)', () => {
 describe('auto: seeAlso symmetry', () => {
   // For each function reference with seeAlso, check that the target links back
   for (const [key, ref] of Object.entries(allReference)) {
-    if (!('seeAlso' in ref) || !ref.seeAlso)
-      continue
+    if (!('seeAlso' in ref) || !ref.seeAlso) continue
     // Skip effects — they have one-way seeAlso references
-    if ('effect' in ref)
-      continue
+    if ('effect' in ref) continue
 
     for (const target of ref.seeAlso) {
       const targetRef = allReference[target]
-      if (!targetRef)
-        continue // missing target caught by section 1
+      if (!targetRef) continue // missing target caught by section 1
 
       it(`${key} ↔ ${target}`, () => {
         expect(
@@ -475,39 +450,32 @@ describe('auto: seeAlso symmetry', () => {
 
 describe('auto: wrong-type rejection (core)', () => {
   for (const [name, expr] of Object.entries(normalExpressions)) {
-    if (!expr.docs)
-      continue
-    if (skipWrongTypeTests.has(name))
-      continue
+    if (!expr.docs) continue
+    if (skipWrongTypeTests.has(name)) continue
 
     const docs = expr.docs
     // Use the first variant as the canonical calling form
     const variant = docs.variants[0]
-    if (!variant)
-      continue
+    if (!variant) continue
 
     for (const argName of variant.argumentNames) {
       const arg = docs.args[argName]
-      if (!arg)
-        continue
-      if (arg.rest)
-        continue
+      if (!arg) continue
+      if (arg.rest) continue
 
       const wrongValue = getWrongValue(arg.type)
-      if (!wrongValue)
-        continue
+      if (!wrongValue) continue
 
       // Build args: correct types for all except the target arg
-      const argValues = variant.argumentNames.map(n => {
-        if (n === argName)
-          return wrongValue
-        const a = docs.args[n]
-        if (!a)
-          return 'null'
-        if (a.rest)
-          return '' // rest args get nothing
-        return getMinValid(a.type)
-      }).filter(v => v !== '')
+      const argValues = variant.argumentNames
+        .map(n => {
+          if (n === argName) return wrongValue
+          const a = docs.args[n]
+          if (!a) return 'null'
+          if (a.rest) return '' // rest args get nothing
+          return getMinValid(a.type)
+        })
+        .filter(v => v !== '')
 
       const code = `${name}(${argValues.join(', ')})`
 
@@ -524,18 +492,15 @@ describe('auto: wrong-type rejection (core)', () => {
 
 describe('auto: wrong-type rejection (modules)', () => {
   for (const mod of allBuiltinModules) {
-    if (!mod.docs)
-      continue
+    if (!mod.docs) continue
     const moduleSkips = skipModuleWrongTypeTests[mod.name]
 
     describe(mod.name, () => {
       // Check if any testable functions exist for this module
       const hasTestable = Object.entries(mod.docs!).some(([fnName, docs]) => {
-        if (moduleSkips?.has(fnName))
-          return false
+        if (moduleSkips?.has(fnName)) return false
         const variant = docs.variants[0]
-        if (!variant)
-          return false
+        if (!variant) return false
         return variant.argumentNames.some(argName => {
           const arg = docs.args[argName]
           return arg && !arg.rest && getWrongValue(arg.type) !== null
@@ -547,34 +512,28 @@ describe('auto: wrong-type rejection (modules)', () => {
       }
 
       for (const [fnName, docs] of Object.entries(mod.docs!)) {
-        if (moduleSkips?.has(fnName))
-          continue
+        if (moduleSkips?.has(fnName)) continue
 
         const variant = docs.variants[0]
-        if (!variant)
-          continue
+        if (!variant) continue
 
         for (const argName of variant.argumentNames) {
           const arg = docs.args[argName]
-          if (!arg)
-            continue
-          if (arg.rest)
-            continue
+          if (!arg) continue
+          if (arg.rest) continue
 
           const wrongValue = getWrongValue(arg.type)
-          if (!wrongValue)
-            continue
+          if (!wrongValue) continue
 
-          const argValues = variant.argumentNames.map(n => {
-            if (n === argName)
-              return wrongValue
-            const a = docs.args[n]
-            if (!a)
-              return 'null'
-            if (a.rest)
-              return ''
-            return getMinValid(a.type)
-          }).filter(v => v !== '')
+          const argValues = variant.argumentNames
+            .map(n => {
+              if (n === argName) return wrongValue
+              const a = docs.args[n]
+              if (!a) return 'null'
+              if (a.rest) return ''
+              return getMinValid(a.type)
+            })
+            .filter(v => v !== '')
 
           const code = `do import "${mod.name}" as __m; __m.${fnName}(${argValues.join(', ')}) end`
 
@@ -593,10 +552,8 @@ describe('auto: wrong-type rejection (modules)', () => {
 
 describe('auto: example determinism (core)', () => {
   for (const [name, expr] of Object.entries(normalExpressions)) {
-    if (!expr.docs)
-      continue
-    if (skipDeterminismTests.has(name))
-      continue
+    if (!expr.docs) continue
+    if (skipDeterminismTests.has(name)) continue
 
     const docs = expr.docs
 
@@ -629,16 +586,13 @@ describe('auto: example determinism (core)', () => {
 
 describe('auto: example determinism (modules)', () => {
   for (const mod of allBuiltinModules) {
-    if (!mod.docs)
-      continue
+    if (!mod.docs) continue
     const moduleSkips = skipModuleDeterminismTests[mod.name]
 
     describe(mod.name, () => {
       for (const [fnName, docs] of Object.entries(mod.docs!)) {
-        if (moduleSkips?.has(fnName))
-          continue
-        if (skipDeterminismTests.has(fnName))
-          continue
+        if (moduleSkips?.has(fnName)) continue
+        if (skipDeterminismTests.has(fnName)) continue
 
         for (const [i, entry] of docs.examples.entries()) {
           const example = typeof entry === 'string' ? entry : entry.code
@@ -676,18 +630,41 @@ describe('auto: example determinism (modules)', () => {
 describe('auto: arg names validation (modules)', () => {
   // Module function arg names should not be builtin function names
   // that would shadow them in the scope
-  const reservedWords = new Set(['if', 'then', 'else', 'end', 'do', 'let', 'for', 'in', 'loop', 'recur', 'case', 'try', 'catch', 'throw', 'import', 'as', 'true', 'false', 'null', 'and', 'or', 'not', 'when', 'match', 'with', 'def'])
+  const reservedWords = new Set([
+    'if',
+    'then',
+    'else',
+    'end',
+    'do',
+    'let',
+    'for',
+    'in',
+    'loop',
+    'recur',
+    'case',
+    'try',
+    'catch',
+    'throw',
+    'import',
+    'as',
+    'true',
+    'false',
+    'null',
+    'and',
+    'or',
+    'not',
+    'when',
+    'match',
+    'with',
+    'def',
+  ])
 
   for (const mod of allBuiltinModules) {
-    if (!mod.docs)
-      continue
+    if (!mod.docs) continue
     for (const [fnName, docs] of Object.entries(mod.docs)) {
       for (const argName of Object.keys(docs.args)) {
         it(`${mod.name}.${fnName} arg "${argName}" is not a reserved word`, () => {
-          expect(
-            reservedWords.has(argName),
-            `${mod.name}.${fnName}: arg "${argName}" is a reserved word`,
-          ).toBe(false)
+          expect(reservedWords.has(argName), `${mod.name}.${fnName}: arg "${argName}" is a reserved word`).toBe(false)
         })
       }
     }
@@ -700,8 +677,7 @@ describe('auto: arg names validation (modules)', () => {
 
 describe('auto: all args used in variants (core)', () => {
   for (const [name, expr] of Object.entries(normalExpressions)) {
-    if (!expr.docs)
-      continue
+    if (!expr.docs) continue
     const docs = expr.docs
 
     // Collect all arg names used across all variants
@@ -717,8 +693,7 @@ describe('auto: all args used in variants (core)', () => {
       // They appear in args but may not appear in variants if the function
       // also has named args for the same purpose
       const isOperatorOnlyArg = (argName === 'a' || argName === 'b') && !usedArgs.has(argName)
-      if (isOperatorOnlyArg)
-        continue
+      if (isOperatorOnlyArg) continue
 
       it(`${name}: arg "${argName}" is used in at least one variant`, () => {
         expect(
@@ -732,8 +707,7 @@ describe('auto: all args used in variants (core)', () => {
 
 describe('auto: all args used in variants (modules)', () => {
   for (const mod of allBuiltinModules) {
-    if (!mod.docs)
-      continue
+    if (!mod.docs) continue
     for (const [fnName, docs] of Object.entries(mod.docs)) {
       const usedArgs = new Set<string>()
       for (const variant of docs.variants) {
@@ -744,8 +718,7 @@ describe('auto: all args used in variants (modules)', () => {
 
       for (const argName of Object.keys(docs.args)) {
         const isOperatorOnlyArg = (argName === 'a' || argName === 'b') && !usedArgs.has(argName)
-        if (isOperatorOnlyArg)
-          continue
+        if (isOperatorOnlyArg) continue
 
         it(`${mod.name}.${fnName}: arg "${argName}" is used in at least one variant`, () => {
           expect(

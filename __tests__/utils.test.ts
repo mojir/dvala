@@ -31,8 +31,7 @@ describe('utils', () => {
   describe('deepEqual', () => {
     it('primitives', () => {
       for (const a of primitives) {
-        for (const b of primitives)
-          expect(deepEqual(a, b)).toBe(a === b)
+        for (const b of primitives) expect(deepEqual(a, b)).toBe(a === b)
       }
     })
     it('regExp', () => {
@@ -100,10 +99,12 @@ describe('utils', () => {
         line2
       line3
     `),
-      ).toBe(`
+      ).toBe(
+        `
 line1
   line2
-line3`.trim())
+line3`.trim(),
+      )
 
       // Handles no indentation
       expect(

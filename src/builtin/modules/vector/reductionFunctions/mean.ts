@@ -6,7 +6,7 @@ export const meanReductionFunction: ReductionFunctionDefinition<'mean'> = {
 }
 
 export const geometricMeanReductionFunction: ReductionFunctionDefinition<'geometricMean'> = {
-  'geometricMean': vector => {
+  geometricMean: vector => {
     if (vector.some(val => val < 0)) {
       throw new Error('Geometric mean is not defined for non-positive numbers')
     }
@@ -15,5 +15,5 @@ export const geometricMeanReductionFunction: ReductionFunctionDefinition<'geomet
 }
 
 export const harmonicMeanReductionFunction: ReductionFunctionDefinition<'harmonicMean'> = {
-  'harmonicMean': vector => vector.length / vector.reduce((acc, val) => acc + 1 / val, 0),
+  harmonicMean: vector => vector.length / vector.reduce((acc, val) => acc + 1 / val, 0),
 }

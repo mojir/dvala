@@ -8,18 +8,15 @@ import { TypeError } from '../errors'
 import { isPersistentMap, isPersistentVector } from './persistent'
 
 export function collHasKey(coll: unknown, key: string | number): boolean {
-  if (!isColl(coll))
-    return false
+  if (!isColl(coll)) return false
 
   if (typeof coll === 'string') {
-    if (!isNumber(key, { integer: true }))
-      return false
+    if (!isNumber(key, { integer: true })) return false
     return key >= 0 && key < coll.length
   }
 
   if (isPersistentVector(coll)) {
-    if (!isNumber(key, { integer: true }))
-      return false
+    if (!isNumber(key, { integer: true })) return false
     return key >= 0 && key < coll.size
   }
 
@@ -43,30 +40,25 @@ export function compare(a: unknown, b: unknown, sourceCodeInfo: SourceCodeInfo |
     return a < b ? -1 : a > b ? 1 : 0
   }
   if (typeof a === 'number' && typeof b === 'number') {
-    return Math.sign((a) - (b))
+    return Math.sign(a - b)
   }
   throw new TypeError(`Cannot compare values of different types: ${typeof a} and ${typeof b}`, sourceCodeInfo)
 }
 
 export function deepEqual(a: unknown, b: unknown, sourceCodeInfo?: SourceCodeInfo): boolean {
-  if (a === b)
-    return true
+  if (a === b) return true
 
-  if (typeof a === 'number' && typeof b === 'number')
-    return approxEqual(a, b)
+  if (typeof a === 'number' && typeof b === 'number') return approxEqual(a, b)
 
   // Atoms — structural equality by name
-  if (isAtom(a) && isAtom(b))
-    return a.name === b.name
+  if (isAtom(a) && isAtom(b)) return a.name === b.name
 
   // Persistent vectors — structural equality
   if (isPersistentVector(a) && isPersistentVector(b)) {
-    if (a.size !== b.size)
-      return false
+    if (a.size !== b.size) return false
     let i = 0
     for (const item of a) {
-      if (!deepEqual(item, b.get(i), sourceCodeInfo))
-        return false
+      if (!deepEqual(item, b.get(i), sourceCodeInfo)) return false
       i++
     }
     return true
@@ -74,42 +66,34 @@ export function deepEqual(a: unknown, b: unknown, sourceCodeInfo?: SourceCodeInf
 
   // Plain JS arrays — structural equality (used for toJS()-converted run() results)
   if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length)
-      return false
+    if (a.length !== b.length) return false
     for (let i = 0; i < a.length; i++) {
-      if (!deepEqual(a[i], b[i], sourceCodeInfo))
-        return false
+      if (!deepEqual(a[i], b[i], sourceCodeInfo)) return false
     }
     return true
   }
 
   // Persistent maps — structural equality
   if (isPersistentMap(a) && isPersistentMap(b)) {
-    if (a.size !== b.size)
-      return false
+    if (a.size !== b.size) return false
     for (const [key, val] of a) {
-      if (!b.has(key))
-        return false
-      if (!deepEqual(val, b.get(key), sourceCodeInfo))
-        return false
+      if (!b.has(key)) return false
+      if (!deepEqual(val, b.get(key), sourceCodeInfo)) return false
     }
     return true
   }
 
-  if (isRegularExpression(a) && isRegularExpression(b))
-    return a.s === b.s && a.f === b.f
+  if (isRegularExpression(a) && isRegularExpression(b)) return a.s === b.s && a.f === b.f
 
   // Plain JS records (internal frame data, not Dvala values)
   if (isUnknownRecord(a) && isUnknownRecord(b)) {
     const aKeys = Object.keys(a)
     const bKeys = Object.keys(b)
-    if (aKeys.length !== bKeys.length)
-      return false
+    if (aKeys.length !== bKeys.length) return false
 
     for (let i = 0; i < aKeys.length; i += 1) {
       const key = asString(aKeys[i], sourceCodeInfo)
-      if (!deepEqual(a[key], b[key], sourceCodeInfo))
-        return false
+      if (!deepEqual(a[key], b[key], sourceCodeInfo)) return false
     }
     return true
   }
@@ -126,8 +110,7 @@ export function toAny(value: unknown): Any {
 
 export function joinSets<T>(...results: Set<T>[]): Set<T> {
   const result = new Set<T>()
-  for (const symbols of results)
-    symbols.forEach(symbol => result.add(symbol))
+  for (const symbols of results) symbols.forEach(symbol => result.add(symbol))
 
   return result
 }
@@ -169,10 +152,12 @@ export function smartTrim(str: string, minIndent = 0): string {
     lines.pop() // Remove trailing empty lines
   }
   const indent = lines.reduce((acc, line) => {
-    if (line.match(/^\s*$/))
-      return acc // Skip empty lines
+    if (line.match(/^\s*$/)) return acc // Skip empty lines
     const lineIndent = line.match(/^\s*/)![0].length
     return Math.min(acc, lineIndent)
   }, Infinity)
-  return lines.map(line => ' '.repeat(minIndent) + line.slice(indent)).join('\n').trimEnd()
+  return lines
+    .map(line => ' '.repeat(minIndent) + line.slice(indent))
+    .join('\n')
+    .trimEnd()
 }

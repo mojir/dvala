@@ -5,7 +5,10 @@ import { DvalaError, RecurSignal } from '../../../src/errors'
 import { functionalUtilsModule } from '../../../src/builtin/modules/functional'
 
 describe('functional functions.', () => {
-  for (const dvala of [createDvala({ modules: [functionalUtilsModule] }), createDvala({ debug: true, modules: [functionalUtilsModule] })]) {
+  for (const dvala of [
+    createDvala({ modules: [functionalUtilsModule] }),
+    createDvala({ debug: true, modules: [functionalUtilsModule] }),
+  ]) {
     let oldLog: () => void
     let logSpy: typeof console.log
     beforeEach(() => {
@@ -55,12 +58,14 @@ describe('functional functions.', () => {
       it('samples.', () => {
         expect(dvala.run('1 |> +(_, 2)')).toBe(3)
         expect(dvala.run('|>(1, +(2, _))')).toBe(3)
-        expect(dvala.run(`range(10)
+        expect(
+          dvala.run(`range(10)
                            |> map(_, -> $ ^ 2) // [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
                            |> filter(_, isOdd)  // [1, 9, 25, 49, 81]
                            |> reduce(_, +, 0)  // 165
                            |> sqrt             // 12.84523257866513
-                           |> round(_, 2)`)).toBe(12.85)
+                           |> round(_, 2)`),
+        ).toBe(12.85)
       })
     })
 
@@ -84,9 +89,11 @@ describe('functional functions.', () => {
         expect(dvala.run('comp()(null)')).toBe(null)
         expect(dvala.run('comp()({ "a": 10 })')).toEqual({ a: 10 })
         expect(dvala.run('comp()(["x", 10, null])')).toEqual(['x', 10, null])
-        expect(dvala.run(`
+        expect(
+          dvala.run(`
 let foo = comp(!, isOdd);
-[2, 3, 4, 5] filter foo`)).toEqual([2, 4])
+[2, 3, 4, 5] filter foo`),
+        ).toEqual([2, 4])
         expect(() => dvala.run('comp()(1, 2)')).toThrow(DvalaError)
         expect(() => dvala.run('comp(true)()')).toThrow(DvalaError)
       })
@@ -103,11 +110,18 @@ let foo = comp(!, isOdd);
     describe('juxt.', () => {
       it('samples.', () => {
         expect(dvala.run('let { juxt } = import("functional"); juxt(+, *, min, max)(3, 4, 6)')).toEqual([13, 72, 3, 6])
-        expect(dvala.run('let { juxt } = import("functional"); juxt("a", "b")({ a: 1, b: 2, c: 3, d: 4})')).toEqual([1, 2])
-        expect(dvala.run('let { juxt } = import("functional"); apply(juxt(+, *, min, max), range(1, 5))')).toEqual([10, 24, 1, 4])
+        expect(dvala.run('let { juxt } = import("functional"); juxt("a", "b")({ a: 1, b: 2, c: 3, d: 4})')).toEqual([
+          1, 2,
+        ])
+        expect(dvala.run('let { juxt } = import("functional"); apply(juxt(+, *, min, max), range(1, 5))')).toEqual([
+          10, 24, 1, 4,
+        ])
         expect(() => dvala.run('let { juxt } = import("functional"); juxt(-> $, -> $2)')).toThrow() // Must accept same number of params
 
-        expect((dvala.run('let { juxt } = import("functional"); juxt((x) -> x, (x, y = 1) -> x + y, (...c) -> 0)') as any).arity).toEqual({ min: 1, max: 1 })
+        expect(
+          (dvala.run('let { juxt } = import("functional"); juxt((x) -> x, (x, y = 1) -> x + y, (...c) -> 0)') as any)
+            .arity,
+        ).toEqual({ min: 1, max: 1 })
         expect(() => dvala.run('let { juxt } = import("functional"); juxt()')).toThrow(DvalaError)
       })
     })
@@ -123,20 +137,42 @@ let foo = comp(!, isOdd);
 
     describe('everyPred.', () => {
       it('samples.', () => {
-        expect(dvala.run('let { everyPred } = import("functional"); everyPred(isString, -> count($) > 3)("Albert")')).toBe(true)
-        expect(dvala.run('let { everyPred } = import("functional"); everyPred(isString, -> count($) > 3)("Albert", "Mojir")')).toBe(true)
-        expect(dvala.run('let { everyPred } = import("functional"); everyPred(isString, -> count($) > 3)("Albert", "L", "Mojir")')).toBe(false)
-        expect(dvala.run('let { everyPred } = import("functional"); everyPred(isString, -> count($) > 3)("Albert", [1, 2, 3, 4])')).toBe(false)
+        expect(
+          dvala.run('let { everyPred } = import("functional"); everyPred(isString, -> count($) > 3)("Albert")'),
+        ).toBe(true)
+        expect(
+          dvala.run(
+            'let { everyPred } = import("functional"); everyPred(isString, -> count($) > 3)("Albert", "Mojir")',
+          ),
+        ).toBe(true)
+        expect(
+          dvala.run(
+            'let { everyPred } = import("functional"); everyPred(isString, -> count($) > 3)("Albert", "L", "Mojir")',
+          ),
+        ).toBe(false)
+        expect(
+          dvala.run(
+            'let { everyPred } = import("functional"); everyPred(isString, -> count($) > 3)("Albert", [1, 2, 3, 4])',
+          ),
+        ).toBe(false)
         expect(() => dvala.run('let { everyPred } = import("functional"); everyPred()')).toThrow(DvalaError)
       })
     })
 
     describe('somePred.', () => {
       it('samples.', () => {
-        expect(dvala.run('let { somePred } = import("functional"); somePred(isString, -> count($) > 3)("Albert", "M")')).toBe(true)
-        expect(dvala.run('let { somePred } = import("functional"); somePred(isString, -> count($) > 3)("A", "M")')).toBe(true)
-        expect(dvala.run('let { somePred } = import("functional"); somePred(isString, -> count($) > 3)([10, 20], [20, 10])')).toBe(false)
-        expect(dvala.run('let { somePred } = import("functional"); somePred(isString, -> count($) > 3)("Albert", [10, 20])')).toBe(true)
+        expect(
+          dvala.run('let { somePred } = import("functional"); somePred(isString, -> count($) > 3)("Albert", "M")'),
+        ).toBe(true)
+        expect(
+          dvala.run('let { somePred } = import("functional"); somePred(isString, -> count($) > 3)("A", "M")'),
+        ).toBe(true)
+        expect(
+          dvala.run('let { somePred } = import("functional"); somePred(isString, -> count($) > 3)([10, 20], [20, 10])'),
+        ).toBe(false)
+        expect(
+          dvala.run('let { somePred } = import("functional"); somePred(isString, -> count($) > 3)("Albert", [10, 20])'),
+        ).toBe(true)
         expect(() => dvala.run('let { somePred } = import("functional"); somePred()')).toThrow(DvalaError)
       })
     })
@@ -154,46 +190,68 @@ let foo = comp(!, isOdd);
 
     describe('spread.', () => {
       it('samples.', () => {
-        expect(dvala.run(`
+        expect(
+          dvala.run(`
 let params = [1, 2, 3];
-+(...params)`)).toBe(6)
++(...params)`),
+        ).toBe(6)
       })
-      expect(() => dvala.run(`
+      expect(() =>
+        dvala.run(`
 let params = {};
-+(...params)`)).toThrow(DvalaError)
++(...params)`),
+      ).toThrow(DvalaError)
     })
 
     describe('special expressions as normal expressions.', () => {
       test('samples.', () => {
-        expect(dvala.run(`
+        expect(
+          dvala.run(`
 let and = &&;
-true and false`)).toBe(false)
-        expect(dvala.run(`
+true and false`),
+        ).toBe(false)
+        expect(
+          dvala.run(`
 let or = ||;
-true or false`)).toBe(true)
-        expect(dvala.run(`
+true or false`),
+        ).toBe(true)
+        expect(
+          dvala.run(`
 let obj = object;
-obj("a", 1, "b", 2)`)).toEqual({ a: 1, b: 2 })
-        expect(dvala.run(`
+obj("a", 1, "b", 2)`),
+        ).toEqual({ a: 1, b: 2 })
+        expect(
+          dvala.run(`
 let obj = object;
-obj("a", 1, "b")`)).toEqual({ a: 1, b: null })
-        expect(dvala.run(`
+obj("a", 1, "b")`),
+        ).toEqual({ a: 1, b: null })
+        expect(
+          dvala.run(`
 let arr = array;
-arr(1, 2, 3)`)).toEqual([1, 2, 3])
-        expect(dvala.run(`
+arr(1, 2, 3)`),
+        ).toEqual([1, 2, 3])
+        expect(
+          dvala.run(`
 let qq = ??;
-null qq 0`)).toBe(0)
-        expect(dvala.run(`
+null qq 0`),
+        ).toBe(0)
+        expect(
+          dvala.run(`
 let qq = ??;
-0 qq 1`)).toBe(0)
-        expect(dvala.run(`
+0 qq 1`),
+        ).toBe(0)
+        expect(
+          dvala.run(`
 let qq = ??;
-qq(null)`)).toBe(null)
-        expect(() => dvala.run(`
+qq(null)`),
+        ).toBe(null)
+        expect(() =>
+          dvala.run(`
 let r = recur;
-r(1)`)).toThrow(RecurSignal)
+r(1)`),
+        ).toThrow(RecurSignal)
       })
-      expect(() => dvala.run('let t = \'if\';')).toThrow(DvalaError)
+      expect(() => dvala.run("let t = 'if';")).toThrow(DvalaError)
     })
   }
 })

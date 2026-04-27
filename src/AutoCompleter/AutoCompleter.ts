@@ -26,7 +26,11 @@ export class AutoCompleter {
   private suggestions: string[] = []
   private suggestionIndex: null | number = null
 
-  constructor(public readonly originalProgram: string, public readonly originalPosition: number, params: AutoCompleterParams = {}) {
+  constructor(
+    public readonly originalProgram: string,
+    public readonly originalPosition: number,
+    params: AutoCompleterParams = {},
+  ) {
     const partialProgram = this.originalProgram.slice(0, this.originalPosition)
     const tokenStream = tokenize(partialProgram, false, undefined)
 
@@ -129,23 +133,36 @@ export class AutoCompleter {
       return this.generateDottedEffectSuggestions(params.effectNames ?? [], fullSearch)
     }
 
-    const startsWithCaseSensitive = this.generateWithPredicate(params, suggestion =>
-      !blacklist.has(suggestion) && suggestion.startsWith(this.searchString))
+    const startsWithCaseSensitive = this.generateWithPredicate(
+      params,
+      suggestion => !blacklist.has(suggestion) && suggestion.startsWith(this.searchString),
+    )
     startsWithCaseSensitive.forEach(suggestion => blacklist.add(suggestion))
 
-    const startsWithCaseInsensitive = this.generateWithPredicate(params, suggestion =>
-      !blacklist.has(suggestion) && suggestion.toLowerCase().startsWith(this.searchString.toLowerCase()))
+    const startsWithCaseInsensitive = this.generateWithPredicate(
+      params,
+      suggestion => !blacklist.has(suggestion) && suggestion.toLowerCase().startsWith(this.searchString.toLowerCase()),
+    )
     startsWithCaseInsensitive.forEach(suggestion => blacklist.add(suggestion))
 
-    const includesCaseSensitive = this.generateWithPredicate(params, suggestion =>
-      !blacklist.has(suggestion) && suggestion.includes(this.searchString))
+    const includesCaseSensitive = this.generateWithPredicate(
+      params,
+      suggestion => !blacklist.has(suggestion) && suggestion.includes(this.searchString),
+    )
     includesCaseSensitive.forEach(suggestion => blacklist.add(suggestion))
 
-    const includesCaseInsensitive = this.generateWithPredicate(params, suggestion =>
-      !blacklist.has(suggestion) && suggestion.includes(this.searchString.toLowerCase()))
+    const includesCaseInsensitive = this.generateWithPredicate(
+      params,
+      suggestion => !blacklist.has(suggestion) && suggestion.includes(this.searchString.toLowerCase()),
+    )
     includesCaseInsensitive.forEach(suggestion => blacklist.add(suggestion))
 
-    return [...startsWithCaseSensitive, ...startsWithCaseInsensitive, ...includesCaseSensitive, ...includesCaseInsensitive]
+    return [
+      ...startsWithCaseSensitive,
+      ...startsWithCaseInsensitive,
+      ...includesCaseSensitive,
+      ...includesCaseInsensitive,
+    ]
   }
 
   private generateDottedEffectSuggestions(effectNames: readonly string[], fullSearch: string): string[] {

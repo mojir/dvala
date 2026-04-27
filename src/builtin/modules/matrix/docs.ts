@@ -1,10 +1,11 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
-  'mul': {
+  mul: {
     type: '(Number[][], Number[][]) -> Number[][]',
     category: 'matrix',
-    description: 'Multiplies two `matrices` using standard `matrix` multiplication based on **dot products** of rows and columns.',
+    description:
+      'Multiplies two `matrices` using standard `matrix` multiplication based on **dot products** of rows and columns.',
     returns: {
       type: 'matrix',
     },
@@ -18,10 +19,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -30,7 +28,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.det', 'matrix.inv'],
   },
-  'det': {
+  det: {
     type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **determinant** of a square matrix.',
@@ -45,18 +43,25 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
       'let { det } = import("matrix");\ndet([[1, 2], [3, 4]])',
       'let { det } = import("matrix");\ndet([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
     ],
-    seeAlso: ['matrix.inv', 'matrix.cofactor', 'matrix.adj', 'matrix.trace', 'matrix.rank', 'matrix.isInvertible', 'matrix.mul', 'matrix.minor'],
+    seeAlso: [
+      'matrix.inv',
+      'matrix.cofactor',
+      'matrix.adj',
+      'matrix.trace',
+      'matrix.rank',
+      'matrix.isInvertible',
+      'matrix.mul',
+      'matrix.minor',
+    ],
   },
-  'inv': {
+  inv: {
     type: '(Number[][]) -> Number[][]',
     category: 'matrix',
     description: 'Calculates the **inverse** of a square matrix.',
@@ -71,18 +76,23 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
       'let { inv } = import("matrix");\ninv([[1, 2], [3, 4]])',
       'let { inv } = import("matrix");\ninv([[1, 2, 3], [4, 5, 7], [7, 8, 10]])',
     ],
-    seeAlso: ['matrix.det', 'matrix.adj', 'matrix.isInvertible', 'linearAlgebra.solve', 'matrix.mul', 'matrix.isOrthogonalMatrix'],
+    seeAlso: [
+      'matrix.det',
+      'matrix.adj',
+      'matrix.isInvertible',
+      'linearAlgebra.solve',
+      'matrix.mul',
+      'matrix.isOrthogonalMatrix',
+    ],
   },
-  'adj': {
+  adj: {
     type: '(Number[][]) -> Number[][]',
     category: 'matrix',
     description: 'Calculates the **adjugate** of a square matrix.',
@@ -97,9 +107,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -109,7 +117,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.cofactor', 'matrix.det', 'matrix.inv'],
   },
-  'cofactor': {
+  cofactor: {
     type: '(Number[][]) -> Number[][]',
     category: 'matrix',
     description: 'Calculates the **cofactor** of a square matrix.',
@@ -124,9 +132,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -136,7 +142,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.adj', 'matrix.minor', 'matrix.det'],
   },
-  'minor': {
+  minor: {
     type: '(Number[][], Number, Number) -> Number[][]',
     category: 'matrix',
     description: 'Calculates the **minor** of a square matrix.',
@@ -159,11 +165,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-          'row',
-          'col',
-        ],
+        argumentNames: ['m', 'row', 'col'],
       },
     ],
     examples: [
@@ -172,7 +174,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.cofactor', 'matrix.det'],
   },
-  'trace': {
+  trace: {
     type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **trace** of a square matrix.',
@@ -187,9 +189,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -198,7 +198,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.det', 'matrix.isDiagonal'],
   },
-  'isSymmetric': {
+  isSymmetric: {
     type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **symmetric**.',
@@ -213,9 +213,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -224,7 +222,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.isOrthogonalMatrix', 'matrix.isDiagonal', 'matrix.isSquare', 'matrix.hilbert'],
   },
-  'isTriangular': {
+  isTriangular: {
     type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **triangular**.',
@@ -239,9 +237,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -250,7 +246,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.isUpperTriangular', 'matrix.isLowerTriangular', 'matrix.isDiagonal', 'matrix.isBanded'],
   },
-  'isUpperTriangular': {
+  isUpperTriangular: {
     type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **upper triangular**.',
@@ -265,9 +261,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -276,7 +270,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.isLowerTriangular', 'matrix.isTriangular', 'matrix.isDiagonal'],
   },
-  'isLowerTriangular': {
+  isLowerTriangular: {
     type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **lower triangular**.',
@@ -291,9 +285,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -302,7 +294,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.isUpperTriangular', 'matrix.isTriangular', 'matrix.isDiagonal'],
   },
-  'isDiagonal': {
+  isDiagonal: {
     type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **diagonal**.',
@@ -317,9 +309,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -327,9 +317,18 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isDiagonal } = import("matrix");\nisDiagonal([[1, 0, 0], [0, 2, 0], [0, 0, 3]])',
       'let { isDiagonal } = import("matrix");\nisDiagonal([[1, 0, 0], [2, 2, 2], [0, 0, 3]])',
     ],
-    seeAlso: ['matrix.isIdentity', 'matrix.isSymmetric', 'matrix.isTriangular', 'matrix.trace', 'matrix.isUpperTriangular', 'matrix.isLowerTriangular', 'matrix.band', 'matrix.isBanded'],
+    seeAlso: [
+      'matrix.isIdentity',
+      'matrix.isSymmetric',
+      'matrix.isTriangular',
+      'matrix.trace',
+      'matrix.isUpperTriangular',
+      'matrix.isLowerTriangular',
+      'matrix.band',
+      'matrix.isBanded',
+    ],
   },
-  'isSquare': {
+  isSquare: {
     type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **square**.',
@@ -344,9 +343,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -356,7 +353,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.isSymmetric', 'matrix.isIdentity', 'matrix.isInvertible'],
   },
-  'isOrthogonalMatrix': {
+  isOrthogonalMatrix: {
     type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **orthogonal**.',
@@ -371,9 +368,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -383,7 +378,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.isSymmetric', 'matrix.inv', 'matrix.isIdentity', 'linearAlgebra.isOrthogonal'],
   },
-  'isIdentity': {
+  isIdentity: {
     type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is an **identity matrix**.',
@@ -398,9 +393,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -410,7 +403,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.isDiagonal', 'matrix.isSquare', 'matrix.isOrthogonalMatrix'],
   },
-  'isInvertible': {
+  isInvertible: {
     type: '(Number[][]) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **invertible**.',
@@ -425,9 +418,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -437,7 +428,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.det', 'matrix.inv', 'matrix.rank', 'matrix.isSquare'],
   },
-  'hilbert': {
+  hilbert: {
     type: '(Number) -> Number[][]',
     category: 'matrix',
     description: 'Generates a **Hilbert matrix** of size `n`.',
@@ -452,18 +443,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
-    examples: [
-      'let { hilbert } = import("matrix");\nhilbert(3)',
-      'let { hilbert } = import("matrix");\nhilbert(4)',
-    ],
+    examples: ['let { hilbert } = import("matrix");\nhilbert(3)', 'let { hilbert } = import("matrix");\nhilbert(4)'],
     seeAlso: ['matrix.vandermonde', 'matrix.isSymmetric'],
   },
-  'vandermonde': {
+  vandermonde: {
     type: '(Number[]) -> Number[][]',
     category: 'matrix',
     description: 'Generates a **Vandermonde matrix** from a vector.',
@@ -478,9 +464,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -489,10 +473,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.hilbert', 'matrix.band'],
   },
-  'band': {
+  band: {
     type: '(Number, Number, Number) -> Number[][]',
     category: 'matrix',
-    description: 'Generates a **banded matrix** of size `n` with lower band index `lband` and upper band index `uband`.',
+    description:
+      'Generates a **banded matrix** of size `n` with lower band index `lband` and upper band index `uband`.',
     returns: {
       type: 'matrix',
     },
@@ -512,20 +497,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-          'lband',
-          'uband',
-        ],
+        argumentNames: ['n', 'lband', 'uband'],
       },
     ],
-    examples: [
-      'let { band } = import("matrix");\nband(3, 1, 1)',
-      'let { band } = import("matrix");\nband(4, 1, 2)',
-    ],
+    examples: ['let { band } = import("matrix");\nband(3, 1, 1)', 'let { band } = import("matrix");\nband(4, 1, 2)'],
     seeAlso: ['matrix.isBanded', 'matrix.isDiagonal', 'matrix.vandermonde'],
   },
-  'isBanded': {
+  isBanded: {
     type: '(Number[][], Number, Number) -> Boolean',
     category: 'matrix',
     description: 'Checks if a `matrix` is **banded** with lower band index `lband` and upper band index `uband`.',
@@ -548,11 +526,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-          'lband',
-          'uband',
-        ],
+        argumentNames: ['m', 'lband', 'uband'],
       },
     ],
     examples: [
@@ -561,7 +535,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.band', 'matrix.isTriangular', 'matrix.isDiagonal'],
   },
-  'rank': {
+  rank: {
     type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **rank** of a matrix using **Gaussian elimination**.',
@@ -576,9 +550,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -588,7 +560,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.det', 'matrix.isInvertible', 'linearAlgebra.rref'],
   },
-  'frobeniusNorm': {
+  frobeniusNorm: {
     type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **Frobenius norm** of a matrix.',
@@ -603,9 +575,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -614,7 +584,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.oneNorm', 'matrix.infNorm', 'matrix.maxNorm'],
   },
-  'oneNorm': {
+  oneNorm: {
     type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **oneNorm** (column norm) of a matrix.',
@@ -629,9 +599,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -640,7 +608,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.frobeniusNorm', 'matrix.infNorm', 'matrix.maxNorm'],
   },
-  'infNorm': {
+  infNorm: {
     type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **infinity norm** of a matrix.',
@@ -655,9 +623,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -666,7 +632,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['matrix.frobeniusNorm', 'matrix.oneNorm', 'matrix.maxNorm'],
   },
-  'maxNorm': {
+  maxNorm: {
     type: '(Number[][]) -> Number',
     category: 'matrix',
     description: 'Calculates the **max norm** of a matrix.',
@@ -681,9 +647,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [

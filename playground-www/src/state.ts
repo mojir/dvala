@@ -6,7 +6,7 @@ export const defaultState = {
   'resize-divider-1-percent': 20 as number,
   'resize-divider-2-percent': 70 as number,
   'active-side-tab': 'files' as 'files' | 'snapshots' | 'context',
-  'context': '' as string,
+  context: '' as string,
   'context-scroll-top': 0 as number,
   'context-selection-start': 0 as number,
   'context-selection-end': 0 as number,
@@ -16,12 +16,12 @@ export const defaultState = {
   'dvala-code-selection-start': 0 as number,
   'dvala-code-selection-end': 0 as number,
   'scratch-code': '' as string,
-  'output': '' as string,
+  output: '' as string,
   'output-scroll-top': 0 as number,
   'new-context-name': '' as string,
   'new-context-value': '' as string,
-  'debug': true as boolean,
-  'pure': false as boolean,
+  debug: true as boolean,
+  pure: false as boolean,
   'intercept-effects': false as boolean,
   'intercept-checkpoint': false as boolean,
   'intercept-error': false as boolean,
@@ -39,7 +39,7 @@ export const defaultState = {
 } as const
 
 type State = {
-  -readonly [K in keyof typeof defaultState]: typeof defaultState[K]
+  -readonly [K in keyof typeof defaultState]: (typeof defaultState)[K]
 }
 
 type Key = keyof typeof defaultState
@@ -95,9 +95,9 @@ export function getState<T extends keyof State>(key: T): State[T] {
 export function encodeState() {
   const sharedState: Partial<State> = {
     'dvala-code': state['dvala-code'],
-    'context': state.context,
-    'debug': state.debug,
-    'pure': state.pure,
+    context: state.context,
+    debug: state.debug,
+    pure: state.pure,
     'intercept-checkpoint': state['intercept-checkpoint'],
     'intercept-error': state['intercept-error'],
     'disable-standard-handlers': state['disable-standard-handlers'],

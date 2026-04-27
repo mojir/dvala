@@ -22,7 +22,13 @@
 
 import { builtin } from '../builtin'
 import { getAllBindingTargetNames } from '../builtin/bindingNode'
-import { extractArrayRest, extractObjectRest, extractValueByPath, flattenBindingPattern, validateBindingRootType } from '../builtin/bindingSlot'
+import {
+  extractArrayRest,
+  extractObjectRest,
+  extractValueByPath,
+  flattenBindingPattern,
+  validateBindingRootType,
+} from '../builtin/bindingSlot'
 import type { BindingSlot } from '../builtin/bindingSlot'
 import {
   checkArrayLengthConstraint,
@@ -36,7 +42,18 @@ import {
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '../constants/constants'
-import { ArithmeticError, AssertionError, DvalaError, KeyError, MacroError, MatchError, ReferenceError, RuntimeError, TypeError, UserError } from '../errors'
+import {
+  ArithmeticError,
+  AssertionError,
+  DvalaError,
+  KeyError,
+  MacroError,
+  MatchError,
+  ReferenceError,
+  RuntimeError,
+  TypeError,
+  UserError,
+} from '../errors'
 import { reconstructCallStack } from './callStack'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
@@ -73,9 +90,25 @@ import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined } from '../typeGuards'
-import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
+import {
+  isBuiltinSymbolNode,
+  isNormalExpressionNodeWithName,
+  isSpreadNode,
+  isUserDefinedSymbolNode,
+} from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
-import { cons, isPersistentVector, listDrop, listFromArray, listSize, listTake, listPrependAll, listToArray, PersistentVector, PersistentMap } from '../utils/persistent'
+import {
+  cons,
+  isPersistentVector,
+  listDrop,
+  listFromArray,
+  listSize,
+  listTake,
+  listPrependAll,
+  listToArray,
+  PersistentVector,
+  PersistentMap,
+} from '../utils/persistent'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
@@ -86,11 +119,28 @@ import { assertValidHostValue, fromJS, toJS, validateFromJS } from '../utils/int
 import type { MaybePromise } from '../utils/maybePromise'
 import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
-import { HaltSignal, ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, createSnapshot, qualifiedNameMatchesPattern, findMatchingHandlers, generateUUID, isHaltSignal, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
+import {
+  HaltSignal,
+  ResumeFromSignal,
+  SUSPENDED_MESSAGE,
+  SuspensionSignal,
+  createSnapshot,
+  qualifiedNameMatchesPattern,
+  findMatchingHandlers,
+  generateUUID,
+  isHaltSignal,
+  isResumeFromSignal,
+  isSuspensionSignal,
+} from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
-import { deserializeFromObject, serializeSuspensionBlob, serializeTerminalSnapshot, serializeToObject } from './suspension'
+import {
+  deserializeFromObject,
+  serializeSuspensionBlob,
+  serializeTerminalSnapshot,
+  serializeToObject,
+} from './suspension'
 import { getStandardEffectHandler } from './standardEffects'
 import type {
   AlgebraicHandleFrame,
@@ -158,12 +208,10 @@ import type { Step } from './step'
 // ---------------------------------------------------------------------------
 
 function evaluateObjectAsFunction(fn: Obj, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
-  if (params.size !== 1)
-    throw new TypeError('Object as function requires one string parameter.', sourceCodeInfo)
+  if (params.size !== 1) throw new TypeError('Object as function requires one string parameter.', sourceCodeInfo)
   const key = params.get(0)
   assertString(key, sourceCodeInfo)
-  if (!fn.has(key))
-    throw new KeyError(`Key '${key}' not found in object`, sourceCodeInfo)
+  if (!fn.has(key)) throw new KeyError(`Key '${key}' not found in object`, sourceCodeInfo)
   return toAny(fn.get(key))
 }
 
@@ -178,12 +226,10 @@ function evaluateArrayAsFunction(fn: Arr, params: Arr, sourceCodeInfo?: SourceCo
 }
 
 function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
-  if (params.size !== 1)
-    throw new TypeError('String as function requires one Obj parameter.', sourceCodeInfo)
+  if (params.size !== 1) throw new TypeError('String as function requires one Obj parameter.', sourceCodeInfo)
   const param = toAny(params.get(0))
   if (isObj(param)) {
-    if (!param.has(fn))
-      throw new KeyError(`Key '${fn}' not found in object`, sourceCodeInfo)
+    if (!param.has(fn)) throw new KeyError(`Key '${fn}' not found in object`, sourceCodeInfo)
     return toAny(param.get(fn))
   }
   if (isNumber(param, { integer: true })) {
@@ -199,13 +245,11 @@ function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: Sour
 
 function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   assertNumber(fn, undefined, { integer: true })
-  if (params.size !== 1)
-    throw new TypeError('Number as function requires one Arr parameter.', sourceCodeInfo)
+  if (params.size !== 1) throw new TypeError('Number as function requires one Arr parameter.', sourceCodeInfo)
   const param = params.get(0)
   assertSeq(param, sourceCodeInfo)
   const size = typeof param === 'string' ? param.length : param.size
-  if (fn < 0 || fn >= size)
-    throw new KeyError(`Index ${fn} out of bounds for sequence of size ${size}`, sourceCodeInfo)
+  if (fn < 0 || fn >= size) throw new KeyError(`Index ${fn} out of bounds for sequence of size ${size}`, sourceCodeInfo)
   return toAny(typeof param === 'string' ? param[fn] : param.get(fn))
 }
 
@@ -523,9 +567,8 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       const renameMap = buildRenameMap(bodyAst)
       // No splices — assemble immediately
       if (spliceExprs.length === 0) {
-        const result = bodyAst.length === 1
-          ? astToData(bodyAst[0]!, [], renameMap)
-          : bodyAst.map(n => astToData(n, [], renameMap))
+        const result =
+          bodyAst.length === 1 ? astToData(bodyAst[0]!, [], renameMap) : bodyAst.map(n => astToData(n, [], renameMap))
         return { type: 'Value', value: toAny(result), k }
       }
       // Evaluate first splice expression
@@ -717,9 +760,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         // Resolve the absolute file path for source map tracking.
         // Note: this inline normalization assumes forward-slash paths (Unix/macOS).
         // The `path` module is intentionally not imported here for browser compatibility.
-        const rawPath = moduleName.startsWith('/')
-          ? moduleName
-          : `${env.currentFileDir}/${moduleName}`
+        const rawPath = moduleName.startsWith('/') ? moduleName : `${env.currentFileDir}/${moduleName}`
         // Normalize: resolve . and .. segments, collapse multiple slashes
         const parts = rawPath.split('/')
         const resolved: string[] = []
@@ -734,7 +775,9 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         // runtime imports get unique nodeIds and source map entries for coverage tracking.
         const tokenStream = tokenize(source, env.debug, env.debug ? resolvedPathWithExt : undefined)
         const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-        const ast = env.allocateNodeId ? parseToAst(minified, env.allocateNodeId) : { body: parse(minified), sourceMap: undefined }
+        const ast = env.allocateNodeId
+          ? parseToAst(minified, env.allocateNodeId)
+          : { body: parse(minified), sourceMap: undefined }
         // Merge the imported file's source map into the accumulated one
         if (ast.sourceMap && env.sourceMap) {
           const sourceOffset = env.sourceMap.sources.length
@@ -783,11 +826,20 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       if (dvalaModule.source) {
         // Cache parsed nodes on the module to avoid re-parsing (which would allocate new node IDs)
         if (!dvalaModule._cachedNodes) {
-          dvalaModule._cachedNodes = parse(minifyTokenStream(tokenize(dvalaModule.source, false, undefined), { removeWhiteSpace: true }))
+          dvalaModule._cachedNodes = parse(
+            minifyTokenStream(tokenize(dvalaModule.source, false, undefined), { removeWhiteSpace: true }),
+          )
         }
         const nodes = dvalaModule._cachedNodes
         const sourceEnv = env.create({})
-        const mergeFrame: ImportMergeFrame = { type: 'ImportMerge', tsFunctions: result, moduleName, module: dvalaModule, env, sourceCodeInfo }
+        const mergeFrame: ImportMergeFrame = {
+          type: 'ImportMerge',
+          tsFunctions: result,
+          moduleName,
+          module: dvalaModule,
+          env,
+          sourceCodeInfo,
+        }
         if (nodes.length === 1) {
           return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: cons(mergeFrame, k) }
         }
@@ -841,7 +893,11 @@ function stepTemplateString(node: TemplateStringNode, env: ContextStack, k: Cont
  * Normal expressions: evaluate arguments left-to-right, then dispatch.
  * Push EvalArgsFrame + FiniteCheckFrame, then start evaluating the first arg.
  */
-function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: ContinuationStack): Step | Promise<Step> {
+function stepNormalExpression(
+  node: NormalExpressionNode,
+  env: ContextStack,
+  k: ContinuationStack,
+): Step | Promise<Step> {
   const argNodes = node[1][1]
   const sourceCodeInfo = env.resolve(node[2])
 
@@ -909,7 +965,11 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
  * and return an EvalStep for the first sub-expression.
  */
 /* v8 ignore next 4 */
-function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, _k: ContinuationStack): Step | Promise<Step> {
+function stepSpecialExpression(
+  node: SpecialExpressionNode,
+  env: ContextStack,
+  _k: ContinuationStack,
+): Step | Promise<Step> {
   const sourceCodeInfo = env.resolve(node[2])
   throw new RuntimeError(`Unknown special expression type: ${node[1][0]}`, sourceCodeInfo)
 }
@@ -959,13 +1019,7 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
         const macroArgs = PersistentVector.from([...params].slice(1))
         // Call the macro's body as a regular function — no MacroEvalFrame, so the
         // expanded AST is returned as a value instead of being evaluated.
-        return setupUserDefinedCall(
-          macroFn as unknown as UserDefinedFunction,
-          macroArgs,
-          env,
-          sourceCodeInfo,
-          k,
-        )
+        return setupUserDefinedCall(macroFn as unknown as UserDefinedFunction, macroArgs, env, sourceCodeInfo, k)
       }
       // dvalaImpl dispatch — initCoreDvalaSources sets dvalaImpl on core expressions at startup,
       // module expressions get dvalaImpl via ImportMerge, but the trampoline import handler
@@ -1002,7 +1056,14 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
 /**
  * Dispatch a resolved function value with pre-evaluated parameters.
  */
-function dispatchFunction(fn: FunctionLike, params: Arr, placeholders: number[], env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step | Promise<Step> {
+function dispatchFunction(
+  fn: FunctionLike,
+  params: Arr,
+  placeholders: number[],
+  env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step | Promise<Step> {
   if (placeholders.length > 0) {
     const partialFunction: PartialFunction = {
       [FUNCTION_SYMBOL]: true,
@@ -1041,7 +1102,13 @@ function dispatchFunction(fn: FunctionLike, params: Arr, placeholders: number[],
  * Dispatch a DvalaFunction. User-defined functions are set up with frames;
  * some compound function types still use the recursive executor for iteration.
  */
-function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step | Promise<Step> {
+function dispatchDvalaFunction(
+  fn: DvalaFunction,
+  params: Arr,
+  env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step | Promise<Step> {
   switch (fn.functionType) {
     case 'UserDefined':
     case 'Macro': {
@@ -1131,7 +1198,10 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     case 'Partial': {
       const actualParamsArr = [...fn.params]
       if (params.size !== fn.placeholders.length) {
-        throw new TypeError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.size}.`, sourceCodeInfo)
+        throw new TypeError(
+          `(partial) expects ${fn.placeholders.length} arguments, got ${params.size}.`,
+          sourceCodeInfo,
+        )
       }
       const paramsCopy = [...params]
       for (const placeholderIndex of fn.placeholders) {
@@ -1140,7 +1210,9 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       return dispatchFunction(fn.function, PersistentVector.from(actualParamsArr as Any[]), [], env, sourceCodeInfo, k)
     }
     case 'Fnull': {
-      const fnulledParamsArr = Array.from(params).map((param, index) => (param === null ? toAny(fn.params.get(index)) : param)) as Any[]
+      const fnulledParamsArr = Array.from(params).map((param, index) =>
+        param === null ? toAny(fn.params.get(index)) : param,
+      ) as Any[]
       return dispatchFunction(fn.function, PersistentVector.from(fnulledParamsArr), [], env, sourceCodeInfo, k)
     }
     // Complement: call wrapped function, then negate result
@@ -1159,7 +1231,14 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       // Start with the last function
       const startIndex = fns.size - 1
       const frame: CompFrame = { type: 'Comp', fns, index: startIndex - 1, env, sourceCodeInfo }
-      return dispatchFunction(asFunctionLike(fns.get(startIndex), sourceCodeInfo), params, [], env, sourceCodeInfo, cons(frame, k))
+      return dispatchFunction(
+        asFunctionLike(fns.get(startIndex), sourceCodeInfo),
+        params,
+        [],
+        env,
+        sourceCodeInfo,
+        cons(frame, k),
+      )
     }
     // Juxt: call each function with same params, collect results
     case 'Juxt': {
@@ -1167,8 +1246,23 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       if (fns.size === 0) {
         return { type: 'Value', value: PersistentVector.empty(), k }
       }
-      const frame: JuxtFrame = { type: 'Juxt', fns, params, index: 1, results: PersistentVector.empty(), env, sourceCodeInfo }
-      return dispatchFunction(asFunctionLike(fns.get(0), sourceCodeInfo), params, [], env, sourceCodeInfo, cons(frame, k))
+      const frame: JuxtFrame = {
+        type: 'Juxt',
+        fns,
+        params,
+        index: 1,
+        results: PersistentVector.empty(),
+        env,
+        sourceCodeInfo,
+      }
+      return dispatchFunction(
+        asFunctionLike(fns.get(0), sourceCodeInfo),
+        params,
+        [],
+        env,
+        sourceCodeInfo,
+        cons(frame, k),
+      )
     }
     // EveryPred: short-circuit AND across all (predicate, param) pairs
     case 'EveryPred': {
@@ -1183,7 +1277,14 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       }
       const frame: EveryPredFrame = { type: 'EveryPred', checks, index: 1, env, sourceCodeInfo }
       const firstCheck = checks[0]!
-      return dispatchFunction(firstCheck.fn, PersistentVector.from([firstCheck.param]), [], env, sourceCodeInfo, cons(frame, k))
+      return dispatchFunction(
+        firstCheck.fn,
+        PersistentVector.from([firstCheck.param]),
+        [],
+        env,
+        sourceCodeInfo,
+        cons(frame, k),
+      )
     }
     // SomePred: short-circuit OR across all (predicate, param) pairs
     case 'SomePred': {
@@ -1198,7 +1299,14 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       }
       const frame: SomePredFrame = { type: 'SomePred', checks, index: 1, env, sourceCodeInfo }
       const firstCheck = checks[0]!
-      return dispatchFunction(firstCheck.fn, PersistentVector.from([firstCheck.param]), [], env, sourceCodeInfo, cons(frame, k))
+      return dispatchFunction(
+        firstCheck.fn,
+        PersistentVector.from([firstCheck.param]),
+        [],
+        env,
+        sourceCodeInfo,
+        cons(frame, k),
+      )
     }
     case 'SpecialBuiltin': {
       const specialExpression = asNonUndefined(builtin.specialExpressions[fn.specialBuiltinSymbolType], sourceCodeInfo)
@@ -1206,7 +1314,10 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         const result = specialExpression.evaluateAsNormalExpression(params, sourceCodeInfo, env)
         return wrapMaybePromiseAsStep(result, k)
       }
-      throw new TypeError(`Special builtin function ${fn.specialBuiltinSymbolType} is not supported as normal expression.`, sourceCodeInfo)
+      throw new TypeError(
+        `Special builtin function ${fn.specialBuiltinSymbolType} is not supported as normal expression.`,
+        sourceCodeInfo,
+      )
     }
     case 'Module': {
       const dvalaModule = env.getModule(fn.moduleName)
@@ -1250,7 +1361,13 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
  * Uses frame-based binding slots for all argument binding, enabling
  * suspension/serialization at any point during destructuring.
  */
-function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step {
+function setupUserDefinedCall(
+  fn: UserDefinedFunction,
+  params: Arr,
+  env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
   if (!arityAcceptsMin(fn.arity, params.size)) {
     throw new TypeError(`Expected ${fn.arity} arguments, got ${params.size}.`, sourceCodeInfo)
   }
@@ -1748,7 +1865,13 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
     }
     const nextEntry = entries[nextIndex]!
     const isNextSpread = isSpreadNode(nextEntry as AstNode)
-    const newFrame: ObjectBuildFrame = { ...frame, index: nextIndex, result: newResult, currentKey: null, isSpread: isNextSpread }
+    const newFrame: ObjectBuildFrame = {
+      ...frame,
+      index: nextIndex,
+      result: newResult,
+      currentKey: null,
+      isSpread: isNextSpread,
+    }
     return {
       type: 'Eval',
       node: isNextSpread ? (nextEntry as SpreadNode)[1] : (nextEntry as [AstNode, AstNode])[0],
@@ -1774,7 +1897,13 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
     }
     const nextEntry = entries[nextIndex]!
     const isNextSpread = isSpreadNode(nextEntry as AstNode)
-    const newFrame: ObjectBuildFrame = { ...frame, index: nextIndex, result: newResult, currentKey: null, isSpread: isNextSpread }
+    const newFrame: ObjectBuildFrame = {
+      ...frame,
+      index: nextIndex,
+      result: newResult,
+      currentKey: null,
+      isSpread: isNextSpread,
+    }
     return {
       type: 'Eval',
       node: isNextSpread ? (nextEntry as SpreadNode)[1] : (nextEntry as [AstNode, AstNode])[0],
@@ -1967,7 +2096,6 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
       const newResult = result.append(value)
       return advanceForElement({ ...frame, result: newResult }, k)
     }
-
   }
 }
 
@@ -2173,8 +2301,7 @@ function findMacroCallSiteInfo(k: ContinuationStack): SourceCodeInfo | undefined
   while (_node !== null) {
     const frame = _node.head
     _node = _node.tail
-    if (frame.type === 'MacroEval')
-      return frame.sourceCodeInfo
+    if (frame.type === 'MacroEval') return frame.sourceCodeInfo
   }
   return undefined
 }
@@ -2187,15 +2314,11 @@ function findMacroCallSiteInfo(k: ContinuationStack): SourceCodeInfo | undefined
  */
 function patchErrorWithMacroCallSite(error: DvalaError, k: ContinuationStack): DvalaError {
   const callSite = findMacroCallSiteInfo(k)
-  if (!callSite)
-    return error
+  if (!callSite) return error
   // Create a new error with the macro call site as location
-  if (error instanceof UserError)
-    return new UserError(error.userMessage, callSite)
-  if (error instanceof AssertionError)
-    return new AssertionError(error.shortMessage, callSite)
-  if (error instanceof ReferenceError)
-    return new ReferenceError(error.symbol, callSite)
+  if (error instanceof UserError) return new UserError(error.userMessage, callSite)
+  if (error instanceof AssertionError) return new AssertionError(error.shortMessage, callSite)
+  if (error instanceof ReferenceError) return new ReferenceError(error.symbol, callSite)
   return new DvalaError(error.shortMessage, callSite)
 }
 
@@ -2224,9 +2347,7 @@ function getErrorOrigin(payload: Obj): ErrorOrigin | undefined {
 
 /** Build the structured @dvala.error payload from a DvalaError instance. */
 function buildErrorPayload(error: DvalaError): Obj {
-  let payload: Obj = PersistentMap.empty<unknown>()
-    .assoc('type', error.errorType)
-    .assoc('message', error.shortMessage)
+  let payload: Obj = PersistentMap.empty<unknown>().assoc('type', error.errorType).assoc('message', error.shortMessage)
   // Add type-specific data following the convention
   if (error instanceof ReferenceError) {
     payload = payload.assoc('data', PersistentMap.fromRecord({ symbol: error.symbol }))
@@ -2284,10 +2405,7 @@ function validateErrorPayload(arg: Any, sourceCodeInfo: SourceCodeInfo | undefin
   return normalized
 }
 
-function tryDispatchDvalaError(
-  error: DvalaError,
-  k: ContinuationStack,
-): Step | null {
+function tryDispatchDvalaError(error: DvalaError, k: ContinuationStack): Step | null {
   const effect = getEffectRef('dvala.error')
   const arg: Any = buildErrorPayload(error)
 
@@ -2299,7 +2417,8 @@ function tryDispatchDvalaError(
   let _node = k
   while (_node !== null) {
     const frame = _node.head
-    if (frame.type === 'ParallelBranchBarrier' || frame.type === 'ReRunParallel' || frame.type === 'ResumeParallel') break
+    if (frame.type === 'ParallelBranchBarrier' || frame.type === 'ReRunParallel' || frame.type === 'ResumeParallel')
+      break
     _node = _node.tail
     if (frame.type === 'AlgebraicHandle') {
       if (frame.handler.clauseMap.has('dvala.error')) {
@@ -2342,10 +2461,7 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
       const { bindings, bindingContext, body, env } = frame
 
       if (params.size !== bindings.length) {
-        throw new TypeError(
-          `recur expected ${bindings.length} parameters, got ${params.size}`,
-          sourceCodeInfo,
-        )
+        throw new TypeError(`recur expected ${bindings.length} parameters, got ${params.size}`, sourceCodeInfo)
       }
 
       // Start the frame-based rebinding process
@@ -2483,14 +2599,18 @@ function applyAlgebraicHandleNormalCompletion(frame: AlgebraicHandleFrame, value
   // the cleanups — when it pops, the cleanups fire in LIFO. The
   // post-transform value flows through the cleanup frame unchanged
   // (the frame takes it via its _value parameter).
-  const outerK = cleanups && cleanups.length > 0
-    ? cons({
-      type: 'HandlerCleanup',
-      cleanups,
-      handleFrame: frame,
-      sourceCodeInfo: frame.sourceCodeInfo,
-    } satisfies HandlerCleanupFrame, k)
-    : k
+  const outerK =
+    cleanups && cleanups.length > 0
+      ? cons(
+          {
+            type: 'HandlerCleanup',
+            cleanups,
+            handleFrame: frame,
+            sourceCodeInfo: frame.sourceCodeInfo,
+          } satisfies HandlerCleanupFrame,
+          k,
+        )
+      : k
   return applyHandlerTransform(handler, value, frame.env, frame.sourceCodeInfo, outerK)
 }
 
@@ -2529,11 +2649,13 @@ function applyHandlerCleanup(frame: HandlerCleanupFrame, value: Any, k: Continua
     const entry = cleanups[i]!
     try {
       const result = entry.callback()
-      if (result && typeof (result).then === 'function') {
+      if (result && typeof result.then === 'function') {
         // Async: hand off to a promise chain that awaits this one and
         // continues draining sync or async.
-        return (result)
-          .catch(e => { errors.push(e) })
+        return result
+          .catch(e => {
+            errors.push(e)
+          })
           .then(() => drainCleanupsAsync(cleanups, i - 1, errors))
           .then(() => finalizeCleanup(value, k, errors, sourceCodeInfo))
       }
@@ -2561,7 +2683,10 @@ function applyHandlerCleanup(frame: HandlerCleanupFrame, value: Any, k: Continua
  * Returns a Promise because cleanups may be async; for a fully
  * synchronous batch the promise resolves on the next tick.
  */
-async function drainProgramCleanups(snapshotState: SnapshotState | undefined, primaryOutcomeInFlight = false): Promise<void> {
+async function drainProgramCleanups(
+  snapshotState: SnapshotState | undefined,
+  primaryOutcomeInFlight = false,
+): Promise<void> {
   if (!snapshotState?.programCleanups || snapshotState.programCleanups.length === 0) return
   const cleanups = snapshotState.programCleanups
   snapshotState.programCleanups = undefined
@@ -2615,7 +2740,12 @@ async function drainCleanupsAsync(
  * channel so they're not silently lost. Proper AggregateError surfacing
  * is a follow-up.
  */
-function finalizeCleanup(value: Any, k: ContinuationStack, errors: unknown[], sourceCodeInfo: SourceCodeInfo | undefined): Step {
+function finalizeCleanup(
+  value: Any,
+  k: ContinuationStack,
+  errors: unknown[],
+  sourceCodeInfo: SourceCodeInfo | undefined,
+): Step {
   if (errors.length === 0) {
     return { type: 'Value', value, k }
   }
@@ -2626,9 +2756,8 @@ function finalizeCleanup(value: Any, k: ContinuationStack, errors: unknown[], so
     // eslint-disable-next-line no-console
     console.error(`[dvala] ${errors.length - 1} additional error(s) occurred during handler cleanup:`, errors.slice(1))
   }
-  const err = first instanceof DvalaError
-    ? first
-    : new DvalaError(first instanceof Error ? first : `${first}`, sourceCodeInfo)
+  const err =
+    first instanceof DvalaError ? first : new DvalaError(first instanceof Error ? first : `${first}`, sourceCodeInfo)
   return { type: 'Error', error: err, k }
 }
 
@@ -2639,7 +2768,13 @@ function finalizeCleanup(value: Any, k: ContinuationStack, errors: unknown[], so
  *
  * If no transform clause, returns the value unchanged (identity).
  */
-function applyHandlerTransform(handler: HandlerFunction, value: Any, _env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step {
+function applyHandlerTransform(
+  handler: HandlerFunction,
+  value: Any,
+  _env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
   if (!handler.transform) {
     // No transform — identity
     return { type: 'Value', value, k }
@@ -2803,14 +2938,18 @@ function dispatchAlgebraicHandler(
   // restriction error. Escaped-continuation multi-shot (storing resume
   // and invoking after scope exit) is the intended target of that check.
   const rawOuterK = listDrop(k, frameIndex + 1)
-  const outerK: ContinuationStack = frame.cleanups && frame.cleanups.length > 0
-    ? cons<Frame>({
-      type: 'HandlerCleanup',
-      cleanups: frame.cleanups,
-      handleFrame: frame,
-      sourceCodeInfo,
-    }, rawOuterK)
-    : rawOuterK
+  const outerK: ContinuationStack =
+    frame.cleanups && frame.cleanups.length > 0
+      ? cons<Frame>(
+          {
+            type: 'HandlerCleanup',
+            cleanups: frame.cleanups,
+            handleFrame: frame,
+            sourceCodeInfo,
+          },
+          rawOuterK,
+        )
+      : rawOuterK
 
   // Create the HandlerClauseFrame — bridges clause result back
   const clauseFrame: HandlerClauseFrame = {
@@ -2888,7 +3027,12 @@ function dispatchAlgebraicHandler(
     env: clauseEnv,
     sourceCodeInfo,
   }
-  return { type: 'Eval', node: clauseBodyExprs[0]!, env: clauseEnv, k: cons<Frame>(seqFrame, cons<Frame>(clauseFrame, outerK)) }
+  return {
+    type: 'Eval',
+    node: clauseBodyExprs[0]!,
+    env: clauseEnv,
+    k: cons<Frame>(seqFrame, cons<Frame>(clauseFrame, outerK)),
+  }
 }
 
 /**
@@ -2957,8 +3101,8 @@ function assertContinuationValid(performK: ContinuationStack, sourceCodeInfo: So
   while (node !== null) {
     if (node.head.type === 'AlgebraicHandle' && node.head.cleanupsFired) {
       throw new RuntimeError(
-        'cannot resume: continuation refers to a resource-holding handler that has already exited. '
-        + 'This happens when a multi-shot resume would re-enter a handler whose cleanups have already fired.',
+        'cannot resume: continuation refers to a resource-holding handler that has already exited. ' +
+          'This happens when a multi-shot resume would re-enter a handler whose cleanups have already fired.',
         sourceCodeInfo,
       )
     }
@@ -3006,7 +3150,12 @@ function hasLiveCleanups(k: ContinuationStack, snapshotState?: SnapshotState): b
  * discarded. See `design/archive/2026-04-19_host-scoped-resources.md`
  * Part 3.
  */
-function assertNoLiveCleanups(k: ContinuationStack, operation: string, sourceCodeInfo: SourceCodeInfo | undefined, snapshotState?: SnapshotState): void {
+function assertNoLiveCleanups(
+  k: ContinuationStack,
+  operation: string,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  snapshotState?: SnapshotState,
+): void {
   // Aggregate counts per effect name across all resource-holding frames.
   const counts = new Map<string, number>()
   let total = 0
@@ -3032,14 +3181,15 @@ function assertNoLiveCleanups(k: ContinuationStack, operation: string, sourceCod
   }
   if (total === 0) return
   const breakdown = [...counts.entries()].map(([name, n]) => `${n} × ${name}`).join(', ')
-  const scopeNote = programLevelCount > 0
-    ? total === programLevelCount
-      ? ' (all at program scope)'
-      : ` (includes ${programLevelCount} at program scope)`
-    : ''
+  const scopeNote =
+    programLevelCount > 0
+      ? total === programLevelCount
+        ? ' (all at program scope)'
+        : ` (includes ${programLevelCount} at program scope)`
+      : ''
   throw new RuntimeError(
-    `cannot ${operation}: ${total} live cleanup(s) held by resource-holding handler(s)${scopeNote} (${breakdown}). `
-    + 'Close resources before exiting the scope.',
+    `cannot ${operation}: ${total} live cleanup(s) held by resource-holding handler(s)${scopeNote} (${breakdown}). ` +
+      'Close resources before exiting the scope.',
     sourceCodeInfo,
   )
 }
@@ -3183,14 +3333,24 @@ function sameBoundaryPath(left: string[], right: string[]): boolean {
   return true
 }
 
-type SnapshotStateSeed = SnapshotState | {
-  snapshots: Snapshot[]
-  nextSnapshotIndex: number
-  maxSnapshots?: number
-  autoCheckpoint?: boolean
-}
+type SnapshotStateSeed =
+  | SnapshotState
+  | {
+      snapshots: Snapshot[]
+      nextSnapshotIndex: number
+      maxSnapshots?: number
+      autoCheckpoint?: boolean
+    }
 
-function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
+function dispatchPerform(
+  effect: EffectRef,
+  arg: Any,
+  k: ContinuationStack,
+  sourceCodeInfo?: SourceCodeInfo,
+  handlers?: Handlers,
+  signal?: AbortSignal,
+  snapshotState?: SnapshotState,
+): Step | Promise<Step> {
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
   // Skipped when re-dispatching from an algebraic handler fallthrough (already captured upstream).
@@ -3223,7 +3383,8 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
     // Effect boundary: BarrierFrame (live execution) and ReRun/ResumeParallelFrame
     // (serialized checkpoints/suspensions) all act as boundaries, preserving
     // effect isolation between branches and the outer scope.
-    if (frame.type === 'ParallelBranchBarrier' || frame.type === 'ReRunParallel' || frame.type === 'ResumeParallel') break
+    if (frame.type === 'ParallelBranchBarrier' || frame.type === 'ReRunParallel' || frame.type === 'ResumeParallel')
+      break
     if (frame.type === 'AlgebraicHandle') {
       // New handler system — try named clause dispatch
       const result = dispatchAlgebraicHandler(frame, effect, arg, k, frameIndex, sourceCodeInfo)
@@ -3320,13 +3481,21 @@ function dispatchHostHandler(
 
   function resolveOutcome(o: HandlerOutcome, nextIndex: number): Step | Promise<Step> {
     switch (o.kind) {
-      case 'step': return o.step
-      case 'asyncResume': return o.promise.then(
-        (v): Step => ({ type: 'Value', value: v, k }),
-        (e): Step => ({ type: 'Error', error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo), k }),
-      )
-      case 'throw': throw o.error
-      case 'next': return tryHandler(nextIndex)
+      case 'step':
+        return o.step
+      case 'asyncResume':
+        return o.promise.then(
+          (v): Step => ({ type: 'Value', value: v, k }),
+          (e): Step => ({
+            type: 'Error',
+            error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
+            k,
+          }),
+        )
+      case 'throw':
+        throw o.error
+      case 'next':
+        return tryHandler(nextIndex)
     }
   }
 
@@ -3359,7 +3528,10 @@ function dispatchHostHandler(
 
     function assertNotSettled(operation: string): void {
       if (settled) {
-        throw new RuntimeError(`Effect handler called ${operation}() after already calling another operation`, sourceCodeInfo)
+        throw new RuntimeError(
+          `Effect handler called ${operation}() after already calling another operation`,
+          sourceCodeInfo,
+        )
       }
       settled = true
     }
@@ -3411,8 +3583,7 @@ function dispatchHostHandler(
         assertNotSettled('suspend')
         assertNoLiveCleanups(k, 'suspend (via ctx.suspend)', sourceCodeInfo, snapshotState)
         // Validate meta is serializable (it goes into snapshots) but don't convert to Dvala types
-        if (meta !== undefined)
-          assertValidHostValue(meta, `suspend() meta in handler for '${effectName}'`)
+        if (meta !== undefined) assertValidHostValue(meta, `suspend() meta in handler for '${effectName}'`)
         outcome = {
           kind: 'throw',
           error: new SuspensionSignal(
@@ -3430,15 +3601,16 @@ function dispatchHostHandler(
         assertNotSettled('next')
         outcome = { kind: 'next' }
       },
-      get snapshots(): Snapshot[] { return snapshotState ? [...snapshotState.snapshots] : [] },
+      get snapshots(): Snapshot[] {
+        return snapshotState ? [...snapshotState.snapshots] : []
+      },
       checkpoint: (message: string, meta?: unknown): Snapshot => {
         if (!snapshotState) {
           throw new RuntimeError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
         }
         assertNoLiveCleanups(k, 'checkpoint (via ctx.checkpoint)', sourceCodeInfo, snapshotState)
         // Validate meta is serializable (it gets stored in snapshot) but don't convert to Dvala types
-        if (meta !== undefined)
-          assertValidHostValue(meta, `checkpoint() meta in handler for '${effectName}'`)
+        if (meta !== undefined) assertValidHostValue(meta, `checkpoint() meta in handler for '${effectName}'`)
         const continuation = serializeToObject(composeCheckpointContinuation(k))
         const snapshot = createSnapshot({
           continuation,
@@ -3456,14 +3628,22 @@ function dispatchHostHandler(
       },
       resumeFrom: (snapshot: Snapshot, value: unknown) => {
         if (settled) {
-          throw new RuntimeError('Effect handler called resumeFrom() after already calling another operation', sourceCodeInfo)
+          throw new RuntimeError(
+            'Effect handler called resumeFrom() after already calling another operation',
+            sourceCodeInfo,
+          )
         }
         if (!snapshotState) {
           throw new RuntimeError('resumeFrom is not available outside effect-enabled execution', sourceCodeInfo)
         }
-        const found = snapshotState.snapshots.find(s => s.index === snapshot.index && s.executionId === snapshot.executionId)
+        const found = snapshotState.snapshots.find(
+          s => s.index === snapshot.index && s.executionId === snapshot.executionId,
+        )
         if (!found) {
-          throw new RuntimeError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
+          throw new RuntimeError(
+            `Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`,
+            sourceCodeInfo,
+          )
         }
         settled = true
         outcome = {
@@ -3511,9 +3691,9 @@ function dispatchHostHandler(
           return
         }
         throw new RuntimeError(
-          `onScopeExit called from '${effectName}' handler with no enclosing Dvala handler frame `
-          + 'and no program-level scope available (pure-mode evaluation without a snapshot state). '
-          + 'Wrap the computation in a `do with handler; ... end` to scope the cleanup.',
+          `onScopeExit called from '${effectName}' handler with no enclosing Dvala handler frame ` +
+            'and no program-level scope available (pure-mode evaluation without a snapshot state). ' +
+            'Wrap the computation in a `do with handler; ... end` to scope the cleanup.',
           sourceCodeInfo,
         )
       },
@@ -3524,7 +3704,10 @@ function dispatchHostHandler(
     if (!(handlerResult instanceof Promise)) {
       // Synchronous handler — outcome must already be set
       if (!outcome) {
-        throw new RuntimeError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`, sourceCodeInfo)
+        throw new RuntimeError(
+          `Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`,
+          sourceCodeInfo,
+        )
       }
       return resolveOutcome(outcome, index + 1)
     }
@@ -3540,7 +3723,10 @@ function dispatchHostHandler(
     return handlerResult.then(
       () => {
         if (!outcome) {
-          throw new RuntimeError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`, sourceCodeInfo)
+          throw new RuntimeError(
+            `Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`,
+            sourceCodeInfo,
+          )
         }
         return resolveOutcome(outcome, index + 1)
       },
@@ -3550,7 +3736,6 @@ function dispatchHostHandler(
           return resolveOutcome(outcome, index + 1)
         }
         if (isSuspensionSignal(e) || isResumeFromSignal(e) || isHaltSignal(e)) {
-
           throw e
         }
         const errorStep: Step = {
@@ -3620,7 +3805,12 @@ async function runBranch(
   // dispatchFunction returns Step | Promise<Step>; cast to Step is safe because
   // runEffectLoop's inner loop handles Promise<Step> via `step instanceof Promise`.
   const initial = dispatchFunction(
-    branchFn as FunctionLike, PersistentVector.empty(), [], env, undefined, barrierK,
+    branchFn as FunctionLike,
+    PersistentVector.empty(),
+    [],
+    env,
+    undefined,
+    barrierK,
   ) as Step
 
   return runEffectLoop(
@@ -3662,9 +3852,7 @@ async function executeParallelBranches(
   // AbortController for this parallel group — aborted when any branch suspends,
   // which signals remaining effect handlers to auto-suspend via ctx.signal.
   const parallelAbort = new AbortController()
-  const effectSignal = signal
-    ? combineSignals(signal, parallelAbort.signal)
-    : parallelAbort.signal
+  const effectSignal = signal ? combineSignals(signal, parallelAbort.signal) : parallelAbort.signal
 
   // Run all branches concurrently; abort the group when a branch suspends.
   // Each branch gets outerK (the continuation after the parallel) threaded
@@ -3960,9 +4148,7 @@ async function executeReRunParallel(
 
   // Re-run all sibling branches by calling stored function values
   const parallelAbort = new AbortController()
-  const effectSignal = signal
-    ? combineSignals(signal, parallelAbort.signal)
-    : parallelAbort.signal
+  const effectSignal = signal ? combineSignals(signal, parallelAbort.signal) : parallelAbort.signal
 
   const siblingPromises: Promise<{ index: number; result: RunResult }>[] = []
   // Track branch indices in parallel with siblingPromises for rejected-promise fallback
@@ -3978,20 +4164,29 @@ async function executeReRunParallel(
       mode,
     }
     siblingIndices.push(i)
-    siblingPromises.push((async () => {
-      const result = await runBranch(branches[i], env, handlers, effectSignal, outerK, branchCtx, snapshotState)
-      if (result.type === 'suspended') {
-        parallelAbort.abort()
-      }
-      return { index: i, result }
-    })())
+    siblingPromises.push(
+      (async () => {
+        const result = await runBranch(branches[i], env, handlers, effectSignal, outerK, branchCtx, snapshotState)
+        if (result.type === 'suspended') {
+          parallelAbort.abort()
+        }
+        return { index: i, result }
+      })(),
+    )
   }
 
   const reRunSettled = await Promise.allSettled(siblingPromises)
 
   // Collect results — track snapshots for the primary suspended sibling
   // so the composed timeline includes branch-local checkpoints.
-  const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
+  const newSuspended: {
+    index: number
+    k: ContinuationStack
+    effectName?: string
+    effectArg?: Any
+    snapshots: Snapshot[]
+    nextSnapshotIndex: number
+  }[] = []
   const errors: DvalaError[] = []
 
   for (let ri = 0; ri < reRunSettled.length; ri++) {
@@ -4136,9 +4331,7 @@ async function executeResumeParallel(
   // Each sibling's k was truncated at the BarrierFrame — reconstruct the
   // full continuation by prepending a BarrierFrame + outerK.
   const parallelAbort = new AbortController()
-  const effectSignal = signal
-    ? combineSignals(signal, parallelAbort.signal)
-    : parallelAbort.signal
+  const effectSignal = signal ? combineSignals(signal, parallelAbort.signal) : parallelAbort.signal
 
   const siblingPromises = suspendedBranches.map(async (sibling): Promise<{ index: number; result: RunResult }> => {
     const branchCtx: ParallelBranchContext = {
@@ -4182,7 +4375,18 @@ async function executeResumeParallel(
 
     // Fallback: resume with null (sibling had no captured effect)
     const initialStep: Step = { type: 'Value', value: null as Any, k: fullK }
-    const result = await runEffectLoop(initialStep, handlers, effectSignal, snapshotState, undefined, undefined, undefined, undefined, undefined, snapshotState?.executionId)
+    const result = await runEffectLoop(
+      initialStep,
+      handlers,
+      effectSignal,
+      snapshotState,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      snapshotState?.executionId,
+    )
     if (result.type === 'suspended') {
       parallelAbort.abort()
     }
@@ -4192,7 +4396,14 @@ async function executeResumeParallel(
   const resumeSettled = await Promise.allSettled(siblingPromises)
 
   // Collect results — track snapshots for the primary suspended sibling
-  const newSuspended: { index: number; k: ContinuationStack; effectName?: string; effectArg?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number }[] = []
+  const newSuspended: {
+    index: number
+    k: ContinuationStack
+    effectName?: string
+    effectArg?: Any
+    snapshots: Snapshot[]
+    nextSnapshotIndex: number
+  }[] = []
   const errors: DvalaError[] = []
 
   for (let ri = 0; ri < resumeSettled.length; ri++) {
@@ -4284,7 +4495,10 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
   let newParams: Arr
   if (isSpreadNode(currentArgNode)) {
     if (!isPersistentVector(value) && !Array.isArray(value)) {
-      throw new TypeError(`Spread operator requires an array, got ${valueToString(value)}`, env.resolve(currentArgNode[2]))
+      throw new TypeError(
+        `Spread operator requires an array, got ${valueToString(value)}`,
+        env.resolve(currentArgNode[2]),
+      )
     }
     let acc = frame.params
     for (const item of value as Iterable<Any>) acc = acc.append(item)
@@ -4504,22 +4718,19 @@ function continueBindingSlots(
       // Rest binding — extract rest values
       if (slot.restKeys !== undefined) {
         // Object rest
-        const parentValue = slot.path.length > 0
-          ? extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null
-          : ctx.rootValue
+        const parentValue =
+          slot.path.length > 0 ? (extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null) : ctx.rootValue
         record[slot.name] = extractObjectRest(parentValue, slot.restKeys, sourceCodeInfo)
       } else if (slot.restIndex !== undefined) {
         // Array rest
-        const parentValue = slot.path.length > 0
-          ? extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null
-          : ctx.rootValue
+        const parentValue =
+          slot.path.length > 0 ? (extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null) : ctx.rootValue
         record[slot.name] = extractArrayRest(parentValue, slot.restIndex, sourceCodeInfo)
       } else {
         // Simple rest binding (e.g., ...args at function level)
         // The value is the root value at the current path
-        const value = slot.path.length > 0
-          ? extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null
-          : ctx.rootValue
+        const value =
+          slot.path.length > 0 ? (extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null) : ctx.rootValue
         record[slot.name] = value
       }
       ctx.index++
@@ -4574,7 +4785,7 @@ function flattenBindingPatternWithoutDefault(target: BindingTarget): BindingSlot
   // We create a version without the default for flattening
   const targetWithoutDefault: BindingTarget = [
     target[0],
-    [target[1][0], undefined] as [typeof target[1][0], undefined],
+    [target[1][0], undefined] as [(typeof target)[1][0], undefined],
     target[2],
   ] as BindingTarget
   return flattenBindingPattern(targetWithoutDefault)
@@ -4706,9 +4917,8 @@ function continueMatchSlots(
           record[slot.name!] = extractMatchArrayRest(ctx.rootValue, slot.path, slot.restIndex)
         } else {
           // Simple rest (e.g., ...args at function level) - shouldn't occur in patterns
-          const value = slot.path.length > 0
-            ? extractMatchValueByPath(ctx.rootValue, slot.path) ?? null
-            : ctx.rootValue
+          const value =
+            slot.path.length > 0 ? (extractMatchValueByPath(ctx.rootValue, slot.path) ?? null) : ctx.rootValue
           record[slot.name!] = value
         }
         ctx.index++
@@ -4777,11 +4987,7 @@ function applyMatchSlot(frame: MatchSlotFrame, value: Any, k: ContinuationStack)
 /**
  * Pattern matching succeeded — proceed to guard or body.
  */
-function matchSucceeded(
-  bindings: Record<string, Any>,
-  matchFrame: MatchFrame,
-  k: ContinuationStack,
-): Step {
+function matchSucceeded(bindings: Record<string, Any>, matchFrame: MatchFrame, k: ContinuationStack): Step {
   const { cases, index, env } = matchFrame
   const [, body, guard] = cases[index]!
 
@@ -4831,7 +5037,14 @@ function applyComp(frame: CompFrame, value: Any, k: ContinuationStack): Step | P
 
   // Call the next function in the chain
   const nextFrame: CompFrame = { type: 'Comp', fns, index: index - 1, env, sourceCodeInfo }
-  return dispatchFunction(asFunctionLike(fns.get(index), sourceCodeInfo), nextParams, [], env, sourceCodeInfo, cons<Frame>(nextFrame, k))
+  return dispatchFunction(
+    asFunctionLike(fns.get(index), sourceCodeInfo),
+    nextParams,
+    [],
+    env,
+    sourceCodeInfo,
+    cons<Frame>(nextFrame, k),
+  )
 }
 
 /**
@@ -4849,7 +5062,14 @@ function applyJuxt(frame: JuxtFrame, value: Any, k: ContinuationStack): Step | P
 
   // Call the next function
   const nextFrame: JuxtFrame = { type: 'Juxt', fns, params, index: index + 1, results: newResults, env, sourceCodeInfo }
-  return dispatchFunction(asFunctionLike(fns.get(index), sourceCodeInfo), params, [], env, sourceCodeInfo, cons<Frame>(nextFrame, k))
+  return dispatchFunction(
+    asFunctionLike(fns.get(index), sourceCodeInfo),
+    params,
+    [],
+    env,
+    sourceCodeInfo,
+    cons<Frame>(nextFrame, k),
+  )
 }
 
 /**
@@ -4871,7 +5091,14 @@ function applyEveryPred(frame: EveryPredFrame, value: Any, k: ContinuationStack)
   // Continue to next check
   const nextFrame: EveryPredFrame = { type: 'EveryPred', checks, index: index + 1, env, sourceCodeInfo }
   const check = checks[index]!
-  return dispatchFunction(check.fn, PersistentVector.from([check.param]), [], env, sourceCodeInfo, cons<Frame>(nextFrame, k))
+  return dispatchFunction(
+    check.fn,
+    PersistentVector.from([check.param]),
+    [],
+    env,
+    sourceCodeInfo,
+    cons<Frame>(nextFrame, k),
+  )
 }
 
 /**
@@ -4893,7 +5120,14 @@ function applySomePred(frame: SomePredFrame, value: Any, k: ContinuationStack): 
   // Continue to next check
   const nextFrame: SomePredFrame = { type: 'SomePred', checks, index: index + 1, env, sourceCodeInfo }
   const check = checks[index]!
-  return dispatchFunction(check.fn, PersistentVector.from([check.param]), [], env, sourceCodeInfo, cons<Frame>(nextFrame, k))
+  return dispatchFunction(
+    check.fn,
+    PersistentVector.from([check.param]),
+    [],
+    env,
+    sourceCodeInfo,
+    cons<Frame>(nextFrame, k),
+  )
 }
 
 function applyFiniteCheck(frame: FiniteCheckFrame, value: Any, k: ContinuationStack): Step {
@@ -4977,7 +5211,12 @@ function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack)
   // Evaluate it as an AST node in the calling scope.
   // Keep the MacroEvalFrame on the stack (marked as expanded) so that errors
   // from the expanded code can find the macro call site for better error locations.
-  const marker: MacroEvalFrame = { type: 'MacroEval', env: frame.env, sourceCodeInfo: frame.sourceCodeInfo, expanded: true }
+  const marker: MacroEvalFrame = {
+    type: 'MacroEval',
+    env: frame.env,
+    sourceCodeInfo: frame.sourceCodeInfo,
+    expanded: true,
+  }
   // Dispatch auto-converts plain arrays to PV; convert back to plain array for stepNode.
   const astNode = (isPersistentVector(value) ? toJS(value) : value) as AstNode
   return { type: 'Eval', node: astNode, env: frame.env, k: cons<Frame>(marker, k) }
@@ -5003,9 +5242,10 @@ function applyCodeTemplateBuild(frame: CodeTemplateBuildFrame, value: Any, k: Co
   }
 
   // All splices evaluated — assemble the AST data with hygiene renames
-  const result = frame.bodyAst.length === 1
-    ? astToData(frame.bodyAst[0]!, nextValues, frame.renameMap)
-    : frame.bodyAst.map(n => astToData(n, nextValues, frame.renameMap))
+  const result =
+    frame.bodyAst.length === 1
+      ? astToData(frame.bodyAst[0]!, nextValues, frame.renameMap)
+      : frame.bodyAst.map(n => astToData(n, nextValues, frame.renameMap))
   return { type: 'Value', value: toAny(result), k }
 }
 
@@ -5202,7 +5442,10 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
  * Splice nodes with index >= innerCount are outer splices — resolved using spliceValues[index - innerCount].
  */
 function astToDataWithCodeTmplAwareness(
-  node: AstNode, spliceValues: Any[], renameMap: Map<string, string> | undefined, innerCount: number,
+  node: AstNode,
+  spliceValues: Any[],
+  renameMap: Map<string, string> | undefined,
+  innerCount: number,
 ): Any {
   const [type, payload] = node
 
@@ -5234,7 +5477,7 @@ function astToDataWithCodeTmplAwareness(
     if (!Array.isArray(item)) {
       if (typeof item === 'string' && renameMap) {
         const renamed = renameMap.get(item)
-        result.push((renamed ?? item))
+        result.push(renamed ?? item)
       } else {
         result.push(item as Any)
       }
@@ -5252,9 +5495,15 @@ function astToDataWithCodeTmplAwareness(
     } else if (item.length >= 2 && typeof item[0] === 'string') {
       result.push(astToDataWithCodeTmplAwareness(item as AstNode, spliceValues, renameMap, innerCount))
     } else {
-      result.push(toAny(item.map((sub: unknown) =>
-        Array.isArray(sub) ? astToDataWithCodeTmplAwareness(sub as AstNode, spliceValues, renameMap, innerCount) : sub,
-      )))
+      result.push(
+        toAny(
+          item.map((sub: unknown) =>
+            Array.isArray(sub)
+              ? astToDataWithCodeTmplAwareness(sub as AstNode, spliceValues, renameMap, innerCount)
+              : sub,
+          ),
+        ),
+      )
     }
   }
   return toAny([type, result, -1])
@@ -5284,8 +5533,7 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
     }
 
     // Splice values may be PV (macro args are now PV-converted AST nodes); convert to plain array
-    if (isPersistentVector(resolvedName))
-      resolvedName = toJS(resolvedName) as Any
+    if (isPersistentVector(resolvedName)) resolvedName = toJS(resolvedName) as Any
 
     const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
 
@@ -5332,14 +5580,19 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
 
   // Object binding target: ["object", [ObjectBindingEntry[], default], id] — recurse into nested targets
   if (targetType === 'object' && Array.isArray(targetPayload)) {
-    const [entries, defaultNode] = targetPayload as [{ key: string; keyNodeId: number; target: unknown }[], AstNode | null | undefined]
+    const [entries, defaultNode] = targetPayload as [
+      { key: string; keyNodeId: number; target: unknown }[],
+      AstNode | null | undefined,
+    ]
     const convertedEntries: Any[] = []
     for (const entry of entries) {
-      convertedEntries.push(toAny({
-        key: entry.key,
-        keyNodeId: entry.keyNodeId ?? 0,
-        target: convertBindingTarget(entry.target as AstNode, spliceValues, renameMap),
-      }))
+      convertedEntries.push(
+        toAny({
+          key: entry.key,
+          keyNodeId: entry.keyNodeId ?? 0,
+          target: convertBindingTarget(entry.target as AstNode, spliceValues, renameMap),
+        }),
+      )
     }
     const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
     return toAny(['object', [convertedEntries, convertedDefault], -1])
@@ -5412,7 +5665,7 @@ function convertArrayPayload(items: unknown[], spliceValues: Any[], renameMap?: 
       // Rename plain string values in binding targets (e.g. rest param names)
       if (typeof item === 'string' && renameMap) {
         const renamed = renameMap.get(item)
-        result.push((renamed ?? item))
+        result.push(renamed ?? item)
       } else {
         result.push(item as Any)
       }
@@ -5517,7 +5770,12 @@ function getCollectionUtils(): { asColl: (v: Any, s?: SourceCodeInfo) => Any; is
  * When `handlers` and `signal` are provided (from `run()`), host handlers are
  * available as a fallback for effects not matched by any local `try/with`.
  */
-export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
+export function tick(
+  step: Step,
+  handlers?: Handlers,
+  signal?: AbortSignal,
+  snapshotState?: SnapshotState,
+): Step | Promise<Step> {
   try {
     switch (step.type) {
       case 'Value': {
@@ -5533,7 +5791,12 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
           // are always covered whenever their parent expression is covered, so they add no useful
           // information for coverage or debugging.
           const t = node[0]
-          const isStructuralLeaf = t === NodeTypes.Sym || t === NodeTypes.Builtin || t === NodeTypes.Special || t === NodeTypes.Reserved || t === NodeTypes.Effect
+          const isStructuralLeaf =
+            t === NodeTypes.Sym ||
+            t === NodeTypes.Builtin ||
+            t === NodeTypes.Special ||
+            t === NodeTypes.Reserved ||
+            t === NodeTypes.Effect
           // Lazy — only allocate the Continuation object if the hook actually calls getContinuation().
           if (!isStructuralLeaf) {
             const result = snapshotState.onNodeEval(node, () => ({
@@ -5583,7 +5846,6 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
     // SuspensionSignal and HaltSignal must propagate out of tick to the effect trampoline loop
     // (runEffectLoop).
     if (isSuspensionSignal(error) || isHaltSignal(error)) {
-
       throw error
     }
     // Route DvalaError through the 'dvala.error' algebraic effect so that
@@ -5600,13 +5862,14 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       // BranchComplete steps have no continuation (the branch is done).
       // Errors during BranchComplete should not reach here, but handle
       // gracefully by using null (no handler search possible).
-      const kForDispatch = step.type === 'BranchComplete'
-        ? null
-        : step.type === 'ReRunParallelExec' || step.type === 'ResumeParallelExec'
-          ? step.k
-          : step.type === 'Value'
-            ? step.k?.tail ?? null
-            : step.k
+      const kForDispatch =
+        step.type === 'BranchComplete'
+          ? null
+          : step.type === 'ReRunParallelExec' || step.type === 'ResumeParallelExec'
+            ? step.k
+            : step.type === 'Value'
+              ? (step.k?.tail ?? null)
+              : step.k
 
       // If the error has no source location and we're inside a macro expansion,
       // patch it with the macro call site so error messages are meaningful.
@@ -5621,7 +5884,11 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       // Skip when the error is already a UserError (from unhandled @dvala.error)
       // to prevent infinite re-dispatch: host handler calls next() → unhandled →
       // UserError → re-dispatch to same host handler → loop.
-      if (!(patchedError instanceof UserError) && handlers && findMatchingHandlers('dvala.error', handlers).length > 0) {
+      if (
+        !(patchedError instanceof UserError) &&
+        handlers &&
+        findMatchingHandlers('dvala.error', handlers).length > 0
+      ) {
         const effect = getEffectRef('dvala.error')
         const arg: Any = buildErrorPayload(patchedError)
         return { type: 'Perform', effect, arg, k: kForDispatch, sourceCodeInfo: patchedError.sourceCodeInfo }
@@ -5805,7 +6072,17 @@ export async function evaluateWithEffects(
   const signal = abortController.signal
   const initial = buildInitialStep(ast.body, contextStack)
 
-  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots, deserializeOptions, autoCheckpoint, terminalSnapshot, onNodeEval)
+  return runEffectLoop(
+    initial,
+    handlers,
+    signal,
+    undefined,
+    maxSnapshots,
+    deserializeOptions,
+    autoCheckpoint,
+    terminalSnapshot,
+    onNodeEval,
+  )
 }
 
 /**
@@ -5816,11 +6093,7 @@ export async function evaluateWithEffects(
  * is used). Handlers may call `resume(value)`, `fail(msg?)`, or `next()`.
  * Calling `suspend()` will throw a runtime error.
  */
-export function evaluateWithSyncEffects(
-  ast: Ast,
-  contextStack: ContextStack,
-  effectHandlers?: Handlers,
-): Any {
+export function evaluateWithSyncEffects(ast: Ast, contextStack: ContextStack, effectHandlers?: Handlers): Any {
   mergeSourceMap(contextStack, ast.sourceMap)
   const initial = buildInitialStep(ast.body, contextStack)
   try {
@@ -5863,7 +6136,16 @@ export async function continueWithEffects(
   const abortController = new AbortController()
   const signal = abortController.signal
 
-  return runEffectLoop(initial, handlers, signal, initialSnapshotState, initialSnapshotState?.maxSnapshots, deserializeOptions, initialSnapshotState?.autoCheckpoint, terminalSnapshot)
+  return runEffectLoop(
+    initial,
+    handlers,
+    signal,
+    initialSnapshotState,
+    initialSnapshotState?.maxSnapshots,
+    deserializeOptions,
+    initialSnapshotState?.autoCheckpoint,
+    terminalSnapshot,
+  )
 }
 
 /**
@@ -5888,19 +6170,18 @@ export async function retriggerWithEffects(
   inheritedExecutionId?: string,
 ): Promise<RunResult> {
   const abortController = new AbortController()
-  const signal = outerSignal
-    ? combineSignals(outerSignal, abortController.signal)
-    : abortController.signal
+  const signal = outerSignal ? combineSignals(outerSignal, abortController.signal) : abortController.signal
 
-  const snapshotState: SnapshotState = initialSnapshotState && 'executionId' in initialSnapshotState
-    ? initialSnapshotState
-    : {
-      snapshots: initialSnapshotState?.snapshots ?? [],
-      nextSnapshotIndex: initialSnapshotState?.nextSnapshotIndex ?? 0,
-      executionId: inheritedExecutionId ?? generateUUID(),
-      maxSnapshots: initialSnapshotState?.maxSnapshots,
-      autoCheckpoint: initialSnapshotState?.autoCheckpoint,
-    }
+  const snapshotState: SnapshotState =
+    initialSnapshotState && 'executionId' in initialSnapshotState
+      ? initialSnapshotState
+      : {
+          snapshots: initialSnapshotState?.snapshots ?? [],
+          nextSnapshotIndex: initialSnapshotState?.nextSnapshotIndex ?? 0,
+          executionId: inheritedExecutionId ?? generateUUID(),
+          maxSnapshots: initialSnapshotState?.maxSnapshots,
+          autoCheckpoint: initialSnapshotState?.autoCheckpoint,
+        }
 
   const matchingHandlers = findMatchingHandlers(effectName, handlers)
 
@@ -5912,12 +6193,7 @@ export async function retriggerWithEffects(
   } catch (error) {
     // Handler called suspend() — capture continuation and return suspended result
     if (isSuspensionSignal(error)) {
-      const continuation = serializeSuspensionBlob(
-        error.k,
-        error.snapshots,
-        error.nextSnapshotIndex,
-        error.meta,
-      )
+      const continuation = serializeSuspensionBlob(error.k, error.snapshots, error.nextSnapshotIndex, error.meta)
       const snapshot = createSnapshot({
         continuation,
         timestamp: Date.now(),
@@ -5945,12 +6221,19 @@ export async function retriggerWithEffects(
     if (isHaltSignal(error)) {
       return { type: 'halted', value: error.value }
     }
-    if (error instanceof DvalaError)
-      return { type: 'error', error }
+    if (error instanceof DvalaError) return { type: 'error', error }
     return { type: 'error', error: new DvalaError(`${error}`, undefined) }
   }
 
-  return runEffectLoop(firstStep, handlers, signal, snapshotState, snapshotState.maxSnapshots, deserializeOptions, snapshotState.autoCheckpoint)
+  return runEffectLoop(
+    firstStep,
+    handlers,
+    signal,
+    snapshotState,
+    snapshotState.maxSnapshots,
+    deserializeOptions,
+    snapshotState.autoCheckpoint,
+  )
 }
 
 /**
@@ -5970,19 +6253,20 @@ async function runEffectLoop(
   onNodeEval?: SnapshotState['onNodeEval'],
   inheritedExecutionId?: string,
 ): Promise<RunResult> {
-  const snapshotState: SnapshotState = initialSnapshotState && 'executionId' in initialSnapshotState
-    ? initialSnapshotState
-    : {
-      snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
-      nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
-      // Branches inherit the outer executionId so resumeFrom() can find
-      // pre-parallel snapshots. Fresh UUID for top-level runs.
-      executionId: inheritedExecutionId ?? generateUUID(),
-      ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
-      ...(autoCheckpoint ? { autoCheckpoint } : {}),
-      ...(terminalSnapshot ? { terminalSnapshot } : {}),
-      ...(onNodeEval ? { onNodeEval } : {}),
-    }
+  const snapshotState: SnapshotState =
+    initialSnapshotState && 'executionId' in initialSnapshotState
+      ? initialSnapshotState
+      : {
+          snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
+          nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
+          // Branches inherit the outer executionId so resumeFrom() can find
+          // pre-parallel snapshots. Fresh UUID for top-level runs.
+          executionId: inheritedExecutionId ?? generateUUID(),
+          ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
+          ...(autoCheckpoint ? { autoCheckpoint } : {}),
+          ...(terminalSnapshot ? { terminalSnapshot } : {}),
+          ...(onNodeEval ? { onNodeEval } : {}),
+        }
 
   // Capture a snapshot at program start so time travel can rewind to the very beginning.
   if (snapshotState.autoCheckpoint) {
@@ -5991,26 +6275,29 @@ async function runEffectLoop(
       undefined,
       initial.type === 'Eval' ? initial : undefined,
     )
-    snapshotState.snapshots.push(createSnapshot({
-      continuation,
-      timestamp: Date.now(),
-      index: snapshotState.nextSnapshotIndex++,
-      executionId: snapshotState.executionId,
-      message: 'Program start',
-    }))
+    snapshotState.snapshots.push(
+      createSnapshot({
+        continuation,
+        timestamp: Date.now(),
+        index: snapshotState.nextSnapshotIndex++,
+        executionId: snapshotState.executionId,
+        message: 'Program start',
+      }),
+    )
   }
 
   let step: Step | Promise<Step> = initial
 
   // Helper to create a terminal snapshot for completed/error/halted states
-  function createTerminalSnapshot(options?: { error?: DvalaError; result?: Any; halted?: boolean }): Snapshot | undefined {
+  function createTerminalSnapshot(options?: {
+    error?: DvalaError
+    result?: Any
+    halted?: boolean
+  }): Snapshot | undefined {
     if (!snapshotState.autoCheckpoint && !snapshotState.terminalSnapshot) {
       return undefined
     }
-    const continuation = serializeTerminalSnapshot(
-      snapshotState.snapshots,
-      snapshotState.nextSnapshotIndex,
-    )
+    const continuation = serializeTerminalSnapshot(snapshotState.snapshots, snapshotState.nextSnapshotIndex)
     let meta: Obj = PersistentMap.empty()
     if (options?.error) {
       meta = meta.assoc('error', toAny(options.error.toJSON()))
@@ -6081,9 +6368,7 @@ async function runEffectLoop(
           if (!sameBoundaryPath(error.boundaryPath, restoredBoundaryPath)) {
             const runtimeError = new RuntimeError('resumeFrom cannot cross a parallel branch boundary.', undefined)
             const snapshot = createTerminalSnapshot({ error: runtimeError })
-            return snapshot
-              ? { type: 'error', error: runtimeError, snapshot }
-              : { type: 'error', error: runtimeError }
+            return snapshot ? { type: 'error', error: runtimeError, snapshot } : { type: 'error', error: runtimeError }
           }
         }
         // Discard all snapshots with index > trimToIndex
@@ -6103,12 +6388,7 @@ async function runEffectLoop(
         if (error.nextSnapshotIndex > snapshotState.nextSnapshotIndex) {
           snapshotState.nextSnapshotIndex = error.nextSnapshotIndex
         }
-        const continuation = serializeSuspensionBlob(
-          error.k,
-          error.snapshots,
-          error.nextSnapshotIndex,
-          error.meta,
-        )
+        const continuation = serializeSuspensionBlob(error.k, error.snapshots, error.nextSnapshotIndex, error.meta)
         const snapshot = createSnapshot({
           continuation,
           timestamp: Date.now(),
@@ -6135,23 +6415,17 @@ async function runEffectLoop(
       if (isHaltSignal(error)) {
         await drainProgramCleanups(snapshotState, true)
         const snapshot = createTerminalSnapshot({ result: error.value, halted: true })
-        return snapshot
-          ? { type: 'halted', value: error.value, snapshot }
-          : { type: 'halted', value: error.value }
+        return snapshot ? { type: 'halted', value: error.value, snapshot } : { type: 'halted', value: error.value }
       }
       if (error instanceof DvalaError) {
         await drainProgramCleanups(snapshotState, true)
         const snapshot = createTerminalSnapshot({ error })
-        return snapshot
-          ? { type: 'error', error, snapshot }
-          : { type: 'error', error }
+        return snapshot ? { type: 'error', error, snapshot } : { type: 'error', error }
       }
       await drainProgramCleanups(snapshotState, true)
       const snapshot = createTerminalSnapshot()
       const dvalaError = new DvalaError(`${error}`, undefined)
-      return snapshot
-        ? { type: 'error', error: dvalaError, snapshot }
-        : { type: 'error', error: dvalaError }
+      return snapshot ? { type: 'error', error: dvalaError, snapshot } : { type: 'error', error: dvalaError }
     }
   }
 }

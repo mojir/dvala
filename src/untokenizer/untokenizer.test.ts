@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { tokenizeSource, untokenize } from '../tooling'
 
-const examples = [
-  '1 + 2',
-  '-1 * (2 - 3)',
-]
+const examples = ['1 + 2', '-1 * (2 - 3)']
 
 describe('untokenizer', () => {
   describe('untokenize', () => {

@@ -15,7 +15,12 @@ import type { AstNode, NormalExpressionNodeExpression } from '../types'
 import { resolveSourceCodeInfo } from '../types'
 import type { TokenDebugInfo } from '../../tokenizer/token'
 import { isOperatorToken, isRParenToken, isSymbolToken, sourceCodeInfoToDebugInfo } from '../../tokenizer/token'
-import { isBuiltinSymbolNode, isSpecialSymbolNode, isSpreadNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
+import {
+  isBuiltinSymbolNode,
+  isSpecialSymbolNode,
+  isSpreadNode,
+  isUserDefinedSymbolNode,
+} from '../../typeGuards/astNode'
 import { assertNumberOfParams } from '../../utils/arity'
 import { createNamedNormalExpressionNode, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -61,7 +66,8 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
   }
   ctx.advance()
 
-  if (isSpecialSymbolNode(symbol)) { // Named function
+  if (isSpecialSymbolNode(symbol)) {
+    // Named function
     const specialExpressionType = symbol[1]
 
     // Handle import specially — extract module name from a string literal argument
@@ -71,7 +77,10 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       }
       const param = params[0]!
       if (param[0] !== NodeTypes.Str) {
-        throw new ParseError('import expects a string argument, e.g. import("math")', resolveSourceCodeInfo(param[2], ctx.sourceMap) ?? symbolSci)
+        throw new ParseError(
+          'import expects a string argument, e.g. import("math")',
+          resolveSourceCodeInfo(param[2], ctx.sourceMap) ?? symbolSci,
+        )
       }
       const moduleName = param[1] as string
       const node = withSourceCodeInfo([NodeTypes.Import, moduleName, 0], symbolDebugInfo, ctx)
@@ -111,7 +120,11 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
     if (specialExpressionType === specialExpressionTypes.perform) {
       assertNumberOfParams({ min: 1, max: 2 }, params.length, symbolSci)
       const [effectExpr, payloadExpr] = params
-      const node = withSourceCodeInfo([NodeTypes.Perform, [effectExpr!, payloadExpr], 0], symbolDebugInfo, ctx) as PerformNode
+      const node = withSourceCodeInfo(
+        [NodeTypes.Perform, [effectExpr!, payloadExpr], 0],
+        symbolDebugInfo,
+        ctx,
+      ) as PerformNode
       ctx.setNodeEnd(node[2])
       return node
     }
@@ -128,7 +141,10 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
         } else {
           const valueParam = params[i + 1]
           if (valueParam === undefined) {
-            throw new ParseError('object() requires an even number of non-spread arguments (key-value pairs)', symbolSci)
+            throw new ParseError(
+              'object() requires an even number of non-spread arguments (key-value pairs)',
+              symbolSci,
+            )
           }
           entries.push([param, valueParam])
           i += 2
@@ -184,7 +200,11 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
     ctx.setNodeEnd(node[2])
     return node
   } else {
-    const node = withSourceCodeInfo([NodeTypes.Call, [symbol, params], 0], symbolDebugInfo, ctx) as NormalExpressionNodeExpression
+    const node = withSourceCodeInfo(
+      [NodeTypes.Call, [symbol, params], 0],
+      symbolDebugInfo,
+      ctx,
+    ) as NormalExpressionNodeExpression
     ctx.setNodeEnd(node[2])
     return node
   }

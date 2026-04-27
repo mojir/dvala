@@ -624,4 +624,3 @@ type CstNode =
   | CstSplice
   // Error recovery
   | CstErrorNode
-

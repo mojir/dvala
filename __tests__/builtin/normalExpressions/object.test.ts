@@ -134,9 +134,11 @@ describe('object functions', () => {
             x: 25,
             y: 20,
           })
-          expect(dvala.run('mergeWith(object("x", 10), object("x", 20), object("x", 30), object("x", 40), -)')).toEqual({
-            x: -80,
-          })
+          expect(dvala.run('mergeWith(object("x", 10), object("x", 20), object("x", 30), object("x", 40), -)')).toEqual(
+            {
+              x: -80,
+            },
+          )
           expect(() => dvala.run('mergeWith(+)')).toThrow(DvalaError)
           expect(() => dvala.run('mergeWith()')).toThrow(DvalaError)
           expect(() => dvala.run('mergeWith(+, "kjh")')).toThrow(DvalaError)

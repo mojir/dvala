@@ -9,7 +9,7 @@ import type { DvalaModule } from '../interface'
 import { fromJS, toJS } from '../../../utils/interop'
 
 const jsonFunctions: BuiltinNormalExpressions = {
-  'jsonParse': {
+  jsonParse: {
     evaluate: ([first], sourceCodeInfo): Any => {
       assertString(first, sourceCodeInfo)
       // Convert plain JS arrays/objects from JSON.parse to PV/PM
@@ -23,18 +23,15 @@ const jsonFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `JSON.parse(``x``)`.',
       seeAlso: ['json.jsonStringify'],
-      examples: [
-        'let { jsonParse } = import("json");\njsonParse("[1, 2, 3]")',
-      ],
+      examples: ['let { jsonParse } = import("json");\njsonParse("[1, 2, 3]")'],
     },
   },
-  'jsonStringify': {
+  jsonStringify: {
     evaluate: ([first, second], sourceCodeInfo): string => {
       assertAny(first, sourceCodeInfo)
       // Convert PV/PM to plain JS arrays/objects before stringifying
       const jsValue = toJS(first)
-      if (second === undefined)
-        return JSON.stringify(jsValue)
+      if (second === undefined) return JSON.stringify(jsValue)
 
       assertNumber(second, sourceCodeInfo)
       return JSON.stringify(jsValue, null, second)
@@ -47,11 +44,9 @@ const jsonFunctions: BuiltinNormalExpressions = {
         x: { type: 'any' },
         indent: { type: 'integer', description: 'Number of spaces to use for indentation.' },
       },
-      variants: [
-        { argumentNames: ['x'] },
-        { argumentNames: ['x', 'indent'] },
-      ],
-      description: 'Returns `JSON.stringify(``x``)`. If second argument is provided, returns `JSON.stringify(``x``, null, ``indent``)`.',
+      variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'indent'] }],
+      description:
+        'Returns `JSON.stringify(``x``)`. If second argument is provided, returns `JSON.stringify(``x``, null, ``indent``)`.',
       seeAlso: ['json.jsonParse'],
       examples: [
         'let { jsonStringify } = import("json");\njsonStringify([1, 2, 3])',

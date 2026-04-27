@@ -1,14 +1,6 @@
 export { PersistentVector } from './PersistentVector'
 export { PersistentMap } from './PersistentMap'
-export {
-  cons,
-  listToArray,
-  listFromArray,
-  listTake,
-  listDrop,
-  listPrependAll,
-  listSize,
-} from './PersistentList'
+export { cons, listToArray, listFromArray, listTake, listDrop, listPrependAll, listSize } from './PersistentList'
 
 import { PersistentVector } from './PersistentVector'
 import { PersistentMap } from './PersistentMap'

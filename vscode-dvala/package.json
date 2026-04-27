@@ -204,8 +204,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.3.5",
-    "@types/vscode": "^1.109.0",
-    "typescript": "^5.9.3"
+    "@types/vscode": "^1.109.0"
   },
   "dependencies": {
     "@vscode/debugadapter": "^1.68.0",

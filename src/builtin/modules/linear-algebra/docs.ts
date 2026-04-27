@@ -1,7 +1,7 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
-  'reflect': {
+  reflect: {
     type: '(Number[], Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Reflects a vector across a given axis.',
@@ -20,10 +20,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -32,7 +29,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.refract', 'linearAlgebra.projection'],
   },
-  'refract': {
+  refract: {
     type: '(Number[], Number[], Number) -> Number[]',
     category: 'linearAlgebra',
     description: 'Refracts a vector across a given axis.',
@@ -55,11 +52,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'vector',
-          'axis',
-          'eta',
-        ],
+        argumentNames: ['vector', 'axis', 'eta'],
       },
     ],
     examples: [
@@ -68,7 +61,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.reflect'],
   },
-  'lerp': {
+  lerp: {
     type: '(Number[], Number[], Number) -> Number[]',
     category: 'linearAlgebra',
     description: 'Performs linear interpolation between two vectors.',
@@ -91,11 +84,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-          't',
-        ],
+        argumentNames: ['a', 'b', 't'],
       },
     ],
     examples: [
@@ -106,7 +95,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.projection'],
   },
-  'rotate2d': {
+  rotate2d: {
     type: '(Number[], Number) -> Number[]',
     category: 'linearAlgebra',
     description: 'Rotates a 2D vector by a given angle in radians.',
@@ -125,10 +114,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -137,7 +123,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.rotate3d', 'linearAlgebra.angle'],
   },
-  'rotate3d': {
+  rotate3d: {
     type: '(Number[], Number[], Number) -> Number[]',
     category: 'linearAlgebra',
     description: 'Rotates a 3D vector around a given axis by a given angle in radians.',
@@ -160,11 +146,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-          'axis',
-          'radians',
-        ],
+        argumentNames: ['v', 'axis', 'radians'],
       },
     ],
     examples: [
@@ -173,7 +155,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.rotate2d', 'linearAlgebra.angle'],
   },
-  'dot': {
+  dot: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the dot product of two vectors. The result is a scalar.',
@@ -192,22 +174,26 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
       'let { dot } = import("linearAlgebra");\ndot([1, 2], [3, 4])',
       'let { dot } = import("linearAlgebra");\ndot([1, 2, 3], [4, 5, 6])',
     ],
-    seeAlso: ['linearAlgebra.cross', 'linearAlgebra.cosineSimilarity', 'linearAlgebra.angle', 'linearAlgebra.projection', 'linearAlgebra.isOrthogonal'],
+    seeAlso: [
+      'linearAlgebra.cross',
+      'linearAlgebra.cosineSimilarity',
+      'linearAlgebra.angle',
+      'linearAlgebra.projection',
+      'linearAlgebra.isOrthogonal',
+    ],
   },
-  'cross': {
+  cross: {
     type: '(Number[], Number[]) -> Number[]',
     category: 'linearAlgebra',
-    description: 'Calculates the cross product of two 3D vectors. The result is a vector perpendicular to both input vectors.',
+    description:
+      'Calculates the cross product of two 3D vectors. The result is a vector perpendicular to both input vectors.',
     returns: {
       type: 'vector',
     },
@@ -223,10 +209,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -238,10 +221,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.dot'],
   },
-  'normalizeMinmax': {
+  normalizeMinmax: {
     type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
-    description: 'Normalizes the vector using min-max normalization. The result is a vector with values between 0 and 1.',
+    description:
+      'Normalizes the vector using min-max normalization. The result is a vector with values between 0 and 1.',
     returns: {
       type: 'number',
       array: true,
@@ -254,9 +238,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -266,12 +248,19 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { normalizeMinmax } = import("linearAlgebra");\nnormalizeMinmax([1, 2, -3, 4])',
       'let { normalizeMinmax } = import("linearAlgebra");\nnormalizeMinmax([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linearAlgebra.normalizeZscore', 'linearAlgebra.normalizeRobust', 'linearAlgebra.normalizeL1', 'linearAlgebra.normalizeL2', 'linearAlgebra.normalizeLog'],
+    seeAlso: [
+      'linearAlgebra.normalizeZscore',
+      'linearAlgebra.normalizeRobust',
+      'linearAlgebra.normalizeL1',
+      'linearAlgebra.normalizeL2',
+      'linearAlgebra.normalizeLog',
+    ],
   },
-  'normalizeZscore': {
+  normalizeZscore: {
     type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
-    description: 'Normalizes the vector using z-score normalization. The result is a vector with mean 0 and standard deviation 1.',
+    description:
+      'Normalizes the vector using z-score normalization. The result is a vector with mean 0 and standard deviation 1.',
     returns: {
       type: 'number',
       array: true,
@@ -284,9 +273,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -296,12 +283,19 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { normalizeZscore } = import("linearAlgebra");\nnormalizeZscore([1, 2, -3, 4])',
       'let { normalizeZscore } = import("linearAlgebra");\nnormalizeZscore([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linearAlgebra.normalizeMinmax', 'linearAlgebra.normalizeRobust', 'linearAlgebra.normalizeL1', 'linearAlgebra.normalizeL2', 'linearAlgebra.normalizeLog'],
+    seeAlso: [
+      'linearAlgebra.normalizeMinmax',
+      'linearAlgebra.normalizeRobust',
+      'linearAlgebra.normalizeL1',
+      'linearAlgebra.normalizeL2',
+      'linearAlgebra.normalizeLog',
+    ],
   },
-  'normalizeRobust': {
+  normalizeRobust: {
     type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
-    description: 'Normalizes the vector using robust normalization. The result is a vector with median 0 and median absolute deviation 1.',
+    description:
+      'Normalizes the vector using robust normalization. The result is a vector with median 0 and median absolute deviation 1.',
     returns: {
       type: 'number',
       array: true,
@@ -314,9 +308,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -328,7 +320,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.normalizeMinmax', 'linearAlgebra.normalizeZscore'],
   },
-  'normalizeL1': {
+  normalizeL1: {
     type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Normalizes the vector using L1 normalization. The result is a vector with L1 norm equal to 1.',
@@ -344,9 +336,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -356,9 +346,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { normalizeL1 } = import("linearAlgebra");\nnormalizeL1([1, 2, -3, 4])',
       'let { normalizeL1 } = import("linearAlgebra");\nnormalizeL1([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linearAlgebra.normalizeL2', 'linearAlgebra.normalizeMinmax', 'linearAlgebra.manhattanNorm', 'linearAlgebra.normalizeZscore'],
+    seeAlso: [
+      'linearAlgebra.normalizeL2',
+      'linearAlgebra.normalizeMinmax',
+      'linearAlgebra.manhattanNorm',
+      'linearAlgebra.normalizeZscore',
+    ],
   },
-  'normalizeL2': {
+  normalizeL2: {
     type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Normalizes the vector using L2 normalization. The result is a vector with L2 norm equal to 1.',
@@ -374,9 +369,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -387,12 +380,18 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { normalizeL2 } = import("linearAlgebra");\nnormalizeL2([1, 2, -3, 4])',
       'let { normalizeL2 } = import("linearAlgebra");\nnormalizeL2([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linearAlgebra.normalizeL1', 'linearAlgebra.normalizeMinmax', 'linearAlgebra.euclideanNorm', 'linearAlgebra.normalizeZscore'],
+    seeAlso: [
+      'linearAlgebra.normalizeL1',
+      'linearAlgebra.normalizeMinmax',
+      'linearAlgebra.euclideanNorm',
+      'linearAlgebra.normalizeZscore',
+    ],
   },
-  'normalizeLog': {
+  normalizeLog: {
     type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
-    description: 'Normalizes the vector using natural log normalization. The result is a vector with log-transformed values.',
+    description:
+      'Normalizes the vector using natural log normalization. The result is a vector with log-transformed values.',
     returns: {
       type: 'number',
       array: true,
@@ -405,9 +404,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -417,7 +414,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.normalizeMinmax', 'linearAlgebra.normalizeZscore'],
   },
-  'angle': {
+  angle: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **angle** between two vectors in radians.',
@@ -434,19 +431,25 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
       'let { angle } = import("linearAlgebra");\nangle([1, 0], [0, 1])',
       'let { angle } = import("linearAlgebra");\nangle([1, 0, 1], [0, 1, 0])',
     ],
-    seeAlso: ['linearAlgebra.dot', 'linearAlgebra.isCollinear', 'linearAlgebra.isOrthogonal', 'linearAlgebra.rotate2d', 'linearAlgebra.rotate3d', 'linearAlgebra.isParallel', 'linearAlgebra.cosineSimilarity', 'linearAlgebra.toPolar'],
+    seeAlso: [
+      'linearAlgebra.dot',
+      'linearAlgebra.isCollinear',
+      'linearAlgebra.isOrthogonal',
+      'linearAlgebra.rotate2d',
+      'linearAlgebra.rotate3d',
+      'linearAlgebra.isParallel',
+      'linearAlgebra.cosineSimilarity',
+      'linearAlgebra.toPolar',
+    ],
   },
-  'projection': {
+  projection: {
     type: '(Number[], Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Calculates the **projection** of vector `a` onto vector `b`.',
@@ -463,10 +466,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -475,7 +475,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.dot', 'linearAlgebra.reflect', 'linearAlgebra.lerp'],
   },
-  'isCollinear': {
+  isCollinear: {
     type: '(Number[], Number[]) -> Boolean',
     category: 'linearAlgebra',
     description: 'Checks if two vectors are **collinear**.',
@@ -492,10 +492,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -505,7 +502,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.isParallel', 'linearAlgebra.isOrthogonal', 'linearAlgebra.angle'],
   },
-  'isParallel': {
+  isParallel: {
     type: '(Number[], Number[]) -> Boolean',
     category: 'linearAlgebra',
     description: 'Checks if two vectors are **parallel**.',
@@ -522,10 +519,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -536,7 +530,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.isCollinear', 'linearAlgebra.isOrthogonal', 'linearAlgebra.angle'],
   },
-  'isOrthogonal': {
+  isOrthogonal: {
     type: '(Number[], Number[]) -> Boolean',
     category: 'linearAlgebra',
     description: 'Checks if two vectors are **orthogonal**.',
@@ -553,10 +547,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -564,9 +555,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isOrthogonal } = import("linearAlgebra");\nisOrthogonal([1, 0, 1], [0, 1, 0])',
       'let { isOrthogonal } = import("linearAlgebra");\nisOrthogonal([1, 2], [2, -1])',
     ],
-    seeAlso: ['linearAlgebra.isCollinear', 'linearAlgebra.isParallel', 'linearAlgebra.dot', 'matrix.isOrthogonalMatrix', 'linearAlgebra.angle'],
+    seeAlso: [
+      'linearAlgebra.isCollinear',
+      'linearAlgebra.isParallel',
+      'linearAlgebra.dot',
+      'matrix.isOrthogonalMatrix',
+      'linearAlgebra.angle',
+    ],
   },
-  'cosineSimilarity': {
+  cosineSimilarity: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **cosine similarity** between two vectors. The result is a value between -1 and 1.',
@@ -583,10 +580,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -596,7 +590,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.dot', 'linearAlgebra.angle', 'linearAlgebra.euclideanDistance'],
   },
-  'euclideanDistance': {
+  euclideanDistance: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Euclidean distance** between two vectors. The result is a non-negative number.',
@@ -613,10 +607,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -624,9 +615,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { euclideanDistance } = import("linearAlgebra");\neuclideanDistance([1, 2, 3], [4, 5, 6])',
       'let { euclideanDistance } = import("linearAlgebra");\neuclideanDistance([1, 0], [0, 1])',
     ],
-    seeAlso: ['linearAlgebra.manhattanDistance', 'linearAlgebra.chebyshevDistance', 'linearAlgebra.minkowskiDistance', 'linearAlgebra.euclideanNorm', 'linearAlgebra.cosineSimilarity', 'linearAlgebra.hammingDistance'],
+    seeAlso: [
+      'linearAlgebra.manhattanDistance',
+      'linearAlgebra.chebyshevDistance',
+      'linearAlgebra.minkowskiDistance',
+      'linearAlgebra.euclideanNorm',
+      'linearAlgebra.cosineSimilarity',
+      'linearAlgebra.hammingDistance',
+    ],
   },
-  'euclideanNorm': {
+  euclideanNorm: {
     type: '(Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Euclidean norm** (L2 norm) of a vector. The result is a non-negative number.',
@@ -641,9 +639,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -651,9 +647,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { euclideanNorm } = import("linearAlgebra");\neuclideanNorm([3, 4])',
       'let { euclideanNorm } = import("linearAlgebra");\neuclideanNorm([1, 2, 3])',
     ],
-    seeAlso: ['linearAlgebra.manhattanNorm', 'linearAlgebra.chebyshevNorm', 'linearAlgebra.minkowskiNorm', 'linearAlgebra.euclideanDistance', 'linearAlgebra.normalizeL2', 'linearAlgebra.hammingNorm'],
+    seeAlso: [
+      'linearAlgebra.manhattanNorm',
+      'linearAlgebra.chebyshevNorm',
+      'linearAlgebra.minkowskiNorm',
+      'linearAlgebra.euclideanDistance',
+      'linearAlgebra.normalizeL2',
+      'linearAlgebra.hammingNorm',
+    ],
   },
-  'manhattanDistance': {
+  manhattanDistance: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Manhattan distance** between two vectors. The result is a non-negative number.',
@@ -670,10 +673,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -681,9 +681,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { manhattanDistance } = import("linearAlgebra");\nmanhattanDistance([1, 2, 3], [4, 5, 6])',
       'let { manhattanDistance } = import("linearAlgebra");\nmanhattanDistance([1, 0], [0, 1])',
     ],
-    seeAlso: ['linearAlgebra.euclideanDistance', 'linearAlgebra.chebyshevDistance', 'linearAlgebra.minkowskiDistance', 'linearAlgebra.manhattanNorm', 'linearAlgebra.hammingDistance'],
+    seeAlso: [
+      'linearAlgebra.euclideanDistance',
+      'linearAlgebra.chebyshevDistance',
+      'linearAlgebra.minkowskiDistance',
+      'linearAlgebra.manhattanNorm',
+      'linearAlgebra.hammingDistance',
+    ],
   },
-  'manhattanNorm': {
+  manhattanNorm: {
     type: '(Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Manhattan norm** (L1 norm) of a vector. The result is a non-negative number.',
@@ -698,9 +704,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -708,9 +712,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { manhattanNorm } = import("linearAlgebra");\nmanhattanNorm([3, 4])',
       'let { manhattanNorm } = import("linearAlgebra");\nmanhattanNorm([1, 2, 3])',
     ],
-    seeAlso: ['linearAlgebra.euclideanNorm', 'linearAlgebra.chebyshevNorm', 'linearAlgebra.minkowskiNorm', 'linearAlgebra.manhattanDistance', 'linearAlgebra.normalizeL1', 'linearAlgebra.hammingNorm'],
+    seeAlso: [
+      'linearAlgebra.euclideanNorm',
+      'linearAlgebra.chebyshevNorm',
+      'linearAlgebra.minkowskiNorm',
+      'linearAlgebra.manhattanDistance',
+      'linearAlgebra.normalizeL1',
+      'linearAlgebra.hammingNorm',
+    ],
   },
-  'hammingDistance': {
+  hammingDistance: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Hamming distance** between two vectors. The result is a non-negative integer.',
@@ -727,10 +738,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -740,7 +748,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.euclideanDistance', 'linearAlgebra.manhattanDistance', 'linearAlgebra.hammingNorm'],
   },
-  'hammingNorm': {
+  hammingNorm: {
     type: '(Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Hamming norm** of a vector. The result is a non-negative integer.',
@@ -755,9 +763,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -767,7 +773,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.euclideanNorm', 'linearAlgebra.manhattanNorm', 'linearAlgebra.hammingDistance'],
   },
-  'chebyshevDistance': {
+  chebyshevDistance: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Chebyshev distance** between two vectors. The result is a non-negative number.',
@@ -784,10 +790,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -795,9 +798,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { chebyshevDistance } = import("linearAlgebra");\nchebyshevDistance([1, 2, 3], [4, 5, 6])',
       'let { chebyshevDistance } = import("linearAlgebra");\nchebyshevDistance([1, 0], [0, 1])',
     ],
-    seeAlso: ['linearAlgebra.euclideanDistance', 'linearAlgebra.manhattanDistance', 'linearAlgebra.minkowskiDistance', 'linearAlgebra.chebyshevNorm'],
+    seeAlso: [
+      'linearAlgebra.euclideanDistance',
+      'linearAlgebra.manhattanDistance',
+      'linearAlgebra.minkowskiDistance',
+      'linearAlgebra.chebyshevNorm',
+    ],
   },
-  'chebyshevNorm': {
+  chebyshevNorm: {
     type: '(Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Chebyshev norm** of a vector. The result is a non-negative number.',
@@ -812,9 +820,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'v',
-        ],
+        argumentNames: ['v'],
       },
     ],
     examples: [
@@ -822,9 +828,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { chebyshevNorm } = import("linearAlgebra");\nchebyshevNorm([3, 4])',
       'let { chebyshevNorm } = import("linearAlgebra");\nchebyshevNorm([1, 2, 3])',
     ],
-    seeAlso: ['linearAlgebra.euclideanNorm', 'linearAlgebra.manhattanNorm', 'linearAlgebra.minkowskiNorm', 'linearAlgebra.chebyshevDistance'],
+    seeAlso: [
+      'linearAlgebra.euclideanNorm',
+      'linearAlgebra.manhattanNorm',
+      'linearAlgebra.minkowskiNorm',
+      'linearAlgebra.chebyshevDistance',
+    ],
   },
-  'minkowskiDistance': {
+  minkowskiDistance: {
     type: '(Number[], Number[], Number) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Minkowski distance** between two vectors. The result is a non-negative number.',
@@ -845,11 +856,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-          'p',
-        ],
+        argumentNames: ['a', 'b', 'p'],
       },
     ],
     examples: [
@@ -857,9 +864,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { minkowskiDistance } = import("linearAlgebra");\nminkowskiDistance([1, 2, 3], [4, 5, 6], 3)',
       'let { minkowskiDistance } = import("linearAlgebra");\nminkowskiDistance([1, 0], [0, 1], 1)',
     ],
-    seeAlso: ['linearAlgebra.euclideanDistance', 'linearAlgebra.manhattanDistance', 'linearAlgebra.chebyshevDistance', 'linearAlgebra.minkowskiNorm'],
+    seeAlso: [
+      'linearAlgebra.euclideanDistance',
+      'linearAlgebra.manhattanDistance',
+      'linearAlgebra.chebyshevDistance',
+      'linearAlgebra.minkowskiNorm',
+    ],
   },
-  'minkowskiNorm': {
+  minkowskiNorm: {
     type: '(Number[], Number) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Minkowski norm** of a vector. The result is a non-negative number.',
@@ -878,10 +890,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -889,9 +898,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { minkowskiNorm } = import("linearAlgebra");\nminkowskiNorm([3, 4], 3)',
       'let { minkowskiNorm } = import("linearAlgebra");\nminkowskiNorm([1, 2, 3], 4)',
     ],
-    seeAlso: ['linearAlgebra.euclideanNorm', 'linearAlgebra.manhattanNorm', 'linearAlgebra.chebyshevNorm', 'linearAlgebra.minkowskiDistance'],
+    seeAlso: [
+      'linearAlgebra.euclideanNorm',
+      'linearAlgebra.manhattanNorm',
+      'linearAlgebra.chebyshevNorm',
+      'linearAlgebra.minkowskiDistance',
+    ],
   },
-  'cov': {
+  cov: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **covariance** between two vectors. The result is a number.',
@@ -908,10 +922,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -921,7 +932,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.corr', 'linearAlgebra.pearsonCorr', 'vector.variance'],
   },
-  'corr': {
+  corr: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **correlation** between two vectors. The result is a number between -1 and 1.',
@@ -938,10 +949,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -949,12 +957,20 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { corr } = import("linearAlgebra");\ncorr([1, 2, 3], [4, 5, 6])',
       'let { corr } = import("linearAlgebra");\ncorr([1, 0], [0, 1])',
     ],
-    seeAlso: ['linearAlgebra.cov', 'linearAlgebra.pearsonCorr', 'linearAlgebra.spearmanCorr', 'linearAlgebra.kendallTau', 'linearAlgebra.autocorrelation', 'linearAlgebra.crossCorrelation'],
+    seeAlso: [
+      'linearAlgebra.cov',
+      'linearAlgebra.pearsonCorr',
+      'linearAlgebra.spearmanCorr',
+      'linearAlgebra.kendallTau',
+      'linearAlgebra.autocorrelation',
+      'linearAlgebra.crossCorrelation',
+    ],
   },
-  'spearmanCorr': {
+  spearmanCorr: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
-    description: 'Calculates the **Spearman rank correlation** between two vectors. The result is a number between -1 and 1.',
+    description:
+      'Calculates the **Spearman rank correlation** between two vectors. The result is a number between -1 and 1.',
     returns: {
       type: 'number',
     },
@@ -968,10 +984,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -981,7 +994,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.pearsonCorr', 'linearAlgebra.kendallTau', 'linearAlgebra.corr'],
   },
-  'pearsonCorr': {
+  pearsonCorr: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
     description: 'Calculates the **Pearson correlation** between two vectors. The result is a number between -1 and 1.',
@@ -998,10 +1011,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -1011,10 +1021,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.spearmanCorr', 'linearAlgebra.kendallTau', 'linearAlgebra.corr', 'linearAlgebra.cov'],
   },
-  'kendallTau': {
+  kendallTau: {
     type: '(Number[], Number[]) -> Number',
     category: 'linearAlgebra',
-    description: 'Calculates the **Kendall Tau** rank correlation coefficient between two vectors. The result is a number between -1 and 1.',
+    description:
+      'Calculates the **Kendall Tau** rank correlation coefficient between two vectors. The result is a number between -1 and 1.',
     returns: {
       type: 'number',
     },
@@ -1028,10 +1039,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -1041,10 +1049,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.spearmanCorr', 'linearAlgebra.pearsonCorr', 'linearAlgebra.corr'],
   },
-  'autocorrelation': {
+  autocorrelation: {
     type: '(Number[], Number) -> Number',
     category: 'linearAlgebra',
-    description: 'Calculates the **autocorrelation** of a vector. The result is a vector of autocorrelation coefficients.',
+    description:
+      'Calculates the **autocorrelation** of a vector. The result is a vector of autocorrelation coefficients.',
     returns: {
       type: 'number',
     },
@@ -1060,10 +1069,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -1075,10 +1081,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.crossCorrelation', 'linearAlgebra.corr'],
   },
-  'crossCorrelation': {
+  crossCorrelation: {
     type: '(Number[], Number[], Number) -> Number',
     category: 'linearAlgebra',
-    description: 'Calculates the **crossCorrelation** between two vectors. The result is a vector of crossCorrelation coefficients.',
+    description:
+      'Calculates the **crossCorrelation** between two vectors. The result is a vector of crossCorrelation coefficients.',
     returns: {
       type: 'number',
     },
@@ -1096,11 +1103,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-          'lag',
-        ],
+        argumentNames: ['a', 'b', 'lag'],
       },
     ],
     examples: [
@@ -1112,7 +1115,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.autocorrelation', 'linearAlgebra.corr'],
   },
-  'rref': {
+  rref: {
     type: '(Number[][]) -> Number[][]',
     category: 'linearAlgebra',
     description: 'Calculates the **Reduced Row Echelon Form** (RREF) of a matrix.',
@@ -1127,9 +1130,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'm',
-        ],
+        argumentNames: ['m'],
       },
     ],
     examples: [
@@ -1139,7 +1140,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linearAlgebra.solve', 'matrix.rank'],
   },
-  'solve': {
+  solve: {
     type: '(Number[][], Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Solves a system of linear equations represented by a matrix and a vector.',
@@ -1156,10 +1157,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -1171,7 +1169,7 @@ solve([[2, 3], [1, -1]], [8, 2])`,
     ],
     seeAlso: ['linearAlgebra.rref', 'matrix.inv'],
   },
-  'toPolar': {
+  toPolar: {
     type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Converts a 2D vector to polar coordinates.',
@@ -1186,9 +1184,7 @@ solve([[2, 3], [1, -1]], [8, 2])`,
     },
     variants: [
       {
-        argumentNames: [
-          'vector',
-        ],
+        argumentNames: ['vector'],
       },
     ],
     examples: [
@@ -1197,7 +1193,7 @@ solve([[2, 3], [1, -1]], [8, 2])`,
     ],
     seeAlso: ['linearAlgebra.fromPolar', 'linearAlgebra.angle'],
   },
-  'fromPolar': {
+  fromPolar: {
     type: '(Number[]) -> Number[]',
     category: 'linearAlgebra',
     description: 'Converts polar coordinates to a 2D vector.',
@@ -1212,9 +1208,7 @@ solve([[2, 3], [1, -1]], [8, 2])`,
     },
     variants: [
       {
-        argumentNames: [
-          'polar',
-        ],
+        argumentNames: ['polar'],
       },
     ],
     examples: [

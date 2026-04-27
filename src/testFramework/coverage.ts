@@ -48,14 +48,9 @@ export function generateLcov(coverageMap: Map<number, number>, sourceMap: Source
     const linesHit = lines.filter(([, count]) => count > 0).length
     const daLines = lines.map(([line, count]) => `DA:${line + 1},${count}`).join('\n')
 
-    records.push([
-      'TN:',
-      `SF:${sourceMeta.path}`,
-      daLines,
-      `LH:${linesHit}`,
-      `LF:${lines.length}`,
-      'end_of_record',
-    ].join('\n'))
+    records.push(
+      ['TN:', `SF:${sourceMeta.path}`, daLines, `LH:${linesHit}`, `LF:${lines.length}`, 'end_of_record'].join('\n'),
+    )
   }
 
   return records.join('\n') + (records.length > 0 ? '\n' : '')
@@ -142,11 +137,17 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
         sourceByPath.set(sourceMeta.path, sourceMeta.content)
 
       let exprHits = exprHitsByPath.get(sourceMeta.path)
-      if (!exprHits) { exprHits = new Map(); exprHitsByPath.set(sourceMeta.path, exprHits) }
+      if (!exprHits) {
+        exprHits = new Map()
+        exprHitsByPath.set(sourceMeta.path, exprHits)
+      }
       if (!exprHits.has(nodeId)) exprHits.set(nodeId, 0)
 
       let byLine = byPath.get(sourceMeta.path)
-      if (!byLine) { byLine = new Map(); byPath.set(sourceMeta.path, byLine) }
+      if (!byLine) {
+        byLine = new Map()
+        byPath.set(sourceMeta.path, byLine)
+      }
       if (!byLine.has(pos.start[0])) byLine.set(pos.start[0], 0)
     }
 
@@ -193,7 +194,16 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
       const exprsHit = [...exprHits.values()].filter(c => c > 0).length
       const source = sourceByPath.get(filePath)
 
-      return { path: filePath, linesHit, linesFound: lines.length, exprsFound, exprsHit, uncoveredLines, lineHits: byLine, source }
+      return {
+        path: filePath,
+        linesHit,
+        linesFound: lines.length,
+        exprsFound,
+        exprsHit,
+        uncoveredLines,
+        lineHits: byLine,
+        source,
+      }
     })
 }
 
@@ -201,7 +211,9 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
  * Parse a .dvala file and return its line and expression maps initialised to 0.
  * Used for files that were never evaluated during tests (all: true mode).
  */
-function parseFileStats(filePath: string): { byLine: Map<number, number>; byExpr: Map<number, number>; source: string } | null {
+function parseFileStats(
+  filePath: string,
+): { byLine: Map<number, number>; byExpr: Map<number, number>; source: string } | null {
   try {
     const source = fs.readFileSync(filePath, 'utf-8')
     const tokenStream = tokenize(source, /* debug */ true, filePath)

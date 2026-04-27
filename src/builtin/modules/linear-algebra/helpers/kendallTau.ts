@@ -48,7 +48,7 @@ export function kendallTau(vectorA: number[], vectorB: number[], epsilon: number
 
   // Handle edge cases to avoid division by zero
   if (n1 === 0 || n2 === 0) {
-    throw new Error('Not enough data to calculate Kendall\'s Tau')
+    throw new Error("Not enough data to calculate Kendall's Tau")
   }
 
   // Kendall's Tau-b formula
