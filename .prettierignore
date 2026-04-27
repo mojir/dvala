@@ -7,6 +7,8 @@ design
 node_modules
 test-results
 .vscode
+.claude
+cli/__tests__/arg-test-fixtures
 
 playground-builder/build
 playground-www/build
