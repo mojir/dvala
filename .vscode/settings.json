@@ -4,7 +4,7 @@
 
   // Disable the default formatter, use eslint instead
   "prettier.enable": false,
-  "editor.formatOnSave": false,
+  "editor.formatOnSave": true,
   "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "[typescriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "[javascript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
