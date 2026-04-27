@@ -1,7 +1,4 @@
-// Modal-panel construction and toast notifications.
-// Other modal-flow code (pushPanel/popModal stack management, snapshot panels,
-// info dialog) still lives in scripts.ts and will move here in follow-up
-// extractions once their cross-concern callers are also moved out.
+// Modal stack, snapshot panels, info-dialog flow, and toast notifications.
 
 import type { Snapshot } from '../../../src/evaluator/effectTypes'
 import { hamburgerIcon } from '../icons'
