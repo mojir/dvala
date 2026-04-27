@@ -159,13 +159,49 @@ Before suggesting Dvala code to the user, verify it works by running it with `dv
 
 ## Playground Architecture
 
+### Top-level files
+
 - `playground-www/src/renderCodeBlock.ts` — unified code block renderer (syntax highlighting, execution, "Use in playground" + copy buttons)
 - `playground-www/src/renderDvalaMarkdown.ts` — shared markdown renderer using `renderCodeBlock` for fenced dvala blocks
 - `playground-www/src/featureCards/*.md` — feature card content (rendered in modals from start page)
 - `playground-www/src/components/startPage.ts` — start page with feature cards (about page merged in)
 - `playground-www/src/components/chapterPage.ts` — chapter pages with sticky header (title, prev/next, TOC dropdown)
+- `playground-www/src/scripts.ts` — main entrypoint and orchestrator (boot wiring, run/effect handlers, context editor, keybindings, navigation, history). Currently ~6.4k LOC; per-concern modules are being progressively extracted from here.
+- `playground-www/src/scripts/*.ts` — per-concern modules extracted from `scripts.ts`. See "Per-concern layout" below.
+- `playground-www/src/lib/reactive.ts` — reactive primitive re-exports from `@vue/reactivity`. See "Reactive primitive" below.
+- `playground-www/src/playground.ts` — public API barrel (`export * from './scripts'`); produces the global `Playground.*` object.
 
-### Modal system (`createModalPanel` in `scripts.ts`)
+### Dev path (Vite + HMR)
+
+`pnpm run dev` runs `vite` against `playground-www/index.html`. Engine imports under `src/` resolve directly to TypeScript source — edits to either `playground-www/src/` or `src/` reflect via HMR without a full rebundle. Production build still emits the static site to `docs/` via the playground-builder + rolldown pipeline (`pnpm run build`).
+
+### Per-concern layout (`playground-www/src/scripts/`)
+
+Phase 0 of the playground seam-split (design [2026-04-26_playground-monaco-tree-ls-cli.md](design/active/2026-04-26_playground-monaco-tree-ls-cli.md)) extracted these modules:
+
+- `playgroundState.ts` — shared mutable state singleton (`state`). Cross-concern `let`s that used to live module-level in `scripts.ts` (modal stack, snapshot keys, timer handles, etc.) all migrate here so peer modules can read/write without circular imports.
+- `elements.ts` — DOM element registry (lazy `document.getElementById` getters). All other modules import `elements.foo` instead of querying directly.
+- `modals.ts` — modal panel construction, modal stack management, info-dialog flow, toast notifications. Owns `createModalPanel`, `pushPanel`, `popModal`, `closeAllModals`, `showToast`, `showInfoModal`, `pushCheckpointPanel`, `slideBackSnapshotModal`.
+- `sidePanels.ts` — left-side tab switching (files / snapshots / context), code-panel sync, URL state sync. Owns `showSideTab`, `getCurrentSideTab`, `syncCodePanelView`, `syncPlaygroundUrlState`, `populateSideSnapshotsList`.
+- `files.ts` — file explorer + scratch buffer + auto-save. Owns `loadSavedFile`, `renameFile`, `shareFile`, `deleteSavedFile`, `duplicateFile`, `saveAs`, file-import/export modal, scratch open/save/clear, `populateExplorerFileList`, `scheduleAutoSave`, `flushPendingAutoSave`.
+
+Modules import peers directly (e.g. `modals.ts` ← `elements.ts`, `playgroundState.ts`). They also import a handful of helpers from `scripts.ts` via `import { foo } from '../scripts'` — this creates a deliberate circular dependency that ESM tolerates because the access happens at runtime inside function bodies, not at module init. Eventual barrel-conversion of `scripts.ts` will undo that pattern.
+
+### Reactive primitive (`playground-www/src/lib/reactive.ts`)
+
+Re-exports from [`@vue/reactivity`](https://www.npmjs.com/package/@vue/reactivity) — the standalone, framework-agnostic Vue 3 reactivity package (no compiler, no SFCs, ~6 KB minified). Currently exports `reactive`; `ref`, `effect`, `computed` will be added when the first consumer needs them.
+
+The state singleton in `playground-www/src/state.ts` is wrapped with `reactive(...)`, so reads inside an `effect()` block automatically track which keys they depend on, and writes trigger dependent effects to re-run. Existing `getState` / `saveState` / `updateState` keep working unchanged.
+
+When to use which:
+- `ref(initialValue)` — single reactive value. Read/write via `.value`.
+- `reactive(obj)` — make a plain object reactive. Reads and writes to its properties are tracked. Used for the state singleton.
+- `effect(fn)` — run `fn` once now, then re-run whenever any reactive value it read changes. Returns a stop handle.
+- `computed(fn)` — derived reactive value, lazily recomputed when dependencies change. Cached until invalidated.
+
+Always import from `./lib/reactive` (not `@vue/reactivity` directly) so the implementation can be swapped without touching call sites. New Phase 1+ code is expected to use this reactively from the start; the legacy imperative cascades in `scripts.ts` are not being retrofitted.
+
+### Modal system (`createModalPanel` in `scripts/modals.ts`)
 
 ```typescript
 createModalPanel({
