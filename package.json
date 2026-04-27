@@ -175,12 +175,12 @@
     "@typescript/native-preview": "7.0.0-dev.20260421.2",
     "@vitest/coverage-v8": "^4.1.0",
     "@vscode/vsce": "^3.7.1",
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.0",
     "glob": "^13.0.6",
     "highlight.js": "^11.11.1",
     "knip": "^6.7.0",
     "minimatch": "^10.2.5",
-    "open-cli": "^8.0.0",
+    "open-cli": "^9.0.0",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0",
     "oxlint-tsgolint": "^0.22.0",
@@ -390,7 +390,7 @@
     }
   },
   "dependencies": {
-    "marked": "^17.0.4"
+    "marked": "^18.0.2"
   },
   "packageManager": "pnpm@10.33.2+sha512.a90faf6feeab71ad6c6e57f94e0fe1a12f5dcc22cd754db40ae9593eb6a3e0b6b12e3540218bb37ae083404b1f2ce6db2a4121e979829b4aff94b99f49da1cf8"
 }
