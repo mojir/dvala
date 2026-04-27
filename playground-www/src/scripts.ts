@@ -101,14 +101,16 @@ import {
   createModalPanel,
   dismissInfoModal,
   modalSizeMap,
+  pushSavePanel,
   showInfoModal,
   showToast,
+  slideBackSnapshotModal,
 } from './scripts/modals'
 import type { ModalSize } from './scripts/modals'
 import { state } from './scripts/playgroundState'
 import type { ContextEntryKind, PendingEffect } from './scripts/playgroundState'
 
-export { closeInfoModal, createModalPanel, showInfoModal, showToast } from './scripts/modals'
+export { closeInfoModal, createModalPanel, showInfoModal, showToast, slideBackSnapshotModal } from './scripts/modals'
 
 const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
@@ -5448,39 +5450,6 @@ export function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot
   }
 }
 
-/** Slide in a "Save As" form panel within the snapshot modal. */
-function pushSavePanel(onSave: (name: string) => void) {
-  const panel = document.createElement('div')
-  panel.className = 'modal-panel'
-  panel.innerHTML = `
-    <div class="modal-header">
-      <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
-    </div>
-    <div class="modal-panel__body" style="display:flex;flex-direction:column;gap:var(--space-2);">
-      <label for="save-snapshot-name" class="snapshot-panel__section-label">Name (optional)</label>
-      <input id="save-snapshot-name" type="text" class="readline-input" placeholder="My snapshot…" style="width:100%;box-sizing:border-box;">
-    </div>
-    <div class="modal-panel__footer">
-      <button class="button cancel-btn">Cancel</button>
-      <button class="button button--primary save-btn" style="margin-left:auto;">Save</button>
-    </div>
-  `
-  const input = panel.querySelector('input') as HTMLInputElement
-  const dismissSavePanel = () => popModal()
-  const doSave = () => {
-    onSave(input.value.trim())
-    dismissSavePanel()
-  }
-  panel.querySelector('.cancel-btn')!.addEventListener('click', dismissSavePanel)
-  panel.querySelector('.save-btn')!.addEventListener('click', doSave)
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') doSave()
-    else if (e.key === 'Escape') dismissSavePanel()
-  })
-  pushPanel(panel, 'Save As')
-  setTimeout(() => input.focus(), 260)
-}
-
 function pushCheckpointPanel(snapshot: Snapshot) {
   const panel = createSnapshotPanel(snapshot)
   pushPanel(panel, snapshotLabel(snapshot), snapshot)
@@ -5593,11 +5562,6 @@ export function closeSnapshotView() {
   // Sync view — will show empty or editor depending on side tab
   syncCodePanelView()
   syncPlaygroundUrlState(normalizeSideTab(getCurrentSideTab()))
-}
-
-export function slideBackSnapshotModal() {
-  if (state.modalStack.length <= 1) return
-  popModal()
 }
 
 function restoreInlineSnapshotContext() {
