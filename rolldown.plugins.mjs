@@ -40,8 +40,12 @@ export function markdownSourcePlugin() {
  * as a sorted array of { path, content } objects, discovered at build time by scanning book/.
  * This avoids import.meta.glob (unsupported in iife output format) while still being dynamic —
  * dropping a .md file in book/ is enough for it to appear.
+ *
+ * `bookDir` defaults to `<cwd>/book` for the existing rolldown configs (which run from the
+ * monorepo root). Vite's playground config runs from `playground-www/` and passes an
+ * explicit absolute path so resolution doesn't depend on cwd.
  */
-export function bookChaptersPlugin() {
+export function bookChaptersPlugin({ bookDir = path.resolve('book') } = {}) {
   const VIRTUAL_ID = 'virtual:book-chapters'
   const RESOLVED_ID = '\0virtual:book-chapters'
 
@@ -55,7 +59,6 @@ export function bookChaptersPlugin() {
       if (id !== RESOLVED_ID)
         return
 
-      const bookDir = path.resolve('book')
       const entries = []
 
       // Walk book/NN-section/NN-chapter.md, sorted by path for correct chapter order

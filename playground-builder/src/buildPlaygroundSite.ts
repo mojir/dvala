@@ -10,13 +10,12 @@ import {
   moduleReference,
 } from '../../reference'
 import type { Reference } from '../../reference'
-import { coreCategoryDescriptions, coreCategories } from '../../reference/api'
-import { allBuiltinModules } from '../../src/allModules'
+import { coreCategories } from '../../reference/api'
 import { examples } from '../../reference/examples'
 import { isBookSection, chapters, bookItems } from '../../reference/book'
 import { allAppRoutes } from '../../common/appRoutes'
-import type { ReferenceData, SearchEntry } from '../../common/referenceData'
-import { version } from '../../package.json'
+import { buildReferenceData } from '../../common/buildReferenceData'
+import { allBuiltinModules } from '../../src/allModules'
 
 const DOC_DIR = path.resolve(__dirname, '../../docs')
 const BASE_URL = 'https://mojir.github.io/dvala'
@@ -37,44 +36,6 @@ writeIndexPage()
 write404Page()
 writeStubPages()
 writeSitemap()
-
-// ---------------------------------------------------------------------------
-// Reference data assembly
-// ---------------------------------------------------------------------------
-
-function buildReferenceData(): ReferenceData {
-  const shortDescRegExp = /(.*?) {2}\n|\n\n|$/
-
-  const searchEntries: SearchEntry[] = Object.values({
-    ...apiReference,
-    ...moduleReference,
-    ...effectReference,
-  }).map(ref => {
-    const match = shortDescRegExp.exec(ref.description)
-    const description = (match?.[1] ?? ref.description)
-      .replace(/`([^`]*)`/g, '$1')
-      .replace(/\*\*([^*]*)\*\*/g, '$1')
-      .replace(/\*([^*]*)\*/g, '$1')
-    return {
-      title: ref.title,
-      search: `${ref.title} ${ref.category}`,
-      description,
-      category: ref.category,
-      linkName: getLinkName(ref),
-    } satisfies SearchEntry
-  })
-
-  return {
-    version,
-    api: apiReference,
-    modules: moduleReference,
-    effects: effectReference,
-    moduleCategories: allBuiltinModules.map(m => ({ name: m.name, description: m.description })),
-    coreCategories: coreCategories.map(name => ({ name, description: coreCategoryDescriptions[name] ?? '' })),
-    searchEntries,
-    examples,
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Minimal markdown → HTML (for chapter bodies in stub pages)
