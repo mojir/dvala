@@ -29,7 +29,7 @@ import linearAlgebraModuleSource from './linear-algebra.dvala'
 // Casts number[] and number[][] annotated plain JS arrays to Any for evaluator compatibility
 function toAny(val: unknown): Any { return val as Any }
 
-export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
+const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
   'rotate2d': {
     evaluate: ([vector_, radians], sourceCodeInfo): Any => {
       const vector = assert2dVector(vector_, sourceCodeInfo)

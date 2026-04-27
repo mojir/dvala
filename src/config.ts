@@ -3,7 +3,7 @@ import path from 'node:path'
 
 const CONFIG_FILENAME = 'dvala.json'
 
-export interface BuildConfig {
+interface BuildConfig {
   /** Expand statically-defined macros at build time. Default: true */
   expandMacros: boolean
   /** Remove unused let bindings. Default: true */
@@ -40,7 +40,7 @@ export interface CoverageConfig {
   all: boolean
 }
 
-export interface DvalaConfig {
+interface DvalaConfig {
   /** Project name */
   name: string
   /** Glob pattern for test file discovery, relative to project root. Default: "**\/*.test.dvala" */

@@ -1,6 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const minimatch = require('minimatch') as (path: string, pattern: string) => boolean
 import fs from 'node:fs'
+import { minimatch } from 'minimatch'
 import type { SourceMap } from '../parser/types'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'

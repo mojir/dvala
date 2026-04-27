@@ -132,14 +132,15 @@
     "dist"
   ],
   "scripts": {
+    "preinstall": "npx -y only-allow pnpm",
     "test": "wireit",
     "vitest": "vitest",
     "lint": "wireit",
     "lint:no-fix": "wireit",
     "typecheck": "wireit",
     "typecheck:watch": "tsc -p ./tsconfig.compile.json --noEmit --watch",
-    "check": "pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test",
-    "check:no-fix": "pnpm run lint:no-fix && pnpm run typecheck && pnpm run test",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run knip && pnpm run build && pnpm run test",
+    "check:no-fix": "pnpm run lint:no-fix && pnpm run typecheck && pnpm run knip && pnpm run test",
     "clean": "pnpm run clean-dvala && pnpm run clean-playground && rm -rf .wireit coverage test-results vscode-dvala/out .cache",
     "clean-dvala": "rm -rf dist build",
     "clean-playground": "rm -rf playground-builder/build playground-www/build",
@@ -165,7 +166,7 @@
     "test:e2e:prod:headed": "E2E_BASE_URL=https://mojir.github.io/dvala npx playwright test --headed",
     "lcov": "open-cli ./coverage/index.html",
     "mcp:inspect": "npx @modelcontextprotocol/inspector node ./dist/mcp-server/server.js",
-    "knip": "knip"
+    "knip": "wireit"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -183,9 +184,11 @@
     "glob": "^13.0.6",
     "highlight.js": "^11.11.1",
     "knip": "^6.7.0",
+    "minimatch": "^10.2.5",
     "open-cli": "^8.0.0",
     "rolldown": "^1.0.0-rc.9",
     "serve": "^14.2.6",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.0",
     "vitest": "^4.1.0",
@@ -222,6 +225,26 @@
         "__tests__/**/*.ts",
         "vscode-dvala/src/**/*.ts",
         "eslint.config.js"
+      ],
+      "output": []
+    },
+    "knip": {
+      "command": "knip",
+      "files": [
+        "src/**/*.ts",
+        "common/**/*.ts",
+        "cli/src/**/*.ts",
+        "mcp-server/src/**/*.ts",
+        "playground-builder/src/**/*.ts",
+        "playground-www/src/**/*.ts",
+        "reference/**/*.ts",
+        "__tests__/**/*.ts",
+        "vscode-dvala/src/**/*.ts",
+        "benchmarks/*.ts",
+        "scripts/**/*.{ts,mjs}",
+        "knip.json",
+        "package.json",
+        "tsconfig*.json"
       ],
       "output": []
     },

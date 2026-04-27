@@ -29,7 +29,7 @@ const builtinModuleNames = new Set([
  */
 const fileImportPattern = /import\(\s*"(\.{0,2}\/[^"]+)"\s*\)|import\(\s*'(\.{0,2}\/[^']+)'\s*\)/g
 
-export interface BundleOptions {
+interface BundleOptions {
   /** Include source maps in the bundle. Default: true */
   sourceMap?: boolean
 }

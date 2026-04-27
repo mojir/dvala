@@ -3,7 +3,7 @@ import { getDb, idbClear, idbGet, idbPut, openDb, FILE_HISTORIES_STORE } from '.
 
 const STATE_KEY = 'state'
 
-export interface PersistedFileHistory {
+interface PersistedFileHistory {
   history: HistoryEntry[]
   index: number
 }

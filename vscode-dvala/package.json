@@ -202,6 +202,9 @@
       }
     ]
   },
+  "scripts": {
+    "preinstall": "npx -y only-allow pnpm"
+  },
   "devDependencies": {
     "@types/node": "^25.3.5",
     "@types/vscode": "^1.109.0",

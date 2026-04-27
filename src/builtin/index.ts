@@ -42,13 +42,6 @@ export const specialExpressions = {
 export type SpecialExpressions = typeof specialExpressions
 export type SpecialExpression = SpecialExpressions[keyof SpecialExpressions]
 export type SpecialExpressionName = keyof typeof specialExpressionTypes
-export type CommonSpecialExpressionType = [
-  | typeof specialExpressionTypes['??']
-  | typeof specialExpressionTypes['&&']
-  | typeof specialExpressionTypes['match']
-  | typeof specialExpressionTypes['||']
-  | typeof specialExpressionTypes['object'],
-]
 
 export type SpecialExpressionType = typeof specialExpressionTypes[SpecialExpressionName]
 

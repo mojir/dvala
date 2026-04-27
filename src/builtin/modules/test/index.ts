@@ -23,7 +23,7 @@ export interface TestEntry {
  * The runner creates a collector, passes it to createTestModule(), and reads the
  * collected tests after evaluation completes.
  */
-export interface TestCollector {
+interface TestCollector {
   tests: TestEntry[]
   /** Stack of describe group names for nested describe blocks */
   describeStack: string[]

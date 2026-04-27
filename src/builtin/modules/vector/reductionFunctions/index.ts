@@ -25,8 +25,6 @@ type VectorMovingWindowKey<T extends string> = `moving${Capitalize<T>}`
 type VectorCenteredMovingWindowKey<T extends string> = `centeredMoving${Capitalize<T>}`
 type VectorRunningKey<T extends string> = `running${Capitalize<T>}`
 
-export type VectorReductionKeys<T extends string> = VectorReductionKey<T> | VectorMovingWindowKey<T> | VectorCenteredMovingWindowKey<T> | VectorRunningKey<T>
-
 type ReductionFunction = (vector: number[]) => number
 // type MovingWindowFunction = (vector: number[], windowSize: number, sourceCodeInfo: SourceCodeInfo | undefined) => number[]
 

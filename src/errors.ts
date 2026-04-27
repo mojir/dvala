@@ -209,19 +209,6 @@ export class KeyError extends RuntimeError {
 }
 
 // ---------------------------------------------------------------------------
-// Backward compatibility aliases (to remove after full migration)
-// ---------------------------------------------------------------------------
-
-/** @deprecated Use UserError instead */
-export type UserDefinedError = UserError
-/** @deprecated Use UserError instead */
-export const UserDefinedError = UserError
-/** @deprecated Use ReferenceError instead */
-export type UndefinedSymbolError = ReferenceError
-/** @deprecated Use ReferenceError instead */
-export const UndefinedSymbolError = ReferenceError
-
-// ---------------------------------------------------------------------------
 // Type guards
 // ---------------------------------------------------------------------------
 

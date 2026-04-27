@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { DvalaError, UndefinedSymbolError } from '../src/errors'
+import { DvalaError, ReferenceError } from '../src/errors'
 import { Cache } from '../src/Cache'
-import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, transformSymbols, untokenize } from '../src/tooling'
+import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, untokenize } from '../src/tooling'
 import type { Ast } from '../src/parser/types'
 import { NodeTypes } from '../src/constants/constants'
 import { vectorModule } from '../src/builtin/modules/vector'
@@ -168,8 +168,8 @@ describe('all tests', () => {
       }
     })
     it('name not recognized', () => {
-      expect(() => dvala.run('asd()')).toThrowError(UndefinedSymbolError)
-      expect(() => dvala.run('asd')).toThrowError(UndefinedSymbolError)
+      expect(() => dvala.run('asd()')).toThrowError(ReferenceError)
+      expect(() => dvala.run('asd')).toThrowError(ReferenceError)
     })
 
     it('unexpected argument', () => {
@@ -211,15 +211,6 @@ describe('all tests', () => {
     it('should return empty set for import expression', () => {
       const result = getUndefinedSymbols('let v = import("vector"); v.sum([1, 2])', { modules: [vectorModule] })
       expect(result).toEqual(new Set())
-    })
-  })
-
-  describe('transformSymbols', () => {
-    it('should transform symbol tokens', () => {
-      const tokenStream = tokenizeSource('x + y')
-      const transformed = transformSymbols(tokenStream, s => s === 'x' ? 'a' : s)
-      const result = untokenize(transformed)
-      expect(result).toBe('a + y')
     })
   })
 

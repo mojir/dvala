@@ -11,7 +11,7 @@ export type FormatterRule = (text: string, index: number, formatter: TextFormatt
   formattedText: string
 }
 
-export const variableRegExp = new RegExp(`^\\$${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*`)
+const variableRegExp = new RegExp(`^\\$${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*`)
 
 const noMatch = { count: 0, formattedText: '' }
 
@@ -35,7 +35,7 @@ export function createVariableRule(
 }
 
 const numberRegExp = /^\d+(?:\.\d+)?/
-export const getNumberRule: (cli: Colorizer) => FormatterRule = fmt => (text, index) => {
+const getNumberRule: (cli: Colorizer) => FormatterRule = fmt => (text, index) => {
   const startMatch = numberRegExp.exec(text.slice(index))
   if (startMatch) {
     const count = startMatch[0].length
@@ -197,7 +197,7 @@ function getTemplateStringRule(fmt: Colorizer): FormatterRule {
   }
 }
 
-export function getDvalaExpressionRules(cli: Colorizer): FormatterRule[] {
+function getDvalaExpressionRules(cli: Colorizer): FormatterRule[] {
   return [
     commentRule,
     stringRule,

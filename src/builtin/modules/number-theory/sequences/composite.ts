@@ -1,7 +1,7 @@
 import { isPrime } from './prime'
 import type { SequenceDefinition } from '.'
 
-export function isComposite(num: number): boolean {
+function isComposite(num: number): boolean {
   if (num <= 1) {
     return false
   }

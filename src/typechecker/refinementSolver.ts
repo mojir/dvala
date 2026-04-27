@@ -32,7 +32,7 @@ type Domain =
     excluded: Type[]
   }
 
-export type RefinementSolveVerdict =
+type RefinementSolveVerdict =
   | { tag: 'Proved' }
   | { tag: 'Disproved'; witness: Type }
   | { tag: 'OutOfFragment' }

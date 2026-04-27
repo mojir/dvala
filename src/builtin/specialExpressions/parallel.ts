@@ -3,7 +3,7 @@ import type { AstNode } from '../../parser/types'
 import type { NodeTypes } from '../../constants/constants'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 
-export type ParallelNode = [typeof NodeTypes.Parallel, AstNode, number]
+type ParallelNode = [typeof NodeTypes.Parallel, AstNode, number]
 
 const docs: CustomDocs = {
   category: 'special-expression',

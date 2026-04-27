@@ -96,7 +96,7 @@ export function splitTriviaAtNewline(trivia: TriviaNode[]): { trailing: TriviaNo
 // Public API
 // ---------------------------------------------------------------------------
 
-export interface AttachTriviaResult {
+interface AttachTriviaResult {
   /** Real tokens wrapped with their leading/trailing trivia. */
   tokens: CstToken[]
   /** Trivia after the last real token that belongs to subsequent lines
@@ -170,7 +170,7 @@ function triviaText(trivia: TriviaNode[]): string {
 }
 
 /** Concatenate a single CstToken back to its source representation. */
-export function cstTokenText(token: CstToken): string {
+function cstTokenText(token: CstToken): string {
   return triviaText(token.leadingTrivia) + token.text + triviaText(token.trailingTrivia)
 }
 

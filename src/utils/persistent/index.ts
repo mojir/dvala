@@ -1,10 +1,7 @@
-export { PersistentVector, TransientVector } from './PersistentVector'
-export { PersistentMap, TransientMap } from './PersistentMap'
+export { PersistentVector } from './PersistentVector'
+export { PersistentMap } from './PersistentMap'
 export {
-  type PersistentList,
-  type PersistentListNode,
   cons,
-  isEmpty as isPersistentListEmpty,
   listToArray,
   listFromArray,
   listTake,

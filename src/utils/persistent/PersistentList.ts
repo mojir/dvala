@@ -13,7 +13,7 @@
 
 export type PersistentList<T> = null | PersistentListNode<T>
 
-export interface PersistentListNode<T> {
+interface PersistentListNode<T> {
   readonly head: T
   readonly tail: PersistentList<T>
 }

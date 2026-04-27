@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { RegularExpression, SymbolNode } from '../src/parser/types'
-import { cloneColl, collHasKey, deepEqual, smartTrim, toNonNegativeInteger } from '../src/utils'
+import { collHasKey, deepEqual, smartTrim, toNonNegativeInteger } from '../src/utils'
 import { REGEXP_SYMBOL } from '../src/utils/symbols'
 import { valueToString } from '../src/utils/debug/debugTools'
 import { NodeTypes } from '../src/constants/constants'
@@ -81,23 +81,6 @@ describe('utils', () => {
     expect(toNonNegativeInteger(0.01)).toBe(1)
     expect(toNonNegativeInteger(2.01)).toBe(3)
     expect(toNonNegativeInteger(4.0)).toBe(4)
-  })
-
-  describe('cloneColl', () => {
-    it('samples', () => {
-      // PersistentMap is immutable — cloneColl returns the same reference
-      const map = PersistentMap.fromRecord({ a: 10 })
-      expect(cloneColl(map)).toBe(map)
-      // PersistentVector is immutable — cloneColl returns the same reference
-      const vec = PersistentVector.from([1, 2, 3])
-      expect(cloneColl(vec)).toBe(vec)
-    })
-    it('persistent structures are immutable', () => {
-      const original = PersistentMap.fromRecord({ a: PersistentVector.from([1, 2, 3]) })
-      const cloned = cloneColl(original)
-      // Persistent structures are immutable, so clone returns same instance
-      expect(cloned).toBe(original)
-    })
   })
 
   describe('helpers', () => {

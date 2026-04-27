@@ -45,7 +45,7 @@ type PredKey<T extends string> = `is${Capitalize<T>}`
 type SeqFunction<Type extends number | string> = (length: number, sourceCodeInfo: SourceCodeInfo | undefined) => Type[]
 type PredFunction<Type extends number | string> = (n: Type, sourceCodeInfo: SourceCodeInfo | undefined) => boolean
 
-export type SequenceKeys<T extends string> = SeqKey<T> | TakeWhileKey<T> | NthKey<T> | PredKey<T>
+type SequenceKeys<T extends string> = SeqKey<T> | TakeWhileKey<T> | NthKey<T> | PredKey<T>
 
 export type SequenceDefinition<T extends string, Type extends number | string = number> = {
   [key in Exclude<SequenceKeys<T>, NthKey<T> | TakeWhileKey<T>>]: key extends SeqKey<T>

@@ -25,7 +25,7 @@ export interface RegularExpression {
 }
 
 /** Dotted DNS-style identifier for entities with public identity (effects, macros, modules). */
-export type QualifiedName = string
+type QualifiedName = string
 
 export interface EffectRef {
   [EFFECT_SYMBOL]: true
@@ -189,8 +189,6 @@ export type DvalaFunction =
   | HandlerFunction
   | ResumeFunction
 
-export type DvalaFunctionType = DvalaFunction['functionType']
-
 export type FunctionLike = DvalaFunction | Coll | number
 
 export type AstNode<T extends NodeType = NodeType, Payload = unknown> = [T, Payload, number]
@@ -207,7 +205,6 @@ export type BuiltinSymbolNode = AstNode<typeof NodeTypes.Builtin, string>
 export type SpecialSymbolNode = AstNode<typeof NodeTypes.Special, SpecialExpressionType>
 export type SymbolNode = UserDefinedSymbolNode | BuiltinSymbolNode | SpecialSymbolNode
 export type ReservedNode = AstNode<typeof NodeTypes.Reserved, ReservedSymbol>
-export type EffectNameNode = AstNode<typeof NodeTypes.Effect, string>
 export type SpecialExpressionNode<T extends [SpecialExpressionType, ...unknown[]] = [SpecialExpressionType, ...unknown[]]> = AstNode<typeof NodeTypes.SpecialExpression, T> // [name, params]
 
 /**
@@ -233,12 +230,12 @@ export const bindingTargetTypes = {
   wildcard: 'wildcard',
 } as const
 
-export type BindingTargetType = typeof bindingTargetTypes[keyof typeof bindingTargetTypes]
+type BindingTargetType = typeof bindingTargetTypes[keyof typeof bindingTargetTypes]
 
 type GenericTarget<T extends BindingTargetType, Payload extends unknown[]> = [T, Payload, number]
 
-export type SymbolBindingTarget = GenericTarget<typeof bindingTargetTypes.symbol, [SymbolNode, AstNode | undefined /* default value */]>
-export type RestBindingTarget = GenericTarget<typeof bindingTargetTypes.rest, [string, AstNode | undefined /* default value */]>
+type SymbolBindingTarget = GenericTarget<typeof bindingTargetTypes.symbol, [SymbolNode, AstNode | undefined /* default value */]>
+type RestBindingTarget = GenericTarget<typeof bindingTargetTypes.rest, [string, AstNode | undefined /* default value */]>
 /**
  * A single entry in an object binding target. `keyNodeId` holds the
  * source position of the KEY token — distinct from the entry's target
@@ -252,14 +249,12 @@ export interface ObjectBindingEntry {
   target: BindingTarget
 }
 
-export type ObjectBindingTarget = GenericTarget<typeof bindingTargetTypes.object, [ObjectBindingEntry[], AstNode | undefined /* default value */]>
+type ObjectBindingTarget = GenericTarget<typeof bindingTargetTypes.object, [ObjectBindingEntry[], AstNode | undefined /* default value */]>
 export type ArrayBindingTarget = GenericTarget<typeof bindingTargetTypes.array, [(BindingTarget | null)[], AstNode | undefined /* default value */]>
-export type LiteralBindingTarget = GenericTarget<typeof bindingTargetTypes.literal, [AstNode /* literal expression */]>
-export type WildcardBindingTarget = GenericTarget<typeof bindingTargetTypes.wildcard, []>
+type LiteralBindingTarget = GenericTarget<typeof bindingTargetTypes.literal, [AstNode /* literal expression */]>
+type WildcardBindingTarget = GenericTarget<typeof bindingTargetTypes.wildcard, []>
 
 export type BindingTarget = SymbolBindingTarget | RestBindingTarget | ObjectBindingTarget | ArrayBindingTarget | LiteralBindingTarget | WildcardBindingTarget
-
-export type BindingNode = AstNode<typeof NodeTypes.Binding, [BindingTarget, AstNode]> // [target, value]
 
 export interface SourceMapPosition {
   source: number // index into sources[]
@@ -291,7 +286,7 @@ export function resolveSourceCodeInfo(nodeId: number, sourceMap: SourceMap | und
 
 type AstBody = AstNode[]
 /** Parsed effect declaration: effect @name(ArgType) -> RetType */
-export interface EffectDeclarationInfo {
+interface EffectDeclarationInfo {
   argType: string
   retType: string
 }
@@ -311,7 +306,7 @@ export interface AliasParam {
 }
 
 /** Parsed type alias: type Name<Params> = Body */
-export interface TypeAliasInfo {
+interface TypeAliasInfo {
   params: AliasParam[]
   body: string
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '../constants/constants'
-import { TypeError, UserDefinedError } from '../errors'
+import { TypeError, UserError } from '../errors'
 import type { Any } from '../interface'
 import { parse } from '../parser'
 import type { AstNode, NumberNode, StringNode } from '../parser/types'
@@ -935,7 +935,7 @@ describe('trampoline integration', () => {
 
   it('should evaluate perform(@dvala.error) as error', () => {
     const node = parseFirst('perform(@dvala.error, { message: "test error" })')
-    expect(() => runTrampoline(stepNodeSync(node, emptyEnv(), null))).toThrow(UserDefinedError)
+    expect(() => runTrampoline(stepNodeSync(node, emptyEnv(), null))).toThrow(UserError)
   })
 
   it('should evaluate do...with handler on success', () => {

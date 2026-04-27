@@ -152,7 +152,6 @@ import type { Context } from './interface'
 import type { Step } from './step'
 
 // Re-export for external use
-export type { Step }
 
 // ---------------------------------------------------------------------------
 // Value-as-function helpers
@@ -4463,7 +4462,7 @@ function continueBindingArgs(
  * This is the entry point for frame-based destructuring.
  * @internal Exported for testing/incremental migration
  */
-export function startBindingSlots(
+function startBindingSlots(
   target: BindingTarget,
   rootValue: Any,
   env: ContextStack,

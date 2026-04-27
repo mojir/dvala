@@ -61,18 +61,6 @@ export interface MatchSlot {
   nodeId?: number
 }
 
-/**
- * Result of flattening a match pattern.
- * Includes both the slots and length constraints for array patterns.
- */
-export interface FlattenedMatchPattern {
-  slots: MatchSlot[]
-  /** For array patterns: exact length required (if no rest) */
-  exactLength?: number
-  /** For array patterns: minimum length required (if has rest) */
-  minLength?: number
-}
-
 // ---------------------------------------------------------------------------
 // Flatten match pattern to slots
 // ---------------------------------------------------------------------------

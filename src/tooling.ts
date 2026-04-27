@@ -18,7 +18,6 @@ import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parseRecoverable, parseToAst } from './parser'
 import type { RecoverableParseResult } from './parser'
 import type { Ast } from './parser/types'
-import { transformSymbolTokens } from './transformer'
 import { untokenize } from './untokenizer'
 
 export type { TokenStream }
@@ -54,13 +53,6 @@ export function parseTokenStreamRecoverable(tokenStream: TokenStream): Recoverab
  * Convert a token stream back to source code.
  */
 export { untokenize }
-
-/**
- * Transform all symbol tokens in a token stream using the provided function.
- */
-export function transformSymbols(tokenStream: TokenStream, transformer: (symbol: string) => string): TokenStream {
-  return transformSymbolTokens(tokenStream, transformer)
-}
 
 /**
  * Get all undefined symbols in a Dvala program.

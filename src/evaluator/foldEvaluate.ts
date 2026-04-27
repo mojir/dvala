@@ -28,7 +28,7 @@ export type FoldResult =
   | { ok: false; reason: 'error' }
 
 /** Default step budget per fold attempt (decision #1 in the design doc). */
-export const DEFAULT_FOLD_STEP_BUDGET = 10_000
+const DEFAULT_FOLD_STEP_BUDGET = 10_000
 
 /**
  * Evaluate a single AST node for constant folding. Does NOT dispatch effects

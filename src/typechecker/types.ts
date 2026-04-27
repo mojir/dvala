@@ -21,7 +21,7 @@ import type { AstNode } from '../parser/types'
  * it with a classified AST (opacity-tagged) without touching every
  * walker signature.
  */
-export type RefinedPredicate = AstNode
+type RefinedPredicate = AstNode
 
 // ---------------------------------------------------------------------------
 // Type algebra
@@ -62,7 +62,7 @@ export type PrimitiveName = 'Number' | 'Integer' | 'String' | 'Boolean' | 'Null'
  * polymorphism in generalized signatures. See `constrainEffectSet` and
  * `expandEffectSet` in `infer.ts` for the propagation and display logic.
  */
-export type EffectTail =
+type EffectTail =
   | { tag: 'Closed' }
   | { tag: 'Open' }
   | RowVarTail
@@ -735,7 +735,7 @@ function tailEquals(a: EffectTail, b: EffectTail): boolean {
 }
 
 /** Check if two effect sets are equal. Structural — used for dedup/caching. */
-export function effectSetEquals(a: EffectSet, b: EffectSet): boolean {
+function effectSetEquals(a: EffectSet, b: EffectSet): boolean {
   if (!tailEquals(a.tail, b.tail)) return false
   if (a.effects.size !== b.effects.size) return false
   for (const e of a.effects) {

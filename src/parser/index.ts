@@ -7,13 +7,11 @@ import type { ParserContext } from './ParserContext'
 import { createParserContext, createCstParserContext, parseExpression } from './subParsers/parseExpression'
 import type { AliasParam, AstNode, Ast, SourceMap } from './types'
 
-export { createParserContext, parseExpression }
-
 // ---------------------------------------------------------------------------
 // CST parsing — produces an untyped CST tree with full trivia
 // ---------------------------------------------------------------------------
 
-export interface ParseToCstResult {
+interface ParseToCstResult {
   /** Untyped CST tree — root node has kind 'Program'. */
   tree: UntypedCstNode
   /** Trailing trivia after the last real token (file-level comments, final newlines). */

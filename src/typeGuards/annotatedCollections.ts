@@ -31,21 +31,6 @@ function toPlainArray(value: unknown): unknown {
   return value
 }
 
-export function annotate<T>(value: T): T {
-  const plain = toPlainArray(value)
-  if (!Array.isArray(plain)) {
-    return value
-  }
-  if (annotatedArrays.has(plain)) {
-    return plain as T
-  }
-  isVector(plain)
-  if (!isMatrix(plain)) {
-    isGrid(plain)
-  }
-
-  return plain as T
-}
 export function isVector(vector: unknown): vector is number[] {
   const plain = toPlainArray(vector)
   if (!Array.isArray(plain)) {

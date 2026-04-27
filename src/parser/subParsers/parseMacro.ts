@@ -9,8 +9,8 @@ import { parseDo } from './parseDo'
 import { parseFunctionArguments } from './parseFunction'
 
 // Payload: [params, body] — same shape as LambdaNode payload
-export type MacroPayload = LambdaNode[1]
-export type MacroNode = [typeof NodeTypes.Macro, MacroPayload, number]
+type MacroPayload = LambdaNode[1]
+type MacroNode = [typeof NodeTypes.Macro, MacroPayload, number]
 
 export function parseMacro(ctx: ParserContext): MacroNode {
   ctx.builder?.startNode('Macro')

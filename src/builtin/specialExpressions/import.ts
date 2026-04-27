@@ -3,7 +3,7 @@ import type { NodeTypes } from '../../constants/constants'
 import { toFixedArity } from '../../utils/arity'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 
-export type ImportNode = [typeof NodeTypes.Import, string, number]
+type ImportNode = [typeof NodeTypes.Import, string, number]
 
 const docs: CustomDocs = {
   category: 'special-expression',

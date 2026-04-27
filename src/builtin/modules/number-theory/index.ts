@@ -153,7 +153,7 @@ function chineseRemainder(remainders: number[], moduli: number[]): number {
   return sum
 }
 
-export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
+const combinatoricalNormalExpression: BuiltinNormalExpressions = {
   'isCoprime': {
     evaluate: ([a, b], sourceCodeInfo): boolean => {
       assertNumber(a, sourceCodeInfo, { integer: true })

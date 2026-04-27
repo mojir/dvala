@@ -9,12 +9,12 @@ export interface SearchEntry {
   linkName: string // URL path segment, e.g. "map" or "math.sin"
 }
 
-export interface ModuleInfo {
+interface ModuleInfo {
   name: string
   description: string
 }
 
-export interface CoreCategoryInfo {
+interface CoreCategoryInfo {
   name: string
   description: string
 }

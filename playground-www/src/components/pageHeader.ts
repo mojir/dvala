@@ -20,7 +20,7 @@ export interface Breadcrumb {
   path?: string // If provided, renders as a link; otherwise plain text
 }
 
-export interface PageHeaderOptions {
+interface PageHeaderOptions {
   /** Page title shown in the header. Ignored if `breadcrumbs` is provided. */
   title?: string
   /** Breadcrumb path rendered instead of title. Last segment is shown as plain text. */

@@ -4,7 +4,7 @@
 
 import type { ParseError } from '../errors'
 
-export interface SymbolLocation {
+interface SymbolLocation {
   file: string
   line: number // 1-based
   column: number // 1-based
