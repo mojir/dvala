@@ -27,29 +27,35 @@ jobs:
 
       - uses: pnpm/action-setup@v4
 
-      # No `cache: 'pnpm'` here — this workflow only runs `pnpm version`,
-      # never `pnpm install`, so there is nothing to cache.
+      # No `cache: 'pnpm'` here — this workflow only runs
+      # `pnpm install --lockfile-only` (no node_modules), so the cache
+      # provides no value.
       - uses: actions/setup-node@v5
         with:
           node-version: 22
 
-      # Bump version in root package.json and sync sub-packages.
-      # No install or check needed — CI runs on the PR, publish runs its own check.
+      # Bump version on the root (npm package) and sync to the vscode-dvala
+      # workspace member. `pnpm install --lockfile-only` then refreshes
+      # pnpm-lock.yaml's importer entries — under workspaces, sub-package
+      # versions are tracked in the lockfile, so a bump creates drift that
+      # needs a no-resolve install to reconcile.
+      #
+      # pnpm doesn't have a built-in cross-workspace version bump; the
+      # canonical answer for multi-publish workspaces is changesets, but
+      # for this one-member case the inline sync stays simpler.
       - name: Bump version
         id: bump
         run: |
           pnpm version ${{ inputs.bump }} --no-git-tag-version
           NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           node -e "
             const fs = require('fs');
-            const version = '${NEW_VERSION}';
-            for (const subPkg of ['vscode-dvala/package.json']) {
-              const pkg = JSON.parse(fs.readFileSync(subPkg, 'utf-8'));
-              pkg.version = version;
-              fs.writeFileSync(subPkg, JSON.stringify(pkg, null, 2) + '\n');
-            }
+            const pkg = JSON.parse(fs.readFileSync('vscode-dvala/package.json', 'utf-8'));
+            pkg.version = '${NEW_VERSION}';
+            fs.writeFileSync('vscode-dvala/package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
+          pnpm install --lockfile-only
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
       # Create release branch, push, and open PR with auto-merge.
       # Uses RELEASE_TOKEN (PAT) so the push triggers CI on the PR.

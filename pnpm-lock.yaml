@@ -30,18 +30,9 @@ importers:
       '@types/node':
         specifier: ^25.5.0
         version: 25.6.0
-      '@types/vscode':
-        specifier: ^1.110.0
-        version: 1.116.0
       '@vitest/coverage-v8':
         specifier: ^4.1.0
         version: 4.1.5(vitest@4.1.5)
-      '@vscode/debugadapter':
-        specifier: ^1.68.0
-        version: 1.68.0
-      '@vscode/debugprotocol':
-        specifier: ^1.68.0
-        version: 1.68.0
       '@vscode/vsce':
         specifier: ^3.7.1
         version: 3.9.1
@@ -90,6 +81,25 @@ importers:
       zod:
         specifier: ^4.3.6
         version: 4.3.6
+
+  vscode-dvala:
+    dependencies:
+      '@vscode/debugadapter':
+        specifier: ^1.68.0
+        version: 1.68.0
+      '@vscode/debugprotocol':
+        specifier: ^1.68.0
+        version: 1.68.0
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.5
+        version: 25.6.0
+      '@types/vscode':
+        specifier: ^1.109.0
+        version: 1.116.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
 packages:
 

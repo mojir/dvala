@@ -1,16 +1,12 @@
 import * as esbuild from 'esbuild'
 import { execSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 
-const rootPkg = JSON.parse(readFileSync('package.json', 'utf-8'))
-const extPkgPath = 'vscode-dvala/package.json'
-const extPkg = JSON.parse(readFileSync(extPkgPath, 'utf-8'))
-
-if (extPkg.version !== rootPkg.version) {
-  extPkg.version = rootPkg.version
-  writeFileSync(extPkgPath, JSON.stringify(extPkg, null, 2) + '\n')
-  console.log(`Updated extension version to ${rootPkg.version}`)
-}
+// Version sync is now handled by `pnpm -r version` in release.yml — the
+// extension's package.json is bumped in lockstep with the root via the
+// workspace, so no runtime sync is needed here. Read the version once
+// for the .vsix filename.
+const extPkg = JSON.parse(readFileSync('vscode-dvala/package.json', 'utf-8'))
 
 const sharedOptions = {
   bundle: true,
@@ -36,9 +32,9 @@ await Promise.all([
   }),
 ])
 
-execSync(`../node_modules/.bin/vsce package --no-dependencies --out out/dvala-${rootPkg.version}.vsix`, {
+execSync(`../node_modules/.bin/vsce package --no-dependencies --out out/dvala-${extPkg.version}.vsix`, {
   cwd: 'vscode-dvala',
   stdio: 'inherit',
 })
 
-console.log(`\nTo install: code --install-extension vscode-dvala/out/dvala-${rootPkg.version}.vsix`)
+console.log(`\nTo install: code --install-extension vscode-dvala/out/dvala-${extPkg.version}.vsix`)
