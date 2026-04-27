@@ -9,6 +9,12 @@ import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '../../src/evaluator/effectTypes'
 import { WorkspaceIndex } from '../../src/languageService/WorkspaceIndex'
 import type { SymbolDef } from '../../src/languageService/types'
+import { findCallContext as sharedFindCallContext } from '../../src/shared/callContext'
+import {
+  buildBuiltinCompletions,
+  symbolDefToCompletion as toSharedCompletion,
+} from '../../src/shared/completionBuilder'
+import type { CompletionItem as SharedCompletionItem } from '../../src/shared/completionBuilder'
 import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
 import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 import type { Diagnostic as SharedDiagnostic, Range as SharedRange } from '../../src/shared/types'
@@ -62,110 +68,76 @@ function buildHoverMarkdown(name: string, ref: Reference): vscode.MarkdownString
   return md
 }
 
-function categoryToCompletionKind(category: string): vscode.CompletionItemKind {
-  switch (category) {
-    case 'special-expression':
-      return vscode.CompletionItemKind.Keyword
-    case 'effect':
-      return vscode.CompletionItemKind.Event
-    case 'shorthand':
-      return vscode.CompletionItemKind.Operator
-    case 'datatype':
-      return vscode.CompletionItemKind.Class
-    case 'prelude':
-      return vscode.CompletionItemKind.Class
-    default:
+/** Map portable kind names to VS Code's CompletionItemKind enum. */
+function sharedKindToVsKind(kind: SharedCompletionItem['kind']): vscode.CompletionItemKind {
+  switch (kind) {
+    case 'function':
       return vscode.CompletionItemKind.Function
+    case 'method':
+      return vscode.CompletionItemKind.Method
+    case 'variable':
+      return vscode.CompletionItemKind.Variable
+    case 'event':
+      return vscode.CompletionItemKind.Event
+    case 'module':
+      return vscode.CompletionItemKind.Module
+    case 'class':
+      return vscode.CompletionItemKind.Class
+    case 'keyword':
+      return vscode.CompletionItemKind.Keyword
+    case 'operator':
+      return vscode.CompletionItemKind.Operator
   }
 }
 
-function buildCompletionItems(): vscode.CompletionItem[] {
-  const seen = new Set<string>()
-  const items: vscode.CompletionItem[] = []
-
-  for (const ref of Object.values(allReference)) {
-    const label = ref.title
-    if (seen.has(label)) continue
-    seen.add(label)
-
-    const item = new vscode.CompletionItem(label, categoryToCompletionKind(ref.category))
-    item.detail = ref.category
-    item.documentation = buildHoverMarkdown(label, ref)
-
-    if (isFunctionReference(ref) && ref.variants.length > 0) {
-      const argNames = ref.variants[0].argumentNames
-      if (argNames.length > 0) {
-        const snippetArgs = argNames.map((name, i) => `\${${i + 1}:${name}}`).join(', ')
-        item.insertText = new vscode.SnippetString(`${label}(${snippetArgs})`)
-      } else {
-        item.insertText = new vscode.SnippetString(`${label}($0)`)
-      }
-    }
-
-    items.push(item)
-  }
-
-  return items
+/** Convert a shared CompletionItem into VS Code's host-specific shape. */
+function toVsCompletion(shared: SharedCompletionItem, documentation?: vscode.MarkdownString): vscode.CompletionItem {
+  const item = new vscode.CompletionItem(shared.label, sharedKindToVsKind(shared.kind))
+  if (shared.detail) item.detail = shared.detail
+  if (shared.sortText) item.sortText = shared.sortText
+  if (shared.insertText) item.insertText = new vscode.SnippetString(shared.insertText)
+  if (documentation) item.documentation = documentation
+  return item
 }
 
 /**
- * Find the function call context at a cursor position.
- * Scans backward to find the unmatched '(' and extracts the function name.
+ * Build the precomputed list of builtin completion items, attaching
+ * VS Code-specific markdown documentation (which the shared builder
+ * intentionally leaves to the host).
+ */
+function buildVsBuiltinCompletions(): vscode.CompletionItem[] {
+  const sharedItems = buildBuiltinCompletions()
+  const refByTitle = new Map<string, Reference>()
+  for (const ref of Object.values(allReference)) refByTitle.set(ref.title, ref)
+  return sharedItems.map(item => {
+    const ref = refByTitle.get(item.label)
+    return toVsCompletion(item, ref ? buildHoverMarkdown(item.label, ref) : undefined)
+  })
+}
+
+const completionItems = buildVsBuiltinCompletions()
+
+/** Map a user-defined SymbolDef to a VS Code completion item via the shared builder. */
+function symbolDefToCompletionItem(def: SymbolDef): vscode.CompletionItem {
+  return toVsCompletion(toSharedCompletion(def))
+}
+
+/**
+ * Find the function call context at a cursor position. Trims the source
+ * to a few lines above the cursor for performance, then delegates to the
+ * shared parser.
  */
 function findCallContext(
   document: vscode.TextDocument,
   position: vscode.Position,
 ): { functionName: string; activeParam: number } | null {
-  // Grab text from a few lines above to the cursor
   const startLine = Math.max(0, position.line - 10)
   const text = document.getText(new vscode.Range(new vscode.Position(startLine, 0), position))
-
-  let depth = 0
-  let commaCount = 0
-  for (let i = text.length - 1; i >= 0; i--) {
-    const ch = text[i]
-    if (ch === ')') depth++
-    else if (ch === '(') {
-      if (depth === 0) {
-        // Found the unmatched opening paren — extract function name before it
-        const before = text.substring(0, i).trimEnd()
-        const nameMatch = before.match(/([a-zA-Z_$][a-zA-Z0-9_$]*)$/)
-        if (nameMatch) {
-          return { functionName: nameMatch[1]!, activeParam: commaCount }
-        }
-        return null
-      }
-      depth--
-    } else if (ch === ',' && depth === 0) commaCount++
-  }
-  return null
-}
-
-const completionItems = buildCompletionItems()
-
-/** Map a user-defined SymbolDef to a VS Code completion item. */
-function symbolDefToCompletionItem(def: SymbolDef): vscode.CompletionItem {
-  const kindMap: Record<string, vscode.CompletionItemKind> = {
-    variable: vscode.CompletionItemKind.Variable,
-    function: vscode.CompletionItemKind.Function,
-    macro: vscode.CompletionItemKind.Method,
-    handler: vscode.CompletionItemKind.Event,
-    parameter: vscode.CompletionItemKind.Variable,
-    import: vscode.CompletionItemKind.Module,
-  }
-
-  const item = new vscode.CompletionItem(def.name, kindMap[def.kind] ?? vscode.CompletionItemKind.Variable)
-  item.detail = def.kind
-  // Sort user symbols after builtins (builtins have default sort)
-  item.sortText = `1_${def.name}`
-
-  // Add snippet with parameter placeholders for functions/macros
-  if (def.params && def.params.length > 0) {
-    const snippetArgs = def.params.map((name, i) => `\${${i + 1}:${name}}`).join(', ')
-    item.insertText = new vscode.SnippetString(`${def.name}(${snippetArgs})`)
-  }
-
-  return item
+  // After trimming, the windowed text starts at line 1 col 1 — so map the
+  // cursor's relative position into the windowed coordinate space.
+  const relativeLine = position.line - startLine + 1
+  const relativeCol = position.character + 1
+  return sharedFindCallContext(text, { line: relativeLine, column: relativeCol })
 }
 
 let outputChannel: vscode.OutputChannel | undefined
