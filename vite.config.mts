@@ -16,6 +16,13 @@ export default defineConfig({
   test: {
     exclude: ['e2e/**', '**/node_modules/**'],
     setupFiles: ['./vitest.setup.ts'],
+    // Share module cache across files within a worker. Drops cumulative import
+    // time from ~48s to ~15s and trims wall-clock by ~17% on this suite. Safe
+    // because `vitest.setup.ts` runs per-worker (so its console/stdout mocks
+    // persist), and the few tests that mutate module-level state
+    // (e.g. fold.test.ts via vi.resetModules + vi.stubEnv) clean up in
+    // afterEach. Revert this if a test starts flaking due to inter-file leakage.
+    isolate: false,
     coverage: {
       exclude: [
         '*.js',
