@@ -4,10 +4,15 @@
  * Caches FileSymbols per file, tracks the import dependency graph, and provides
  * lookup APIs for Go to Definition, Find References, Document Symbols, and
  * Diagnostics. Falls back to token-scanned definitions when the parser fails.
+ *
+ * **Pure data manipulation — no filesystem access.** Source text and import
+ * resolution are supplied by the caller (see `updateFile`). The Node-side
+ * `nodeWorkspaceIndexer.ts` wrapper provides CLI ergonomics on top of this
+ * class; the playground builds its own browser-side wrapper using
+ * `FileBackend`.
  */
 
-import * as fs from 'node:fs'
-import * as path from 'node:path'
+import * as path from 'path'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseRecoverable } from '../parser'
@@ -19,6 +24,19 @@ import type { ParseError } from '../errors'
 import { buildSymbolTable } from './SymbolTableBuilder'
 import { scanTokensForDefinitions } from './tokenScan'
 import type { FileSymbols, ScopeRange, SymbolDef, SymbolRef } from './types'
+
+/**
+ * Resolve a raw import-path string to an absolute file path. Implementations
+ * decide where files live: the Node wrapper checks `fs.existsSync`, the
+ * playground checks `FileBackend.list()`, etc.
+ *
+ * Receives the raw path exactly as written in `import("...")` and the
+ * directory of the importing file. Returns the resolved absolute path or
+ * `null` when the import can't be resolved (file missing, builtin module,
+ * etc.). Non-relative paths are filtered out by the caller before this is
+ * invoked, so resolvers only see relative/absolute path strings.
+ */
+export type ResolveImport = (rawPath: string, fromDir: string) => string | null
 
 // All builtin symbol names — used to skip them during reference resolution
 const builtinNames = new Set<string>([
@@ -40,51 +58,24 @@ export class WorkspaceIndex {
   private cache = new Map<string, CachedFile>()
   /** Reverse import graph: file → set of files that import it */
   private reverseImports = new Map<string, Set<string>>()
-  /** Workspace roots that have already been eagerly scanned (one-shot per root) */
-  private indexedRoots = new Set<string>()
 
   /**
-   * Eagerly index every `.dvala` file under `rootPath` (recursively). Required
-   * by transitive-rename correctness: without this, a rename initiated from a
-   * file whose re-export chain includes files never opened in the editor
-   * would silently drop the un-indexed subtree.
+   * Update the index for a single file. The caller supplies both the source
+   * text and a `resolveImport` callback that maps raw import-path strings
+   * (e.g. `"./lib"`) to absolute file paths. Pure: no filesystem access
+   * happens inside this method.
    *
-   * One-shot per root — subsequent calls with the same root return
-   * immediately. Only files not already in the cache are parsed; files
-   * that were indexed previously are left alone, so **stale disk content
-   * for a pre-cached file is NOT refreshed here**. Callers that care about
-   * freshness past the initial scan should rely on the filesystem watcher
-   * (or call `invalidateFile` / `updateFile`).
+   * The callback receives the raw path exactly as written and the importing
+   * file's directory; it returns `null` when the path can't be resolved.
+   * Non-relative imports (builtin module names like `"functional"`) skip
+   * the callback entirely — they're filtered out as not-a-file before
+   * resolution.
    *
-   * Skips `node_modules`, `.git`, and dotfile directories. Does not honour
-   * `.gitignore` today; if that becomes important we can plug in a matcher.
+   * Returns the file symbols, or `null` when the source can't be parsed at
+   * all (the parser is recoverable, so this is rare).
    */
-  indexWorkspace(rootPath: string): void {
-    const absoluteRoot = path.resolve(rootPath)
-    if (this.indexedRoots.has(absoluteRoot)) return
-    this.indexedRoots.add(absoluteRoot)
-    walkDvalaFiles(absoluteRoot, filePath => {
-      if (!this.cache.has(filePath)) this.updateFile(filePath)
-    })
-  }
-
-  /**
-   * Update the index for a single file.
-   * Parses the file, builds the symbol table, and updates the import graph.
-   * Returns the file symbols (or null if the file doesn't exist).
-   */
-  updateFile(filePath: string, source?: string): FileSymbols | null {
+  updateFile(filePath: string, source: string, resolveImport: ResolveImport = () => null): FileSymbols {
     const absolutePath = path.resolve(filePath)
-
-    // Read source if not provided
-    if (source === undefined) {
-      try {
-        source = fs.readFileSync(absolutePath, 'utf-8')
-      } catch {
-        this.cache.delete(absolutePath)
-        return null
-      }
-    }
 
     // Check if content changed
     const contentHash = simpleHash(source)
@@ -108,9 +99,9 @@ export class WorkspaceIndex {
       builtinNames,
     )
 
-    // Extract import paths from the AST
+    // Extract import paths from the AST and apply the caller-supplied resolver.
     const imports = new Map<string, string>()
-    extractImports(parseResult.body, absolutePath, imports)
+    extractImports(parseResult.body, absolutePath, imports, resolveImport)
 
     // Extract exported names from the file's final expression (if it's an object literal).
     // This is the standard Dvala module pattern: `let ...; { name1, name2 }`
@@ -688,10 +679,15 @@ function resolveLocation(
   }
 }
 
-/** Extract import paths from AST nodes and resolve them to absolute paths. */
-function extractImports(nodes: AstNode[], fromFile: string, imports: Map<string, string>): void {
+/** Extract import paths from AST nodes and resolve them via the caller-supplied callback. */
+function extractImports(
+  nodes: AstNode[],
+  fromFile: string,
+  imports: Map<string, string>,
+  resolveImport: ResolveImport,
+): void {
   for (const node of nodes) {
-    walkForImports(node, fromFile, imports)
+    walkForImports(node, fromFile, imports, resolveImport)
   }
 }
 
@@ -709,14 +705,20 @@ function isAstNode(value: unknown): value is AstNode {
   )
 }
 
-function walkForImports(node: AstNode, fromFile: string, imports: Map<string, string>): void {
+function walkForImports(
+  node: AstNode,
+  fromFile: string,
+  imports: Map<string, string>,
+  resolveImport: ResolveImport,
+): void {
   const [type, payload] = node
   if (type === NodeTypes.Import) {
     const importPath = payload as string
-    // Only resolve relative imports (builtin modules like "functional" are not files)
+    // Only ask the resolver about relative/absolute paths — builtin module
+    // names like "functional" are not files and never resolve to one.
     if (importPath.startsWith('.') || importPath.startsWith('/')) {
       const dir = path.dirname(fromFile)
-      const resolved = resolveImportPath(path.resolve(dir, importPath))
+      const resolved = resolveImport(importPath, dir)
       if (resolved) {
         imports.set(importPath, resolved)
       }
@@ -727,24 +729,16 @@ function walkForImports(node: AstNode, fromFile: string, imports: Map<string, st
   if (Array.isArray(payload)) {
     for (const child of payload) {
       if (isAstNode(child)) {
-        walkForImports(child, fromFile, imports)
+        walkForImports(child, fromFile, imports, resolveImport)
       } else if (Array.isArray(child)) {
         for (const c of child) {
           if (isAstNode(c)) {
-            walkForImports(c, fromFile, imports)
+            walkForImports(c, fromFile, imports, resolveImport)
           }
         }
       }
     }
   }
-}
-
-/** Resolve an import path, trying the exact path then with .dvala extension. */
-function resolveImportPath(filePath: string): string | null {
-  if (fs.existsSync(filePath)) return filePath
-  const withExt = `${filePath}.dvala`
-  if (fs.existsSync(withExt)) return withExt
-  return null
 }
 
 /** Check if a 1-based position is inside a scope range. */
@@ -788,29 +782,6 @@ function isReexport(fileSymbols: FileSymbols, name: string, matchingImportDefs: 
     }
   }
   return false
-}
-
-/**
- * Recursively visit every `.dvala` file under `dir`, invoking `visit(filePath)`
- * for each. Skips `node_modules`, `.git`, and dotfile directories.
- */
-function walkDvalaFiles(dir: string, visit: (filePath: string) => void): void {
-  let entries: fs.Dirent[]
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true })
-  } catch {
-    return
-  }
-  for (const entry of entries) {
-    if (entry.name.startsWith('.')) continue
-    if (entry.name === 'node_modules') continue
-    const full = path.join(dir, entry.name)
-    if (entry.isDirectory()) {
-      walkDvalaFiles(full, visit)
-    } else if (entry.isFile() && entry.name.endsWith('.dvala')) {
-      visit(full)
-    }
-  }
 }
 
 /** Simple string hash for change detection. */

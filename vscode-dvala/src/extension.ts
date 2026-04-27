@@ -7,8 +7,9 @@ import { createDvala } from '../../src/createDvala'
 import { allBuiltinModules } from '../../src/allModules'
 import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '../../src/evaluator/effectTypes'
-import { WorkspaceIndex } from '../../src/languageService/WorkspaceIndex'
-import type { SymbolDef } from '../../src/languageService/types'
+import { WorkspaceIndex } from '../../src/languageService'
+import type { SymbolDef } from '../../src/languageService'
+import { loadFile as loadIndexedFile, nodeResolveImport } from '../../src/languageService/nodeWorkspaceIndexer'
 import { findCallContext as sharedFindCallContext } from '../../src/shared/callContext'
 import {
   buildBuiltinCompletions,
@@ -455,7 +456,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
       if (fileSymbols) {
         for (const importedPath of fileSymbols.imports.values()) {
-          workspaceIndex.updateFile(importedPath)
+          loadIndexedFile(workspaceIndex, importedPath)
           const importedSymbols = workspaceIndex.getFileSymbols(importedPath)
           if (importedSymbols) {
             for (const exp of importedSymbols.exports) {
@@ -622,7 +623,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
         if (fileSymbols) {
           for (const resolvedPath of fileSymbols.imports.values()) {
-            workspaceIndex.updateFile(resolvedPath)
+            loadIndexedFile(workspaceIndex, resolvedPath)
             const importedSymbols = workspaceIndex.getFileSymbols(resolvedPath)
             const targetDef =
               importedSymbols?.definitions.find(d => d.name === symbolAtPos.name && d.scope === 0) ??
@@ -704,7 +705,7 @@ export function activate(context: vscode.ExtensionContext): void {
   function indexDocument(document: vscode.TextDocument): void {
     if (document.languageId !== 'dvala') return
     const filePath = document.uri.fsPath
-    workspaceIndex.updateFile(filePath, document.getText())
+    workspaceIndex.updateFile(filePath, document.getText(), nodeResolveImport)
     // Clear stale run diagnostics whenever the document changes or is re-opened.
     // Runtime diagnostics are snapshot-specific and quickly become misleading
     // once the source has changed.
@@ -761,7 +762,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (fullyIndexed) return
     const uris = await vscode.workspace.findFiles('**/*.dvala', '**/node_modules/**')
     for (const uri of uris) {
-      workspaceIndex.updateFile(uri.fsPath)
+      loadIndexedFile(workspaceIndex, uri.fsPath)
     }
     fullyIndexed = true
   }
@@ -791,14 +792,14 @@ export function activate(context: vscode.ExtensionContext): void {
   // file on disk would leave stale `reverseImports` entries pointing at an
   // outdated version.
   const dvalaWatcher = vscode.workspace.createFileSystemWatcher('**/*.dvala')
-  const onFsCreate = dvalaWatcher.onDidCreate(uri => workspaceIndex.updateFile(uri.fsPath))
+  const onFsCreate = dvalaWatcher.onDidCreate(uri => loadIndexedFile(workspaceIndex, uri.fsPath))
   const onFsChange = dvalaWatcher.onDidChange(uri => {
     // Open documents carry their authoritative content through
     // onDidChangeTextDocument — skip the disk read so we don't clobber a
     // dirty buffer with the saved-on-disk version.
     const openDoc = vscode.workspace.textDocuments.find(d => d.uri.fsPath === uri.fsPath)
     if (openDoc) return
-    workspaceIndex.updateFile(uri.fsPath)
+    loadIndexedFile(workspaceIndex, uri.fsPath)
   })
   const onFsDelete = dvalaWatcher.onDidDelete(uri => workspaceIndex.invalidateFile(uri.fsPath))
 
