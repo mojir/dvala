@@ -1,7 +1,5 @@
 import { expect } from 'vitest'
-import { ContextStackImpl } from '../src/evaluator/ContextStack'
 import { isRegularExpression } from '../src/typeGuards/dvala'
-import type { Context } from '../src/evaluator/interface'
 import { DvalaError } from '../src/errors'
 
 interface TypeGuardTestData {
@@ -109,8 +107,4 @@ export function regexpEquals(udr: unknown, r: RegExp): boolean {
   const sortedUdrFlags = udr.f.split('').sort().join('')
   const sortedRFlags = r.flags.split('').sort().join('')
   return udr.s === r.source && sortedRFlags === sortedUdrFlags
-}
-
-export function createContextStackWithGlobalContext(context: Context) {
-  return new ContextStackImpl({ contexts: [context] })
 }
