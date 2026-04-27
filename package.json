@@ -203,7 +203,6 @@
         "playground-www/src/**/*.ts",
         "reference/**/*.ts",
         "__tests__/**/*.ts",
-        "vscode-dvala/src/**/*.ts",
         ".oxlintrc.json",
         ".oxfmtrc.json",
         ".prettierignore"
@@ -221,7 +220,6 @@
         "playground-www/src/**/*.ts",
         "reference/**/*.ts",
         "__tests__/**/*.ts",
-        "vscode-dvala/src/**/*.ts",
         ".oxlintrc.json",
         ".oxfmtrc.json",
         ".prettierignore"
