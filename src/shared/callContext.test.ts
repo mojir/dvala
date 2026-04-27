@@ -49,4 +49,13 @@ describe('findCallContext', () => {
     const result = findCallContext(src, { line: 5, column: 50 })
     expect(result).toEqual({ functionName: 'foo', activeParam: 1 })
   })
+
+  it('handles cursor at column 1 on a non-first line', () => {
+    // Pins the offset-walk loop's newline branch (currentLine++, currentCol=1)
+    // explicitly. Cursor sits at the very start of line 2, just inside the
+    // open paren on line 1.
+    const src = 'foo(\n'
+    const result = findCallContext(src, { line: 2, column: 1 })
+    expect(result).toEqual({ functionName: 'foo', activeParam: 0 })
+  })
 })

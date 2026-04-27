@@ -22,9 +22,12 @@ import type { ResolveImport, WorkspaceIndex } from './WorkspaceIndex'
  * Default filesystem-based import resolver. Tries the exact path, then
  * appends `.dvala` if the bare path doesn't exist. Mirrors the behavior
  * the old `WorkspaceIndex.resolveImportPath` had inlined.
+ *
+ * Computes its own base directory from `fromFile` so `WorkspaceIndex` can
+ * stay free of any `path` import.
  */
-export const nodeResolveImport: ResolveImport = (rawPath, fromDir) => {
-  const resolved = path.resolve(fromDir, rawPath)
+export const nodeResolveImport: ResolveImport = (rawPath, fromFile) => {
+  const resolved = path.resolve(path.dirname(fromFile), rawPath)
   if (fs.existsSync(resolved)) return resolved
   const withExt = `${resolved}.dvala`
   if (fs.existsSync(withExt)) return withExt

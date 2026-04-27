@@ -172,6 +172,8 @@ Required changes:
 4. **Strip `fs`/`path` imports from `WorkspaceIndex.ts` and adjacent modules** so the worker bundle stays clean. `path.resolve` / `path.dirname` are fine via `path-browserify` (Vite handles automatically), but verify no Node-specific behavior creeps in.
 5. **Export structure:** `WorkspaceIndex` from `src/languageService/index.ts` (public API) and via `dvala/internal` (tooling consumers, per the playground plan's two-surface discipline). The Node-side wrapper exports separately and is *not* in `dvala/internal` (it's CLI-only).
 
+   **Status (post-implementation):** `src/languageService/index.ts` exists and re-exports `WorkspaceIndex` + `SymbolDef`. The `./internal` package.json export entry and the corresponding rolldown bundle are **deferred to the playground plan's Phase 2** — wiring them now would create a dead bundle (knip would flag it), and the playground integration is the first real consumer. The `ResolveImport` type re-export from `index.ts` is also deferred for the same reason. Both should land as part of the playground worker bundle's setup PR.
+
 The playground uses `WorkspaceIndex` directly for go-to-definition, find-references, and rename across the file tree.
 
 ### Module 6: Reference rendering (portable markdown)

@@ -5,14 +5,19 @@
  * lookup APIs for Go to Definition, Find References, Document Symbols, and
  * Diagnostics. Falls back to token-scanned definitions when the parser fails.
  *
- * **Pure data manipulation — no filesystem access.** Source text and import
- * resolution are supplied by the caller (see `updateFile`). The Node-side
- * `nodeWorkspaceIndexer.ts` wrapper provides CLI ergonomics on top of this
- * class; the playground builds its own browser-side wrapper using
- * `FileBackend`.
+ * **Pure data manipulation — zero filesystem and path-module access.** Source
+ * text, import resolution, and path canonicalization are all the caller's
+ * responsibility. The Node-side `nodeWorkspaceIndexer.ts` wrapper provides
+ * CLI ergonomics on top of this class (canonicalizes via `path.resolve`,
+ * resolves imports via `fs.existsSync`); the playground builds its own
+ * browser-side wrapper using `FileBackend` and an in-memory path scheme.
+ *
+ * Cache keys are whatever path strings the caller passes — keep them
+ * consistent within a session or cross-file lookups will miss. Both
+ * existing wrappers always pass canonical absolute paths, so consumers
+ * never need to think about this.
  */
 
-import * as path from 'path'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseRecoverable } from '../parser'
@@ -31,12 +36,14 @@ import type { FileSymbols, ScopeRange, SymbolDef, SymbolRef } from './types'
  * playground checks `FileBackend.list()`, etc.
  *
  * Receives the raw path exactly as written in `import("...")` and the
- * directory of the importing file. Returns the resolved absolute path or
- * `null` when the import can't be resolved (file missing, builtin module,
- * etc.). Non-relative paths are filtered out by the caller before this is
- * invoked, so resolvers only see relative/absolute path strings.
+ * importing file's path. Resolvers compute their own base directory from
+ * `fromFile` so this module needs no `path` import. Returns the resolved
+ * absolute path or `null` when the import can't be resolved (file missing,
+ * builtin module, etc.). Non-relative paths are filtered out by the caller
+ * before this is invoked, so resolvers only see relative/absolute path
+ * strings.
  */
-export type ResolveImport = (rawPath: string, fromDir: string) => string | null
+export type ResolveImport = (rawPath: string, fromFile: string) => string | null
 
 // All builtin symbol names — used to skip them during reference resolution
 const builtinNames = new Set<string>([
@@ -60,33 +67,33 @@ export class WorkspaceIndex {
   private reverseImports = new Map<string, Set<string>>()
 
   /**
-   * Update the index for a single file. The caller supplies both the source
-   * text and a `resolveImport` callback that maps raw import-path strings
+   * Update the index for a single file. The caller supplies the source
+   * text, a (canonical) file path used as the cache key, and a
+   * `resolveImport` callback that maps raw import-path strings
    * (e.g. `"./lib"`) to absolute file paths. Pure: no filesystem access
    * happens inside this method.
    *
    * The callback receives the raw path exactly as written and the importing
-   * file's directory; it returns `null` when the path can't be resolved.
+   * file's path; it returns `null` when the path can't be resolved.
    * Non-relative imports (builtin module names like `"functional"`) skip
    * the callback entirely — they're filtered out as not-a-file before
    * resolution.
    *
-   * Returns the file symbols, or `null` when the source can't be parsed at
-   * all (the parser is recoverable, so this is rare).
+   * Always returns the file symbols (the parser is recoverable, so even a
+   * broken source produces a `FileSymbols` with `parseErrors` populated).
    */
   updateFile(filePath: string, source: string, resolveImport: ResolveImport = () => null): FileSymbols {
-    const absolutePath = path.resolve(filePath)
-
-    // Check if content changed
+    // Check if content changed — `filePath` is used verbatim as the cache
+    // key; canonicalization is the caller's responsibility.
     const contentHash = simpleHash(source)
-    const cached = this.cache.get(absolutePath)
+    const cached = this.cache.get(filePath)
     if (cached && cached.contentHash === contentHash && cached.symbols) {
       return cached.symbols
     }
 
     // Always produce token-scanned definitions (works on broken files)
-    const tokens = tokenize(source, true, absolutePath)
-    const tokenDefs = scanTokensForDefinitions(tokens.tokens, absolutePath)
+    const tokens = tokenize(source, true, filePath)
+    const tokenDefs = scanTokensForDefinitions(tokens.tokens, filePath)
 
     // Try to parse and build full symbol table
     const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
@@ -95,20 +102,20 @@ export class WorkspaceIndex {
     const { definitions, references, scopeRanges } = buildSymbolTable(
       parseResult.body,
       parseResult.sourceMap,
-      absolutePath,
+      filePath,
       builtinNames,
     )
 
     // Extract import paths from the AST and apply the caller-supplied resolver.
     const imports = new Map<string, string>()
-    extractImports(parseResult.body, absolutePath, imports, resolveImport)
+    extractImports(parseResult.body, filePath, imports, resolveImport)
 
     // Extract exported names from the file's final expression (if it's an object literal).
     // This is the standard Dvala module pattern: `let ...; { name1, name2 }`
-    const exports = extractExports(parseResult.body, parseResult.sourceMap, absolutePath)
+    const exports = extractExports(parseResult.body, parseResult.sourceMap, filePath)
 
     const fileSymbols: FileSymbols = {
-      filePath: absolutePath,
+      filePath,
       definitions,
       references,
       imports,
@@ -118,10 +125,10 @@ export class WorkspaceIndex {
     }
 
     // Update cache
-    this.cache.set(absolutePath, { contentHash, symbols: fileSymbols, tokenDefs })
+    this.cache.set(filePath, { contentHash, symbols: fileSymbols, tokenDefs })
 
     // Update reverse import graph
-    this.updateReverseImports(absolutePath, imports)
+    this.updateReverseImports(filePath, imports)
 
     return fileSymbols
   }
@@ -131,8 +138,7 @@ export class WorkspaceIndex {
    * Does NOT trigger a re-parse — call updateFile() first if the file may have changed.
    */
   getFileSymbols(filePath: string): FileSymbols | null {
-    const absolutePath = path.resolve(filePath)
-    return this.cache.get(absolutePath)?.symbols ?? null
+    return this.cache.get(filePath)?.symbols ?? null
   }
 
   /**
@@ -140,8 +146,7 @@ export class WorkspaceIndex {
    * falls back to token-scanned definitions.
    */
   getDefinitions(filePath: string): SymbolDef[] {
-    const absolutePath = path.resolve(filePath)
-    const cached = this.cache.get(absolutePath)
+    const cached = this.cache.get(filePath)
     if (!cached) return []
     return cached.symbols?.definitions ?? cached.tokenDefs
   }
@@ -151,8 +156,7 @@ export class WorkspaceIndex {
    * Searches the file's symbol table, then follows imports for cross-file resolution.
    */
   findDefinition(filePath: string, line: number, column: number): SymbolDef | null {
-    const absolutePath = path.resolve(filePath)
-    const fileSymbols = this.cache.get(absolutePath)?.symbols
+    const fileSymbols = this.cache.get(filePath)?.symbols
     if (!fileSymbols) return null
 
     // Find the reference at this position
@@ -185,17 +189,16 @@ export class WorkspaceIndex {
    * through it.
    */
   findReferences(filePath: string, symbolName: string): SymbolRef[] {
-    const absolutePath = path.resolve(filePath)
     const results: SymbolRef[] = []
 
     // References in the current file
-    const fileSymbols = this.cache.get(absolutePath)?.symbols
+    const fileSymbols = this.cache.get(filePath)?.symbols
     if (fileSymbols) {
       results.push(...fileSymbols.references.filter(r => r.name === symbolName))
     }
 
     // References in files that import this file
-    const importers = this.reverseImports.get(absolutePath)
+    const importers = this.reverseImports.get(filePath)
     if (importers) {
       for (const importerPath of importers) {
         const importerSymbols = this.cache.get(importerPath)?.symbols
@@ -226,8 +229,7 @@ export class WorkspaceIndex {
     line: number,
     column: number,
   ): { name: string; def: SymbolDef | null; onKey?: boolean } | null {
-    const absolutePath = path.resolve(filePath)
-    const fileSymbols = this.cache.get(absolutePath)?.symbols
+    const fileSymbols = this.cache.get(filePath)?.symbols
     if (!fileSymbols) return null
 
     // Check definitions first (cursor on a `let x = ...` definition site).
@@ -340,7 +342,7 @@ export class WorkspaceIndex {
       currentDef = nextDef
     }
 
-    const canonicalFile = currentDef?.location.file ?? path.resolve(filePath)
+    const canonicalFile = currentDef?.location.file ?? filePath
     return { file: canonicalFile, name: symbol.name }
   }
 
@@ -369,7 +371,6 @@ export class WorkspaceIndex {
     filePath: string,
     symbolName: string,
   ): { file: string; line: number; column: number; nameLength: number }[] {
-    const absolutePath = path.resolve(filePath)
     const results: { file: string; line: number; column: number; nameLength: number }[] = []
     const seen = new Set<string>()
     const push = (loc: { file: string; line: number; column: number }, nameLength: number): void => {
@@ -382,7 +383,7 @@ export class WorkspaceIndex {
     // Collect from the origin file broadly (all defs/refs/exports matching
     // by name). This is the canonical binding's home — any same-named
     // occurrence in the origin is treated as the same rename target.
-    const originSymbols = this.cache.get(absolutePath)?.symbols
+    const originSymbols = this.cache.get(filePath)?.symbols
     if (originSymbols) {
       for (const def of originSymbols.definitions) {
         if (def.name === symbolName) push(def.location, def.name.length)
@@ -414,8 +415,8 @@ export class WorkspaceIndex {
     // kind defs pointing back at the current BFS parent + refs resolving to
     // those defs + the exported key. Walking them broadly would pick up
     // unrelated same-named locals nested in the re-exporter.
-    const worklist: string[] = [absolutePath]
-    const visited = new Set<string>([absolutePath])
+    const worklist: string[] = [filePath]
+    const visited = new Set<string>([filePath])
 
     while (worklist.length > 0) {
       const current = worklist.shift()!
@@ -505,11 +506,10 @@ export class WorkspaceIndex {
    * plus definitions from all enclosing scope ranges.
    */
   getSymbolsInScope(filePath: string, line: number, column: number): SymbolDef[] {
-    const absolutePath = path.resolve(filePath)
-    const fileSymbols = this.cache.get(absolutePath)?.symbols
+    const fileSymbols = this.cache.get(filePath)?.symbols
     if (!fileSymbols) {
       // Fall back to token-scanned definitions (all top-level)
-      return this.cache.get(absolutePath)?.tokenDefs ?? []
+      return this.cache.get(filePath)?.tokenDefs ?? []
     }
 
     const result: SymbolDef[] = []
@@ -548,8 +548,7 @@ export class WorkspaceIndex {
    * Get diagnostics for a file: parse errors + unresolved symbol references.
    */
   getDiagnostics(filePath: string): { parseErrors: ParseError[]; unresolvedRefs: SymbolRef[] } {
-    const absolutePath = path.resolve(filePath)
-    const fileSymbols = this.cache.get(absolutePath)?.symbols
+    const fileSymbols = this.cache.get(filePath)?.symbols
     if (!fileSymbols) {
       return { parseErrors: [], unresolvedRefs: [] }
     }
@@ -561,10 +560,9 @@ export class WorkspaceIndex {
    * Invalidate a file and all files that depend on it.
    */
   invalidateFile(filePath: string): void {
-    const absolutePath = path.resolve(filePath)
-    this.cache.delete(absolutePath)
+    this.cache.delete(filePath)
     // Also invalidate dependents (they may have stale cross-file references)
-    const dependents = this.reverseImports.get(absolutePath)
+    const dependents = this.reverseImports.get(filePath)
     if (dependents) {
       for (const dep of dependents) {
         this.cache.delete(dep)
@@ -717,8 +715,7 @@ function walkForImports(
     // Only ask the resolver about relative/absolute paths — builtin module
     // names like "functional" are not files and never resolve to one.
     if (importPath.startsWith('.') || importPath.startsWith('/')) {
-      const dir = path.dirname(fromFile)
-      const resolved = resolveImport(importPath, dir)
+      const resolved = resolveImport(importPath, fromFile)
       if (resolved) {
         imports.set(importPath, resolved)
       }
