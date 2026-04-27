@@ -6,7 +6,7 @@ import type { SequenceDefinition } from '.'
  * @param n - Number of terms to generate
  * @returns Array containing the first n terms of the Recamán sequence
  */
-export function generateRecamanSequence(n: number): number[] {
+function generateRecamanSequence(n: number): number[] {
   if (n === 1)
     return [0]
 

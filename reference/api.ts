@@ -1,4 +1,4 @@
-export { categories, categoryRecord, coreCategoryDescriptions, coreCategories, isDataType, moduleCategories } from '../src/builtin/interface'
+export { categories, coreCategoryDescriptions, coreCategories, isDataType } from '../src/builtin/interface'
 export type { Category, DataType } from '../src/builtin/interface'
 
 function getNumberTheorySequenceNames<T extends string>(name: T): [`numberTheory.${T}Seq`, `numberTheory.${T}Nth`, `numberTheory.${T}TakeWhile`, `numberTheory.is${Capitalize<T>}`] {
@@ -14,7 +14,7 @@ function getVectorMovingNames<T extends string>(name: T): [`vector.moving-${stri
   return [`vector.moving-${name}`, `vector.centered-moving-${name}`, `vector.running-${name}`]
 }
 
-export const api = {
+const api = {
   collection: [
     'filter',
     'map',
@@ -1142,28 +1142,28 @@ export type MetaApiName = typeof api.meta[number]
 export type ObjectApiName = typeof api.object[number]
 export type PredicateApiName = typeof api.predicate[number]
 export type RegularExpressionApiName = typeof api.regularExpression[number]
-export type SpecialExpressionsApiName = string
+type SpecialExpressionsApiName = string
 export type StringApiName = typeof api.string[number]
-export type StringUtilsApiName = typeof api.stringUtils[number]
-export type CollectionUtilsApiName = typeof api.collectionUtils[number]
-export type SequenceUtilsApiName = typeof api.sequenceUtils[number]
+type StringUtilsApiName = typeof api.stringUtils[number]
+type CollectionUtilsApiName = typeof api.collectionUtils[number]
+type SequenceUtilsApiName = typeof api.sequenceUtils[number]
 export type BitwiseApiName = typeof api.bitwise[number]
-export type BitwiseUtilsApiName = typeof api.bitwiseUtils[number]
+type BitwiseUtilsApiName = typeof api.bitwiseUtils[number]
 export type AssertionApiName = typeof api.assertion[number]
-export type AssertionUtilsApiName = typeof api.assertionUtils[number]
-export type GridApiName = typeof api.grid[number]
-export type MatrixApiName = typeof api.matrix[number]
-export type NumberTheoryApiName = typeof api.numberTheory[number]
-export type VectorUtilsApiName = typeof api.vectorUtils[number]
-export type LinAlgApiName = typeof api.linAlg[number]
-export type MathUtilsApiName = typeof api.mathUtils[number]
-export type FunctionalUtilsApiName = typeof api.functionalUtils[number]
-export type ConvertApiName = typeof api.convert[number]
-export type JsonApiName = typeof api.json[number]
-export type TimeApiName = typeof api.time[number]
-export type HandlerApiName = typeof api.handler[number]
-export type AstApiName = typeof api.ast[number]
-export type MacrosApiName = typeof api.macros[number]
+type AssertionUtilsApiName = typeof api.assertionUtils[number]
+type GridApiName = typeof api.grid[number]
+type MatrixApiName = typeof api.matrix[number]
+type NumberTheoryApiName = typeof api.numberTheory[number]
+type VectorUtilsApiName = typeof api.vectorUtils[number]
+type LinAlgApiName = typeof api.linAlg[number]
+type MathUtilsApiName = typeof api.mathUtils[number]
+type FunctionalUtilsApiName = typeof api.functionalUtils[number]
+type ConvertApiName = typeof api.convert[number]
+type JsonApiName = typeof api.json[number]
+type TimeApiName = typeof api.time[number]
+type HandlerApiName = typeof api.handler[number]
+type AstApiName = typeof api.ast[number]
+type MacrosApiName = typeof api.macros[number]
 
 // Core functions - always available without import
 export type CoreNormalExpressionName
@@ -1201,7 +1201,7 @@ export type ModuleExpressionName
     | HandlerApiName
     | AstApiName
     | MacrosApiName
-export type NormalExpressionName
+type NormalExpressionName
   = | CoreNormalExpressionName
     | ModuleExpressionName
 

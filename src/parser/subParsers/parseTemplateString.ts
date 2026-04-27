@@ -28,7 +28,7 @@ function countNewlines(s: string): number {
 type LiteralSegment = { type: 'literal'; value: string }
 type ExpressionSegment = { type: 'expression'; value: string; offset: number }
 type DeferredSegment = { type: 'deferred'; value: string; dollarCount: number; offset: number }
-export type Segment = LiteralSegment | ExpressionSegment | DeferredSegment
+type Segment = LiteralSegment | ExpressionSegment | DeferredSegment
 
 // ---------------------------------------------------------------------------
 // Raw content scanner — splits template content into literal/expression spans

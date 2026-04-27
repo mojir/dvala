@@ -2,7 +2,7 @@ import { TokenizerError } from '../errors'
 import type { ReservedSymbol } from './reservedNames'
 import { type SymbolicBinaryOperator, type SymbolicOperator, isBinaryOperator } from './operators'
 
-export const tokenTypes = [
+type TokenTypeTuple = [
   'Atom',
   'LBrace',
   'LBracket',
@@ -26,9 +26,9 @@ export const tokenTypes = [
   'QuoteSplice',
   'MacroPrefix',
   'Whitespace',
-] as const
+]
 
-export type TokenType = typeof tokenTypes[number]
+export type TokenType = TokenTypeTuple[number]
 
 /** Debug position carried by tokens in debug mode: [line, column] (0-based). */
 export type TokenDebugInfo = [line: number, column: number]
@@ -113,7 +113,7 @@ export function isSymbolToken<T extends string>(token: Token | undefined, symbol
   return true
 }
 
-export function assertSymbolToken<T extends string>(token: Token | undefined, symbolName?: T): asserts token is SymbolToken<T> {
+function assertSymbolToken<T extends string>(token: Token | undefined, symbolName?: T): asserts token is SymbolToken<T> {
   if (!isSymbolToken(token, symbolName)) {
     throwUnexpectedToken('Symbol', undefined, token)
   }
@@ -189,7 +189,7 @@ export function asOperatorToken<T extends SymbolicOperator>(token: Token | undef
 export function isWhitespaceToken(token: Token | undefined): token is WhitespaceToken {
   return token?.[0] === 'Whitespace'
 }
-export function assertWhitespaceToken(token: Token | undefined): asserts token is WhitespaceToken {
+function assertWhitespaceToken(token: Token | undefined): asserts token is WhitespaceToken {
   if (!isWhitespaceToken(token)) {
     throwUnexpectedToken('Whitespace', undefined, token)
   }
@@ -202,7 +202,7 @@ export function asWhitespaceToken(token: Token | undefined): WhitespaceToken {
 export function isNumberToken(token: Token | undefined): token is NumberToken {
   return token?.[0] === 'Number'
 }
-export function assertNumberToken(token: Token | undefined): asserts token is NumberToken {
+function assertNumberToken(token: Token | undefined): asserts token is NumberToken {
   if (!isNumberToken(token)) {
     throwUnexpectedToken('Number', undefined, token)
   }
@@ -215,7 +215,7 @@ export function asNumberToken(token: Token | undefined): NumberToken {
 export function isBasePrefixedNumberToken(token: Token | undefined): token is BasePrefixedNumberToken {
   return token?.[0] === 'BasePrefixedNumber'
 }
-export function assertBasePrefixedNumberToken(token: Token | undefined): asserts token is BasePrefixedNumberToken {
+function assertBasePrefixedNumberToken(token: Token | undefined): asserts token is BasePrefixedNumberToken {
   if (!isBasePrefixedNumberToken(token)) {
     throwUnexpectedToken('BasePrefixedNumber', undefined, token)
   }
@@ -254,7 +254,7 @@ export function asRParenToken(token: Token | undefined): RParenToken {
 export function isLBracketToken(token: Token | undefined): token is LBracketToken {
   return token?.[0] === 'LBracket'
 }
-export function assertLBracketToken(token: Token | undefined): asserts token is LBracketToken {
+function assertLBracketToken(token: Token | undefined): asserts token is LBracketToken {
   if (!isLBracketToken(token)) {
     throwUnexpectedToken('LBracket', undefined, token)
   }
@@ -280,7 +280,7 @@ export function asRBracketToken(token: Token | undefined): RBracketToken {
 export function isLBraceToken(token: Token | undefined): token is LBraceToken {
   return token?.[0] === 'LBrace'
 }
-export function assertLBraceToken(token: Token | undefined): asserts token is LBraceToken {
+function assertLBraceToken(token: Token | undefined): asserts token is LBraceToken {
   if (!isLBraceToken(token)) {
     throwUnexpectedToken('LBrace', undefined, token)
   }
@@ -306,7 +306,7 @@ export function asRBraceToken(token: Token | undefined): RBraceToken {
 export function isStringToken(token: Token | undefined): token is StringToken {
   return token?.[0] === 'string'
 }
-export function assertStringToken(token: Token | undefined): asserts token is StringToken {
+function assertStringToken(token: Token | undefined): asserts token is StringToken {
   if (!isStringToken(token)) {
     throwUnexpectedToken('string', undefined, token)
   }
@@ -316,10 +316,10 @@ export function asStringToken(token: Token | undefined): StringToken {
   return token
 }
 
-export function isRegexpShorthandToken(token: Token | undefined): token is RegexpShorthandToken {
+function isRegexpShorthandToken(token: Token | undefined): token is RegexpShorthandToken {
   return token?.[0] === 'RegexpShorthand'
 }
-export function assertRegexpShorthandToken(token: Token | undefined): asserts token is RegexpShorthandToken {
+function assertRegexpShorthandToken(token: Token | undefined): asserts token is RegexpShorthandToken {
   if (!isRegexpShorthandToken(token)) {
     throwUnexpectedToken('RegexpShorthand', undefined, token)
   }
@@ -332,7 +332,7 @@ export function asRegexpShorthandToken(token: Token | undefined): RegexpShorthan
 export function isA_BinaryOperatorToken(token: Token | undefined): token is OperatorToken<SymbolicBinaryOperator> {
   return token?.[0] === 'Operator' && isBinaryOperator(token[1])
 }
-export function assertA_BinaryOperatorToken(token: Token | undefined): asserts token is OperatorToken<SymbolicBinaryOperator> {
+function assertA_BinaryOperatorToken(token: Token | undefined): asserts token is OperatorToken<SymbolicBinaryOperator> {
   if (!isA_BinaryOperatorToken(token)) {
     throwUnexpectedToken('Operator', undefined, token)
   }
@@ -353,10 +353,6 @@ export function assertTemplateStringToken(token: Token | undefined): asserts tok
 export function asTemplateStringToken(token: Token | undefined): TemplateStringToken {
   assertTemplateStringToken(token)
   return token
-}
-
-export function isMacroPrefixToken(token: Token | undefined): token is MacroPrefixToken {
-  return token?.[0] === 'MacroPrefix'
 }
 
 /** Convert lightweight token debug info to SourceCodeInfo for error reporting. */

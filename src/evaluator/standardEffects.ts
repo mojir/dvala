@@ -39,7 +39,7 @@ type StandardEffectHandlerFn = (arg: Any, k: ContinuationStack, sourceCodeInfo?:
  * A standard effect definition — mirrors BuiltinNormalExpression structure.
  * Each effect has a handler function, arity for validation, and co-located docs.
  */
-export interface StandardEffectDefinition {
+interface StandardEffectDefinition {
   handler?: StandardEffectHandlerFn
   arity: Arity
   docs: FunctionDocs
@@ -712,8 +712,6 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
-
-export type { StandardEffectName }
 
 /** All standard effect names. */
 export const standardEffectNames: ReadonlySet<string> = new Set(Object.keys(standardEffects))

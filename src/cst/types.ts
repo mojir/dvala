@@ -49,7 +49,7 @@ export interface CstToken {
 // ---------------------------------------------------------------------------
 
 /** 0-based line/column span in the original source. */
-export interface SourceSpan {
+interface SourceSpan {
   startLine: number
   startColumn: number
   endLine: number
@@ -62,21 +62,21 @@ export interface SourceSpan {
 
 // -- Literals ---------------------------------------------------------------
 
-export interface CstNumberLiteral {
+interface CstNumberLiteral {
   kind: 'NumberLiteral'
   /** The number token (e.g. "42", "3.14", "0xFF", "1_000"). */
   token: CstToken
   span: SourceSpan
 }
 
-export interface CstStringLiteral {
+interface CstStringLiteral {
   kind: 'StringLiteral'
   /** The string token including quotes (e.g. '"hello"'). */
   token: CstToken
   span: SourceSpan
 }
 
-export interface CstTemplateString {
+interface CstTemplateString {
   kind: 'TemplateString'
   /** The full template string token including backticks and interpolations.
    *  Internal structure (segments, splices) is captured by the token text.
@@ -85,7 +85,7 @@ export interface CstTemplateString {
   span: SourceSpan
 }
 
-export interface CstRegexpShorthand {
+interface CstRegexpShorthand {
   kind: 'RegexpShorthand'
   /** The #"pattern"flags token. */
   token: CstToken
@@ -94,21 +94,21 @@ export interface CstRegexpShorthand {
 
 // -- Names ------------------------------------------------------------------
 
-export interface CstSymbol {
+interface CstSymbol {
   kind: 'Symbol'
   /** Identifier token. Covers user-defined, builtin, and special expression names. */
   token: CstToken
   span: SourceSpan
 }
 
-export interface CstEffectName {
+interface CstEffectName {
   kind: 'EffectName'
   /** The @dotted.name token. */
   token: CstToken
   span: SourceSpan
 }
 
-export interface CstReservedSymbol {
+interface CstReservedSymbol {
   kind: 'ReservedSymbol'
   /** Reserved keyword token: true, false, null, PI, E, INF, NAN. */
   token: CstToken
@@ -117,7 +117,7 @@ export interface CstReservedSymbol {
 
 // -- Collections ------------------------------------------------------------
 
-export interface CstArray {
+interface CstArray {
   kind: 'Array'
   openBracket: CstToken
   /** Elements: expressions or spreads. */
@@ -130,7 +130,7 @@ export interface CstArray {
 }
 
 /** A single key-value entry in an object literal. */
-export interface CstObjectEntry {
+interface CstObjectEntry {
   /** For computed keys: the opening `[`. */
   openBracket?: CstToken
   /** The key expression (CstSymbol, CstStringLiteral, CstTemplateString, or computed expr). */
@@ -143,7 +143,7 @@ export interface CstObjectEntry {
   value?: CstNode
 }
 
-export interface CstObject {
+interface CstObject {
   kind: 'Object'
   openBrace: CstToken
   /** Entries: CstObjectEntry for key-value pairs, CstSpread for spreads. */
@@ -156,7 +156,7 @@ export interface CstObject {
 
 // -- Operators --------------------------------------------------------------
 
-export interface CstBinaryOp {
+interface CstBinaryOp {
   kind: 'BinaryOp'
   left: CstNode
   /** The operator token: +, -, *, /, %, ^, ==, !=, <, <=, >, >=,
@@ -167,7 +167,7 @@ export interface CstBinaryOp {
   span: SourceSpan
 }
 
-export interface CstPrefixOp {
+interface CstPrefixOp {
   kind: 'PrefixOp'
   /** The prefix operator token (currently only `-` for unary minus). */
   operator: CstToken
@@ -177,7 +177,7 @@ export interface CstPrefixOp {
 
 // -- Access and call --------------------------------------------------------
 
-export interface CstPropertyAccess {
+interface CstPropertyAccess {
   kind: 'PropertyAccess'
   object: CstNode
   dot: CstToken
@@ -186,7 +186,7 @@ export interface CstPropertyAccess {
   span: SourceSpan
 }
 
-export interface CstIndexAccess {
+interface CstIndexAccess {
   kind: 'IndexAccess'
   object: CstNode
   openBracket: CstToken
@@ -195,7 +195,7 @@ export interface CstIndexAccess {
   span: SourceSpan
 }
 
-export interface CstCall {
+interface CstCall {
   kind: 'Call'
   /** The function expression (usually a CstSymbol or chained access). */
   fn: CstNode
@@ -210,7 +210,7 @@ export interface CstCall {
 
 // -- Grouping ---------------------------------------------------------------
 
-export interface CstParenthesized {
+interface CstParenthesized {
   kind: 'Parenthesized'
   openParen: CstToken
   expression: CstNode
@@ -220,7 +220,7 @@ export interface CstParenthesized {
 
 // -- Spread -----------------------------------------------------------------
 
-export interface CstSpread {
+interface CstSpread {
   kind: 'Spread'
   /** The `...` operator token. */
   dots: CstToken
@@ -230,7 +230,7 @@ export interface CstSpread {
 
 // -- Let binding ------------------------------------------------------------
 
-export interface CstLet {
+interface CstLet {
   kind: 'Let'
   letKeyword: CstToken
   target: CstBindingTarget
@@ -242,7 +242,7 @@ export interface CstLet {
 // -- If expression ----------------------------------------------------------
 
 /** A single if/else-if branch. */
-export interface CstIfBranch {
+interface CstIfBranch {
   /** The `else` keyword. Absent for the first (if) branch. */
   elseKeyword?: CstToken
   /** The `if` keyword. */
@@ -256,13 +256,13 @@ export interface CstIfBranch {
 }
 
 /** The final else branch (no condition). */
-export interface CstElseBranch {
+interface CstElseBranch {
   elseKeyword: CstToken
   body: CstNode[]
   semicolons: CstToken[]
 }
 
-export interface CstIf {
+interface CstIf {
   kind: 'If'
   /** The if branch followed by zero or more else-if branches. */
   branches: CstIfBranch[]
@@ -275,13 +275,13 @@ export interface CstIf {
 // -- Block (do...end) -------------------------------------------------------
 
 /** Optional `with handler;` clause inside a do...end block. */
-export interface CstWithClause {
+interface CstWithClause {
   withKeyword: CstToken
   handler: CstNode
   semicolon: CstToken
 }
 
-export interface CstBlock {
+interface CstBlock {
   kind: 'Block'
   doKeyword: CstToken
   /** Optional handler installation: `do with handler; body end`. */
@@ -297,13 +297,13 @@ export interface CstBlock {
 // -- Loop -------------------------------------------------------------------
 
 /** A single binding in a loop expression: `target = value`. */
-export interface CstLoopBinding {
+interface CstLoopBinding {
   target: CstBindingTarget
   equals: CstToken
   value: CstNode
 }
 
-export interface CstLoop {
+interface CstLoop {
   kind: 'Loop'
   loopKeyword: CstToken
   openParen: CstToken
@@ -319,7 +319,7 @@ export interface CstLoop {
 // -- For --------------------------------------------------------------------
 
 /** Optional `let target = value;` clause inside a for binding. */
-export interface CstForLetClause {
+interface CstForLetClause {
   letKeyword: CstToken
   target: CstNode
   equals: CstToken
@@ -328,7 +328,7 @@ export interface CstForLetClause {
 }
 
 /** A single loop binding in a for expression: `target in iterable`. */
-export interface CstForBinding {
+interface CstForBinding {
   target: CstNode
   inKeyword: CstToken
   iterable: CstNode
@@ -337,7 +337,7 @@ export interface CstForBinding {
   whileClause?: { whileKeyword: CstToken; condition: CstNode }
 }
 
-export interface CstFor {
+interface CstFor {
   kind: 'For'
   forKeyword: CstToken
   openParen: CstToken
@@ -353,7 +353,7 @@ export interface CstFor {
 // -- Match ------------------------------------------------------------------
 
 /** A single case in a match expression. */
-export interface CstMatchCase {
+interface CstMatchCase {
   caseKeyword: CstToken
   pattern: CstBindingTarget
   whenClause?: { whenKeyword: CstToken; guard: CstNode }
@@ -362,7 +362,7 @@ export interface CstMatchCase {
   semicolons: CstToken[]
 }
 
-export interface CstMatch {
+interface CstMatch {
   kind: 'Match'
   matchKeyword: CstToken
   expression: CstNode
@@ -373,7 +373,7 @@ export interface CstMatch {
 
 // -- Function (lambda) ------------------------------------------------------
 
-export interface CstFunction {
+interface CstFunction {
   kind: 'Function'
   /** Opening `(` for params. Absent for single-param or shorthand lambdas. */
   openParen?: CstToken
@@ -394,7 +394,7 @@ export interface CstFunction {
 // -- Handler ----------------------------------------------------------------
 
 /** A single effect clause in a handler definition. */
-export interface CstHandlerClause {
+interface CstHandlerClause {
   /** The @effect.name token. */
   effectName: CstToken
   openParen?: CstToken
@@ -406,14 +406,14 @@ export interface CstHandlerClause {
 }
 
 /** The optional transform clause in a handler. */
-export interface CstHandlerTransform {
+interface CstHandlerTransform {
   transformKeyword: CstToken
   param: CstBindingTarget
   arrow: CstToken
   body: CstNode
 }
 
-export interface CstHandler {
+interface CstHandler {
   kind: 'Handler'
   /** The `shallow` keyword, if this is a shallow handler. */
   shallowKeyword?: CstToken
@@ -426,7 +426,7 @@ export interface CstHandler {
 
 // -- Resume -----------------------------------------------------------------
 
-export interface CstResume {
+interface CstResume {
   kind: 'Resume'
   resumeKeyword: CstToken
   /** Present when resume is called with args: `resume(expr)`. */
@@ -438,7 +438,7 @@ export interface CstResume {
 
 // -- Macro ------------------------------------------------------------------
 
-export interface CstMacro {
+interface CstMacro {
   kind: 'Macro'
   /** The `macro` keyword token. */
   macroKeyword: CstToken
@@ -451,7 +451,7 @@ export interface CstMacro {
   span: SourceSpan
 }
 
-export interface CstMacroCall {
+interface CstMacroCall {
   kind: 'MacroCall'
   /** The `#name` prefix token. */
   prefix: CstToken
@@ -468,7 +468,7 @@ export interface CstMacroCall {
  *
  * The formatter prints error nodes verbatim (concatenating their tokens).
  */
-export interface CstErrorNode {
+interface CstErrorNode {
   kind: 'Error'
   /** The tokens the parser couldn't structure into a typed node. */
   tokens: CstToken[]
@@ -477,7 +477,7 @@ export interface CstErrorNode {
 
 // -- Quote / Splice ---------------------------------------------------------
 
-export interface CstQuote {
+interface CstQuote {
   kind: 'Quote'
   quoteKeyword: CstToken
   /** Body statements inside the quote. */
@@ -495,7 +495,7 @@ export interface CstQuote {
 // outer Quote even though it semantically belongs to the inner quote.)
 // The untyped form (kind: 'Splice', children: [marker, ...exprTokens, closeBrace])
 // is used by the formatter; this typed interface is used by printCst.
-export interface CstSplice {
+interface CstSplice {
   kind: 'Splice'
   /** The `$^{`, `$^^{`, etc. splice marker token. */
   marker: CstToken
@@ -508,21 +508,21 @@ export interface CstSplice {
 // Binding targets — patterns used in let, for, function params, match cases
 // ---------------------------------------------------------------------------
 
-export interface CstSymbolBinding {
+interface CstSymbolBinding {
   kind: 'SymbolBinding'
   name: CstToken
   defaultClause?: { equals: CstToken; value: CstNode }
   span: SourceSpan
 }
 
-export interface CstRestBinding {
+interface CstRestBinding {
   kind: 'RestBinding'
   dots: CstToken
   name: CstToken
   span: SourceSpan
 }
 
-export interface CstArrayBinding {
+interface CstArrayBinding {
   kind: 'ArrayBinding'
   openBracket: CstToken
   /** Elements: binding targets or null for holes (e.g. `[, x]`). */
@@ -534,7 +534,7 @@ export interface CstArrayBinding {
 }
 
 /** A single entry in an object binding pattern. */
-export interface CstObjectBindingEntry {
+interface CstObjectBindingEntry {
   key: CstToken
   /** Present for `key as alias` syntax. */
   asKeyword?: CstToken
@@ -544,7 +544,7 @@ export interface CstObjectBindingEntry {
   target?: CstBindingTarget
 }
 
-export interface CstObjectBinding {
+interface CstObjectBinding {
   kind: 'ObjectBinding'
   openBrace: CstToken
   entries: CstObjectBindingEntry[]
@@ -554,20 +554,20 @@ export interface CstObjectBinding {
   span: SourceSpan
 }
 
-export interface CstWildcardBinding {
+interface CstWildcardBinding {
   kind: 'WildcardBinding'
   token: CstToken
   span: SourceSpan
 }
 
-export interface CstLiteralBinding {
+interface CstLiteralBinding {
   kind: 'LiteralBinding'
   /** The literal value node (number, string, template, reserved symbol). */
   value: CstNode
   span: SourceSpan
 }
 
-export type CstBindingTarget =
+type CstBindingTarget =
   | CstSymbolBinding
   | CstRestBinding
   | CstArrayBinding
@@ -579,7 +579,7 @@ export type CstBindingTarget =
 // CstNode union — all expression-level CST nodes
 // ---------------------------------------------------------------------------
 
-export type CstNode =
+type CstNode =
   // Literals
   | CstNumberLiteral
   | CstStringLiteral
@@ -625,19 +625,3 @@ export type CstNode =
   // Error recovery
   | CstErrorNode
 
-// ---------------------------------------------------------------------------
-// Program — the root CST node
-// ---------------------------------------------------------------------------
-
-export interface CstProgram {
-  kind: 'Program'
-  /** Shebang line if present (e.g. `#!/usr/bin/env dvala`). */
-  shebang?: CstToken
-  /** Top-level statements. */
-  statements: CstNode[]
-  /** Semicolons between top-level statements. */
-  semicolons: CstToken[]
-  /** Trailing trivia after the last token (comments, whitespace at EOF). */
-  trailingTrivia: TriviaNode[]
-  span: SourceSpan
-}

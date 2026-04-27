@@ -9,7 +9,7 @@ import { fromJS } from '../utils/interop'
 import type { Any } from '../interface'
 import { PersistentVector } from '../utils/persistent'
 
-export interface MacroExpandOptions {
+interface MacroExpandOptions {
   /** File resolver for cross-file macro imports (e.g. let { double } = import("./macros")) */
   fileResolver?: FileResolver
   /** Base directory for resolving relative imports in macro evaluation */

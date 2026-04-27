@@ -17,14 +17,14 @@ import { Unknown } from './types'
 // Effect declaration
 // ---------------------------------------------------------------------------
 
-export interface EffectDeclaration {
+interface EffectDeclaration {
   /** The argument type passed to perform. */
   argType: Type
   /** The return type — what perform() returns, what resume() accepts. */
   retType: Type
 }
 
-export interface EffectRegistrySnapshot {
+interface EffectRegistrySnapshot {
   entries: [string, EffectDeclaration][]
   builtinNames: string[]
 }

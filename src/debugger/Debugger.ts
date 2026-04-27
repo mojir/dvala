@@ -10,7 +10,7 @@ import type { Context } from '../evaluator/interface'
 // Public types
 // ---------------------------------------------------------------------------
 
-export type StopReason = 'breakpoint' | 'step'
+type StopReason = 'breakpoint' | 'step'
 
 export interface DebugStoppedEvent {
   reason: StopReason
@@ -18,18 +18,18 @@ export interface DebugStoppedEvent {
   continuation: Continuation
 }
 
-export interface Variable {
+interface Variable {
   name: string
   value: Any
 }
 
-export type StepCommand = 'continue' | 'stepOver' | 'stepInto' | 'stepOut'
+type StepCommand = 'continue' | 'stepOver' | 'stepInto' | 'stepOut'
 
 /**
  * Evaluate a condition expression using the current scope's bindings.
  * Returns the result value, or undefined if evaluation failed.
  */
-export type ConditionEvaluator = (expression: string, continuation: Continuation) => Promise<unknown>
+type ConditionEvaluator = (expression: string, continuation: Continuation) => Promise<unknown>
 
 interface Breakpoint {
   condition?: string

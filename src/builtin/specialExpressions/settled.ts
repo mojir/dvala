@@ -3,7 +3,7 @@ import type { AstNode } from '../../parser/types'
 import type { NodeTypes } from '../../constants/constants'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 
-export type SettledNode = [typeof NodeTypes.Settled, AstNode, number]
+type SettledNode = [typeof NodeTypes.Settled, AstNode, number]
 
 const docs: CustomDocs = {
   category: 'special-expression',

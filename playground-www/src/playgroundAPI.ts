@@ -32,7 +32,7 @@ export interface PlaygroundAPI {
   }
 }
 
-export interface PlaygroundDeps {
+interface PlaygroundDeps {
   showToast(message: string, options?: { severity?: 'info' | 'error' }): void
   isEditorReadOnly(): boolean
   getEditorContent(): string

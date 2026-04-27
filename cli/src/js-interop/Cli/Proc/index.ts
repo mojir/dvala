@@ -10,10 +10,6 @@ interface JsFunction {
   docString?: string
 }
 
-export function sys_cwd(): string {
-  return process.cwd()
-}
-
 const getCwd: JsFunction = {
   fn: (): string => process.cwd(),
   docString: 'Returns the current working directory of the process',

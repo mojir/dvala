@@ -156,7 +156,7 @@ export interface TypedValue {
   array?: true
 }
 
-export type NormalExpressionArgument = TypedValue & {
+type NormalExpressionArgument = TypedValue & {
   description?: string
 }
 
@@ -298,7 +298,7 @@ Object.entries(specialExpressionsReference).forEach(([key, obj]) => {
   }
 })
 
-export const functionReference = {
+const functionReference = {
   ...normalExpressionReference,
   ...specialExpressionsReference,
 }

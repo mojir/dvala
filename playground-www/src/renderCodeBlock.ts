@@ -23,7 +23,7 @@ function formatOutput(output: string): string {
   return prefix + lines.map((line, i) => i === 0 ? escapeHtml(line) : indent + escapeHtml(line)).join('\n')
 }
 
-export interface CodeBlockOptions {
+interface CodeBlockOptions {
   code: string
   language?: 'dvala' | 'json' | 'text'
   noRun?: boolean

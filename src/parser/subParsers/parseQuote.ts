@@ -11,7 +11,7 @@ import type { ParserContext } from '../ParserContext'
 import type { AstNode } from '../types'
 import { createCstParserContext, createParserContext, parseExpression } from './parseExpression'
 
-export type CodeTemplateNode = AstNode<typeof NodeTypes.CodeTmpl, [AstNode[], AstNode[]]>
+type CodeTemplateNode = AstNode<typeof NodeTypes.CodeTmpl, [AstNode[], AstNode[]]>
 
 /**
  * Parse a quote...end block.

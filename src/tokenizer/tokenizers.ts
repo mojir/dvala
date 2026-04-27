@@ -274,7 +274,7 @@ export const tokenizeBasePrefixedNumber: Tokenizer<BasePrefixedNumberToken> = (i
  * Each segment follows symbol naming rules. Dots separate segments.
  * The token value is the name without the @ prefix.
  */
-export const tokenizeEffectName: Tokenizer<EffectNameToken> = (input, position) => {
+const tokenizeEffectName: Tokenizer<EffectNameToken> = (input, position) => {
   if (input[position] !== '@') return NO_MATCH
 
   let i = position + 1
@@ -424,7 +424,7 @@ export const tokenizeShebang: Tokenizer<ShebangToken> = (input, position) => {
  * The value includes the full marker (e.g. "$^{", "$^^{").
  * The opening { is consumed — the parser finds the matching } via RBrace tokens.
  */
-export const tokenizeQuoteSplice: Tokenizer<QuoteSpliceToken> = (input, position) => {
+const tokenizeQuoteSplice: Tokenizer<QuoteSpliceToken> = (input, position) => {
   if (input[position] !== '$')
     return NO_MATCH
 
@@ -441,7 +441,7 @@ export const tokenizeQuoteSplice: Tokenizer<QuoteSpliceToken> = (input, position
   return [length, ['QuoteSplice', value]]
 }
 
-export const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position) => {
+const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position) => {
   if (input[position] !== '`')
     return NO_MATCH
 

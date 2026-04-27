@@ -11,7 +11,7 @@ import { specialExpressionTypes } from './specialExpressionTypes'
  * Formatting hint stored in Function node payloads.
  * Set at parse time to preserve the shorthand lambda form through formatting.
  */
-export interface FunctionHints {
+interface FunctionHints {
   /** True when authored as shorthand: `-> $ + 1` rather than `($) -> $ + 1`. */
   isShorthand?: boolean
 }

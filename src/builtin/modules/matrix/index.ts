@@ -26,7 +26,7 @@ import { norm1 } from './helpers/norm1'
 import { trace } from './helpers/trace'
 import matrixModuleSource from './matrix.dvala'
 
-export const matrixNormalExpression: BuiltinNormalExpressions = {
+const matrixNormalExpression: BuiltinNormalExpressions = {
   'mul': {
     evaluate: ([matrix1_, matrix2_], sourceCodeInfo): Any => {
       const matrix1 = assertMatrix(matrix1_, sourceCodeInfo)

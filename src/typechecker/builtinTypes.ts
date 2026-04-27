@@ -13,7 +13,7 @@ import { PureEffects, Unknown, effectSet } from './types'
 // Parsed builtin type cache
 // ---------------------------------------------------------------------------
 
-export interface BuiltinTypeInfo {
+interface BuiltinTypeInfo {
   /** The parsed function type. */
   type: Type
   /** If the function is a type guard, the parameter name being narrowed. */

@@ -2,18 +2,18 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 
-export interface ChapterEntry {
+interface ChapterEntry {
   id: string
   title: string
   body: string
 }
 
-export interface BookSection {
+interface BookSection {
   title: string
   entries: ChapterEntry[]
 }
 
-export type BookItem = ChapterEntry | BookSection
+type BookItem = ChapterEntry | BookSection
 
 export function isBookSection(item: BookItem): item is BookSection {
   return 'entries' in item
@@ -23,7 +23,7 @@ export function isBookSection(item: BookItem): item is BookSection {
 // Markdown utilities
 // ---------------------------------------------------------------------------
 
-export function parseChapterMarkdown(markdown: string): { title: string; body: string } {
+function parseChapterMarkdown(markdown: string): { title: string; body: string } {
   const lines = markdown.split('\n')
   const titleLineIndex = lines.findIndex(line => /^# .+$/.test(line))
   if (titleLineIndex === -1) {
@@ -35,7 +35,7 @@ export function parseChapterMarkdown(markdown: string): { title: string; body: s
   return { title, body }
 }
 
-export interface CodeBlock {
+interface CodeBlock {
   lines: string[]
   /** If true, the block is expected to throw an error when run. */
   throws: boolean

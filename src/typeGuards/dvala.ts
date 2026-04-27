@@ -34,14 +34,6 @@ export function assertSeq(value: unknown, sourceCodeInfo?: SourceCodeInfo): asse
 export function isArr(value: unknown): value is Arr {
   return isPersistentVector(value)
 }
-export function asArr(value: unknown, sourceCodeInfo?: SourceCodeInfo): Arr {
-  assertArr(value, sourceCodeInfo)
-  return value
-}
-export function assertArr(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is Arr {
-  if (!isArr(value))
-    throw getAssertionError('array', value, sourceCodeInfo)
-}
 
 export function isObj(value: unknown): value is Obj {
   return isPersistentMap(value)

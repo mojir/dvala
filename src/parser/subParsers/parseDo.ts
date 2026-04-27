@@ -11,7 +11,7 @@ import { withSourceCodeInfo } from '../helpers'
  * - handlerExpr: expression evaluating to a HandlerFunction
  * - bodyExprs: remaining expressions in the block (handler is active for these)
  */
-export type WithHandlerNode = [typeof NodeTypes.WithHandler, [AstNode, AstNode[]], number]
+type WithHandlerNode = [typeof NodeTypes.WithHandler, [AstNode, AstNode[]], number]
 
 export function parseDo(ctx: ParserContext): DoNode {
   ctx.builder?.startNode('Block')

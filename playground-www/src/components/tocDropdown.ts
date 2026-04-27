@@ -20,12 +20,12 @@ export interface TocItem {
 }
 
 /** A group of items under a section heading. */
-export interface TocSection {
+interface TocSection {
   title: string
   items: TocItem[]
 }
 
-export interface TocDropdownOptions {
+interface TocDropdownOptions {
   /** Unique DOM id for the dropdown (used to toggle on/off). */
   id: string
   /** Label and action for the "Overview" link at the top. */

@@ -86,14 +86,13 @@ export function isFunctionOperator(operator: string): boolean {
 }
 
 export type SymbolicBinaryOperator = typeof binaryOperators[number]
-export type SymbolicUnaryPrefixOperator = typeof unaryPrefixOperators[number]
 export type SymbolicOperator = typeof symbolicOperators[number]
 
 const binaryOperatorSet = new Set(binaryOperators)
 export function isBinaryOperator(operator: string): operator is SymbolicBinaryOperator {
   return binaryOperatorSet.has(operator as SymbolicBinaryOperator)
 }
-export function assertBinaryOperator(operator: string): asserts operator is SymbolicBinaryOperator {
+function assertBinaryOperator(operator: string): asserts operator is SymbolicBinaryOperator {
   if (!isBinaryOperator(operator)) {
     throw new TokenizerError(`Expected symbolic binary operator, got ${operator}`, undefined)
   }
@@ -103,16 +102,11 @@ export function asBinaryOperator(operator: string): SymbolicBinaryOperator {
   return operator
 }
 
-const unaryPrefixOperatorSet = new Set(unaryPrefixOperators)
-export function isUnaryPrefixOperator(operator: string): operator is SymbolicUnaryPrefixOperator {
-  return unaryPrefixOperatorSet.has(operator as SymbolicUnaryPrefixOperator)
-}
-
 const symbolicOperatorSet = new Set(symbolicOperators)
 export function isSymbolicOperator(operator: string): operator is SymbolicOperator {
   return symbolicOperatorSet.has(operator as SymbolicOperator)
 }
-export function assertSymbolicOperator(operator: string): asserts operator is SymbolicOperator {
+function assertSymbolicOperator(operator: string): asserts operator is SymbolicOperator {
   if (!isSymbolicOperator(operator)) {
     throw new TokenizerError(`Expected symbolic operator, got ${operator}`, undefined)
   }

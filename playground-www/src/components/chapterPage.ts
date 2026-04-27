@@ -6,7 +6,7 @@
  *   book/NN-section-name/NN-chapter-name.md  →  section "Section Name", id "section-name-chapter-name"
  */
 
-import { href, navigate } from '../router'
+import { href } from '../router'
 import { downloadIcon, hamburgerIcon } from '../icons'
 import { renderDvalaMarkdown, slugifyHeading } from '../renderDvalaMarkdown'
 import { renderPageHeader } from './pageHeader'
@@ -22,14 +22,14 @@ function bookHeaderActions(): string {
       <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>`
 }
 
-export interface ChapterEntry {
+interface ChapterEntry {
   id: string // URL slug, e.g. "getting-started-intro"
   title: string // extracted from first # heading in the .md
   raw: string // raw markdown string
   folder: string // display name of the containing folder
 }
 
-export interface BookSection {
+interface BookSection {
   name: string
   entries: ChapterEntry[]
 }
@@ -152,11 +152,6 @@ export function renderChapterPage(id: string): string {
     ${subToc ? `<aside class="book-chapter__sidebar">${subToc}</aside>` : ''}
   </div>
 </div>`.trim()
-}
-
-// Navigation helper called from onclick handlers
-export function navigateToChapter(id: string): void {
-  navigate(`/book/${id}`)
 }
 
 function escapeHtml(str: string): string {

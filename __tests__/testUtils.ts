@@ -4,7 +4,7 @@ import { isRegularExpression } from '../src/typeGuards/dvala'
 import type { Context } from '../src/evaluator/interface'
 import { DvalaError } from '../src/errors'
 
-export interface TypeGuardTestData {
+interface TypeGuardTestData {
   valid: unknown[]
   invalid: unknown[]
 }

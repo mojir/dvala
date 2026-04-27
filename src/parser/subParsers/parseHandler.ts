@@ -10,7 +10,7 @@ import { parseDo } from './parseDo'
 /**
  * Parsed handler clause — effect name, parameter bindings, and body expressions.
  */
-export interface ParsedHandlerClause {
+interface ParsedHandlerClause {
   effectName: string
   params: BindingTarget[]
   body: AstNode[]
@@ -23,7 +23,7 @@ export interface ParsedHandlerClause {
  *
  * The handler value is created at evaluation time from this AST node.
  */
-export type HandlerNode = [typeof NodeTypes.Handler, [ParsedHandlerClause[], [BindingTarget, AstNode[]] | null, boolean], number]
+type HandlerNode = [typeof NodeTypes.Handler, [ParsedHandlerClause[], [BindingTarget, AstNode[]] | null, boolean], number]
 
 /**
  * Parse `handler <clauses> [transform x -> expr] end`.

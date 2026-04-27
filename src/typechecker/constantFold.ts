@@ -120,7 +120,7 @@ function valueToLiteralType(value: unknown): Type | null {
   return null
 }
 
-export interface FoldOutcome {
+interface FoldOutcome {
   /** Folded successfully — use this as the inferred result type. */
   type?: Type
   /** Fold surfaced an effect (typically `@dvala.error`) — caller should

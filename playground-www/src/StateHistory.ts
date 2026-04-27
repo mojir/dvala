@@ -9,7 +9,7 @@ export interface HistoryEntry {
   selectionEnd: number
 }
 
-export interface SerializedStateHistory {
+interface SerializedStateHistory {
   history: HistoryEntry[]
   index: number
 }

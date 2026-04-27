@@ -15,26 +15,6 @@
 import type { CstToken } from './types'
 
 // ---------------------------------------------------------------------------
-// Event types
-// ---------------------------------------------------------------------------
-
-export interface StartNodeEvent {
-  type: 'startNode'
-  kind: string
-}
-
-export interface TokenEvent {
-  type: 'token'
-  token: CstToken
-}
-
-export interface EndNodeEvent {
-  type: 'endNode'
-}
-
-export type CstEvent = StartNodeEvent | TokenEvent | EndNodeEvent
-
-// ---------------------------------------------------------------------------
 // Untyped CST tree — intermediate representation before typed conversion
 // ---------------------------------------------------------------------------
 

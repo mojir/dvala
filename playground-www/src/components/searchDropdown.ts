@@ -20,13 +20,13 @@ export interface SearchResult<T> {
 }
 
 /** Groups of results separated by visual dividers. */
-export interface SearchResultGroup<T> {
+interface SearchResultGroup<T> {
   results: SearchResult<T>[]
   /** Optional label shown above the group (e.g. "Also found in..."). */
   label?: string
 }
 
-export interface SearchDropdownOptions<T> {
+interface SearchDropdownOptions<T> {
   /** Unique DOM id for the dropdown (used to toggle on/off). */
   id: string
   /** Input placeholder text. */

@@ -47,7 +47,7 @@ export interface TypecheckResult {
   sourceMap?: Map<number, SourceMapPosition>
 }
 
-export interface TypecheckOptions {
+interface TypecheckOptions {
   /** Resolves file imports. Returns the source code of the file.
    * Should throw if the file is not found. */
   fileResolver?: (importPath: string, fromDir: string) => string
@@ -77,7 +77,7 @@ interface CachedFileTypeResult {
 let initialized = false
 
 /** Initialize the type system — call once before first typecheck. */
-export function initTypeSystem(): void {
+function initTypeSystem(): void {
   if (initialized) return
   initialized = true
   initBuiltinTypes(builtin.normalExpressions)

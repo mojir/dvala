@@ -30,7 +30,7 @@ function toUserDefinedSymbol(symbol: SymbolNode, debugInfo: TokenDebugInfo | und
   return withSourceCodeInfo([NodeTypes.Sym, name, 0], debugInfo, ctx) satisfies UserDefinedSymbolNode
 }
 
-export interface ParseBindingTargetOptions {
+interface ParseBindingTargetOptions {
   requireDefaultValue?: true
   noRest?: true
   allowLiteralPatterns?: true

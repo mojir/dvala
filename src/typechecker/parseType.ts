@@ -45,13 +45,13 @@ import { fragmentCheckPredicate } from './refinementFragmentCheck'
 // `AliasParam` is defined canonically in the parser layer (the shape
 // flows from parser into AST). Re-export here so typechecker consumers
 // have a single import site and the two declarations can never diverge.
-export type { AliasParam } from '../parser/types'
+
 import type { AliasParam, AstNode } from '../parser/types'
 
 /** Registered type aliases: name → { params, body string } */
 const typeAliasRegistry = new Map<string, { params: AliasParam[]; body: string }>()
 
-export interface TypeAliasRegistrySnapshot {
+interface TypeAliasRegistrySnapshot {
   entries: [string, { params: AliasParam[]; body: string }][]
 }
 
