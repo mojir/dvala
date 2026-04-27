@@ -129,7 +129,7 @@ export function showToast(message: string, options?: { severity?: 'info' | 'erro
 
   const closeBtn = document.createElement('button')
   closeBtn.className = 'toast-close'
-  closeBtn.textContent = '×'
+  closeBtn.textContent = '\u00D7'
   closeBtn.addEventListener('click', () => dismissToast(toast))
   toast.appendChild(closeBtn)
 
