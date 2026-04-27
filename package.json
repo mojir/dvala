@@ -134,6 +134,8 @@
   "scripts": {
     "preinstall": "npx -y only-allow pnpm",
     "test": "wireit",
+    "test:coverage": "wireit",
+    "test:changed": "vitest run --changed",
     "vitest": "vitest",
     "lint": "wireit",
     "lint:no-fix": "wireit",
@@ -264,6 +266,19 @@
       "output": []
     },
     "test": {
+      "command": "vitest run",
+      "files": [
+        "src/**",
+        "common/**",
+        "__tests__/**",
+        "reference/**",
+        "vitest.setup.ts",
+        "vite.config.mts",
+        "tsconfig.json"
+      ],
+      "output": []
+    },
+    "test:coverage": {
       "command": "vitest run --coverage",
       "files": [
         "src/**",
