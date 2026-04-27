@@ -195,7 +195,9 @@ The existing test files under `src/languageService/` (`renameNonImport.test.ts`,
 
 ## Migration Strategy
 
-Each module is extracted independently. The VS Code extension is updated to import from `src/shared/` instead of having inline implementations. No behavioral changes — the extraction is a pure refactor from the extension's perspective.
+**Precondition (infrastructure):** [2026-04-27_workspace-conversion.md](2026-04-27_workspace-conversion.md) should land first. Once `src/shared/` exists as material extracted modules, vscode-dvala consumes them via a `workspace:*` dependency (or by importing from a shared workspace member), which assumes pnpm workspaces are set up. Doing the workspace conversion as a separate, focused PR before this plan starts means each piece of infrastructure can be validated in isolation: pnpm migration → workspaces work → shared-LS extraction → playground integration. Mixing workspace conversion with module extraction would muddy the review and bisect signal if anything regresses.
+
+Each module is extracted independently. The VS Code extension is updated to import from the shared package instead of having inline implementations. No behavioral changes — the extraction is a pure refactor from the extension's perspective.
 
 1. Extract module → write it in `src/shared/`
 2. Update the VS Code extension to use the shared module

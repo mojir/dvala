@@ -34,7 +34,7 @@ import { PersistentMap, PersistentVector } from '../utils/persistent'
 export function validateBindingRootType(target: BindingTarget, value: Any, sourceCodeInfo?: SourceCodeInfo): void {
   switch (target[0]) {
     case bindingTargetTypes.array:
-      assertArray(value as Arr, sourceCodeInfo)
+      assertArray(value, sourceCodeInfo)
       break
     case bindingTargetTypes.object:
       assertObj(value, sourceCodeInfo)
@@ -246,10 +246,10 @@ export function extractValueByPath(rootValue: Any, path: BindingPathStep[], sour
 
     if (step.type === 'key') {
       assertObj(current, sourceCodeInfo)
-      current = (current as PersistentMap).get(step.key)
+      current = (current).get(step.key)
     } else {
-      assertArray(current as Arr, sourceCodeInfo)
-      current = (current as Arr).get(step.index)
+      assertArray(current, sourceCodeInfo)
+      current = (current).get(step.index)
     }
   }
 
@@ -276,9 +276,9 @@ export function extractObjectRest(value: Any, restKeys: Set<string>, sourceCodeI
  * Returns elements from restIndex onwards.
  */
 export function extractArrayRest(value: Any, restIndex: number, sourceCodeInfo?: SourceCodeInfo): Arr {
-  assertArray(value as Arr, sourceCodeInfo)
+  assertArray(value, sourceCodeInfo)
   // Collect elements from restIndex to end — PersistentVector has no native slice
-  const arr = value as Arr
+  const arr = value
   const items: unknown[] = []
   for (let i = restIndex; i < arr.size; i++) {
     items.push(arr.get(i))

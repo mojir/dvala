@@ -1,7 +1,7 @@
 import type { SpecialExpressionName } from '../src/builtin'
 import type { BuiltinNormalExpressions, ExampleEntry, FunctionDocs, SpecialExpressionDocs } from '../src/builtin/interface'
 import type { DvalaModule } from '../src/builtin/modules/interface'
-import type { ApiName, ArrayApiName, AssertionApiName, BitwiseApiName, Category, CollectionApiName, CoreApiName, CoreNormalExpressionName, DataType, FunctionalApiName, MathApiName, MetaApiName, MiscApiName, ModuleExpressionName, ObjectApiName, PredicateApiName, RegularExpressionApiName, SequenceApiName, StringApiName } from './api'
+import type { ArrayApiName, AssertionApiName, BitwiseApiName, Category, CollectionApiName, CoreApiName, CoreNormalExpressionName, DataType, FunctionalApiName, MathApiName, MetaApiName, MiscApiName, ModuleExpressionName, ObjectApiName, PredicateApiName, RegularExpressionApiName, SequenceApiName, StringApiName } from './api'
 import { specialExpressions } from '../src/builtin'
 import { arrayNormalExpression } from '../src/builtin/core/array'
 // Core categories — all derive reference from co-located docs
@@ -65,7 +65,7 @@ function docsToReference(expressions: BuiltinNormalExpressions): Record<string, 
       args: docs.args,
       variants: docs.variants,
       examples: docs.examples,
-      ...(docs.seeAlso ? { seeAlso: docs.seeAlso as ApiName[] } : {}),
+      ...(docs.seeAlso ? { seeAlso: docs.seeAlso } : {}),
       ...(docs.hideOperatorForm ? { noOperatorDocumentation: true } : {}),
     }
   }
@@ -86,7 +86,7 @@ function moduledDocsToReference(module: DvalaModule): Record<string, FunctionRef
       args: docs.args,
       variants: docs.variants,
       examples: docs.examples,
-      ...(docs.seeAlso ? { seeAlso: docs.seeAlso as ApiName[] } : {}),
+      ...(docs.seeAlso ? { seeAlso: docs.seeAlso } : {}),
       ...(docs.hideOperatorForm ? { noOperatorDocumentation: true } : {}),
     }
   }
@@ -129,7 +129,7 @@ function specialExpressionDocsToReference(): Record<string, FunctionReference<'s
         args: docs.args,
         variants: docs.variants,
         examples: docs.examples,
-        ...(docs.seeAlso ? { seeAlso: docs.seeAlso as ApiName[] } : {}),
+        ...(docs.seeAlso ? { seeAlso: docs.seeAlso } : {}),
         ...(docs.hideOperatorForm ? { noOperatorDocumentation: true } : {}),
       }
     } else {
@@ -141,7 +141,7 @@ function specialExpressionDocsToReference(): Record<string, FunctionReference<'s
         ...(docs.details ? { details: docs.details } : {}),
         ...(docs.returns ? { returns: docs.returns } : {}),
         examples: docs.examples,
-        ...(docs.seeAlso ? { seeAlso: docs.seeAlso as ApiName[] } : {}),
+        ...(docs.seeAlso ? { seeAlso: docs.seeAlso } : {}),
       }
     }
   }

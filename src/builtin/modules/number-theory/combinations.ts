@@ -47,9 +47,9 @@ export const combinationsNormalExpressions: BuiltinNormalExpressions = {
       assertArray(set, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true, lte: set.size })
       if (n === 0)
-        return PersistentVector.from([PersistentVector.empty()]) as unknown as Any
+        return PersistentVector.from([PersistentVector.empty()])
       // Convert PV to plain array for the recursive combinations helper, then wrap results
-      return PersistentVector.from(combinations([...set], n).map(c => PersistentVector.from(c))) as unknown as Any
+      return PersistentVector.from(combinations([...set], n).map(c => PersistentVector.from(c)))
     },
     arity: toFixedArity(2),
   },

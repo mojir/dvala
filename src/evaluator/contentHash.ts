@@ -108,7 +108,7 @@ export function contentHash(value: unknown): number {
 
   // Plain object
   hash = fnvMixByte(hash, TAG_OBJECT)
-  const keys = Object.keys(value as Record<string, unknown>).sort()
+  const keys = Object.keys(value).sort()
   hash = fnvMixInt(hash, keys.length)
   for (const key of keys) {
     hash = fnvMixString(hash, key)

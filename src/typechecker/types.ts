@@ -100,8 +100,8 @@ export interface EffectSet {
 }
 
 /** Singletons for the two identity-free tails. */
-export const ClosedTail: EffectTail = Object.freeze({ tag: 'Closed' }) as EffectTail
-export const OpenTail: EffectTail = Object.freeze({ tag: 'Open' }) as EffectTail
+export const ClosedTail: EffectTail = Object.freeze({ tag: 'Closed' })
+export const OpenTail: EffectTail = Object.freeze({ tag: 'Open' })
 
 export interface HandlerEffectSignature {
   argType: Type
@@ -160,7 +160,7 @@ export interface SequenceType {
 }
 
 /** The empty (pure) effect set. Frozen to prevent accidental mutation. */
-export const PureEffects: EffectSet = Object.freeze({ effects: Object.freeze(new Set<string>()), tail: ClosedTail }) as EffectSet
+export const PureEffects: EffectSet = Object.freeze({ effects: Object.freeze(new Set<string>()), tail: ClosedTail })
 
 export type Type =
   // Base types (sets of runtime values)

@@ -42,7 +42,7 @@ Evolve the playground from a browser-only demo surface into a lightweight in-bro
 
 ### Phase 0 — DX foundation
 
-**Problem.** Today, any change to the engine source (`src/`) requires `npm run build` before the playground reflects it. This kills the iteration loop on engine changes that touch the playground's behavior — a constant tax on a project where the playground is the primary demo surface.
+**Problem.** Today, any change to the engine source (`src/`) requires `pnpm run build` before the playground reflects it. This kills the iteration loop on engine changes that touch the playground's behavior — a constant tax on a project where the playground is the primary demo surface.
 
 **Cause.** The playground's Vite dev server resolves engine imports to a *built* artifact rather than to source files, so engine edits don't trigger Vite's HMR.
 
@@ -201,7 +201,7 @@ The language service today exposes `WorkspaceIndex` + symbol table primitives. P
 ### Phase 0 — DX foundation
 
 1. Configure Vite (`playground-www/vite.config.ts`) to resolve engine imports to source files — alias `dvala` → `../src/full.ts` (and any other entry points), or use `vite-tsconfig-paths` for TS path resolution.
-2. Verify HMR works end-to-end: edit a file under `src/`, confirm the playground reflects it without `npm run build`. Confirm stack traces resolve to engine source, not bundled output.
+2. Verify HMR works end-to-end: edit a file under `src/`, confirm the playground reflects it without `pnpm run build`. Confirm stack traces resolve to engine source, not bundled output.
 3. Audit playground imports: catalog every place the playground reaches past `src/full.ts` / `src/index.ts` into engine internals.
 4. For each deep import, decide: (a) promote to public API, (b) expose via explicit introspection entry point (`dvala/internal` or similar), or (c) keep as deep import with a comment explaining why (tracked as tech debt). **Time-boxed:** for imports where the decision is painful or non-obvious, mark with `// FIXME: deep import, see Phase 0 audit` and defer to a follow-up PR. Phase 0 ships when HMR works + the audit is documented, not when every import is perfect.
 5. Execution-semantics spike: read the playground's run path and `dvala run`'s entry point side by side; run a handful of multi-file programs through both; document any divergence. Don't fix here — outputs feed Phase 1's planning. If no divergence, Phase 1 step 17 (alignment) becomes a no-op.

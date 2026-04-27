@@ -356,14 +356,15 @@ export const tokenizeReservedSymbolToken: Tokenizer<ReservedSymbolToken> = (inpu
   if (symbolMeta[0] === 0 || !symbolMeta[1]) {
     return NO_MATCH
   }
-  let symbolName = symbolMeta[1][1]
-  symbolName = symbolName.startsWith('\'') ? symbolName.slice(1, symbolName.length - 1) : symbolName
+  let rawName = symbolMeta[1][1]
+  rawName = rawName.startsWith('\'') ? rawName.slice(1, rawName.length - 1) : rawName
 
-  const info = reservedSymbolRecord[symbolName as ReservedSymbol]
+  const symbolName = rawName as ReservedSymbol
+  const info = reservedSymbolRecord[symbolName]
   if (info === undefined) {
     return NO_MATCH
   }
-  return [symbolMeta[0], ['ReservedSymbol', symbolName as ReservedSymbol]]
+  return [symbolMeta[0], ['ReservedSymbol', symbolName]]
 }
 
 export const tokenizeOperator: Tokenizer<OperatorToken> = (input, position) => {

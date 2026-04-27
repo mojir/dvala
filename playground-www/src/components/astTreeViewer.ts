@@ -398,7 +398,7 @@ function isAstNode(value: unknown): boolean {
 /** Push the binding target itself as a visible node in the tree. */
 function addBindingTarget(target: BindingTargetTuple, children: ChildEntry[], label: string | null): void {
   // Binding targets have the same [type, payload, nodeId] shape as AstNodes
-  children.push({ label, node: target as unknown as TreeNode })
+  children.push({ label, node: target })
 }
 
 /** Get children OF a binding target node (for expansion). */

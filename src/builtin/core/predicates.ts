@@ -5,7 +5,6 @@ import type { BuiltinNormalExpressions } from '../interface'
 import { isGrid, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
 import { EPSILON } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
-import type { PersistentMap } from '../../utils/persistent'
 
 export const predicatesNormalExpression: BuiltinNormalExpressions = {
   'isFunction': {
@@ -497,7 +496,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       if (isArr(coll))
         return coll.size === 0
 
-      return (coll as PersistentMap).size === 0
+      return coll.size === 0
     },
     arity: toFixedArity(1),
     docs: {
@@ -532,7 +531,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       if (isArr(coll))
         return coll.size > 0
 
-      return (coll as PersistentMap).size > 0
+      return coll.size > 0
     },
     arity: toFixedArity(1),
     docs: {

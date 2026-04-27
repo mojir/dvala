@@ -321,7 +321,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
         }
         return newAcc
       }, [PersistentVector.empty()])
-      return PersistentVector.from(result) as unknown as Any
+      return PersistentVector.from(result)
     },
     arity: { min: 1 },
   },

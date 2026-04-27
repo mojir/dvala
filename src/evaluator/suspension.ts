@@ -378,7 +378,7 @@ export function deserializeFromObject(
       ...data,
       contextStacks: expandPoolRefs(data.contextStacks, pool) as SerializedContextStack[],
       k: expandPoolRefs(data.k, pool),
-      ...(data.initialStep !== undefined ? { initialStep: expandPoolRefs(data.initialStep, pool) as Step } : {}),
+      ...(data.initialStep !== undefined ? { initialStep: expandPoolRefs(data.initialStep, pool) } : {}),
       ...(data.meta !== undefined ? { meta: expandPoolRefs(data.meta, pool) as Any } : {}),
       ...(data.snapshots ? { snapshots: data.snapshots.map(s => expandPoolRefs(s, pool)) } : {}),
     }

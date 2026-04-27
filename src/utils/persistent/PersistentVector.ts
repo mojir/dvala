@@ -74,7 +74,7 @@ export class TransientVector<T = unknown> {
       return
     }
     // Tail full — push tail into tree, start new tail
-    const tailNode = makeNode(this._tail as unknown[])
+    const tailNode = makeNode(this._tail)
     this._tail = [val]
     if ((this._size >>> BITS) > (1 << this._shift)) {
       // Tree is full at current height — grow

@@ -1,9 +1,19 @@
 {
   "name": "@mojir/dvala",
-  "overrides": {
-    "file-type": "^21.3.2"
-  },
   "version": "0.4.2",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "pnpm": {
+    "overrides": {
+      "file-type": "^21.3.2"
+    },
+    "onlyBuiltDependencies": [
+      "@vscode/vsce-sign",
+      "esbuild",
+      "keytar"
+    ]
+  },
   "description": "A suspendable, time-traveling functional language for JavaScript with algebraic effects",
   "author": "Albert Mojir",
   "license": "MIT",
@@ -128,9 +138,9 @@
     "lint:no-fix": "wireit",
     "typecheck": "wireit",
     "typecheck:watch": "tsc -p ./tsconfig.compile.json --noEmit --watch",
-    "check": "npm install && npm run lint && npm run typecheck && npm run build && npm run test",
-    "check:no-fix": "npm run lint:no-fix && npm run typecheck && npm run test",
-    "clean": "npm run clean-dvala && npm run clean-playground && rm -rf .wireit coverage test-results vscode-dvala/out .cache",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test",
+    "check:no-fix": "pnpm run lint:no-fix && pnpm run typecheck && pnpm run test",
+    "clean": "pnpm run clean-dvala && pnpm run clean-playground && rm -rf .wireit coverage test-results vscode-dvala/out .cache",
     "clean-dvala": "rm -rf dist build",
     "clean-playground": "rm -rf playground-builder/build playground-www/build",
     "build": "wireit",
@@ -141,8 +151,8 @@
     "build-book": "wireit",
     "build-vscode-ext": "wireit",
     "dvala": "node ./dist/cli/cli.js",
-    "benchmarks:pds": "npm run build-dvala && npx tsx benchmarks/pds-baseline.ts",
-    "benchmarks:run": "npm run build-dvala && npx tsx benchmarks/pipeline-baseline.ts",
+    "benchmarks:pds": "pnpm run build-dvala && npx tsx benchmarks/pds-baseline.ts",
+    "benchmarks:run": "pnpm run build-dvala && npx tsx benchmarks/pipeline-baseline.ts",
     "install-hooks": "git config core.hooksPath .githooks && echo 'git hooks installed: core.hooksPath=.githooks'",
     "uninstall-hooks": "git config --unset core.hooksPath && echo 'git hooks uninstalled: core.hooksPath unset'",
     "demo": "node scripts/demo-link.mjs",
@@ -154,7 +164,8 @@
     "test:e2e:headed": "npx playwright test --headed",
     "test:e2e:prod:headed": "E2E_BASE_URL=https://mojir.github.io/dvala npx playwright test --headed",
     "lcov": "open-cli ./coverage/index.html",
-    "mcp:inspect": "npx @modelcontextprotocol/inspector node ./dist/mcp-server/server.js"
+    "mcp:inspect": "npx @modelcontextprotocol/inspector node ./dist/mcp-server/server.js",
+    "knip": "knip"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -169,12 +180,14 @@
     "@vscode/vsce": "^3.7.1",
     "esbuild": "^0.27.4",
     "eslint": "^10.0.3",
+    "glob": "^13.0.6",
     "highlight.js": "^11.11.1",
+    "knip": "^6.7.0",
     "open-cli": "^8.0.0",
     "rolldown": "^1.0.0-rc.9",
     "serve": "^14.2.6",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.1",
+    "typescript-eslint": "^8.59.0",
     "vitest": "^4.1.0",
     "wireit": "^0.14.12",
     "zod": "^4.3.6"
@@ -213,7 +226,7 @@
       "output": []
     },
     "typecheck": {
-      "command": "npm install --prefix vscode-dvala && tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
+      "command": "pnpm install --dir vscode-dvala && tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
       "files": [
         "src/**/*.ts",
         "common/**/*.ts",
@@ -357,5 +370,6 @@
   },
   "dependencies": {
     "marked": "^17.0.4"
-  }
+  },
+  "packageManager": "pnpm@10.33.2+sha512.a90faf6feeab71ad6c6e57f94e0fe1a12f5dcc22cd754db40ae9593eb6a3e0b6b12e3540218bb37ae083404b1f2ce6db2a4121e979829b4aff94b99f49da1cf8"
 }

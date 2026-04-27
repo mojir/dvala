@@ -93,7 +93,7 @@ export function parseHandler(ctx: ParserContext, shallow = false): HandlerNode {
     let body: AstNode[]
     if (isReservedSymbolToken(ctx.tryPeek(), 'do')) {
       const doNode = parseDo(ctx)
-      body = doNode[1] as AstNode[]
+      body = doNode[1]
     } else {
       body = [ctx.parseExpression()]
     }
@@ -119,7 +119,7 @@ export function parseHandler(ctx: ParserContext, shallow = false): HandlerNode {
     let transformBody: AstNode[]
     if (isReservedSymbolToken(ctx.tryPeek(), 'do')) {
       const doNode = parseDo(ctx)
-      transformBody = doNode[1] as AstNode[]
+      transformBody = doNode[1]
     } else {
       transformBody = [ctx.parseExpression()]
     }

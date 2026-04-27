@@ -30,7 +30,7 @@ export function parseMacro(ctx: ParserContext): MacroNode {
   let bodyNodes: AstNode[]
   if (isReservedSymbolToken(ctx.peek(), 'do')) {
     const doNode = parseDo(ctx)
-    bodyNodes = doNode[1] as AstNode[]
+    bodyNodes = doNode[1]
   } else {
     bodyNodes = [ctx.parseExpression()]
   }

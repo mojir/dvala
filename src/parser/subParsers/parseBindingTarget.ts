@@ -155,7 +155,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
   // Rest
   if (isOperatorToken(firstToken, '...')) {
     if (noRest) {
-      throw new ParseError('Rest element not allowed', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
+      throw new ParseError('Rest element not allowed', ctx.resolveTokenDebugInfo(firstToken[2]))
     }
     ctx.advance()
     const symbol = toUserDefinedSymbol(parseSymbol(ctx), firstToken[2], ctx)
@@ -176,7 +176,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     let rest = false
     while (!isRBracketToken(token)) {
       if (rest) {
-        throw new ParseError('Rest argument must be last', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+        throw new ParseError('Rest argument must be last', ctx.resolveTokenDebugInfo(token[2]))
       }
       if (isOperatorToken(token, ',')) {
         elements.push(null)
@@ -223,7 +223,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     let rest = false
     while (!isRBraceToken(token)) {
       if (rest) {
-        throw new ParseError('Rest argument must be last', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+        throw new ParseError('Rest argument must be last', ctx.resolveTokenDebugInfo(token[2]))
       }
       if (isOperatorToken(token, '...')) {
         rest = true
@@ -249,18 +249,18 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
 
       if (isReservedSymbolToken(token, 'as')) {
         if (rest) {
-          throw new ParseError('Rest argument can not have alias', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+          throw new ParseError('Rest argument can not have alias', ctx.resolveTokenDebugInfo(token[2]))
         }
         ctx.advance()
-        const name = toUserDefinedSymbol(parseSymbol(ctx), token[2] as TokenDebugInfo, ctx)
-        assertUniqueKey(token[2] as TokenDebugInfo)
+        const name = toUserDefinedSymbol(parseSymbol(ctx), token[2], ctx)
+        assertUniqueKey(token[2])
         const symTarget = withSourceCodeInfo([bindingTargetTypes.symbol, [name, parseOptionalDefaulValue(ctx)], 0], token[2] as TokenDebugInfo, ctx)
         ctx.setNodeEnd(symTarget[2])
         elements.push({ key: keyName, keyNodeId, target: symTarget })
       } else if (isRBraceToken(token) || isOperatorToken(token, ',') || isOperatorToken(token, '=')) {
         // Without 'as' alias, the key token becomes the binding name (shorthand)
         const key = toUserDefinedSymbol(keySymbol, keyTokenDebug, ctx)
-        assertUniqueKey(token[2] as TokenDebugInfo)
+        assertUniqueKey(token[2])
         if (rest && isOperatorToken(ctx.tryPeek(), '=')) {
           throw new ParseError('Rest argument can not have default value', ctx.peekSourceCodeInfo())
         }
@@ -280,11 +280,11 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
         if (allowLiteralPatterns) {
           // In pattern matching context, allow literals, nested objects/arrays, and variable bindings after ':'
           if (!isLBraceToken(token) && !isLBracketToken(token) && !isLiteralToken(token)) {
-            throw new ParseError('Expected literal, object or array pattern', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+            throw new ParseError('Expected literal, object or array pattern', ctx.resolveTokenDebugInfo(token[2]))
           }
         } else {
           if (!isLBraceToken(token) && !isLBracketToken(token)) {
-            throw new ParseError('Expected object or array', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+            throw new ParseError('Expected object or array', ctx.resolveTokenDebugInfo(token[2]))
           }
         }
         // Use the key token for the duplicate-name error site — the `{`/`[`
@@ -309,7 +309,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
 
     const defaultValue = parseOptionalDefaulValue(ctx)
     if (requireDefaultValue && !defaultValue) {
-      throw new ParseError('Expected assignment', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+      throw new ParseError('Expected assignment', ctx.resolveTokenDebugInfo(token[2]))
     }
 
     // Patch in the default value (parsed after end position was recorded)

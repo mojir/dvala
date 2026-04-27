@@ -24,7 +24,7 @@ export const powerSetNormalExpressions: BuiltinNormalExpressions = {
     // Returns a PersistentVector of PersistentVectors (each subset), cast to Any
     evaluate: ([set], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
-      return PersistentVector.from(powerSet(set)) as unknown as Any
+      return PersistentVector.from(powerSet(set))
     },
     arity: toFixedArity(1),
   },

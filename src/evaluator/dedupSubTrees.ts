@@ -35,7 +35,7 @@ export function isPoolRef(value: unknown): value is PoolRef {
     && typeof value === 'object'
     && '__poolRef' in value
     && typeof (value as PoolRef).__poolRef === 'number'
-    && Object.keys(value as object).length === 1
+    && Object.keys(value).length === 1
 }
 
 // ---------------------------------------------------------------------------

@@ -1461,7 +1461,7 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       const fns: unknown[] = []
       let i = 0
       for (const item of value) {
-        if (!isDvalaFunction(item as Any)) {
+        if (!isDvalaFunction(item)) {
           throw new TypeError(`${frame.mode}: branch at index ${i} is not a function`, undefined)
         }
         fns.push(item)
@@ -1741,7 +1741,7 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
     }
     // Merge spread object into result by assoc-ing each entry
     let newResult = frame.result
-    for (const [k2, v] of value) newResult = newResult.assoc(k2, v as Any)
+    for (const [k2, v] of value) newResult = newResult.assoc(k2, v)
     // Advance to next entry
     const nextIndex = frame.index + 1
     if (nextIndex >= entries.length) {
@@ -4508,7 +4508,7 @@ function continueBindingSlots(
         const parentValue = slot.path.length > 0
           ? extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null
           : ctx.rootValue
-        record[slot.name] = extractObjectRest(parentValue, slot.restKeys, sourceCodeInfo) as unknown as Any
+        record[slot.name] = extractObjectRest(parentValue, slot.restKeys, sourceCodeInfo)
       } else if (slot.restIndex !== undefined) {
         // Array rest
         const parentValue = slot.path.length > 0
@@ -4701,7 +4701,7 @@ function continueMatchSlots(
         // Collect rest values
         if (slot.restKeys !== undefined) {
           // Object rest
-          record[slot.name!] = extractMatchObjectRest(ctx.rootValue, slot.path, slot.restKeys) as unknown as Any
+          record[slot.name!] = extractMatchObjectRest(ctx.rootValue, slot.path, slot.restKeys)
         } else if (slot.restIndex !== undefined) {
           // Array rest
           record[slot.name!] = extractMatchArrayRest(ctx.rootValue, slot.path, slot.restIndex)
@@ -4949,7 +4949,7 @@ function callMacro(
   // like first(), get(), etc. on the received arguments.
   return setupUserDefinedCall(
     macroFn as unknown as UserDefinedFunction,
-    PersistentVector.from(argNodes.map(arg => fromJS(arg as unknown as Any))) as unknown as Arr,
+    PersistentVector.from(argNodes.map(arg => fromJS(arg as unknown as Any))),
     env,
     sourceCodeInfo,
     cons<Frame>(macroEvalFrame, k),
@@ -4980,7 +4980,7 @@ function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack)
   // from the expanded code can find the macro call site for better error locations.
   const marker: MacroEvalFrame = { type: 'MacroEval', env: frame.env, sourceCodeInfo: frame.sourceCodeInfo, expanded: true }
   // Dispatch auto-converts plain arrays to PV; convert back to plain array for stepNode.
-  const astNode = (isPersistentVector(value) ? toJS(value as Any) : value) as AstNode
+  const astNode = (isPersistentVector(value) ? toJS(value) : value) as AstNode
   return { type: 'Eval', node: astNode, env: frame.env, k: cons<Frame>(marker, k) }
 }
 
@@ -5143,7 +5143,7 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
   // so nested structures remain plain-array AST nodes instead of PV.
   if (type === NodeTypes.Splice) {
     const sv = spliceValues[payload as number]!
-    return isPersistentVector(sv) ? toAny(toJS(sv as Any)) : sv
+    return isPersistentVector(sv) ? toAny(toJS(sv)) : sv
   }
 
   // InlinedData — already-resolved data from an outer template splice. Pass through as-is,
@@ -5188,7 +5188,7 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
   if (type === NodeTypes.Let) {
     const [target, valueNode] = payload as [AstNode, AstNode]
     const convertedValue = astToData(valueNode, spliceValues, renameMap)
-    const convertedTarget = convertBindingTarget(target as unknown[], spliceValues, renameMap)
+    const convertedTarget = convertBindingTarget(target, spliceValues, renameMap)
     return toAny([type, [convertedTarget, convertedValue], -1])
   }
 
@@ -5235,7 +5235,7 @@ function astToDataWithCodeTmplAwareness(
     if (!Array.isArray(item)) {
       if (typeof item === 'string' && renameMap) {
         const renamed = renameMap.get(item)
-        result.push((renamed ?? item) as Any)
+        result.push((renamed ?? item))
       } else {
         result.push(item as Any)
       }
@@ -5286,7 +5286,7 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
 
     // Splice values may be PV (macro args are now PV-converted AST nodes); convert to plain array
     if (isPersistentVector(resolvedName))
-      resolvedName = toJS(resolvedName as Any) as Any
+      resolvedName = toJS(resolvedName) as Any
 
     const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
 
@@ -5413,7 +5413,7 @@ function convertArrayPayload(items: unknown[], spliceValues: Any[], renameMap?: 
       // Rename plain string values in binding targets (e.g. rest param names)
       if (typeof item === 'string' && renameMap) {
         const renamed = renameMap.get(item)
-        result.push((renamed ?? item) as Any)
+        result.push((renamed ?? item))
       } else {
         result.push(item as Any)
       }
@@ -5426,11 +5426,11 @@ function convertArrayPayload(items: unknown[], spliceValues: Any[], renameMap?: 
       if (isSpliceSpread(spliceValue)) {
         for (const spreadItem of spliceValue as unknown as Iterable<Any>) {
           // Convert PV AST nodes to plain arrays
-          result.push(isPersistentVector(spreadItem) ? toAny(toJS(spreadItem as Any)) : spreadItem)
+          result.push(isPersistentVector(spreadItem) ? toAny(toJS(spreadItem)) : spreadItem)
         }
       } else {
         // Convert PV AST node to plain array
-        result.push(isPersistentVector(spliceValue) ? toAny(toJS(spliceValue as Any)) : spliceValue)
+        result.push(isPersistentVector(spliceValue) ? toAny(toJS(spliceValue)) : spliceValue)
       }
     } else if (item.length >= 2 && typeof item[0] === 'string') {
       // Regular AST node — recurse
@@ -6035,7 +6035,7 @@ async function runEffectLoop(
       message,
       terminal: true,
       // Convert meta PM to plain JS so it's directly accessible as a record
-      ...(meta.size > 0 ? { meta: toJS(meta as Any) } : {}),
+      ...(meta.size > 0 ? { meta: toJS(meta) } : {}),
     })
   }
 
@@ -6076,7 +6076,7 @@ async function runEffectLoop(
       }
     } catch (error) {
       if (isResumeFromSignal(error)) {
-        const { k: restoredK } = deserializeFromObject(error.continuation as Record<string, unknown>, deserializeOptions)
+        const { k: restoredK } = deserializeFromObject(error.continuation, deserializeOptions)
         if (error.boundaryPath.length > 0) {
           const restoredBoundaryPath = getParallelBoundaryPath(restoredK)
           if (!sameBoundaryPath(error.boundaryPath, restoredBoundaryPath)) {

@@ -283,7 +283,7 @@ function rebuildQuoteBodyCst(
   // `quote\ndo end end` because the indent before `do` is orphaned.
   const pass1FirstLeaf = rawBodyChildren[0] !== undefined && !isCstToken(rawBodyChildren[0])
     ? findFirstLeafToken(rawBodyChildren[0])
-    : (rawBodyChildren[0] as CstToken | undefined)
+    : (rawBodyChildren[0])
   if (pass1FirstLeaf && pass1FirstLeaf.leadingTrivia && pass1FirstLeaf.leadingTrivia.length > 0
     && subTree.children.length > 0) {
     const subFirst = subTree.children[0]!

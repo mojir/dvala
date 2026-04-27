@@ -32,6 +32,6 @@ export const doSpecialExpression: BuiltinSpecialExpression<Any, DoNode> = {
   arity: {},
   docs,
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    return getUndefinedSymbols(node[1] as AstNode[], contextStack.create({}), builtin)
+    return getUndefinedSymbols(node[1], contextStack.create({}), builtin)
   },
 }

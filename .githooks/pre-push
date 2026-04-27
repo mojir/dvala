@@ -8,7 +8,7 @@
 #   1. For each ref being pushed, find commits in (remote..local) that
 #      touch any source file under `src/`.
 #   2. If any such commit exists AND HEAD's short hash is not yet in
-#      benchmarks/pipeline-history.json, run `npm run benchmarks:run`,
+#      benchmarks/pipeline-history.json, run `pnpm run benchmarks:run`,
 #      abort the push, and tell the user to commit the bench data.
 #   3. If the data already exists for HEAD, push proceeds.
 #   4. If no source code was touched, push proceeds.
@@ -16,7 +16,7 @@
 # Override with `git push --no-verify` for non-perf-relevant force-pushes
 # or when bench output is unwanted.
 #
-# Installed by `npm run install-hooks` (sets core.hooksPath=.githooks).
+# Installed by `pnpm run install-hooks` (sets core.hooksPath=.githooks).
 
 set -euo pipefail
 
@@ -133,11 +133,11 @@ fi
 
 cat <<EOF
 ⏱  Source code touched in this push and no perf data exists for $short_sha.
-   Running \`npm run benchmarks:run\` (this can take ~30s)...
+   Running \`pnpm run benchmarks:run\` (this can take ~30s)...
 EOF
 
-if ! npm run benchmarks:run >/dev/null 2>&1; then
-  echo "❌ benchmark run failed — see \`npm run benchmarks:run\` output. Push aborted."
+if ! pnpm run benchmarks:run >/dev/null 2>&1; then
+  echo "❌ benchmark run failed — see \`pnpm run benchmarks:run\` output. Push aborted."
   exit 1
 fi
 

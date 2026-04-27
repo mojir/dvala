@@ -130,7 +130,7 @@ function flattenMatchTarget(
 
     case bindingTargetTypes.rest: {
       const name = target[1][0]
-      const defaultNode = target[1][1] as AstNode | undefined
+      const defaultNode = target[1][1]
       slots.push({
         kind: 'rest',
         name,
