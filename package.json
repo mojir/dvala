@@ -174,10 +174,7 @@
     "@playwright/test": "^1.58.2",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^25.5.0",
-    "@types/vscode": "^1.110.0",
     "@vitest/coverage-v8": "^4.1.0",
-    "@vscode/debugadapter": "^1.68.0",
-    "@vscode/debugprotocol": "^1.68.0",
     "@vscode/vsce": "^3.7.1",
     "esbuild": "^0.27.4",
     "eslint": "^10.0.3",
@@ -249,7 +246,7 @@
       "output": []
     },
     "typecheck": {
-      "command": "pnpm install --dir vscode-dvala && tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
+      "command": "tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
       "files": [
         "src/**/*.ts",
         "common/**/*.ts",

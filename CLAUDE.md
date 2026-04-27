@@ -44,6 +44,17 @@ Why: the rendered `.md` table is the at-a-glance regression signal during PR rev
 - Tests: `__tests__/` (integration), `src/**/*.test.ts` (unit), `e2e/` (playwright)
 - Playground: `playground-www/src/` — see Playground Architecture below
 
+## Workspace Layout
+
+The repo is a **pnpm workspace** ([pnpm-workspace.yaml](pnpm-workspace.yaml)). Members:
+
+- **`.` (root)** — the `@mojir/dvala` package (engine, CLI, MCP server, playground builder, playground-www).
+- **`vscode-dvala/`** — the VS Code extension (separate publish surface; built into a `.vsix` via `pnpm run build-vscode-ext`).
+
+Single root `pnpm-lock.yaml` covers both members. `pnpm install` at the root installs everything; never run install inside `vscode-dvala/` directly.
+
+**Versioning:** the release workflow ([release.yml](.github/workflows/release.yml)) bumps the root version, syncs it to `vscode-dvala/package.json`, and runs `pnpm install --lockfile-only` to refresh the lockfile's `importers.vscode-dvala` entry. Don't manually edit version fields.
+
 ## TS Coding Conventions
 
 - Do not shadow variables
