@@ -96,6 +96,8 @@ import { SyntaxOverlay } from './SyntaxOverlay'
 import { isMac, throttle } from './utils'
 import { createPlaygroundAPI } from './playgroundAPI'
 import { createEffectHandlers } from './createEffectHandlers'
+import { state } from './scripts/playgroundState'
+import type { ContextEntryKind, PendingEffect } from './scripts/playgroundState'
 
 const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
@@ -496,40 +498,18 @@ let moveParams: MoveParams | null = null
 let syntaxOverlay: SyntaxOverlay
 let autoCompleter: AutoCompleter | null = null
 let ignoreSelectionChange = false
-interface PendingEffect {
-  ctx: EffectContext
-  title: string
-  renderBody: (el: HTMLElement) => void
-  renderFooter: (el: HTMLElement) => void
-  onKeyDown?: (evt: KeyboardEvent) => boolean
-  resolve: () => void
-}
-let pendingEffects: PendingEffect[] = []
-let currentEffectIndex = 0
-let effectBatchScheduled = false
 // Refs valid while the unified effect panel is open
 let effectPanelBodyEl: HTMLElement | null = null
 let effectPanelFooterEl: HTMLElement | null = null
 let effectNavEl: HTMLElement | null = null
 let effectNavCounterEl: HTMLSpanElement | null = null
-let currentSnapshot: Snapshot | null = null
 let snapshotExecutionControlsVisible = false
-let activeContextEntryKind: ContextEntryKind = getState('current-context-entry-kind')
-let activeContextBindingName: string | null = getState('current-context-binding-name')
 let isSyncingContextDetail = false
 let contextDetailHasParseError = false
-const modalStack: {
-  panel: HTMLElement
-  label: string
-  icon?: string
-  snapshot: Snapshot | null
-  isEffect?: boolean
-}[] = []
 let overlayCloseAnimation: Animation | null = null
 
 // Toast hint for effect modals that can't be dismissed with Escape
 const EFFECT_MODAL_ESCAPE_HINT = 'Escape not supported here'
-type ContextEntryKind = 'binding' | 'effect-handler'
 type ContextUiSectionKey = 'bindings' | 'effectHandlers'
 type StoredContextEffectHandler = { pattern: string; handler: unknown }
 
@@ -1532,10 +1512,10 @@ function persistScratchFromCurrentState() {
 }
 
 function closeSnapshotViewIfNeeded() {
-  if (snapshotViewStack.length === 0) return
-  snapshotViewStack.splice(0)
+  if (state.snapshotViewStack.length === 0) return
+  state.snapshotViewStack.splice(0)
   activeSnapshotKey = null
-  currentSnapshot = null
+  state.currentSnapshot = null
   hideExecutionControlBar()
 }
 
@@ -1636,10 +1616,11 @@ function syncPlaygroundUrlState(tabId: SideTabId) {
   if (snapshotId) url.searchParams.set('snapshotId', snapshotId)
   else url.searchParams.delete('snapshotId')
 
-  if (tabId === 'context' && activeContextBindingName) url.searchParams.set('bindingName', activeContextBindingName)
+  if (tabId === 'context' && state.activeContextBindingName)
+    url.searchParams.set('bindingName', state.activeContextBindingName)
   else url.searchParams.delete('bindingName')
 
-  if (tabId === 'context' && activeContextEntryKind === 'effect-handler')
+  if (tabId === 'context' && state.activeContextEntryKind === 'effect-handler')
     url.searchParams.set('contextEntryKind', 'effect-handler')
   else url.searchParams.delete('contextEntryKind')
 
@@ -1870,7 +1851,7 @@ function syncCodePanelView(sideTab?: string) {
     if (redoBtn) redoBtn.style.display = ''
     if (fileCloseBtn && getState('current-file-id')) fileCloseBtn.style.display = ''
   } else if (tab === 'snapshots') {
-    if (activeSnapshotKey && snapshotViewStack.length === 0) {
+    if (activeSnapshotKey && state.snapshotViewStack.length === 0) {
       const activeSnapshot = getActiveSnapshotDetails()
       if (activeSnapshot) {
         replaceSnapshotView(activeSnapshot.snapshot, activeSnapshot.label)
@@ -1881,7 +1862,7 @@ function syncCodePanelView(sideTab?: string) {
       populateSideSnapshotsList()
     }
 
-    if (activeSnapshotKey && snapshotViewStack.length > 0) {
+    if (activeSnapshotKey && state.snapshotViewStack.length > 0) {
       snapshotView.style.display = 'flex'
       if (headerSnapshot) headerSnapshot.style.display = 'flex'
       if (closeBtn) closeBtn.style.display = ''
@@ -2622,7 +2603,7 @@ export function runSavedSnapshot(index: number) {
   const entries = getSavedSnapshots()
   const entry = entries[index]
   if (!entry) return
-  currentSnapshot = entry.snapshot
+  state.currentSnapshot = entry.snapshot
   void resumeSnapshot()
 }
 
@@ -2962,8 +2943,8 @@ function getParsedContext(): Record<string, unknown> {
 function persistActiveContextSelection(syncUrl = getCurrentSideTab() === 'context') {
   saveState(
     {
-      'current-context-binding-name': activeContextBindingName,
-      'current-context-entry-kind': activeContextEntryKind,
+      'current-context-binding-name': state.activeContextBindingName,
+      'current-context-entry-kind': state.activeContextEntryKind,
     },
     false,
   )
@@ -3162,12 +3143,12 @@ function contextEntryExists(context: Record<string, unknown>, kind: ContextEntry
 function ensureActiveContextSelection(context: Record<string, unknown>) {
   const bindingNames = getContextBindingNames(context)
   const effectHandlerNames = getContextEffectHandlerNames(context)
-  const preferredName = activeContextBindingName ?? getState('current-context-binding-name')
-  const preferredKind = activeContextEntryKind ?? getState('current-context-entry-kind')
+  const preferredName = state.activeContextBindingName ?? getState('current-context-binding-name')
+  const preferredKind = state.activeContextEntryKind ?? getState('current-context-entry-kind')
   if (preferredName && contextEntryExists(context, preferredKind, preferredName)) {
-    if (activeContextBindingName !== preferredName || activeContextEntryKind !== preferredKind) {
-      activeContextBindingName = preferredName
-      activeContextEntryKind = preferredKind
+    if (state.activeContextBindingName !== preferredName || state.activeContextEntryKind !== preferredKind) {
+      state.activeContextBindingName = preferredName
+      state.activeContextEntryKind = preferredKind
       persistActiveContextSelection()
     }
     return
@@ -3178,9 +3159,9 @@ function ensureActiveContextSelection(context: Record<string, unknown>) {
       ? { kind: 'binding' as const, name: bindingNames[0] ?? null }
       : { kind: 'effect-handler' as const, name: effectHandlerNames[0] ?? null }
 
-  if (activeContextBindingName !== nextSelection.name || activeContextEntryKind !== nextSelection.kind) {
-    activeContextBindingName = nextSelection.name
-    activeContextEntryKind = nextSelection.kind
+  if (state.activeContextBindingName !== nextSelection.name || state.activeContextEntryKind !== nextSelection.kind) {
+    state.activeContextBindingName = nextSelection.name
+    state.activeContextEntryKind = nextSelection.kind
     persistActiveContextSelection()
   }
 }
@@ -3229,7 +3210,11 @@ function hasContextEffectHandlerParseError(context: Record<string, unknown>, pat
 
   if (!handler) return false
 
-  if (activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern && contextDetailHasParseError)
+  if (
+    state.activeContextEntryKind === 'effect-handler' &&
+    state.activeContextBindingName === pattern &&
+    contextDetailHasParseError
+  )
     return true
 
   return !isStoredContextEffectHandlerValid(handler.handler)
@@ -3239,13 +3224,13 @@ function syncContextDetailEditor() {
   const context = getParsedContext()
   const bindings = getContextBindings(context)
   ensureActiveContextSelection(context)
-  const activeName = activeContextBindingName
+  const activeName = state.activeContextBindingName
   const activeHandler = activeName ? getContextEffectHandler(context, activeName) : null
 
   isSyncingContextDetail = true
   contextDetailHasParseError = false
   if (
-    activeContextEntryKind === 'binding' &&
+    state.activeContextEntryKind === 'binding' &&
     activeName &&
     Object.prototype.hasOwnProperty.call(bindings, activeName)
   ) {
@@ -3257,7 +3242,7 @@ function syncContextDetailEditor() {
     } else {
       elements.contextDetailTextArea.value = JSON.stringify(bindings[activeName], null, 2)
     }
-  } else if (activeContextEntryKind === 'effect-handler' && activeName && activeHandler) {
+  } else if (state.activeContextEntryKind === 'effect-handler' && activeName && activeHandler) {
     elements.contextDetailTextArea.readOnly = false
     const invalidDraft = getContextEffectHandlerInvalidDraft(context, activeName)
     if (invalidDraft !== null) {
@@ -3273,11 +3258,11 @@ function syncContextDetailEditor() {
   } else if (activeName) {
     const invalidBindingDraft = getContextBindingInvalidDraft(context, activeName)
     const invalidHandlerDraft = getContextEffectHandlerInvalidDraft(context, activeName)
-    if (activeContextEntryKind === 'binding' && invalidBindingDraft !== null) {
+    if (state.activeContextEntryKind === 'binding' && invalidBindingDraft !== null) {
       elements.contextDetailTextArea.readOnly = false
       elements.contextDetailTextArea.value = invalidBindingDraft
       contextDetailHasParseError = true
-    } else if (activeContextEntryKind === 'effect-handler' && invalidHandlerDraft !== null) {
+    } else if (state.activeContextEntryKind === 'effect-handler' && invalidHandlerDraft !== null) {
       elements.contextDetailTextArea.readOnly = false
       elements.contextDetailTextArea.value = invalidHandlerDraft
       contextDetailHasParseError = true
@@ -3313,7 +3298,7 @@ function renderContextEntryList() {
   effectHandlerNames.forEach((pattern, index) => {
     const isActive = isContextEffectHandlerActive(context, pattern)
     const hasParseError = hasContextEffectHandlerParseError(context, pattern)
-    const itemClass = `${activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
+    const itemClass = `${state.activeContextEntryKind === 'effect-handler' && state.activeContextBindingName === pattern ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
     const menuId = `context-effect-handler-menu-${index}`
     const encodedPattern = encodeURIComponent(pattern)
     const selectAction = `Playground.selectContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
@@ -3347,16 +3332,18 @@ function renderContextEntryList() {
 }
 
 function commitContextDetailEdits(): boolean {
-  if (isSyncingContextDetail || !activeContextBindingName) return true
+  if (isSyncingContextDetail || !state.activeContextBindingName) return true
 
-  if (activeContextEntryKind === 'effect-handler') {
+  if (state.activeContextEntryKind === 'effect-handler') {
     try {
       compileContextEffectHandlerSource(elements.contextDetailTextArea.value)
       const context = getParsedContext()
-      const handlers = getContextEffectHandlers(context).filter(({ pattern }) => pattern !== activeContextBindingName)
-      handlers.push({ pattern: activeContextBindingName, handler: elements.contextDetailTextArea.value })
+      const handlers = getContextEffectHandlers(context).filter(
+        ({ pattern }) => pattern !== state.activeContextBindingName,
+      )
+      handlers.push({ pattern: state.activeContextBindingName, handler: elements.contextDetailTextArea.value })
       context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
-      updateContextEffectHandlerUiEntry(context, activeContextBindingName, entry => {
+      updateContextEffectHandlerUiEntry(context, state.activeContextBindingName, entry => {
         delete entry.invalidHandler
         return entry
       })
@@ -3368,10 +3355,12 @@ function commitContextDetailEdits(): boolean {
       return true
     } catch (_error) {
       const context = getParsedContext()
-      const handlers = getContextEffectHandlers(context).filter(({ pattern }) => pattern !== activeContextBindingName)
+      const handlers = getContextEffectHandlers(context).filter(
+        ({ pattern }) => pattern !== state.activeContextBindingName,
+      )
       if (handlers.length > 0) context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
       else delete context[CONTEXT_EFFECT_HANDLERS_KEY]
-      updateContextEffectHandlerUiEntry(context, activeContextBindingName, entry => {
+      updateContextEffectHandlerUiEntry(context, state.activeContextBindingName, entry => {
         entry.invalidHandler = elements.contextDetailTextArea.value
         return entry
       })
@@ -3388,9 +3377,9 @@ function commitContextDetailEdits(): boolean {
     const parsedValue = JSON.parse(elements.contextDetailTextArea.value) as unknown
     const context = getParsedContext()
     const bindings = { ...getContextBindings(context) }
-    bindings[activeContextBindingName] = parsedValue
+    bindings[state.activeContextBindingName] = parsedValue
     context.bindings = bindings
-    updateContextBindingUiEntry(context, activeContextBindingName, entry => {
+    updateContextBindingUiEntry(context, state.activeContextBindingName, entry => {
       delete entry.invalidJson
       return entry
     })
@@ -3403,9 +3392,9 @@ function commitContextDetailEdits(): boolean {
   } catch (_error) {
     const context = getParsedContext()
     const bindings = { ...getContextBindings(context) }
-    delete bindings[activeContextBindingName]
+    delete bindings[state.activeContextBindingName]
     context.bindings = bindings
-    updateContextBindingUiEntry(context, activeContextBindingName, entry => {
+    updateContextBindingUiEntry(context, state.activeContextBindingName, entry => {
       entry.invalidJson = elements.contextDetailTextArea.value
       return entry
     })
@@ -3421,17 +3410,17 @@ function commitContextDetailEdits(): boolean {
 export function selectContextBinding(name: string) {
   // Early return only if we're already on this exact binding — check both name and kind to avoid
   // incorrectly short-circuiting when switching from an effect handler with the same name.
-  if (activeContextEntryKind === 'binding' && activeContextBindingName === name) {
+  if (state.activeContextEntryKind === 'binding' && state.activeContextBindingName === name) {
     focusContext()
     return
   }
 
-  // Commit edits using the *current* kind before switching — setting activeContextEntryKind
+  // Commit edits using the *current* kind before switching — setting state.activeContextEntryKind
   // beforehand would cause commitContextDetailEdits to misinterpret the active editor content.
   if (!contextDetailHasParseError && !commitContextDetailEdits()) return
 
-  activeContextEntryKind = 'binding'
-  activeContextBindingName = name
+  state.activeContextEntryKind = 'binding'
+  state.activeContextBindingName = name
   persistActiveContextSelection()
   syncContextDetailEditor()
   renderContextEntryList()
@@ -3442,17 +3431,17 @@ export function selectContextBinding(name: string) {
 
 export function selectContextEffectHandler(pattern: string) {
   // Early return only if we're already on this exact handler — check both pattern and kind.
-  if (activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern) {
+  if (state.activeContextEntryKind === 'effect-handler' && state.activeContextBindingName === pattern) {
     focusContext()
     return
   }
 
-  // Commit edits using the *current* kind before switching — setting activeContextEntryKind
+  // Commit edits using the *current* kind before switching — setting state.activeContextEntryKind
   // beforehand would cause commitContextDetailEdits to misinterpret the active editor content.
   if (!contextDetailHasParseError && !commitContextDetailEdits()) return
 
-  activeContextEntryKind = 'effect-handler'
-  activeContextBindingName = pattern
+  state.activeContextEntryKind = 'effect-handler'
+  state.activeContextBindingName = pattern
   persistActiveContextSelection()
   syncContextDetailEditor()
   renderContextEntryList()
@@ -3494,7 +3483,7 @@ export function removeContextBinding(name: string) {
   if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
   else delete context[CONTEXT_UI_STATE_KEY]
 
-  if (activeContextBindingName === name) activeContextBindingName = null
+  if (state.activeContextBindingName === name) state.activeContextBindingName = null
 
   updateContextState(formatContextJson(context), true)
 }
@@ -3516,14 +3505,14 @@ export function removeContextEffectHandler(pattern: string) {
   if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
   else delete context[CONTEXT_UI_STATE_KEY]
 
-  if (activeContextBindingName === pattern) activeContextBindingName = null
+  if (state.activeContextBindingName === pattern) state.activeContextBindingName = null
 
   updateContextState(formatContextJson(context), true)
 }
 
 export function renameContextBinding(name: string) {
   const hasInvalidActiveBinding = contextDetailHasParseError
-  if (activeContextBindingName !== name && !hasInvalidActiveBinding && !commitContextDetailEdits()) return
+  if (state.activeContextBindingName !== name && !hasInvalidActiveBinding && !commitContextDetailEdits()) return
 
   showNameInputModal('Rename binding', name, newName => {
     if (newName === name) return
@@ -3555,7 +3544,7 @@ export function renameContextBinding(name: string) {
     if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
     else delete context[CONTEXT_UI_STATE_KEY]
 
-    if (activeContextBindingName === name) activeContextBindingName = newName
+    if (state.activeContextBindingName === name) state.activeContextBindingName = newName
 
     updateContextState(formatContextJson(context), true)
     focusContext()
@@ -3564,7 +3553,7 @@ export function renameContextBinding(name: string) {
 
 export function renameContextEffectHandler(pattern: string) {
   const hasInvalidActiveBinding = contextDetailHasParseError
-  if (activeContextBindingName !== pattern && !hasInvalidActiveBinding && !commitContextDetailEdits()) return
+  if (state.activeContextBindingName !== pattern && !hasInvalidActiveBinding && !commitContextDetailEdits()) return
 
   showNameInputModal(
     'Rename effect handler',
@@ -3601,7 +3590,7 @@ export function renameContextEffectHandler(pattern: string) {
       if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
       else delete context[CONTEXT_UI_STATE_KEY]
 
-      if (activeContextBindingName === pattern) activeContextBindingName = newPattern
+      if (state.activeContextBindingName === pattern) state.activeContextBindingName = newPattern
 
       updateContextState(formatContextJson(context), true)
       focusContext()
@@ -3627,8 +3616,8 @@ export function promptAddContextBinding() {
     bindings[name] = {}
     context.bindings = bindings
     if (!hasInvalidActiveBinding) {
-      activeContextEntryKind = 'binding'
-      activeContextBindingName = name
+      state.activeContextEntryKind = 'binding'
+      state.activeContextBindingName = name
     }
 
     updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveBinding)
@@ -3659,8 +3648,8 @@ export function promptAddContextEffectHandler() {
       context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
 
       if (!hasInvalidActiveEntry) {
-        activeContextEntryKind = 'effect-handler'
-        activeContextBindingName = pattern
+        state.activeContextEntryKind = 'effect-handler'
+        state.activeContextBindingName = pattern
       }
 
       updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveEntry)
@@ -3691,8 +3680,8 @@ export function addContextEntry() {
     const bindings: UnknownRecord = Object.assign({}, context.bindings)
     bindings[name] = parsedValue
     context.bindings = bindings
-    activeContextEntryKind = 'binding'
-    activeContextBindingName = name
+    state.activeContextEntryKind = 'binding'
+    state.activeContextBindingName = name
     updateContextState(formatContextJson(context), true)
 
     closeAddContextMenu()
@@ -4035,8 +4024,8 @@ window.onload = async function () {
 
   window.addEventListener('keydown', evt => {
     // Unified effect panel: delegate key events to the current effect's handler first
-    if (pendingEffects.length > 0) {
-      const entry = pendingEffects[currentEffectIndex]
+    if (state.pendingEffects.length > 0) {
+      const entry = state.pendingEffects[state.currentEffectIndex]
       if (entry?.onKeyDown?.(evt)) return
     }
 
@@ -4093,12 +4082,12 @@ window.onload = async function () {
       closeAddContextMenu()
       if (resolveInfoModal) {
         dismissInfoModal()
-      } else if (pendingEffects.length > 0) {
+      } else if (state.pendingEffects.length > 0) {
         // Effect panel has no close button — Escape can't dismiss it
         closeEffectHandlerMenus()
         showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
-      } else if (modalStack.length > 0) {
-        if (modalStack.length > 1) {
+      } else if (state.modalStack.length > 0) {
+        if (state.modalStack.length > 1) {
           slideBackSnapshotModal()
         } else {
           closeAllModals()
@@ -4110,7 +4099,7 @@ window.onload = async function () {
       evt.preventDefault()
       closeInfoModal()
     }
-    if (evt.key === 'Enter' && currentSnapshot) {
+    if (evt.key === 'Enter' && state.currentSnapshot) {
       evt.preventDefault()
       void resumeSnapshot()
     }
@@ -4233,12 +4222,12 @@ function getDataFromUrl() {
   const urlBindingName = urlParams.get('bindingName')
   const urlContextEntryKind = urlParams.get('contextEntryKind') === 'effect-handler' ? 'effect-handler' : 'binding'
   if (activeView === 'context') {
-    activeContextBindingName = urlBindingName ?? getState('current-context-binding-name')
-    activeContextEntryKind = urlBindingName ? urlContextEntryKind : getState('current-context-entry-kind')
+    state.activeContextBindingName = urlBindingName ?? getState('current-context-binding-name')
+    state.activeContextEntryKind = urlBindingName ? urlContextEntryKind : getState('current-context-entry-kind')
     saveState(
       {
-        'current-context-binding-name': activeContextBindingName,
-        'current-context-entry-kind': activeContextEntryKind,
+        'current-context-binding-name': state.activeContextBindingName,
+        'current-context-entry-kind': state.activeContextEntryKind,
       },
       false,
     )
@@ -4385,7 +4374,7 @@ function getDataFromUrl() {
 }
 
 function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
-  if (pendingEffects.length > 0) {
+  if (state.pendingEffects.length > 0) {
     // An effect panel is open - prevent the code textarea from handling these keys
     if (['Escape', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(evt.key)) {
       evt.preventDefault()
@@ -5248,7 +5237,7 @@ function buildBreadcrumbs(panel: HTMLElement) {
   container.innerHTML = ''
   container.style.display = ''
 
-  modalStack.forEach((entry, i) => {
+  state.modalStack.forEach((entry, i) => {
     if (i > 0) {
       const sep = document.createElement('span')
       sep.className = 'breadcrumb-sep'
@@ -5256,7 +5245,7 @@ function buildBreadcrumbs(panel: HTMLElement) {
       container.appendChild(sep)
     }
 
-    const isLast = i === modalStack.length - 1
+    const isLast = i === state.modalStack.length - 1
     const span = document.createElement('span')
     if (entry.icon) {
       span.innerHTML = `<span class="breadcrumb-icon">${entry.icon}</span> ${entry.label}`
@@ -5274,13 +5263,13 @@ function buildBreadcrumbs(panel: HTMLElement) {
 
 function popToLevel(targetIndex: number) {
   // Remove all panels above target immediately (no animation), keep the top one for animation
-  while (modalStack.length > targetIndex + 2) {
-    const { panel } = modalStack.pop()!
+  while (state.modalStack.length > targetIndex + 2) {
+    const { panel } = state.modalStack.pop()!
     panel.remove()
   }
   // Animate the top panel out to the right
-  if (modalStack.length > targetIndex + 1) {
-    const { panel } = modalStack.pop()!
+  if (state.modalStack.length > targetIndex + 1) {
+    const { panel } = state.modalStack.pop()!
     panel.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], {
       duration: 250,
       easing: 'ease',
@@ -5288,7 +5277,7 @@ function popToLevel(targetIndex: number) {
       panel.remove()
     }
   }
-  currentSnapshot = modalStack[modalStack.length - 1]?.snapshot ?? null
+  state.currentSnapshot = state.modalStack[state.modalStack.length - 1]?.snapshot ?? null
   // Update control bar based on current snapshot state
   if (elements.executionControlBar.style.display === 'flex') {
     updateExecutionControlBarForSnapshot()
@@ -5494,7 +5483,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
       })
       playIcon.addEventListener('click', evt => {
         evt.stopPropagation()
-        currentSnapshot = cpSnapshot
+        state.currentSnapshot = cpSnapshot
         void resumeSnapshot()
       })
       card.appendChild(playIcon)
@@ -5559,7 +5548,7 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
   })
 
   q('save-btn').addEventListener('click', () => {
-    const snap = currentSnapshot
+    const snap = state.currentSnapshot
     if (!snap) return
     pushSavePanel((name: string) => {
       const existing = getSavedSnapshots().filter(s => s.snapshot.id !== snap.id)
@@ -5577,8 +5566,8 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
     downloadSnapshot()
   })
   q('copy-json-btn').addEventListener('click', () => {
-    if (currentSnapshot) {
-      void navigator.clipboard.writeText(JSON.stringify(currentSnapshot, null, 2))
+    if (state.currentSnapshot) {
+      void navigator.clipboard.writeText(JSON.stringify(state.currentSnapshot, null, 2))
       showToast('JSON copied to clipboard')
     }
   })
@@ -5589,8 +5578,8 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
 
 /** Push a panel onto the modal stack. Sub-panels slide in from the right. */
 function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEffect?: boolean) {
-  if (snapshot !== undefined) currentSnapshot = snapshot
-  const isRoot = modalStack.length === 0
+  if (snapshot !== undefined) state.currentSnapshot = snapshot
+  const isRoot = state.modalStack.length === 0
 
   // If a close animation is in progress, cancel it and do instant swap
   const isReplacement = isRoot && overlayCloseAnimation !== null
@@ -5607,12 +5596,18 @@ function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEff
     panel.style.left = '0'
     panel.style.right = '0'
     panel.style.minHeight = `${elements.snapshotPanelContainer.offsetHeight}px`
-    panel.style.zIndex = String(modalStack.length + 1)
+    panel.style.zIndex = String(state.modalStack.length + 1)
   }
 
   panel.style.display = 'flex'
   elements.snapshotPanelContainer.appendChild(panel)
-  modalStack.push({ panel, label, icon: panel.dataset.icon, snapshot: snapshot ?? currentSnapshot ?? null, isEffect })
+  state.modalStack.push({
+    panel,
+    label,
+    icon: panel.dataset.icon,
+    snapshot: snapshot ?? state.currentSnapshot ?? null,
+    isEffect,
+  })
   buildBreadcrumbs(panel)
 
   if (!isRoot) {
@@ -5796,20 +5791,13 @@ let resolveSnapshotModal: (() => void) | null = null
 
 // ─── Inline snapshot view (in code panel) ────────────────────────────────────
 
-interface SnapshotBreadcrumb {
-  label: string
-  snapshot: Snapshot
-}
-
-const snapshotViewStack: SnapshotBreadcrumb[] = []
-
 function renderSnapshotBreadcrumbs() {
   const container = document.getElementById('dvala-header-snapshot')
   if (!container) return
 
-  container.innerHTML = snapshotViewStack
+  container.innerHTML = state.snapshotViewStack
     .map((bc, i) => {
-      const isLast = i === snapshotViewStack.length - 1
+      const isLast = i === state.snapshotViewStack.length - 1
       if (isLast) {
         return `<span class="snapshot-breadcrumbs__current">${escapeHtml(bc.label)}</span>`
       }
@@ -5819,12 +5807,12 @@ function renderSnapshotBreadcrumbs() {
 }
 
 function syncSnapshotExecutionControls() {
-  if (!snapshotExecutionControlsVisible || !currentSnapshot) {
+  if (!snapshotExecutionControlsVisible || !state.currentSnapshot) {
     hideExecutionControlBar()
     return
   }
 
-  if (currentSnapshot.terminal === true) {
+  if (state.currentSnapshot.terminal === true) {
     showExecutionControlBarTerminal()
   } else {
     showExecutionControlBarPaused()
@@ -5837,7 +5825,7 @@ function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = snapsho
   if (!content || !footerHost) return
 
   // Set current snapshot for the control bar and other functions
-  currentSnapshot = snapshot
+  state.currentSnapshot = snapshot
   snapshotExecutionControlsVisible = showExecutionControls
 
   // Render the snapshot panel content (reuse existing panel builder)
@@ -5858,15 +5846,15 @@ function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = snapsho
 }
 
 function replaceSnapshotView(snapshot: Snapshot, label = 'Snapshot') {
-  snapshotViewStack.splice(0)
-  snapshotViewStack.push({ label, snapshot })
+  state.snapshotViewStack.splice(0)
+  state.snapshotViewStack.push({ label, snapshot })
   showSnapshotInPanel(snapshot, false)
 }
 
 export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
   // Push onto the breadcrumb stack and render in the code panel
-  const label = snapshotViewStack.length === 0 ? 'Snapshot' : `Checkpoint ${snapshotViewStack.length}`
-  snapshotViewStack.push({ label, snapshot })
+  const label = state.snapshotViewStack.length === 0 ? 'Snapshot' : `Checkpoint ${state.snapshotViewStack.length}`
+  state.snapshotViewStack.push({ label, snapshot })
   showSnapshotInPanel(snapshot, true)
 
   return new Promise<void>(resolve => {
@@ -5876,19 +5864,19 @@ export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
 
 export function navigateSnapshotBreadcrumb(index: number) {
   // Pop back to the given breadcrumb level
-  while (snapshotViewStack.length > index + 1) {
-    snapshotViewStack.pop()
+  while (state.snapshotViewStack.length > index + 1) {
+    state.snapshotViewStack.pop()
   }
-  const bc = snapshotViewStack[index]
+  const bc = state.snapshotViewStack[index]
   if (bc) showSnapshotInPanel(bc.snapshot)
 }
 
 export function closeSnapshotView() {
   // Clear stack and active snapshot
-  snapshotViewStack.splice(0)
+  state.snapshotViewStack.splice(0)
   activeSnapshotKey = null
   populateSideSnapshotsList()
-  currentSnapshot = null
+  state.currentSnapshot = null
   snapshotExecutionControlsVisible = false
   resolveSnapshotModal?.()
   resolveSnapshotModal = null
@@ -5900,13 +5888,13 @@ export function closeSnapshotView() {
 }
 
 export function slideBackSnapshotModal() {
-  if (modalStack.length <= 1) return
+  if (state.modalStack.length <= 1) return
   popModal()
 }
 
 function restoreInlineSnapshotContext() {
-  currentSnapshot = snapshotViewStack[snapshotViewStack.length - 1]?.snapshot ?? null
-  if (getCurrentSideTab() === 'snapshots' && currentSnapshot && snapshotExecutionControlsVisible) {
+  state.currentSnapshot = state.snapshotViewStack[state.snapshotViewStack.length - 1]?.snapshot ?? null
+  if (getCurrentSideTab() === 'snapshots' && state.currentSnapshot && snapshotExecutionControlsVisible) {
     syncSnapshotExecutionControls()
     return
   }
@@ -5915,12 +5903,12 @@ function restoreInlineSnapshotContext() {
 
 /** Pop the current panel. Last panel fades out; sub-panels slide out. */
 export function popModal() {
-  if (modalStack.length === 0) return
+  if (state.modalStack.length === 0) return
 
-  if (modalStack.length === 1) {
+  if (state.modalStack.length === 1) {
     // Clear state immediately so follow-up effects see a clean stack
-    const dyingPanel = modalStack[0]!.panel
-    modalStack.length = 0
+    const dyingPanel = state.modalStack[0]!.panel
+    state.modalStack.length = 0
     resolveSnapshotModal?.()
     resolveSnapshotModal = null
     restoreInlineSnapshotContext()
@@ -5941,14 +5929,14 @@ export function popModal() {
   }
 
   // Slide out to the right
-  const { panel } = modalStack.pop()!
+  const { panel } = state.modalStack.pop()!
   panel.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], {
     duration: 250,
     easing: 'ease',
   }).onfinish = () => {
     panel.remove()
   }
-  currentSnapshot = modalStack[modalStack.length - 1]?.snapshot ?? null
+  state.currentSnapshot = state.modalStack[state.modalStack.length - 1]?.snapshot ?? null
   // Update control bar based on current snapshot state
   if (elements.executionControlBar.style.display === 'flex') {
     updateExecutionControlBarForSnapshot()
@@ -5960,7 +5948,7 @@ export function closeAllModals() {
   elements.snapshotPanelContainer.style.opacity = ''
   elements.snapshotPanelContainer.style.maxWidth = ''
   elements.snapshotPanelContainer.innerHTML = ''
-  modalStack.length = 0
+  state.modalStack.length = 0
   restoreInlineSnapshotContext()
   resolveSnapshotModal?.()
   resolveSnapshotModal = null
@@ -6374,7 +6362,7 @@ export function closeImportResultModal() {
 }
 
 // Set by checkpoint effect handler; cleared on resolve. Used by saveCheckpoint / downloadCheckpoint / shareCheckpoint.
-let currentCheckpointSnapshot: Snapshot | null = null
+// (state.currentCheckpointSnapshot now lives in scripts/playgroundState.ts)
 
 const MAX_TERMINAL_SNAPSHOTS = 99
 
@@ -6482,8 +6470,8 @@ function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
 }
 
 export function saveCheckpoint() {
-  if (!currentCheckpointSnapshot) return
-  const snapshot = currentCheckpointSnapshot
+  if (!state.currentCheckpointSnapshot) return
+  const snapshot = state.currentCheckpointSnapshot
   promptSnapshotName(name => {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
     existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
@@ -6496,16 +6484,16 @@ export function saveCheckpoint() {
 }
 
 export function downloadCheckpoint() {
-  if (!currentCheckpointSnapshot) return
+  if (!state.currentCheckpointSnapshot) return
   void saveFile(
-    JSON.stringify(currentCheckpointSnapshot, null, 2),
-    `checkpoint-${currentCheckpointSnapshot.index}.json`,
+    JSON.stringify(state.currentCheckpointSnapshot, null, 2),
+    `checkpoint-${state.currentCheckpointSnapshot.index}.json`,
   )
 }
 
 export function shareCheckpoint() {
-  if (!currentCheckpointSnapshot) return
-  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(currentCheckpointSnapshot)}`
+  if (!state.currentCheckpointSnapshot) return
+  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(state.currentCheckpointSnapshot)}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Checkpoint is too large to share as a URL. Use Download instead.', { severity: 'error' })
     return
@@ -6522,8 +6510,8 @@ export function shareCheckpoint() {
 }
 
 export function shareSnapshot() {
-  if (!currentSnapshot) return
-  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(currentSnapshot)}`
+  if (!state.currentSnapshot) return
+  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(state.currentSnapshot)}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Snapshot is too large to share as a URL. Use Download instead.', { severity: 'error' })
     return
@@ -6540,14 +6528,14 @@ export function shareSnapshot() {
 }
 
 export function downloadSnapshot() {
-  if (!currentSnapshot) return
-  void saveFile(JSON.stringify(currentSnapshot, null, 2), `snapshot-${currentSnapshot.index}.json`)
+  if (!state.currentSnapshot) return
+  void saveFile(JSON.stringify(state.currentSnapshot, null, 2), `snapshot-${state.currentSnapshot.index}.json`)
   showToast('Snapshot downloaded')
 }
 
 export function saveSnapshot() {
-  if (!currentSnapshot) return
-  const snapshot = currentSnapshot
+  if (!state.currentSnapshot) return
+  const snapshot = state.currentSnapshot
   promptSnapshotName(name => {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
     existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
@@ -6560,8 +6548,8 @@ export function saveSnapshot() {
 }
 
 export async function resumeSnapshot() {
-  if (!currentSnapshot) return
-  const snapshot = currentSnapshot
+  if (!state.currentSnapshot) return
+  const snapshot = state.currentSnapshot
   closeAllModals()
   addOutputSeparator()
   appendOutput(`Resume snapshot ${snapshot.index}:`, 'comment')
@@ -6683,39 +6671,40 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
 // ---------------------------------------------------------------------------
 
 function registerPendingEffect(entry: PendingEffect): void {
-  pendingEffects.push(entry)
+  state.pendingEffects.push(entry)
 
   entry.ctx.signal.addEventListener(
     'abort',
     () => {
-      const idx = pendingEffects.indexOf(entry)
+      const idx = state.pendingEffects.indexOf(entry)
       if (idx === -1) return // already resolved
       entry.ctx.suspend()
       entry.resolve()
-      pendingEffects.splice(idx, 1)
-      if (currentEffectIndex >= pendingEffects.length) currentEffectIndex = Math.max(0, pendingEffects.length - 1)
-      if (pendingEffects.length === 0) closeEffectPanel()
+      state.pendingEffects.splice(idx, 1)
+      if (state.currentEffectIndex >= state.pendingEffects.length)
+        state.currentEffectIndex = Math.max(0, state.pendingEffects.length - 1)
+      if (state.pendingEffects.length === 0) closeEffectPanel()
       else renderCurrentEffect()
     },
     { once: true },
   )
 
-  if (!effectBatchScheduled) {
-    effectBatchScheduled = true
+  if (!state.effectBatchScheduled) {
+    state.effectBatchScheduled = true
     void Promise.resolve().then(openEffectPanel)
   }
 }
 
 function openEffectPanel(): void {
-  effectBatchScheduled = false
-  currentEffectIndex = 0
+  state.effectBatchScheduled = false
+  state.currentEffectIndex = 0
 
   // Discard any stale snapshot panels so the effect panel always opens as root
-  if (modalStack.length > 0) {
+  if (state.modalStack.length > 0) {
     elements.snapshotPanelContainer.innerHTML = ''
     elements.snapshotPanelContainer.style.maxWidth = ''
-    modalStack.length = 0
-    currentSnapshot = null
+    state.modalStack.length = 0
+    state.currentSnapshot = null
     resolveSnapshotModal?.()
     resolveSnapshotModal = null
   }
@@ -6751,7 +6740,7 @@ function openEffectPanel(): void {
   effectNavCounterEl = counterEl
 
   renderCurrentEffect()
-  const firstTitle = pendingEffects[0]?.title ?? 'Effect'
+  const firstTitle = state.pendingEffects[0]?.title ?? 'Effect'
   pushPanel(panel, firstTitle, undefined, true)
   showExecutionControlBar()
 }
@@ -6761,31 +6750,31 @@ function closeEffectPanel(): void {
   effectPanelFooterEl = null
   effectNavEl = null
   effectNavCounterEl = null
-  pendingEffects = []
-  currentEffectIndex = 0
+  state.pendingEffects = []
+  state.currentEffectIndex = 0
   closeAllModals()
   focusDvalaCode()
 }
 
 function renderCurrentEffect(): void {
-  const entry = pendingEffects[currentEffectIndex]
+  const entry = state.pendingEffects[state.currentEffectIndex]
   if (!entry || !effectPanelBodyEl || !effectPanelFooterEl) return
 
-  // Update breadcrumb label in modalStack to match current effect's title
-  const stackEntry = modalStack[modalStack.length - 1]
+  // Update breadcrumb label in state.modalStack to match current effect's title
+  const stackEntry = state.modalStack[state.modalStack.length - 1]
   if (stackEntry) stackEntry.label = entry.title
 
   // Nav
-  const total = pendingEffects.length
+  const total = state.pendingEffects.length
   if (effectNavEl) {
     effectNavEl.style.display = total > 1 ? 'flex' : 'none'
-    if (effectNavCounterEl) effectNavCounterEl.textContent = `${currentEffectIndex + 1} / ${total}`
+    if (effectNavCounterEl) effectNavCounterEl.textContent = `${state.currentEffectIndex + 1} / ${total}`
     const prev = effectNavEl.firstElementChild as HTMLElement
     const next = effectNavEl.lastElementChild as HTMLElement
-    prev.style.opacity = currentEffectIndex > 0 ? '1' : '0.3'
-    prev.style.pointerEvents = currentEffectIndex > 0 ? 'auto' : 'none'
-    next.style.opacity = currentEffectIndex < total - 1 ? '1' : '0.3'
-    next.style.pointerEvents = currentEffectIndex < total - 1 ? 'auto' : 'none'
+    prev.style.opacity = state.currentEffectIndex > 0 ? '1' : '0.3'
+    prev.style.pointerEvents = state.currentEffectIndex > 0 ? 'auto' : 'none'
+    next.style.opacity = state.currentEffectIndex < total - 1 ? '1' : '0.3'
+    next.style.pointerEvents = state.currentEffectIndex < total - 1 ? 'auto' : 'none'
   }
 
   effectPanelBodyEl.innerHTML = ''
@@ -6796,18 +6785,19 @@ function renderCurrentEffect(): void {
 }
 
 export function navigateEffect(delta: number): void {
-  const next = currentEffectIndex + delta
-  if (next < 0 || next >= pendingEffects.length) return
-  currentEffectIndex = next
+  const next = state.currentEffectIndex + delta
+  if (next < 0 || next >= state.pendingEffects.length) return
+  state.currentEffectIndex = next
   renderCurrentEffect()
 }
 
 function resolveCurrentEffect(): void {
-  const entry = pendingEffects[currentEffectIndex]
+  const entry = state.pendingEffects[state.currentEffectIndex]
   if (!entry) return
-  pendingEffects.splice(currentEffectIndex, 1)
-  if (currentEffectIndex >= pendingEffects.length) currentEffectIndex = Math.max(0, pendingEffects.length - 1)
-  if (pendingEffects.length === 0) closeEffectPanel()
+  state.pendingEffects.splice(state.currentEffectIndex, 1)
+  if (state.currentEffectIndex >= state.pendingEffects.length)
+    state.currentEffectIndex = Math.max(0, state.pendingEffects.length - 1)
+  if (state.pendingEffects.length === 0) closeEffectPanel()
   else renderCurrentEffect()
 }
 
@@ -6816,10 +6806,10 @@ function resolveCurrentEffect(): void {
 // ---------------------------------------------------------------------------
 
 function makeCheckpointEffect(ctx: EffectContext, snapshot: Snapshot, resolve: () => void): PendingEffect {
-  currentCheckpointSnapshot = snapshot
+  state.currentCheckpointSnapshot = snapshot
 
   const submit = () => {
-    currentCheckpointSnapshot = null
+    state.currentCheckpointSnapshot = null
     ctx.next()
     resolve()
     resolveCurrentEffect()
@@ -6895,7 +6885,7 @@ function makeFailHelper(ctx: EffectContext, resolve: () => void) {
   const rerender = () => {
     if (!effectPanelFooterEl) return
     effectPanelFooterEl.innerHTML = ''
-    const current = pendingEffects[pendingEffects.length - 1]
+    const current = state.pendingEffects[state.pendingEffects.length - 1]
     current?.renderFooter(effectPanelFooterEl)
     if (active) void Promise.resolve().then(() => inputEl?.focus())
   }
@@ -7471,23 +7461,23 @@ export function toggleEffectHandlerMenu(id: string) {
 
 export function suspendCurrentEffectHandler() {
   closeEffectHandlerMenus()
-  for (const entry of [...pendingEffects]) {
+  for (const entry of [...state.pendingEffects]) {
     entry.ctx.suspend()
     entry.resolve()
   }
-  pendingEffects = []
-  currentEffectIndex = 0
+  state.pendingEffects = []
+  state.currentEffectIndex = 0
   closeEffectPanel()
 }
 
 export function haltCurrentEffectHandler() {
   closeEffectHandlerMenus()
-  for (const entry of [...pendingEffects]) {
+  for (const entry of [...state.pendingEffects]) {
     entry.ctx.halt()
     entry.resolve()
   }
-  pendingEffects = []
-  currentEffectIndex = 0
+  state.pendingEffects = []
+  state.currentEffectIndex = 0
   closeEffectPanel()
 }
 
@@ -7503,7 +7493,8 @@ export function showExecutionControlBar() {
 export function showExecutionControlBarPaused() {
   elements.executionControlBar.style.display = 'flex'
   // Show "Paused" for root snapshot, "Paused #N" when navigating to checkpoints
-  const label = modalStack.length > 1 && currentSnapshot ? `Paused #${currentSnapshot.index}` : 'Paused'
+  const label =
+    state.modalStack.length > 1 && state.currentSnapshot ? `Paused #${state.currentSnapshot.index}` : 'Paused'
   elements.executionStatus.textContent = label
   elements.executionStatus.className = 'execution-status execution-status--paused'
   elements.execPlayBtn.style.display = 'flex'
@@ -7526,7 +7517,7 @@ export function showExecutionControlBarTerminal() {
 
 /** Update control bar based on current snapshot state */
 export function updateExecutionControlBarForSnapshot() {
-  if (currentSnapshot?.terminal === true) {
+  if (state.currentSnapshot?.terminal === true) {
     showExecutionControlBarTerminal()
   } else {
     showExecutionControlBarPaused()
@@ -7549,7 +7540,7 @@ function initExecutionControlBar() {
   elements.execStopBtn.addEventListener('click', () => {
     // In running mode, halt the current effect
     // In paused mode, just close the modal (abandon the suspended execution)
-    if (pendingEffects.length > 0) {
+    if (state.pendingEffects.length > 0) {
       haltCurrentEffectHandler()
     } else {
       closeAllModals()
@@ -7872,17 +7863,17 @@ function updateCSS() {
   const context = isContextTab ? getParsedContext() : null
   const contextBindings = context ? getContextBindings(context) : null
   const contextEffectHandler =
-    activeContextBindingName && context ? getContextEffectHandler(context, activeContextBindingName) : null
+    state.activeContextBindingName && context ? getContextEffectHandler(context, state.activeContextBindingName) : null
   const contextTitle =
-    activeContextBindingName &&
+    state.activeContextBindingName &&
     context &&
-    ((activeContextEntryKind === 'binding' &&
-      ((contextBindings && Object.prototype.hasOwnProperty.call(contextBindings, activeContextBindingName)) ||
-        getContextBindingInvalidDraft(context, activeContextBindingName) !== null)) ||
-      (activeContextEntryKind === 'effect-handler' &&
+    ((state.activeContextEntryKind === 'binding' &&
+      ((contextBindings && Object.prototype.hasOwnProperty.call(contextBindings, state.activeContextBindingName)) ||
+        getContextBindingInvalidDraft(context, state.activeContextBindingName) !== null)) ||
+      (state.activeContextEntryKind === 'effect-handler' &&
         (contextEffectHandler !== null ||
-          getContextEffectHandlerInvalidDraft(context, activeContextBindingName) !== null)))
-      ? activeContextBindingName
+          getContextEffectHandlerInvalidDraft(context, state.activeContextBindingName) !== null)))
+      ? state.activeContextBindingName
       : ''
   const currentFileTitle = currentFile ? currentFile.name : SCRATCH_TITLE
   const showCodePendingIndicator =
