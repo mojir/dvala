@@ -1,6 +1,12 @@
 // File explorer, scratch buffer, and auto-save.
 
 import { tokenizeSource } from '../../../src/tooling'
+import type { EditorMenuItem } from '../editorMenu'
+import { renderEditorMenu } from '../editorMenu'
+import {
+  clearAllFileHistories,
+  deleteFileHistory,
+} from '../fileHistoryStorage'
 import {
   DVALA_FILE_SUFFIX,
   clearAllFiles,
@@ -10,10 +16,6 @@ import {
   stripSavedFileSuffix,
 } from '../fileStorage'
 import type { SavedFile } from '../fileStorage'
-import {
-  clearAllFileHistories,
-  deleteFileHistory,
-} from '../fileHistoryStorage'
 import * as router from '../router'
 import {
   ICONS,
@@ -32,8 +34,6 @@ import {
   updateCSS,
 } from '../scripts'
 import { getState, saveState } from '../state'
-import type { EditorMenuItem } from '../editorMenu'
-import { renderEditorMenu } from '../editorMenu'
 import { elements } from './elements'
 import {
   createModalPanel,
@@ -746,7 +746,6 @@ export function showNameInputModal(
     input.select()
   }, 0)
 }
-
 
 // ─── Auto-save ────────────────────────────────────────────────────────────────
 
