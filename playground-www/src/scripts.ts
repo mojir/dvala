@@ -1211,17 +1211,17 @@ function getSavedSnapshotLabel(entry: SavedSnapshot, index: number): string {
 }
 
 function getActiveSnapshotDetails(): { label: string; snapshot: Snapshot } | null {
-  if (!activeSnapshotKey) return null
+  if (!state.activeSnapshotKey) return null
 
-  if (activeSnapshotKey.startsWith('terminal:')) {
-    const index = Number(activeSnapshotKey.slice('terminal:'.length))
+  if (state.activeSnapshotKey.startsWith('terminal:')) {
+    const index = Number(state.activeSnapshotKey.slice('terminal:'.length))
     const entry = getTerminalSnapshots()[index]
     if (!entry) return null
     return { label: getTerminalSnapshotLabel(index), snapshot: entry.snapshot }
   }
 
-  if (activeSnapshotKey.startsWith('saved:')) {
-    const index = Number(activeSnapshotKey.slice('saved:'.length))
+  if (state.activeSnapshotKey.startsWith('saved:')) {
+    const index = Number(state.activeSnapshotKey.slice('saved:'.length))
     const entry = getSavedSnapshots()[index]
     if (!entry) return null
     return { label: getSavedSnapshotLabel(entry, index), snapshot: entry.snapshot }
@@ -1306,8 +1306,6 @@ const SIDE_SNAPSHOTS_VISIBLE = 5
 const SCRATCH_TITLE = '<scratch>'
 let sideSnapshotsShowAll = false
 // Track which snapshot is actively viewed in the code panel: 'terminal:0', 'saved:2', or null
-let activeSnapshotKey: string | null = null
-
 type SideTabId = 'files' | 'snapshots' | 'context'
 
 function isScratchActive(): boolean {
@@ -1340,7 +1338,7 @@ function persistScratchFromCurrentState() {
 function closeSnapshotViewIfNeeded() {
   if (state.snapshotViewStack.length === 0) return
   state.snapshotViewStack.splice(0)
-  activeSnapshotKey = null
+  state.activeSnapshotKey = null
   state.currentSnapshot = null
   hideExecutionControlBar()
 }
@@ -1416,15 +1414,15 @@ function normalizeSideTab(tabId: string | null | undefined): SideTabId {
 }
 
 function getActiveSnapshotUrlId(): string | null {
-  if (!activeSnapshotKey) return null
+  if (!state.activeSnapshotKey) return null
 
-  if (activeSnapshotKey.startsWith('terminal:')) {
-    const index = Number(activeSnapshotKey.slice('terminal:'.length))
+  if (state.activeSnapshotKey.startsWith('terminal:')) {
+    const index = Number(state.activeSnapshotKey.slice('terminal:'.length))
     return getTerminalSnapshots()[index]?.snapshot.id ?? null
   }
 
-  if (activeSnapshotKey.startsWith('saved:')) {
-    const index = Number(activeSnapshotKey.slice('saved:'.length))
+  if (state.activeSnapshotKey.startsWith('saved:')) {
+    const index = Number(state.activeSnapshotKey.slice('saved:'.length))
     return getSavedSnapshots()[index]?.snapshot.id ?? null
   }
 
@@ -1487,7 +1485,7 @@ function populateSideSnapshotsList() {
           : entry.resultType === 'halted'
             ? 'var(--color-primary)'
             : 'var(--color-success)'
-      const activeClass = activeSnapshotKey === `terminal:${i}` ? ' explorer-item--active' : ''
+      const activeClass = state.activeSnapshotKey === `terminal:${i}` ? ' explorer-item--active' : ''
       const menuId = `side-terminal-menu-${i}`
       const menuItems: EditorMenuItem[] = [
         {
@@ -1538,7 +1536,7 @@ function populateSideSnapshotsList() {
     savedEntries.forEach((entry, i) => {
       const label = entry.name || `Snapshot ${i + 1}`
       const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
-      const savedActiveClass = activeSnapshotKey === `saved:${i}` ? ' explorer-item--active' : ''
+      const savedActiveClass = state.activeSnapshotKey === `saved:${i}` ? ' explorer-item--active' : ''
       const isSuspended = entry.snapshot.terminal !== true
       const menuId = `side-saved-menu-${i}`
       const menuItems: EditorMenuItem[] = [
@@ -1677,18 +1675,18 @@ function syncCodePanelView(sideTab?: string) {
     if (redoBtn) redoBtn.style.display = ''
     if (fileCloseBtn && getState('current-file-id')) fileCloseBtn.style.display = ''
   } else if (tab === 'snapshots') {
-    if (activeSnapshotKey && state.snapshotViewStack.length === 0) {
+    if (state.activeSnapshotKey && state.snapshotViewStack.length === 0) {
       const activeSnapshot = getActiveSnapshotDetails()
       if (activeSnapshot) {
         replaceSnapshotView(activeSnapshot.snapshot, activeSnapshot.label)
         updateCSS()
         return
       }
-      activeSnapshotKey = null
+      state.activeSnapshotKey = null
       populateSideSnapshotsList()
     }
 
-    if (activeSnapshotKey && state.snapshotViewStack.length > 0) {
+    if (state.activeSnapshotKey && state.snapshotViewStack.length > 0) {
       snapshotView.style.display = 'flex'
       if (headerSnapshot) headerSnapshot.style.display = 'flex'
       if (closeBtn) closeBtn.style.display = ''
@@ -2407,7 +2405,7 @@ export function openSavedSnapshot(index: number) {
   const entries = getSavedSnapshots()
   const entry = entries[index]
   if (!entry) return
-  activeSnapshotKey = `saved:${index}`
+  state.activeSnapshotKey = `saved:${index}`
   populateSideSnapshotsList()
   showSideTab('snapshots')
   replaceSnapshotView(entry.snapshot, getSavedSnapshotLabel(entry, index))
@@ -2418,7 +2416,7 @@ export function openTerminalSnapshot(index: number) {
   const entries = getTerminalSnapshots()
   const entry = entries[index]
   if (!entry) return
-  activeSnapshotKey = `terminal:${index}`
+  state.activeSnapshotKey = `terminal:${index}`
   populateSideSnapshotsList()
   showSideTab('snapshots')
   replaceSnapshotView(entry.snapshot, getTerminalSnapshotLabel(index))
@@ -4083,10 +4081,10 @@ function getDataFromUrl() {
   if (activeView === 'snapshots' && urlSnapshotId && getActiveSnapshotUrlId() !== urlSnapshotId) {
     const savedIndex = getSavedSnapshots().findIndex(entry => entry.snapshot.id === urlSnapshotId)
     if (savedIndex >= 0) {
-      activeSnapshotKey = `saved:${savedIndex}`
+      state.activeSnapshotKey = `saved:${savedIndex}`
     } else {
       const terminalIndex = getTerminalSnapshots().findIndex(entry => entry.snapshot.id === urlSnapshotId)
-      activeSnapshotKey = terminalIndex >= 0 ? `terminal:${terminalIndex}` : null
+      state.activeSnapshotKey = terminalIndex >= 0 ? `terminal:${terminalIndex}` : null
     }
   }
 
@@ -5440,7 +5438,7 @@ export function navigateSnapshotBreadcrumb(index: number) {
 export function closeSnapshotView() {
   // Clear stack and active snapshot
   state.snapshotViewStack.splice(0)
-  activeSnapshotKey = null
+  state.activeSnapshotKey = null
   populateSideSnapshotsList()
   state.currentSnapshot = null
   state.snapshotExecutionControlsVisible = false
@@ -5821,17 +5819,17 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
   setTerminalSnapshots(entries)
 
   // The new entry was prepended, so any active terminal:N selection now points to index N+1.
-  // Update activeSnapshotKey to keep the same snapshot selected rather than drifting to the new one.
+  // Update state.activeSnapshotKey to keep the same snapshot selected rather than drifting to the new one.
   // If the shifted index falls outside the visible range (and showAll is off), deselect so the
   // main panel doesn't show a snapshot that has no corresponding highlight in the sidebar.
-  if (activeSnapshotKey?.startsWith('terminal:')) {
-    const prevIndex = parseInt(activeSnapshotKey.slice('terminal:'.length), 10)
+  if (state.activeSnapshotKey?.startsWith('terminal:')) {
+    const prevIndex = parseInt(state.activeSnapshotKey.slice('terminal:'.length), 10)
     const nextIndex = prevIndex + 1
     const visibleLimit = sideSnapshotsShowAll ? entries.length : SIDE_SNAPSHOTS_VISIBLE
     if (nextIndex < entries.length && nextIndex < visibleLimit) {
-      activeSnapshotKey = `terminal:${nextIndex}`
+      state.activeSnapshotKey = `terminal:${nextIndex}`
     } else {
-      activeSnapshotKey = null
+      state.activeSnapshotKey = null
       syncCodePanelView()
     }
   }
