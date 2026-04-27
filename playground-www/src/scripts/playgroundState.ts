@@ -44,6 +44,7 @@ export const state: {
   resolveSnapshotModal: (() => void) | null
   snapshotExecutionControlsVisible: boolean
   activeSnapshotKey: string | null
+  sideSnapshotsShowAll: boolean
 } = {
   pendingEffects: [],
   currentEffectIndex: 0,
@@ -59,4 +60,5 @@ export const state: {
   resolveSnapshotModal: null,
   snapshotExecutionControlsVisible: false,
   activeSnapshotKey: null,
+  sideSnapshotsShowAll: false,
 }
