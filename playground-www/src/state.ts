@@ -1,4 +1,5 @@
 import type { UnknownRecord } from '../../src/interface'
+import { reactive } from './lib/reactive'
 
 export const defaultState = {
   'sidebar-width': 350 as number,
@@ -45,9 +46,12 @@ type State = {
 type Key = keyof typeof defaultState
 type StorageKey = `playground-${Key}`
 
-const state: State = {
+// Reactive-wrapped state singleton: reads inside an `effect` block automatically
+// track which keys they depend on, and writes (via setState/saveState/etc.) trigger
+// the dependent effects to re-run. Existing get/set call sites work unchanged.
+const state: State = reactive({
   ...defaultState,
-}
+}) as State
 
 ;(Object.keys(defaultState) as Key[]).forEach((key: Key) => {
   const value = localStorage.getItem(getStorageKey(key))
