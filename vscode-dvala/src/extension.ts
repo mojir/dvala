@@ -9,9 +9,11 @@ import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '../../src/evaluator/effectTypes'
 import { WorkspaceIndex } from '../../src/languageService/WorkspaceIndex'
 import type { SymbolDef } from '../../src/languageService/types'
+import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
+import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
+import type { Diagnostic as SharedDiagnostic, Range as SharedRange } from '../../src/shared/types'
 import { formatSource } from '../../src/tooling'
 import type { TypecheckResult } from '../../src/typechecker/typecheck'
-import { typeToString, expandTypeForDisplay, sanitizeDisplayType, simplify } from '../../src/typechecker'
 import type { SourceMapPosition } from '../../src/parser/types'
 
 // Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
@@ -174,72 +176,53 @@ let debounceTimer: ReturnType<typeof setTimeout> | undefined
 // Type system: cached typecheck result per document URI
 const typecheckCache = new Map<string, TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> }>()
 
+/** VS Code positions are 0-based; the shared modules use 1-based positions. */
+function vscodeRangeToShared(range: vscode.Range): SharedRange {
+  return {
+    start: { line: range.start.line + 1, column: range.start.character + 1 },
+    end: { line: range.end.line + 1, column: range.end.character + 1 },
+  }
+}
+
+/** Convert a shared (1-based) diagnostic into VS Code's 0-based shape. */
+function toVsDiagnostic(diag: SharedDiagnostic): vscode.Diagnostic {
+  const range = new vscode.Range(
+    Math.max(0, diag.range.start.line - 1),
+    Math.max(0, diag.range.start.column - 1),
+    Math.max(0, diag.range.end.line - 1),
+    Math.max(0, diag.range.end.column - 1),
+  )
+  const severity =
+    diag.severity === 'error'
+      ? vscode.DiagnosticSeverity.Error
+      : diag.severity === 'warning'
+        ? vscode.DiagnosticSeverity.Warning
+        : vscode.DiagnosticSeverity.Information
+  const vdiag = new vscode.Diagnostic(range, diag.message, severity)
+  vdiag.source = diag.source
+  return vdiag
+}
+
 function getHoverTypeAtPosition(
   cached: TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> },
   position: vscode.Position,
   preferredRange?: vscode.Range,
 ): string | undefined {
-  const line = position.line
-  const col = position.character
-  let bestPreferredType: import('../../src/typechecker/types').Type | undefined
-  let bestPreferredStartDistance = Infinity
-  let bestPreferredSize = Infinity
-  let bestType: import('../../src/typechecker/types').Type | undefined
-  let bestSize = Infinity
-
-  for (const [nodeId, type] of cached.typeMap) {
-    if (type.tag === 'Unknown') continue
-
-    const sourcePos = cached.sourceMap?.get(nodeId)
-    if (!sourcePos) continue
-
-    // Parser/typechecker source maps are already 0-based, matching VS Code positions.
-    const [startLine, startCol] = sourcePos.start
-    const [endLine, endCol] = sourcePos.end
-    if (line < startLine || line > endLine) continue
-
-    const inRange = (line > startLine || col >= startCol) && (line < endLine || col <= endCol)
-    if (!inRange) continue
-
-    const size = (endLine - startLine) * 1000 + (endCol - startCol)
-    if (preferredRange) {
-      const lineDistance = Math.abs(startLine - preferredRange.start.line)
-      const colDistance =
-        lineDistance === 0
-          ? Math.abs(startCol - preferredRange.start.character)
-          : Math.abs(startCol - preferredRange.start.character) + lineDistance * 1000
-
-      if (
-        colDistance < bestPreferredStartDistance ||
-        (colDistance === bestPreferredStartDistance && size < bestPreferredSize)
-      ) {
-        bestPreferredStartDistance = colDistance
-        bestPreferredSize = size
-        bestPreferredType = type
-      }
-    }
-
-    if (size < bestSize) {
-      bestSize = size
-      bestType = type
-    }
-  }
-
-  const selectedType = bestPreferredType ?? bestType
-  return selectedType ? formatHoverType(selectedType) : undefined
-}
-
-function formatHoverType(type: import('../../src/typechecker/types').Type): string {
-  return typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(type))))
+  const type = findTypeAtPosition(
+    cached.typeMap,
+    cached.sourceMap,
+    { line: position.line + 1, column: position.character + 1 },
+    preferredRange ? vscodeRangeToShared(preferredRange) : undefined,
+  )
+  return type ? formatHoverType(type) : undefined
 }
 
 function getHoverTypeAtDefinition(
   cached: TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> },
   def: SymbolDef,
 ): string | undefined {
-  const start = new vscode.Position(def.location.line - 1, def.location.column - 1)
-  const end = new vscode.Position(def.location.line - 1, def.location.column - 1 + def.name.length)
-  return getHoverTypeAtPosition(cached, start, new vscode.Range(start, end))
+  const type = findTypeAtDefinition(cached.typeMap, cached.sourceMap, def)
+  return type ? formatHoverType(type) : undefined
 }
 
 function getDiagnosticCollection(): vscode.DiagnosticCollection {
@@ -760,29 +743,11 @@ export function activate(context: vscode.ExtensionContext): void {
   /** Push diagnostics (parse errors + unresolved symbols) to VS Code. */
   function refreshDiagnostics(document: vscode.TextDocument): void {
     const { parseErrors, unresolvedRefs } = workspaceIndex.getDiagnostics(document.uri.fsPath)
-    const diagnostics: vscode.Diagnostic[] = []
-
-    for (const err of parseErrors) {
-      if (err.sourceCodeInfo) {
-        const line = Math.max(0, err.sourceCodeInfo.position.line - 1)
-        const col = Math.max(0, err.sourceCodeInfo.position.column - 1)
-        const range = new vscode.Range(line, col, line, col + 1)
-        const diag = new vscode.Diagnostic(range, err.message, vscode.DiagnosticSeverity.Error)
-        diag.source = 'dvala'
-        diagnostics.push(diag)
-      }
-    }
-
-    for (const ref of unresolvedRefs) {
-      const line = Math.max(0, ref.location.line - 1)
-      const col = Math.max(0, ref.location.column - 1)
-      const range = new vscode.Range(line, col, line, col + ref.name.length)
-      const diag = new vscode.Diagnostic(range, `Undefined symbol '${ref.name}'`, vscode.DiagnosticSeverity.Error)
-      diag.source = 'dvala'
-      diagnostics.push(diag)
-    }
-
-    lsDiagnostics.set(document.uri, diagnostics)
+    const sharedDiagnostics: SharedDiagnostic[] = [
+      ...buildParseDiagnostics(parseErrors),
+      ...buildSymbolDiagnostics(unresolvedRefs),
+    ]
+    lsDiagnostics.set(document.uri, sharedDiagnostics.map(toVsDiagnostic))
 
     // Run type checker (non-blocking — parse errors don't prevent type checking)
     if (parseErrors.length === 0) {
@@ -792,25 +757,7 @@ export function activate(context: vscode.ExtensionContext): void {
         })
         // Cache the result for hover (with source map for position lookups)
         typecheckCache.set(document.uri.toString(), result)
-
-        const typeDiags: vscode.Diagnostic[] = []
-        for (const diag of result.diagnostics) {
-          if (diag.sourceCodeInfo) {
-            const line = Math.max(0, diag.sourceCodeInfo.position.line - 1)
-            const col = Math.max(0, diag.sourceCodeInfo.position.column - 1)
-            const range = new vscode.Range(line, col, line, col + 1)
-            const vdiag = new vscode.Diagnostic(
-              range,
-              diag.message,
-              // Type errors are intentionally shown as warnings (not errors) because
-              // they're non-blocking — the code still runs. Same philosophy as TypeScript.
-              diag.severity === 'error' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Information,
-            )
-            vdiag.source = 'dvala-types'
-            typeDiags.push(vdiag)
-          }
-        }
-        typeDiagnostics.set(document.uri, typeDiags)
+        typeDiagnostics.set(document.uri, buildTypeDiagnostics(result).map(toVsDiagnostic))
       } catch {
         // Type checking failed — clear diagnostics, don't crash the extension
         typeDiagnostics.set(document.uri, [])
