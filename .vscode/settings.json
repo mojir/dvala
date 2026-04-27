@@ -5,6 +5,10 @@
   // Disable the default formatter, use eslint instead
   "prettier.enable": false,
   "editor.formatOnSave": false,
+  "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
 
   // Auto fix
   "editor.codeActionsOnSave": {
@@ -42,8 +46,7 @@
     "gql",
     "graphql"
   ],
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "js/ts.experimental.useTsgo": true,
   "chat.tools.terminal.autoApprove": {
     "git mv": true,
     "npx tsx": true,
@@ -51,5 +54,6 @@
     "awk": true,
     "git stash": true,
     "uniq": true
-  }
+  },
+  "typescript.native-preview.tsdk": "node_modules/@typescript/native-preview"
 }
