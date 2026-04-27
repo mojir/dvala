@@ -27,6 +27,7 @@
     "scripts/**/*.{ts,mjs}"
   ],
   "ignoreDependencies": [
-    "@vscode/vsce"
+    "@vscode/vsce",
+    "serve"
   ]
 }
