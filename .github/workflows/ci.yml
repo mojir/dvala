@@ -4,9 +4,10 @@ on:
   pull_request:
     branches: [main]
     # Skip CI on PRs that only touch docs/design/markdown — they can't break
-    # tests by definition. NOTE: if any of these jobs are configured as
-    # required checks in branch protection, doc-only PRs will be unable to
-    # merge until protection rules are updated to allow them.
+    # tests by definition. The companion `ci-docs-stub.yml` workflow runs on
+    # the inverse path set with the same job names so branch protection's
+    # required checks (`static`, `test (0)`, `test (1)`, `e2e`) still report
+    # a status on docs-only PRs.
     paths-ignore:
       - 'design/**'
       - 'docs/**'

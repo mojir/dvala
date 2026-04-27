@@ -1,0 +1,50 @@
+name: CI
+
+# Companion workflow to ci.yml. The real workflow uses `paths-ignore` to
+# skip on docs-only PRs (no point running tests when only markdown
+# changed), but branch protection's required checks still expect to see
+# `static`, `test (0)`, `test (1)`, and `e2e` report a status. Without
+# this stub, docs-only PRs would be unable to merge.
+#
+# This workflow triggers on the inverse path set and emits the same job
+# names with no-op bodies — branch protection sees green check marks
+# either way. Workflow name matches `ci.yml` so the GitHub Actions UI
+# groups runs together.
+#
+# Mixed PRs (touching both docs and code) trigger BOTH workflows, which
+# means each required check name appears twice. That's harmless — the
+# stub always passes, so the real CI's status is the load-bearing one —
+# but the UI is slightly noisier on those PRs. Acceptable tradeoff for
+# keeping the stub trigger logic dead-simple.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'design/**'
+      - 'docs/**'
+      - '**/*.md'
+
+concurrency:
+  group: ci-docs-stub-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "docs-only PR — static checks skipped"
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fold: ['0', '1']
+      fail-fast: false
+    steps:
+      - run: echo "docs-only PR — tests skipped (fold=${{ matrix.fold }})"
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "docs-only PR — e2e skipped"
