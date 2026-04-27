@@ -138,7 +138,7 @@
     "lint:no-fix": "wireit",
     "typecheck": "wireit",
     "typecheck:watch": "tsc -p ./tsconfig.compile.json --noEmit --watch",
-    "check": "pnpm install && pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test",
     "check:no-fix": "pnpm run lint:no-fix && pnpm run typecheck && pnpm run test",
     "clean": "pnpm run clean-dvala && pnpm run clean-playground && rm -rf .wireit coverage test-results vscode-dvala/out .cache",
     "clean-dvala": "rm -rf dist build",
