@@ -16,17 +16,9 @@ describe('combinations', () => {
         ['a', 'c'],
         ['b', 'c'],
       ])
-      expect(runNth('nth:combinations(["a", "b", "c"], 3)')).toEqual([
-        ['a', 'b', 'c'],
-      ])
-      expect(runNth('nth:combinations(["a", "b", "c"], 1)')).toEqual([
-        ['a'],
-        ['b'],
-        ['c'],
-      ])
-      expect(runNth('nth:combinations(["a", "b", "c"], 0)')).toEqual([
-        [],
-      ])
+      expect(runNth('nth:combinations(["a", "b", "c"], 3)')).toEqual([['a', 'b', 'c']])
+      expect(runNth('nth:combinations(["a", "b", "c"], 1)')).toEqual([['a'], ['b'], ['c']])
+      expect(runNth('nth:combinations(["a", "b", "c"], 0)')).toEqual([[]])
     })
   })
   describe('nth:countCombinations', () => {

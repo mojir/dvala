@@ -11,7 +11,7 @@ export function parseSymbol(ctx: ParserContext): SymbolNode | BuiltinSymbolNode 
   if (!isSymbolToken(token)) {
     throw new ParseError(`Expected symbol token, got ${token[0]}`, ctx.resolveTokenDebugInfo(token[2]))
   }
-  if (token[1][0] === '\'') {
+  if (token[1][0] === "'") {
     const node = stringToSymbolNode(stringFromQuotedSymbol(token[1]), token[2], ctx)
     ctx.setNodeEnd(node[2])
     ctx.builder?.endNode()

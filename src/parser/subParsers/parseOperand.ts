@@ -2,11 +2,26 @@ import type { SpecialExpressionName } from '../../builtin'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
-import type { AstNode, BuiltinSymbolNode, NormalExpressionNodeExpression, SpecialSymbolNode, StringNode } from '../types'
+import type {
+  AstNode,
+  BuiltinSymbolNode,
+  NormalExpressionNodeExpression,
+  SpecialSymbolNode,
+  StringNode,
+} from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
 import { isNumberReservedSymbol } from '../../tokenizer/reservedNames'
 import type { StringToken, TemplateStringToken, TokenDebugInfo, TokenType } from '../../tokenizer/token'
-import { isLBraceToken, isLBracketToken, isLParenToken, isOperatorToken, isRBracketToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
+import {
+  isLBraceToken,
+  isLBracketToken,
+  isLParenToken,
+  isOperatorToken,
+  isRBracketToken,
+  isRParenToken,
+  isReservedSymbolToken,
+  isSymbolToken,
+} from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseRegexpShorthand } from './parseRegexpShorthand'
@@ -52,7 +67,12 @@ export function parseOperand(ctx: ParserContext): AstNode {
   let operand: AstNode = parseOperandPart(ctx)
   let token = ctx.tryPeek()
 
-  while (isOperatorToken(token, '.') || isOperatorToken(token, '?.') || isLBracketToken(token) || isLParenToken(token)) {
+  while (
+    isOperatorToken(token, '.') ||
+    isOperatorToken(token, '?.') ||
+    isLBracketToken(token) ||
+    isLParenToken(token)
+  ) {
     if (token[1] === '.' || token[1] === '?.') {
       const safe = token[1] === '?.'
       ctx.builder?.startNodeAt(checkpoint!, 'PropertyAccess')
@@ -83,8 +103,8 @@ export function parseOperand(ctx: ParserContext): AstNode {
       ctx.advance()
       ctx.builder?.endNode()
       token = ctx.tryPeek()
-    // Defensive: function call chaining is always preceded by accessor or direct call
-    /* v8 ignore next 3 */
+      // Defensive: function call chaining is always preceded by accessor or direct call
+      /* v8 ignore next 3 */
     } else if (isLParenToken(token)) {
       ctx.builder?.startNodeAt(checkpoint!, 'Call')
       operand = parseFunctionCall(ctx, operand)
@@ -124,11 +144,15 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       const nextType = nextToken?.[0]
       // Unary minus triggers on: -x, -3, -PI, -0xFF, -[...], -{...}
       // NOT on -(  which is a prefix function call: -(a, b)
-      const isUnary = nextType === 'Number' || nextType === 'Symbol'
-        || (nextType === 'ReservedSymbol' && isNumberReservedSymbol(nextToken![1]))
-        || nextType === 'LBracket' || nextType === 'LBrace'
-        || nextType === 'string' || nextType === 'EffectName'
-        || nextType === 'BasePrefixedNumber'
+      const isUnary =
+        nextType === 'Number' ||
+        nextType === 'Symbol' ||
+        (nextType === 'ReservedSymbol' && isNumberReservedSymbol(nextToken![1])) ||
+        nextType === 'LBracket' ||
+        nextType === 'LBrace' ||
+        nextType === 'string' ||
+        nextType === 'EffectName' ||
+        nextType === 'BasePrefixedNumber'
       if (isUnary) {
         ctx.builder?.startNode('PrefixOp')
         ctx.advance()
@@ -141,7 +165,11 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         const operand = parseOperand(ctx)
         const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Num, 0, 0], token[2], ctx)
         const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx)
-        const node = withSourceCodeInfo([NodeTypes.Call, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
+        const node = withSourceCodeInfo(
+          [NodeTypes.Call, [minusSymbol, [zeroNode, operand]], 0],
+          token[2],
+          ctx,
+        ) as NormalExpressionNodeExpression
         ctx.setNodeEnd(node[2])
         ctx.builder?.endNode()
         return node
@@ -158,19 +186,31 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     if (operatorName === '!') {
       const nextToken = ctx.peekAhead(1)
       const nextType = nextToken?.[0]
-      const isUnary = nextType === 'Number' || nextType === 'BasePrefixedNumber'
-        || nextType === 'Symbol' || nextType === 'ReservedSymbol'
-        || nextType === 'string' || nextType === 'TemplateString'
-        || nextType === 'LBracket' || nextType === 'LBrace' || nextType === 'LParen'
-        || nextType === 'Atom' || nextType === 'EffectName'
-        || nextType === 'RegexpShorthand' || nextType === 'MacroPrefix'
-        || (nextType === 'Operator' && (nextToken![1] === '-' || nextToken![1] === '!'))
+      const isUnary =
+        nextType === 'Number' ||
+        nextType === 'BasePrefixedNumber' ||
+        nextType === 'Symbol' ||
+        nextType === 'ReservedSymbol' ||
+        nextType === 'string' ||
+        nextType === 'TemplateString' ||
+        nextType === 'LBracket' ||
+        nextType === 'LBrace' ||
+        nextType === 'LParen' ||
+        nextType === 'Atom' ||
+        nextType === 'EffectName' ||
+        nextType === 'RegexpShorthand' ||
+        nextType === 'MacroPrefix' ||
+        (nextType === 'Operator' && (nextToken![1] === '-' || nextToken![1] === '!'))
       if (isUnary) {
         ctx.builder?.startNode('PrefixOp')
         ctx.advance()
         const operand = parseOperand(ctx)
         const bangSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '!', 0], token[2], ctx)
-        const node = withSourceCodeInfo([NodeTypes.Call, [bangSymbol, [operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
+        const node = withSourceCodeInfo(
+          [NodeTypes.Call, [bangSymbol, [operand]], 0],
+          token[2],
+          ctx,
+        ) as NormalExpressionNodeExpression
         ctx.setNodeEnd(node[2])
         ctx.builder?.endNode()
         return node
@@ -189,7 +229,11 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       ctx.builder?.startNode('Symbol')
       ctx.advance()
       if (specialExpressionTypes[operatorName as SpecialExpressionName] !== undefined) {
-        const node = withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[operatorName as SpecialExpressionName], 0], token[2], ctx) as SpecialSymbolNode
+        const node = withSourceCodeInfo(
+          [NodeTypes.Special, specialExpressionTypes[operatorName as SpecialExpressionName], 0],
+          token[2],
+          ctx,
+        ) as SpecialSymbolNode
         ctx.setNodeEnd(node[2])
         ctx.builder?.endNode()
         return node
@@ -237,11 +281,9 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     | 'LParen' // Handled above
     | 'LBrace' // Handled above
     | 'LBracket' // Handled above
-
     | 'RParen' // Illegal token
     | 'RBrace' // Illegal token
     | 'RBracket' // Illegal token
-
     | 'MultiLineComment' // Should have been removed
     | 'SingleLineComment' // Should have been removed
     | 'Whitespace' // Should have been removed
@@ -327,8 +369,14 @@ function looksLikeLambda(ctx: ParserContext): boolean {
         if (isLParenToken(t) || isLBracketToken(t)) typeDepth++
         else if (isRParenToken(t) || isRBracketToken(t)) typeDepth--
         // Stop if we hit something that can't be part of a type annotation
-        if (typeDepth === 0 && (isOperatorToken(t, '=') || isOperatorToken(t, ';')
-          || isReservedSymbolToken(t, 'end') || isReservedSymbolToken(t, 'do'))) break
+        if (
+          typeDepth === 0 &&
+          (isOperatorToken(t, '=') ||
+            isOperatorToken(t, ';') ||
+            isReservedSymbolToken(t, 'end') ||
+            isReservedSymbolToken(t, 'do'))
+        )
+          break
         offset++
       }
     }
@@ -338,8 +386,17 @@ function looksLikeLambda(ctx: ParserContext): boolean {
   return false
 }
 
-function createAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {
-  const node = withSourceCodeInfo([NodeTypes.Call, [withSourceCodeInfo([NodeTypes.Builtin, 'get', 0], debugInfo, ctx), [left, right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+function createAccessorNode(
+  ctx: ParserContext,
+  left: AstNode,
+  right: AstNode,
+  debugInfo: TokenDebugInfo | undefined,
+): NormalExpressionNodeExpression {
+  const node = withSourceCodeInfo(
+    [NodeTypes.Call, [withSourceCodeInfo([NodeTypes.Builtin, 'get', 0], debugInfo, ctx), [left, right]], 0],
+    debugInfo,
+    ctx,
+  ) as NormalExpressionNodeExpression
   ctx.setNodeEnd(node[2])
   return node
 }
@@ -349,9 +406,17 @@ function createAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, d
  * where the object is called as a function with the key as argument.
  * Throws KeyError for missing keys (unlike get which returns null).
  */
-function createStrictAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {
-  const node = withSourceCodeInfo([NodeTypes.Call, [left, [right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+function createStrictAccessorNode(
+  ctx: ParserContext,
+  left: AstNode,
+  right: AstNode,
+  debugInfo: TokenDebugInfo | undefined,
+): NormalExpressionNodeExpression {
+  const node = withSourceCodeInfo(
+    [NodeTypes.Call, [left, [right]], 0],
+    debugInfo,
+    ctx,
+  ) as NormalExpressionNodeExpression
   ctx.setNodeEnd(node[2])
   return node
 }
-

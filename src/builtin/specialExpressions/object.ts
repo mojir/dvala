@@ -20,10 +20,9 @@ const docs: FunctionDocs = {
       description: 'key - value pairs, where key is a string',
     },
   },
-  variants: [
-    { argumentNames: ['kvps'] },
-  ],
-  description: 'Constructs a new object. Object members are created from the `kvps` key-value pairs. Requires an even number of arguments.',
+  variants: [{ argumentNames: ['kvps'] }],
+  description:
+    'Constructs a new object. Object members are created from the `kvps` key-value pairs. Requires an even number of arguments.',
   examples: [
     'object()',
     `

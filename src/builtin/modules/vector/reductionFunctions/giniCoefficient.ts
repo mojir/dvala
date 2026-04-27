@@ -1,7 +1,7 @@
 import type { ReductionFunctionDefinition } from '.'
 
 export const giniCoefficientReductionFunction: ReductionFunctionDefinition<'giniCoefficient'> = {
-  'giniCoefficient': vector => {
+  giniCoefficient: vector => {
     if (vector.some(x => x < 0)) {
       throw new Error('Gini coefficient is not defined for negative values')
     }
@@ -14,5 +14,5 @@ export const giniCoefficientReductionFunction: ReductionFunctionDefinition<'gini
     const gini = (2 * sorted.reduce((acc, val, i) => acc + (i + 1) * val, 0)) / (n * sum) - (n + 1) / n
     return gini
   },
-  'minLength': 1,
+  minLength: 1,
 }

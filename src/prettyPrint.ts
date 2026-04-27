@@ -62,9 +62,25 @@ type AstNode = [string, unknown, number]
 
 // Infix binary operators rendered as `a op b`
 const infixOperators = new Set([
-  '+', '-', '*', '/', '^', '%', '==', '!=',
-  '<', '>', '<=', '>=', '++',
-  '&', '|', 'xor', '<<', '>>', '>>>',
+  '+',
+  '-',
+  '*',
+  '/',
+  '^',
+  '%',
+  '==',
+  '!=',
+  '<',
+  '>',
+  '<=',
+  '>=',
+  '++',
+  '&',
+  '|',
+  'xor',
+  '<<',
+  '>>',
+  '>>>',
 ])
 
 // Operator precedence (higher number = tighter binding).
@@ -74,14 +90,27 @@ const infixOperators = new Set([
 // appear in printArg, but are included for completeness.
 const operatorPrecedence: Record<string, number> = {
   '|>': 2,
-  '&&': 4, '||': 4, '??': 4,
-  '&': 5, '|': 5, 'xor': 5,
-  '==': 6, '!=': 6,
-  '<': 7, '>': 7, '<=': 7, '>=': 7,
+  '&&': 4,
+  '||': 4,
+  '??': 4,
+  '&': 5,
+  '|': 5,
+  xor: 5,
+  '==': 6,
+  '!=': 6,
+  '<': 7,
+  '>': 7,
+  '<=': 7,
+  '>=': 7,
   '++': 8,
-  '<<': 9, '>>': 9, '>>>': 9,
-  '+': 10, '-': 10,
-  '*': 11, '/': 11, '%': 11,
+  '<<': 9,
+  '>>': 9,
+  '>>>': 9,
+  '+': 10,
+  '-': 10,
+  '*': 11,
+  '/': 11,
+  '%': 11,
   '^': 12,
 }
 
@@ -120,13 +149,23 @@ function fitsOnLastLine(text: string, suffix: string): boolean {
 
 // Stub functions — comment hints removed, always return empty/false/0.
 // These are called throughout prettyPrint but now always produce no output.
-function getBlankLinesBefore(_nodeId: number): number { return 0 }
-function hasNodeLevelComments(_nodeId: number): boolean { return false }
+function getBlankLinesBefore(_nodeId: number): number {
+  return 0
+}
+function hasNodeLevelComments(_nodeId: number): boolean {
+  return false
+}
 
 // Comment hint rendering removed — stubs that produce no comment output.
-function renderLeadingComments(_nodeId: number, _indentPrefix: string, _skip: boolean): string { return '' }
-function appendTrailingComments(_nodeId: number, line: string): string { return `${line};` }
-function appendNodeTrailingComments(_nodeId: number, line: string): string { return line }
+function renderLeadingComments(_nodeId: number, _indentPrefix: string, _skip: boolean): string {
+  return ''
+}
+function appendTrailingComments(_nodeId: number, line: string): string {
+  return `${line};`
+}
+function appendNodeTrailingComments(_nodeId: number, line: string): string {
+  return line
+}
 
 function renderCommentedNode(node: AstNode, ind: number): string {
   const nodeStr = printNode(node, ind)
@@ -153,8 +192,7 @@ function formatStatementLines(nodeIds: number[], lines: string[]): string {
     if (index > 0) {
       body += '\n'
       const blankLines = getBlankLinesBefore(nodeIds[index]!)
-      if (blankLines > 0)
-        body += '\n'.repeat(blankLines)
+      if (blankLines > 0) body += '\n'.repeat(blankLines)
     }
 
     const indentPrefix = /^(\s*)/.exec(line)?.[1] ?? ''
@@ -199,8 +237,7 @@ function printNode(node: AstNode, ind: number, isRoot = false): string {
         .replace(/\n/g, '\\n')
         .replace(/\r/g, '\\r')
         .replace(/\t/g, '\\t')
-        .replace(/"/g, '\\"')
-      }"`
+        .replace(/"/g, '\\"')}"`
     case NodeTypes.Reserved:
       return String(payload)
     case NodeTypes.Sym:
@@ -341,7 +378,10 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
       }
       // Multi-line pipe: each segment on its own line with |> prefix
       const parts = pipeChain.map(n => printNode(n, ind + 1))
-      return `${parts[0]!}\n${parts.slice(1).map(p => `${indent(ind + 1)}|> ${p}`).join('\n')}`
+      return `${parts[0]!}\n${parts
+        .slice(1)
+        .map(p => `${indent(ind + 1)}|> ${p}`)
+        .join('\n')}`
     }
   }
 
@@ -361,11 +401,7 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
           const callPayload = argNode[1] as [AstNode, AstNode[]]
           const innerFn = callPayload[0]
           const innerArgs = callPayload[1]
-          if (
-            innerFn[0] === NodeTypes.Builtin
-            && innerArgs.length === 2
-            && infixOperators.has(innerFn[1] as string)
-          ) {
+          if (innerFn[0] === NodeTypes.Builtin && innerArgs.length === 2 && infixOperators.has(innerFn[1] as string)) {
             const innerOp = innerFn[1] as string
             const innerPrec = operatorPrecedence[innerOp] ?? 0
             // Parens needed when inner binds looser, or same precedence on right side
@@ -383,11 +419,7 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
 
   // Authored infix call: preserve `a foo b` for both user-defined and builtin
   // named callees when the parser recorded infix intent.
-  if (
-    hints?.isInfix
-    && (fnNode[0] === NodeTypes.Sym || fnNode[0] === NodeTypes.Builtin)
-    && argNodes.length === 2
-  ) {
+  if (hints?.isInfix && (fnNode[0] === NodeTypes.Sym || fnNode[0] === NodeTypes.Builtin) && argNodes.length === 2) {
     const operator = fnNode[1] as string
     const leftStr = printNode(argNodes[0]!, ind)
     const rightStr = printNode(argNodes[1]!, ind)
@@ -459,7 +491,7 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
 function printIf(parts: unknown[][], ind: number): string {
   const cond = printNode(parts[0] as AstNode, ind)
   const thenNode = parts[1] as AstNode
-  const elseNode = parts.length > 2 && parts[2] ? parts[2] as AstNode : null
+  const elseNode = parts.length > 2 && parts[2] ? (parts[2] as AstNode) : null
   if (!elseNode) {
     throw new TypeError('If AST requires an else branch')
   }
@@ -467,13 +499,11 @@ function printIf(parts: unknown[][], ind: number): string {
   const hasElseComments = elseNode ? hasNodeLevelComments(elseNode[2]) : false
 
   // Else-if chain: when else branch is another If, emit "else if ..." without extra "end"
-  const isElseIf = elseNode && (elseNode)[0] === NodeTypes.If
+  const isElseIf = elseNode && elseNode[0] === NodeTypes.If
 
   // Try flat — only when all components are single-line
   const thenStr = printNode(thenNode, ind)
-  const elseStr = isElseIf
-    ? printIf((elseNode)[1] as unknown[][], ind)
-    : printNode(elseNode, ind)
+  const elseStr = isElseIf ? printIf(elseNode[1] as unknown[][], ind) : printNode(elseNode, ind)
   if (!hasThenComments && !hasElseComments && allSingleLine(cond, thenStr, elseStr)) {
     const flat = isElseIf
       ? `if ${cond} then ${thenStr} else ${elseStr}`
@@ -485,7 +515,7 @@ function printIf(parts: unknown[][], ind: number): string {
   const thenMulti = renderCommentedNode(thenNode, ind + 1)
   if (isElseIf) {
     // else if — keep same indent, no extra end
-    const elseIfStr = printIf((elseNode)[1] as unknown[][], ind)
+    const elseIfStr = printIf(elseNode[1] as unknown[][], ind)
     return `if ${cond} then\n${thenMulti}\n${indent(ind)}else ${elseIfStr}`
   }
   const elseMulti = renderCommentedNode(elseNode, ind + 1)
@@ -510,7 +540,10 @@ function printBlock(stmts: unknown[][], ind: number): string {
   // Multiple statements (or single that doesn't fit): always expand.
   // Semicolons appear as the last token on each line (never mid-line).
   const lines = stmts.map(s => `${indent(ind + 1)}${printNode(s as AstNode, ind + 1, true)}`)
-  return `do\n${formatStatementLines(stmts.map(s => (s as AstNode)[2]), lines)}\n${indent(ind)}end`
+  return `do\n${formatStatementLines(
+    stmts.map(s => (s as AstNode)[2]),
+    lines,
+  )}\n${indent(ind)}end`
 }
 
 function printLet(payload: [unknown[], unknown[]], ind: number): string {
@@ -532,7 +565,11 @@ function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: numbe
   // Shorthand lambda: authored as `-> expr` with no explicit params.
   // Preserve the form so the formatter does not add ($) prefix.
   if (hints?.isShorthand) {
-    if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler && !hasNodeLevelComments((body[0] as AstNode)[2])) {
+    if (
+      body.length === 1 &&
+      (body[0] as AstNode)[0] !== NodeTypes.WithHandler &&
+      !hasNodeLevelComments((body[0] as AstNode)[2])
+    ) {
       const bodyStr = printNode(body[0] as AstNode, ind)
       if (allSingleLine(bodyStr)) {
         const flat = `-> ${bodyStr}`
@@ -542,7 +579,10 @@ function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: numbe
     }
     // Multi-statement or WithHandler body: always expand (no mid-line semicolons)
     const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-    return `-> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
+    return `-> do\n${formatStatementLines(
+      body.map(b => (b as AstNode)[2]),
+      lines,
+    )}\n${indent(ind)}end`
   }
 
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
@@ -564,14 +604,21 @@ function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: numbe
 
   // Multi-statement body (or single WithHandler): always expand (no mid-line semicolons)
   const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-  return `(${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
+  return `(${paramStr}) -> do\n${formatStatementLines(
+    body.map(b => (b as AstNode)[2]),
+    lines,
+  )}\n${indent(ind)}end`
 }
 
 function printMacro(payload: [unknown[][], unknown[][]], ind: number): string {
   const [params, body] = payload
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
 
-  if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler && !hasNodeLevelComments((body[0] as AstNode)[2])) {
+  if (
+    body.length === 1 &&
+    (body[0] as AstNode)[0] !== NodeTypes.WithHandler &&
+    !hasNodeLevelComments((body[0] as AstNode)[2])
+  ) {
     const bodyStr = printNode(body[0] as AstNode, ind)
     if (allSingleLine(bodyStr)) {
       const flat = `macro (${paramStr}) -> ${bodyStr}`
@@ -582,7 +629,10 @@ function printMacro(payload: [unknown[][], unknown[][]], ind: number): string {
 
   // Multi-statement body (or single WithHandler): always expand (no mid-line semicolons)
   const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-  return `macro (${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
+  return `macro (${paramStr}) -> do\n${formatStatementLines(
+    body.map(b => (b as AstNode)[2]),
+    lines,
+  )}\n${indent(ind)}end`
 }
 
 function printPerform(payload: [unknown[], unknown[] | undefined], ind: number): string {
@@ -619,8 +669,7 @@ function printArray(elements: unknown[][], ind: number): string {
     if (index > 0) {
       body += ',\n'
       const blankLines = getBlankLinesBefore((element as AstNode)[2])
-      if (blankLines > 0)
-        body += '\n'.repeat(blankLines)
+      if (blankLines > 0) body += '\n'.repeat(blankLines)
     }
     body += `${indent(ind + 1)}${printNode(element as AstNode, ind + 1)}`
   })
@@ -645,8 +694,7 @@ function printObject(entries: unknown[][], ind: number): string {
     if (index > 0) {
       body += ',\n'
       const blankLines = getBlankLinesBefore(getObjectEntryNodeId(entry))
-      if (blankLines > 0)
-        body += '\n'.repeat(blankLines)
+      if (blankLines > 0) body += '\n'.repeat(blankLines)
     }
     body += `${indent(ind + 1)}${formatObjectEntry(entry, ind + 1)}`
   })
@@ -654,8 +702,7 @@ function printObject(entries: unknown[][], ind: number): string {
 }
 
 function getObjectEntryNodeId(entry: unknown[]): number {
-  if (entry[0] === NodeTypes.Spread)
-    return (entry as AstNode)[2]
+  if (entry[0] === NodeTypes.Spread) return (entry as AstNode)[2]
 
   return (entry[0] as AstNode)[2]
 }
@@ -703,12 +750,19 @@ function printHandlerBody(body: unknown[][], ind: number): string {
   // `with handler...end; body` and `with expr; body` are NOT valid as
   // standalone expressions — they require a `do...end` block context.
   // Treat a single WithHandler node the same as a multi-statement body.
-  if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler && !hasNodeLevelComments((body[0] as AstNode)[2])) {
+  if (
+    body.length === 1 &&
+    (body[0] as AstNode)[0] !== NodeTypes.WithHandler &&
+    !hasNodeLevelComments((body[0] as AstNode)[2])
+  ) {
     return printNode(body[0] as AstNode, ind)
   }
   // Multi-statement or WithHandler: always expand (no mid-line semicolons)
   const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-  return `do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
+  return `do\n${formatStatementLines(
+    body.map(b => (b as AstNode)[2]),
+    lines,
+  )}\n${indent(ind)}end`
 }
 
 function printHandler(payload: [unknown[], unknown], ind: number): string {
@@ -719,9 +773,7 @@ function printHandler(payload: [unknown[], unknown], ind: number): string {
 
   // Build per-clause strings at ind+1 (used for flat check and multi-clause form)
   const clauseStrs = clauses.map(clause => {
-    const paramsStr = clause.params.length > 0
-      ? `(${clause.params.map(p => printBindingTarget(p)).join(', ')})`
-      : '()'
+    const paramsStr = clause.params.length > 0 ? `(${clause.params.map(p => printBindingTarget(p)).join(', ')})` : '()'
     const bodyStr = printHandlerBody(clause.body, ind + 1)
     return { inline: `@${clause.effectName}${paramsStr} -> ${bodyStr}`, bodyStr }
   })
@@ -738,9 +790,7 @@ function printHandler(payload: [unknown[], unknown], ind: number): string {
   // do...end block it produces closes at the right column.
   if (clauses.length === 1) {
     const clause = clauses[0]!
-    const paramsStr = clause.params.length > 0
-      ? `(${clause.params.map(p => printBindingTarget(p)).join(', ')})`
-      : '()'
+    const paramsStr = clause.params.length > 0 ? `(${clause.params.map(p => printBindingTarget(p)).join(', ')})` : '()'
     const bodyStr = printHandlerBody(clause.body, ind)
     const parts: string[] = [`handler @${clause.effectName}${paramsStr} -> ${bodyStr}`]
     if (transform) {
@@ -789,7 +839,12 @@ function printFor(payload: [unknown[][], unknown[]], ind: number): string {
   const [bindingLevels, body] = payload
   const levels: string[] = []
   for (const level of bindingLevels) {
-    const [binding, letBindings, whenGuard, whileGuard] = level as [unknown[], unknown[], unknown[] | null, unknown[] | null]
+    const [binding, letBindings, whenGuard, whileGuard] = level as [
+      unknown[],
+      unknown[],
+      unknown[] | null,
+      unknown[] | null,
+    ]
     const [target, collection] = binding as [unknown[], unknown[]]
     let s = `${printBindingTarget(target)} in ${printNode(collection as AstNode, ind)}`
     /* v8 ignore next -- both branches tested; v8 miscounts Array.isArray on null vs [] */
@@ -890,10 +945,13 @@ function printCodeTemplate(payload: [unknown[][], unknown[][]], ind: number): st
   // Expanded form: re-render body parts at ind + 1 so any internal line breaks
   // inside a body part (e.g. a long Function or Call that had to wrap) align
   // with the indent prefix we prepend here.
-  const lines = bodyAst.map(node =>
-    `${indent(ind + 1)}${printNodeWithSplices(node as AstNode, spliceExprs, ind + 1, true)}`,
+  const lines = bodyAst.map(
+    node => `${indent(ind + 1)}${printNodeWithSplices(node as AstNode, spliceExprs, ind + 1, true)}`,
   )
-  return `quote\n${formatStatementLines(bodyAst.map(node => (node as AstNode)[2]), lines)}\n${indent(ind)}end`
+  return `quote\n${formatStatementLines(
+    bodyAst.map(node => (node as AstNode)[2]),
+    lines,
+  )}\n${indent(ind)}end`
 }
 
 /** Print an AST node, but render Splice nodes as $^{expr} using the splice expressions list. */
@@ -994,14 +1052,17 @@ function printBindingTarget(target: unknown[]): string {
     case 'array': {
       const [targets, defaultExpr] = targetPayload as [unknown[][], unknown[] | null]
       // Empty slots (null) are represented as empty commas: [, , third]
-      const inner = targets.map(t => t ? printBindingTarget(t) : '').join(', ')
+      const inner = targets.map(t => (t ? printBindingTarget(t) : '')).join(', ')
       if (defaultExpr) {
         return `[${inner}] = ${printNode(defaultExpr as AstNode, 0)}`
       }
       return `[${inner}]`
     }
     case 'object': {
-      const [rawEntries, defaultExpr] = targetPayload as [{ key: string; keyNodeId: number; target: unknown[] }[], unknown[] | null]
+      const [rawEntries, defaultExpr] = targetPayload as [
+        { key: string; keyNodeId: number; target: unknown[] }[],
+        unknown[] | null,
+      ]
       const parts = rawEntries.map(({ key, target: bt }) => {
         // Rest binding: { ...rest }
         if (bt[0] === 'rest') {

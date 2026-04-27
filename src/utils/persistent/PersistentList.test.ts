@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { cons, isEmpty as isPersistentListEmpty, listFromArray, listToArray, type PersistentList } from './PersistentList'
+import {
+  cons,
+  isEmpty as isPersistentListEmpty,
+  listFromArray,
+  listToArray,
+  type PersistentList,
+} from './PersistentList'
 
 describe('PersistentList', () => {
   // ---------------------------------------------------------------------------

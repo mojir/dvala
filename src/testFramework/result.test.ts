@@ -12,28 +12,40 @@ describe('isSuccess', () => {
   })
 
   it('is true when every test passed or was skipped', () => {
-    expect(isSuccess(run({
-      results: [
-        { name: 'a', status: 'passed' },
-        { name: 'b', status: 'skipped' },
-      ],
-    }))).toBe(true)
+    expect(
+      isSuccess(
+        run({
+          results: [
+            { name: 'a', status: 'passed' },
+            { name: 'b', status: 'skipped' },
+          ],
+        }),
+      ),
+    ).toBe(true)
   })
 
   it('is false when any test failed', () => {
-    expect(isSuccess(run({
-      results: [
-        { name: 'a', status: 'passed' },
-        { name: 'b', status: 'failed', error: new Error('x') },
-      ],
-    }))).toBe(false)
+    expect(
+      isSuccess(
+        run({
+          results: [
+            { name: 'a', status: 'passed' },
+            { name: 'b', status: 'failed', error: new Error('x') },
+          ],
+        }),
+      ),
+    ).toBe(false)
   })
 
   it('is false when a bailout is present, even with no failing tests', () => {
-    expect(isSuccess(run({
-      results: [{ name: 'a', status: 'passed' }],
-      bailout: new Error('parse error'),
-    }))).toBe(false)
+    expect(
+      isSuccess(
+        run({
+          results: [{ name: 'a', status: 'passed' }],
+          bailout: new Error('parse error'),
+        }),
+      ),
+    ).toBe(false)
   })
 })
 
@@ -45,10 +57,7 @@ describe('isSuiteSuccess', () => {
 
   it('is true when every file succeeds', () => {
     const suite: TestSuiteResult = {
-      files: [
-        run({ results: [{ name: 'a', status: 'passed' }] }),
-        run({ results: [{ name: 'b', status: 'passed' }] }),
-      ],
+      files: [run({ results: [{ name: 'a', status: 'passed' }] }), run({ results: [{ name: 'b', status: 'passed' }] })],
       durationMs: 0,
     }
     expect(isSuiteSuccess(suite)).toBe(true)
@@ -56,10 +65,7 @@ describe('isSuiteSuccess', () => {
 
   it('is false when any file has a failure or bailout', () => {
     const suite: TestSuiteResult = {
-      files: [
-        run({ results: [{ name: 'a', status: 'passed' }] }),
-        run({ results: [], bailout: new Error('boom') }),
-      ],
+      files: [run({ results: [{ name: 'a', status: 'passed' }] }), run({ results: [], bailout: new Error('boom') })],
       durationMs: 0,
     }
     expect(isSuiteSuccess(suite)).toBe(false)

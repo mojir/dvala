@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { DvalaError } from '../errors'
 import type { FunctionLike, BuiltinSymbolNode, NormalExpressionNodeWithName, NumberNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
-import { arityAccepts, arityAcceptsMin, assertNumberOfParams, getArityFromFunction, getCommonArityFromFunctions, toFixedArity } from './arity'
+import {
+  arityAccepts,
+  arityAcceptsMin,
+  assertNumberOfParams,
+  getArityFromFunction,
+  getCommonArityFromFunctions,
+  toFixedArity,
+} from './arity'
 import { PersistentVector } from './persistent'
 import { FUNCTION_SYMBOL } from './symbols'
 
@@ -61,12 +68,18 @@ describe('arity utilities', () => {
 
   describe('getCommonArityFromFunctions', () => {
     it('should return common fixed count when all functions have same count', () => {
-      const functions = [{ [FUNCTION_SYMBOL]: true, arity: toFixedArity(2) }, { [FUNCTION_SYMBOL]: true, arity: toFixedArity(2) }] as FunctionLike[]
+      const functions = [
+        { [FUNCTION_SYMBOL]: true, arity: toFixedArity(2) },
+        { [FUNCTION_SYMBOL]: true, arity: toFixedArity(2) },
+      ] as FunctionLike[]
       expect(getCommonArityFromFunctions(functions)).toEqual(toFixedArity(2))
     })
 
     it('should return null when functions have different fixed counts', () => {
-      const functions = [{ [FUNCTION_SYMBOL]: true, arity: toFixedArity(2) }, { [FUNCTION_SYMBOL]: true, arity: toFixedArity(3) }] as FunctionLike[]
+      const functions = [
+        { [FUNCTION_SYMBOL]: true, arity: toFixedArity(2) },
+        { [FUNCTION_SYMBOL]: true, arity: toFixedArity(3) },
+      ] as FunctionLike[]
       expect(getCommonArityFromFunctions(functions)).toBe(null)
     })
 

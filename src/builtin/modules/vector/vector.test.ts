@@ -106,11 +106,23 @@ describe('vector functions', () => {
   })
   describe('vec:countValues', () => {
     it('should count the occurrences of each value in a vector', () => {
-      expect(runVec('vec:countValues([1, 2, 3])')).toEqual([[1, 1], [2, 1], [3, 1]])
-      expect(runVec('vec:countValues([1, 2, 2, 3])')).toEqual([[2, 2], [1, 1], [3, 1]])
+      expect(runVec('vec:countValues([1, 2, 3])')).toEqual([
+        [1, 1],
+        [2, 1],
+        [3, 1],
+      ])
+      expect(runVec('vec:countValues([1, 2, 2, 3])')).toEqual([
+        [2, 2],
+        [1, 1],
+        [3, 1],
+      ])
       expect(runVec('vec:countValues([0])')).toEqual([[0, 1]])
       expect(runVec('vec:countValues([])')).toEqual([])
-      expect(runVec('vec:countValues([1, 2, 3, 1])')).toEqual([[1, 2], [2, 1], [3, 1]])
+      expect(runVec('vec:countValues([1, 2, 3, 1])')).toEqual([
+        [1, 2],
+        [2, 1],
+        [3, 1],
+      ])
     })
   })
   describe('vec:linspace', () => {
@@ -204,102 +216,30 @@ describe('vector functions', () => {
   describe('vec:histogram', () => {
     it('should calculate the histogram of a vector', () => {
       expect(runVec('vec:histogram([1, 2, 2, 3, 2, 6, 4, 3, 2, 4, 1, 3, 2, 9], 3)')).toEqual([
-        [
-          1,
-          3.6666666666666665,
-          10,
-        ],
-        [
-          3.6666666666666665,
-          6.333333333333333,
-          3,
-        ],
-        [
-          6.333333333333333,
-          9,
-          1,
-        ],
+        [1, 3.6666666666666665, 10],
+        [3.6666666666666665, 6.333333333333333, 3],
+        [6.333333333333333, 9, 1],
       ])
       expect(runVec('vec:histogram([1, 2, 3], 5)')).toEqual([
-        [
-          1,
-          1.4,
-          1,
-        ],
-        [
-          1.4,
-          1.8,
-          0,
-        ],
-        [
-          1.8,
-          2.2,
-          1,
-        ],
-        [
-          2.2,
-          2.6,
-          0,
-        ],
-        [
-          2.6,
-          3,
-          1,
-        ],
+        [1, 1.4, 1],
+        [1.4, 1.8, 0],
+        [1.8, 2.2, 1],
+        [2.2, 2.6, 0],
+        [2.6, 3, 1],
       ])
       expect(runVec('vec:histogram([0], 5)')).toEqual([
-        [
-          0,
-          0,
-          1,
-        ],
-        [
-          0,
-          0,
-          0,
-        ],
-        [
-          0,
-          0,
-          0,
-        ],
-        [
-          0,
-          0,
-          0,
-        ],
-        [
-          0,
-          0,
-          0,
-        ],
+        [0, 0, 1],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
       ])
       expect(runVec('vec:histogram([], 5)')).toEqual([
-        [
-          0,
-          0,
-          0,
-        ],
-        [
-          0,
-          0,
-          0,
-        ],
-        [
-          0,
-          0,
-          0,
-        ],
-        [
-          0,
-          0,
-          0,
-        ],
-        [
-          0,
-          0,
-          0,
-        ],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
       ])
     })
   })
@@ -344,12 +284,24 @@ describe('vector functions', () => {
   })
   describe('vec:winsorize', () => {
     it('should winsorize a vector', () => {
-      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0.1, 0.9)')).toEqual([5, 5, 8, 10, 15, 18, 20, 35, 60, 60])
-      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0.2, 1)')).toEqual([8, 8, 8, 10, 15, 18, 20, 35, 60, 100])
-      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0, 1)')).toEqual([2, 5, 8, 10, 15, 18, 20, 35, 60, 100])
-      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0, 0)')).toEqual([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
-      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0.1, 0.1)')).toEqual([5, 5, 5, 5, 5, 5, 5, 5, 5, 5])
-      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0.6)')).toEqual([20, 20, 20, 20, 20, 20, 20, 35, 60, 100])
+      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0.1, 0.9)')).toEqual([
+        5, 5, 8, 10, 15, 18, 20, 35, 60, 60,
+      ])
+      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0.2, 1)')).toEqual([
+        8, 8, 8, 10, 15, 18, 20, 35, 60, 100,
+      ])
+      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0, 1)')).toEqual([
+        2, 5, 8, 10, 15, 18, 20, 35, 60, 100,
+      ])
+      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0, 0)')).toEqual([
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+      ])
+      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0.1, 0.1)')).toEqual([
+        5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+      ])
+      expect(runVec('vec:winsorize([2, 5, 8, 10, 15, 18, 20, 35, 60, 100], 0.6)')).toEqual([
+        20, 20, 20, 20, 20, 20, 20, 35, 60, 100,
+      ])
       expect(runVec('vec:winsorize([10, 20, 30, 40, 50], 0, 0.79)')).toEqual([10, 20, 30, 30, 30])
       expect(runVec('vec:winsorize([10, 20, 30, 40, 50], 0, 0)')).toEqual([10, 10, 10, 10, 10])
       expect(runVec('vec:winsorize([], 0.05)')).toEqual([])

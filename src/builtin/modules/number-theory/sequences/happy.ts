@@ -7,8 +7,7 @@ function isHappyNumber(n: number): boolean {
   //    - The number equals 1 (in which case it's a happy number)
   //    - It enters a cycle that doesn't include 1 (in which case it's not a happy number)
 
-  if (n <= 0)
-    return false
+  if (n <= 0) return false
 
   // Use a set to detect cycles
   const seen = new Set()
@@ -36,7 +35,7 @@ function getSumOfSquaredDigits(n: number): number {
 }
 
 export const happySequence: SequenceDefinition<'happy'> = {
-  'happySeq': length => {
+  happySeq: length => {
     const happyNumbers: number[] = []
     for (let i = 1; happyNumbers.length < length; i++) {
       let n = i
@@ -47,10 +46,9 @@ export const happySequence: SequenceDefinition<'happy'> = {
           .split('')
           .reduce((sum, digit) => sum + Number(digit) ** 2, 0)
       }
-      if (n === 1)
-        happyNumbers.push(i)
+      if (n === 1) happyNumbers.push(i)
     }
     return happyNumbers
   },
-  'isHappy': n => isHappyNumber(n),
+  isHappy: n => isHappyNumber(n),
 }

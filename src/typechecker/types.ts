@@ -62,10 +62,7 @@ export type PrimitiveName = 'Number' | 'Integer' | 'String' | 'Boolean' | 'Null'
  * polymorphism in generalized signatures. See `constrainEffectSet` and
  * `expandEffectSet` in `infer.ts` for the propagation and display logic.
  */
-type EffectTail =
-  | { tag: 'Closed' }
-  | { tag: 'Open' }
-  | RowVarTail
+type EffectTail = { tag: 'Closed' } | { tag: 'Open' } | RowVarTail
 
 /**
  * Row-variable tail on an effect set. Bounds separate "concrete" sets of
@@ -186,7 +183,15 @@ export type Type =
   | { tag: 'Never' } // Bottom type — empty set, subtype of all
 
   // Inference (Step 2 — included in the type for completeness)
-  | { tag: 'Var'; id: number; level: number; lowerBounds: Type[]; upperBounds: Type[]; displayLowerBounds?: Type[]; displayUpperBounds?: Type[] }
+  | {
+      tag: 'Var'
+      id: number
+      level: number
+      lowerBounds: Type[]
+      upperBounds: Type[]
+      displayLowerBounds?: Type[]
+      displayUpperBounds?: Type[]
+    }
 
   // Named (Step 2+)
   | { tag: 'Alias'; name: string; args: Type[]; expanded: Type }
@@ -334,12 +339,8 @@ export function toSequenceType(type: Type): SequenceType | undefined {
 }
 
 export function normalizeSequenceType(type: SequenceType): SequenceType {
-  const minLength = type.rest.tag === 'Never'
-    ? type.prefix.length
-    : Math.max(type.minLength, type.prefix.length)
-  const maxLength = type.rest.tag === 'Never'
-    ? type.prefix.length
-    : type.maxLength
+  const minLength = type.rest.tag === 'Never' ? type.prefix.length : Math.max(type.minLength, type.prefix.length)
+  const maxLength = type.rest.tag === 'Never' ? type.prefix.length : type.maxLength
 
   return {
     tag: 'Sequence',
@@ -481,7 +482,12 @@ export function indexType(target: Type, key: Type): Type {
   }
   // Sequence × integer literal → positional lookup via the prefix/rest
   // shape. Negative index is out of bounds regardless of shape.
-  if (target.tag === 'Sequence' && key.tag === 'Literal' && typeof key.value === 'number' && Number.isInteger(key.value)) {
+  if (
+    target.tag === 'Sequence' &&
+    key.tag === 'Literal' &&
+    typeof key.value === 'number' &&
+    Number.isInteger(key.value)
+  ) {
     const idx = key.value
     if (idx < 0) return Never
     if (idx < target.prefix.length) return target.prefix[idx]!
@@ -493,8 +499,13 @@ export function indexType(target: Type, key: Type): Type {
   // String × integer literal → String (any index gives a single-char
   // string at runtime; out of bounds yields Null which the caller
   // unions in).
-  if (target.tag === 'Primitive' && target.name === 'String'
-      && key.tag === 'Literal' && typeof key.value === 'number' && Number.isInteger(key.value)) {
+  if (
+    target.tag === 'Primitive' &&
+    target.name === 'String' &&
+    key.tag === 'Literal' &&
+    typeof key.value === 'number' &&
+    Number.isInteger(key.value)
+  ) {
     return StringType
   }
   return { tag: 'Index', target, key }
@@ -506,8 +517,10 @@ export function indexType(target: Type, key: Type): Type {
 
 export function typeToString(t: Type): string {
   switch (t.tag) {
-    case 'Primitive': return t.name
-    case 'Atom': return `:${t.name}`
+    case 'Primitive':
+      return t.name
+    case 'Atom':
+      return `:${t.name}`
     case 'Literal':
       return typeof t.value === 'string' ? `"${t.value}"` : String(t.value)
     case 'Function': {
@@ -528,9 +541,7 @@ export function typeToString(t: Type): string {
       // (always-Boolean) declared return type. The source string already
       // includes `binder | body` shape.
       const ret = t.asserts ? `asserts {${t.asserts.source}}` : typeToString(t.ret)
-      return effectStr
-        ? `(${params}) -> ${effectStr} ${ret}`
-        : `(${params}) -> ${ret}`
+      return effectStr ? `(${params}) -> ${effectStr} ${ret}` : `(${params}) -> ${ret}`
     }
     case 'Handler': {
       const handledEffects = effectSetToString(effectSet([...t.handled.keys()]))
@@ -546,17 +557,17 @@ export function typeToString(t: Type): string {
       ]
       return `Handler<${slots.join(', ')}>`
     }
-    case 'Tuple': return `[${t.elements.map(typeToString).join(', ')}]`
+    case 'Tuple':
+      return `[${t.elements.map(typeToString).join(', ')}]`
     case 'Record': {
       const entries = [...t.fields.entries()].map(([k, v]) => {
         const optional = t.optionalFields?.has(k) ? '?' : ''
         return `${k}${optional}: ${typeToString(v)}`
       })
-      return t.open
-        ? `{${entries.join(', ')}, ...}`
-        : `{${entries.join(', ')}}`
+      return t.open ? `{${entries.join(', ')}, ...}` : `{${entries.join(', ')}}`
     }
-    case 'Array': return `${typeToString(t.element)}[]`
+    case 'Array':
+      return `${typeToString(t.element)}[]`
     case 'Sequence': {
       if (t.rest.tag === 'Never' && t.minLength === t.prefix.length && t.maxLength === t.prefix.length) {
         return `[${t.prefix.map(typeToString).join(', ')}]`
@@ -580,26 +591,37 @@ export function typeToString(t: Type): string {
       const length = t.maxLength === undefined ? `${t.minLength}+` : `${t.minLength}..${t.maxLength}`
       return `${base} (length ${length})`
     }
-    case 'Regex': return 'Regex'
-    case 'AnyFunction': return 'Function'
-    case 'Union': return t.members.map(m => typeToString(m)).join(' | ')
-    case 'Inter': return t.members.map(m => typeToString(m)).join(' & ')
-    case 'Neg': return `!${typeToString(t.inner)}`
-    case 'Unknown': return 'Unknown'
-    case 'Never': return 'Never'
-    case 'Var': return `α${t.id}`
-    case 'Alias': return t.args.length > 0
-      ? `${t.name}<${t.args.map(typeToString).join(', ')}>`
-      : t.name
-    case 'Recursive': return `μ${t.id}.${typeToString(t.body)}`
-    case 'Keyof': return `keyof ${typeToString(t.inner)}`
-    case 'Index': return `${typeToString(t.target)}[${typeToString(t.key)}]`
+    case 'Regex':
+      return 'Regex'
+    case 'AnyFunction':
+      return 'Function'
+    case 'Union':
+      return t.members.map(m => typeToString(m)).join(' | ')
+    case 'Inter':
+      return t.members.map(m => typeToString(m)).join(' & ')
+    case 'Neg':
+      return `!${typeToString(t.inner)}`
+    case 'Unknown':
+      return 'Unknown'
+    case 'Never':
+      return 'Never'
+    case 'Var':
+      return `α${t.id}`
+    case 'Alias':
+      return t.args.length > 0 ? `${t.name}<${t.args.map(typeToString).join(', ')}>` : t.name
+    case 'Recursive':
+      return `μ${t.id}.${typeToString(t.body)}`
+    case 'Keyof':
+      return `keyof ${typeToString(t.inner)}`
+    case 'Index':
+      return `${typeToString(t.target)}[${typeToString(t.key)}]`
     // Refinement: render `base & { source }` where `source` is the
     // user-written predicate text (binder included). Falls back to the
     // canonical form `{ binder | <opaque> }` if source is somehow
     // missing (shouldn't happen in Phase 2.1 — the parser always sets
     // it — but defensive since the field is typed as string).
-    case 'Refined': return `${typeToString(t.base)} & {${t.source}}`
+    case 'Refined':
+      return `${typeToString(t.base)} & {${t.source}}`
   }
 }
 
@@ -608,8 +630,10 @@ export function effectSetToString(e: EffectSet): string {
   if (e.effects.size === 0 && e.tail.tag === 'Closed') return ''
   const names = [...e.effects].sort().join(', ')
   switch (e.tail.tag) {
-    case 'Closed': return `@{${names}}`
-    case 'Open': return names ? `@{${names}, ...}` : '@{...}'
+    case 'Closed':
+      return `@{${names}}`
+    case 'Open':
+      return names ? `@{${names}, ...}` : '@{...}'
     case 'RowVar': {
       const rho = `ρ${e.tail.id}`
       return names ? `@{${names} | ${rho}}` : `@{${rho}}`
@@ -624,19 +648,24 @@ export function effectSetToString(e: EffectSet): string {
 export function typeEquals(a: Type, b: Type): boolean {
   if (a.tag !== b.tag) return false
   switch (a.tag) {
-    case 'Primitive': return a.name === (b as typeof a).name
-    case 'Atom': return a.name === (b as typeof a).name
-    case 'Literal': return a.value === (b as typeof a).value
+    case 'Primitive':
+      return a.name === (b as typeof a).name
+    case 'Atom':
+      return a.name === (b as typeof a).name
+    case 'Literal':
+      return a.value === (b as typeof a).value
     case 'Function': {
       const bf = b as typeof a
-      return a.params.length === bf.params.length
-        && a.params.every((p, i) => typeEquals(p, bf.params[i]!))
-        && ((a.restParam === undefined && bf.restParam === undefined)
-          || (a.restParam !== undefined && bf.restParam !== undefined && typeEquals(a.restParam, bf.restParam)))
-        && typeEquals(a.ret, bf.ret)
-        && effectSetEquals(a.effects, bf.effects)
-        && handlerWrapperEquals(a.handlerWrapper, bf.handlerWrapper)
-        && assertsInfoEquals(a.asserts, bf.asserts)
+      return (
+        a.params.length === bf.params.length &&
+        a.params.every((p, i) => typeEquals(p, bf.params[i]!)) &&
+        ((a.restParam === undefined && bf.restParam === undefined) ||
+          (a.restParam !== undefined && bf.restParam !== undefined && typeEquals(a.restParam, bf.restParam))) &&
+        typeEquals(a.ret, bf.ret) &&
+        effectSetEquals(a.effects, bf.effects) &&
+        handlerWrapperEquals(a.handlerWrapper, bf.handlerWrapper) &&
+        assertsInfoEquals(a.asserts, bf.asserts)
+      )
     }
     case 'Handler': {
       const bh = b as typeof a
@@ -654,8 +683,7 @@ export function typeEquals(a: Type, b: Type): boolean {
     }
     case 'Tuple': {
       const bt = b as typeof a
-      return a.elements.length === bt.elements.length
-        && a.elements.every((e, i) => typeEquals(e, bt.elements[i]!))
+      return a.elements.length === bt.elements.length && a.elements.every((e, i) => typeEquals(e, bt.elements[i]!))
     }
     case 'Record': {
       const br = b as typeof a
@@ -673,38 +701,47 @@ export function typeEquals(a: Type, b: Type): boolean {
       for (const k of aOpt) if (!bOpt.has(k)) return false
       return true
     }
-    case 'Array': return typeEquals(a.element, (b as typeof a).element)
+    case 'Array':
+      return typeEquals(a.element, (b as typeof a).element)
     case 'Sequence': {
       const bs = b as typeof a
-      return a.prefix.length === bs.prefix.length
-        && a.prefix.every((member, index) => typeEquals(member, bs.prefix[index]!))
-        && typeEquals(a.rest, bs.rest)
-        && a.minLength === bs.minLength
-        && a.maxLength === bs.maxLength
+      return (
+        a.prefix.length === bs.prefix.length &&
+        a.prefix.every((member, index) => typeEquals(member, bs.prefix[index]!)) &&
+        typeEquals(a.rest, bs.rest) &&
+        a.minLength === bs.minLength &&
+        a.maxLength === bs.maxLength
+      )
     }
-    case 'Regex': return true
-    case 'AnyFunction': return true
+    case 'Regex':
+      return true
+    case 'AnyFunction':
+      return true
     case 'Union':
     case 'Inter': {
       const bm = (b as typeof a).members
-      return a.members.length === bm.length
-        && a.members.every((m, i) => typeEquals(m, bm[i]!))
+      return a.members.length === bm.length && a.members.every((m, i) => typeEquals(m, bm[i]!))
     }
-    case 'Neg': return typeEquals(a.inner, (b as typeof a).inner)
-    case 'Unknown': return true
-    case 'Never': return true
-    case 'Var': return a === b
+    case 'Neg':
+      return typeEquals(a.inner, (b as typeof a).inner)
+    case 'Unknown':
+      return true
+    case 'Never':
+      return true
+    case 'Var':
+      return a === b
     case 'Alias': {
       const ba = b as typeof a
-      return a.name === ba.name
-        && a.args.length === ba.args.length
-        && a.args.every((arg, i) => typeEquals(arg, ba.args[i]!))
+      return (
+        a.name === ba.name && a.args.length === ba.args.length && a.args.every((arg, i) => typeEquals(arg, ba.args[i]!))
+      )
     }
     case 'Recursive': {
       const brec = b as typeof a
       return a.id === brec.id && typeEquals(a.body, brec.body)
     }
-    case 'Keyof': return typeEquals(a.inner, (b as typeof a).inner)
+    case 'Keyof':
+      return typeEquals(a.inner, (b as typeof a).inner)
     case 'Index': {
       const bi = b as typeof a
       return typeEquals(a.target, bi.target) && typeEquals(a.key, bi.key)
@@ -797,8 +834,7 @@ export function isEffectSubset(sub: EffectSet, sup: EffectSet): boolean {
       if (!sup.effects.has(e)) return false
     }
     // If both sides have a row-var tail with the same id, they unify.
-    if (sub.tail.tag === 'RowVar' && sup.tail.tag === 'RowVar'
-        && sub.tail.id === sup.tail.id) return true
+    if (sub.tail.tag === 'RowVar' && sup.tail.tag === 'RowVar' && sub.tail.id === sup.tail.id) return true
     // Sup has a row-var tail: any extras on sub's side would have to flow
     // into sup's row var; that's a constraint, not a pure structural check.
     if (sup.tail.tag === 'RowVar' && sub.tail.tag === 'Closed') return true

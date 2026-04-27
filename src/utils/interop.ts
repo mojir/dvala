@@ -29,19 +29,27 @@ import { isDvalaFunction } from '../typeGuards/dvalaFunction'
  * @param seen    Set for circular reference detection
  * @param path    Dot-path to current position for error messages (e.g. '.user.tags[0]')
  */
-export function assertValidHostValue(value: unknown, context: string, seen = new Set<unknown>(), path: string = ''): void {
+export function assertValidHostValue(
+  value: unknown,
+  context: string,
+  seen = new Set<unknown>(),
+  path: string = '',
+): void {
   // Primitives
-  if (value === null || typeof value === 'string' || typeof value === 'boolean')
-    return
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return
 
   if (typeof value === 'number') {
     if (!Number.isFinite(value))
-      throw new TypeError(`${context}: ${value}${path ? ` at ${path}` : ''} is not a valid Dvala value. Only finite numbers are allowed.`)
+      throw new TypeError(
+        `${context}: ${value}${path ? ` at ${path}` : ''} is not a valid Dvala value. Only finite numbers are allowed.`,
+      )
     return
   }
 
   if (value === undefined)
-    throw new TypeError(`${context}: undefined${path ? ` at ${path}` : ''} is not a valid Dvala value. Use null instead.`)
+    throw new TypeError(
+      `${context}: undefined${path ? ` at ${path}` : ''} is not a valid Dvala value. Use null instead.`,
+    )
 
   if (typeof value === 'function')
     throw new TypeError(`${context}: JS functions${path ? ` at ${path}` : ''} cannot enter the Dvala runtime.`)
@@ -53,14 +61,11 @@ export function assertValidHostValue(value: unknown, context: string, seen = new
     throw new TypeError(`${context}: BigInt${path ? ` at ${path}` : ''} is not supported. Convert to number first.`)
 
   // Already a Dvala value — no further validation needed
-  if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
-    return
-  if (isPersistentVector(value) || isPersistentMap(value))
-    return
+  if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value)) return
+  if (isPersistentVector(value) || isPersistentMap(value)) return
 
   // Must be an object at this point
-  if (typeof value !== 'object')
-    return
+  if (typeof value !== 'object') return
 
   // Circular reference detection (DFS stack: add before recursing, remove after).
   // This correctly distinguishes true cycles from diamond references (DAGs)
@@ -71,18 +76,25 @@ export function assertValidHostValue(value: unknown, context: string, seen = new
 
   // Reject known non-serializable object types
   if (value instanceof Date)
-    throw new TypeError(`${context}: Date objects${path ? ` at ${path}` : ''} are not valid Dvala values. Use date.toISOString() or date.getTime().`)
+    throw new TypeError(
+      `${context}: Date objects${path ? ` at ${path}` : ''} are not valid Dvala values. Use date.toISOString() or date.getTime().`,
+    )
   if (value instanceof Map)
-    throw new TypeError(`${context}: Map${path ? ` at ${path}` : ''} is not a valid Dvala value. Convert to a plain object first.`)
+    throw new TypeError(
+      `${context}: Map${path ? ` at ${path}` : ''} is not a valid Dvala value. Convert to a plain object first.`,
+    )
   if (value instanceof Set)
-    throw new TypeError(`${context}: Set${path ? ` at ${path}` : ''} is not a valid Dvala value. Convert to an array first.`)
+    throw new TypeError(
+      `${context}: Set${path ? ` at ${path}` : ''} is not a valid Dvala value. Convert to an array first.`,
+    )
   if (value instanceof RegExp)
-    throw new TypeError(`${context}: RegExp${path ? ` at ${path}` : ''} is not a valid Dvala value. Use regex("pattern") in Dvala instead.`)
+    throw new TypeError(
+      `${context}: RegExp${path ? ` at ${path}` : ''} is not a valid Dvala value. Use regex("pattern") in Dvala instead.`,
+    )
 
   // Arrays — recurse into elements
   if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i++)
-      assertValidHostValue(value[i], context, seen, `${path}[${i}]`)
+    for (let i = 0; i < value.length; i++) assertValidHostValue(value[i], context, seen, `${path}[${i}]`)
     seen.delete(value)
     return
   }
@@ -91,7 +103,9 @@ export function assertValidHostValue(value: unknown, context: string, seen = new
   // Note: proto === null means Object.create(null) which is a valid plain object.
   const proto = Object.getPrototypeOf(value)
   if (proto !== null && proto !== Object.prototype)
-    throw new TypeError(`${context}: Class instance (${(value).constructor?.name ?? 'unknown'})${path ? ` at ${path}` : ''} is not a valid Dvala value. Spread to a plain object first: { ...instance }`)
+    throw new TypeError(
+      `${context}: Class instance (${value.constructor?.name ?? 'unknown'})${path ? ` at ${path}` : ''} is not a valid Dvala value. Spread to a plain object first: { ...instance }`,
+    )
 
   // Plain object — validate all values
   for (const [k, v] of Object.entries(value as Record<string, unknown>))
@@ -112,11 +126,9 @@ export function validateFromJS(value: unknown, context: string): Any {
 
 /** Convert a Dvala runtime value to a plain JS value (deep). */
 export function toJS(value: Any): unknown {
-  if (value === null || typeof value !== 'object')
-    return value
+  if (value === null || typeof value !== 'object') return value
 
-  if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
-    return value
+  if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value)) return value
 
   if (isPersistentVector(value)) {
     const result: unknown[] = []
@@ -136,15 +148,12 @@ export function toJS(value: Any): unknown {
 
 /** Convert a plain JS value to a Dvala runtime value (deep). */
 export function fromJS(value: unknown): Any {
-  if (value === null || typeof value !== 'object')
-    return value as Any
+  if (value === null || typeof value !== 'object') return value as Any
 
-  if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value))
-    return value
+  if (isAtom(value) || isRegularExpression(value) || isEffect(value) || isDvalaFunction(value)) return value
 
   // Already persistent — pass through
-  if (isPersistentVector(value) || isPersistentMap(value))
-    return value
+  if (isPersistentVector(value) || isPersistentMap(value)) return value
 
   if (Array.isArray(value)) {
     let vec = PersistentVector.empty<Any>()
@@ -154,7 +163,6 @@ export function fromJS(value: unknown): Any {
 
   // typeof value === 'object' is guaranteed by the early return above
   let map = PersistentMap.empty<Any>()
-  for (const [k, v] of Object.entries(value as Record<string, unknown>))
-    map = map.assoc(k, fromJS(v))
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) map = map.assoc(k, fromJS(v))
   return map
 }

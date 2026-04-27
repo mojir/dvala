@@ -53,10 +53,12 @@ export function renderExampleIndexPage(): string {
 
   const categories = groupByCategory(data.examples)
 
-  const sections = categories.map(cat => {
-    const cards = cat.examples.map(ex => {
-      const encodedExample = btoa(encodeURIComponent(JSON.stringify(ex)))
-      return `
+  const sections = categories
+    .map(cat => {
+      const cards = cat.examples
+        .map(ex => {
+          const encodedExample = btoa(encodeURIComponent(JSON.stringify(ex)))
+          return `
 <div class="example-card" data-name="${escapeAttr(ex.name)}" data-desc="${escapeAttr(ex.description)}" data-category="${escapeAttr(cat.name)}">
   <a class="example-card__link" href="${href(`/examples/${ex.id}`)}" onclick="event.preventDefault();Playground.navigate('/examples/${ex.id}')">
     <span class="example-card__title">${escapeHtml(ex.name)}</span>
@@ -64,16 +66,18 @@ export function renderExampleIndexPage(): string {
   </a>
   <button class="example-card__play" onclick="event.stopPropagation(); Playground.setPlayground(${escapeAttr(JSON.stringify(ex.name))}, ${escapeAttr(JSON.stringify(encodedExample))})" title="Load in playground">${playIcon}</button>
 </div>`
-    }).join('\n')
+        })
+        .join('\n')
 
-    return `
+      return `
 <section class="example-category" data-category="${escapeAttr(cat.name)}">
   <h2 class="example-category__title">${escapeHtml(cat.name)}</h2>
   <div class="example-category__grid">
     ${cards}
   </div>
 </section>`
-  }).join('\n')
+    })
+    .join('\n')
 
   const first = data.examples[0] ?? null
   const exampleActions = `
@@ -117,10 +121,7 @@ export function renderExampleDetailPage(id: string): string {
 <div class="book-page">
   ${renderPageHeader({
     title: ex.name,
-    breadcrumbs: [
-      { label: 'Examples', path: '/examples' },
-      { label: ex.name },
-    ],
+    breadcrumbs: [{ label: 'Examples', path: '/examples' }, { label: ex.name }],
     actions: detailActions,
     prev: prev ? { path: `/examples/${prev.id}`, title: prev.name } : { path: '/examples', title: 'Back to Examples' },
     up: { path: '/examples', title: 'Back to Examples' },
@@ -141,6 +142,10 @@ function escapeHtml(str: string): string {
 }
 
 function escapeAttr(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
-

@@ -2,8 +2,7 @@ import { approxEqual, approxZero } from '../../../../utils'
 
 export function areVectorsCollinear(vectorA: number[], vectorB: number[]): boolean {
   // Check if either vector is zero
-  const isZeroVector = (vec: number[]): boolean =>
-    vec.every(component => approxZero(component))
+  const isZeroVector = (vec: number[]): boolean => vec.every(component => approxZero(component))
 
   if (isZeroVector(vectorA) || isZeroVector(vectorB)) {
     return true // Zero vector is technically collinear to all vectors
@@ -21,12 +20,10 @@ export function areVectorsCollinear(vectorA: number[], vectorB: number[]): boole
   // Check if all other components maintain the same ratio
   for (let i = 0; i < vectorA.length; i++) {
     // Skip components where both vectors have (near) zero values
-    if (approxZero(vectorA[i]!) && approxZero(vectorB[i]!))
-      continue
+    if (approxZero(vectorA[i]!) && approxZero(vectorB[i]!)) continue
 
     // If vectorA component is near zero but vectorB is not, vectors are not collinear
-    if (approxZero(vectorA[i]!))
-      return false
+    if (approxZero(vectorA[i]!)) return false
 
     // Check if the ratio is consistent
     if (!approxEqual(vectorB[i]! / vectorA[i]!, ratio)) {

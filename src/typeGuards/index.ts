@@ -15,8 +15,7 @@ export function asNonUndefined<T>(value: T | undefined, sourceCodeInfo?: SourceC
 }
 
 export function assertNonUndefined<T>(value: T | undefined, sourceCodeInfo?: SourceCodeInfo): asserts value is T {
-  if (!isNonUndefined(value))
-    throw new TypeError('Unexpected undefined', getSourceCodeInfo(value, sourceCodeInfo))
+  if (!isNonUndefined(value)) throw new TypeError('Unexpected undefined', getSourceCodeInfo(value, sourceCodeInfo))
 }
 
 /**
@@ -26,11 +25,11 @@ export function assertNonUndefined<T>(value: T | undefined, sourceCodeInfo?: Sou
  */
 export function isUnknownRecord(value: unknown): value is Record<string, unknown> {
   return (
-    value !== null
-    && typeof value === 'object'
-    && !Array.isArray(value)
-    && !isPersistentVector(value)
-    && !isPersistentMap(value)
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    !isPersistentVector(value) &&
+    !isPersistentMap(value)
   )
 }
 

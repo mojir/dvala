@@ -8,13 +8,7 @@
 
 import { appendFileSync } from 'node:fs'
 import * as path from 'node:path'
-import {
-  DebugSession,
-  InitializedEvent,
-  OutputEvent,
-  StoppedEvent,
-  TerminatedEvent,
-} from '@vscode/debugadapter'
+import { DebugSession, InitializedEvent, OutputEvent, StoppedEvent, TerminatedEvent } from '@vscode/debugadapter'
 import type { DebugProtocol } from '@vscode/debugprotocol'
 import { stringifyValue } from '../../common/utils'
 import { allBuiltinModules } from '../../src/allModules'
@@ -25,7 +19,15 @@ import type { DebugStoppedEvent } from '../../src/debugger/Debugger'
 import { findNodeIdForLine, getNodeEndLine, getNodeFile, getNodeLine } from '../../src/debugger/SourceMapUtils'
 import type { ContinuationStack } from '../../src/evaluator/frames'
 import type { Continuation, Handlers } from '../../src/evaluator/effectTypes'
-import type { AstNode, BindingTarget, DvalaFunction, EffectRef, HandlerFunction, RegularExpression, SourceMap } from '../../src/parser/types'
+import type {
+  AstNode,
+  BindingTarget,
+  DvalaFunction,
+  EffectRef,
+  HandlerFunction,
+  RegularExpression,
+  SourceMap,
+} from '../../src/parser/types'
 import { isEffect, isRegularExpression } from '../../src/typeGuards/dvala'
 import { isDvalaFunction } from '../../src/typeGuards/dvalaFunction'
 import { toJS } from '../../src/utils/interop'
@@ -128,10 +130,7 @@ class DvalaDebugSession extends DebugSession {
   // Launch
   // ---------------------------------------------------------------------------
 
-  protected launchRequest(
-    response: DebugProtocol.LaunchResponse,
-    args: DebugProtocol.LaunchRequestArguments,
-  ): void {
+  protected launchRequest(response: DebugProtocol.LaunchResponse, args: DebugProtocol.LaunchRequestArguments): void {
     const launchArgs = args as LaunchArgs
     const programPath = launchArgs.program
     if (!programPath) {
@@ -200,11 +199,16 @@ class DvalaDebugSession extends DebugSession {
 
         const sameDepth = currentDepth === this.stepOverDepth
         const differentFile = nodeFile !== null && nodeFile !== this.stepOverFile
-        const withinExpression = nodeLine !== null
-          && this.stepOverStartLine !== null && this.stepOverEndLine !== null
-          && nodeLine >= this.stepOverStartLine && nodeLine <= this.stepOverEndLine
+        const withinExpression =
+          nodeLine !== null &&
+          this.stepOverStartLine !== null &&
+          this.stepOverEndLine !== null &&
+          nodeLine >= this.stepOverStartLine &&
+          nodeLine <= this.stepOverEndLine
 
-        log(`FILTER: ${shortFile}:${nodeLine} depth=${currentDepth} stepDepth=${this.stepOverDepth} withinExpr=${withinExpression} diffFile=${differentFile} sameDepth=${sameDepth}`)
+        log(
+          `FILTER: ${shortFile}:${nodeLine} depth=${currentDepth} stepDepth=${this.stepOverDepth} withinExpr=${withinExpression} diffFile=${differentFile} sameDepth=${sameDepth}`,
+        )
 
         if (withinExpression || (sameDepth && differentFile)) {
           log(`  -> SKIP`)
@@ -251,37 +255,49 @@ class DvalaDebugSession extends DebugSession {
     const dvala = createDvala({ modules: allBuiltinModules, debug: true })
 
     const handlers: Handlers = [
-      { pattern: 'dvala.io.print', handler: async (ctx) => {
-        const str = stringifyValue(ctx.arg, false)
-        this.sendEvent(new OutputEvent(str, 'stdout'))
-        ctx.resume(ctx.arg)
-      } },
-      { pattern: 'dvala.io.error', handler: async (ctx) => {
-        const str = stringifyValue(ctx.arg, false)
-        this.sendEvent(new OutputEvent(str + '\n', 'stderr'))
-        ctx.resume(ctx.arg)
-      } },
-      { pattern: '*', handler: async (ctx) => {
-        ctx.next()
-      } },
+      {
+        pattern: 'dvala.io.print',
+        handler: async ctx => {
+          const str = stringifyValue(ctx.arg, false)
+          this.sendEvent(new OutputEvent(str, 'stdout'))
+          ctx.resume(ctx.arg)
+        },
+      },
+      {
+        pattern: 'dvala.io.error',
+        handler: async ctx => {
+          const str = stringifyValue(ctx.arg, false)
+          this.sendEvent(new OutputEvent(str + '\n', 'stderr'))
+          ctx.resume(ctx.arg)
+        },
+      },
+      {
+        pattern: '*',
+        handler: async ctx => {
+          ctx.next()
+        },
+      },
     ]
 
-    dvala.runAsync(dvalaBundle, {
-      effectHandlers: handlers,
-      onNodeEval: this.dbg!.onNodeEval,
-      filePath: this.programPath,
-    }).then((result) => {
-      if (result.type === 'completed') {
-        const value = stringifyValue(result.value, false)
-        this.sendEvent(new OutputEvent(`=> ${value}\n`, 'console'))
-      } else if (result.type === 'error') {
-        this.sendEvent(new OutputEvent(`Error: ${result.error.message}\n`, 'stderr'))
-      }
-      this.sendEvent(new TerminatedEvent())
-    }).catch((err) => {
-      this.sendEvent(new OutputEvent(`Fatal: ${err}\n`, 'stderr'))
-      this.sendEvent(new TerminatedEvent())
-    })
+    dvala
+      .runAsync(dvalaBundle, {
+        effectHandlers: handlers,
+        onNodeEval: this.dbg!.onNodeEval,
+        filePath: this.programPath,
+      })
+      .then(result => {
+        if (result.type === 'completed') {
+          const value = stringifyValue(result.value, false)
+          this.sendEvent(new OutputEvent(`=> ${value}\n`, 'console'))
+        } else if (result.type === 'error') {
+          this.sendEvent(new OutputEvent(`Error: ${result.error.message}\n`, 'stderr'))
+        }
+        this.sendEvent(new TerminatedEvent())
+      })
+      .catch(err => {
+        this.sendEvent(new OutputEvent(`Fatal: ${err}\n`, 'stderr'))
+        this.sendEvent(new TerminatedEvent())
+      })
   }
 
   // ---------------------------------------------------------------------------
@@ -392,10 +408,16 @@ class DvalaDebugSession extends DebugSession {
   /** Re-issue the last step command to skip past a node without breaking depth tracking. */
   private reissueLastStep(): void {
     switch (this.lastStepCommand) {
-      case 'stepOver': this.dbg?.stepOver(); break
-      case 'stepOut': this.dbg?.stepOut(); break
+      case 'stepOver':
+        this.dbg?.stepOver()
+        break
+      case 'stepOut':
+        this.dbg?.stepOut()
+        break
       case 'stepInto':
-      default: this.dbg?.stepInto(); break
+      default:
+        this.dbg?.stepInto()
+        break
     }
   }
 
@@ -403,20 +425,14 @@ class DvalaDebugSession extends DebugSession {
   // Execution control
   // ---------------------------------------------------------------------------
 
-  protected continueRequest(
-    response: DebugProtocol.ContinueResponse,
-    _args: DebugProtocol.ContinueArguments,
-  ): void {
+  protected continueRequest(response: DebugProtocol.ContinueResponse, _args: DebugProtocol.ContinueArguments): void {
     this.currentNode = null
     this.currentContinuation = null
     this.dbg?.continue()
     this.sendResponse(response)
   }
 
-  protected nextRequest(
-    response: DebugProtocol.NextResponse,
-    _args: DebugProtocol.NextArguments,
-  ): void {
+  protected nextRequest(response: DebugProtocol.NextResponse, _args: DebugProtocol.NextArguments): void {
     // Record current file, line, and depth so the stop callback can skip
     // same-line sub-expressions and bundler-inlined module code
     this.stepOverFile = this.currentNode ? this.nodeFile(this.currentNode) : null
@@ -430,10 +446,7 @@ class DvalaDebugSession extends DebugSession {
     this.sendResponse(response)
   }
 
-  protected stepInRequest(
-    response: DebugProtocol.StepInResponse,
-    _args: DebugProtocol.StepInArguments,
-  ): void {
+  protected stepInRequest(response: DebugProtocol.StepInResponse, _args: DebugProtocol.StepInArguments): void {
     this.lastStepCommand = 'stepInto'
     this.currentNode = null
     this.currentContinuation = null
@@ -441,10 +454,7 @@ class DvalaDebugSession extends DebugSession {
     this.sendResponse(response)
   }
 
-  protected stepOutRequest(
-    response: DebugProtocol.StepOutResponse,
-    _args: DebugProtocol.StepOutArguments,
-  ): void {
+  protected stepOutRequest(response: DebugProtocol.StepOutResponse, _args: DebugProtocol.StepOutArguments): void {
     this.lastStepCommand = 'stepOut'
     this.currentNode = null
     this.currentContinuation = null
@@ -523,18 +533,11 @@ class DvalaDebugSession extends DebugSession {
   // Scopes and variables
   // ---------------------------------------------------------------------------
 
-  protected scopesRequest(
-    response: DebugProtocol.ScopesResponse,
-    _args: DebugProtocol.ScopesArguments,
-  ): void {
+  protected scopesRequest(response: DebugProtocol.ScopesResponse, _args: DebugProtocol.ScopesArguments): void {
     // Build handler variables once; show the scope only if non-empty
-    this.cachedHandlerVars = this.currentContinuation
-      ? this.buildHandlerVariables(this.currentContinuation.k)
-      : []
+    this.cachedHandlerVars = this.currentContinuation ? this.buildHandlerVariables(this.currentContinuation.k) : []
 
-    const scopes: DebugProtocol.Scope[] = [
-      { name: 'Locals', variablesReference: LOCALS_REF, expensive: false },
-    ]
+    const scopes: DebugProtocol.Scope[] = [{ name: 'Locals', variablesReference: LOCALS_REF, expensive: false }]
     if (this.cachedHandlerVars.length > 0) {
       scopes.push({ name: 'Effect Handlers', variablesReference: HANDLERS_REF, expensive: false })
     }
@@ -542,10 +545,7 @@ class DvalaDebugSession extends DebugSession {
     this.sendResponse(response)
   }
 
-  protected variablesRequest(
-    response: DebugProtocol.VariablesResponse,
-    args: DebugProtocol.VariablesArguments,
-  ): void {
+  protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): void {
     // Locals scope: convert Dvala values to JS and build expandable tree
     if (args.variablesReference === LOCALS_REF) {
       if (!this.currentContinuation) {
@@ -695,7 +695,11 @@ class DvalaDebugSession extends DebugSession {
     const arityParts: string[] = []
     if (fn.arity.min !== undefined) arityParts.push(`min: ${fn.arity.min}`)
     if (fn.arity.max !== undefined) arityParts.push(`max: ${fn.arity.max}`)
-    vars.push({ name: 'arity', value: arityParts.length > 0 ? `{${arityParts.join(', ')}}` : '{}', variablesReference: 0 })
+    vars.push({
+      name: 'arity',
+      value: arityParts.length > 0 ? `{${arityParts.join(', ')}}` : '{}',
+      variablesReference: 0,
+    })
 
     // Source location (relative to program directory for readability)
     if (fn.sourceCodeInfo) {
@@ -866,7 +870,6 @@ class DvalaDebugSession extends DebugSession {
     return { value: v.value, variablesReference: v.variablesReference }
   }
 
-
   /** Build expandable variables for all active effect handlers on the stack. */
   private buildHandlerVariables(k: ContinuationStack): DebugProtocol.Variable[] {
     const variables: DebugProtocol.Variable[] = []
@@ -879,9 +882,12 @@ class DvalaDebugSession extends DebugSession {
       if (frame.type === 'AlgebraicHandle' || frame.type === 'HandlerClause' || frame.type === 'HandlerTransform') {
         const handler = frame.handler as HandlerFunction
         const effectNames = [...handler.clauseMap.keys()]
-        const status = frame.type === 'AlgebraicHandle' ? 'installed'
-          : frame.type === 'HandlerClause' ? 'dispatching'
-          : 'transforming'
+        const status =
+          frame.type === 'AlgebraicHandle'
+            ? 'installed'
+            : frame.type === 'HandlerClause'
+              ? 'dispatching'
+              : 'transforming'
 
         // Build child properties for this handler
         const details: Record<string, unknown> = {}
@@ -951,12 +957,18 @@ class DvalaDebugSession extends DebugSession {
         // Recurse into child nodes
         if (Array.isArray(payload)) {
           for (const child of payload) {
-            if (Array.isArray(child) && child.length === 3 && typeof child[0] === 'string' && typeof child[2] === 'number') {
+            if (
+              Array.isArray(child) &&
+              child.length === 3 &&
+              typeof child[0] === 'string' &&
+              typeof child[2] === 'number'
+            ) {
               walk([child as AstNode])
             } else if (Array.isArray(child)) {
               // Could be an array of nodes (e.g. block body, function body)
-              const nested = child.filter((c): c is AstNode =>
-                Array.isArray(c) && c.length === 3 && typeof c[0] === 'string' && typeof c[2] === 'number',
+              const nested = child.filter(
+                (c): c is AstNode =>
+                  Array.isArray(c) && c.length === 3 && typeof c[0] === 'string' && typeof c[2] === 'number',
               )
               if (nested.length > 0) walk(nested)
             }
@@ -1078,10 +1090,7 @@ class DvalaDebugSession extends DebugSession {
     super.dispatchRequest(request)
   }
 
-  private locationsRequest(
-    response: DebugProtocol.LocationsResponse,
-    args: DebugProtocol.LocationsArguments,
-  ): void {
+  private locationsRequest(response: DebugProtocol.LocationsResponse, args: DebugProtocol.LocationsArguments): void {
     const loc = this.locationRefs.get(args.locationReference)
     if (loc) {
       response.body = {

@@ -8,7 +8,7 @@ import { PersistentMap, PersistentVector } from '../../utils/persistent'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const objectNormalExpression: BuiltinNormalExpressions = {
-  'keys': {
+  keys: {
     evaluate: ([obj], sourceCodeInfo): Arr => {
       assertObj(obj, sourceCodeInfo)
       return PersistentVector.from(obj.keys())
@@ -30,7 +30,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'vals': {
+  vals: {
     evaluate: ([obj], sourceCodeInfo): Arr => {
       assertObj(obj, sourceCodeInfo)
       return PersistentVector.from(obj.values())
@@ -52,7 +52,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'entries': {
+  entries: {
     evaluate: ([obj], sourceCodeInfo): Arr => {
       assertObj(obj, sourceCodeInfo)
       // Each entry is a [key, value] pair represented as a PersistentVector
@@ -75,12 +75,11 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'find': {
+  find: {
     evaluate: ([obj, key], sourceCodeInfo): Arr | null => {
       assertObj(obj, sourceCodeInfo)
       assertString(key, sourceCodeInfo)
-      if (collHasKey(obj, key))
-        return PersistentVector.from([key, obj.get(key)])
+      if (collHasKey(obj, key)) return PersistentVector.from([key, obj.get(key)])
 
       return null
     },
@@ -98,15 +97,11 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['obj', 'key'] }],
       description: 'Returns entry (key-value pair) for `key`, or `null` if `key` not present in `obj`.',
       seeAlso: ['get', 'contains', 'entries', 'sequence.position', 'some'],
-      examples: [
-        '{ a: 1, "b": 2 } find "a"',
-        'find(object("a", 1, "b", 2), "b")',
-        'find(object("a", 1, "b", 2), "c")',
-      ],
+      examples: ['{ a: 1, "b": 2 } find "a"', 'find(object("a", 1, "b", 2), "b")', 'find(object("a", 1, "b", 2), "c")'],
     },
   },
 
-  'dissoc': {
+  dissoc: {
     evaluate: ([obj, key], sourceCodeInfo): Any => {
       assertObj(obj, sourceCodeInfo)
       assertString(key, sourceCodeInfo)
@@ -139,26 +134,22 @@ o`,
     },
   },
 
-  'merge': {
+  merge: {
     evaluate: (params, sourceCodeInfo): Any => {
-      if (params.size === 0)
-        return null
+      if (params.size === 0) return null
 
       const [first, ...rest] = params
       assertObj(first, sourceCodeInfo)
 
-      return rest.reduce(
-        (result: Obj, obj) => {
-          assertObj(obj, sourceCodeInfo)
-          // Fold all entries of obj into result via assoc
-          let merged = result
-          for (const [k, v] of obj) {
-            merged = merged.assoc(k, v)
-          }
-          return merged
-        },
-        first,
-      )
+      return rest.reduce((result: Obj, obj) => {
+        assertObj(obj, sourceCodeInfo)
+        // Fold all entries of obj into result via assoc
+        let merged = result
+        for (const [k, v] of obj) {
+          merged = merged.assoc(k, v)
+        }
+        return merged
+      }, first)
     },
     arity: { min: 0 },
     docs: {
@@ -184,8 +175,10 @@ If no arguments are provided \`null\` is returned.`,
     },
   },
 
-  'mergeWith': {
-    evaluate: () => { throw new Error('mergeWith is implemented in Dvala') },
+  mergeWith: {
+    evaluate: () => {
+      throw new Error('mergeWith is implemented in Dvala')
+    },
     arity: { min: 2 },
     docs: {
       type: '(({...}, {...}, (Unknown, Unknown) -> Unknown) -> {...}) & (({...}, {...}, {...}, (Unknown, Unknown) -> Unknown) -> {...}) & (({...}, {...}, {...}, {...}, (Unknown, Unknown) -> Unknown) -> {...})',
@@ -211,7 +204,7 @@ If no arguments are provided \`null\` is returned.`,
     },
   },
 
-  'zipmap': {
+  zipmap: {
     evaluate: ([keys, values], sourceCodeInfo): Any => {
       assertStringArray(keys, sourceCodeInfo)
       assertArray(values, sourceCodeInfo)
@@ -247,15 +240,14 @@ If no arguments are provided \`null\` is returned.`,
     },
   },
 
-  'selectKeys': {
+  selectKeys: {
     evaluate: ([obj, keys], sourceCodeInfo): Any => {
       assertStringArray(keys, sourceCodeInfo)
       assertObj(obj, sourceCodeInfo)
 
       let result: Obj = PersistentMap.empty()
       for (const key of keys) {
-        if (typeof key === 'string' && collHasKey(obj, key))
-          result = result.assoc(key, toAny(obj.get(key)))
+        if (typeof key === 'string' && collHasKey(obj, key)) result = result.assoc(key, toAny(obj.get(key)))
       }
       return result
     },

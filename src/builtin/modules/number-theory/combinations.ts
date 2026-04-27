@@ -26,10 +26,7 @@ function combinations<T>(collection: T[], size: number): T[][] {
     const current = collection[i]!
 
     // Get all combinations of size-1 from the rest of the elements
-    const subCombinations = combinations(
-      collection.slice(i + 1),
-      size - 1,
-    )
+    const subCombinations = combinations(collection.slice(i + 1), size - 1)
 
     // Add the current element to each sub-combination
     for (const subComb of subCombinations) {
@@ -41,19 +38,18 @@ function combinations<T>(collection: T[], size: number): T[][] {
 }
 
 export const combinationsNormalExpressions: BuiltinNormalExpressions = {
-  'combinations': {
+  combinations: {
     // Returns an array of PersistentVectors (each combination is wrapped), cast to Any
     evaluate: ([set, n], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true, lte: set.size })
-      if (n === 0)
-        return PersistentVector.from([PersistentVector.empty()])
+      if (n === 0) return PersistentVector.from([PersistentVector.empty()])
       // Convert PV to plain array for the recursive combinations helper, then wrap results
       return PersistentVector.from(combinations([...set], n).map(c => PersistentVector.from(c)))
     },
     arity: toFixedArity(2),
   },
-  'countCombinations': {
+  countCombinations: {
     evaluate: ([n, k], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
       assertNumber(k, sourceCodeInfo, { integer: true, nonNegative: true, lte: n })

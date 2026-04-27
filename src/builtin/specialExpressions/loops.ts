@@ -24,9 +24,7 @@ function analyze(
   loopBindings.forEach(loopBindingNode => {
     const [binding, letBindings, whenNode, whileNode] = loopBindingNode
     const [target, value] = binding
-    getUndefinedSymbols([value], contextStack.create(newContext), builtin).forEach(symbol =>
-      result.add(symbol),
-    )
+    getUndefinedSymbols([value], contextStack.create(newContext), builtin).forEach(symbol => result.add(symbol))
     Object.assign(newContext, getAllBindingTargetNames(target))
     // Defensive: letBindings is always present when parsed from loop syntax
     /* v8 ignore next */
@@ -34,26 +32,18 @@ function analyze(
       letBindings.forEach(letBinding => {
         const [letTarget, letValue] = letBinding
 
-        getUndefinedSymbols([letValue], contextStack.create(newContext), builtin).forEach(symbol =>
-          result.add(symbol),
-        )
+        getUndefinedSymbols([letValue], contextStack.create(newContext), builtin).forEach(symbol => result.add(symbol))
         Object.assign(newContext, getAllBindingTargetNames(letTarget))
       })
     }
     if (whenNode) {
-      getUndefinedSymbols([whenNode], contextStack.create(newContext), builtin).forEach(symbol =>
-        result.add(symbol),
-      )
+      getUndefinedSymbols([whenNode], contextStack.create(newContext), builtin).forEach(symbol => result.add(symbol))
     }
     if (whileNode) {
-      getUndefinedSymbols([whileNode], contextStack.create(newContext), builtin).forEach(symbol =>
-        result.add(symbol),
-      )
+      getUndefinedSymbols([whileNode], contextStack.create(newContext), builtin).forEach(symbol => result.add(symbol))
     }
   })
-  getUndefinedSymbols([body], contextStack.create(newContext), builtin).forEach(symbol =>
-    result.add(symbol),
-  )
+  getUndefinedSymbols([body], contextStack.create(newContext), builtin).forEach(symbol => result.add(symbol))
   return result
 }
 
@@ -90,5 +80,6 @@ for (
 export const forSpecialExpression: BuiltinSpecialExpression<Any, ForNode> = {
   arity: toFixedArity(1),
   docs: forDocs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => analyze(node, contextStack, getUndefinedSymbols, builtin),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) =>
+    analyze(node, contextStack, getUndefinedSymbols, builtin),
 }

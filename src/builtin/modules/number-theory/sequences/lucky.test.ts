@@ -14,7 +14,9 @@ describe('lucky', () => {
     expect(runNth('nth:luckySeq(2)')).toEqual([1, 3])
     expect(runNth('nth:luckySeq(3)')).toEqual([1, 3, 7])
     expect(runNth('nth:luckySeq(4)')).toEqual([1, 3, 7, 9])
-    expect(runNth('nth:luckySeq(20)')).toEqual([1, 3, 7, 9, 13, 15, 21, 25, 31, 33, 37, 43, 49, 51, 63, 67, 69, 73, 75, 79])
+    expect(runNth('nth:luckySeq(20)')).toEqual([
+      1, 3, 7, 9, 13, 15, 21, 25, 31, 33, 37, 43, 49, 51, 63, 67, 69, 73, 75, 79,
+    ])
     expect(() => runNth('nth:luckySeq(0)')).toThrow(DvalaError)
   })
 
@@ -32,7 +34,9 @@ describe('lucky', () => {
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:luckyTakeWhile(-> $ < 100)')).toEqual([1, 3, 7, 9, 13, 15, 21, 25, 31, 33, 37, 43, 49, 51, 63, 67, 69, 73, 75, 79, 87, 93, 99])
+    expect(runNth('nth:luckyTakeWhile(-> $ < 100)')).toEqual([
+      1, 3, 7, 9, 13, 15, 21, 25, 31, 33, 37, 43, 49, 51, 63, 67, 69, 73, 75, 79, 87, 93, 99,
+    ])
     expect(runNth('nth:luckyTakeWhile(-> $2 < 3000)')).toBeDefined()
   })
 

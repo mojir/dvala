@@ -8,7 +8,7 @@ function isAbundant(num: number): boolean {
 }
 
 export const abundantSequence: SequenceDefinition<'abundant'> = {
-  'abundantSeq': length => {
+  abundantSeq: length => {
     const abundants = []
     let num = 2
     while (abundants.length < length) {
@@ -19,5 +19,5 @@ export const abundantSequence: SequenceDefinition<'abundant'> = {
     }
     return abundants
   },
-  'isAbundant': n => isAbundant(n),
+  isAbundant: n => isAbundant(n),
 }

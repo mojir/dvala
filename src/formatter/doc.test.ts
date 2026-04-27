@@ -37,12 +37,14 @@ describe('Doc algebra — render', () => {
   })
 
   it('renders group broken when it does not fit', () => {
-    const doc = group(concat(
-      text('['),
-      nest(2, concat(line, text('a_long_item'), text(','), line, text('b_long_item'))),
-      line,
-      text(']'),
-    ))
+    const doc = group(
+      concat(
+        text('['),
+        nest(2, concat(line, text('a_long_item'), text(','), line, text('b_long_item'))),
+        line,
+        text(']'),
+      ),
+    )
     expect(render(doc, 20)).toBe('[\n  a_long_item,\n  b_long_item\n]')
   })
 
@@ -82,40 +84,31 @@ describe('Doc algebra — render', () => {
   })
 
   it('renders ifBreak — broken path', () => {
-    const doc = group(concat(
-      text('['),
-      ifBreak(text('BROKEN'), text('FLAT')),
-      text(' '.repeat(80)),
-      text(']'),
-    ))
+    const doc = group(concat(text('['), ifBreak(text('BROKEN'), text('FLAT')), text(' '.repeat(80)), text(']')))
     expect(render(doc, 80)).toBe(`[BROKEN${' '.repeat(80)}]`)
   })
 
   it('renders trailingComma in broken group', () => {
-    const doc = group(concat(
-      text('['),
-      nest(2, concat(
+    const doc = group(
+      concat(
+        text('['),
+        nest(2, concat(line, join(concat(text(','), line), [text('a_long_name'), text('b_long_name')]), trailingComma)),
         line,
-        join(concat(text(','), line), [text('a_long_name'), text('b_long_name')]),
-        trailingComma,
-      )),
-      line,
-      text(']'),
-    ))
+        text(']'),
+      ),
+    )
     expect(render(doc, 20)).toBe('[\n  a_long_name,\n  b_long_name,\n]')
   })
 
   it('omits trailingComma in flat group', () => {
-    const doc = group(concat(
-      text('['),
-      nest(2, concat(
+    const doc = group(
+      concat(
+        text('['),
+        nest(2, concat(softLine, join(concat(text(','), line), [text('a'), text('b')]), trailingComma)),
         softLine,
-        join(concat(text(','), line), [text('a'), text('b')]),
-        trailingComma,
-      )),
-      softLine,
-      text(']'),
-    ))
+        text(']'),
+      ),
+    )
     expect(render(doc, 80)).toBe('[a, b]')
   })
 
@@ -134,23 +127,17 @@ describe('Doc algebra — render', () => {
 
   it('formats array-like structure — fits on one line', () => {
     const items = [text('1'), text('2'), text('3')]
-    const doc = group(concat(
-      text('['),
-      nest(2, concat(softLine, join(concat(text(','), line), items))),
-      softLine,
-      text(']'),
-    ))
+    const doc = group(
+      concat(text('['), nest(2, concat(softLine, join(concat(text(','), line), items))), softLine, text(']')),
+    )
     expect(render(doc, 80)).toBe('[1, 2, 3]')
   })
 
   it('formats array-like structure — breaks across lines', () => {
     const items = [text('first_long_element'), text('second_long_element'), text('third_long_element')]
-    const doc = group(concat(
-      text('['),
-      nest(2, concat(softLine, join(concat(text(','), line), items))),
-      softLine,
-      text(']'),
-    ))
+    const doc = group(
+      concat(text('['), nest(2, concat(softLine, join(concat(text(','), line), items))), softLine, text(']')),
+    )
     expect(render(doc, 40)).toBe('[\n  first_long_element,\n  second_long_element,\n  third_long_element\n]')
   })
 

@@ -290,15 +290,21 @@ describe('sequence functions', () => {
 
   describe('sort', () => {
     it('samples', () => {
-      expect(dvala.run('sort([3, 1, 2], (a, b) -> if a < b then -1 else if a > b then 1 else 0 end)')).toEqual([1, 2, 3])
-      expect(dvala.run('sort([3, 1, 2], (a, b) -> if a > b then -1 else if a < b then 1 else 0 end)')).toEqual([3, 2, 1])
+      expect(dvala.run('sort([3, 1, 2], (a, b) -> if a < b then -1 else if a > b then 1 else 0 end)')).toEqual([
+        1, 2, 3,
+      ])
+      expect(dvala.run('sort([3, 1, 2], (a, b) -> if a > b then -1 else if a < b then 1 else 0 end)')).toEqual([
+        3, 2, 1,
+      ])
       expect(dvala.run('sort([], (a, b) -> if a > b then -1 else if a < b then 1 else 0 end)')).toEqual([])
 
       expect(dvala.run('sort("Albert", (a, b) -> if a < b then 1 else if a > b then -1 else 0 end)')).toBe('trlebA')
 
       expect(dvala.run('sort("Albert")')).toBe('Abelrt')
 
-      expect(() => dvala.run('sort(10, (a, b) -> if a > b then -1 else if a < b then 1 else -1 end)')).toThrow(DvalaError)
+      expect(() => dvala.run('sort(10, (a, b) -> if a > b then -1 else if a < b then 1 else -1 end)')).toThrow(
+        DvalaError,
+      )
       expect(() => dvala.run('sort((a, b) -> if a > b then -1 else if a < b then 1 else -1 end)')).toThrow(DvalaError)
       expect(() => dvala.run('sort()')).toThrow(DvalaError)
     })
@@ -476,7 +482,10 @@ describe('sequence functions', () => {
 
 describe('sequence-Utils module functions', () => {
   const imp = 'let su = import("sequence"); '
-  for (const mdvala of [createDvala({ modules: [sequenceUtilsModule] }), createDvala({ modules: [sequenceUtilsModule], debug: true })]) {
+  for (const mdvala of [
+    createDvala({ modules: [sequenceUtilsModule] }),
+    createDvala({ modules: [sequenceUtilsModule], debug: true }),
+  ]) {
     describe('position', () => {
       it('samples', () => {
         expect(mdvala.run(`${imp}su.position(["1", "2", 3], isNumber)`)).toEqual(2)
@@ -536,9 +545,7 @@ describe('sequence-Utils module functions', () => {
           'Nina',
         ])
         expect(mdvala.run(`${imp}su.sortBy("Albert", lowerCase)`)).toEqual('Abelrt')
-        expect(mdvala.run(`${imp}su.sortBy("Albert", lowerCase, (a, b) -> compare(b, a))`)).toEqual(
-          'trlebA',
-        )
+        expect(mdvala.run(`${imp}su.sortBy("Albert", lowerCase, (a, b) -> compare(b, a))`)).toEqual('trlebA')
         expect(() => mdvala.run(`${imp}su.sortBy()`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}su.sortBy("a")`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}su.sortBy({} "a")`)).toThrow(DvalaError)
@@ -564,7 +571,9 @@ describe('sequence-Utils module functions', () => {
         expect(() => mdvala.run(`${imp}su.remove()`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}su.remove("Albert Mojir")`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}su.remove(=> contains("aoueiyAOUEIY", $))`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.remove("Albert", => contains("aoueiyAOUEIY", $) "Mojir")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.remove("Albert", => contains("aoueiyAOUEIY", $) "Mojir")`)).toThrow(
+          DvalaError,
+        )
       })
     })
 
@@ -629,7 +638,11 @@ describe('sequence-Utils module functions', () => {
 
     describe('frequencies', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.frequencies(["Albert", "Mojir", "Nina", "Mojir"])`)).toEqual({ Albert: 1, Nina: 1, Mojir: 2 })
+        expect(mdvala.run(`${imp}su.frequencies(["Albert", "Mojir", "Nina", "Mojir"])`)).toEqual({
+          Albert: 1,
+          Nina: 1,
+          Mojir: 2,
+        })
         expect(mdvala.run(`${imp}su.frequencies("Pneumonoultramicroscopicsilicovolcanoconiosis")`)).toEqual({
           P: 1,
           a: 2,
@@ -660,7 +673,9 @@ describe('sequence-Utils module functions', () => {
           Albert: [{ name: 'Albert' }, { name: 'Albert' }],
           Mojir: [{ name: 'Mojir' }],
         })
-        expect(mdvala.run(`${imp}su.groupBy("Albert Mojir", -> if "aoueiAOUEI" contains $ then "vowel" else "other" end)`)).toEqual({
+        expect(
+          mdvala.run(`${imp}su.groupBy("Albert Mojir", -> if "aoueiAOUEI" contains $ then "vowel" else "other" end)`),
+        ).toEqual({
           other: ['l', 'b', 'r', 't', ' ', 'M', 'j', 'r'],
           vowel: ['A', 'e', 'o', 'i'],
         })
@@ -730,7 +745,12 @@ describe('sequence-Utils module functions', () => {
         expect(mdvala.run(`${imp}su.partition([1, 2, 3, 4], 10, 10, [])`)).toEqual([[1, 2, 3, 4]])
         expect(mdvala.run(`${imp}su.partition([1, 2, 3, 4], 10, 10, null)`)).toEqual([[1, 2, 3, 4]])
         expect(mdvala.run(`${imp}su.partition("superfragilistic", 5)`)).toEqual(['super', 'fragi', 'listi'])
-        expect(mdvala.run(`${imp}su.partition("superfragilistic", 5, 5, null)`)).toEqual(['super', 'fragi', 'listi', 'c'])
+        expect(mdvala.run(`${imp}su.partition("superfragilistic", 5, 5, null)`)).toEqual([
+          'super',
+          'fragi',
+          'listi',
+          'c',
+        ])
         expect(mdvala.run(`${imp}let foo = [5, 6, 7, 8]; su.partition(foo, 2, 1, foo)`)).toEqual([
           [5, 6],
           [6, 7],
@@ -768,7 +788,13 @@ describe('sequence-Utils module functions', () => {
           [2, 2],
           [3, 3],
         ])
-        expect(mdvala.run(`${imp}su.partitionBy("Leeeeeerrroyyy", identity)`)).toEqual(['L', 'eeeeee', 'rrr', 'o', 'yyy'])
+        expect(mdvala.run(`${imp}su.partitionBy("Leeeeeerrroyyy", identity)`)).toEqual([
+          'L',
+          'eeeeee',
+          'rrr',
+          'o',
+          'yyy',
+        ])
         expect(() => mdvala.run(`${imp}su.partitionBy(isOdd)`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}su.partitionBy([1, 2, 3])`)).toThrow(DvalaError)
       })

@@ -1,9 +1,31 @@
 import { describe, expect, it } from 'vitest'
 import {
-  NumberType, IntegerType, StringType, BooleanType, NullType,
-  Unknown, Never, RegexType, PureEffects,
-  atom, literal, fn, tuple, record, array, sequence, toSequenceType, union, inter, neg, handlerType, effectSet, indexType, keyofType,
-  typeToString, typeEquals,
+  NumberType,
+  IntegerType,
+  StringType,
+  BooleanType,
+  NullType,
+  Unknown,
+  Never,
+  RegexType,
+  PureEffects,
+  atom,
+  literal,
+  fn,
+  tuple,
+  record,
+  array,
+  sequence,
+  toSequenceType,
+  union,
+  inter,
+  neg,
+  handlerType,
+  effectSet,
+  indexType,
+  keyofType,
+  typeToString,
+  typeEquals,
 } from './types'
 import type { Type } from './types'
 import { isSubtype } from './subtype'
@@ -96,7 +118,9 @@ describe('typeToString', () => {
   })
 
   it('rest function types', () => {
-    expect(typeToString(fn([NumberType], NumberType, undefined, undefined, NumberType))).toBe('(Number, ...Number[]) -> Number')
+    expect(typeToString(fn([NumberType], NumberType, undefined, undefined, NumberType))).toBe(
+      '(Number, ...Number[]) -> Number',
+    )
   })
 
   it('tuple types', () => {
@@ -226,7 +250,9 @@ describe('sequence normalization helpers', () => {
   })
 
   it('normalizes tuples into exact-length sequences', () => {
-    expect(typeEquals(toSequenceType(tuple([NumberType, StringType]))!, sequence([NumberType, StringType], Never))).toBe(true)
+    expect(
+      typeEquals(toSequenceType(tuple([NumberType, StringType]))!, sequence([NumberType, StringType], Never)),
+    ).toBe(true)
   })
 
   it('normalizes sequence min length to cover the prefix', () => {
@@ -427,10 +453,7 @@ describe('subtyping — unions', () => {
   })
 
   it('Number | String <: Number | String | Boolean', () => {
-    expect(isSubtype(
-      union(NumberType, StringType),
-      union(NumberType, StringType, BooleanType),
-    )).toBe(true)
+    expect(isSubtype(union(NumberType, StringType), union(NumberType, StringType, BooleanType))).toBe(true)
   })
 
   it('42 <: Number | String', () => {
@@ -438,10 +461,7 @@ describe('subtyping — unions', () => {
   })
 
   it(':ok | :error <: :ok | :error | :pending', () => {
-    expect(isSubtype(
-      union(atom('ok'), atom('error')),
-      union(atom('ok'), atom('error'), atom('pending')),
-    )).toBe(true)
+    expect(isSubtype(union(atom('ok'), atom('error')), union(atom('ok'), atom('error'), atom('pending')))).toBe(true)
   })
 })
 
@@ -560,45 +580,42 @@ describe('subtyping — functions', () => {
   })
 
   it('contravariant params: (Number|String) -> Number <: (Number) -> Number', () => {
-    expect(isSubtype(
-      fn([union(NumberType, StringType)], NumberType),
-      fn([NumberType], NumberType),
-    )).toBe(true)
+    expect(isSubtype(fn([union(NumberType, StringType)], NumberType), fn([NumberType], NumberType))).toBe(true)
   })
 
   it('wrong variance: (Number) -> Number </: (Number|String) -> Number', () => {
-    expect(isSubtype(
-      fn([NumberType], NumberType),
-      fn([union(NumberType, StringType)], NumberType),
-    )).toBe(false)
+    expect(isSubtype(fn([NumberType], NumberType), fn([union(NumberType, StringType)], NumberType))).toBe(false)
   })
 
   it('arity mismatch: (Number) -> Number </: (Number, String) -> Number', () => {
-    expect(isSubtype(
-      fn([NumberType], NumberType),
-      fn([NumberType, StringType], NumberType),
-    )).toBe(false)
+    expect(isSubtype(fn([NumberType], NumberType), fn([NumberType, StringType], NumberType))).toBe(false)
   })
 
   it('rest params accept longer fixed arities', () => {
-    expect(isSubtype(
-      fn([NumberType], NumberType, undefined, undefined, NumberType),
-      fn([NumberType, NumberType, NumberType], NumberType),
-    )).toBe(true)
+    expect(
+      isSubtype(
+        fn([NumberType], NumberType, undefined, undefined, NumberType),
+        fn([NumberType, NumberType, NumberType], NumberType),
+      ),
+    ).toBe(true)
   })
 
   it('rest subtyping stays contravariant', () => {
-    expect(isSubtype(
-      fn([union(NumberType, StringType)], NumberType, undefined, undefined, union(NumberType, StringType)),
-      fn([NumberType], NumberType, undefined, undefined, NumberType),
-    )).toBe(true)
+    expect(
+      isSubtype(
+        fn([union(NumberType, StringType)], NumberType, undefined, undefined, union(NumberType, StringType)),
+        fn([NumberType], NumberType, undefined, undefined, NumberType),
+      ),
+    ).toBe(true)
   })
 
   it('fixed arity is not subtype of rest domain with smaller minimum arity', () => {
-    expect(isSubtype(
-      fn([NumberType, NumberType], NumberType),
-      fn([NumberType], NumberType, undefined, undefined, NumberType),
-    )).toBe(false)
+    expect(
+      isSubtype(
+        fn([NumberType, NumberType], NumberType),
+        fn([NumberType], NumberType, undefined, undefined, NumberType),
+      ),
+    ).toBe(false)
   })
 })
 
@@ -624,17 +641,11 @@ describe('subtyping — tuples', () => {
   })
 
   it('[Number, String] <: (Number | String)[] (tuple <: array)', () => {
-    expect(isSubtype(
-      tuple([NumberType, StringType]),
-      array(union(NumberType, StringType)),
-    )).toBe(true)
+    expect(isSubtype(tuple([NumberType, StringType]), array(union(NumberType, StringType)))).toBe(true)
   })
 
   it('[Number, String] <: Sequence<[Number, String], ...Never[], len=2..2>', () => {
-    expect(isSubtype(
-      tuple([NumberType, StringType]),
-      sequence([NumberType, StringType], Never),
-    )).toBe(true)
+    expect(isSubtype(tuple([NumberType, StringType]), sequence([NumberType, StringType], Never))).toBe(true)
   })
 })
 
@@ -666,31 +677,21 @@ describe('subtyping — arrays', () => {
 
 describe('subtyping — sequences', () => {
   it('exact sequences subtype matching wider element types', () => {
-    expect(isSubtype(
-      sequence([literal(42), literal('hi')], Never),
-      sequence([NumberType, StringType], Never),
-    )).toBe(true)
+    expect(isSubtype(sequence([literal(42), literal('hi')], Never), sequence([NumberType, StringType], Never))).toBe(
+      true,
+    )
   })
 
   it('prefix-constrained sequences subtype homogeneous arrays when every position fits', () => {
-    expect(isSubtype(
-      sequence([NumberType], NumberType, 1),
-      array(NumberType),
-    )).toBe(true)
+    expect(isSubtype(sequence([NumberType], NumberType, 1), array(NumberType))).toBe(true)
   })
 
   it('sequence length intervals must be contained', () => {
-    expect(isSubtype(
-      sequence([], NumberType, 0),
-      sequence([], NumberType, 1),
-    )).toBe(false)
+    expect(isSubtype(sequence([], NumberType, 0), sequence([], NumberType, 1))).toBe(false)
   })
 
   it('sequence prefixes must respect target element types', () => {
-    expect(isSubtype(
-      sequence([StringType], NumberType, 1),
-      array(NumberType),
-    )).toBe(false)
+    expect(isSubtype(sequence([StringType], NumberType, 1), array(NumberType))).toBe(false)
   })
 })
 
@@ -700,38 +701,23 @@ describe('subtyping — sequences', () => {
 
 describe('subtyping — records', () => {
   it('{name: String, age: Number} <: {name: String} (width subtyping with open target)', () => {
-    expect(isSubtype(
-      record({ name: StringType, age: NumberType }),
-      record({ name: StringType }, true),
-    )).toBe(true)
+    expect(isSubtype(record({ name: StringType, age: NumberType }), record({ name: StringType }, true))).toBe(true)
   })
 
   it('{name: "Alice"} <: {name: String} (depth subtyping with open target)', () => {
-    expect(isSubtype(
-      record({ name: literal('Alice') }),
-      record({ name: StringType }, true),
-    )).toBe(true)
+    expect(isSubtype(record({ name: literal('Alice') }), record({ name: StringType }, true))).toBe(true)
   })
 
   it('{name: String} </: {name: String, age: Number} (missing field)', () => {
-    expect(isSubtype(
-      record({ name: StringType }),
-      record({ name: StringType, age: NumberType }),
-    )).toBe(false)
+    expect(isSubtype(record({ name: StringType }), record({ name: StringType, age: NumberType }))).toBe(false)
   })
 
   it('closed record with extra fields </: closed record', () => {
-    expect(isSubtype(
-      record({ name: StringType, age: NumberType }),
-      record({ name: StringType }),
-    )).toBe(false)
+    expect(isSubtype(record({ name: StringType, age: NumberType }), record({ name: StringType }))).toBe(false)
   })
 
   it('closed record <: open record with same fields', () => {
-    expect(isSubtype(
-      record({ name: StringType }),
-      record({ name: StringType }, true),
-    )).toBe(true)
+    expect(isSubtype(record({ name: StringType }), record({ name: StringType }, true))).toBe(true)
   })
 
   it('{a?: Number} </: {a: Number} (optional in S, required in T)', () => {
@@ -822,14 +808,20 @@ describe('subtyping — records', () => {
     // first Inter member legitimately fails) returns true for the second —
     // a soundness violation.
     const A: Type = {
-      tag: 'Record', fields: new Map([['x', NumberType]]), open: false,
+      tag: 'Record',
+      fields: new Map([['x', NumberType]]),
+      open: false,
     }
     const B: Type = {
-      tag: 'Record', fields: new Map([['x', NumberType]]), open: false,
+      tag: 'Record',
+      fields: new Map([['x', NumberType]]),
+      open: false,
       optionalFields: new Set(['x']),
     }
     const T: Type = {
-      tag: 'Record', fields: new Map([['x', IntegerType]]), open: false,
+      tag: 'Record',
+      fields: new Map([['x', IntegerType]]),
+      open: false,
     }
     // Individual members fail:
     expect(isSubtype(A, T)).toBe(false) // Number </: Integer
@@ -912,7 +904,11 @@ describe('subtyping — handlers', () => {
   })
 
   it('handlers with contravariant arg types', () => {
-    const hWide = handlerType(NumberType, StringType, new Map([['eff', { argType: union(NumberType, StringType), retType: StringType }]]))
+    const hWide = handlerType(
+      NumberType,
+      StringType,
+      new Map([['eff', { argType: union(NumberType, StringType), retType: StringType }]]),
+    )
     // h1 has eff.argType=Number, hWide has eff.argType=Number|String
     // Handler subtyping: target argType <: source argType (contravariant)
     expect(isSubtype(hWide, h1)).toBe(true)
@@ -924,12 +920,20 @@ describe('subtyping — handlers', () => {
   })
 
   it('handlers with incompatible return types are not subtypes', () => {
-    const hNumRet = handlerType(NumberType, StringType, new Map([['eff', { argType: NumberType, retType: NumberType }]]))
+    const hNumRet = handlerType(
+      NumberType,
+      StringType,
+      new Map([['eff', { argType: NumberType, retType: NumberType }]]),
+    )
     expect(isSubtype(h1, hNumRet)).toBe(false)
   })
 
   it('handlers with different body types are not subtypes', () => {
-    const hDiffBody = handlerType(StringType, StringType, new Map([['eff', { argType: NumberType, retType: StringType }]]))
+    const hDiffBody = handlerType(
+      StringType,
+      StringType,
+      new Map([['eff', { argType: NumberType, retType: StringType }]]),
+    )
     expect(isSubtype(h1, hDiffBody)).toBe(false)
   })
 
@@ -988,10 +992,7 @@ describe('subtyping — AnyFunction', () => {
   })
 
   it('intersection of functions <: AnyFunction', () => {
-    expect(isSubtype(
-      inter(fn([NumberType], NumberType), fn([StringType], StringType)),
-      anyFn,
-    )).toBe(true)
+    expect(isSubtype(inter(fn([NumberType], NumberType), fn([StringType], StringType)), anyFn)).toBe(true)
   })
 })
 
@@ -1014,7 +1015,11 @@ describe('subtyping — aliases and recursive types', () => {
 
   it('recursive type unfolds for subtyping', () => {
     // μ0.Number | [0] — a recursive list of numbers
-    const recType: Type = { tag: 'Recursive', id: 0, body: union(NumberType, tuple([{ tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }])) }
+    const recType: Type = {
+      tag: 'Recursive',
+      id: 0,
+      body: union(NumberType, tuple([{ tag: 'Var', id: 0, level: 0, lowerBounds: [], upperBounds: [] }])),
+    }
     // Number is a subtype of the recursive type (it's one of the union members)
     expect(isSubtype(NumberType, recType)).toBe(true)
   })
@@ -1520,11 +1525,7 @@ describe('simplify', () => {
   })
 
   it('three records fold left-to-right into a single merged record', () => {
-    const t = simplify(inter(
-      record({ a: NumberType }),
-      record({ b: StringType }),
-      record({ c: BooleanType }),
-    ))
+    const t = simplify(inter(record({ a: NumberType }), record({ b: StringType }), record({ c: BooleanType })))
     expect(typeEquals(t, record({ a: NumberType, b: StringType, c: BooleanType }))).toBe(true)
   })
 

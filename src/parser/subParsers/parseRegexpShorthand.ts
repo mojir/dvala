@@ -15,14 +15,15 @@ export function parseRegexpShorthand(ctx: ParserContext): NormalExpressionNodeWi
 
   const optionsNode: StringNode = withSourceCodeInfo([NodeTypes.Str, optionsString, 0], token[2], ctx)
 
-  const node: NormalExpressionNodeWithName = withSourceCodeInfo([
-    NodeTypes.Call,
+  const node: NormalExpressionNodeWithName = withSourceCodeInfo(
     [
-      withSourceCodeInfo([NodeTypes.Builtin, 'regexp', 0], token[2], ctx),
-      [stringNode, optionsNode],
+      NodeTypes.Call,
+      [withSourceCodeInfo([NodeTypes.Builtin, 'regexp', 0], token[2], ctx), [stringNode, optionsNode]],
+      0,
     ],
-    0,
-  ], token[2], ctx)
+    token[2],
+    ctx,
+  )
 
   ctx.setNodeEnd(node[2])
   ctx.builder?.endNode()

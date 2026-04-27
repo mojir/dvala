@@ -5,7 +5,13 @@ import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { ReferenceError, TypeError } from '../errors'
 import type { Any } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
-import type { NormalBuiltinFunction, SourceMap, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
+import type {
+  NormalBuiltinFunction,
+  SourceMap,
+  SpecialBuiltinFunction,
+  SymbolNode,
+  UserDefinedSymbolNode,
+} from '../parser/types'
 import { resolveSourceCodeInfo } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { asNonUndefined } from '../typeGuards'
@@ -106,8 +112,7 @@ export class ContextStackImpl {
   public getModuleScopeBindings(): Record<string, unknown> {
     const scope = this._contexts[0]!
     const result: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(scope))
-      result[k] = v.value
+    for (const [k, v] of Object.entries(scope)) result[k] = v.value
     return result
   }
 
@@ -225,7 +230,13 @@ export class ContextStackImpl {
   public new(context: Context): ContextStack {
     const contexts = [{}, context]
 
-    return new ContextStackImpl({ contexts, modules: this.modules, valueModules: this.valueModules, pure: this.pure, sourceMap: this.sourceMap })
+    return new ContextStackImpl({
+      contexts,
+      modules: this.modules,
+      valueModules: this.valueModules,
+      pure: this.pure,
+      sourceMap: this.sourceMap,
+    })
   }
 
   public addValues(values: Record<string, Any>, sourceCodeInfo: SourceCodeInfo | undefined) {
@@ -245,8 +256,7 @@ export class ContextStackImpl {
   public getValue(name: string): unknown {
     for (const context of this._contexts) {
       const contextEntry = context[name]
-      if (contextEntry)
-        return contextEntry.value
+      if (contextEntry) return contextEntry.value
     }
 
     return undefined
@@ -259,8 +269,7 @@ export class ContextStackImpl {
   public lookUpByName(name: string): LookUpResult {
     for (const context of this._contexts) {
       const contextEntry = context[name]
-      if (contextEntry)
-        return contextEntry
+      if (contextEntry) return contextEntry
     }
 
     return null
@@ -276,7 +285,10 @@ export class ContextStackImpl {
         case specialExpressionTypes.object:
         case specialExpressionTypes.recur:
         case specialExpressionTypes['??']: {
-          const specialExpression: SpecialExpression = asNonUndefined(builtin.specialExpressions[functionType], this.resolve(node[2]))
+          const specialExpression: SpecialExpression = asNonUndefined(
+            builtin.specialExpressions[functionType],
+            this.resolve(node[2]),
+          )
           return {
             [FUNCTION_SYMBOL]: true,
             functionType: 'SpecialBuiltin',
@@ -294,8 +306,7 @@ export class ContextStackImpl {
       const name = node[1]
       const normalExpression = normalExpressions[name]!
       const userValue = this.lookUpByName(name)
-      if (isContextEntry(userValue))
-        return userValue.value
+      if (isContextEntry(userValue)) return userValue.value
       return {
         [FUNCTION_SYMBOL]: true,
         functionType: 'Builtin',
@@ -307,14 +318,22 @@ export class ContextStackImpl {
     }
     const lookUpResult = this.lookUp(node)
 
-    if (isContextEntry(lookUpResult))
-      return lookUpResult.value
+    if (isContextEntry(lookUpResult)) return lookUpResult.value
 
     throw new ReferenceError(node[1], this.resolve(node[2]))
   }
 }
 
-export function createContextStack(params: CreateContextStackParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean, sourceMap?: SourceMap, fileResolver?: FileResolver, currentFileDir?: string, allocateNodeId?: () => number, debug?: boolean): ContextStack {
+export function createContextStack(
+  params: CreateContextStackParams = {},
+  modules?: Map<string, DvalaModule>,
+  pure?: boolean,
+  sourceMap?: SourceMap,
+  fileResolver?: FileResolver,
+  currentFileDir?: string,
+  allocateNodeId?: () => number,
+  debug?: boolean,
+): ContextStack {
   const globalContext = params.globalContext ?? {}
   // Contexts are checked from left to right
   const contexts = params.contexts ? [globalContext, ...params.contexts] : [globalContext]

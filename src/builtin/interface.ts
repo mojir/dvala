@@ -2,10 +2,7 @@ import type { ContextStack } from '../evaluator/ContextStack'
 import type { EvaluateNode } from '../evaluator/interface'
 import type { GetUndefinedSymbols, UndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr } from '../interface'
-import type {
-  AstNode,
-  UserDefinedFunction,
-} from '../parser/types'
+import type { AstNode, UserDefinedFunction } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import type { MaybePromise } from '../utils/maybePromise'
 import type { SpecialExpressions } from '.'
@@ -34,7 +31,7 @@ const dataTypes = [
   'effect',
   'never',
 ] as const
-export type DataType = typeof dataTypes[number]
+export type DataType = (typeof dataTypes)[number]
 
 export function isDataType(arg: string): arg is DataType {
   return dataTypes.includes(arg as DataType)
@@ -44,36 +41,36 @@ export function isDataType(arg: string): arg is DataType {
 
 const categoryRecord = {
   'special-expression': true,
-  'predicate': true,
-  'sequence': true,
-  'collection': true,
-  'array': true,
-  'object': true,
-  'string': true,
-  'math': true,
-  'functional': true,
+  predicate: true,
+  sequence: true,
+  collection: true,
+  array: true,
+  object: true,
+  string: true,
+  math: true,
+  functional: true,
   'regular-expression': true,
-  'bitwise': true,
-  'misc': true,
-  'meta': true,
-  'assertion': true,
-  'vector': true,
-  'linearAlgebra': true,
-  'matrix': true,
-  'grid': true,
-  'numberTheory': true,
-  'convert': true,
-  'json': true,
-  'time': true,
-  'effectHandler': true,
-  'macros': true,
-  'shorthand': true,
-  'datatype': true,
-  'prelude': true,
-  'effect': true,
+  bitwise: true,
+  misc: true,
+  meta: true,
+  assertion: true,
+  vector: true,
+  linearAlgebra: true,
+  matrix: true,
+  grid: true,
+  numberTheory: true,
+  convert: true,
+  json: true,
+  time: true,
+  effectHandler: true,
+  macros: true,
+  shorthand: true,
+  datatype: true,
+  prelude: true,
+  effect: true,
   'playground-effect': true,
-  'ast': true,
-  'test': true,
+  ast: true,
+  test: true,
 } as const
 
 export type Category = keyof typeof categoryRecord
@@ -81,27 +78,45 @@ export type Category = keyof typeof categoryRecord
 export const categories = Object.keys(categoryRecord) as Category[]
 
 // Core categories (always available) — special-expression first, rest alphabetical
-export const coreCategories: Category[] = ['special-expression', 'array', 'assertion', 'bitwise', 'collection', 'datatype', 'functional', 'math', 'meta', 'misc', 'object', 'predicate', 'prelude', 'regular-expression', 'sequence', 'shorthand', 'string']
+export const coreCategories: Category[] = [
+  'special-expression',
+  'array',
+  'assertion',
+  'bitwise',
+  'collection',
+  'datatype',
+  'functional',
+  'math',
+  'meta',
+  'misc',
+  'object',
+  'predicate',
+  'prelude',
+  'regular-expression',
+  'sequence',
+  'shorthand',
+  'string',
+]
 
 // Short descriptions for each core category, shown on the reference card grid.
 export const coreCategoryDescriptions: Record<string, string> = {
   'special-expression': 'Flow control, binding, functions, effects, and macros.',
-  'array': 'Create and transform ordered sequences of values.',
-  'assertion': 'Throw errors when conditions are not met.',
-  'bitwise': 'Bitwise operations on integers.',
-  'collection': 'Operations shared across arrays, objects, and strings.',
-  'datatype': 'Inspect and assert value types at runtime.',
-  'functional': 'Higher-order functions: compose, curry, and partial application.',
-  'math': 'Arithmetic, rounding, and numeric operations.',
-  'meta': 'Inspect and manipulate Dvala expressions at runtime.',
-  'misc': 'Miscellaneous utilities.',
-  'object': 'Create and transform key-value objects.',
-  'predicate': 'Test values: equality, comparison, and type checks.',
-  'prelude': 'Refined type aliases auto-loaded into every typecheck session (Positive, NonEmpty, ...).',
+  array: 'Create and transform ordered sequences of values.',
+  assertion: 'Throw errors when conditions are not met.',
+  bitwise: 'Bitwise operations on integers.',
+  collection: 'Operations shared across arrays, objects, and strings.',
+  datatype: 'Inspect and assert value types at runtime.',
+  functional: 'Higher-order functions: compose, curry, and partial application.',
+  math: 'Arithmetic, rounding, and numeric operations.',
+  meta: 'Inspect and manipulate Dvala expressions at runtime.',
+  misc: 'Miscellaneous utilities.',
+  object: 'Create and transform key-value objects.',
+  predicate: 'Test values: equality, comparison, and type checks.',
+  prelude: 'Refined type aliases auto-loaded into every typecheck session (Positive, NonEmpty, ...).',
   'regular-expression': 'Create and match regular expressions.',
-  'sequence': 'Operations on arrays and strings as ordered sequences.',
-  'shorthand': 'Concise syntax aliases for common operations.',
-  'string': 'Create and transform text strings.',
+  sequence: 'Operations on arrays and strings as ordered sequences.',
+  shorthand: 'Concise syntax aliases for common operations.',
+  string: 'Create and transform text strings.',
 }
 
 // --- FunctionDocs types ---
@@ -120,7 +135,12 @@ interface Variant {
   argumentNames: string[]
 }
 
-export type ExampleEntry = string | { code: string; noRun: true } | { code: string; throws: true } | { code: string; noCheck: true } | { code: string; noRun: true; noCheck: true }
+export type ExampleEntry =
+  | string
+  | { code: string; noRun: true }
+  | { code: string; throws: true }
+  | { code: string; noCheck: true }
+  | { code: string; noRun: true; noCheck: true }
 
 export interface FunctionDocs {
   category: Category

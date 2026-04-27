@@ -80,22 +80,26 @@ describe('formatCallStack', () => {
   })
 
   it('formats a single entry with full source info', () => {
-    const entries: CallStackEntry[] = [{
-      name: 'foo',
-      sourceCodeInfo: {
-        position: { line: 42, column: 15 },
-        code: 'foo()',
-        filePath: 'myfile.dvala',
+    const entries: CallStackEntry[] = [
+      {
+        name: 'foo',
+        sourceCodeInfo: {
+          position: { line: 42, column: 15 },
+          code: 'foo()',
+          filePath: 'myfile.dvala',
+        },
       },
-    }]
+    ]
     expect(formatCallStack(entries)).toBe('  at foo  myfile.dvala:42:15')
   })
 
   it('uses an empty filePath segment when filePath is absent', () => {
-    const entries: CallStackEntry[] = [{
-      name: 'bar',
-      sourceCodeInfo: { position: { line: 1, column: 2 }, code: 'bar()' },
-    }]
+    const entries: CallStackEntry[] = [
+      {
+        name: 'bar',
+        sourceCodeInfo: { position: { line: 1, column: 2 }, code: 'bar()' },
+      },
+    ]
     expect(formatCallStack(entries)).toBe('  at bar  :1:2')
   })
 
@@ -109,9 +113,6 @@ describe('formatCallStack', () => {
       { name: 'inner', sourceCodeInfo: { position: { line: 3, column: 5 }, code: '', filePath: 'a.dvala' } },
       { name: 'outer', sourceCodeInfo: { position: { line: 1, column: 1 }, code: '', filePath: 'b.dvala' } },
     ]
-    expect(formatCallStack(entries)).toBe([
-      '  at inner  a.dvala:3:5',
-      '  at outer  b.dvala:1:1',
-    ].join('\n'))
+    expect(formatCallStack(entries)).toBe(['  at inner  a.dvala:3:5', '  at outer  b.dvala:1:1'].join('\n'))
   })
 })

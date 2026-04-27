@@ -27,7 +27,7 @@ export function getProperDivisors(n: number): number[] {
 }
 
 export const divisorsNormalExpressions: BuiltinNormalExpressions = {
-  'divisors': {
+  divisors: {
     // Returns a plain JS number[] (annotated vector), cast to Any for the evaluator signature
     evaluate: ([number], sourceCodeInfo): Any => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
@@ -35,14 +35,14 @@ export const divisorsNormalExpressions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'countDivisors': {
+  countDivisors: {
     evaluate: ([number], sourceCodeInfo): number => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
       return calcUnsortedDivisors(number).length
     },
     arity: toFixedArity(1),
   },
-  'properDivisors': {
+  properDivisors: {
     // Returns a plain JS number[] (annotated vector), cast to Any for the evaluator signature
     evaluate: ([number], sourceCodeInfo): Any => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
@@ -50,7 +50,7 @@ export const divisorsNormalExpressions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'countProperDivisors': {
+  countProperDivisors: {
     evaluate: ([number], sourceCodeInfo): number => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
       return calcUnsortedDivisors(number).length - 1 // Exclude the number itself

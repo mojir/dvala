@@ -1,6 +1,14 @@
 import path from 'node:path'
 import fs from 'node:fs'
-import { apiReference, effectReference, getLinkName, isFunctionReference, isCustomReference, isEffectReference, moduleReference } from '../../reference'
+import {
+  apiReference,
+  effectReference,
+  getLinkName,
+  isFunctionReference,
+  isCustomReference,
+  isEffectReference,
+  moduleReference,
+} from '../../reference'
 import type { Reference } from '../../reference'
 import { coreCategoryDescriptions, coreCategories } from '../../reference/api'
 import { allBuiltinModules } from '../../src/allModules'
@@ -84,7 +92,10 @@ function markdownToHtml(md: string): string {
 
   for (const line of lines) {
     if (line.startsWith('```')) {
-      if (inParagraph) { out.push('</p>'); inParagraph = false }
+      if (inParagraph) {
+        out.push('</p>')
+        inParagraph = false
+      }
       if (inCode) {
         out.push('</code></pre>')
         inCode = false
@@ -102,7 +113,10 @@ function markdownToHtml(md: string): string {
     // Headings
     const headingMatch = /^(#{1,4})\s+(.+)$/.exec(line)
     if (headingMatch) {
-      if (inParagraph) { out.push('</p>'); inParagraph = false }
+      if (inParagraph) {
+        out.push('</p>')
+        inParagraph = false
+      }
       const level = headingMatch[1]!.length
       out.push(`<h${level}>${escapeHtml(headingMatch[2]!)}</h${level}>`)
       continue
@@ -110,7 +124,10 @@ function markdownToHtml(md: string): string {
 
     // Empty line — close paragraph
     if (line.trim() === '') {
-      if (inParagraph) { out.push('</p>'); inParagraph = false }
+      if (inParagraph) {
+        out.push('</p>')
+        inParagraph = false
+      }
       continue
     }
 
@@ -226,7 +243,9 @@ function renderRefBody(ref: Reference): string {
       parts.push('<h2>Arguments</h2><table><tr><th>Name</th><th>Type</th><th>Description</th></tr>')
       for (const [name, arg] of argEntries) {
         const type = Array.isArray(arg.type) ? arg.type.join(' | ') : arg.type
-        parts.push(`<tr><td><code>${escapeHtml(name)}</code></td><td>${escapeHtml(type)}</td><td>${escapeHtml(arg.description ?? '')}</td></tr>`)
+        parts.push(
+          `<tr><td><code>${escapeHtml(name)}</code></td><td>${escapeHtml(type)}</td><td>${escapeHtml(arg.description ?? '')}</td></tr>`,
+        )
       }
       parts.push('</table>')
     }
@@ -290,91 +309,127 @@ function renderRefBody(ref: Reference): string {
 
 function writeStubPages() {
   // --- Book index ---
-  const bookListHtml = bookItems.map(item => {
-    if (isBookSection(item)) {
-      const entries = item.entries.map(e =>
-        `<li><a href="${BASE_URL}/book/${e.id}/">${escapeHtml(e.title)}</a></li>`,
-      ).join('\n')
-      return `<h3>${escapeHtml(item.title)}</h3>\n<ul>${entries}</ul>`
-    }
-    return `<ul><li><a href="${BASE_URL}/book/${item.id}/">${escapeHtml(item.title)}</a></li></ul>`
-  }).join('\n')
+  const bookListHtml = bookItems
+    .map(item => {
+      if (isBookSection(item)) {
+        const entries = item.entries
+          .map(e => `<li><a href="${BASE_URL}/book/${e.id}/">${escapeHtml(e.title)}</a></li>`)
+          .join('\n')
+        return `<h3>${escapeHtml(item.title)}</h3>\n<ul>${entries}</ul>`
+      }
+      return `<ul><li><a href="${BASE_URL}/book/${item.id}/">${escapeHtml(item.title)}</a></li></ul>`
+    })
+    .join('\n')
 
-  writeStubFile('book', stubPage({
-    route: '/book/',
-    title: 'The Book',
-    description: 'Learn Dvala step by step — from basics to advanced topics like algebraic effects and concurrency.',
-    body: `<h1>The Dvala Book</h1>\n<p>Step-by-step guide to learning Dvala.</p>\n${bookListHtml}`,
-  }))
+  writeStubFile(
+    'book',
+    stubPage({
+      route: '/book/',
+      title: 'The Book',
+      description: 'Learn Dvala step by step — from basics to advanced topics like algebraic effects and concurrency.',
+      body: `<h1>The Dvala Book</h1>\n<p>Step-by-step guide to learning Dvala.</p>\n${bookListHtml}`,
+    }),
+  )
 
   // --- Individual chapter pages ---
   for (const chapter of chapters) {
     const bodyHtml = markdownToHtml(chapter.body)
-    writeStubFile(`book/${chapter.id}`, stubPage({
-      route: `/book/${chapter.id}/`,
-      title: chapter.title,
-      description: `Dvala book chapter: ${chapter.title}`,
-      body: `<h1>${escapeHtml(chapter.title)}</h1>\n${bodyHtml}`,
-    }))
+    writeStubFile(
+      `book/${chapter.id}`,
+      stubPage({
+        route: `/book/${chapter.id}/`,
+        title: chapter.title,
+        description: `Dvala book chapter: ${chapter.title}`,
+        body: `<h1>${escapeHtml(chapter.title)}</h1>\n${bodyHtml}`,
+      }),
+    )
   }
 
   // --- Examples index ---
-  const exampleListHtml = examples.map(ex =>
-    `<li><strong>${escapeHtml(ex.name)}</strong> &mdash; ${escapeHtml(ex.description)}</li>`,
-  ).join('\n')
+  const exampleListHtml = examples
+    .map(ex => `<li><strong>${escapeHtml(ex.name)}</strong> &mdash; ${escapeHtml(ex.description)}</li>`)
+    .join('\n')
 
-  writeStubFile('examples', stubPage({
-    route: '/examples/',
-    title: 'Examples',
-    description: 'Example programs written in Dvala — from simple arithmetic to games and matrix math.',
-    body: `<h1>Dvala Examples</h1>\n<p>Example programs showcasing Dvala features.</p>\n<ul>${exampleListHtml}</ul>`,
-  }))
+  writeStubFile(
+    'examples',
+    stubPage({
+      route: '/examples/',
+      title: 'Examples',
+      description: 'Example programs written in Dvala — from simple arithmetic to games and matrix math.',
+      body: `<h1>Dvala Examples</h1>\n<p>Example programs showcasing Dvala features.</p>\n<ul>${exampleListHtml}</ul>`,
+    }),
+  )
 
   // --- Core API index ---
   const coreByCategory: Record<string, { title: string; linkName: string; description: string }[]> = {}
   for (const ref of Object.values(apiReference)) {
     const cat = ref.category
     if (!coreByCategory[cat]) coreByCategory[cat] = []
-    coreByCategory[cat].push({ title: ref.title, linkName: getLinkName(ref), description: shortDescription(ref.description) })
+    coreByCategory[cat].push({
+      title: ref.title,
+      linkName: getLinkName(ref),
+      description: shortDescription(ref.description),
+    })
   }
-  const coreSections = coreCategories.map(cat => {
-    const items = coreByCategory[cat]
-    if (!items) return ''
-    const listItems = items.map(i =>
-      `<li><a href="${BASE_URL}/ref/${i.linkName}/">${escapeHtml(i.title)}</a> &mdash; ${escapeHtml(i.description)}</li>`,
-    ).join('\n')
-    return `<h3>${escapeHtml(cat)}</h3>\n<ul>${listItems}</ul>`
-  }).join('\n')
+  const coreSections = coreCategories
+    .map(cat => {
+      const items = coreByCategory[cat]
+      if (!items) return ''
+      const listItems = items
+        .map(
+          i =>
+            `<li><a href="${BASE_URL}/ref/${i.linkName}/">${escapeHtml(i.title)}</a> &mdash; ${escapeHtml(i.description)}</li>`,
+        )
+        .join('\n')
+      return `<h3>${escapeHtml(cat)}</h3>\n<ul>${listItems}</ul>`
+    })
+    .join('\n')
 
-  writeStubFile('core', stubPage({
-    route: '/core/',
-    title: 'Core API',
-    description: 'Dvala core built-in functions — math, string, collection, array, and more.',
-    body: `<h1>Core API Reference</h1>\n<p>Built-in functions and special expressions available in every Dvala program.</p>\n${coreSections}`,
-  }))
+  writeStubFile(
+    'core',
+    stubPage({
+      route: '/core/',
+      title: 'Core API',
+      description: 'Dvala core built-in functions — math, string, collection, array, and more.',
+      body: `<h1>Core API Reference</h1>\n<p>Built-in functions and special expressions available in every Dvala program.</p>\n${coreSections}`,
+    }),
+  )
 
   // --- Modules index ---
   const modulesByCategory: Record<string, { title: string; linkName: string; description: string }[]> = {}
   for (const ref of Object.values(moduleReference)) {
     const cat = ref.category
     if (!modulesByCategory[cat]) modulesByCategory[cat] = []
-    modulesByCategory[cat].push({ title: ref.title, linkName: getLinkName(ref), description: shortDescription(ref.description) })
+    modulesByCategory[cat].push({
+      title: ref.title,
+      linkName: getLinkName(ref),
+      description: shortDescription(ref.description),
+    })
   }
-  const moduleSections = allBuiltinModules.map(m => m.name).map(cat => {
-    const items = modulesByCategory[cat]
-    if (!items) return ''
-    const listItems = items.map(i =>
-      `<li><a href="${BASE_URL}/ref/${i.linkName}/">${escapeHtml(i.title)}</a> &mdash; ${escapeHtml(i.description)}</li>`,
-    ).join('\n')
-    return `<h3>${escapeHtml(cat)}</h3>\n<ul>${listItems}</ul>`
-  }).join('\n')
+  const moduleSections = allBuiltinModules
+    .map(m => m.name)
+    .map(cat => {
+      const items = modulesByCategory[cat]
+      if (!items) return ''
+      const listItems = items
+        .map(
+          i =>
+            `<li><a href="${BASE_URL}/ref/${i.linkName}/">${escapeHtml(i.title)}</a> &mdash; ${escapeHtml(i.description)}</li>`,
+        )
+        .join('\n')
+      return `<h3>${escapeHtml(cat)}</h3>\n<ul>${listItems}</ul>`
+    })
+    .join('\n')
 
-  writeStubFile('modules', stubPage({
-    route: '/modules/',
-    title: 'Modules',
-    description: 'Dvala module library — grid, vector, linear algebra, number theory, and more.',
-    body: `<h1>Module Reference</h1>\n<p>Optional modules that extend Dvala with additional functionality.</p>\n${moduleSections}`,
-  }))
+  writeStubFile(
+    'modules',
+    stubPage({
+      route: '/modules/',
+      title: 'Modules',
+      description: 'Dvala module library — grid, vector, linear algebra, number theory, and more.',
+      body: `<h1>Module Reference</h1>\n<p>Optional modules that extend Dvala with additional functionality.</p>\n${moduleSections}`,
+    }),
+  )
 
   // --- Ref index (lists all references for crawler discovery) ---
   const allRefEntries = [
@@ -382,27 +437,35 @@ function writeStubPages() {
     ...Object.values(moduleReference),
     ...Object.values(effectReference),
   ]
-  const refListHtml = allRefEntries.map(ref => {
-    const linkName = getLinkName(ref)
-    return `<li><a href="${BASE_URL}/ref/${linkName}/">${escapeHtml(ref.title)}</a> (${escapeHtml(ref.category)})</li>`
-  }).join('\n')
-  writeStubFile('ref', stubPage({
-    route: '/ref/',
-    title: 'All References',
-    description: 'Complete Dvala reference — all functions, modules, effects, and datatypes.',
-    body: `<h1>All References</h1>\n<p>Complete index of all Dvala functions, modules, effects, and datatypes.</p>\n<ul>${refListHtml}</ul>`,
-  }))
+  const refListHtml = allRefEntries
+    .map(ref => {
+      const linkName = getLinkName(ref)
+      return `<li><a href="${BASE_URL}/ref/${linkName}/">${escapeHtml(ref.title)}</a> (${escapeHtml(ref.category)})</li>`
+    })
+    .join('\n')
+  writeStubFile(
+    'ref',
+    stubPage({
+      route: '/ref/',
+      title: 'All References',
+      description: 'Complete Dvala reference — all functions, modules, effects, and datatypes.',
+      body: `<h1>All References</h1>\n<p>Complete index of all Dvala functions, modules, effects, and datatypes.</p>\n<ul>${refListHtml}</ul>`,
+    }),
+  )
 
   // --- Individual reference pages (API, modules, effects) ---
   for (const ref of allRefEntries) {
     const linkName = getLinkName(ref)
     const desc = shortDescription(ref.description)
-    writeStubFile(`ref/${linkName}`, stubPage({
-      route: `/ref/${linkName}/`,
-      title: ref.title,
-      description: `${ref.title} — ${desc}`,
-      body: renderRefBody(ref),
-    }))
+    writeStubFile(
+      `ref/${linkName}`,
+      stubPage({
+        route: `/ref/${linkName}/`,
+        title: ref.title,
+        description: `${ref.title} — ${desc}`,
+        body: renderRefBody(ref),
+      }),
+    )
   }
 
   // eslint-disable-next-line no-console
@@ -573,12 +636,7 @@ function writeSitemap() {
   const today = new Date().toISOString().split('T')[0]
 
   // Static pages
-  const staticPages = [
-    '/',
-    '/book/',
-    '/examples/',
-    '/ref/',
-  ]
+  const staticPages = ['/', '/book/', '/examples/', '/ref/']
 
   // Chapter pages
   const chapterPages = chapters.map(t => `/book/${t.id}/`)
@@ -594,10 +652,14 @@ function writeSitemap() {
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${allPages.map(page => `  <url>
+${allPages
+  .map(
+    page => `  <url>
     <loc>${BASE_URL}${page}</loc>
     <lastmod>${today}</lastmod>
-  </url>`).join('\n')}
+  </url>`,
+  )
+  .join('\n')}
 </urlset>
 `
   fs.writeFileSync(path.join(DOC_DIR, 'sitemap.xml'), sitemap, { encoding: 'utf-8' })

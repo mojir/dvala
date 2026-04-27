@@ -15,8 +15,9 @@ import { runTestFile } from '../src/testFramework'
 import { isSuccess } from '../src/testFramework/result'
 import { formatConsole } from '../src/testFramework/formatConsole'
 
-const dvalaTestFiles = globSync('src/**/*.test.dvala', { cwd: path.resolve(__dirname, '..') })
-  .map(f => path.resolve(__dirname, '..', f))
+const dvalaTestFiles = globSync('src/**/*.test.dvala', { cwd: path.resolve(__dirname, '..') }).map(f =>
+  path.resolve(__dirname, '..', f),
+)
 
 describe('dvala tests', () => {
   for (const testFile of dvalaTestFiles) {

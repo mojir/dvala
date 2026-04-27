@@ -78,7 +78,16 @@ describe('round-trip — feature card examples', () => {
 // ---------------------------------------------------------------------------
 
 // Directories excluded from .dvala round-trip testing (generated/temp content).
-const EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'build', '.tmp-cli-test', '.wireit', 'coverage', 'test-results', '.cache'])
+const EXCLUDED_DIRS = new Set([
+  'node_modules',
+  'dist',
+  'build',
+  '.tmp-cli-test',
+  '.wireit',
+  'coverage',
+  'test-results',
+  '.cache',
+])
 
 function collectDvalaFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return []

@@ -9,14 +9,13 @@ import { REGEXP_SYMBOL } from '../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const regexpNormalExpression: BuiltinNormalExpressions = {
-  'regexp': {
+  regexp: {
     evaluate: ([sourceArg, flagsArg], sourceCodeInfo): RegularExpression => {
       assertString(sourceArg, sourceCodeInfo)
       const source = sourceArg || '(?:)'
       const flags = typeof flagsArg === 'string' ? flagsArg : ''
 
       try {
-
         new RegExp(source, flags) // Throws if invalid regexp
       } catch (_e) {
         throw new RuntimeError(`Invalid regular expression: ${source} ${flags}`, sourceCodeInfo)
@@ -35,33 +34,27 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'regexp' },
       args: {
         pattern: { type: 'string' },
-        flags: { type: 'string', description: 'Optional flags for the regular expression. Possible values are the same as Javascript RegExp takes.' },
+        flags: {
+          type: 'string',
+          description:
+            'Optional flags for the regular expression. Possible values are the same as Javascript RegExp takes.',
+        },
       },
-      variants: [
-        { argumentNames: ['pattern'] },
-        { argumentNames: ['pattern', 'flags'] },
-      ],
+      variants: [{ argumentNames: ['pattern'] }, { argumentNames: ['pattern', 'flags'] }],
       description: 'Creates a RegExp from `pattern` and `flags`.',
-      examples: [
-        'regexp("^\\s*(.*)$")',
-        '#"^\\s*(.*)$"',
-        'regexp("albert", "ig")',
-        '#"albert"ig',
-      ],
+      examples: ['regexp("^\\s*(.*)$")', '#"^\\s*(.*)$"', 'regexp("albert", "ig")', '#"albert"ig'],
       seeAlso: ['-short-regexp', 'reMatch', 'replace', 'replaceAll', 'isRegexp'],
       hideOperatorForm: true,
     },
   },
-  'reMatch': {
+  reMatch: {
     evaluate: ([text, regexp], sourceCodeInfo): Arr | null => {
       assertRegularExpression(regexp, sourceCodeInfo)
-      if (!isString(text))
-        return null
+      if (!isString(text)) return null
 
       const regExp = new RegExp(regexp.s, regexp.f)
       const match = regExp.exec(text)
-      if (match)
-        return PersistentVector.from([...match])
+      if (match) return PersistentVector.from([...match])
 
       return null
     },
@@ -89,7 +82,7 @@ If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is 
       ],
     },
   },
-  'replace': {
+  replace: {
     evaluate: ([str, regexp, value], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       assertStringOrRegularExpression(regexp, sourceCodeInfo)
@@ -121,12 +114,14 @@ If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is 
       ],
     },
   },
-  'replaceAll': {
+  replaceAll: {
     evaluate: ([str, regexp, value], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       assertStringOrRegularExpression(regexp, sourceCodeInfo)
       assertString(value, sourceCodeInfo)
-      const matcher = isRegularExpression(regexp) ? new RegExp(regexp.s, `${regexp.f.includes('g') ? regexp.f : `${regexp.f}g`}`) : regexp
+      const matcher = isRegularExpression(regexp)
+        ? new RegExp(regexp.s, `${regexp.f.includes('g') ? regexp.f : `${regexp.f}g`}`)
+        : regexp
       return str.replaceAll(matcher, value)
     },
     arity: toFixedArity(3),

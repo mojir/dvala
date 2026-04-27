@@ -1,7 +1,7 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
-  'abundantSeq': {
+  abundantSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the abundant numbers up to a specified length.',
@@ -17,18 +17,22 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
       'let { abundantSeq } = import("numberTheory");\nabundantSeq(1)',
       'let { abundantSeq } = import("numberTheory");\nabundantSeq(5)',
     ],
-    seeAlso: ['numberTheory.abundantNth', 'numberTheory.abundantTakeWhile', 'numberTheory.isAbundant', 'numberTheory.deficientSeq', 'numberTheory.perfectSeq'],
+    seeAlso: [
+      'numberTheory.abundantNth',
+      'numberTheory.abundantTakeWhile',
+      'numberTheory.isAbundant',
+      'numberTheory.deficientSeq',
+      'numberTheory.perfectSeq',
+    ],
   },
-  'abundantTakeWhile': {
+  abundantTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the abundant numbers while a condition is met.',
@@ -44,17 +48,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { abundantTakeWhile } = import("numberTheory");\nabundantTakeWhile(-> $ < 100)',
-    ],
+    examples: ['let { abundantTakeWhile } = import("numberTheory");\nabundantTakeWhile(-> $ < 100)'],
     seeAlso: ['numberTheory.abundantSeq', 'numberTheory.abundantNth', 'numberTheory.isAbundant'],
   },
-  'abundantNth': {
+  abundantNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the abundant numbers.',
@@ -69,9 +69,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -80,7 +78,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.abundantSeq', 'numberTheory.abundantTakeWhile', 'numberTheory.isAbundant'],
   },
-  'isAbundant': {
+  isAbundant: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is abundant.',
@@ -95,18 +93,24 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
       'let { isAbundant } = import("numberTheory");\nisAbundant(12)',
       'let { isAbundant } = import("numberTheory");\nisAbundant(15)',
     ],
-    seeAlso: ['numberTheory.abundantSeq', 'numberTheory.abundantNth', 'numberTheory.isDeficient', 'numberTheory.isPerfect', 'numberTheory.sigma', 'numberTheory.divisors', 'numberTheory.abundantTakeWhile'],
+    seeAlso: [
+      'numberTheory.abundantSeq',
+      'numberTheory.abundantNth',
+      'numberTheory.isDeficient',
+      'numberTheory.isPerfect',
+      'numberTheory.sigma',
+      'numberTheory.divisors',
+      'numberTheory.abundantTakeWhile',
+    ],
   },
-  'arithmeticSeq': {
+  arithmeticSeq: {
     type: '(Number, Number, Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the arithmetic sequence for a given `start`, `step`, and `length`.',
@@ -130,11 +134,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-          'step',
-          'length',
-        ],
+        argumentNames: ['start', 'step', 'length'],
       },
     ],
     examples: [
@@ -143,9 +143,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { arithmeticSeq } = import("numberTheory");\narithmeticSeq(1, 2, 2)',
       'let { arithmeticSeq } = import("numberTheory");\narithmeticSeq(1, 1.5, 12)',
     ],
-    seeAlso: ['numberTheory.arithmeticNth', 'numberTheory.arithmeticTakeWhile', 'numberTheory.isArithmetic', 'numberTheory.geometricSeq'],
+    seeAlso: [
+      'numberTheory.arithmeticNth',
+      'numberTheory.arithmeticTakeWhile',
+      'numberTheory.isArithmetic',
+      'numberTheory.geometricSeq',
+    ],
   },
-  'arithmeticTakeWhile': {
+  arithmeticTakeWhile: {
     type: '(Number, Number, (Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the arithmetic sequence while a condition is met.',
@@ -169,19 +174,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-          'step',
-          'takeWhile',
-        ],
+        argumentNames: ['start', 'step', 'takeWhile'],
       },
     ],
-    examples: [
-      'let { arithmeticTakeWhile } = import("numberTheory");\narithmeticTakeWhile(1, 0.25, -> $ < 3)',
-    ],
+    examples: ['let { arithmeticTakeWhile } = import("numberTheory");\narithmeticTakeWhile(1, 0.25, -> $ < 3)'],
     seeAlso: ['numberTheory.arithmeticSeq', 'numberTheory.arithmeticNth', 'numberTheory.isArithmetic'],
   },
-  'arithmeticNth': {
+  arithmeticNth: {
     type: '(Number, Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the arithmetic sequence.',
@@ -204,11 +203,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-          'step',
-          'n',
-        ],
+        argumentNames: ['start', 'step', 'n'],
       },
     ],
     examples: [
@@ -219,7 +214,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.arithmeticSeq', 'numberTheory.arithmeticTakeWhile', 'numberTheory.isArithmetic'],
   },
-  'isArithmetic': {
+  isArithmetic: {
     type: '(Number, Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is part of the arithmetic sequence.',
@@ -242,11 +237,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-          'step',
-          'n',
-        ],
+        argumentNames: ['start', 'step', 'n'],
       },
     ],
     examples: [
@@ -255,9 +246,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isArithmetic } = import("numberTheory");\nisArithmetic(1, 2, 2)',
       'let { isArithmetic } = import("numberTheory");\nisArithmetic(1, 1.5, 12)',
     ],
-    seeAlso: ['numberTheory.arithmeticSeq', 'numberTheory.arithmeticNth', 'numberTheory.isGeometric', 'numberTheory.arithmeticTakeWhile'],
+    seeAlso: [
+      'numberTheory.arithmeticSeq',
+      'numberTheory.arithmeticNth',
+      'numberTheory.isGeometric',
+      'numberTheory.arithmeticTakeWhile',
+    ],
   },
-  'bellSeq': {
+  bellSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Bell sequence up to a specified length.',
@@ -268,14 +264,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If not provided, the default is 22 (the maximum length of the pre-calculated bell numbers).',
+        description:
+          'The length of the sequence to generate. If not provided, the default is 22 (the maximum length of the pre-calculated bell numbers).',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -286,9 +281,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { bellSeq } = import("numberTheory");\nbellSeq(10)',
       'let { bellSeq } = import("numberTheory");\nbellSeq()',
     ],
-    seeAlso: ['numberTheory.bellNth', 'numberTheory.bellTakeWhile', 'numberTheory.isBell', 'numberTheory.catalanSeq', 'numberTheory.stirlingSecond', 'numberTheory.stirlingFirst'],
+    seeAlso: [
+      'numberTheory.bellNth',
+      'numberTheory.bellTakeWhile',
+      'numberTheory.isBell',
+      'numberTheory.catalanSeq',
+      'numberTheory.stirlingSecond',
+      'numberTheory.stirlingFirst',
+    ],
   },
-  'bellTakeWhile': {
+  bellTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Bell sequence while a condition is met.',
@@ -304,17 +306,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { bellTakeWhile } = import("numberTheory");\nbellTakeWhile(-> $ < 1000)',
-    ],
+    examples: ['let { bellTakeWhile } = import("numberTheory");\nbellTakeWhile(-> $ < 1000)'],
     seeAlso: ['numberTheory.bellSeq', 'numberTheory.bellNth', 'numberTheory.isBell'],
   },
-  'bellNth': {
+  bellNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Bell sequence.',
@@ -329,9 +327,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -340,7 +336,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.bellSeq', 'numberTheory.bellTakeWhile', 'numberTheory.isBell'],
   },
-  'isBell': {
+  isBell: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Bell sequence.',
@@ -355,9 +351,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -367,7 +361,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.bellSeq', 'numberTheory.bellNth', 'numberTheory.isCatalan', 'numberTheory.bellTakeWhile'],
   },
-  'bernoulliSeq': {
+  bernoulliSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Bernoulli sequence up to a specified length.',
@@ -383,9 +377,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
@@ -394,7 +386,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.bernoulliNth', 'numberTheory.bernoulliTakeWhile'],
   },
-  'bernoulliTakeWhile': {
+  bernoulliTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Bernoulli sequence while a condition is met.',
@@ -410,17 +402,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { bernoulliTakeWhile } = import("numberTheory");\nbernoulliTakeWhile(-> abs($) < 100)',
-    ],
+    examples: ['let { bernoulliTakeWhile } = import("numberTheory");\nbernoulliTakeWhile(-> abs($) < 100)'],
     seeAlso: ['numberTheory.bernoulliSeq', 'numberTheory.bernoulliNth'],
   },
-  'bernoulliNth': {
+  bernoulliNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Bernoulli sequence.',
@@ -435,9 +423,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -447,7 +433,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.bernoulliSeq', 'numberTheory.bernoulliTakeWhile'],
   },
-  'catalanSeq': {
+  catalanSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Catalan sequence up to a specified length.',
@@ -458,14 +444,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If not provided, the default is 30 (the maximum length of the pre-calculated catalan numbers).',
+        description:
+          'The length of the sequence to generate. If not provided, the default is 30 (the maximum length of the pre-calculated catalan numbers).',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -476,9 +461,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { catalanSeq } = import("numberTheory");\ncatalanSeq(10)',
       'let { catalanSeq } = import("numberTheory");\ncatalanSeq()',
     ],
-    seeAlso: ['numberTheory.catalanNth', 'numberTheory.catalanTakeWhile', 'numberTheory.isCatalan', 'numberTheory.bellSeq'],
+    seeAlso: [
+      'numberTheory.catalanNth',
+      'numberTheory.catalanTakeWhile',
+      'numberTheory.isCatalan',
+      'numberTheory.bellSeq',
+    ],
   },
-  'catalanTakeWhile': {
+  catalanTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Catalan sequence while a condition is met.',
@@ -494,17 +484,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { catalanTakeWhile } = import("numberTheory");\ncatalanTakeWhile(-> $ < 1000)',
-    ],
+    examples: ['let { catalanTakeWhile } = import("numberTheory");\ncatalanTakeWhile(-> $ < 1000)'],
     seeAlso: ['numberTheory.catalanSeq', 'numberTheory.catalanNth', 'numberTheory.isCatalan'],
   },
-  'catalanNth': {
+  catalanNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Catalan sequence.',
@@ -519,9 +505,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -530,7 +514,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.catalanSeq', 'numberTheory.catalanTakeWhile', 'numberTheory.isCatalan'],
   },
-  'isCatalan': {
+  isCatalan: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is in the Catalan sequence.',
@@ -545,18 +529,21 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
       'let { isCatalan } = import("numberTheory");\nisCatalan(5)',
       'let { isCatalan } = import("numberTheory");\nisCatalan(10)',
     ],
-    seeAlso: ['numberTheory.catalanSeq', 'numberTheory.catalanNth', 'numberTheory.isBell', 'numberTheory.catalanTakeWhile'],
+    seeAlso: [
+      'numberTheory.catalanSeq',
+      'numberTheory.catalanNth',
+      'numberTheory.isBell',
+      'numberTheory.catalanTakeWhile',
+    ],
   },
-  'collatzSeq': {
+  collatzSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the collatz sequence starting from a given integer.',
@@ -572,9 +559,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-        ],
+        argumentNames: ['start'],
       },
     ],
     examples: [
@@ -583,7 +568,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.jugglerSeq'],
   },
-  'compositeSeq': {
+  compositeSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the composite sequence up to a specified length.',
@@ -599,9 +584,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
@@ -609,9 +592,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { compositeSeq } = import("numberTheory");\ncompositeSeq(2)',
       'let { compositeSeq } = import("numberTheory");\ncompositeSeq(10)',
     ],
-    seeAlso: ['numberTheory.compositeNth', 'numberTheory.compositeTakeWhile', 'numberTheory.isComposite', 'numberTheory.primeSeq'],
+    seeAlso: [
+      'numberTheory.compositeNth',
+      'numberTheory.compositeTakeWhile',
+      'numberTheory.isComposite',
+      'numberTheory.primeSeq',
+    ],
   },
-  'compositeTakeWhile': {
+  compositeTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the composite sequence while a condition is met.',
@@ -627,17 +615,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { compositeTakeWhile } = import("numberTheory");\ncompositeTakeWhile(-> $ < 50)',
-    ],
+    examples: ['let { compositeTakeWhile } = import("numberTheory");\ncompositeTakeWhile(-> $ < 50)'],
     seeAlso: ['numberTheory.compositeSeq', 'numberTheory.compositeNth', 'numberTheory.isComposite'],
   },
-  'compositeNth': {
+  compositeNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the composite sequence.',
@@ -652,9 +636,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -664,7 +646,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.compositeSeq', 'numberTheory.compositeTakeWhile', 'numberTheory.isComposite'],
   },
-  'isComposite': {
+  isComposite: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is composite.',
@@ -679,9 +661,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -689,9 +669,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isComposite } = import("numberTheory");\nisComposite(5)',
       'let { isComposite } = import("numberTheory");\nisComposite(11)',
     ],
-    seeAlso: ['numberTheory.compositeSeq', 'numberTheory.compositeNth', 'numberTheory.isPrime', 'numberTheory.primeFactors', 'numberTheory.compositeTakeWhile'],
+    seeAlso: [
+      'numberTheory.compositeSeq',
+      'numberTheory.compositeNth',
+      'numberTheory.isPrime',
+      'numberTheory.primeFactors',
+      'numberTheory.compositeTakeWhile',
+    ],
   },
-  'deficientSeq': {
+  deficientSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the deficient numbers up to a specified length.',
@@ -707,18 +693,22 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
       'let { deficientSeq } = import("numberTheory");\ndeficientSeq(1)',
       'let { deficientSeq } = import("numberTheory");\ndeficientSeq(5)',
     ],
-    seeAlso: ['numberTheory.deficientNth', 'numberTheory.deficientTakeWhile', 'numberTheory.isDeficient', 'numberTheory.abundantSeq', 'numberTheory.perfectSeq'],
+    seeAlso: [
+      'numberTheory.deficientNth',
+      'numberTheory.deficientTakeWhile',
+      'numberTheory.isDeficient',
+      'numberTheory.abundantSeq',
+      'numberTheory.perfectSeq',
+    ],
   },
-  'deficientTakeWhile': {
+  deficientTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the deficient numbers while a condition is met.',
@@ -734,17 +724,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { deficientTakeWhile } = import("numberTheory");\ndeficientTakeWhile(-> $ < 100)',
-    ],
+    examples: ['let { deficientTakeWhile } = import("numberTheory");\ndeficientTakeWhile(-> $ < 100)'],
     seeAlso: ['numberTheory.deficientSeq', 'numberTheory.deficientNth', 'numberTheory.isDeficient'],
   },
-  'deficientNth': {
+  deficientNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the deficient numbers.',
@@ -759,9 +745,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -770,7 +754,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.deficientSeq', 'numberTheory.deficientTakeWhile', 'numberTheory.isDeficient'],
   },
-  'isDeficient': {
+  isDeficient: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is deficient.',
@@ -785,18 +769,24 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
       'let { isDeficient } = import("numberTheory");\nisDeficient(12)',
       'let { isDeficient } = import("numberTheory");\nisDeficient(15)',
     ],
-    seeAlso: ['numberTheory.deficientSeq', 'numberTheory.deficientNth', 'numberTheory.isAbundant', 'numberTheory.isPerfect', 'numberTheory.sigma', 'numberTheory.divisors', 'numberTheory.deficientTakeWhile'],
+    seeAlso: [
+      'numberTheory.deficientSeq',
+      'numberTheory.deficientNth',
+      'numberTheory.isAbundant',
+      'numberTheory.isPerfect',
+      'numberTheory.sigma',
+      'numberTheory.divisors',
+      'numberTheory.deficientTakeWhile',
+    ],
   },
-  'factorialSeq': {
+  factorialSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the factorial sequence up to a specified length.',
@@ -807,14 +797,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If not provided, the default is 19 (the maximum length of the pre-calculated factorial numbers).',
+        description:
+          'The length of the sequence to generate. If not provided, the default is 19 (the maximum length of the pre-calculated factorial numbers).',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -828,9 +817,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { factorialSeq } = import("numberTheory");\nfactorialSeq(5)',
       'let { factorialSeq } = import("numberTheory");\nfactorialSeq(10)',
     ],
-    seeAlso: ['numberTheory.factorialNth', 'numberTheory.factorialTakeWhile', 'numberTheory.isFactorial', 'numberTheory.factorial'],
+    seeAlso: [
+      'numberTheory.factorialNth',
+      'numberTheory.factorialTakeWhile',
+      'numberTheory.isFactorial',
+      'numberTheory.factorial',
+    ],
   },
-  'factorialTakeWhile': {
+  factorialTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the factorial sequence while a condition is met.',
@@ -846,17 +840,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { factorialTakeWhile } = import("numberTheory");\nfactorialTakeWhile(-> $ < 1000)',
-    ],
+    examples: ['let { factorialTakeWhile } = import("numberTheory");\nfactorialTakeWhile(-> $ < 1000)'],
     seeAlso: ['numberTheory.factorialSeq', 'numberTheory.factorialNth', 'numberTheory.isFactorial'],
   },
-  'factorialNth': {
+  factorialNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the factorial sequence.',
@@ -871,9 +861,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -884,9 +872,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { factorialNth } = import("numberTheory");\nfactorialNth(5)',
       'let { factorialNth } = import("numberTheory");\nfactorialNth(10)',
     ],
-    seeAlso: ['numberTheory.factorialSeq', 'numberTheory.factorialTakeWhile', 'numberTheory.isFactorial', 'numberTheory.factorial'],
+    seeAlso: [
+      'numberTheory.factorialSeq',
+      'numberTheory.factorialTakeWhile',
+      'numberTheory.isFactorial',
+      'numberTheory.factorial',
+    ],
   },
-  'isFactorial': {
+  isFactorial: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the factorial sequence.',
@@ -901,9 +894,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -918,9 +909,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isFactorial } = import("numberTheory");\nisFactorial(9)',
       'let { isFactorial } = import("numberTheory");\nisFactorial(3628800)',
     ],
-    seeAlso: ['numberTheory.factorialSeq', 'numberTheory.factorialNth', 'numberTheory.factorial', 'numberTheory.factorialTakeWhile'],
+    seeAlso: [
+      'numberTheory.factorialSeq',
+      'numberTheory.factorialNth',
+      'numberTheory.factorial',
+      'numberTheory.factorialTakeWhile',
+    ],
   },
-  'fibonacciSeq': {
+  fibonacciSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the fibonacci sequence up to a specified length.',
@@ -931,14 +927,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If not provided, the default is 79 (the maximum length of the pre-calculated Fibonacci numbers).',
+        description:
+          'The length of the sequence to generate. If not provided, the default is 79 (the maximum length of the pre-calculated Fibonacci numbers).',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -949,9 +944,17 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { fibonacciSeq } = import("numberTheory");\nfibonacciSeq(2)',
       'let { fibonacciSeq } = import("numberTheory");\nfibonacciSeq()',
     ],
-    seeAlso: ['numberTheory.fibonacciNth', 'numberTheory.fibonacciTakeWhile', 'numberTheory.isFibonacci', 'numberTheory.lucasSeq', 'numberTheory.tribonacciSeq', 'numberTheory.pellSeq', 'numberTheory.padovanSeq'],
+    seeAlso: [
+      'numberTheory.fibonacciNth',
+      'numberTheory.fibonacciTakeWhile',
+      'numberTheory.isFibonacci',
+      'numberTheory.lucasSeq',
+      'numberTheory.tribonacciSeq',
+      'numberTheory.pellSeq',
+      'numberTheory.padovanSeq',
+    ],
   },
-  'fibonacciTakeWhile': {
+  fibonacciTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the fibonacci sequence while a condition is met.',
@@ -967,17 +970,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { fibonacciTakeWhile } = import("numberTheory");\nfibonacciTakeWhile(-> $ < 100)',
-    ],
+    examples: ['let { fibonacciTakeWhile } = import("numberTheory");\nfibonacciTakeWhile(-> $ < 100)'],
     seeAlso: ['numberTheory.fibonacciSeq', 'numberTheory.fibonacciNth', 'numberTheory.isFibonacci'],
   },
-  'fibonacciNth': {
+  fibonacciNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the fibonacci sequence.',
@@ -992,9 +991,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1003,7 +1000,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.fibonacciSeq', 'numberTheory.fibonacciTakeWhile', 'numberTheory.isFibonacci'],
   },
-  'isFibonacci': {
+  isFibonacci: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is in the fibonacci sequence.',
@@ -1018,9 +1015,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1035,9 +1030,17 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isFibonacci } = import("numberTheory");\nisFibonacci(8)',
       'let { isFibonacci } = import("numberTheory");\nisFibonacci(9)',
     ],
-    seeAlso: ['numberTheory.fibonacciSeq', 'numberTheory.fibonacciNth', 'numberTheory.isLucas', 'numberTheory.fibonacciTakeWhile', 'numberTheory.isTribonacci', 'numberTheory.isPadovan', 'numberTheory.isPell'],
+    seeAlso: [
+      'numberTheory.fibonacciSeq',
+      'numberTheory.fibonacciNth',
+      'numberTheory.isLucas',
+      'numberTheory.fibonacciTakeWhile',
+      'numberTheory.isTribonacci',
+      'numberTheory.isPadovan',
+      'numberTheory.isPell',
+    ],
   },
-  'geometricSeq': {
+  geometricSeq: {
     type: '(Number, Number, Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the geometric sequence for a given `start`, `ratio`, and `length`.',
@@ -1061,11 +1064,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-          'ratio',
-          'length',
-        ],
+        argumentNames: ['start', 'ratio', 'length'],
       },
     ],
     examples: [
@@ -1074,9 +1073,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { geometricSeq } = import("numberTheory");\ngeometricSeq(1, 2, 2)',
       'let { geometricSeq } = import("numberTheory");\ngeometricSeq(1, 1.5, 12)',
     ],
-    seeAlso: ['numberTheory.geometricNth', 'numberTheory.geometricTakeWhile', 'numberTheory.isGeometric', 'numberTheory.arithmeticSeq'],
+    seeAlso: [
+      'numberTheory.geometricNth',
+      'numberTheory.geometricTakeWhile',
+      'numberTheory.isGeometric',
+      'numberTheory.arithmeticSeq',
+    ],
   },
-  'geometricTakeWhile': {
+  geometricTakeWhile: {
     type: '(Number, Number, (Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the geometric sequence while a condition is met.',
@@ -1100,19 +1104,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-          'ratio',
-          'takeWhile',
-        ],
+        argumentNames: ['start', 'ratio', 'takeWhile'],
       },
     ],
-    examples: [
-      'let { geometricTakeWhile } = import("numberTheory");\ngeometricTakeWhile(1, 1.5, -> $ < 10)',
-    ],
+    examples: ['let { geometricTakeWhile } = import("numberTheory");\ngeometricTakeWhile(1, 1.5, -> $ < 10)'],
     seeAlso: ['numberTheory.geometricSeq', 'numberTheory.geometricNth', 'numberTheory.isGeometric'],
   },
-  'geometricNth': {
+  geometricNth: {
     type: '(Number, Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the geometric sequence.',
@@ -1135,11 +1133,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-          'ratio',
-          'n',
-        ],
+        argumentNames: ['start', 'ratio', 'n'],
       },
     ],
     examples: [
@@ -1150,7 +1144,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.geometricSeq', 'numberTheory.geometricTakeWhile', 'numberTheory.isGeometric'],
   },
-  'isGeometric': {
+  isGeometric: {
     type: '(Number, Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the geometric sequence.',
@@ -1173,11 +1167,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-          'ratio',
-          'n',
-        ],
+        argumentNames: ['start', 'ratio', 'n'],
       },
     ],
     examples: [
@@ -1187,9 +1177,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isGeometric } = import("numberTheory");\nisGeometric(1, 1.5, 2.25)',
       'let { isGeometric } = import("numberTheory");\nisGeometric(1, 1.5, -4)',
     ],
-    seeAlso: ['numberTheory.geometricSeq', 'numberTheory.geometricNth', 'numberTheory.isArithmetic', 'numberTheory.geometricTakeWhile'],
+    seeAlso: [
+      'numberTheory.geometricSeq',
+      'numberTheory.geometricNth',
+      'numberTheory.isArithmetic',
+      'numberTheory.geometricTakeWhile',
+    ],
   },
-  'golombSeq': {
+  golombSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Golomb sequence up to a specified length.',
@@ -1205,18 +1200,21 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
       'let { golombSeq } = import("numberTheory");\ngolombSeq(5)',
       'let { golombSeq } = import("numberTheory");\ngolombSeq(20)',
     ],
-    seeAlso: ['numberTheory.golombNth', 'numberTheory.golombTakeWhile', 'numberTheory.isGolomb', 'numberTheory.recamanSeq'],
+    seeAlso: [
+      'numberTheory.golombNth',
+      'numberTheory.golombTakeWhile',
+      'numberTheory.isGolomb',
+      'numberTheory.recamanSeq',
+    ],
   },
-  'golombTakeWhile': {
+  golombTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Golomb sequence while a condition is met.',
@@ -1232,17 +1230,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { golombTakeWhile } = import("numberTheory");\ngolombTakeWhile(-> $ <= 10)',
-    ],
+    examples: ['let { golombTakeWhile } = import("numberTheory");\ngolombTakeWhile(-> $ <= 10)'],
     seeAlso: ['numberTheory.golombSeq', 'numberTheory.golombNth', 'numberTheory.isGolomb'],
   },
-  'golombNth': {
+  golombNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Golomb sequence.',
@@ -1257,9 +1251,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1268,7 +1260,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.golombSeq', 'numberTheory.golombTakeWhile', 'numberTheory.isGolomb'],
   },
-  'isGolomb': {
+  isGolomb: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Golomb sequence.',
@@ -1283,9 +1275,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1296,7 +1286,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.golombSeq', 'numberTheory.golombNth', 'numberTheory.golombTakeWhile'],
   },
-  'happySeq': {
+  happySeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the happy sequence up to a specified length.',
@@ -1312,9 +1302,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
@@ -1324,7 +1312,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.happyNth', 'numberTheory.happyTakeWhile', 'numberTheory.isHappy', 'numberTheory.luckySeq'],
   },
-  'happyTakeWhile': {
+  happyTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the happy sequence while a condition is met.',
@@ -1340,17 +1328,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { happyTakeWhile } = import("numberTheory");\nhappyTakeWhile(-> $ < 100)',
-    ],
+    examples: ['let { happyTakeWhile } = import("numberTheory");\nhappyTakeWhile(-> $ < 100)'],
     seeAlso: ['numberTheory.happySeq', 'numberTheory.happyNth', 'numberTheory.isHappy'],
   },
-  'happyNth': {
+  happyNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the happy sequence.',
@@ -1365,9 +1349,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1377,7 +1359,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.happySeq', 'numberTheory.happyTakeWhile', 'numberTheory.isHappy'],
   },
-  'isHappy': {
+  isHappy: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is a happy number.',
@@ -1392,9 +1374,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1404,7 +1384,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.happySeq', 'numberTheory.happyNth', 'numberTheory.happyTakeWhile'],
   },
-  'jugglerSeq': {
+  jugglerSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Juggler sequence starting from a given integer.',
@@ -1420,9 +1400,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'start',
-        ],
+        argumentNames: ['start'],
       },
     ],
     examples: [
@@ -1431,7 +1409,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.collatzSeq'],
   },
-  'lookAndSaySeq': {
+  lookAndSaySeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Look-and-Say sequence up to a specified length.',
@@ -1447,17 +1425,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
-    examples: [
-      'let { lookAndSaySeq } = import("numberTheory");\nlookAndSaySeq(5)',
-    ],
+    examples: ['let { lookAndSaySeq } = import("numberTheory");\nlookAndSaySeq(5)'],
     seeAlso: ['numberTheory.lookAndSayNth', 'numberTheory.lookAndSayTakeWhile', 'numberTheory.isLookAndSay'],
   },
-  'lookAndSayTakeWhile': {
+  lookAndSayTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Look-and-Say sequence while a condition is met.',
@@ -1473,9 +1447,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
     examples: [
@@ -1484,7 +1456,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.lookAndSaySeq', 'numberTheory.lookAndSayNth', 'numberTheory.isLookAndSay'],
   },
-  'lookAndSayNth': {
+  lookAndSayNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Look-and-Say sequence.',
@@ -1499,17 +1471,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
-    examples: [
-      'let { lookAndSayNth } = import("numberTheory");\nlookAndSayNth(5)',
-    ],
+    examples: ['let { lookAndSayNth } = import("numberTheory");\nlookAndSayNth(5)'],
     seeAlso: ['numberTheory.lookAndSaySeq', 'numberTheory.lookAndSayTakeWhile', 'numberTheory.isLookAndSay'],
   },
-  'isLookAndSay': {
+  isLookAndSay: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a string is a valid Look-and-Say term.',
@@ -1524,9 +1492,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'term',
-        ],
+        argumentNames: ['term'],
       },
     ],
     examples: [
@@ -1535,7 +1501,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.lookAndSaySeq', 'numberTheory.lookAndSayNth', 'numberTheory.lookAndSayTakeWhile'],
   },
-  'lucasSeq': {
+  lucasSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the lucas sequence up to a specified length.',
@@ -1546,14 +1512,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If not provided, the default is 77 (the maximum length of the pre-calculated Lucas numbers).',
+        description:
+          'The length of the sequence to generate. If not provided, the default is 77 (the maximum length of the pre-calculated Lucas numbers).',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -1564,9 +1529,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { lucasSeq } = import("numberTheory");\nlucasSeq(2)',
       'let { lucasSeq } = import("numberTheory");\nlucasSeq()',
     ],
-    seeAlso: ['numberTheory.lucasNth', 'numberTheory.lucasTakeWhile', 'numberTheory.isLucas', 'numberTheory.fibonacciSeq'],
+    seeAlso: [
+      'numberTheory.lucasNth',
+      'numberTheory.lucasTakeWhile',
+      'numberTheory.isLucas',
+      'numberTheory.fibonacciSeq',
+    ],
   },
-  'lucasTakeWhile': {
+  lucasTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the lucas sequence while a condition is met.',
@@ -1582,17 +1552,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { lucasTakeWhile } = import("numberTheory");\nlucasTakeWhile(-> $ < 100)',
-    ],
+    examples: ['let { lucasTakeWhile } = import("numberTheory");\nlucasTakeWhile(-> $ < 100)'],
     seeAlso: ['numberTheory.lucasSeq', 'numberTheory.lucasNth', 'numberTheory.isLucas'],
   },
-  'lucasNth': {
+  lucasNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the lucas sequence.',
@@ -1607,9 +1573,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1619,7 +1583,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.lucasSeq', 'numberTheory.lucasTakeWhile', 'numberTheory.isLucas'],
   },
-  'isLucas': {
+  isLucas: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is in the lucas sequence.',
@@ -1634,9 +1598,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1644,9 +1606,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isLucas } = import("numberTheory");\nisLucas(2)',
       'let { isLucas } = import("numberTheory");\nisLucas(10)',
     ],
-    seeAlso: ['numberTheory.lucasSeq', 'numberTheory.lucasNth', 'numberTheory.isFibonacci', 'numberTheory.lucasTakeWhile'],
+    seeAlso: [
+      'numberTheory.lucasSeq',
+      'numberTheory.lucasNth',
+      'numberTheory.isFibonacci',
+      'numberTheory.lucasTakeWhile',
+    ],
   },
-  'luckySeq': {
+  luckySeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the lucky sequence up to a specified length.',
@@ -1662,9 +1629,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
@@ -1672,9 +1637,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { luckySeq } = import("numberTheory");\nluckySeq(2)',
       'let { luckySeq } = import("numberTheory");\nluckySeq(20)',
     ],
-    seeAlso: ['numberTheory.luckyNth', 'numberTheory.luckyTakeWhile', 'numberTheory.isLucky', 'numberTheory.happySeq', 'numberTheory.primeSeq'],
+    seeAlso: [
+      'numberTheory.luckyNth',
+      'numberTheory.luckyTakeWhile',
+      'numberTheory.isLucky',
+      'numberTheory.happySeq',
+      'numberTheory.primeSeq',
+    ],
   },
-  'luckyTakeWhile': {
+  luckyTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the lucky sequence while a condition is met.',
@@ -1690,17 +1661,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { luckyTakeWhile } = import("numberTheory");\nluckyTakeWhile(-> $ < 100)',
-    ],
+    examples: ['let { luckyTakeWhile } = import("numberTheory");\nluckyTakeWhile(-> $ < 100)'],
     seeAlso: ['numberTheory.luckySeq', 'numberTheory.luckyNth', 'numberTheory.isLucky'],
   },
-  'luckyNth': {
+  luckyNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the lucky sequence.',
@@ -1715,9 +1682,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1727,7 +1692,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.luckySeq', 'numberTheory.luckyTakeWhile', 'numberTheory.isLucky'],
   },
-  'isLucky': {
+  isLucky: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is a lucky number.',
@@ -1742,9 +1707,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1754,7 +1717,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.luckySeq', 'numberTheory.luckyNth', 'numberTheory.isPrime', 'numberTheory.luckyTakeWhile'],
   },
-  'mersenneSeq': {
+  mersenneSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Mersenne sequence up to a specified length.',
@@ -1765,14 +1728,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If not provided, the default is 9 (the maximum length of the pre-calculated mersenne numbers).',
+        description:
+          'The length of the sequence to generate. If not provided, the default is 9 (the maximum length of the pre-calculated mersenne numbers).',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -1783,9 +1745,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { mersenneSeq } = import("numberTheory");\nmersenneSeq(5)',
       'let { mersenneSeq } = import("numberTheory");\nmersenneSeq()',
     ],
-    seeAlso: ['numberTheory.mersenneNth', 'numberTheory.mersenneTakeWhile', 'numberTheory.isMersenne', 'numberTheory.primeSeq'],
+    seeAlso: [
+      'numberTheory.mersenneNth',
+      'numberTheory.mersenneTakeWhile',
+      'numberTheory.isMersenne',
+      'numberTheory.primeSeq',
+    ],
   },
-  'mersenneTakeWhile': {
+  mersenneTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Mersenne sequence while a condition is met.',
@@ -1801,17 +1768,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { mersenneTakeWhile } = import("numberTheory");\nmersenneTakeWhile(-> $ < 1000)',
-    ],
+    examples: ['let { mersenneTakeWhile } = import("numberTheory");\nmersenneTakeWhile(-> $ < 1000)'],
     seeAlso: ['numberTheory.mersenneSeq', 'numberTheory.mersenneNth', 'numberTheory.isMersenne'],
   },
-  'mersenneNth': {
+  mersenneNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Mersenne sequence.',
@@ -1826,9 +1789,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1837,7 +1798,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.mersenneSeq', 'numberTheory.mersenneTakeWhile', 'numberTheory.isMersenne'],
   },
-  'isMersenne': {
+  isMersenne: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Mersenne sequence.',
@@ -1852,9 +1813,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1862,9 +1821,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isMersenne } = import("numberTheory");\nisMersenne(4)',
       'let { isMersenne } = import("numberTheory");\nisMersenne(7)',
     ],
-    seeAlso: ['numberTheory.mersenneSeq', 'numberTheory.mersenneNth', 'numberTheory.isPrime', 'numberTheory.mersenneTakeWhile'],
+    seeAlso: [
+      'numberTheory.mersenneSeq',
+      'numberTheory.mersenneNth',
+      'numberTheory.isPrime',
+      'numberTheory.mersenneTakeWhile',
+    ],
   },
-  'padovanSeq': {
+  padovanSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Padovan sequence up to a specified length.',
@@ -1880,9 +1844,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
@@ -1890,9 +1852,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { padovanSeq } = import("numberTheory");\npadovanSeq(10)',
       'let { padovanSeq } = import("numberTheory");\npadovanSeq(20)',
     ],
-    seeAlso: ['numberTheory.padovanNth', 'numberTheory.padovanTakeWhile', 'numberTheory.isPadovan', 'numberTheory.fibonacciSeq'],
+    seeAlso: [
+      'numberTheory.padovanNth',
+      'numberTheory.padovanTakeWhile',
+      'numberTheory.isPadovan',
+      'numberTheory.fibonacciSeq',
+    ],
   },
-  'padovanTakeWhile': {
+  padovanTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Padovan sequence while a condition is met.',
@@ -1908,17 +1875,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { padovanTakeWhile } = import("numberTheory");\npadovanTakeWhile(-> $ < 1000)',
-    ],
+    examples: ['let { padovanTakeWhile } = import("numberTheory");\npadovanTakeWhile(-> $ < 1000)'],
     seeAlso: ['numberTheory.padovanSeq', 'numberTheory.padovanNth', 'numberTheory.isPadovan'],
   },
-  'padovanNth': {
+  padovanNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Padovan sequence.',
@@ -1933,9 +1896,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1945,7 +1906,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.padovanSeq', 'numberTheory.padovanTakeWhile', 'numberTheory.isPadovan'],
   },
-  'isPadovan': {
+  isPadovan: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Padovan sequence.',
@@ -1960,9 +1921,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -1970,12 +1929,18 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isPadovan } = import("numberTheory");\nisPadovan(265)',
       'let { isPadovan } = import("numberTheory");\nisPadovan(6)',
     ],
-    seeAlso: ['numberTheory.padovanSeq', 'numberTheory.padovanNth', 'numberTheory.isFibonacci', 'numberTheory.padovanTakeWhile'],
+    seeAlso: [
+      'numberTheory.padovanSeq',
+      'numberTheory.padovanNth',
+      'numberTheory.isFibonacci',
+      'numberTheory.padovanTakeWhile',
+    ],
   },
-  'partitionSeq': {
+  partitionSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
-    description: 'Generates the partition numbers up to a specified length. If no length is provided, it defaults to 299 (the maximum length of the pre-calculated partition numbers).',
+    description:
+      'Generates the partition numbers up to a specified length. If no length is provided, it defaults to 299 (the maximum length of the pre-calculated partition numbers).',
     returns: {
       type: 'integer',
       array: true,
@@ -1988,9 +1953,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -2001,9 +1964,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { partitionSeq } = import("numberTheory");\npartitionSeq(10)',
       'let { partitionSeq } = import("numberTheory");\npartitionSeq()',
     ],
-    seeAlso: ['numberTheory.partitionNth', 'numberTheory.partitionTakeWhile', 'numberTheory.isPartition', 'numberTheory.partitions', 'numberTheory.countPartitions'],
+    seeAlso: [
+      'numberTheory.partitionNth',
+      'numberTheory.partitionTakeWhile',
+      'numberTheory.isPartition',
+      'numberTheory.partitions',
+      'numberTheory.countPartitions',
+    ],
   },
-  'partitionTakeWhile': {
+  partitionTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the partition numbers while a condition is met.',
@@ -2019,17 +1988,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { partitionTakeWhile } = import("numberTheory");\npartitionTakeWhile(-> $ < 1000)',
-    ],
+    examples: ['let { partitionTakeWhile } = import("numberTheory");\npartitionTakeWhile(-> $ < 1000)'],
     seeAlso: ['numberTheory.partitionSeq', 'numberTheory.partitionNth', 'numberTheory.isPartition'],
   },
-  'partitionNth': {
+  partitionNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the partition numbers.',
@@ -2044,9 +2009,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2055,7 +2018,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.partitionSeq', 'numberTheory.partitionTakeWhile', 'numberTheory.isPartition'],
   },
-  'isPartition': {
+  isPartition: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the partition numbers.',
@@ -2070,9 +2033,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2083,9 +2044,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isPartition } = import("numberTheory");\nisPartition(4)',
       'let { isPartition } = import("numberTheory");\nisPartition(5)',
     ],
-    seeAlso: ['numberTheory.partitionSeq', 'numberTheory.partitionNth', 'numberTheory.partitions', 'numberTheory.partitionTakeWhile'],
+    seeAlso: [
+      'numberTheory.partitionSeq',
+      'numberTheory.partitionNth',
+      'numberTheory.partitions',
+      'numberTheory.partitionTakeWhile',
+    ],
   },
-  'pellSeq': {
+  pellSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Pell sequence up to a specified length.',
@@ -2096,14 +2062,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If not provided, the default is 42 (the maximum length of the pre-calculated Pell numbers).',
+        description:
+          'The length of the sequence to generate. If not provided, the default is 42 (the maximum length of the pre-calculated Pell numbers).',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -2116,7 +2081,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.pellNth', 'numberTheory.pellTakeWhile', 'numberTheory.isPell', 'numberTheory.fibonacciSeq'],
   },
-  'pellTakeWhile': {
+  pellTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Pell sequence while a condition is met.',
@@ -2132,17 +2097,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { pellTakeWhile } = import("numberTheory");\npellTakeWhile(-> $ < 1000)',
-    ],
+    examples: ['let { pellTakeWhile } = import("numberTheory");\npellTakeWhile(-> $ < 1000)'],
     seeAlso: ['numberTheory.pellSeq', 'numberTheory.pellNth', 'numberTheory.isPell'],
   },
-  'pellNth': {
+  pellNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Pell sequence.',
@@ -2157,9 +2118,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2169,7 +2128,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.pellSeq', 'numberTheory.pellTakeWhile', 'numberTheory.isPell'],
   },
-  'isPell': {
+  isPell: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is a Pell number.',
@@ -2184,9 +2143,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2196,7 +2153,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.pellSeq', 'numberTheory.pellNth', 'numberTheory.isFibonacci', 'numberTheory.pellTakeWhile'],
   },
-  'perfectSeq': {
+  perfectSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect numbers up to a specified length.',
@@ -2207,14 +2164,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If no length is provided, it defaults to 7 (the maximum length of the pre-calculated perfect numbers).',
+        description:
+          'The length of the sequence to generate. If no length is provided, it defaults to 7 (the maximum length of the pre-calculated perfect numbers).',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -2225,9 +2181,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { perfectSeq } = import("numberTheory");\nperfectSeq(5)',
       'let { perfectSeq } = import("numberTheory");\nperfectSeq()',
     ],
-    seeAlso: ['numberTheory.perfectNth', 'numberTheory.perfectTakeWhile', 'numberTheory.isPerfect', 'numberTheory.abundantSeq', 'numberTheory.deficientSeq', 'numberTheory.isAmicable'],
+    seeAlso: [
+      'numberTheory.perfectNth',
+      'numberTheory.perfectTakeWhile',
+      'numberTheory.isPerfect',
+      'numberTheory.abundantSeq',
+      'numberTheory.deficientSeq',
+      'numberTheory.isAmicable',
+    ],
   },
-  'perfectTakeWhile': {
+  perfectTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect numbers while a condition is met.',
@@ -2243,17 +2206,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { perfectTakeWhile } = import("numberTheory");\nperfectTakeWhile(-> $ < 1000)',
-    ],
+    examples: ['let { perfectTakeWhile } = import("numberTheory");\nperfectTakeWhile(-> $ < 1000)'],
     seeAlso: ['numberTheory.perfectSeq', 'numberTheory.perfectNth', 'numberTheory.isPerfect'],
   },
-  'perfectNth': {
+  perfectNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the perfect numbers.',
@@ -2268,9 +2227,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2279,7 +2236,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.perfectSeq', 'numberTheory.perfectTakeWhile', 'numberTheory.isPerfect'],
   },
-  'isPerfect': {
+  isPerfect: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the perfect numbers.',
@@ -2294,9 +2251,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2311,9 +2266,18 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isPerfect } = import("numberTheory");\nisPerfect(8)',
       'let { isPerfect } = import("numberTheory");\nisPerfect(9)',
     ],
-    seeAlso: ['numberTheory.perfectSeq', 'numberTheory.perfectNth', 'numberTheory.isAbundant', 'numberTheory.isDeficient', 'numberTheory.sigma', 'numberTheory.perfectTakeWhile', 'numberTheory.isAmicable', 'numberTheory.properDivisors'],
+    seeAlso: [
+      'numberTheory.perfectSeq',
+      'numberTheory.perfectNth',
+      'numberTheory.isAbundant',
+      'numberTheory.isDeficient',
+      'numberTheory.sigma',
+      'numberTheory.perfectTakeWhile',
+      'numberTheory.isAmicable',
+      'numberTheory.properDivisors',
+    ],
   },
-  'perfectSquareSeq': {
+  perfectSquareSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect square numbers up to a specified length.',
@@ -2329,18 +2293,23 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
       'let { perfectSquareSeq } = import("numberTheory");\nperfectSquareSeq(5)',
       'let { perfectSquareSeq } = import("numberTheory");\nperfectSquareSeq(20)',
     ],
-    seeAlso: ['numberTheory.perfectSquareNth', 'numberTheory.perfectSquareTakeWhile', 'numberTheory.isPerfectSquare', 'numberTheory.perfectCubeSeq', 'numberTheory.perfectPowerSeq', 'numberTheory.polygonalSeq'],
+    seeAlso: [
+      'numberTheory.perfectSquareNth',
+      'numberTheory.perfectSquareTakeWhile',
+      'numberTheory.isPerfectSquare',
+      'numberTheory.perfectCubeSeq',
+      'numberTheory.perfectPowerSeq',
+      'numberTheory.polygonalSeq',
+    ],
   },
-  'perfectSquareTakeWhile': {
+  perfectSquareTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect square numbers while a condition is met.',
@@ -2356,17 +2325,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { perfectSquareTakeWhile } = import("numberTheory");\nperfectSquareTakeWhile(-> $ <= 100)',
-    ],
+    examples: ['let { perfectSquareTakeWhile } = import("numberTheory");\nperfectSquareTakeWhile(-> $ <= 100)'],
     seeAlso: ['numberTheory.perfectSquareSeq', 'numberTheory.perfectSquareNth', 'numberTheory.isPerfectSquare'],
   },
-  'perfectSquareNth': {
+  perfectSquareNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the perfect square numbers.',
@@ -2381,9 +2346,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2392,7 +2355,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.perfectSquareSeq', 'numberTheory.perfectSquareTakeWhile', 'numberTheory.isPerfectSquare'],
   },
-  'isPerfectSquare': {
+  isPerfectSquare: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is a perfect square.',
@@ -2407,18 +2370,24 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
       'let { isPerfectSquare } = import("numberTheory");\nisPerfectSquare(16)',
       'let { isPerfectSquare } = import("numberTheory");\nisPerfectSquare(20)',
     ],
-    seeAlso: ['numberTheory.perfectSquareSeq', 'numberTheory.perfectSquareNth', 'numberTheory.isPerfectCube', 'numberTheory.isPerfectPower', 'numberTheory.perfectSquareTakeWhile', 'numberTheory.perfectPower', 'numberTheory.isPolygonal'],
+    seeAlso: [
+      'numberTheory.perfectSquareSeq',
+      'numberTheory.perfectSquareNth',
+      'numberTheory.isPerfectCube',
+      'numberTheory.isPerfectPower',
+      'numberTheory.perfectSquareTakeWhile',
+      'numberTheory.perfectPower',
+      'numberTheory.isPolygonal',
+    ],
   },
-  'perfectCubeSeq': {
+  perfectCubeSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect cube numbers up to a specified length.',
@@ -2434,18 +2403,22 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
       'let { perfectCubeSeq } = import("numberTheory");\nperfectCubeSeq(5)',
       'let { perfectCubeSeq } = import("numberTheory");\nperfectCubeSeq(20)',
     ],
-    seeAlso: ['numberTheory.perfectCubeNth', 'numberTheory.perfectCubeTakeWhile', 'numberTheory.isPerfectCube', 'numberTheory.perfectSquareSeq', 'numberTheory.perfectPowerSeq'],
+    seeAlso: [
+      'numberTheory.perfectCubeNth',
+      'numberTheory.perfectCubeTakeWhile',
+      'numberTheory.isPerfectCube',
+      'numberTheory.perfectSquareSeq',
+      'numberTheory.perfectPowerSeq',
+    ],
   },
-  'perfectCubeTakeWhile': {
+  perfectCubeTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect cube numbers while a condition is met.',
@@ -2461,17 +2434,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { perfectCubeTakeWhile } = import("numberTheory");\nperfectCubeTakeWhile(-> $ <= 100)',
-    ],
+    examples: ['let { perfectCubeTakeWhile } = import("numberTheory");\nperfectCubeTakeWhile(-> $ <= 100)'],
     seeAlso: ['numberTheory.perfectCubeSeq', 'numberTheory.perfectCubeNth', 'numberTheory.isPerfectCube'],
   },
-  'perfectCubeNth': {
+  perfectCubeNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the perfect cube numbers.',
@@ -2486,9 +2455,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2497,7 +2464,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.perfectCubeSeq', 'numberTheory.perfectCubeTakeWhile', 'numberTheory.isPerfectCube'],
   },
-  'isPerfectCube': {
+  isPerfectCube: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the perfect cube numbers.',
@@ -2512,9 +2479,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2522,9 +2487,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isPerfectCube } = import("numberTheory");\nisPerfectCube(8)',
       'let { isPerfectCube } = import("numberTheory");\nisPerfectCube(9)',
     ],
-    seeAlso: ['numberTheory.perfectCubeSeq', 'numberTheory.perfectCubeNth', 'numberTheory.isPerfectSquare', 'numberTheory.isPerfectPower', 'numberTheory.perfectCubeTakeWhile', 'numberTheory.perfectPower'],
+    seeAlso: [
+      'numberTheory.perfectCubeSeq',
+      'numberTheory.perfectCubeNth',
+      'numberTheory.isPerfectSquare',
+      'numberTheory.isPerfectPower',
+      'numberTheory.perfectCubeTakeWhile',
+      'numberTheory.perfectPower',
+    ],
   },
-  'perfectPowerSeq': {
+  perfectPowerSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect power numbers up to a specified length.',
@@ -2540,18 +2512,23 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
       'let { perfectPowerSeq } = import("numberTheory");\nperfectPowerSeq(5)',
       'let { perfectPowerSeq } = import("numberTheory");\nperfectPowerSeq(20)',
     ],
-    seeAlso: ['numberTheory.perfectPowerNth', 'numberTheory.perfectPowerTakeWhile', 'numberTheory.isPerfectPower', 'numberTheory.perfectPower', 'numberTheory.perfectSquareSeq', 'numberTheory.perfectCubeSeq'],
+    seeAlso: [
+      'numberTheory.perfectPowerNth',
+      'numberTheory.perfectPowerTakeWhile',
+      'numberTheory.isPerfectPower',
+      'numberTheory.perfectPower',
+      'numberTheory.perfectSquareSeq',
+      'numberTheory.perfectCubeSeq',
+    ],
   },
-  'perfectPowerTakeWhile': {
+  perfectPowerTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the perfect power numbers while a condition is met.',
@@ -2567,17 +2544,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { perfectPowerTakeWhile } = import("numberTheory");\nperfectPowerTakeWhile(-> $ <= 100)',
-    ],
+    examples: ['let { perfectPowerTakeWhile } = import("numberTheory");\nperfectPowerTakeWhile(-> $ <= 100)'],
     seeAlso: ['numberTheory.perfectPowerSeq', 'numberTheory.perfectPowerNth', 'numberTheory.isPerfectPower'],
   },
-  'perfectPowerNth': {
+  perfectPowerNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the perfect power numbers.',
@@ -2592,9 +2565,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2603,7 +2574,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.perfectPowerSeq', 'numberTheory.perfectPowerTakeWhile', 'numberTheory.isPerfectPower'],
   },
-  'isPerfectPower': {
+  isPerfectPower: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the perfect power numbers.',
@@ -2618,9 +2589,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2629,9 +2598,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isPerfectPower } = import("numberTheory");\nisPerfectPower(9)',
       'let { isPerfectPower } = import("numberTheory");\nisPerfectPower(10)',
     ],
-    seeAlso: ['numberTheory.perfectPowerSeq', 'numberTheory.perfectPowerNth', 'numberTheory.perfectPower', 'numberTheory.isPerfectSquare', 'numberTheory.isPerfectCube', 'numberTheory.perfectPowerTakeWhile'],
+    seeAlso: [
+      'numberTheory.perfectPowerSeq',
+      'numberTheory.perfectPowerNth',
+      'numberTheory.perfectPower',
+      'numberTheory.isPerfectSquare',
+      'numberTheory.isPerfectCube',
+      'numberTheory.perfectPowerTakeWhile',
+    ],
   },
-  'polygonalSeq': {
+  polygonalSeq: {
     type: '(Number, Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the polygonal sequence for a given number of sides and length.',
@@ -2657,10 +2633,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'sides',
-          'length',
-        ],
+        argumentNames: ['sides', 'length'],
       },
     ],
     examples: [
@@ -2670,9 +2643,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { polygonalSeq } = import("numberTheory");\npolygonalSeq(6, 5)',
       'let { polygonalSeq } = import("numberTheory");\npolygonalSeq(100, 10)',
     ],
-    seeAlso: ['numberTheory.polygonalNth', 'numberTheory.polygonalTakeWhile', 'numberTheory.isPolygonal', 'numberTheory.perfectSquareSeq'],
+    seeAlso: [
+      'numberTheory.polygonalNth',
+      'numberTheory.polygonalTakeWhile',
+      'numberTheory.isPolygonal',
+      'numberTheory.perfectSquareSeq',
+    ],
   },
-  'polygonalTakeWhile': {
+  polygonalTakeWhile: {
     type: '(Number, (Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the polygonal sequence while a condition is met.',
@@ -2698,18 +2676,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'sides',
-          'takeWhile',
-        ],
+        argumentNames: ['sides', 'takeWhile'],
       },
     ],
-    examples: [
-      'let { polygonalTakeWhile } = import("numberTheory");\npolygonalTakeWhile(15, -> $ < 1000)',
-    ],
+    examples: ['let { polygonalTakeWhile } = import("numberTheory");\npolygonalTakeWhile(15, -> $ < 1000)'],
     seeAlso: ['numberTheory.polygonalSeq', 'numberTheory.polygonalNth', 'numberTheory.isPolygonal'],
   },
-  'polygonalNth': {
+  polygonalNth: {
     type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the polygonal sequence.',
@@ -2734,10 +2707,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'sides',
-          'n',
-        ],
+        argumentNames: ['sides', 'n'],
       },
     ],
     examples: [
@@ -2747,7 +2717,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.polygonalSeq', 'numberTheory.polygonalTakeWhile', 'numberTheory.isPolygonal'],
   },
-  'isPolygonal': {
+  isPolygonal: {
     type: '(Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the polygonal sequence.',
@@ -2772,10 +2742,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'sides',
-          'n',
-        ],
+        argumentNames: ['sides', 'n'],
       },
     ],
     examples: [
@@ -2785,9 +2752,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isPolygonal } = import("numberTheory");\nisPolygonal(4, 1000)',
       'let { isPolygonal } = import("numberTheory");\nisPolygonal(6, 45)',
     ],
-    seeAlso: ['numberTheory.polygonalSeq', 'numberTheory.polygonalNth', 'numberTheory.isPerfectSquare', 'numberTheory.polygonalTakeWhile'],
+    seeAlso: [
+      'numberTheory.polygonalSeq',
+      'numberTheory.polygonalNth',
+      'numberTheory.isPerfectSquare',
+      'numberTheory.polygonalTakeWhile',
+    ],
   },
-  'primeSeq': {
+  primeSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the prime sequence up to a specified length.',
@@ -2803,9 +2775,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
@@ -2813,9 +2783,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { primeSeq } = import("numberTheory");\nprimeSeq(2)',
       'let { primeSeq } = import("numberTheory");\nprimeSeq(10)',
     ],
-    seeAlso: ['numberTheory.primeNth', 'numberTheory.primeTakeWhile', 'numberTheory.isPrime', 'numberTheory.compositeSeq', 'numberTheory.mersenneSeq', 'numberTheory.luckySeq'],
+    seeAlso: [
+      'numberTheory.primeNth',
+      'numberTheory.primeTakeWhile',
+      'numberTheory.isPrime',
+      'numberTheory.compositeSeq',
+      'numberTheory.mersenneSeq',
+      'numberTheory.luckySeq',
+    ],
   },
-  'primeTakeWhile': {
+  primeTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the prime sequence while a condition is met.',
@@ -2831,17 +2808,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { primeTakeWhile } = import("numberTheory");\nprimeTakeWhile(-> $ < 50)',
-    ],
+    examples: ['let { primeTakeWhile } = import("numberTheory");\nprimeTakeWhile(-> $ < 50)'],
     seeAlso: ['numberTheory.primeSeq', 'numberTheory.primeNth', 'numberTheory.isPrime'],
   },
-  'primeNth': {
+  primeNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the prime sequence.',
@@ -2856,9 +2829,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2868,7 +2839,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.primeSeq', 'numberTheory.primeTakeWhile', 'numberTheory.isPrime'],
   },
-  'isPrime': {
+  isPrime: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is prime.',
@@ -2883,9 +2854,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2896,9 +2865,17 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isPrime } = import("numberTheory");\nisPrime(997)',
       'let { isPrime } = import("numberTheory");\nisPrime(1001)',
     ],
-    seeAlso: ['numberTheory.primeSeq', 'numberTheory.primeNth', 'numberTheory.isComposite', 'numberTheory.primeFactors', 'numberTheory.isMersenne', 'numberTheory.primeTakeWhile', 'numberTheory.isLucky'],
+    seeAlso: [
+      'numberTheory.primeSeq',
+      'numberTheory.primeNth',
+      'numberTheory.isComposite',
+      'numberTheory.primeFactors',
+      'numberTheory.isMersenne',
+      'numberTheory.primeTakeWhile',
+      'numberTheory.isLucky',
+    ],
   },
-  'recamanSeq': {
+  recamanSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Recaman sequence up to a specified length.',
@@ -2914,9 +2891,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
@@ -2924,9 +2899,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { recamanSeq } = import("numberTheory");\nrecamanSeq(10)',
       'let { recamanSeq } = import("numberTheory");\nrecamanSeq(20)',
     ],
-    seeAlso: ['numberTheory.recamanNth', 'numberTheory.recamanTakeWhile', 'numberTheory.isRecaman', 'numberTheory.golombSeq'],
+    seeAlso: [
+      'numberTheory.recamanNth',
+      'numberTheory.recamanTakeWhile',
+      'numberTheory.isRecaman',
+      'numberTheory.golombSeq',
+    ],
   },
-  'recamanTakeWhile': {
+  recamanTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Recaman sequence while a condition is met.',
@@ -2942,17 +2922,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { recamanTakeWhile } = import("numberTheory");\nrecamanTakeWhile(-> $ < 10)',
-    ],
+    examples: ['let { recamanTakeWhile } = import("numberTheory");\nrecamanTakeWhile(-> $ < 10)'],
     seeAlso: ['numberTheory.recamanSeq', 'numberTheory.recamanNth', 'numberTheory.isRecaman'],
   },
-  'recamanNth': {
+  recamanNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Recaman sequence.',
@@ -2967,9 +2943,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -2979,7 +2953,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.recamanSeq', 'numberTheory.recamanTakeWhile', 'numberTheory.isRecaman'],
   },
-  'isRecaman': {
+  isRecaman: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Recaman sequence.',
@@ -2994,9 +2968,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3006,7 +2978,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.recamanSeq', 'numberTheory.recamanNth', 'numberTheory.recamanTakeWhile'],
   },
-  'sylvesterSeq': {
+  sylvesterSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Sylvester sequence up to a specified length.',
@@ -3017,14 +2989,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If not provided, the default is 6 (the maximum length of the pre-calculated Sylvester numbers).',
+        description:
+          'The length of the sequence to generate. If not provided, the default is 6 (the maximum length of the pre-calculated Sylvester numbers).',
       },
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
       {
         argumentNames: [],
@@ -3037,7 +3008,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.sylvesterNth', 'numberTheory.sylvesterTakeWhile', 'numberTheory.isSylvester'],
   },
-  'sylvesterTakeWhile': {
+  sylvesterTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Sylvester sequence while a condition is met.',
@@ -3053,17 +3024,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { sylvesterTakeWhile } = import("numberTheory");\nsylvesterTakeWhile(-> $ < 100000)',
-    ],
+    examples: ['let { sylvesterTakeWhile } = import("numberTheory");\nsylvesterTakeWhile(-> $ < 100000)'],
     seeAlso: ['numberTheory.sylvesterSeq', 'numberTheory.sylvesterNth', 'numberTheory.isSylvester'],
   },
-  'sylvesterNth': {
+  sylvesterNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Sylvester sequence.',
@@ -3078,9 +3045,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3089,7 +3054,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.sylvesterSeq', 'numberTheory.sylvesterTakeWhile', 'numberTheory.isSylvester'],
   },
-  'isSylvester': {
+  isSylvester: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is in the Sylvester sequence.',
@@ -3104,9 +3069,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3116,7 +3079,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.sylvesterSeq', 'numberTheory.sylvesterNth', 'numberTheory.sylvesterTakeWhile'],
   },
-  'thueMorseSeq': {
+  thueMorseSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Thue-Morse sequence up to a specified length.',
@@ -3132,9 +3095,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
@@ -3144,7 +3105,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.thueMorseNth', 'numberTheory.thueMorseTakeWhile', 'numberTheory.isThueMorse'],
   },
-  'thueMorseTakeWhile': {
+  thueMorseTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the Thue-Morse sequence while a condition is met.',
@@ -3160,17 +3121,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { thueMorseTakeWhile } = import("numberTheory");\nthueMorseTakeWhile(-> $2 < 10)',
-    ],
+    examples: ['let { thueMorseTakeWhile } = import("numberTheory");\nthueMorseTakeWhile(-> $2 < 10)'],
     seeAlso: ['numberTheory.thueMorseSeq', 'numberTheory.thueMorseNth', 'numberTheory.isThueMorse'],
   },
-  'thueMorseNth': {
+  thueMorseNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the Thue-Morse sequence.',
@@ -3185,9 +3142,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3197,7 +3152,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.thueMorseSeq', 'numberTheory.thueMorseTakeWhile', 'numberTheory.isThueMorse'],
   },
-  'isThueMorse': {
+  isThueMorse: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is part of the Thue-Morse sequence.',
@@ -3212,9 +3167,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3223,7 +3176,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.thueMorseSeq', 'numberTheory.thueMorseNth', 'numberTheory.thueMorseTakeWhile'],
   },
-  'tribonacciSeq': {
+  tribonacciSeq: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the tribonacci sequence up to a specified length.',
@@ -3239,9 +3192,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'length',
-        ],
+        argumentNames: ['length'],
       },
     ],
     examples: [
@@ -3249,9 +3200,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { tribonacciSeq } = import("numberTheory");\ntribonacciSeq(2)',
       'let { tribonacciSeq } = import("numberTheory");\ntribonacciSeq(10)',
     ],
-    seeAlso: ['numberTheory.tribonacciNth', 'numberTheory.tribonacciTakeWhile', 'numberTheory.isTribonacci', 'numberTheory.fibonacciSeq'],
+    seeAlso: [
+      'numberTheory.tribonacciNth',
+      'numberTheory.tribonacciTakeWhile',
+      'numberTheory.isTribonacci',
+      'numberTheory.fibonacciSeq',
+    ],
   },
-  'tribonacciTakeWhile': {
+  tribonacciTakeWhile: {
     type: '((Number -> Boolean)) -> Number[]',
     category: 'numberTheory',
     description: 'Generates the tribonacci sequence while a condition is met.',
@@ -3267,17 +3223,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'takeWhile',
-        ],
+        argumentNames: ['takeWhile'],
       },
     ],
-    examples: [
-      'let { tribonacciTakeWhile } = import("numberTheory");\ntribonacciTakeWhile(-> $ < 100)',
-    ],
+    examples: ['let { tribonacciTakeWhile } = import("numberTheory");\ntribonacciTakeWhile(-> $ < 100)'],
     seeAlso: ['numberTheory.tribonacciSeq', 'numberTheory.tribonacciNth', 'numberTheory.isTribonacci'],
   },
-  'tribonacciNth': {
+  tribonacciNth: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Generates the nth term of the tribonacci sequence.',
@@ -3292,9 +3244,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3304,7 +3254,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.tribonacciSeq', 'numberTheory.tribonacciTakeWhile', 'numberTheory.isTribonacci'],
   },
-  'isTribonacci': {
+  isTribonacci: {
     type: '(Number) -> Boolean',
     category: 'numberTheory',
     description: 'Determines if a number is in the tribonacci sequence.',
@@ -3319,9 +3269,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3337,9 +3285,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isTribonacci } = import("numberTheory");\nisTribonacci(9)',
       'let { isTribonacci } = import("numberTheory");\nisTribonacci(10)',
     ],
-    seeAlso: ['numberTheory.tribonacciSeq', 'numberTheory.tribonacciNth', 'numberTheory.isFibonacci', 'numberTheory.tribonacciTakeWhile'],
+    seeAlso: [
+      'numberTheory.tribonacciSeq',
+      'numberTheory.tribonacciNth',
+      'numberTheory.isFibonacci',
+      'numberTheory.tribonacciTakeWhile',
+    ],
   },
-  'countCombinations': {
+  countCombinations: {
     type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the number of combinations of n items taken k at a time.',
@@ -3356,19 +3309,24 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
       'let { countCombinations } = import("numberTheory");\ncountCombinations(5, 3)',
       'let { countCombinations } = import("numberTheory");\ncountCombinations(10, 2)',
     ],
-    seeAlso: ['numberTheory.combinations', 'numberTheory.countPermutations', 'numberTheory.factorial', 'numberTheory.multinomial', 'numberTheory.stirlingSecond', 'numberTheory.countPartitions', 'numberTheory.countPowerSet'],
+    seeAlso: [
+      'numberTheory.combinations',
+      'numberTheory.countPermutations',
+      'numberTheory.factorial',
+      'numberTheory.multinomial',
+      'numberTheory.stirlingSecond',
+      'numberTheory.countPartitions',
+      'numberTheory.countPowerSet',
+    ],
   },
-  'combinations': {
+  combinations: {
     type: '(Unknown[], Number) -> Unknown[][]',
     category: 'numberTheory',
     description: 'Generates all possible combinations of a specified size from a collection.',
@@ -3395,10 +3353,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'set',
-          'n',
-        ],
+        argumentNames: ['set', 'n'],
       },
     ],
     examples: [
@@ -3408,12 +3363,19 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { combinations } = import("numberTheory");\ncombinations([1, 2, 3], 1)',
       'let { combinations } = import("numberTheory");\ncombinations([1, 2, 3], 3)',
     ],
-    seeAlso: ['numberTheory.countCombinations', 'numberTheory.permutations', 'numberTheory.powerSet', 'numberTheory.cartesianProduct', 'numberTheory.partitions'],
+    seeAlso: [
+      'numberTheory.countCombinations',
+      'numberTheory.permutations',
+      'numberTheory.powerSet',
+      'numberTheory.cartesianProduct',
+      'numberTheory.partitions',
+    ],
   },
-  'countDerangements': {
+  countDerangements: {
     type: '(Number) -> Number',
     category: 'numberTheory',
-    description: 'Calculates the number of derangements (permutations where no element appears in its original position) of n items.',
+    description:
+      'Calculates the number of derangements (permutations where no element appears in its original position) of n items.',
     returns: {
       type: 'integer',
     },
@@ -3425,9 +3387,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3436,10 +3396,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.derangements', 'numberTheory.countPermutations', 'numberTheory.factorial'],
   },
-  'derangements': {
+  derangements: {
     type: '(Unknown[]) -> Unknown[][]',
     category: 'numberTheory',
-    description: 'Generates all derangements (permutations where no element appears in its original position) of a set.',
+    description:
+      'Generates all derangements (permutations where no element appears in its original position) of a set.',
     returns: {
       type: 'array',
       array: true,
@@ -3453,9 +3414,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'set',
-        ],
+        argumentNames: ['set'],
       },
     ],
     examples: [
@@ -3464,7 +3423,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.countDerangements', 'numberTheory.permutations'],
   },
-  'divisors': {
+  divisors: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Returns the divisors of a number.',
@@ -3480,9 +3439,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3490,9 +3447,19 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { divisors } = import("numberTheory");\ndivisors(100)',
       'let { divisors } = import("numberTheory");\ndivisors(37)',
     ],
-    seeAlso: ['numberTheory.countDivisors', 'numberTheory.properDivisors', 'numberTheory.sigma', 'numberTheory.primeFactors', 'numberTheory.isDivisibleBy', 'numberTheory.lcm', 'numberTheory.isAbundant', 'numberTheory.isDeficient', 'numberTheory.countProperDivisors'],
+    seeAlso: [
+      'numberTheory.countDivisors',
+      'numberTheory.properDivisors',
+      'numberTheory.sigma',
+      'numberTheory.primeFactors',
+      'numberTheory.isDivisibleBy',
+      'numberTheory.lcm',
+      'numberTheory.isAbundant',
+      'numberTheory.isDeficient',
+      'numberTheory.countProperDivisors',
+    ],
   },
-  'countDivisors': {
+  countDivisors: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of divisors of a number.',
@@ -3507,9 +3474,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3519,7 +3484,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.divisors', 'numberTheory.countProperDivisors', 'numberTheory.sigma'],
   },
-  'properDivisors': {
+  properDivisors: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Returns the proper divisors of a number.',
@@ -3535,9 +3500,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3545,9 +3508,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { properDivisors } = import("numberTheory");\nproperDivisors(100)',
       'let { properDivisors } = import("numberTheory");\nproperDivisors(37)',
     ],
-    seeAlso: ['numberTheory.countProperDivisors', 'numberTheory.divisors', 'numberTheory.isAmicable', 'numberTheory.isPerfect'],
+    seeAlso: [
+      'numberTheory.countProperDivisors',
+      'numberTheory.divisors',
+      'numberTheory.isAmicable',
+      'numberTheory.isPerfect',
+    ],
   },
-  'countProperDivisors': {
+  countProperDivisors: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of proper divisors of a number.',
@@ -3562,9 +3530,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3574,7 +3540,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.properDivisors', 'numberTheory.countDivisors', 'numberTheory.divisors'],
   },
-  'factorial': {
+  factorial: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the factorial of a number.',
@@ -3589,9 +3555,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3600,9 +3564,17 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { factorial } = import("numberTheory");\nfactorial(10)',
       'let { factorial } = import("numberTheory");\nfactorial(20)',
     ],
-    seeAlso: ['numberTheory.factorialSeq', 'numberTheory.factorialNth', 'numberTheory.isFactorial', 'numberTheory.countCombinations', 'numberTheory.countPermutations', 'numberTheory.multinomial', 'numberTheory.countDerangements'],
+    seeAlso: [
+      'numberTheory.factorialSeq',
+      'numberTheory.factorialNth',
+      'numberTheory.isFactorial',
+      'numberTheory.countCombinations',
+      'numberTheory.countPermutations',
+      'numberTheory.multinomial',
+      'numberTheory.countDerangements',
+    ],
   },
-  'partitions': {
+  partitions: {
     type: '(Number) -> Number[][]',
     category: 'numberTheory',
     description: 'Generates all partitions of a number.',
@@ -3618,18 +3590,21 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
       'let { partitions } = import("numberTheory");\npartitions(4)',
       'let { partitions } = import("numberTheory");\npartitions(8)',
     ],
-    seeAlso: ['numberTheory.countPartitions', 'numberTheory.partitionSeq', 'numberTheory.combinations', 'numberTheory.isPartition'],
+    seeAlso: [
+      'numberTheory.countPartitions',
+      'numberTheory.partitionSeq',
+      'numberTheory.combinations',
+      'numberTheory.isPartition',
+    ],
   },
-  'countPartitions': {
+  countPartitions: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of partitions of a number.',
@@ -3644,9 +3619,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3656,7 +3629,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.partitions', 'numberTheory.partitionSeq', 'numberTheory.countCombinations'],
   },
-  'permutations': {
+  permutations: {
     type: '(Unknown[]) -> Unknown[][]',
     category: 'numberTheory',
     description: 'Generates all permutations of a collection.',
@@ -3673,9 +3646,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'set',
-        ],
+        argumentNames: ['set'],
       },
     ],
     examples: [
@@ -3686,9 +3657,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { permutations } = import("numberTheory");\npermutations([1])',
       'let { permutations } = import("numberTheory");\npermutations([])',
     ],
-    seeAlso: ['numberTheory.countPermutations', 'numberTheory.combinations', 'numberTheory.derangements', 'numberTheory.cartesianProduct'],
+    seeAlso: [
+      'numberTheory.countPermutations',
+      'numberTheory.combinations',
+      'numberTheory.derangements',
+      'numberTheory.cartesianProduct',
+    ],
   },
-  'countPermutations': {
+  countPermutations: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of permutations of n items taken k at a time.',
@@ -3705,10 +3681,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -3718,9 +3691,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { countPermutations } = import("numberTheory");\ncountPermutations(10, 0)',
       'let { countPermutations } = import("numberTheory");\ncountPermutations(10, 1)',
     ],
-    seeAlso: ['numberTheory.permutations', 'numberTheory.countCombinations', 'numberTheory.factorial', 'numberTheory.multinomial', 'numberTheory.stirlingFirst', 'numberTheory.countDerangements'],
+    seeAlso: [
+      'numberTheory.permutations',
+      'numberTheory.countCombinations',
+      'numberTheory.factorial',
+      'numberTheory.multinomial',
+      'numberTheory.stirlingFirst',
+      'numberTheory.countDerangements',
+    ],
   },
-  'powerSet': {
+  powerSet: {
     type: '(Unknown[]) -> Unknown[][]',
     category: 'numberTheory',
     description: 'Generates the power set of a collection.',
@@ -3737,9 +3717,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'set',
-        ],
+        argumentNames: ['set'],
       },
     ],
     examples: [
@@ -3750,7 +3728,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.countPowerSet', 'numberTheory.combinations', 'numberTheory.cartesianProduct'],
   },
-  'countPowerSet': {
+  countPowerSet: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of subsets of a set.',
@@ -3765,9 +3743,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3777,7 +3753,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.powerSet', 'numberTheory.countCombinations'],
   },
-  'primeFactors': {
+  primeFactors: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Returns the prime factors of a number.',
@@ -3793,9 +3769,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3803,9 +3777,18 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { primeFactors } = import("numberTheory");\nprimeFactors(100)',
       'let { primeFactors } = import("numberTheory");\nprimeFactors(37)',
     ],
-    seeAlso: ['numberTheory.countPrimeFactors', 'numberTheory.distinctPrimeFactors', 'numberTheory.isPrime', 'numberTheory.divisors', 'numberTheory.eulerTotient', 'numberTheory.mobius', 'numberTheory.isComposite', 'numberTheory.countDistinctPrimeFactors'],
+    seeAlso: [
+      'numberTheory.countPrimeFactors',
+      'numberTheory.distinctPrimeFactors',
+      'numberTheory.isPrime',
+      'numberTheory.divisors',
+      'numberTheory.eulerTotient',
+      'numberTheory.mobius',
+      'numberTheory.isComposite',
+      'numberTheory.countDistinctPrimeFactors',
+    ],
   },
-  'countPrimeFactors': {
+  countPrimeFactors: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of prime factors of a number.',
@@ -3820,9 +3803,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3830,9 +3811,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { countPrimeFactors } = import("numberTheory");\ncountPrimeFactors(100)',
       'let { countPrimeFactors } = import("numberTheory");\ncountPrimeFactors(37)',
     ],
-    seeAlso: ['numberTheory.primeFactors', 'numberTheory.distinctPrimeFactors', 'numberTheory.countDistinctPrimeFactors'],
+    seeAlso: [
+      'numberTheory.primeFactors',
+      'numberTheory.distinctPrimeFactors',
+      'numberTheory.countDistinctPrimeFactors',
+    ],
   },
-  'distinctPrimeFactors': {
+  distinctPrimeFactors: {
     type: '(Number) -> Number[]',
     category: 'numberTheory',
     description: 'Returns the distinct prime factors of a number.',
@@ -3848,9 +3833,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3860,7 +3843,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.primeFactors', 'numberTheory.countDistinctPrimeFactors', 'numberTheory.countPrimeFactors'],
   },
-  'countDistinctPrimeFactors': {
+  countDistinctPrimeFactors: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Returns the number of distinct prime factors of a number.',
@@ -3875,9 +3858,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -3887,7 +3868,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.distinctPrimeFactors', 'numberTheory.primeFactors', 'numberTheory.countPrimeFactors'],
   },
-  'isCoprime': {
+  isCoprime: {
     type: '(Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if two numbers are coprime (i.e., their GCD is 1).',
@@ -3904,10 +3885,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -3922,9 +3900,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isCoprime } = import("numberTheory");\nisCoprime(1, 1)',
       'let { isCoprime } = import("numberTheory");\nisCoprime(2, 3)',
     ],
-    seeAlso: ['numberTheory.gcd', 'numberTheory.eulerTotient', 'numberTheory.isDivisibleBy', 'numberTheory.lcm', 'numberTheory.carmichaelLambda'],
+    seeAlso: [
+      'numberTheory.gcd',
+      'numberTheory.eulerTotient',
+      'numberTheory.isDivisibleBy',
+      'numberTheory.lcm',
+      'numberTheory.carmichaelLambda',
+    ],
   },
-  'isDivisibleBy': {
+  isDivisibleBy: {
     type: '(Number, Number) -> Boolean',
     category: 'numberTheory',
     description: 'Checks if a number is divisible by another number.',
@@ -3941,10 +3925,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -3957,7 +3938,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.divisors', 'numberTheory.gcd', 'numberTheory.isCoprime'],
   },
-  'gcd': {
+  gcd: {
     type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the greatest common divisor (GCD) of two numbers.',
@@ -3974,10 +3955,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -3989,7 +3967,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.lcm', 'numberTheory.extendedGcd', 'numberTheory.isCoprime', 'numberTheory.isDivisibleBy'],
   },
-  'lcm': {
+  lcm: {
     type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the least common multiple (LCM) of two numbers.',
@@ -4006,10 +3984,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -4020,10 +3995,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.gcd', 'numberTheory.divisors', 'numberTheory.isCoprime'],
   },
-  'multinomial': {
+  multinomial: {
     type: '(...Number) -> Number',
     category: 'numberTheory',
-    description: 'Calculates the multinomial coefficient from of a list of numbers representing the sizes of each group.',
+    description:
+      'Calculates the multinomial coefficient from of a list of numbers representing the sizes of each group.',
     returns: {
       type: 'integer',
     },
@@ -4036,9 +4012,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'args',
-        ],
+        argumentNames: ['args'],
       },
     ],
     examples: [
@@ -4048,10 +4022,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['numberTheory.countCombinations', 'numberTheory.factorial', 'numberTheory.countPermutations'],
     hideOperatorForm: true,
   },
-  'isAmicable': {
+  isAmicable: {
     type: '(Number, Number) -> Boolean',
     category: 'numberTheory',
-    description: 'Checks if two numbers are amicable (i.e., the sum of the proper divisors of each number equals the other number).',
+    description:
+      'Checks if two numbers are amicable (i.e., the sum of the proper divisors of each number equals the other number).',
     returns: {
       type: 'boolean',
     },
@@ -4065,10 +4040,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -4080,10 +4052,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.properDivisors', 'numberTheory.isPerfect', 'numberTheory.sigma', 'numberTheory.perfectSeq'],
   },
-  'eulerTotient': {
+  eulerTotient: {
     type: '(Number) -> Number',
     category: 'numberTheory',
-    description: 'Calculates the Euler\'s totient function (φ(n)) of a number, which counts the integers up to n that are coprime to n.',
+    description:
+      "Calculates the Euler's totient function (φ(n)) of a number, which counts the integers up to n that are coprime to n.",
     returns: {
       type: 'integer',
     },
@@ -4095,9 +4068,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -4106,9 +4077,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { eulerTotient } = import("numberTheory");\neulerTotient(10)',
       'let { eulerTotient } = import("numberTheory");\neulerTotient(20)',
     ],
-    seeAlso: ['numberTheory.isCoprime', 'numberTheory.carmichaelLambda', 'numberTheory.mobius', 'numberTheory.primeFactors', 'numberTheory.mertens'],
+    seeAlso: [
+      'numberTheory.isCoprime',
+      'numberTheory.carmichaelLambda',
+      'numberTheory.mobius',
+      'numberTheory.primeFactors',
+      'numberTheory.mertens',
+    ],
   },
-  'mobius': {
+  mobius: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the Möbius function (μ(n)) of a number, which is used in number theory.',
@@ -4123,9 +4100,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -4139,7 +4114,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.mertens', 'numberTheory.eulerTotient', 'numberTheory.primeFactors'],
   },
-  'mertens': {
+  mertens: {
     type: '(Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the Mertens function (M(n)) of a number, which is the sum of the Möbius function up to n.',
@@ -4154,9 +4129,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -4170,10 +4143,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.mobius', 'numberTheory.eulerTotient'],
   },
-  'sigma': {
+  sigma: {
     type: '(Number) -> Number',
     category: 'numberTheory',
-    description: 'Calculates the sum of divisors function (σ(n)) of a number, which is the sum of all positive divisors of n.',
+    description:
+      'Calculates the sum of divisors function (σ(n)) of a number, which is the sum of all positive divisors of n.',
     returns: {
       type: 'integer',
     },
@@ -4185,9 +4159,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -4199,12 +4171,20 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { sigma } = import("numberTheory");\nsigma(12)',
       'let { sigma } = import("numberTheory");\nsigma(30)',
     ],
-    seeAlso: ['numberTheory.divisors', 'numberTheory.isPerfect', 'numberTheory.isAbundant', 'numberTheory.isDeficient', 'numberTheory.isAmicable', 'numberTheory.countDivisors'],
+    seeAlso: [
+      'numberTheory.divisors',
+      'numberTheory.isPerfect',
+      'numberTheory.isAbundant',
+      'numberTheory.isDeficient',
+      'numberTheory.isAmicable',
+      'numberTheory.countDivisors',
+    ],
   },
-  'carmichaelLambda': {
+  carmichaelLambda: {
     type: '(Number) -> Number',
     category: 'numberTheory',
-    description: 'Calculates the Carmichael function (λ(n)) of a number, which is the smallest positive integer m such that a^m ≡ 1 (mod n) for all integers a coprime to n.',
+    description:
+      'Calculates the Carmichael function (λ(n)) of a number, which is the smallest positive integer m such that a^m ≡ 1 (mod n) for all integers a coprime to n.',
     returns: {
       type: 'integer',
     },
@@ -4216,9 +4196,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -4232,7 +4210,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.eulerTotient', 'numberTheory.modExp', 'numberTheory.isCoprime'],
   },
-  'cartesianProduct': {
+  cartesianProduct: {
     type: '(...Unknown[]) -> Unknown[][]',
     category: 'numberTheory',
     description: 'Calculates the Cartesian product of two or more sets.',
@@ -4255,9 +4233,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'sets',
-        ],
+        argumentNames: ['sets'],
       },
     ],
     examples: [
@@ -4267,7 +4243,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.combinations', 'numberTheory.powerSet', 'numberTheory.permutations'],
   },
-  'perfectPower': {
+  perfectPower: {
     type: '(Number) -> (Number[] | Null)',
     category: 'numberTheory',
     description: 'Returns a tuple of the base and exponent if the number is a perfect power, otherwise returns null.',
@@ -4282,9 +4258,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'n',
-        ],
+        argumentNames: ['n'],
       },
     ],
     examples: [
@@ -4296,9 +4270,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { perfectPower } = import("numberTheory");\nperfectPower(16)',
       'let { perfectPower } = import("numberTheory");\nperfectPower(19)',
     ],
-    seeAlso: ['numberTheory.isPerfectPower', 'numberTheory.perfectPowerSeq', 'numberTheory.isPerfectSquare', 'numberTheory.isPerfectCube'],
+    seeAlso: [
+      'numberTheory.isPerfectPower',
+      'numberTheory.perfectPowerSeq',
+      'numberTheory.isPerfectSquare',
+      'numberTheory.isPerfectCube',
+    ],
   },
-  'modExp': {
+  modExp: {
     type: '(Number, Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the modular exponentiation of a base raised to an exponent modulo a modulus.',
@@ -4318,11 +4297,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'base',
-          'exponent',
-          'modulus',
-        ],
+        argumentNames: ['base', 'exponent', 'modulus'],
       },
     ],
     examples: [
@@ -4333,7 +4308,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.modInv', 'numberTheory.carmichaelLambda', 'numberTheory.chineseRemainder'],
   },
-  'modInv': {
+  modInv: {
     type: '(Number, Number) -> Number',
     category: 'numberTheory',
     description: 'Calculates the modular multiplicative inverse of a number modulo another number.',
@@ -4350,10 +4325,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'm',
-        ],
+        argumentNames: ['a', 'm'],
       },
     ],
     examples: [
@@ -4364,10 +4336,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.modExp', 'numberTheory.extendedGcd', 'numberTheory.chineseRemainder'],
   },
-  'extendedGcd': {
+  extendedGcd: {
     type: '(Number, Number) -> Number[]',
     category: 'numberTheory',
-    description: 'Calculates the extended greatest common divisor (GCD) of two numbers, returning the GCD and the coefficients of Bézout\'s identity.',
+    description:
+      "Calculates the extended greatest common divisor (GCD) of two numbers, returning the GCD and the coefficients of Bézout's identity.",
     returns: {
       type: 'integer',
       array: true,
@@ -4382,10 +4355,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -4396,7 +4366,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.gcd', 'numberTheory.modInv', 'numberTheory.chineseRemainder'],
   },
-  'chineseRemainder': {
+  chineseRemainder: {
     type: '(Number[], Number[]) -> Number',
     category: 'numberTheory',
     description: 'Solves a system of simultaneous congruences using the Chinese Remainder Theorem.',
@@ -4423,10 +4393,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'remainders',
-          'moduli',
-        ],
+        argumentNames: ['remainders', 'moduli'],
       },
     ],
     examples: [
@@ -4437,10 +4404,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.modExp', 'numberTheory.modInv', 'numberTheory.extendedGcd'],
   },
-  'stirlingFirst': {
+  stirlingFirst: {
     type: '(Number, Number) -> Number',
     category: 'numberTheory',
-    description: 'Calculates the Stirling numbers of the first kind, which count the number of permutations of n elements with k cycles.',
+    description:
+      'Calculates the Stirling numbers of the first kind, which count the number of permutations of n elements with k cycles.',
     returns: {
       type: 'integer',
     },
@@ -4456,10 +4424,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [
@@ -4471,10 +4436,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['numberTheory.stirlingSecond', 'numberTheory.bellSeq', 'numberTheory.countPermutations'],
   },
-  'stirlingSecond': {
+  stirlingSecond: {
     type: '(Number, Number) -> Number',
     category: 'numberTheory',
-    description: 'Calculates the Stirling numbers of the second kind, which count the number of ways to partition n elements into k non-empty subsets.',
+    description:
+      'Calculates the Stirling numbers of the second kind, which count the number of ways to partition n elements into k non-empty subsets.',
     returns: {
       type: 'integer',
     },
@@ -4490,10 +4456,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     },
     variants: [
       {
-        argumentNames: [
-          'a',
-          'b',
-        ],
+        argumentNames: ['a', 'b'],
       },
     ],
     examples: [

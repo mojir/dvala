@@ -3,11 +3,17 @@ import type { DvalaModule } from '../interface'
 import macrosModuleSource from './macros.dvala'
 
 const macroDocs: Record<string, FunctionDocs> = {
-  'trace': {
+  trace: {
     category: 'macros',
-    description: 'Wraps a function so its arguments are logged on entry and its return value on exit (via `@dvala.io.print`). Useful for debugging call flow without editing the function body. Accepts either a function expression (direct call or `#trace fn`) or a `let` binding (`#trace let name = fn`); in the let-decorator form the binding name is included in the log prefix (`ENTER greet: ...`).',
+    description:
+      'Wraps a function so its arguments are logged on entry and its return value on exit (via `@dvala.io.print`). Useful for debugging call flow without editing the function body. Accepts either a function expression (direct call or `#trace fn`) or a `let` binding (`#trace let name = fn`); in the let-decorator form the binding name is included in the log prefix (`ENTER greet: ...`).',
     returns: { type: 'any' },
-    args: { target: { type: 'any', description: 'A function expression, or a `let` binding when used as `#trace let x = ...`.' } },
+    args: {
+      target: {
+        type: 'any',
+        description: 'A function expression, or a `let` binding when used as `#trace let x = ...`.',
+      },
+    },
     variants: [{ argumentNames: ['target'] }],
     examples: [
       'let { trace } = import("macros");\nlet add = trace((a, b) -> a + b);\nadd(3, 4)',
@@ -15,9 +21,10 @@ const macroDocs: Record<string, FunctionDocs> = {
       'let { trace } = import("macros");\n#trace\nlet greet = (name) -> "hello, " ++ name;\n[greet("Ada"), greet("Grace")]',
     ],
   },
-  'unless': {
+  unless: {
     category: 'macros',
-    description: 'Evaluates ``body`` only when ``cond`` is falsy; returns `null` otherwise. Inverse of `if`. The body is not evaluated when the condition is truthy — useful for guard clauses.',
+    description:
+      'Evaluates ``body`` only when ``cond`` is falsy; returns `null` otherwise. Inverse of `if`. The body is not evaluated when the condition is truthy — useful for guard clauses.',
     returns: { type: 'any' },
     args: {
       cond: { type: 'any' },
@@ -29,9 +36,10 @@ const macroDocs: Record<string, FunctionDocs> = {
       'let { unless } = import("macros");\nlet safeDivide = (a, b) -> unless(b == 0, a / b);\n[safeDivide(10, 2), safeDivide(10, 0)]',
     ],
   },
-  'tap': {
+  tap: {
     category: 'macros',
-    description: 'Evaluates ``value``, runs ``sideEffect`` for its effects, then returns the original value unchanged. Ideal for peeking inside a `|>` pipeline without breaking the data flow. Since `tap` is a macro, wrap it in a lambda to slot into a pipe — `_` placeholders rewrite for functions, not macros.',
+    description:
+      'Evaluates ``value``, runs ``sideEffect`` for its effects, then returns the original value unchanged. Ideal for peeking inside a `|>` pipeline without breaking the data flow. Since `tap` is a macro, wrap it in a lambda to slot into a pipe — `_` placeholders rewrite for functions, not macros.',
     returns: { type: 'any' },
     args: {
       value: { type: 'any' },
@@ -43,9 +51,10 @@ const macroDocs: Record<string, FunctionDocs> = {
       'let { tap } = import("macros");\ntap(42, perform(@dvala.io.print, "checkpoint"))',
     ],
   },
-  'dbg': {
+  dbg: {
     category: 'macros',
-    description: 'Prints `"<source> => <value>"` (via `@dvala.io.print`) and returns the value unchanged. The source text is captured at macro-expansion time. Transparent — drop it into any subexpression to log without changing behavior.',
+    description:
+      'Prints `"<source> => <value>"` (via `@dvala.io.print`) and returns the value unchanged. The source text is captured at macro-expansion time. Transparent — drop it into any subexpression to log without changing behavior.',
     returns: { type: 'any' },
     args: { expr: { type: 'any' } },
     variants: [{ argumentNames: ['expr'] }],
@@ -54,9 +63,10 @@ const macroDocs: Record<string, FunctionDocs> = {
       'let { dbg } = import("macros");\ndbg(2 + 3) * dbg(4 - 1)',
     ],
   },
-  'cond': {
+  cond: {
     category: 'macros',
-    description: 'Scheme/Clojure-style multi-branch conditional. Arguments alternate as predicate/value pairs; a trailing odd-numbered argument is the default. Non-matching branches are never evaluated. Expands to nested `if/else if`. Returns `null` when no predicate matches and no default is given (including when called with no arguments).',
+    description:
+      'Scheme/Clojure-style multi-branch conditional. Arguments alternate as predicate/value pairs; a trailing odd-numbered argument is the default. Non-matching branches are never evaluated. Expands to nested `if/else if`. Returns `null` when no predicate matches and no default is given (including when called with no arguments).',
     returns: { type: 'any' },
     args: { clauses: { type: 'any', rest: true } },
     variants: [{ argumentNames: ['clauses'] }],

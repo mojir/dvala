@@ -23,7 +23,7 @@ function flattenDeep(items: Iterable<unknown>, depth: number): unknown[] {
 }
 
 export const arrayNormalExpression: BuiltinNormalExpressions = {
-  'range': {
+  range: {
     evaluate: (params, sourceCodeInfo): Arr => {
       const [first, second, third] = params
       let from: number
@@ -46,19 +46,15 @@ export const arrayNormalExpression: BuiltinNormalExpressions = {
         from = first
         to = second
         step = third
-        if (to > from)
-          assertNumber(step, sourceCodeInfo, { positive: true })
-        else if (to < from)
-          assertNumber(step, sourceCodeInfo, { negative: true })
-        else
-          assertNumber(step, sourceCodeInfo, { nonZero: true })
+        if (to > from) assertNumber(step, sourceCodeInfo, { positive: true })
+        else if (to < from) assertNumber(step, sourceCodeInfo, { negative: true })
+        else assertNumber(step, sourceCodeInfo, { nonZero: true })
       }
 
       // Build a plain JS array first, then wrap in a PersistentVector
       const result: number[] = []
 
-      for (let i = from; step < 0 ? i > to : i < to; i += step)
-        result.push(i)
+      for (let i = from; step < 0 ? i > to : i < to; i += step) result.push(i)
 
       return PersistentVector.from(result)
     },
@@ -72,11 +68,7 @@ export const arrayNormalExpression: BuiltinNormalExpressions = {
         b: { type: 'number' },
         step: { type: 'number' },
       },
-      variants: [
-        { argumentNames: ['b'] },
-        { argumentNames: ['a', 'b'] },
-        { argumentNames: ['a', 'b', 'step'] },
-      ],
+      variants: [{ argumentNames: ['b'] }, { argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'step'] }],
       description: `\`range\` creates an array with a range of numbers from \`a\` to \`b\` (exclusive), by \`step\`.
 
 \`a\` defaults to 0.
@@ -97,13 +89,12 @@ range(
     },
   },
 
-  'repeat': {
+  repeat: {
     evaluate: ([value, count], sourceCodeInfo): Arr => {
       assertNumber(count, sourceCodeInfo, { integer: true, nonNegative: true })
       // Build via transient for efficient repeated appends
       const t = PersistentVector.empty<unknown>().asTransient()
-      for (let i = 0; i < count; i += 1)
-        t.append(value)
+      for (let i = 0; i < count; i += 1) t.append(value)
 
       return t.persistent()
     },
@@ -119,21 +110,18 @@ range(
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns an array with `a` repeated `b` times.',
       seeAlso: ['range', 'string.stringRepeat'],
-      examples: [
-        'repeat(10, 3)',
-        'repeat(10, 0)',
-        '"Albert" repeat 5',
-      ],
+      examples: ['repeat(10, 3)', 'repeat(10, 0)', '"Albert" repeat 5'],
     },
   },
 
-  'flatten': {
+  flatten: {
     evaluate: ([seq, depth], sourceCodeInfo): Arr => {
       assertArray(seq, sourceCodeInfo)
 
-      const actualDepth = depth === undefined
-        ? Number.MAX_SAFE_INTEGER
-        : asNumber(depth, sourceCodeInfo, { integer: true, nonNegative: true })
+      const actualDepth =
+        depth === undefined
+          ? Number.MAX_SAFE_INTEGER
+          : asNumber(depth, sourceCodeInfo, { integer: true, nonNegative: true })
 
       // Use PV-aware flatten since Array.prototype.flat() doesn't descend into PersistentVectors
       return PersistentVector.from(flattenDeep(seq, actualDepth))
@@ -145,7 +133,11 @@ range(
       returns: { type: 'any', array: true },
       args: {
         x: { type: ['array', 'any'], description: 'If `x` is not an array, `[ ]` is returned.' },
-        depth: { type: 'integer', description: 'The depth level specifying how deep a nested array structure should be flattened. Defaults to full depth.' },
+        depth: {
+          type: 'integer',
+          description:
+            'The depth level specifying how deep a nested array structure should be flattened. Defaults to full depth.',
+        },
       },
       variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'depth'] }],
       description: 'Takes a nested array `x` and flattens it.',

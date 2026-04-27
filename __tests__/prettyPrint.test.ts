@@ -14,48 +14,89 @@ function pp(code: string): string {
 }
 
 describe('prettyPrint — atoms', () => {
-  it('numbers', () => { expect(pp('42')).toBe('42') })
-  it('negative numbers', () => { expect(pp('-5')).toBe('-5') })
-  it('strings', () => { expect(pp('"hello"')).toBe('"hello"') })
-  it('strings with escapes', () => { expect(pp('"a\\"b"')).toBe('"a\\"b"') })
+  it('numbers', () => {
+    expect(pp('42')).toBe('42')
+  })
+  it('negative numbers', () => {
+    expect(pp('-5')).toBe('-5')
+  })
+  it('strings', () => {
+    expect(pp('"hello"')).toBe('"hello"')
+  })
+  it('strings with escapes', () => {
+    expect(pp('"a\\"b"')).toBe('"a\\"b"')
+  })
   it('true/false/null', () => {
     expect(pp('true')).toBe('true')
     expect(pp('false')).toBe('false')
     expect(pp('null')).toBe('null')
   })
-  it('symbols', () => { expect(pp('x')).toBe('x') })
-  it('builtins', () => { expect(pp('+(1, 2)')).toBe('1 + 2') })
-  it('effects', () => { expect(pp('@dvala.io.print')).toBe('@dvala.io.print') })
-  it('import', () => { expect(pp('import("math")')).toBe('import("math")') })
+  it('symbols', () => {
+    expect(pp('x')).toBe('x')
+  })
+  it('builtins', () => {
+    expect(pp('+(1, 2)')).toBe('1 + 2')
+  })
+  it('effects', () => {
+    expect(pp('@dvala.io.print')).toBe('@dvala.io.print')
+  })
+  it('import', () => {
+    expect(pp('import("math")')).toBe('import("math")')
+  })
 })
 
 describe('prettyPrint — operators', () => {
-  it('infix arithmetic', () => { expect(pp('1 + 2')).toBe('1 + 2') })
-  it('infix comparison', () => { expect(pp('x == y')).toBe('x == y') })
-  it('infix concat', () => { expect(pp('"a" ++ "b"')).toBe('"a" ++ "b"') })
-  it('infix bitwise', () => { expect(pp('x & y')).toBe('x & y') })
-  it('and', () => { expect(pp('a && b')).toBe('a && b') })
-  it('or', () => { expect(pp('a || b')).toBe('a || b') })
-  it('nullish', () => { expect(pp('a ?? b')).toBe('a ?? b') })
-  it('unary minus', () => { expect(pp('-(x)')).toBe('-(x)') })
+  it('infix arithmetic', () => {
+    expect(pp('1 + 2')).toBe('1 + 2')
+  })
+  it('infix comparison', () => {
+    expect(pp('x == y')).toBe('x == y')
+  })
+  it('infix concat', () => {
+    expect(pp('"a" ++ "b"')).toBe('"a" ++ "b"')
+  })
+  it('infix bitwise', () => {
+    expect(pp('x & y')).toBe('x & y')
+  })
+  it('and', () => {
+    expect(pp('a && b')).toBe('a && b')
+  })
+  it('or', () => {
+    expect(pp('a || b')).toBe('a || b')
+  })
+  it('nullish', () => {
+    expect(pp('a ?? b')).toBe('a ?? b')
+  })
+  it('unary minus', () => {
+    expect(pp('-(x)')).toBe('-(x)')
+  })
   it('partial application preserves prefix form', () => {
     expect(pp('+(_, 10)')).toBe('+(_, 10)')
   })
 })
 
 describe('prettyPrint — dot access', () => {
-  it('simple dot access', () => { expect(pp('obj.name')).toBe('obj("name")') })
-  it('chained dot access', () => { expect(pp('a.b.c')).toBe('a("b")("c")') })
+  it('simple dot access', () => {
+    expect(pp('obj.name')).toBe('obj("name")')
+  })
+  it('chained dot access', () => {
+    expect(pp('a.b.c')).toBe('a("b")("c")')
+  })
   it('computed access stays as get()', () => {
     expect(pp('get(obj, 0)')).toBe('get(obj, 0)')
   })
 })
 
 describe('prettyPrint — pipe chains', () => {
-  it('simple pipe', () => { expect(pp('x |> f')).toBe('f(x)') })
-  it('multi-pipe', () => { expect(pp('x |> f |> g |> h')).toBe('x |> f |> g |> h') })
+  it('simple pipe', () => {
+    expect(pp('x |> f')).toBe('f(x)')
+  })
+  it('multi-pipe', () => {
+    expect(pp('x |> f |> g |> h')).toBe('x |> f |> g |> h')
+  })
   it('long pipe chain breaks to multi-line', () => {
-    const code = 'someVeryLongVariableName |> firstTransformFunction |> secondTransformFunction |> thirdTransformFunction'
+    const code =
+      'someVeryLongVariableName |> firstTransformFunction |> secondTransformFunction |> thirdTransformFunction'
     const result = pp(code)
     expect(result).toContain('|>')
     expect(result).toContain('\n')
@@ -63,8 +104,12 @@ describe('prettyPrint — pipe chains', () => {
 })
 
 describe('prettyPrint — function calls', () => {
-  it('simple call', () => { expect(pp('f(x, y)')).toBe('f(x, y)') })
-  it('nested call stays as nested call (no implicit pipe rewrite)', () => { expect(pp('f(g(x))')).toBe('f(g(x))') })
+  it('simple call', () => {
+    expect(pp('f(x, y)')).toBe('f(x, y)')
+  })
+  it('nested call stays as nested call (no implicit pipe rewrite)', () => {
+    expect(pp('f(g(x))')).toBe('f(g(x))')
+  })
   it('lambda callee gets parens', () => {
     expect(pp('((x) -> x)(42)')).toBe('((x) -> x)(42)')
   })
@@ -77,26 +122,33 @@ describe('prettyPrint — function calls', () => {
 })
 
 describe('prettyPrint — if/else', () => {
-  it('simple if', () => { expect(pp('if true then 1 else null end')).toBe('if true then 1 else null end') })
-  it('if/else', () => { expect(pp('if x then 1 else 2 end')).toBe('if x then 1 else 2 end') })
+  it('simple if', () => {
+    expect(pp('if true then 1 else null end')).toBe('if true then 1 else null end')
+  })
+  it('if/else', () => {
+    expect(pp('if x then 1 else 2 end')).toBe('if x then 1 else 2 end')
+  })
   it('if/else if chain', () => {
     expect(pp('if a then 1 else if b then 2 else 3 end')).toBe('if a then 1 else if b then 2 else 3 end')
   })
   it('long if breaks to multi-line', () => {
-    const code = 'if someVeryLongConditionVariable then someVeryLongResultExpression else someOtherVeryLongResultExpression end'
+    const code =
+      'if someVeryLongConditionVariable then someVeryLongResultExpression else someOtherVeryLongResultExpression end'
     const result = pp(code)
     expect(result).toContain('\n')
     expect(result).toContain('if ')
     expect(result).toContain('end')
   })
   it('long if/else if breaks to multi-line', () => {
-    const code = 'if someVeryLongConditionOne then someVeryLongResultOne else if someVeryLongConditionTwo then someVeryLongResultTwo else someDefaultResult end'
+    const code =
+      'if someVeryLongConditionOne then someVeryLongResultOne else if someVeryLongConditionTwo then someVeryLongResultTwo else someDefaultResult end'
     const result = pp(code)
     expect(result).toContain('\n')
     expect(result).toContain('else if')
   })
   it('long if with null else breaks to multi-line', () => {
-    const code = 'if someVeryLongConditionVariable then someVeryLongResultExpression + anotherVeryLongTerm else null end'
+    const code =
+      'if someVeryLongConditionVariable then someVeryLongResultExpression + anotherVeryLongTerm else null end'
     const result = pp(code)
     expect(result).toContain('\n')
     expect(result).toContain('if ')
@@ -106,12 +158,15 @@ describe('prettyPrint — if/else', () => {
 })
 
 describe('prettyPrint — do blocks', () => {
-  it('simple block', () => { expect(pp('do 1; 2; 3 end')).toBe('do\n  1;\n  2;\n  3;\nend') })
+  it('simple block', () => {
+    expect(pp('do 1; 2; 3 end')).toBe('do\n  1;\n  2;\n  3;\nend')
+  })
   it('single-line block stays inline without semicolon before end', () => {
     expect(pp('do 1 + 1 end')).toBe('do 1 + 1 end')
   })
   it('long block breaks to multi-line', () => {
-    const code = 'do let veryLongVariableNameOne = 42; let veryLongVariableNameTwo = 99; veryLongVariableNameOne + veryLongVariableNameTwo end'
+    const code =
+      'do let veryLongVariableNameOne = 42; let veryLongVariableNameTwo = 99; veryLongVariableNameOne + veryLongVariableNameTwo end'
     const result = pp(code)
     expect(result).toContain('\n')
     expect(result).toContain('do')
@@ -120,16 +175,30 @@ describe('prettyPrint — do blocks', () => {
 })
 
 describe('prettyPrint — let bindings', () => {
-  it('simple let', () => { expect(pp('let x = 42')).toBe('let x = 42') })
-  it('array destructuring', () => { expect(pp('let [a, b] = [1, 2]')).toBe('let [a, b] = [1, 2]') })
-  it('object destructuring', () => { expect(pp('let { name } = obj')).toBe('let { name } = obj') })
-  it('with default', () => { expect(pp('let x = 42')).toBe('let x = 42') })
-  it('rest parameter', () => { expect(pp('let [a, ...rest] = xs')).toBe('let [a, ...rest] = xs') })
+  it('simple let', () => {
+    expect(pp('let x = 42')).toBe('let x = 42')
+  })
+  it('array destructuring', () => {
+    expect(pp('let [a, b] = [1, 2]')).toBe('let [a, b] = [1, 2]')
+  })
+  it('object destructuring', () => {
+    expect(pp('let { name } = obj')).toBe('let { name } = obj')
+  })
+  it('with default', () => {
+    expect(pp('let x = 42')).toBe('let x = 42')
+  })
+  it('rest parameter', () => {
+    expect(pp('let [a, ...rest] = xs')).toBe('let [a, ...rest] = xs')
+  })
 })
 
 describe('prettyPrint — functions', () => {
-  it('simple lambda', () => { expect(pp('(x) -> x + 1')).toBe('(x) -> x + 1') })
-  it('multi-param', () => { expect(pp('(a, b) -> a + b')).toBe('(a, b) -> a + b') })
+  it('simple lambda', () => {
+    expect(pp('(x) -> x + 1')).toBe('(x) -> x + 1')
+  })
+  it('multi-param', () => {
+    expect(pp('(a, b) -> a + b')).toBe('(a, b) -> a + b')
+  })
   it('multi-statement body', () => {
     expect(pp('(x) -> do let y = x * 2; y + 1 end')).toBe('(x) -> do\n  let y = x * 2;\n  y + 1;\nend')
   })
@@ -139,29 +208,36 @@ describe('prettyPrint — functions', () => {
     expect(result).toContain('->')
   })
   it('long multi-statement breaks to multi-line do', () => {
-    const code = '(x) -> do let someVeryLongName = x * x * x * x; someVeryLongName + someVeryLongName + someVeryLongName end'
+    const code =
+      '(x) -> do let someVeryLongName = x * x * x * x; someVeryLongName + someVeryLongName + someVeryLongName end'
     const result = pp(code)
     expect(result).toContain('do')
     expect(result).toContain('\n')
   })
-  it('default param', () => { expect(pp('(x = 10) -> x')).toBe('(x = 10) -> x') })
+  it('default param', () => {
+    expect(pp('(x = 10) -> x')).toBe('(x = 10) -> x')
+  })
 })
 
 describe('prettyPrint — macros', () => {
-  it('simple macro', () => { expect(pp('macro (ast) -> ast')).toBe('macro (ast) -> ast') })
+  it('simple macro', () => {
+    expect(pp('macro (ast) -> ast')).toBe('macro (ast) -> ast')
+  })
   it('multi-statement macro body', () => {
     const result = pp('macro (ast) -> do let x = ast; x end')
     expect(result).toContain('macro')
     expect(result).toContain('do')
   })
   it('long macro breaks', () => {
-    const code = 'macro (someVeryLongAstParameterName) -> someVeryLongAstParameterName + someVeryLongAstParameterName + someVeryLongAstParameterName'
+    const code =
+      'macro (someVeryLongAstParameterName) -> someVeryLongAstParameterName + someVeryLongAstParameterName + someVeryLongAstParameterName'
     const result = pp(code)
     expect(result).toContain('macro')
     expect(result).toContain('\n')
   })
   it('long multi-statement macro', () => {
-    const code = 'macro (ast) -> do let veryLongVariableName = ast; let anotherVeryLongName = veryLongVariableName; anotherVeryLongName end'
+    const code =
+      'macro (ast) -> do let veryLongVariableName = ast; let anotherVeryLongName = veryLongVariableName; anotherVeryLongName end'
     const result = pp(code)
     expect(result).toContain('macro')
     expect(result).toContain('do')
@@ -170,29 +246,45 @@ describe('prettyPrint — macros', () => {
 })
 
 describe('prettyPrint — perform', () => {
-  it('perform with arg', () => { expect(pp('perform(@my.eff, 42)')).toBe('perform(@my.eff, 42)') })
-  it('perform without arg', () => { expect(pp('perform(@my.eff)')).toBe('perform(@my.eff)') })
+  it('perform with arg', () => {
+    expect(pp('perform(@my.eff, 42)')).toBe('perform(@my.eff, 42)')
+  })
+  it('perform without arg', () => {
+    expect(pp('perform(@my.eff)')).toBe('perform(@my.eff)')
+  })
 })
 
 describe('prettyPrint — arrays and objects', () => {
-  it('empty array', () => { expect(pp('[]')).toBe('[]') })
-  it('simple array', () => { expect(pp('[1, 2, 3]')).toBe('[1, 2, 3]') })
+  it('empty array', () => {
+    expect(pp('[]')).toBe('[]')
+  })
+  it('simple array', () => {
+    expect(pp('[1, 2, 3]')).toBe('[1, 2, 3]')
+  })
   it('long array breaks', () => {
     const code = '[1111111111, 2222222222, 3333333333, 4444444444, 5555555555, 6666666666, 7777777777]'
     const result = pp(code)
     expect(result).toContain('\n')
     expect(result).toContain('[')
   })
-  it('spread in array', () => { expect(pp('[...xs, 4]')).toBe('[...xs, 4]') })
-  it('empty object', () => { expect(pp('{}')).toBe('{}') })
-  it('simple object', () => { expect(pp('{ a: 1, b: 2 }')).toBe('{ a: 1, b: 2 }') })
+  it('spread in array', () => {
+    expect(pp('[...xs, 4]')).toBe('[...xs, 4]')
+  })
+  it('empty object', () => {
+    expect(pp('{}')).toBe('{}')
+  })
+  it('simple object', () => {
+    expect(pp('{ a: 1, b: 2 }')).toBe('{ a: 1, b: 2 }')
+  })
   it('long object breaks', () => {
     const code = '{ firstVeryLongKey: "firstValue", secondVeryLongKey: "secondValue", thirdVeryLongKey: "thirdValue" }'
     const result = pp(code)
     expect(result).toContain('\n')
     expect(result).toContain('{')
   })
-  it('spread in object', () => { expect(pp('{ ...base, x: 1 }')).toBe('{ ...base, x: 1 }') })
+  it('spread in object', () => {
+    expect(pp('{ ...base, x: 1 }')).toBe('{ ...base, x: 1 }')
+  })
   it('computed key', () => {
     const result = pp('{ [k]: v }')
     expect(result).toContain('[k]')
@@ -200,7 +292,9 @@ describe('prettyPrint — arrays and objects', () => {
 })
 
 describe('prettyPrint — recur / parallel / race', () => {
-  it('recur', () => { expect(pp('recur(1, 2)')).toBe('recur(1, 2)') })
+  it('recur', () => {
+    expect(pp('recur(1, 2)')).toBe('recur(1, 2)')
+  })
   it('long recur breaks', () => {
     const code = 'recur(veryLongArgumentOne, veryLongArgumentTwo, veryLongArgumentThree, veryLongArgumentFour)'
     const result = pp(code)
@@ -223,7 +317,8 @@ describe('prettyPrint — loops', () => {
     expect(pp('loop (i = 0) -> i')).toBe('loop (i = 0) -> i')
   })
   it('long loop breaks', () => {
-    const code = 'loop (veryLongIndexName = 0, veryLongAccumulatorName = 0) -> veryLongIndexName + veryLongAccumulatorName'
+    const code =
+      'loop (veryLongIndexName = 0, veryLongAccumulatorName = 0) -> veryLongIndexName + veryLongAccumulatorName'
     const result = pp(code)
     expect(result).toContain('loop')
     expect(result).toContain('\n')
@@ -231,7 +326,9 @@ describe('prettyPrint — loops', () => {
 })
 
 describe('prettyPrint — for comprehension', () => {
-  it('simple for', () => { expect(pp('for (x in [1, 2, 3]) -> x * 2')).toBe('for (x in [1, 2, 3]) -> x * 2') })
+  it('simple for', () => {
+    expect(pp('for (x in [1, 2, 3]) -> x * 2')).toBe('for (x in [1, 2, 3]) -> x * 2')
+  })
   it('for with when guard', () => {
     expect(pp('for (x in xs when x > 0) -> x')).toBe('for (x in xs when x > 0) -> x')
   })
@@ -249,7 +346,8 @@ describe('prettyPrint — for comprehension', () => {
     expect(pp('for (x in [1, 2]) -> x')).toBe('for (x in [1, 2]) -> x')
   })
   it('long for breaks', () => {
-    const code = 'for (veryLongVarName in someVeryLongCollectionName when veryLongVarName > 0) -> veryLongVarName * veryLongVarName'
+    const code =
+      'for (veryLongVarName in someVeryLongCollectionName when veryLongVarName > 0) -> veryLongVarName * veryLongVarName'
     const result = pp(code)
     expect(result).toContain('for')
     expect(result).toContain('\n')
@@ -258,8 +356,9 @@ describe('prettyPrint — for comprehension', () => {
 
 describe('prettyPrint — match', () => {
   it('simple match', () => {
-    expect(pp('match x case 0 then "zero" case _ then "other" end'))
-      .toBe('match x case 0 then "zero" case _ then "other" end')
+    expect(pp('match x case 0 then "zero" case _ then "other" end')).toBe(
+      'match x case 0 then "zero" case _ then "other" end',
+    )
   })
   it('match with guard', () => {
     const result = pp('match x case n when n > 0 then "positive" case _ then "non-positive" end')
@@ -270,7 +369,8 @@ describe('prettyPrint — match', () => {
     expect(result).toContain('[a, b]')
   })
   it('long match breaks', () => {
-    const code = 'match someVeryLongExpressionValue case someVeryLongPatternOne then someVeryLongResultOne case someVeryLongPatternTwo then someVeryLongResultTwo end'
+    const code =
+      'match someVeryLongExpressionValue case someVeryLongPatternOne then someVeryLongResultOne case someVeryLongPatternTwo then someVeryLongResultTwo end'
     const result = pp(code)
     expect(result).toContain('\n')
     expect(result).toContain('match')
@@ -279,8 +379,12 @@ describe('prettyPrint — match', () => {
 })
 
 describe('prettyPrint — template strings', () => {
-  it('simple template', () => { expect(pp('`hello ${name}`')).toBe('`hello ${name}`') })
-  it('multi-interpolation', () => { expect(pp('`${a} + ${b} = ${c}`')).toBe('`${a} + ${b} = ${c}`') })
+  it('simple template', () => {
+    expect(pp('`hello ${name}`')).toBe('`hello ${name}`')
+  })
+  it('multi-interpolation', () => {
+    expect(pp('`${a} + ${b} = ${c}`')).toBe('`${a} + ${b} = ${c}`')
+  })
 })
 
 describe('prettyPrint — handler nodes', () => {
@@ -313,7 +417,9 @@ describe('prettyPrint — handler nodes', () => {
     expect(result).toContain('@eff')
     expect(result).toContain('transform')
   })
-  it('resume with arg', () => { expect(pp('handler @eff(x) -> resume(x) end')).toContain('resume(x)') })
+  it('resume with arg', () => {
+    expect(pp('handler @eff(x) -> resume(x) end')).toContain('resume(x)')
+  })
   it('bare resume via raw AST', () => {
     // Resume node with 'ref' payload — bare resume reference
     expect(prettyPrint(['Resume', 'ref', 0])).toBe('resume')
@@ -437,12 +543,32 @@ describe('prettyPrint — binding targets with defaults', () => {
 
 describe('prettyPrint — smart rewrites via raw AST', () => {
   it('0 - x rewrites to -x', () => {
-    const ast = ['Call', [['Builtin', '-', 0], [['Num', 0, 0], ['Sym', 'x', 0]]], 0]
+    const ast = [
+      'Call',
+      [
+        ['Builtin', '-', 0],
+        [
+          ['Num', 0, 0],
+          ['Sym', 'x', 0],
+        ],
+      ],
+      0,
+    ]
     expect(prettyPrint(ast)).toBe('-x')
   })
   it('non-zero minus stays as subtraction', () => {
     // 3 - x → NOT rewritten to unary minus (first arg is 3, not 0)
-    const ast = ['Call', [['Builtin', '-', 0], [['Num', 3, 0], ['Sym', 'x', 0]]], 0]
+    const ast = [
+      'Call',
+      [
+        ['Builtin', '-', 0],
+        [
+          ['Num', 3, 0],
+          ['Sym', 'x', 0],
+        ],
+      ],
+      0,
+    ]
     expect(prettyPrint(ast)).toBe('3 - x')
   })
 })
@@ -489,7 +615,19 @@ describe('prettyPrint — raw AST edge cases', () => {
   it('substituteSplices fallback for missing splice expr', () => {
     // Splice index exists but spliceExprs[index] is undefined → fallback text
     // This exercises the falsy branch of `expr ?` in substituteSplices (line 509)
-    const bodyAst = [['Call', [['Builtin', '+', 0], [['Splice', 0, 0], ['Num', 1, 0]]], 0]]
+    const bodyAst = [
+      [
+        'Call',
+        [
+          ['Builtin', '+', 0],
+          [
+            ['Splice', 0, 0],
+            ['Num', 1, 0],
+          ],
+        ],
+        0,
+      ],
+    ]
     const codeTmpl = ['CodeTmpl', [bodyAst, [undefined]], 0]
     const result = prettyPrint(codeTmpl)
     expect(result).toContain('$^{<splice0>}')
@@ -497,7 +635,11 @@ describe('prettyPrint — raw AST edge cases', () => {
 
   it('pipe chain breaks when inner callee is not a named symbol', () => {
     // f(g(x)) is a pipe chain, but f((a -> a)(x)) is not because callee is a lambda
-    const ast = ['Call', [['Sym', 'f', 0], [['Call', [['Function', [[], [['Sym', 'x', 0]]], 0], [['Num', 1, 0]]], 0]]], 0]
+    const ast = [
+      'Call',
+      [['Sym', 'f', 0], [['Call', [['Function', [[], [['Sym', 'x', 0]]], 0], [['Num', 1, 0]]], 0]]],
+      0,
+    ]
     const result = prettyPrint(ast)
     // Should NOT produce pipe chain — inner callee is a Function, not Sym/Builtin
     expect(result).toContain('f(')
@@ -506,8 +648,27 @@ describe('prettyPrint — raw AST edge cases', () => {
 
   it('null slot in array destructuring prints as empty comma', () => {
     // Array binding target with a null element: [a, , b] → null stays as empty slot
-    const arrayTarget = ['array', [[['symbol', [['Sym', 'a', 0], undefined], 0], null, ['symbol', [['Sym', 'b', 0], undefined], 0]], undefined], 0]
-    const letNode = ['Let', [arrayTarget, ['Array', [['Num', 1, 0], ['Num', 2, 0], ['Num', 3, 0]], 0]], 0]
+    const arrayTarget = [
+      'array',
+      [[['symbol', [['Sym', 'a', 0], undefined], 0], null, ['symbol', [['Sym', 'b', 0], undefined], 0]], undefined],
+      0,
+    ]
+    const letNode = [
+      'Let',
+      [
+        arrayTarget,
+        [
+          'Array',
+          [
+            ['Num', 1, 0],
+            ['Num', 2, 0],
+            ['Num', 3, 0],
+          ],
+          0,
+        ],
+      ],
+      0,
+    ]
     const result = prettyPrint(letNode)
     expect(result).toBe('let [a, , b] = [1, 2, 3]')
   })
@@ -628,8 +789,9 @@ describe('prettyPrint — array inline threshold (max 3 elements)', () => {
 
 describe('prettyPrint — match: multi-line case body breaks after then', () => {
   it('single-line case bodies stay on same line as then', () => {
-    expect(pp('match x case 0 then "zero" case _ then "other" end'))
-      .toBe('match x case 0 then "zero" case _ then "other" end')
+    expect(pp('match x case 0 then "zero" case _ then "other" end')).toBe(
+      'match x case 0 then "zero" case _ then "other" end',
+    )
   })
   it('multi-line case body produces a newline after then', () => {
     // The do-block body expands → the case `then` line has no trailing body
@@ -674,7 +836,8 @@ describe('prettyPrint — quote: multi-statement expansion', () => {
     // Long enough that the single statement cannot fit on one line — forces
     // the Call inside the quote to wrap, which is exactly the case the indent
     // alignment bug affected.
-    const src = 'macro (ast) -> quote myFunctionWithQuiteALongName(someLongArgNameA, someLongArgNameB, someLongArgNameC) end'
+    const src =
+      'macro (ast) -> quote myFunctionWithQuiteALongName(someLongArgNameA, someLongArgNameB, someLongArgNameC) end'
     const result = pp(src)
     // Opening `quote` sits at 2-space indent (inside the macro body).
     // Each inner argument of the wrapped call must be at 6-space indent

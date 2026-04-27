@@ -92,7 +92,14 @@ describe('isSerializable', () => {
       expect(isSerializable(PersistentVector.from([1, 'two', true, null]))).toBe(true)
     })
     it('should accept nested arrays', () => {
-      expect(isSerializable(PersistentVector.from([PersistentVector.from([1, 2]), PersistentVector.from([3, PersistentVector.from([4, 5])])]))).toBe(true)
+      expect(
+        isSerializable(
+          PersistentVector.from([
+            PersistentVector.from([1, 2]),
+            PersistentVector.from([3, PersistentVector.from([4, 5])]),
+          ]),
+        ),
+      ).toBe(true)
     })
   })
 
@@ -104,7 +111,11 @@ describe('isSerializable', () => {
       expect(isSerializable(PersistentMap.fromRecord({ a: 1, b: 'two', c: true, d: null }))).toBe(true)
     })
     it('should accept nested objects', () => {
-      expect(isSerializable(PersistentMap.fromRecord({ a: PersistentMap.fromRecord({ b: PersistentMap.fromRecord({ c: 42 }) }) }))).toBe(true)
+      expect(
+        isSerializable(
+          PersistentMap.fromRecord({ a: PersistentMap.fromRecord({ b: PersistentMap.fromRecord({ c: 42 }) }) }),
+        ),
+      ).toBe(true)
     })
   })
 

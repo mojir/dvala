@@ -2,18 +2,26 @@ import { describe, expect, it } from 'vitest'
 import type { Any } from '../interface'
 import { bindingTargetTypes } from '../parser/types'
 import { PersistentMap, PersistentVector } from '../utils/persistent'
-import { checkTypeAtPath, extractMatchArrayRest, extractMatchObjectRest, extractMatchValueByPath, flattenMatchPattern } from './matchSlot'
+import {
+  checkTypeAtPath,
+  extractMatchArrayRest,
+  extractMatchObjectRest,
+  extractMatchValueByPath,
+  flattenMatchPattern,
+} from './matchSlot'
 
 describe('flattenMatchPattern', () => {
   it('rest at top level', () => {
     const slots = flattenMatchPattern([bindingTargetTypes.rest, ['xs', undefined], 0])
-    expect(slots).toEqual([{
-      kind: 'rest',
-      name: 'xs',
-      path: [],
-      defaultNode: undefined,
-      nodeId: 0,
-    }])
+    expect(slots).toEqual([
+      {
+        kind: 'rest',
+        name: 'xs',
+        path: [],
+        defaultNode: undefined,
+        nodeId: 0,
+      },
+    ])
   })
 })
 

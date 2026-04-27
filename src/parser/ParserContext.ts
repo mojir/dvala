@@ -184,7 +184,7 @@ export class ParserContext {
    */
   public peekDebugInfo(): TokenDebugInfo | undefined {
     const currentToken = this.tryPeek()
-    return (currentToken ? currentToken[2] : this.tokens.at(-1)?.[2])
+    return currentToken ? currentToken[2] : this.tokens.at(-1)?.[2]
   }
 
   /**

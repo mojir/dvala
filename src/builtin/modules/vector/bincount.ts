@@ -6,11 +6,7 @@
  * @param weights - Optional array of weights (same length as input array)
  * @returns An array where index i contains the count of occurrences of i in the input array
  */
-export function bincount(
-  array: number[],
-  minLength: number = 0,
-  weights?: number[],
-): number[] {
+export function bincount(array: number[], minLength: number = 0, weights?: number[]): number[] {
   if (array.length === 0) {
     return Array.from({ length: minLength }, () => 0)
   }

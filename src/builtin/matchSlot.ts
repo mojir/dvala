@@ -78,11 +78,7 @@ export function flattenMatchPattern(target: BindingTarget): MatchSlot[] {
   return slots
 }
 
-function flattenMatchTarget(
-  target: BindingTarget,
-  path: BindingPathStep[],
-  slots: MatchSlot[],
-): void {
+function flattenMatchTarget(target: BindingTarget, path: BindingPathStep[], slots: MatchSlot[]): void {
   switch (target[0]) {
     case bindingTargetTypes.wildcard:
       slots.push({
@@ -225,7 +221,7 @@ export function extractMatchValueByPath(rootValue: Any, path: BindingPathStep[])
     if (step.type === 'key') {
       // PersistentMap (Obj) uses .get(); plain objects are not used in HAMT Phase 1
       if (!isObj(current)) return undefined
-      current = (current).get(step.key)
+      current = current.get(step.key)
     } else {
       // PersistentVector uses .get(); plain arrays are not used in HAMT Phase 1
       if (!isPersistentVector(current)) return undefined
@@ -239,11 +235,7 @@ export function extractMatchValueByPath(rootValue: Any, path: BindingPathStep[])
 /**
  * Check if value matches required type at path.
  */
-export function checkTypeAtPath(
-  rootValue: Any,
-  path: BindingPathStep[],
-  requiredType: 'object' | 'array',
-): boolean {
+export function checkTypeAtPath(rootValue: Any, path: BindingPathStep[], requiredType: 'object' | 'array'): boolean {
   const value = path.length > 0 ? extractMatchValueByPath(rootValue, path) : rootValue
 
   if (value === null || value === undefined) {
@@ -292,10 +284,7 @@ export function extractMatchArrayRest(value: Any, path: BindingPathStep[], restI
  * For patterns like [a, b, c] - exact match required.
  * For patterns like [a, b, ...rest] - minimum match required.
  */
-export function checkArrayLengthConstraint(
-  target: BindingTarget,
-  value: Any,
-): boolean {
+export function checkArrayLengthConstraint(target: BindingTarget, value: Any): boolean {
   if (target[0] !== bindingTargetTypes.array) return true
   if (!isPersistentVector(value)) return false
 
@@ -325,10 +314,7 @@ export function checkArrayLengthConstraint(
 /**
  * Check object exists at pattern root.
  */
-export function checkObjectTypeConstraint(
-  target: BindingTarget,
-  value: Any,
-): boolean {
+export function checkObjectTypeConstraint(target: BindingTarget, value: Any): boolean {
   if (target[0] !== bindingTargetTypes.object) return true
   return isObj(value)
 }

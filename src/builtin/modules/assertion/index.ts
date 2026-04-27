@@ -12,7 +12,7 @@ import assertionModuleSource from './assertion.dvala'
 import { moduleDocs } from './docs'
 
 const assertNormalExpression: BuiltinNormalExpressions = {
-  'assertEqual': {
+  assertEqual: {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -29,7 +29,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assertNotEqual': {
+  assertNotEqual: {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -46,7 +46,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assertGt': {
+  assertGt: {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       assertStringOrNumber(first, sourceCodeInfo)
       assertStringOrNumber(second, sourceCodeInfo)
@@ -62,7 +62,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assertGte': {
+  assertGte: {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       assertStringOrNumber(first, sourceCodeInfo)
       assertStringOrNumber(second, sourceCodeInfo)
@@ -78,7 +78,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assertLt': {
+  assertLt: {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       assertStringOrNumber(first, sourceCodeInfo)
       assertStringOrNumber(second, sourceCodeInfo)
@@ -94,7 +94,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assertLte': {
+  assertLte: {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       assertStringOrNumber(first, sourceCodeInfo)
       assertStringOrNumber(second, sourceCodeInfo)
@@ -110,71 +110,66 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assertTrue': {
+  assertTrue: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
         message = ` ${message}`
       }
       message ??= ''
-      if (first !== true)
-        throw new AssertionError(`Expected ${first} to be true.${message}`, sourceCodeInfo)
+      if (first !== true) throw new AssertionError(`Expected ${first} to be true.${message}`, sourceCodeInfo)
 
       return null
     },
     arity: { min: 1, max: 2 },
   },
-  'assertFalse': {
+  assertFalse: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
         message = ` ${message}`
       }
       message ??= ''
-      if (first !== false)
-        throw new AssertionError(`Expected ${first} to be false.${message}`, sourceCodeInfo)
+      if (first !== false) throw new AssertionError(`Expected ${first} to be false.${message}`, sourceCodeInfo)
 
       return null
     },
     arity: { min: 1, max: 2 },
   },
-  'assertTruthy': {
+  assertTruthy: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
         message = ` ${message}`
       }
       message ??= ''
-      if (!first)
-        throw new AssertionError(`Expected ${first} to be truthy.${message}`, sourceCodeInfo)
+      if (!first) throw new AssertionError(`Expected ${first} to be truthy.${message}`, sourceCodeInfo)
 
       return null
     },
     arity: { min: 1, max: 2 },
   },
-  'assertFalsy': {
+  assertFalsy: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
         message = ` ${message}`
       }
       message ??= ''
-      if (first)
-        throw new AssertionError(`Expected ${first} to be falsy.${message}`, sourceCodeInfo)
+      if (first) throw new AssertionError(`Expected ${first} to be falsy.${message}`, sourceCodeInfo)
 
       return null
     },
     arity: { min: 1, max: 2 },
   },
-  'assertNull': {
+  assertNull: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
         message = ` ${message}`
       }
       message ??= ''
-      if (first !== null)
-        throw new AssertionError(`Expected ${first} to be null.${message}`, sourceCodeInfo)
+      if (first !== null) throw new AssertionError(`Expected ${first} to be null.${message}`, sourceCodeInfo)
 
       return null
     },
@@ -182,22 +177,22 @@ const assertNormalExpression: BuiltinNormalExpressions = {
   },
   // Implemented in assertion.dvala - these stubs provide arity checking
   // The evaluate functions are placeholders; actual execution uses dvalaImpl
-  'assertFails': {
+  assertFails: {
     /* v8 ignore next 1 */
     evaluate: () => null,
     arity: { min: 1, max: 2 },
   },
-  'assertFailsWith': {
+  assertFailsWith: {
     /* v8 ignore next 1 */
     evaluate: () => null,
     arity: { min: 2, max: 3 },
   },
-  'assertSucceeds': {
+  assertSucceeds: {
     /* v8 ignore next 1 */
     evaluate: () => null,
     arity: { min: 1, max: 2 },
   },
-  'assertArray': {
+  assertArray: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -211,7 +206,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertBoolean': {
+  assertBoolean: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -225,7 +220,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertCollection': {
+  assertCollection: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -239,7 +234,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertFunction': {
+  assertFunction: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -253,7 +248,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertGrid': {
+  assertGrid: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -267,7 +262,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertInteger': {
+  assertInteger: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -281,7 +276,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertMatrix': {
+  assertMatrix: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -295,7 +290,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertNumber': {
+  assertNumber: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -309,7 +304,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertObject': {
+  assertObject: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -323,7 +318,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertRegexp': {
+  assertRegexp: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -337,7 +332,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertSequence': {
+  assertSequence: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -351,7 +346,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertString': {
+  assertString: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -365,7 +360,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assertVector': {
+  assertVector: {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -384,8 +379,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
 for (const [key, docs] of Object.entries(moduleDocs)) {
   // Defensive: all doc keys correspond to existing expressions
   /* v8 ignore next 2 */
-  if (assertNormalExpression[key])
-    assertNormalExpression[key].docs = docs
+  if (assertNormalExpression[key]) assertNormalExpression[key].docs = docs
 }
 
 export const assertModule: DvalaModule = {

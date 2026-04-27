@@ -45,7 +45,10 @@ interface SearchDropdownOptions<T> {
  */
 export function toggleSearchDropdown<T>(btn: HTMLElement, options: SearchDropdownOptions<T>): void {
   const existing = document.getElementById(options.id)
-  if (existing) { existing.remove(); return }
+  if (existing) {
+    existing.remove()
+    return
+  }
 
   options.onBeforeOpen?.()
 
@@ -86,12 +89,17 @@ export function toggleSearchDropdown<T>(btn: HTMLElement, options: SearchDropdow
     if (i >= 0) items[i]?.scrollIntoView({ block: 'nearest' })
   }
 
-  results.addEventListener('mousemove', () => { results.classList.remove('keyboard-nav') })
+  results.addEventListener('mousemove', () => {
+    results.classList.remove('keyboard-nav')
+  })
 
   const renderResults = (query: string) => {
     results.innerHTML = ''
     const q = query.trim()
-    if (!q) { currentResults = []; return }
+    if (!q) {
+      currentResults = []
+      return
+    }
 
     const groups = options.search(q)
     const allResults = groups.flatMap(g => g.results)
@@ -139,7 +147,10 @@ export function toggleSearchDropdown<T>(btn: HTMLElement, options: SearchDropdow
 
         item.appendChild(labelEl)
         item.appendChild(ctxEl)
-        item.addEventListener('mousedown', e => { e.preventDefault(); selectResult(result) })
+        item.addEventListener('mousedown', e => {
+          e.preventDefault()
+          selectResult(result)
+        })
         item.addEventListener('mousemove', () => setActive(idx))
         results.appendChild(item)
       }
@@ -147,9 +158,20 @@ export function toggleSearchDropdown<T>(btn: HTMLElement, options: SearchDropdow
   }
 
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') { close(); return }
-    if (e.key === 'ArrowDown') { e.preventDefault(); results.classList.add('keyboard-nav'); setActive(Math.min(activeIndex + 1, currentResults.length - 1)) }
-    if (e.key === 'ArrowUp') { e.preventDefault(); results.classList.add('keyboard-nav'); setActive(Math.max(activeIndex - 1, 0)) }
+    if (e.key === 'Escape') {
+      close()
+      return
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      results.classList.add('keyboard-nav')
+      setActive(Math.min(activeIndex + 1, currentResults.length - 1))
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      results.classList.add('keyboard-nav')
+      setActive(Math.max(activeIndex - 1, 0))
+    }
     if (e.key === 'Enter' && activeIndex >= 0) {
       const result = currentResults[activeIndex]
       if (result) selectResult(result)

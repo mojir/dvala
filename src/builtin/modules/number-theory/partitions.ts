@@ -7,10 +7,8 @@ import { partitionNumbers } from './sequences/partition'
 
 function partitions(n: number): number[][] {
   // Base cases
-  if (n <= 0)
-    return [[]]
-  if (n === 1)
-    return [[1]]
+  if (n <= 0) return [[]]
+  if (n === 1) return [[1]]
 
   const result: number[][] = []
 
@@ -34,7 +32,7 @@ function partitions(n: number): number[][] {
 }
 
 export const partitionsNormalExpressions: BuiltinNormalExpressions = {
-  'partitions': {
+  partitions: {
     // Returns number[][] (annotated grid of annotated vectors), cast to Any for the evaluator signature
     evaluate: ([n], sourceCodeInfo): Any => {
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -42,11 +40,10 @@ export const partitionsNormalExpressions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'countPartitions': {
+  countPartitions: {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
-      if (n === 0)
-        return 1
+      if (n === 0) return 1
 
       if (n > partitionNumbers.length) {
         throw new RuntimeError(`n is too large. The maximum value is ${partitionNumbers.length - 1}.`, sourceCodeInfo)

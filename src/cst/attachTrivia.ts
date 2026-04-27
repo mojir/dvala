@@ -21,10 +21,7 @@ import type { CstToken, TriviaNode } from './types'
 
 export function isTrivia(token: Token): boolean {
   const type = token[0]
-  return type === 'Whitespace'
-    || type === 'SingleLineComment'
-    || type === 'MultiLineComment'
-    || type === 'Shebang'
+  return type === 'Whitespace' || type === 'SingleLineComment' || type === 'MultiLineComment' || type === 'Shebang'
 }
 
 /**
@@ -36,20 +33,29 @@ export function isTrivia(token: Token): boolean {
  */
 export function rawTokenText(token: Token): string {
   switch (token[0]) {
-    case 'Atom': return `:${token[1]}`
-    case 'EffectName': return `@${token[1]}`
-    case 'MacroPrefix': return `#${token[1]}`
-    default: return token[1]
+    case 'Atom':
+      return `:${token[1]}`
+    case 'EffectName':
+      return `@${token[1]}`
+    case 'MacroPrefix':
+      return `#${token[1]}`
+    default:
+      return token[1]
   }
 }
 
 export function toTriviaNode(token: Token): TriviaNode {
   switch (token[0]) {
-    case 'Whitespace': return { kind: 'whitespace', text: token[1] }
-    case 'SingleLineComment': return { kind: 'lineComment', text: token[1] }
-    case 'MultiLineComment': return { kind: 'blockComment', text: token[1] }
-    case 'Shebang': return { kind: 'shebang', text: token[1] }
-    default: throw new Error(`Not a trivia token: ${token[0]}`)
+    case 'Whitespace':
+      return { kind: 'whitespace', text: token[1] }
+    case 'SingleLineComment':
+      return { kind: 'lineComment', text: token[1] }
+    case 'MultiLineComment':
+      return { kind: 'blockComment', text: token[1] }
+    case 'Shebang':
+      return { kind: 'shebang', text: token[1] }
+    default:
+      throw new Error(`Not a trivia token: ${token[0]}`)
   }
 }
 

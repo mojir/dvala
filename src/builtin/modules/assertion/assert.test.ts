@@ -4,7 +4,10 @@ import { AssertionError, DvalaError } from '../../../errors'
 import { assertModule } from './'
 
 describe('assert functions', () => {
-  for (const dvala of [createDvala({ modules: [assertModule] }), createDvala({ debug: true, modules: [assertModule] })]) {
+  for (const dvala of [
+    createDvala({ modules: [assertModule] }),
+    createDvala({ debug: true, modules: [assertModule] }),
+  ]) {
     // Helper to run assert module functions with the new import syntax
     const runWithAssert = (code: string): unknown => {
       const modifiedCode = `let a = import("assertion"); ${code}`
@@ -28,7 +31,9 @@ describe('assert functions', () => {
       it('samples', () => {
         expect(() => runWithAssert('a.assertEqual(1, 0)')).toThrowError(AssertionError)
         expect(() => runWithAssert('a.assertEqual({ a: 1 }, { a: 2 })')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assertEqual({ a: 1 }, { a: 2 }, "Expected deep equal")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertEqual({ a: 1 }, { a: 2 }, "Expected deep equal")')).toThrowError(
+          AssertionError,
+        )
         expect(runWithAssert('a.assertEqual({ a: 1 }, { a: 1 })')).toBeNull()
       })
     })
@@ -47,7 +52,9 @@ describe('assert functions', () => {
         expect(() => runWithAssert('a.assertGt(0, 0)')).toThrowError(AssertionError)
         expect(() => runWithAssert('a.assertGt(0, 1)')).toThrowError(AssertionError)
         expect(() => runWithAssert('a.assertGt("Albert", "albert")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assertGt("Albert", "albert", "Expected greater than")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertGt("Albert", "albert", "Expected greater than")')).toThrowError(
+          AssertionError,
+        )
         expect(runWithAssert('a.assertGt(1, 0)')).toBeNull()
         expect(runWithAssert('a.assertGt("albert", "Albert")')).toBeNull()
       })
@@ -79,7 +86,9 @@ describe('assert functions', () => {
       it('samples', () => {
         expect(() => runWithAssert('a.assertLte(1, 0)')).toThrowError(AssertionError)
         expect(() => runWithAssert('a.assertLte("albert", "Albert")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assertLte("albert", "Albert", "Expected less than or equal")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertLte("albert", "Albert", "Expected less than or equal")')).toThrowError(
+          AssertionError,
+        )
         expect(runWithAssert('a.assertLte(0, 1)')).toBeNull()
         expect(runWithAssert('a.assertLte(1, 1)')).toBeNull()
         expect(runWithAssert('a.assertLte("albert", "albert")')).toBeNull()
@@ -167,8 +176,12 @@ describe('assert functions', () => {
 
     describe('assertFailsWith', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assertFailsWith(-> identity("X"), "X", "Should fail with X")')).toThrow(DvalaError)
-        expect(() => runWithAssert('a.assertFailsWith(-> perform(@dvala.error, { message: "Y" }), "X")')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assertFailsWith(-> identity("X"), "X", "Should fail with X")')).toThrow(
+          DvalaError,
+        )
+        expect(() => runWithAssert('a.assertFailsWith(-> perform(@dvala.error, { message: "Y" }), "X")')).toThrow(
+          DvalaError,
+        )
         expect(() => runWithAssert('a.assertFailsWith(-> perform(@dvala.error, { message: "X" }), "X")')).not.toThrow()
       })
     })

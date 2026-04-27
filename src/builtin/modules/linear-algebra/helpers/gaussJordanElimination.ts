@@ -27,15 +27,14 @@ export function gaussJordanElimination(matrix: number[][]): [number[][], number]
       }
     }
 
-    if (pivotRow === -1)
-      continue // No pivot in this column
+    if (pivotRow === -1) continue // No pivot in this column
 
     // Increase rank
     rank += 1
 
     // Swap rows
     if (pivotRow !== rowsProcessed) {
-      [m[pivotRow], m[rowsProcessed]] = [m[rowsProcessed]!, m[pivotRow]!]
+      ;[m[pivotRow], m[rowsProcessed]] = [m[rowsProcessed]!, m[pivotRow]!]
     }
 
     // Get the pivot value
@@ -57,8 +56,7 @@ export function gaussJordanElimination(matrix: number[][]): [number[][], number]
     }
 
     rowsProcessed++
-    if (rowsProcessed === rows)
-      break
+    if (rowsProcessed === rows) break
   }
 
   return [m, rank]

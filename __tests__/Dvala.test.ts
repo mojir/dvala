@@ -176,7 +176,6 @@ describe('all tests', () => {
       try {
         dvala.run('1 + + 2')
       } catch (error) {
-
         const anyError = error as any
 
         expect(anyError.sourceCodeInfo.position.line).toBe(1)
@@ -186,7 +185,7 @@ describe('all tests', () => {
     })
 
     it('shoud handle double quoted in strings', () => {
-    // You need to escape double quote with a backslash
+      // You need to escape double quote with a backslash
       expect(dvala.run('"\\""')).toBe('"')
       // You need to escape backslash with a backslash if it is at the end of the string
       expect(dvala.run('"\\\\"')).toBe('\\')

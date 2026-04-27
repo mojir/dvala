@@ -2,10 +2,7 @@ import { RuntimeError } from '../errors'
 import type { AstNode, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 
-export function walkDefaults(
-  bindingTarget: BindingTarget,
-  onDefault: (Node: AstNode) => void,
-): void {
+export function walkDefaults(bindingTarget: BindingTarget, onDefault: (Node: AstNode) => void): void {
   if (bindingTarget[0] === bindingTargetTypes.object) {
     bindingTarget[1][0].forEach(entry => {
       const element = entry.target
@@ -62,4 +59,3 @@ function getNamesFromBindingTarget(target: BindingTarget | null, names: Record<s
   }
   // literal and wildcard bind no names - skip
 }
-

@@ -128,12 +128,42 @@ function getPlaygroundPanel(): string {
     id: 'more-menu',
     items: [
       { action: 'Playground.closeMoreMenu();Playground.run()', icon: playIcon, label: 'Run', shortcut: 'Ctrl+R' },
-      { action: 'Playground.closeMoreMenu();void Playground.runSync()', icon: syncIcon, label: 'Run sync', shortcut: '⇧Ctrl+R' },
-      { action: 'Playground.closeMoreMenu();Playground.format()', icon: formatIcon, label: 'Format', shortcut: 'Ctrl+F' },
-      { action: 'Playground.closeMoreMenu();Playground.analyze()', icon: analyzeIcon, label: 'Analyze', shortcut: 'Ctrl+A' },
-      { action: 'Playground.closeMoreMenu();Playground.typecheck()', icon: infoIcon, label: 'Typecheck', shortcut: '⇧Ctrl+T' },
-      { action: 'Playground.closeMoreMenu();Playground.tokenize()', icon: codeIcon, label: 'Tokenize', shortcut: 'Ctrl+T' },
-      { action: 'Playground.closeMoreMenu();Playground.parse()', icon: treeIcon, label: 'Parse AST', shortcut: 'Ctrl+P' },
+      {
+        action: 'Playground.closeMoreMenu();void Playground.runSync()',
+        icon: syncIcon,
+        label: 'Run sync',
+        shortcut: '⇧Ctrl+R',
+      },
+      {
+        action: 'Playground.closeMoreMenu();Playground.format()',
+        icon: formatIcon,
+        label: 'Format',
+        shortcut: 'Ctrl+F',
+      },
+      {
+        action: 'Playground.closeMoreMenu();Playground.analyze()',
+        icon: analyzeIcon,
+        label: 'Analyze',
+        shortcut: 'Ctrl+A',
+      },
+      {
+        action: 'Playground.closeMoreMenu();Playground.typecheck()',
+        icon: infoIcon,
+        label: 'Typecheck',
+        shortcut: '⇧Ctrl+T',
+      },
+      {
+        action: 'Playground.closeMoreMenu();Playground.tokenize()',
+        icon: codeIcon,
+        label: 'Tokenize',
+        shortcut: 'Ctrl+T',
+      },
+      {
+        action: 'Playground.closeMoreMenu();Playground.parse()',
+        icon: treeIcon,
+        label: 'Parse AST',
+        shortcut: 'Ctrl+P',
+      },
       { action: 'Playground.closeMoreMenu();Playground.parseCst()', icon: treeIcon, label: 'Parse CST' },
       { action: 'Playground.closeMoreMenu();Playground.docTree()', icon: formatIcon, label: 'Doc tree' },
       { action: 'Playground.closeMoreMenu();Playground.saveAs()', icon: saveIcon, label: 'Save as…' },
@@ -145,15 +175,29 @@ function getPlaygroundPanel(): string {
     id: 'files-header-menu',
     items: [
       { action: 'Playground.closeFilesHeaderMenu();Playground.openImportFileModal()', icon: addIcon, label: 'Import' },
-      { action: 'Playground.closeFilesHeaderMenu();Playground.clearUnlockedFiles()', danger: true, icon: trashIcon, label: 'Remove unlocked' },
+      {
+        action: 'Playground.closeFilesHeaderMenu();Playground.clearUnlockedFiles()',
+        danger: true,
+        icon: trashIcon,
+        label: 'Remove unlocked',
+      },
     ],
   })
 
   const snapshotsHeaderMenu = renderEditorMenu({
     id: 'snapshots-header-menu',
     items: [
-      { action: 'Playground.closeSnapshotsHeaderMenu();Playground.openImportSnapshotModal()', icon: addIcon, label: 'Import' },
-      { action: 'Playground.closeSnapshotsHeaderMenu();Playground.clearUnlockedSnapshots()', danger: true, icon: trashIcon, label: 'Remove unlocked' },
+      {
+        action: 'Playground.closeSnapshotsHeaderMenu();Playground.openImportSnapshotModal()',
+        icon: addIcon,
+        label: 'Import',
+      },
+      {
+        action: 'Playground.closeSnapshotsHeaderMenu();Playground.clearUnlockedSnapshots()',
+        danger: true,
+        icon: trashIcon,
+        label: 'Remove unlocked',
+      },
     ],
   })
 
@@ -285,11 +329,12 @@ function getModals(): string {
   const modal = (id: string, content: string) =>
     `<div id="${id}" class="modal-overlay" style="display:none;">${content}</div>`
 
-  const box = (content: string) =>
-    `<div class="modal-box">${content}</div>`
+  const box = (content: string) => `<div class="modal-box">${content}</div>`
 
   return `
-  ${modal('export-modal', box(`
+  ${modal(
+    'export-modal',
+    box(`
     <div class="modal-header"><span class="modal-header__title">Export</span></div>
     <div class="modal-checklist">
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-code" checked> Code</label>
@@ -304,9 +349,12 @@ function getModals(): string {
       <button class="button" onclick="Playground.doExport()">Export</button>
       <button class="button" onclick="Playground.closeExportModal()">Cancel</button>
     </div>
-  `))}
+  `),
+  )}
 
-  ${modal('import-options-modal', box(`
+  ${modal(
+    'import-options-modal',
+    box(`
     <div class="modal-header"><span class="modal-header__title">Import options</span></div>
     <div class="modal-checklist">
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-code" checked><span id="import-opt-code-label">Code</span></label>
@@ -321,13 +369,17 @@ function getModals(): string {
       <button class="button" onclick="Playground.doImport()">Import</button>
       <button class="button" onclick="Playground.closeImportOptionsModal()">Cancel</button>
     </div>
-  `))}
+  `),
+  )}
 
-  ${modal('import-result-modal', box(`
+  ${modal(
+    'import-result-modal',
+    box(`
     <div class="modal-header"><span class="modal-header__title">Import result</span></div>
     <div id="import-result-content" class="modal-body-row"></div>
     <button class="button" onclick="Playground.closeImportResultModal()">OK</button>
-  `))}
+  `),
+  )}
 
   <div id="snapshot-modal" class="modal-overlay" style="display:none;">
     <div id="snapshot-panel-container" class="modal-box snapshot-panel-container"></div>

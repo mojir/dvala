@@ -8,28 +8,36 @@ const dvala = createDvala({ disableAutoCheckpoint: true })
 describe('continuation dedup integration', () => {
   describe('blob size comparison', () => {
     it('should produce a suspension blob with dedup pool when checkpoints are present', async () => {
-      const result = await dvala.runAsync(`
+      const result = await dvala.runAsync(
+        `
         let a = perform(@my.step, 1);
         let b = perform(@my.step, 2);
         let c = perform(@my.step, 3);
         perform(@my.done);
         a + b + c
-      `, {
-        effectHandlers: [
-          { pattern: 'my.step', handler: async ({ arg, checkpoint, resume: r }) => {
-            checkpoint('checkpoint')
-            r(arg!)
-          } },
+      `,
+        {
+          effectHandlers: [
+            {
+              pattern: 'my.step',
+              handler: async ({ arg, checkpoint, resume: r }) => {
+                checkpoint('checkpoint')
+                r(arg!)
+              },
+            },
 
-          { pattern: 'my.done', handler: async ({ suspend }) => {
-            suspend()
-          } },
-        ],
-      })
+            {
+              pattern: 'my.done',
+              handler: async ({ suspend }) => {
+                suspend()
+              },
+            },
+          ],
+        },
+      )
 
       expect(result.type).toBe('suspended')
-      if (result.type !== 'suspended')
-        return
+      if (result.type !== 'suspended') return
 
       const blob = result.snapshot.continuation as {
         version: number
@@ -47,23 +55,28 @@ describe('continuation dedup integration', () => {
     it('should correctly round-trip through suspend with checkpoints', async () => {
       let step = 0
 
-      const result = await dvala.runAsync(`
+      const result = await dvala.runAsync(
+        `
         let a = perform(@my.work, "first");
         let b = perform(@my.work, "second");
         a ++ " and " ++ b
-      `, {
-        effectHandlers: [
-          { pattern: 'my.work', handler: async ({ checkpoint, suspend }) => {
-            step++
-            checkpoint(`step ${step}`, { step })
-            suspend({ step })
-          } },
-        ],
-      })
+      `,
+        {
+          effectHandlers: [
+            {
+              pattern: 'my.work',
+              handler: async ({ checkpoint, suspend }) => {
+                step++
+                checkpoint(`step ${step}`, { step })
+                suspend({ step })
+              },
+            },
+          ],
+        },
+      )
 
       expect(result.type).toBe('suspended')
-      if (result.type !== 'suspended')
-        return
+      if (result.type !== 'suspended') return
 
       // The blob has dedup applied
       const blob = result.snapshot.continuation as {
@@ -75,24 +88,29 @@ describe('continuation dedup integration', () => {
       // Resume with a value
       const result2 = await resume(result.snapshot, 'hello', {
         handlers: [
-          { pattern: 'my.work', handler: async ({ checkpoint, suspend }) => {
-            step++
-            checkpoint(`step ${step}`, { step })
-            suspend({ step })
-          } },
+          {
+            pattern: 'my.work',
+            handler: async ({ checkpoint, suspend }) => {
+              step++
+              checkpoint(`step ${step}`, { step })
+              suspend({ step })
+            },
+          },
         ],
       })
 
       expect(result2.type).toBe('suspended')
-      if (result2.type !== 'suspended')
-        return
+      if (result2.type !== 'suspended') return
 
       // Resume again to complete
       const result3 = await resume(result2.snapshot, 'world', {
         handlers: [
-          { pattern: 'my.work', handler: async ({ resume: r }) => {
-            r('final')
-          } },
+          {
+            pattern: 'my.work',
+            handler: async ({ resume: r }) => {
+              r('final')
+            },
+          },
         ],
       })
 
@@ -138,10 +156,14 @@ describe('continuation dedup integration', () => {
         type: 'fn',
         body: [
           { type: 'let', name: 'x', value: { type: 'num', val: 42 } },
-          { type: 'call', fn: 'add', args: [
-            { type: 'sym', name: 'x' },
-            { type: 'num', val: 1 },
-          ] },
+          {
+            type: 'call',
+            fn: 'add',
+            args: [
+              { type: 'sym', name: 'x' },
+              { type: 'num', val: 1 },
+            ],
+          },
         ],
         params: ['a', 'b', 'c'],
       }

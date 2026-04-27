@@ -18,8 +18,7 @@ function fileSize(relPath: string): number {
   const abs = path.resolve(process.cwd(), relPath)
   try {
     return fs.statSync(abs).size
-  }
-  catch {
+  } catch {
     return -1
   }
 }
@@ -51,39 +50,42 @@ function score(n: number): string {
 }
 
 async function waitForInit(page: import('@playwright/test').Page) {
-  await page.waitForFunction(() => {
-    const wrapper = document.getElementById('wrapper')
-    return wrapper && wrapper.style.display === 'block'
-  }, { timeout: 8000 })
+  await page.waitForFunction(
+    () => {
+      const wrapper = document.getElementById('wrapper')
+      return wrapper && wrapper.style.display === 'block'
+    },
+    { timeout: 8000 },
+  )
 }
 
 /** Inject PerformanceObservers before page load to capture Core Web Vitals. */
 async function injectVitalsObservers(page: import('@playwright/test').Page) {
   await page.addInitScript(() => {
-    (window as any).__kpi = { fcp: -1, lcp: -1, cls: 0, ttfb: -1 }
+    ;(window as any).__kpi = { fcp: -1, lcp: -1, cls: 0, ttfb: -1 }
 
     // FCP — First Contentful Paint
-    new PerformanceObserver((list) => {
+    new PerformanceObserver(list => {
       for (const entry of list.getEntries()) {
         if (entry.name === 'first-contentful-paint') {
-          (window as any).__kpi.fcp = entry.startTime
+          ;(window as any).__kpi.fcp = entry.startTime
         }
       }
     }).observe({ type: 'paint', buffered: true })
 
     // LCP — Largest Contentful Paint (last entry wins)
-    new PerformanceObserver((list) => {
+    new PerformanceObserver(list => {
       const entries = list.getEntries()
       const last = entries[entries.length - 1]
       if (last) (window as any).__kpi.lcp = last.startTime
     }).observe({ type: 'largest-contentful-paint', buffered: true })
 
     // CLS — Cumulative Layout Shift (accumulate all shifts)
-    new PerformanceObserver((list) => {
+    new PerformanceObserver(list => {
       for (const entry of list.getEntries()) {
         // Only count unexpected layout shifts (no recent user input)
         if (!(entry as any).hadRecentInput) {
-          (window as any).__kpi.cls += (entry as any).value
+          ;(window as any).__kpi.cls += (entry as any).value
         }
       }
     }).observe({ type: 'layout-shift', buffered: true })
@@ -99,7 +101,7 @@ async function readVitals(page: import('@playwright/test').Page) {
     return nav ? nav.responseStart - nav.requestStart : -1
   })
   const vitals = await page.evaluate(() => (window as any).__kpi)
-  return { ...vitals, ttfb } as { fcp: number, lcp: number, cls: number, ttfb: number }
+  return { ...vitals, ttfb } as { fcp: number; lcp: number; cls: number; ttfb: number }
 }
 
 // ---------------------------------------------------------------------------
@@ -163,10 +165,13 @@ test('time to navigate to a doc page', async ({ page }) => {
 
   const t0 = Date.now()
   await page.evaluate(() => (window as any).Playground.navigate('/ref/map'))
-  await page.waitForFunction(() => {
-    const el = document.getElementById('dynamic-page')
-    return el && el.innerHTML.includes('doc-page')
-  }, { timeout: 5000 })
+  await page.waitForFunction(
+    () => {
+      const el = document.getElementById('dynamic-page')
+      return el && el.innerHTML.includes('doc-page')
+    },
+    { timeout: 5000 },
+  )
   const elapsed = Date.now() - t0
 
   results['time to navigate to doc page'] = ms(elapsed)

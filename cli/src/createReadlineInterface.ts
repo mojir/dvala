@@ -11,8 +11,7 @@ const historyDir = path.join(os.homedir(), '.config')
 const historyFile = path.join(historyDir, 'dvala_history.txt')
 
 function isHistoryEnabled() {
-  if (fs.existsSync(historyFile))
-    return true
+  if (fs.existsSync(historyFile)) return true
 
   try {
     fs.openSync(historyFile, 'w')
@@ -20,8 +19,8 @@ function isHistoryEnabled() {
     // eslint-disable-next-line no-console
     console.error(`No history for you!
 If you would like to enable history persistence, make sure the directory "${path.resolve(
-  historyDir,
-)}" exists and is writable.
+      historyDir,
+    )}" exists and is writable.
 `)
     return false
   }
@@ -38,15 +37,13 @@ export function createReadlineInterface(options: Options): ReadLine {
   }
   const historyEnabled = isHistoryEnabled()
   const history = historyEnabled
-    ? fs.readFileSync(historyFile, 'utf8')
-      .toString()
-      .split('\n')
-      .slice(0, -1)
-      .reverse()
-      .slice(0, options.historySize)
+    ? fs.readFileSync(historyFile, 'utf8').toString().split('\n').slice(0, -1).reverse().slice(0, options.historySize)
     : []
 
-  ;(readline as UnknownRecord).kHistorySize = Math.max((readline as UnknownRecord).kHistorySize as number, options.historySize)
+  ;(readline as UnknownRecord).kHistorySize = Math.max(
+    (readline as UnknownRecord).kHistorySize as number,
+    options.historySize,
+  )
 
   const rl = readline.createInterface(readlineOptions) as any
 
@@ -57,14 +54,12 @@ export function createReadlineInterface(options: Options): ReadLine {
       const last = rl.history[0]
       const line = oldAddHistory.call(rl)
 
-      if (line.length > 0 && line !== last)
-        fs.appendFileSync(historyFile, `${line}\n`)
+      if (line.length > 0 && line !== last) fs.appendFileSync(historyFile, `${line}\n`)
 
       return line
     }
 
-    if (Array.isArray(rl.history))
-      rl.history.push(...history)
+    if (Array.isArray(rl.history)) rl.history.push(...history)
   }
 
   return rl

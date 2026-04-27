@@ -13,12 +13,10 @@ const APP_ROOTS = allAppRoutes.map(r => `/${r}`)
 function detectBasePath(): string {
   const p = location.pathname
   // Exact root path means no base
-  if (p === '/')
-    return ''
+  if (p === '/') return ''
   // Check if path starts with a known app route (no base prefix)
   for (const root of APP_ROOTS) {
-    if (p === root || p.startsWith(`${root}/`) || (root.endsWith('/') && p.startsWith(root)))
-      return ''
+    if (p === root || p.startsWith(`${root}/`) || (root.endsWith('/') && p.startsWith(root))) return ''
   }
   // First path segment is the deployment base (e.g. /dvala)
   const firstSeg = p.split('/').filter(Boolean)[0]
@@ -43,10 +41,8 @@ export function href(appPath: string): string {
 /** Navigate to an app-relative path, pushing a history entry. */
 export function navigate(appPath: string, replace = false): void {
   const url = href(appPath)
-  if (replace)
-    history.replaceState(null, '', url)
-  else
-    history.pushState(null, '', url)
+  if (replace) history.replaceState(null, '', url)
+  else history.pushState(null, '', url)
   routeHandler?.(appPath)
 }
 

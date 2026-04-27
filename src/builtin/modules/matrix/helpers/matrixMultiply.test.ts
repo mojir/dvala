@@ -3,7 +3,10 @@ import { matrixMultiply } from './matrixMultiply'
 
 describe('matrixMultiply', () => {
   it('should return null if matrices cannot be multiplied (invalid dimensions)', () => {
-    const A = [[1, 2], [3, 4]]
+    const A = [
+      [1, 2],
+      [3, 4],
+    ]
     const B = [[1, 2, 3]]
     expect(() => matrixMultiply(A, B)).toThrow()
   })

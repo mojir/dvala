@@ -13,7 +13,12 @@ import { sampleStdevReductionFunction, stdevReductionFunction } from './standard
 import { iqrReductionFunction } from './iqr'
 import { spanReductionFunction } from './span'
 import { sampleSkewnessReductionFunction, skewnessReductionFunction } from './skewness'
-import { eccessKurtosisReductionFunction, kurtosisReductionFunction, sampleExcessKurtosisReductionFunction, sampleKurtosisReductionFunction } from './kurtosis'
+import {
+  eccessKurtosisReductionFunction,
+  kurtosisReductionFunction,
+  sampleExcessKurtosisReductionFunction,
+  sampleKurtosisReductionFunction,
+} from './kurtosis'
 import { rmsReductionFunction } from './rms'
 import { madReductionFunction } from './mad'
 import { medadReductionFunction } from './medad'
@@ -83,7 +88,11 @@ function addReductionFunctions<T extends string>(fns: ReductionFunctionDefinitio
       assertNumber(minLength, undefined, { integer: true, finite: true, gte: 0 })
       reductionFunctionNormalExpressions[key] = createReductionNormalExpression(reductionFn, minLength)
       reductionFunctionNormalExpressions[movingKey] = createMovingNormalExpression(reductionFn, minLength)
-      reductionFunctionNormalExpressions[centeredMovingKey] = createCenteredMovingNormalExpression(reductionFn, minLength, fns.padding ?? null)
+      reductionFunctionNormalExpressions[centeredMovingKey] = createCenteredMovingNormalExpression(
+        reductionFn,
+        minLength,
+        fns.padding ?? null,
+      )
       reductionFunctionNormalExpressions[runningKey] = createRunningNormalExpression(reductionFn, minLength)
     }
   }
@@ -172,11 +181,9 @@ function createCenteredMovingNormalExpression(
       ]
 
       const start = typeof leftPadding === 'number' ? 0 : halfWindowSize
-      const end = vector.length - (typeof rightPadding === 'number' ? 0 : (windowSize - halfWindowSize - 1))
+      const end = vector.length - (typeof rightPadding === 'number' ? 0 : windowSize - halfWindowSize - 1)
 
-      const result: (number | null)[] = [
-        ...Array<null>(start).fill(null),
-      ]
+      const result: (number | null)[] = [...Array<null>(start).fill(null)]
 
       try {
         for (let i = start; i < end; i += 1) {

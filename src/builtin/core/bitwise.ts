@@ -23,11 +23,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Shifts `a` arithmetically left by `b` bit positions.',
       seeAlso: ['>>', '>>>'],
-      examples: [
-        '1 << 10',
-        '<<(1, 10)',
-        '<<(-4, 2)',
-      ],
+      examples: ['1 << 10', '<<(1, 10)', '<<(-4, 2)'],
     },
   },
   '>>': {
@@ -46,12 +42,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Shifts `a` arithmetically right by `b` bit positions.',
       seeAlso: ['<<', '>>>'],
-      examples: [
-        '2048 >> 10',
-        '>>(2048, 10)',
-        '>>>(-16, 2)',
-        '>>(4, 10)',
-      ],
+      examples: ['2048 >> 10', '>>(2048, 10)', '>>>(-16, 2)', '>>(4, 10)'],
     },
   },
   '>>>': {
@@ -70,13 +61,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Shifts `a` arithmetically right by `b` bit positions without sign extension.',
       seeAlso: ['<<', '>>'],
-      examples: [
-        '-16 >>> 2',
-        '>>>(2048, 10)',
-        '>>>(-16, 2)',
-        '>>>(4, 10)',
-        '>>>(-1, 10)',
-      ],
+      examples: ['-16 >>> 2', '>>>(2048, 10)', '>>>(-16, 2)', '>>>(4, 10)', '>>>(-1, 10)'],
     },
   },
   '&': {
@@ -97,17 +82,10 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
         ...getOperatorArgs('integer', 'integer'),
         c: { type: 'integer', rest: true },
       },
-      variants: [
-        { argumentNames: ['a', 'b'] },
-        { argumentNames: ['a', 'b', 'c'] },
-      ],
+      variants: [{ argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'c'] }],
       description: 'Returns bitwise `and` of all arguments.',
       seeAlso: ['|', 'xor', 'bitwise.bitNot', 'bitwise.bitAndNot'],
-      examples: [
-        '0b0011 & 0b0110',
-        '&(0b0011, 0b0110)',
-        '&(0b0011, 0b0110, 0b1001)',
-      ],
+      examples: ['0b0011 & 0b0110', '&(0b0011, 0b0110)', '&(0b0011, 0b0110, 0b1001)'],
     },
   },
   '|': {
@@ -128,20 +106,13 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
         ...getOperatorArgs('integer', 'integer'),
         c: { type: 'integer', rest: true },
       },
-      variants: [
-        { argumentNames: ['a', 'b'] },
-        { argumentNames: ['a', 'b', 'c'] },
-      ],
+      variants: [{ argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'c'] }],
       description: 'Returns bitwise `or` of all arguments.',
       seeAlso: ['&', 'xor', 'bitwise.bitNot', 'bitwise.bitAndNot'],
-      examples: [
-        '0b0011 | 0b0110',
-        '|(0b0011, 0b0110)',
-        '|(0b1000, 0b0100, 0b0010)',
-      ],
+      examples: ['0b0011 | 0b0110', '|(0b0011, 0b0110)', '|(0b1000, 0b0100, 0b0010)'],
     },
   },
-  'xor': {
+  xor: {
     evaluate: ([first, ...rest], sourceCodeInfo): number => {
       assertNumber(first, sourceCodeInfo, { integer: true })
 
@@ -159,17 +130,10 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
         ...getOperatorArgs('integer', 'integer'),
         c: { type: 'integer', rest: true },
       },
-      variants: [
-        { argumentNames: ['a', 'b'] },
-        { argumentNames: ['a', 'b', 'c'] },
-      ],
+      variants: [{ argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'c'] }],
       description: 'Returns bitwise `xor` of all arguments.',
       seeAlso: ['&', '|', 'bitwise.bitNot', 'bitwise.bitAndNot'],
-      examples: [
-        '0b0011 xor 0b0110',
-        'xor(0b0011, 0b0110)',
-        'xor(0b11110000, 0b00111100, 0b10101010)',
-      ],
+      examples: ['0b0011 xor 0b0110', 'xor(0b0011, 0b0110)', 'xor(0b11110000, 0b00111100, 0b10101010)'],
     },
   },
 }

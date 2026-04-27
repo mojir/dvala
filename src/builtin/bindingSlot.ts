@@ -50,9 +50,7 @@ export function validateBindingRootType(target: BindingTarget, value: Any, sourc
 /**
  * A single step in the path to extract a value from a nested structure.
  */
-export type BindingPathStep =
-  | { type: 'key'; key: string }
-  | { type: 'index'; index: number }
+export type BindingPathStep = { type: 'key'; key: string } | { type: 'index'; index: number }
 
 /**
  * A linearized binding slot representing one variable to bind.
@@ -96,11 +94,7 @@ export function flattenBindingPattern(target: BindingTarget): BindingSlot[] {
   return slots
 }
 
-function flattenTarget(
-  target: BindingTarget,
-  path: BindingPathStep[],
-  slots: BindingSlot[],
-): void {
+function flattenTarget(target: BindingTarget, path: BindingPathStep[], slots: BindingSlot[]): void {
   const nodeId = target[2]
 
   switch (target[0]) {
@@ -223,7 +217,6 @@ function flattenTarget(
       }
       break
     }
-
   }
 }
 
@@ -236,7 +229,11 @@ function flattenTarget(
  *
  * Returns undefined if the path cannot be followed (missing key/index).
  */
-export function extractValueByPath(rootValue: Any, path: BindingPathStep[], sourceCodeInfo?: SourceCodeInfo): Any | undefined {
+export function extractValueByPath(
+  rootValue: Any,
+  path: BindingPathStep[],
+  sourceCodeInfo?: SourceCodeInfo,
+): Any | undefined {
   let current: unknown = rootValue
 
   for (const step of path) {
@@ -246,10 +243,10 @@ export function extractValueByPath(rootValue: Any, path: BindingPathStep[], sour
 
     if (step.type === 'key') {
       assertObj(current, sourceCodeInfo)
-      current = (current).get(step.key)
+      current = current.get(step.key)
     } else {
       assertArray(current, sourceCodeInfo)
-      current = (current).get(step.index)
+      current = current.get(step.index)
     }
   }
 

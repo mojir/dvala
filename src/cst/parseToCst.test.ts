@@ -489,9 +489,13 @@ function findDvalaFiles(dir: string): string[] {
         } else if (entry.endsWith('.dvala')) {
           results.push(fullPath)
         }
-      } catch { /* skip inaccessible entries */ }
+      } catch {
+        /* skip inaccessible entries */
+      }
     }
-  } catch { /* skip inaccessible dirs */ }
+  } catch {
+    /* skip inaccessible dirs */
+  }
   return results
 }
 

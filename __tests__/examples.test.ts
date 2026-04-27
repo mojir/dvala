@@ -63,10 +63,7 @@ function getMockHandlers(): HandlerRegistration[] {
     {
       pattern: 'host.fetchPosts',
       handler: async ctx => {
-        ctx.resume([
-          { title: 'Mock Post 1' },
-          { title: 'Mock Post 2' },
-        ])
+        ctx.resume([{ title: 'Mock Post 1' }, { title: 'Mock Post 2' }])
       },
     },
     {
@@ -83,7 +80,7 @@ function getMockHandlers(): HandlerRegistration[] {
     {
       pattern: 'dvala.io.pick',
       handler: ctx => {
-        const items = Array.isArray(ctx.arg) ? ctx.arg : (ctx.arg as Record<string, unknown>)?.['items'] as unknown[]
+        const items = Array.isArray(ctx.arg) ? ctx.arg : ((ctx.arg as Record<string, unknown>)?.['items'] as unknown[])
         ctx.resume((items?.[0] ?? null) as Any)
       },
     },
@@ -158,10 +155,7 @@ describe('examples — run', () => {
   // Examples that require interactive input loops — the mock read handler
   // returns '' which triggers quit/cancel, but the game loop structure
   // doesn't terminate cleanly with empty input
-  const interactiveExamples = new Set([
-    'text-based-game',
-    'async-interactive',
-  ])
+  const interactiveExamples = new Set(['text-based-game', 'async-interactive'])
 
   for (const example of examples) {
     const skip = interactiveExamples.has(example.id)
@@ -172,16 +166,21 @@ describe('examples — run', () => {
       const handlers = getMockHandlers()
       // Compile the example's own effect handlers (if any) and prepend them so
       // they take priority over the generic mock handlers.
-      const exampleHandlers: HandlerRegistration[] = (example.effectHandlers ?? []).map(({ pattern, handler: source }) => ({
-        pattern,
-        handler: eval(`(${source})`) as HandlerRegistration['handler'],
-      }))
+      const exampleHandlers: HandlerRegistration[] = (example.effectHandlers ?? []).map(
+        ({ pattern, handler: source }) => ({
+          pattern,
+          handler: eval(`(${source})`) as HandlerRegistration['handler'],
+        }),
+      )
 
       const result = await dvala.runAsync(example.code, {
         effectHandlers: [...exampleHandlers, ...handlers],
       })
 
-      expect(result.type, `Example "${example.name}" failed: ${result.type === 'error' ? result.error.message : 'suspended'}`).toBe('completed')
+      expect(
+        result.type,
+        `Example "${example.name}" failed: ${result.type === 'error' ? result.error.message : 'suspended'}`,
+      ).toBe('completed')
     })
   }
 })

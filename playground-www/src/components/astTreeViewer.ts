@@ -93,9 +93,7 @@ function getNodeSummary(node: TreeNode): string {
       return `@${payload}`
     case 'Call': {
       const [fnNode, args] = payload as [AstNode, AstNode[]]
-      const fnName = fnNode[0] === 'Builtin' || fnNode[0] === 'Sym'
-        ? fnNode[1] as string
-        : fnNode[0]
+      const fnName = fnNode[0] === 'Builtin' || fnNode[0] === 'Sym' ? (fnNode[1] as string) : fnNode[0]
       return `${fnName}(${args.length} arg${args.length !== 1 ? 's' : ''})`
     }
     case 'TmplStr': {
@@ -220,17 +218,19 @@ function truncate(s: string, maxLen: number): string {
 
 function isLeafNode(node: TreeNode): boolean {
   const type = node[0]
-  return type === 'Num'
-    || type === 'Str'
-    || type === 'Sym'
-    || type === 'Builtin'
-    || type === 'Special'
-    || type === 'Reserved'
-    || type === 'Effect'
-    || type === 'Import'
-    || type === 'symbol'
-    || type === 'rest'
-    || type === 'wildcard'
+  return (
+    type === 'Num' ||
+    type === 'Str' ||
+    type === 'Sym' ||
+    type === 'Builtin' ||
+    type === 'Special' ||
+    type === 'Reserved' ||
+    type === 'Effect' ||
+    type === 'Import' ||
+    type === 'symbol' ||
+    type === 'rest' ||
+    type === 'wildcard'
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -537,7 +537,10 @@ function renderNode(
   row.addEventListener('click', e => {
     e.stopPropagation()
     // Toggle selected state
-    row.closest('.ast-tree')?.querySelectorAll('.ast-tree__node--selected').forEach(el => el.classList.remove('ast-tree__node--selected'))
+    row
+      .closest('.ast-tree')
+      ?.querySelectorAll('.ast-tree__node--selected')
+      .forEach(el => el.classList.remove('ast-tree__node--selected'))
     row.classList.add('ast-tree__node--selected')
     // Update prettyPrint preview
     const previewEl = row.closest('.ast-tree-viewer')?.querySelector('.ast-tree__preview')
@@ -567,8 +570,7 @@ function renderNode(
     const childrenEl = document.createElement('div')
     childrenEl.className = 'ast-tree__children'
 
-    const shouldExpand = depth < 1
-      || (searchQuery && treeContainsMatch(node, searchQuery))
+    const shouldExpand = depth < 1 || (searchQuery && treeContainsMatch(node, searchQuery))
 
     if (!shouldExpand) {
       childrenEl.style.display = 'none'
@@ -679,7 +681,9 @@ export function createAstTreeViewer(options: TreeViewerOptions): HTMLElement {
   copyAllBtn.addEventListener('click', () => {
     void navigator.clipboard.writeText(JSON.stringify(options.ast, null, 2))
     copyAllBtn.textContent = 'Copied!'
-    setTimeout(() => { copyAllBtn.textContent = 'Copy JSON' }, 1200)
+    setTimeout(() => {
+      copyAllBtn.textContent = 'Copy JSON'
+    }, 1200)
   })
   toolbar.appendChild(copyAllBtn)
 
@@ -693,13 +697,7 @@ export function createAstTreeViewer(options: TreeViewerOptions): HTMLElement {
     tree.innerHTML = ''
     options.ast.body.forEach((node, i) => {
       if (!query || treeContainsMatch(node, query)) {
-        tree.appendChild(renderNode(
-          node,
-          options.ast.body.length > 1 ? `${i}` : null,
-          0,
-          options,
-          query,
-        ))
+        tree.appendChild(renderNode(node, options.ast.body.length > 1 ? `${i}` : null, 0, options, query))
       }
     })
     if (tree.children.length === 0 && query) {

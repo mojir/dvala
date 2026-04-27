@@ -72,7 +72,9 @@ describe('typecheck — end-to-end', () => {
   })
 
   it('accepts polymorphic identity inside object fields passed to count', () => {
-    const result = dvala.typecheck('let id = (x) -> x; { sameNumber: id(42), sameString: id("hello"), stringLength: count(id("hello")) }')
+    const result = dvala.typecheck(
+      'let id = (x) -> x; { sameNumber: id(42), sameString: id("hello"), stringLength: count(id("hello")) }',
+    )
     expect(result.diagnostics).toHaveLength(0)
   })
 
@@ -179,7 +181,9 @@ describe('typecheck — end-to-end', () => {
   })
 
   it('accepts rest bindings in match array destructuring', () => {
-    const result = dvala.typecheck('let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then count(rest) case _ then 0 end')
+    const result = dvala.typecheck(
+      'let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then count(rest) case _ then 0 end',
+    )
     // With tuple inference, [1, ...rest] covers all fixed-length tuple members,
     // so the wildcard is correctly flagged as redundant
     expect(result.diagnostics).toHaveLength(1)
@@ -225,21 +229,27 @@ describe('typecheck — end-to-end', () => {
   })
 
   it('warns on redundant destructuring cases after earlier shape coverage', () => {
-    const result = dvala.typecheck('let x = if true then [1] else { a: 1 } end; match x case [y] then y case [z] then z case _ then 0 end')
+    const result = dvala.typecheck(
+      'let x = if true then [1] else { a: 1 } end; match x case [y] then y case [z] then z case _ then 0 end',
+    )
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('Redundant match case')
     expect(result.diagnostics[0]?.severity).toBe('warning')
   })
 
   it('warns when an exact array prefix branch is repeated', () => {
-    const result = dvala.typecheck('let xs = if true then [1, 2] else [1, 3] end; match xs case [1, x] then x case [1, y] then y case _ then 0 end')
+    const result = dvala.typecheck(
+      'let xs = if true then [1, 2] else [1, 3] end; match xs case [1, x] then x case [1, y] then y case _ then 0 end',
+    )
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('Redundant match case')
     expect(result.diagnostics[0]?.severity).toBe('warning')
   })
 
   it('warns when an exact array branch is covered by an earlier rest-pattern branch', () => {
-    const result = dvala.typecheck('let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then 1 case [1, 2] then 2 case _ then 0 end')
+    const result = dvala.typecheck(
+      'let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...rest] then 1 case [1, 2] then 2 case _ then 0 end',
+    )
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('Redundant match case')
     expect(result.diagnostics[0]?.severity).toBe('warning')
@@ -251,14 +261,18 @@ describe('typecheck — end-to-end', () => {
   })
 
   it('warns when a later array branch is covered by an earlier defaulted element branch', () => {
-    const result = dvala.typecheck('let xs = if true then [1] else [1, 2] end; match xs case [x, y = 0] then x + y case [a] then a case _ then 0 end')
+    const result = dvala.typecheck(
+      'let xs = if true then [1] else [1, 2] end; match xs case [x, y = 0] then x + y case [a] then a case _ then 0 end',
+    )
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('Redundant match case')
     expect(result.diagnostics[0]?.severity).toBe('warning')
   })
 
   it('warns when a later rest-pattern branch is covered by an earlier broader rest-pattern branch', () => {
-    const result = dvala.typecheck('let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...xs] then 1 case [1, 2, ...ys] then 2 case _ then 0 end')
+    const result = dvala.typecheck(
+      'let xs = if true then [1, 2] else [1, 2, 3] end; match xs case [1, ...xs] then 1 case [1, 2, ...ys] then 2 case _ then 0 end',
+    )
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('Redundant match case')
     expect(result.diagnostics[0]?.severity).toBe('warning')
@@ -269,45 +283,53 @@ describe('typecheck — end-to-end', () => {
     // anything, and the second `case [y] when isString(y)` would not be
     // recognized as covering the remaining space.
     const result = dvala.typecheck(
-      'let xs = if true then [1] else ["a"] end;'
-      + ' match xs'
-      + ' case [x] when isNumber(x) then x'
-      + ' case [y] when isString(y) then y'
-      + ' end',
+      'let xs = if true then [1] else ["a"] end;' +
+        ' match xs' +
+        ' case [x] when isNumber(x) then x' +
+        ' case [y] when isString(y) then y' +
+        ' end',
     )
     expect(result.diagnostics).toHaveLength(0)
   })
 
   it('narrows consumed type when guard applies to object field binding', () => {
     const result = dvala.typecheck(
-      'let obj = if true then { v: 1 } else { v: "a" } end;'
-      + ' match obj'
-      + ' case { v } when isNumber(v) then v'
-      + ' case { v } when isString(v) then v'
-      + ' end',
+      'let obj = if true then { v: 1 } else { v: "a" } end;' +
+        ' match obj' +
+        ' case { v } when isNumber(v) then v' +
+        ' case { v } when isString(v) then v' +
+        ' end',
     )
     expect(result.diagnostics).toHaveLength(0)
   })
 
   it('accepts exhaustive tagged object matches without a wildcard', () => {
-    const result = dvala.typecheck('let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end')
+    const result = dvala.typecheck(
+      'let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end',
+    )
     expect(result.diagnostics).toHaveLength(0)
   })
 
   it('accepts exhaustive matches on open records with finite tag fields', () => {
-    const result = dvala.typecheck('let classify = (event: {type: "click" | "keydown", ...}) -> match event case {type: "click"} then 1 case {type: "keydown"} then 2 end; classify')
+    const result = dvala.typecheck(
+      'let classify = (event: {type: "click" | "keydown", ...}) -> match event case {type: "click"} then 1 case {type: "keydown"} then 2 end; classify',
+    )
     expect(result.diagnostics).toHaveLength(0)
   })
 
   it('warns when a tagged object branch is repeated', () => {
-    const result = dvala.typecheck('let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end')
+    const result = dvala.typecheck(
+      'let event = if true then {type: "click", x: 1, y: 2} else {type: "keydown", key: "Enter"} end; match event case {type: "click", x, y} then x + y case {type: "click", x, y} then x + y case {type: "keydown", key} then count(key) end',
+    )
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('Redundant match case')
     expect(result.diagnostics[0]?.severity).toBe('warning')
   })
 
   it('warns when an open-record tagged branch is repeated', () => {
-    const result = dvala.typecheck('let classify = (event: {type: "click" | "keydown", ...}) -> match event case {type: "click"} then 1 case {type: "click"} then 2 case {type: "keydown"} then 3 end; classify')
+    const result = dvala.typecheck(
+      'let classify = (event: {type: "click" | "keydown", ...}) -> match event case {type: "click"} then 1 case {type: "click"} then 2 case {type: "keydown"} then 3 end; classify',
+    )
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.message).toContain('Redundant match case')
     expect(result.diagnostics[0]?.severity).toBe('warning')
@@ -2371,9 +2393,7 @@ describe('typecheck — generic upper bounds on type aliases', () => {
     // bounded alias; the importing file instantiates it with a
     // non-satisfying argument. The bound must still be enforced across
     // the file boundary.
-    const files = new Map([
-      ['./lib.dvala', 'type Positive<T: Number> = T; export { Positive }'],
-    ])
+    const files = new Map([['./lib.dvala', 'type Positive<T: Number> = T; export { Positive }']])
     const d = createDvalaRaw({
       fileResolver: (importPath: string) => {
         const source = files.get(importPath)
@@ -2381,10 +2401,7 @@ describe('typecheck — generic upper bounds on type aliases', () => {
         return source
       },
     })
-    const result = d.typecheck(
-      'let bad: Positive<String> = "hi"; bad',
-      { fileResolverBaseDir: '.' },
-    )
+    const result = d.typecheck('let bad: Positive<String> = "hi"; bad', { fileResolverBaseDir: '.' })
     // Note: explicit re-import of the alias would be needed in a real
     // module system; for now this test captures the snapshot-restore
     // path for registered aliases with bounds. If the test needs
@@ -2517,10 +2534,12 @@ describe('typecheck — let-binding-scoped <T: U> (Phase 0b)', () => {
     // parser throws ParseError immediately rather than the typechecker
     // producing a diagnostic. Matches how other invalid-syntax cases
     // surface in Dvala.
-    expect(() => dvala.typecheck(`
+    expect(() =>
+      dvala.typecheck(`
       let dup<T: Number, T: String> = (x: T) -> x;
       dup(1)
-    `)).toThrow(/Duplicate type parameter/)
+    `),
+    ).toThrow(/Duplicate type parameter/)
   })
 
   it('outer T shadows inner T in nested lets', () => {
@@ -2665,10 +2684,11 @@ describe('typecheck — type map', () => {
     expect(typeMap.size).toBeGreaterThan(0)
     // At least one type should be a literal 42 or Number
     const types = [...typeMap.values()]
-    const hasNumeric = types.some(t =>
-      (t.tag === 'Literal' && (t as { value: number }).value === 42)
-      || (t.tag === 'Primitive' && (t as { name: string }).name === 'Number')
-      || t.tag === 'Var',
+    const hasNumeric = types.some(
+      t =>
+        (t.tag === 'Literal' && (t as { value: number }).value === 42) ||
+        (t.tag === 'Primitive' && (t as { name: string }).name === 'Number') ||
+        t.tag === 'Var',
     )
     expect(hasNumeric).toBe(true)
   })
@@ -2678,9 +2698,7 @@ describe('typecheck — type map', () => {
     // The call node should have a type (the return type of +)
     const types = [...typeMap.values()]
     // At least one type should be Number-ish (from the + return)
-    const hasNumeric = types.some(t =>
-      t.tag === 'Var' || t.tag === 'Primitive' || t.tag === 'Literal',
-    )
+    const hasNumeric = types.some(t => t.tag === 'Var' || t.tag === 'Primitive' || t.tag === 'Literal')
     expect(hasNumeric).toBe(true)
   })
 
@@ -2747,11 +2765,7 @@ describe('typecheck — type annotations', () => {
   })
 
   it('attaches let annotation errors to the value expression source', () => {
-    const result = dvala.typecheck([
-      'let x: String =',
-      '  42;',
-      'x',
-    ].join('\n'))
+    const result = dvala.typecheck(['let x: String =', '  42;', 'x'].join('\n'))
 
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.sourceCodeInfo?.position.line).toBe(2)
@@ -2815,11 +2829,7 @@ describe('typecheck — type annotations', () => {
     // The value-side squiggle lands on the returned expression, not
     // the function header. Use a multi-line source so the position is
     // observable.
-    const result = dvala.typecheck([
-      'let f = (x: Number): String ->',
-      '  x;',
-      'f(1)',
-    ].join('\n'))
+    const result = dvala.typecheck(['let f = (x: Number): String ->', '  x;', 'f(1)'].join('\n'))
     expect(result.diagnostics.length).toBeGreaterThan(0)
     expect(result.diagnostics[0]?.sourceCodeInfo?.position.line).toBe(2)
   })
@@ -3090,7 +3100,9 @@ describe('typecheck — type aliases', () => {
   })
 
   it('generic aliases support multiple parameters', () => {
-    const result = dvala.typecheck('type Result<T, E> = { tag: :ok, value: T } | { tag: :error, error: E }; let x: Result<Number, String> = { tag: :ok, value: 42 }; x')
+    const result = dvala.typecheck(
+      'type Result<T, E> = { tag: :ok, value: T } | { tag: :error, error: E }; let x: Result<Number, String> = { tag: :ok, value: 42 }; x',
+    )
     expect(result.diagnostics).toHaveLength(0)
   })
 
@@ -3358,9 +3370,7 @@ describe('typecheck — source-impl module functions are visible', () => {
 
 describe('typecheck — imported diagnostics', () => {
   it('surfaces type errors from imported files with imported file paths', () => {
-    const files = new Map([
-      ['./bad.dvala', 'let value: String = 42; { value }'],
-    ])
+    const files = new Map([['./bad.dvala', 'let value: String = 42; { value }']])
 
     const dvala = createDvala({
       fileResolver: (importPath: string) => {
@@ -3379,9 +3389,7 @@ describe('typecheck — imported diagnostics', () => {
   })
 
   it('rechecks imported files after their source changes', () => {
-    const files = new Map([
-      ['./bad.dvala', 'let value: Number = 42; { value }'],
-    ])
+    const files = new Map([['./bad.dvala', 'let value: Number = 42; { value }']])
 
     const dvala = createDvala({
       fileResolver: (importPath: string) => {
@@ -3406,9 +3414,7 @@ describe('typecheck — imported diagnostics', () => {
   it('deduplicates diagnostics when the same imported file is referenced twice', () => {
     // Importing the same file twice should use the file type cache on the
     // second access and avoid emitting duplicate diagnostics.
-    const files = new Map([
-      ['./bad.dvala', 'let value: String = 42; { value }'],
-    ])
+    const files = new Map([['./bad.dvala', 'let value: String = 42; { value }']])
 
     const dvala = createDvala({
       fileResolver: (importPath: string) => {
@@ -3419,10 +3425,9 @@ describe('typecheck — imported diagnostics', () => {
     })
 
     // Two separate import expressions for the same file in sequence
-    const result = dvala.typecheck(
-      'let a = import("./bad.dvala"); let b = import("./bad.dvala"); a',
-      { fileResolverBaseDir: '.' },
-    )
+    const result = dvala.typecheck('let a = import("./bad.dvala"); let b = import("./bad.dvala"); a', {
+      fileResolverBaseDir: '.',
+    })
 
     // There should be diagnostics (the file has a type error), but they should
     // NOT be duplicated — the dedup logic should keep only one copy.
@@ -3440,10 +3445,7 @@ describe('typecheck — imported diagnostics', () => {
 
     // Importing a file that the resolver cannot find should not crash the
     // typechecker — it should fall back to Unknown and produce no error diagnostic.
-    const result = dvala.typecheck(
-      'let x = import("./nonexistent.dvala"); x',
-      { fileResolverBaseDir: '.' },
-    )
+    const result = dvala.typecheck('let x = import("./nonexistent.dvala"); x', { fileResolverBaseDir: '.' })
 
     // Should not throw; the import gets Unknown type
     expect(result.typeMap.size).toBeGreaterThan(0)
@@ -3453,9 +3455,7 @@ describe('typecheck — imported diagnostics', () => {
     // The imported file declares a type alias and uses it in an annotation.
     // Without type alias registration in the import path, the annotation
     // would silently collapse to Unknown.
-    const files = new Map([
-      ['./types.dvala', 'type Num = Number; let value: Num = 42; { value }'],
-    ])
+    const files = new Map([['./types.dvala', 'type Num = Number; let value: Num = 42; { value }']])
 
     const dvala = createDvala({
       fileResolver: (importPath: string) => {
@@ -3465,10 +3465,7 @@ describe('typecheck — imported diagnostics', () => {
       },
     })
 
-    const result = dvala.typecheck(
-      'let { value } = import("./types.dvala"); value + 1',
-      { fileResolverBaseDir: '.' },
-    )
+    const result = dvala.typecheck('let { value } = import("./types.dvala"); value + 1', { fileResolverBaseDir: '.' })
 
     expect(result.diagnostics).toHaveLength(0)
   })
@@ -3478,14 +3475,17 @@ describe('typecheck — imported diagnostics', () => {
     // declaration registration in the import path, perform() would collapse
     // to Unknown.
     const files = new Map([
-      ['./effects.dvala', [
-        'effect @test.imported(Number) -> String;',
-        'let handle = (thunk) -> do',
-        '  let h = handler @test.imported(x) -> resume(str(x)) end;',
-        '  h(thunk)',
-        'end;',
-        '{ handle }',
-      ].join('\n')],
+      [
+        './effects.dvala',
+        [
+          'effect @test.imported(Number) -> String;',
+          'let handle = (thunk) -> do',
+          '  let h = handler @test.imported(x) -> resume(str(x)) end;',
+          '  h(thunk)',
+          'end;',
+          '{ handle }',
+        ].join('\n'),
+      ],
     ])
 
     const dvala = createDvala({
@@ -3496,10 +3496,7 @@ describe('typecheck — imported diagnostics', () => {
       },
     })
 
-    const result = dvala.typecheck(
-      'let { handle } = import("./effects.dvala"); handle',
-      { fileResolverBaseDir: '.' },
-    )
+    const result = dvala.typecheck('let { handle } = import("./effects.dvala"); handle', { fileResolverBaseDir: '.' })
 
     // The import should succeed without errors — the effect declaration
     // should be recognized and the handler should typecheck correctly.
@@ -3509,9 +3506,7 @@ describe('typecheck — imported diagnostics', () => {
 
   it('resolves imports with parent directory traversal (..)', () => {
     // Tests the joinPath ".." segment handling where resolvedSegments.pop() is called
-    const files = new Map([
-      ['./lib/helper.dvala', '{ x: 42 }'],
-    ])
+    const files = new Map([['./lib/helper.dvala', '{ x: 42 }']])
 
     const dvala = createDvala({
       fileResolver: (importPath: string, fromDir: string) => {
@@ -3530,10 +3525,7 @@ describe('typecheck — imported diagnostics', () => {
     })
 
     // Import from a nested directory, going up via ".."
-    const result = dvala.typecheck(
-      'let { x } = import("../lib/helper.dvala"); x',
-      { fileResolverBaseDir: './sub' },
-    )
+    const result = dvala.typecheck('let { x } = import("../lib/helper.dvala"); x', { fileResolverBaseDir: './sub' })
 
     expect(result.diagnostics).toHaveLength(0)
   })
@@ -3550,10 +3542,7 @@ describe('typecheck — imported diagnostics', () => {
 
     // The ".." traversal past the relative root exercises the !root branch
     // in joinPath where ".." segments are pushed onto resolvedSegments.
-    const result = dvala.typecheck(
-      'let { value } = import("../../far.dvala"); value',
-      { fileResolverBaseDir: '.' },
-    )
+    const result = dvala.typecheck('let { value } = import("../../far.dvala"); value', { fileResolverBaseDir: '.' })
 
     expect(result.diagnostics).toHaveLength(0)
   })
@@ -3562,10 +3551,10 @@ describe('typecheck — imported diagnostics', () => {
     // Import a file that exports a handler to exercise the Handler case
     // in normalizeImportedExportType.
     const files = new Map([
-      ['./handler.dvala', [
-        'effect @test.norm(Number) -> Number;',
-        'handler @test.norm(x) -> resume(x * 2) end',
-      ].join('\n')],
+      [
+        './handler.dvala',
+        ['effect @test.norm(Number) -> Number;', 'handler @test.norm(x) -> resume(x * 2) end'].join('\n'),
+      ],
     ])
 
     const dvala = createDvala({
@@ -3576,10 +3565,7 @@ describe('typecheck — imported diagnostics', () => {
       },
     })
 
-    const result = dvala.typecheck(
-      'let h = import("./handler.dvala"); h',
-      { fileResolverBaseDir: '.' },
-    )
+    const result = dvala.typecheck('let h = import("./handler.dvala"); h', { fileResolverBaseDir: '.' })
 
     // The handler import should be resolved without crashing
     expect(result.typeMap.size).toBeGreaterThan(0)
@@ -3589,14 +3575,17 @@ describe('typecheck — imported diagnostics', () => {
     // Import a file that exports a function wrapping a handler to
     // exercise the handlerWrapper branch in normalizeImportedExportType.
     const files = new Map([
-      ['./wrapped.dvala', [
-        'effect @test.wrap(String) -> Null;',
-        'let run = (thunk) -> do',
-        '  let h = handler @test.wrap(msg) -> resume(null) end;',
-        '  h(thunk)',
-        'end;',
-        '{ run }',
-      ].join('\n')],
+      [
+        './wrapped.dvala',
+        [
+          'effect @test.wrap(String) -> Null;',
+          'let run = (thunk) -> do',
+          '  let h = handler @test.wrap(msg) -> resume(null) end;',
+          '  h(thunk)',
+          'end;',
+          '{ run }',
+        ].join('\n'),
+      ],
     ])
 
     const dvala = createDvala({
@@ -3607,14 +3596,10 @@ describe('typecheck — imported diagnostics', () => {
       },
     })
 
-    const result = dvala.typecheck(
-      'let { run } = import("./wrapped.dvala"); run',
-      { fileResolverBaseDir: '.' },
-    )
+    const result = dvala.typecheck('let { run } = import("./wrapped.dvala"); run', { fileResolverBaseDir: '.' })
 
     expect(result.typeMap.size).toBeGreaterThan(0)
   })
-
 })
 
 // ---------------------------------------------------------------------------

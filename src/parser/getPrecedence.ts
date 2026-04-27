@@ -3,7 +3,10 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import type { SymbolicBinaryOperator } from '../tokenizer/operators'
 import { exponentiationPrecedence } from './helpers'
 
-export function getPrecedence(operatorSign: SymbolicBinaryOperator, sourceCodeInfo: SourceCodeInfo | undefined): number {
+export function getPrecedence(
+  operatorSign: SymbolicBinaryOperator,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+): number {
   switch (operatorSign) {
     case '^': // exponentiation
       return exponentiationPrecedence
@@ -47,7 +50,7 @@ export function getPrecedence(operatorSign: SymbolicBinaryOperator, sourceCodeIn
     case '??': // nullish coalescing
       return 4
 
-      // leave room for binaryFunctionalOperatorPrecedence = 3
+    // leave room for binaryFunctionalOperatorPrecedence = 3
 
     case '|>': // pipe
       return 2

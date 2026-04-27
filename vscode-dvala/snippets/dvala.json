@@ -11,22 +11,12 @@
   },
   "If-then-else": {
     "prefix": "if",
-    "body": [
-      "if $1 then",
-      "\t$2",
-      "else",
-      "\t$3",
-      "end"
-    ],
+    "body": ["if $1 then", "\t$2", "else", "\t$3", "end"],
     "description": "If-then-else expression"
   },
   "If-then": {
     "prefix": "ift",
-    "body": [
-      "if $1 then",
-      "\t$2",
-      "end"
-    ],
+    "body": ["if $1 then", "\t$2", "end"],
     "description": "If-then expression (no else)"
   },
   "For loop": {
@@ -36,57 +26,32 @@
   },
   "For loop (multiline)": {
     "prefix": "form",
-    "body": [
-      "for ($1 in $2) -> do",
-      "\t$3",
-      "end"
-    ],
+    "body": ["for ($1 in $2) -> do", "\t$3", "end"],
     "description": "For loop with do block body"
   },
   "Match": {
     "prefix": "match",
-    "body": [
-      "match $1",
-      "\tcase $2 then $3",
-      "\tcase _ then $4",
-      "end"
-    ],
+    "body": ["match $1", "\tcase $2 then $3", "\tcase _ then $4", "end"],
     "description": "Pattern match expression"
   },
   "Loop": {
     "prefix": "loop",
-    "body": [
-      "loop ($1 = $2) -> do",
-      "\tif $3 then",
-      "\t\t$4",
-      "\telse",
-      "\t\trecur($5)",
-      "\tend",
-      "end"
-    ],
+    "body": ["loop ($1 = $2) -> do", "\tif $3 then", "\t\t$4", "\telse", "\t\trecur($5)", "\tend", "end"],
     "description": "Loop with recur"
   },
   "Do block": {
     "prefix": "do",
-    "body": [
-      "do",
-      "\t$1",
-      "end"
-    ],
+    "body": ["do", "\t$1", "end"],
     "description": "Do block"
   },
   "Handler": {
     "prefix": "handler",
-    "body": [
-      "handler @$1($2) -> $3"
-    ],
+    "body": ["handler @$1($2) -> $3"],
     "description": "Effect handler"
   },
   "Transform": {
     "prefix": "transform",
-    "body": [
-      "transform @$1($2) -> $3"
-    ],
+    "body": ["transform @$1($2) -> $3"],
     "description": "Effect transform handler"
   },
   "Perform": {

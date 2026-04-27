@@ -1,4 +1,3 @@
-
 import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -30,7 +29,9 @@ describe('proc Integration Tests', () => {
       })
       return result.trim()
     } catch (error: any) {
-      throw new Error(`Dvala Proc failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`, { cause: error })
+      throw new Error(`Dvala Proc failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`, {
+        cause: error,
+      })
     }
   }
 

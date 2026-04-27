@@ -29,11 +29,7 @@ export function calcCorrelation(segmentA: number[], segmentB: number[]): number 
 /**
  * Extract overlapping segments from two vectors based on lag
  */
-export function extractOverlappingSegments(
-  vectorA: number[],
-  vectorB: number[],
-  lag: number,
-): [number[], number[]] {
+export function extractOverlappingSegments(vectorA: number[], vectorB: number[], lag: number): [number[], number[]] {
   const absLag = Math.abs(lag)
   const overlapLength = vectorA.length - absLag
 

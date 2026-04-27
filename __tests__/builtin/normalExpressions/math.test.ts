@@ -154,7 +154,7 @@ describe('math functions', () => {
       expect(() => dvala.run('^()')).toThrow(DvalaError)
       expect(() => dvala.run('^(3)')).toThrow(DvalaError)
       expect(() => dvala.run('^(3, 4, 5)')).toThrow(DvalaError)
-      expect(dvala.run('2 ^ 3 ^ 2')).toBe(2 ** 3 ** 2)
+      expect(dvala.run('2 ^ 3 ^ 2')).toBe(2 ** (3 ** 2))
       expect(dvala.run('^(2, 0)')).toBe(1)
       expect(dvala.run('^(2, 0)')).toBe(1)
       expect(dvala.run('^(2, 1)')).toBe(2)
@@ -299,7 +299,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}ln([])`)).toEqual([])
     })
     it('should take the natural logarithm of a matrix', () => {
-      expect(mdvala.run(`${m}ln([[1, 2], [3, 4]])`)).toEqual([[0, Math.log(2)], [Math.log(3), Math.log(4)]])
+      expect(mdvala.run(`${m}ln([[1, 2], [3, 4]])`)).toEqual([
+        [0, Math.log(2)],
+        [Math.log(3), Math.log(4)],
+      ])
       expect(() => mdvala.run(`${m}ln([[0]])`)).toThrow('Number is not finite')
       expect(() => mdvala.run(`${m}ln([[-1]])`)).toThrow('Number is not finite')
     })
@@ -324,7 +327,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}log2([])`)).toEqual([])
     })
     it('should take the base 2 logarithm of a matrix', () => {
-      expect(mdvala.run(`${m}log2([[1, 2], [3, 4]])`)).toEqual([[0, 1], [Math.log2(3), Math.log2(4)]])
+      expect(mdvala.run(`${m}log2([[1, 2], [3, 4]])`)).toEqual([
+        [0, 1],
+        [Math.log2(3), Math.log2(4)],
+      ])
       expect(() => mdvala.run(`${m}log2([[0]])`)).toThrow('Number is not finite')
     })
   })
@@ -348,7 +354,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}log10([])`)).toEqual([])
     })
     it('should take the base 10 logarithm of a matrix', () => {
-      expect(mdvala.run(`${m}log10([[1, 2], [3, 4]])`)).toEqual([[0, Math.log10(2)], [Math.log10(3), Math.log10(4)]])
+      expect(mdvala.run(`${m}log10([[1, 2], [3, 4]])`)).toEqual([
+        [0, Math.log10(2)],
+        [Math.log10(3), Math.log10(4)],
+      ])
       expect(() => mdvala.run(`${m}log10([[0]])`)).toThrow('Number is not finite')
     })
   })
@@ -385,7 +394,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}sin([])`)).toEqual([])
     })
     it('should take the sine of a matrix', () => {
-      expect(mdvala.run(`${m}sin([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.sin(0), Math.sin(0.1)], [Math.sin(-0.1), Math.sin(1)]])
+      expect(mdvala.run(`${m}sin([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.sin(0), Math.sin(0.1)],
+        [Math.sin(-0.1), Math.sin(1)],
+      ])
       expect(mdvala.run(`${m}sin([[0]])`)).toEqual([[Math.sin(0)]])
     })
   })
@@ -406,7 +418,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}cos([])`)).toEqual([])
     })
     it('should take the cosine of a matrix', () => {
-      expect(mdvala.run(`${m}cos([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.cos(0), Math.cos(0.1)], [Math.cos(-0.1), Math.cos(1)]])
+      expect(mdvala.run(`${m}cos([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.cos(0), Math.cos(0.1)],
+        [Math.cos(-0.1), Math.cos(1)],
+      ])
       expect(mdvala.run(`${m}cos([[0]])`)).toEqual([[Math.cos(0)]])
     })
   })
@@ -427,7 +442,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}tan([])`)).toEqual([])
     })
     it('should take the tangent of a matrix', () => {
-      expect(mdvala.run(`${m}tan([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.tan(0), Math.tan(0.1)], [Math.tan(-0.1), Math.tan(1)]])
+      expect(mdvala.run(`${m}tan([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.tan(0), Math.tan(0.1)],
+        [Math.tan(-0.1), Math.tan(1)],
+      ])
       expect(mdvala.run(`${m}tan([[0]])`)).toEqual([[Math.tan(0)]])
     })
   })
@@ -449,7 +467,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}sinh([])`)).toEqual([])
     })
     it('should take the hyperbolic sine of a matrix', () => {
-      expect(mdvala.run(`${m}sinh([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.sinh(0), Math.sinh(0.1)], [Math.sinh(-0.1), Math.sinh(1)]])
+      expect(mdvala.run(`${m}sinh([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.sinh(0), Math.sinh(0.1)],
+        [Math.sinh(-0.1), Math.sinh(1)],
+      ])
       expect(mdvala.run(`${m}sinh([[0]])`)).toEqual([[Math.sinh(0)]])
     })
   })
@@ -470,7 +491,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}cosh([])`)).toEqual([])
     })
     it('should take the hyperbolic cosine of a matrix', () => {
-      expect(mdvala.run(`${m}cosh([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.cosh(0), Math.cosh(0.1)], [Math.cosh(-0.1), Math.cosh(1)]])
+      expect(mdvala.run(`${m}cosh([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.cosh(0), Math.cosh(0.1)],
+        [Math.cosh(-0.1), Math.cosh(1)],
+      ])
       expect(mdvala.run(`${m}cosh([[0]])`)).toEqual([[Math.cosh(0)]])
     })
   })
@@ -491,7 +515,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}tanh([])`)).toEqual([])
     })
     it('should take the hyperbolic tangent of a matrix', () => {
-      expect(mdvala.run(`${m}tanh([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.tanh(0), Math.tanh(0.1)], [Math.tanh(-0.1), Math.tanh(1)]])
+      expect(mdvala.run(`${m}tanh([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.tanh(0), Math.tanh(0.1)],
+        [Math.tanh(-0.1), Math.tanh(1)],
+      ])
       expect(mdvala.run(`${m}tanh([[0]])`)).toEqual([[Math.tanh(0)]])
     })
   })
@@ -513,7 +540,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}asin([])`)).toEqual([])
     })
     it('should take the arcsine of a matrix', () => {
-      expect(mdvala.run(`${m}asin([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.asin(0), Math.asin(0.1)], [Math.asin(-0.1), Math.asin(1)]])
+      expect(mdvala.run(`${m}asin([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.asin(0), Math.asin(0.1)],
+        [Math.asin(-0.1), Math.asin(1)],
+      ])
       expect(mdvala.run(`${m}asin([[0]])`)).toEqual([[Math.asin(0)]])
     })
   })
@@ -534,7 +564,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}acos([])`)).toEqual([])
     })
     it('should take the arccosine of a matrix', () => {
-      expect(mdvala.run(`${m}acos([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.acos(0), Math.acos(0.1)], [Math.acos(-0.1), Math.acos(1)]])
+      expect(mdvala.run(`${m}acos([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.acos(0), Math.acos(0.1)],
+        [Math.acos(-0.1), Math.acos(1)],
+      ])
       expect(mdvala.run(`${m}acos([[0]])`)).toEqual([[Math.acos(0)]])
     })
   })
@@ -555,7 +588,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}atan([])`)).toEqual([])
     })
     it('should take the arctangent of a matrix', () => {
-      expect(mdvala.run(`${m}atan([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.atan(0), Math.atan(0.1)], [Math.atan(-0.1), Math.atan(1)]])
+      expect(mdvala.run(`${m}atan([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.atan(0), Math.atan(0.1)],
+        [Math.atan(-0.1), Math.atan(1)],
+      ])
       expect(mdvala.run(`${m}atan([[0]])`)).toEqual([[Math.atan(0)]])
     })
   })
@@ -577,7 +613,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}asinh([])`)).toEqual([])
     })
     it('should take the hyperbolic arcsine of a matrix', () => {
-      expect(mdvala.run(`${m}asinh([[0, 0.1], [-0.1, 1]])`)).toEqual([[Math.asinh(0), Math.asinh(0.1)], [Math.asinh(-0.1), Math.asinh(1)]])
+      expect(mdvala.run(`${m}asinh([[0, 0.1], [-0.1, 1]])`)).toEqual([
+        [Math.asinh(0), Math.asinh(0.1)],
+        [Math.asinh(-0.1), Math.asinh(1)],
+      ])
       expect(mdvala.run(`${m}asinh([[0]])`)).toEqual([[Math.asinh(0)]])
     })
   })
@@ -598,7 +637,10 @@ describe('math functions', () => {
       expect(mdvala.run(`${m}acosh([])`)).toEqual([])
     })
     it('should take the hyperbolic arccosine of a matrix', () => {
-      expect(mdvala.run(`${m}acosh([[1, 100], [2, 3]])`)).toEqual([[Math.acosh(1), Math.acosh(100)], [Math.acosh(2), Math.acosh(3)]])
+      expect(mdvala.run(`${m}acosh([[1, 100], [2, 3]])`)).toEqual([
+        [Math.acosh(1), Math.acosh(100)],
+        [Math.acosh(2), Math.acosh(3)],
+      ])
       expect(() => mdvala.run(`${m}acosh([[0]])`)).toThrow('Number is not finite')
     })
   })

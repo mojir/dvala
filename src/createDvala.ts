@@ -89,8 +89,26 @@ export type DvalaRunOptions =
  * Set `disableAutoCheckpoint: true` to opt out.
  */
 export type DvalaRunAsyncOptions =
-  | { scope?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval']; filePath?: string }
-  | { scope?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval']; filePath?: string }
+  | {
+      scope?: Record<string, unknown>
+      pure: true
+      effectHandlers?: never
+      maxSnapshots?: number
+      disableAutoCheckpoint?: boolean
+      terminalSnapshot?: boolean
+      onNodeEval?: SnapshotState['onNodeEval']
+      filePath?: string
+    }
+  | {
+      scope?: Record<string, unknown>
+      pure?: false
+      effectHandlers?: Handlers
+      maxSnapshots?: number
+      disableAutoCheckpoint?: boolean
+      terminalSnapshot?: boolean
+      onNodeEval?: SnapshotState['onNodeEval']
+      filePath?: string
+    }
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
@@ -98,7 +116,10 @@ export interface DvalaRunner {
   getUndefinedSymbols: (source: string, symbolsOptions?: { scope?: Record<string, unknown> }) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
   /** Typecheck source code and return diagnostics + type map. */
-  typecheck: (source: string, options?: { fileResolverBaseDir?: string; filePath?: string; fold?: boolean }) => TypecheckResult
+  typecheck: (
+    source: string,
+    options?: { fileResolverBaseDir?: string; filePath?: string; fold?: boolean },
+  ) => TypecheckResult
 }
 
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
@@ -108,9 +129,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   let nodeIdCounter = 0
   const allocateNodeId = () => nodeIdCounter++
 
-  const modules = options?.modules
-    ? new Map(options.modules.map(m => [m.name, m]))
-    : undefined
+  const modules = options?.modules ? new Map(options.modules.map(m => [m.name, m])) : undefined
   const factoryEffectHandlers = options?.effectHandlers
   const factoryDisableTimeTravel = options?.disableAutoCheckpoint ?? false
   const factoryFileResolver = options?.fileResolver
@@ -130,8 +149,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     const effectiveDebug = debug || (forceDebug ?? false)
     if (!filePath && !forceDebug) {
       const cached = cache.get(source)
-      if (cached)
-        return cached
+      if (cached) return cached
     }
     const tokenStream = tokenize(source, effectiveDebug, filePath)
     const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
@@ -154,24 +172,18 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     // If forceDebug elevated debug for this call, the AST has a sourceMap that
     // would be absent from a non-debug cached entry — skip caching to avoid
     // serving a debug AST to non-debug callers (or vice versa).
-    if (!filePath && !forceDebug)
-      cache.set(source, ast)
+    if (!filePath && !forceDebug) cache.set(source, ast)
     return ast
   }
 
   function mergeEffectHandlers(runEffectHandlers?: Handlers): Handlers | undefined {
-    if (!factoryEffectHandlers && !runEffectHandlers)
-      return undefined
+    if (!factoryEffectHandlers && !runEffectHandlers) return undefined
     // Run handlers first (checked first), then factory handlers.
     return [...(runEffectHandlers ?? []), ...(factoryEffectHandlers ?? [])]
   }
 
-  function assertNotPureWithHandlers(
-    pure: boolean,
-    effectHandlers: Handlers | undefined,
-  ): void {
-    if (!pure)
-      return
+  function assertNotPureWithHandlers(pure: boolean, effectHandlers: Handlers | undefined): void {
+    if (!pure) return
     const hasEffectHandlers = effectHandlers && effectHandlers.length > 0
     if (hasEffectHandlers) {
       throw new TypeError('Cannot use pure mode with effect handlers')
@@ -205,7 +217,14 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
       assertNotPureWithHandlers(pure, effectHandlers)
 
-      const contextStack = createContextStack({ globalContext: scopeToGlobalContext(runOptions?.scope) }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir)
+      const contextStack = createContextStack(
+        { globalContext: scopeToGlobalContext(runOptions?.scope) },
+        modules,
+        pure,
+        undefined,
+        factoryFileResolver,
+        factoryFileResolverBaseDir,
+      )
 
       if (isDvalaBundle(source)) {
         // New AST bundle format: single pre-parsed AST with all modules inlined.
@@ -248,7 +267,16 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       try {
         const forceDebug = !!runOptions?.onNodeEval
         const effectiveDebug = debug || forceDebug
-        const contextStack = createContextStack({ globalContext: scopeToGlobalContext(runOptions?.scope) }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir, effectiveDebug ? allocateNodeId : undefined, effectiveDebug)
+        const contextStack = createContextStack(
+          { globalContext: scopeToGlobalContext(runOptions?.scope) },
+          modules,
+          pure,
+          undefined,
+          factoryFileResolver,
+          factoryFileResolverBaseDir,
+          effectiveDebug ? allocateNodeId : undefined,
+          effectiveDebug,
+        )
 
         // For AST bundles, use the pre-parsed AST directly.
         // Force debug (sourceMap building) when onNodeEval is set so nodeIds can be resolved.
@@ -260,7 +288,10 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         // onNodeEval callers can resolve nodeIds to positions after the run.
         if (isDvalaBundle(source) && source.ast.sourceMap && forceDebug) {
           if (!accumulatedSourceMap) {
-            accumulatedSourceMap = { sources: [...source.ast.sourceMap.sources], positions: new Map(source.ast.sourceMap.positions) }
+            accumulatedSourceMap = {
+              sources: [...source.ast.sourceMap.sources],
+              positions: new Map(source.ast.sourceMap.positions),
+            }
           } else {
             const sourceOffset = accumulatedSourceMap.sources.length
             accumulatedSourceMap.sources.push(...source.ast.sourceMap.sources)
@@ -275,15 +306,29 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         }
         const disableAutoCheckpoint = runOptions?.disableAutoCheckpoint ?? factoryDisableTimeTravel
         const terminalSnapshot = runOptions?.terminalSnapshot
-        const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
-          modules,
-        }, !disableAutoCheckpoint, terminalSnapshot, runOptions?.onNodeEval)
+        const result = await evaluateWithEffects(
+          ast,
+          contextStack,
+          effectHandlers,
+          runOptions?.maxSnapshots,
+          {
+            modules,
+          },
+          !disableAutoCheckpoint,
+          terminalSnapshot,
+          runOptions?.onNodeEval,
+        )
         // Include the accumulated sourceMap so callers can resolve nodeIds to positions.
         // Only present when debug mode was active (explicitly or via onNodeEval).
         const sourceMap = accumulatedSourceMap
         if (result.type === 'completed') {
           // Apply toJS to convert PV/PM to plain JS arrays/objects, matching run() semantics
-          return { ...result, value: toJS(result.value as never), scope: contextStack.getModuleScopeBindings(), sourceMap }
+          return {
+            ...result,
+            value: toJS(result.value as never),
+            scope: contextStack.getModuleScopeBindings(),
+            sourceMap,
+          }
         }
         return { ...result, sourceMap }
       } catch (error) {
@@ -306,7 +351,10 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       return new AutoCompleter(program, position, {})
     },
 
-    typecheck(source: string, typecheckOptions?: { fileResolverBaseDir?: string; filePath?: string; fold?: boolean }): TypecheckResult {
+    typecheck(
+      source: string,
+      typecheckOptions?: { fileResolverBaseDir?: string; filePath?: string; fold?: boolean },
+    ): TypecheckResult {
       const ast = buildAst(source, typecheckOptions?.filePath, true)
       return runTypecheck(ast, {
         modules: registeredModules,

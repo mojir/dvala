@@ -31,7 +31,10 @@ export function parseToCst(fullTokenStream: TokenStream): ParseToCstResult {
   // Check for tokenizer errors
   for (const token of fullTokenStream.tokens) {
     if (token[0] === 'Error') {
-      throw new ParseError(token[3], debugInfoToSourceCodeInfo(token[2], fullTokenStream.source, fullTokenStream.filePath))
+      throw new ParseError(
+        token[3],
+        debugInfoToSourceCodeInfo(token[2], fullTokenStream.source, fullTokenStream.filePath),
+      )
     }
   }
 
@@ -61,7 +64,17 @@ export function parseToCst(fullTokenStream: TokenStream): ParseToCstResult {
 // AST parsing
 // ---------------------------------------------------------------------------
 
-function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { nodes: AstNode[]; sourceMap: SourceMap | undefined; typeAnnotations?: Map<number, string>; effectDeclarations?: Map<string, { argType: string; retType: string }>; typeAliases?: Map<string, { params: AliasParam[]; body: string }>; typeParams?: Map<number, AliasParam[]> } {
+function parseInternal(
+  tokenStream: TokenStream,
+  allocateId?: () => number,
+): {
+  nodes: AstNode[]
+  sourceMap: SourceMap | undefined
+  typeAnnotations?: Map<number, string>
+  effectDeclarations?: Map<string, { argType: string; retType: string }>
+  typeAliases?: Map<string, { params: AliasParam[]; body: string }>
+  typeParams?: Map<number, AliasParam[]>
+} {
   tokenStream.tokens.forEach(token => {
     if (token[0] === 'Error') {
       throw new ParseError(token[3], debugInfoToSourceCodeInfo(token[2], tokenStream.source, tokenStream.filePath))
@@ -97,7 +110,10 @@ export function parse(tokenStream: TokenStream, allocateId?: () => number): AstN
 }
 
 export function parseToAst(tokenStream: TokenStream, allocateId?: () => number): Ast {
-  const { nodes, sourceMap, typeAnnotations, effectDeclarations, typeAliases, typeParams } = parseInternal(tokenStream, allocateId)
+  const { nodes, sourceMap, typeAnnotations, effectDeclarations, typeAliases, typeParams } = parseInternal(
+    tokenStream,
+    allocateId,
+  )
   return { body: nodes, sourceMap, typeAnnotations, effectDeclarations, typeAliases, typeParams }
 }
 
@@ -120,7 +136,9 @@ export function parseRecoverable(tokenStream: TokenStream, allocateId?: () => nu
   const errors: ParseError[] = []
   for (const token of tokenStream.tokens) {
     if (token[0] === 'Error') {
-      errors.push(new ParseError(token[3], debugInfoToSourceCodeInfo(token[2], tokenStream.source, tokenStream.filePath)))
+      errors.push(
+        new ParseError(token[3], debugInfoToSourceCodeInfo(token[2], tokenStream.source, tokenStream.filePath)),
+      )
     }
   }
 

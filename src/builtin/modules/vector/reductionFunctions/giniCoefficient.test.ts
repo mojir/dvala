@@ -27,7 +27,11 @@ describe('giniCoefficient', () => {
     expect(() => runVec('movingGiniCoefficient([], 2)')).toThrowError(DvalaError)
   })
   it('should calculate the centered moving giniCoefficient of a vector with padding', () => {
-    expect(runVec('centeredMovingGiniCoefficient([1, 2, 3], 2)')).toEqual([null, 0.16666666666666674, 0.10000000000000009])
+    expect(runVec('centeredMovingGiniCoefficient([1, 2, 3], 2)')).toEqual([
+      null,
+      0.16666666666666674,
+      0.10000000000000009,
+    ])
     expect(runVec('centeredMovingGiniCoefficient([1, 1, 3], 2)')).toEqual([null, 0, 0.25])
     expect(runVec('centeredMovingGiniCoefficient([0, 0, 0], 2)')).toEqual([null, 0, 0])
     expect(() => runVec('centeredMovingGiniCoefficient([], 2)')).toThrowError(DvalaError)

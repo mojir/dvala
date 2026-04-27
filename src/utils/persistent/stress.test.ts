@@ -274,7 +274,8 @@ describe('PersistentVector stress', () => {
       if (updated.get(i) !== -1) throw new Error(`set(${i}): expected -1`)
       // immediate neighbours unchanged
       if (i > 0 && updated.get(i - 1) !== i - 1) throw new Error(`neighbour ${i - 1} corrupted after set(${i})`)
-      if (i < N_SMALL - 1 && updated.get(i + 1) !== i + 1) throw new Error(`neighbour ${i + 1} corrupted after set(${i})`)
+      if (i < N_SMALL - 1 && updated.get(i + 1) !== i + 1)
+        throw new Error(`neighbour ${i + 1} corrupted after set(${i})`)
     }
   })
 })

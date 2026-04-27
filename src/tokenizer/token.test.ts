@@ -1,6 +1,22 @@
 import { describe, expect, test } from 'vitest'
 import { DvalaError } from '../errors'
-import { asA_BinaryOperatorToken, asBasePrefixedNumberToken, asLBraceToken, asLBracketToken, asLParenToken, asNumberToken, asOperatorToken, asRBraceToken, asRBracketToken, asRParenToken, asRegexpShorthandToken, asReservedSymbolToken, asStringToken, asSymbolToken, asWhitespaceToken } from './token'
+import {
+  asA_BinaryOperatorToken,
+  asBasePrefixedNumberToken,
+  asLBraceToken,
+  asLBracketToken,
+  asLParenToken,
+  asNumberToken,
+  asOperatorToken,
+  asRBraceToken,
+  asRBracketToken,
+  asRParenToken,
+  asRegexpShorthandToken,
+  asReservedSymbolToken,
+  asStringToken,
+  asSymbolToken,
+  asWhitespaceToken,
+} from './token'
 
 describe('token', () => {
   describe('guards', () => {

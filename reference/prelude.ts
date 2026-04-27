@@ -14,11 +14,9 @@ export const prelude: Record<PreludeName, PreludeReference> = {
     title: 'Positive',
     category: 'prelude',
     definition: 'Number & {n | n > 0}',
-    description: 'Strictly positive numbers (n > 0). Use as a precondition where zero and negatives are both invalid — e.g. divisor in a count-style formula, quantities, lengths.',
-    examples: [
-      snippet('let x: Positive = 5'),
-      snippet('let f = (n: Positive) -> 100 / n'),
-    ],
+    description:
+      'Strictly positive numbers (n > 0). Use as a precondition where zero and negatives are both invalid — e.g. divisor in a count-style formula, quantities, lengths.',
+    examples: [snippet('let x: Positive = 5'), snippet('let f = (n: Positive) -> 100 / n')],
     seeAlso: ['-prelude-NonNegative', '-prelude-NonZero'],
   },
   '-prelude-NonNegative': {
@@ -26,11 +24,9 @@ export const prelude: Record<PreludeName, PreludeReference> = {
     title: 'NonNegative',
     category: 'prelude',
     definition: 'Number & {n | n >= 0}',
-    description: 'Non-negative numbers (n >= 0). The natural-number sense from CS where 0 is included; common precondition for array indices and counts.',
-    examples: [
-      snippet('let i: NonNegative = 0'),
-      snippet('let f = (idx: NonNegative) -> idx + 1'),
-    ],
+    description:
+      'Non-negative numbers (n >= 0). The natural-number sense from CS where 0 is included; common precondition for array indices and counts.',
+    examples: [snippet('let i: NonNegative = 0'), snippet('let f = (idx: NonNegative) -> idx + 1')],
     seeAlso: ['-prelude-Positive', '-prelude-NonZero'],
   },
   '-prelude-NonZero': {
@@ -38,11 +34,9 @@ export const prelude: Record<PreludeName, PreludeReference> = {
     title: 'NonZero',
     category: 'prelude',
     definition: 'Number & {n | n != 0}',
-    description: 'Non-zero numbers (n != 0). The minimal precondition for division — `Positive` is stricter than needed when negative divisors are also fine.',
-    examples: [
-      snippet('let d: NonZero = -3'),
-      snippet('let safeDivide = (a: Number, b: NonZero) -> a / b'),
-    ],
+    description:
+      'Non-zero numbers (n != 0). The minimal precondition for division — `Positive` is stricter than needed when negative divisors are also fine.',
+    examples: [snippet('let d: NonZero = -3'), snippet('let safeDivide = (a: Number, b: NonZero) -> a / b')],
     seeAlso: ['-prelude-Positive', '-prelude-NonNegative'],
   },
   '-prelude-NonEmpty': {
@@ -50,10 +44,8 @@ export const prelude: Record<PreludeName, PreludeReference> = {
     title: 'NonEmpty',
     category: 'prelude',
     definition: 'T & {xs | count(xs) > 0} where T: Sequence',
-    description: 'Non-empty sequences (count(xs) > 0). Generic over the `Sequence` upper bound, so it works for both arrays and strings — `NonEmpty<Array<Number>>` and `NonEmpty<String>` are both valid.',
-    examples: [
-      snippet('let xs: NonEmpty<Number[]> = [1, 2, 3]'),
-      snippet('let s: NonEmpty<String> = "hi"'),
-    ],
+    description:
+      'Non-empty sequences (count(xs) > 0). Generic over the `Sequence` upper bound, so it works for both arrays and strings — `NonEmpty<Array<Number>>` and `NonEmpty<String>` are both valid.',
+    examples: [snippet('let xs: NonEmpty<Number[]> = [1, 2, 3]'), snippet('let s: NonEmpty<String> = "hi"')],
   },
 }

@@ -22,7 +22,12 @@ describe('BarrierFrame effect isolation', () => {
       {
         effectHandlers: [
           // The host catches the effect that escapes the branch
-          { pattern: 'outer.eff', handler: async ({ arg, resume }) => { resume(`host-handled-${arg}`) } },
+          {
+            pattern: 'outer.eff',
+            handler: async ({ arg, resume }) => {
+              resume(`host-handled-${arg}`)
+            },
+          },
         ],
       },
     )
@@ -59,7 +64,12 @@ describe('closure-based attacks', () => {
       end`,
       {
         effectHandlers: [
-          { pattern: 'state.get', handler: async ({ resume }) => { resume('host-state') } },
+          {
+            pattern: 'state.get',
+            handler: async ({ resume }) => {
+              resume('host-state')
+            },
+          },
         ],
       },
     )
@@ -146,7 +156,10 @@ describe('immutability guarantees', () => {
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
       // Each branch returns a NEW array — shared is unchanged
-      expect(result.value).toEqual([[1, 2, 3, 4], [1, 2, 3, 5]])
+      expect(result.value).toEqual([
+        [1, 2, 3, 4],
+        [1, 2, 3, 5],
+      ])
     }
   })
 })
@@ -166,7 +179,12 @@ describe('nested parallel isolation', () => {
       end`,
       {
         effectHandlers: [
-          { pattern: 'outer.eff', handler: async ({ resume }) => { resume('host-outer') } },
+          {
+            pattern: 'outer.eff',
+            handler: async ({ resume }) => {
+              resume('host-outer')
+            },
+          },
         ],
       },
     )
@@ -184,9 +202,7 @@ describe('nested parallel isolation', () => {
 
 describe('settled error handling', () => {
   it('branch error in settled mode is wrapped as [:error, payload]', async () => {
-    const result = await dvala.runAsync(
-      'settled([-> 42, -> raise("oops"), -> 99])',
-    )
+    const result = await dvala.runAsync('settled([-> 42, -> raise("oops"), -> 99])')
 
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
@@ -226,9 +242,7 @@ describe('settled error handling', () => {
   })
 
   it('all branches succeed in settled mode — all wrapped as [:ok, value]', async () => {
-    const result = await dvala.runAsync(
-      'settled([-> 1, -> 2, -> 3])',
-    )
+    const result = await dvala.runAsync('settled([-> 1, -> 2, -> 3])')
 
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
@@ -242,9 +256,7 @@ describe('settled error handling', () => {
   })
 
   it('all branches error in settled mode — no throw, all wrapped as [:error, ...]', async () => {
-    const result = await dvala.runAsync(
-      'settled([-> raise("a"), -> raise("b")])',
-    )
+    const result = await dvala.runAsync('settled([-> raise("a"), -> raise("b")])')
 
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {

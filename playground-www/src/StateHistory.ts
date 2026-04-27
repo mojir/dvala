@@ -19,7 +19,11 @@ export class StateHistory {
   private index: number
   private listener: (status: HistoryStatus) => void
   private lastStatus: HistoryStatus = { canUndo: false, canRedo: false }
-  constructor(initial: HistoryEntry, listener: (status: HistoryStatus) => void, private readonly maxEntries = Number.POSITIVE_INFINITY) {
+  constructor(
+    initial: HistoryEntry,
+    listener: (status: HistoryStatus) => void,
+    private readonly maxEntries = Number.POSITIVE_INFINITY,
+  ) {
     this.history.push(initial)
     this.index = 0
     this.listener = listener
@@ -57,16 +61,14 @@ export class StateHistory {
   }
 
   public undo(): HistoryEntry {
-    if (!this.canUndo)
-      throw new Error('Cannot undo')
+    if (!this.canUndo) throw new Error('Cannot undo')
     this.index -= 1
     this.notify()
     return this.history[this.index]!
   }
 
   public redo(): HistoryEntry {
-    if (!this.canRedo)
-      throw new Error('Cannot redo')
+    if (!this.canRedo) throw new Error('Cannot redo')
     this.index += 1
     this.notify()
     return this.current
@@ -111,8 +113,7 @@ export class StateHistory {
   }
 
   private trimToMaxEntries() {
-    if (this.history.length <= this.maxEntries)
-      return
+    if (this.history.length <= this.maxEntries) return
 
     const overflow = this.history.length - this.maxEntries
     this.history.splice(0, overflow)

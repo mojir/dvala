@@ -1,10 +1,11 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
-  'test': {
+  test: {
     type: '(String, (() -> Unknown)) -> @{test.register} Null',
     category: 'test',
-    description: 'Registers a test case with a name and a function body. The test is collected by the test runner and executed in isolation.',
+    description:
+      'Registers a test case with a name and a function body. The test is collected by the test runner and executed in isolation.',
     returns: {
       type: 'null',
     },
@@ -23,16 +24,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
         argumentNames: ['name', 'body'],
       },
     ],
-    examples: [
-      'let { test } = import("test");\ntest("addition", -> assertEqual(1 + 1, 2))',
-    ],
+    examples: ['let { test } = import("test");\ntest("addition", -> assertEqual(1 + 1, 2))'],
     seeAlso: ['test.describe', 'test.skip'],
     hideOperatorForm: true,
   },
-  'describe': {
+  describe: {
     type: '(String, (() -> Unknown)) -> @{test.register} Null',
     category: 'test',
-    description: 'Groups related tests under a descriptive label. Can be nested. The body function is executed immediately to collect the tests within.',
+    description:
+      'Groups related tests under a descriptive label. Can be nested. The body function is executed immediately to collect the tests within.',
     returns: {
       type: 'null',
     },
@@ -57,10 +57,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['test.test', 'test.skip'],
     hideOperatorForm: true,
   },
-  'skip': {
+  skip: {
     type: '(Unknown) -> @{test.register} Null',
     category: 'test',
-    description: 'A macro that marks its argument as skipped. Works with both `test` and `describe` — any tests registered inside the expression are reported but not executed. Use with the `#` prefix: `#skip test(...)` or `#skip describe(...)`.',
+    description:
+      'A macro that marks its argument as skipped. Works with both `test` and `describe` — any tests registered inside the expression are reported but not executed. Use with the `#` prefix: `#skip test(...)` or `#skip describe(...)`.',
     returns: {
       type: 'null',
     },
@@ -75,9 +76,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
         argumentNames: ['expr'],
       },
     ],
-    examples: [
-      'let { test, skip } = import("test");\n#skip test("not ready yet", -> assertEqual(1, 2))',
-    ],
+    examples: ['let { test, skip } = import("test");\n#skip test("not ready yet", -> assertEqual(1, 2))'],
     seeAlso: ['test.test', 'test.describe'],
     hideOperatorForm: true,
   },

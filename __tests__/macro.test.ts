@@ -192,88 +192,108 @@ myAssert(1 > 5)`)
   describe('expansion depth limit', () => {
     it('should throw when macro expansion exceeds depth limit', () => {
       // Macro that calls itself — infinite expansion
-      expect(() => run(`
+      expect(() =>
+        run(`
         let inf = macro (ast) -> inf(ast);
         inf(1)
-      `)).toThrow(`Maximum macro expansion depth (${MAX_MACRO_EXPANSION_DEPTH}) exceeded`)
+      `),
+      ).toThrow(`Maximum macro expansion depth (${MAX_MACRO_EXPANSION_DEPTH}) exceeded`)
     })
 
     it('should throw for mutually recursive macros', () => {
       // Two macros calling each other — infinite expansion
-      expect(() => run(`
+      expect(() =>
+        run(`
         let a = macro (ast) -> b(ast);
         let b = macro (ast) -> a(ast);
         a(1)
-      `)).toThrow(`Maximum macro expansion depth (${MAX_MACRO_EXPANSION_DEPTH}) exceeded`)
+      `),
+      ).toThrow(`Maximum macro expansion depth (${MAX_MACRO_EXPANSION_DEPTH}) exceeded`)
     })
 
     it('should propagate original error message through handler', () => {
       // When a macro expansion fails and an error handler catches it,
       // the handler should receive the original error message — not a
       // secondary "M-node cannot be evaluated" error.
-      expect(run(`
+      expect(
+        run(`
         let inf = macro (ast) -> inf(ast);
         do with handler @dvala.error(err) -> resume(err.message) end; inf(1) end
-      `)).toContain('Maximum macro expansion depth')
+      `),
+      ).toContain('Maximum macro expansion depth')
     })
 
     it('should return handler value when macro expansion error is caught by fallback', () => {
-      expect(run(`
+      expect(
+        run(`
         let { fallback } = import("effectHandler");
         let inf = macro (ast) -> inf(ast);
         fallback("default")(-> inf(1))
-      `)).toBe('default')
+      `),
+      ).toBe('default')
     })
 
     it('should allow legitimate nested macro expansion', () => {
       // Macro that expands to code containing another macro call — two levels deep
-      expect(run(`
+      expect(
+        run(`
         let addOne = macro (ast) -> quote $^{ast} + 1 end;
         let addTwo = macro (ast) -> quote addOne(addOne($^{ast})) end;
         addTwo(10)
-      `)).toBe(12)
+      `),
+      ).toBe(12)
     })
   })
 
   describe('binding-position splice', () => {
     it('should splice a simple name into let binding', () => {
-      expect(run(`
+      expect(
+        run(`
         let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst(myVar, 42);
         myVar
-      `)).toBe(42)
+      `),
+      ).toBe(42)
     })
 
     it('should splice an array destructuring pattern', () => {
-      expect(run(`
+      expect(
+        run(`
         let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst([a, b], [1, 2]);
         a + b
-      `)).toBe(3)
+      `),
+      ).toBe(3)
     })
 
     it('should splice an object destructuring pattern', () => {
-      expect(run(`
+      expect(
+        run(`
         let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst({ x: x, y: y }, { x: 10, y: 20 });
         x + y
-      `)).toBe(30)
+      `),
+      ).toBe(30)
     })
 
     it('should splice nested destructuring', () => {
-      expect(run(`
+      expect(
+        run(`
         let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst([a, [b, c]], [1, [2, 3]]);
         a + b + c
-      `)).toBe(6)
+      `),
+      ).toBe(6)
     })
 
     it('should splice rest element in array pattern', () => {
-      expect(run(`
+      expect(
+        run(`
         let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst([head, ...tail], [1, 2, 3]);
         tail
-      `)).toEqual([2, 3])
+      `),
+      ).toEqual([2, 3])
     })
   })
 })

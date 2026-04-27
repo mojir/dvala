@@ -14,7 +14,9 @@ describe('happy', () => {
     expect(runNth('nth:happySeq(2)')).toEqual([1, 7])
     expect(runNth('nth:happySeq(3)')).toEqual([1, 7, 10])
     expect(runNth('nth:happySeq(4)')).toEqual([1, 7, 10, 13])
-    expect(runNth('nth:happySeq(20)')).toEqual([1, 7, 10, 13, 19, 23, 28, 31, 32, 44, 49, 68, 70, 79, 82, 86, 91, 94, 97, 100])
+    expect(runNth('nth:happySeq(20)')).toEqual([
+      1, 7, 10, 13, 19, 23, 28, 31, 32, 44, 49, 68, 70, 79, 82, 86, 91, 94, 97, 100,
+    ])
     expect(() => runNth('nth:happySeq(0)')).toThrow(DvalaError)
   })
 
@@ -31,7 +33,9 @@ describe('happy', () => {
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:happyTakeWhile(-> $ < 100)')).toEqual([1, 7, 10, 13, 19, 23, 28, 31, 32, 44, 49, 68, 70, 79, 82, 86, 91, 94, 97])
+    expect(runNth('nth:happyTakeWhile(-> $ < 100)')).toEqual([
+      1, 7, 10, 13, 19, 23, 28, 31, 32, 44, 49, 68, 70, 79, 82, 86, 91, 94, 97,
+    ])
   })
 
   it('should determine if numbers are in the sequence', () => {

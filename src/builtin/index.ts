@@ -43,7 +43,7 @@ export type SpecialExpressions = typeof specialExpressions
 export type SpecialExpression = SpecialExpressions[keyof SpecialExpressions]
 export type SpecialExpressionName = keyof typeof specialExpressionTypes
 
-export type SpecialExpressionType = typeof specialExpressionTypes[SpecialExpressionName]
+export type SpecialExpressionType = (typeof specialExpressionTypes)[SpecialExpressionName]
 
 export const builtin: Builtin = {
   normalExpressions,

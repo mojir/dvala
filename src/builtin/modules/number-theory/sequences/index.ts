@@ -54,13 +54,15 @@ export type SequenceDefinition<T extends string, Type extends number | string = 
 } & {
   maxLength?: number
   noTakeWhile?: true
-} & (Type extends string ? {
-  string: true
-} : {
-  string?: never
-}) & {
-  noNth?: true
-}
+} & (Type extends string
+    ? {
+        string: true
+      }
+    : {
+        string?: never
+      }) & {
+    noNth?: true
+  }
 
 export type SequenceNormalExpressions<T extends string, Type extends string | number = number> = {
   [key in SequenceKeys<T>]: key extends SeqKey<T>
@@ -137,10 +139,15 @@ function addSequence<Type extends number | string>(sequence: SequenceDefinition<
     if (key.endsWith('Seq')) {
       sequenceNormalExpressions[key] = createSeqNormalExpression(value as SeqFunction<Type>, sequence.maxLength)
       if (!sequence.noNth) {
-        sequenceNormalExpressions[key.replace(/Seq$/, 'Nth')] = createNthNormalExpression(value as SeqFunction<Type>, sequence.maxLength)
+        sequenceNormalExpressions[key.replace(/Seq$/, 'Nth')] = createNthNormalExpression(
+          value as SeqFunction<Type>,
+          sequence.maxLength,
+        )
       }
       if (!sequence.noTakeWhile) {
-        sequenceNormalExpressions[key.replace(/Seq$/, 'TakeWhile')] = createTakeWhileNormalExpression(sequence.maxLength)
+        sequenceNormalExpressions[key.replace(/Seq$/, 'TakeWhile')] = createTakeWhileNormalExpression(
+          sequence.maxLength,
+        )
       }
     } else if (key.startsWith('is')) {
       if (sequence.string) {
@@ -155,7 +162,7 @@ function addSequence<Type extends number | string>(sequence: SequenceDefinition<
 function createSeqNormalExpression<Type extends number | string>(
   seqFunction: SeqFunction<Type>,
   maxLength: number | undefined,
-// Return Any because Type[] (number[] or string[]) are annotated plain arrays not PersistentVector
+  // Return Any because Type[] (number[] or string[]) are annotated plain arrays not PersistentVector
 ): BuiltinNormalExpression<Any> {
   return {
     evaluate: (params, sourceCodeInfo) => {
@@ -176,11 +183,13 @@ function createSeqNormalExpression<Type extends number | string>(
 
 function createTakeWhileNormalExpression(
   maxLength: number | undefined,
-// Return Any because number[] is annotated plain array not PersistentVector
+  // Return Any because number[] is annotated plain array not PersistentVector
 ): BuiltinNormalExpression<Any> {
   return {
     /* v8 ignore next 1 */
-    evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
+    evaluate: () => {
+      throw new Error('unreachable: overridden by dvalaImpl')
+    },
     arity: typeof maxLength === 'number' ? { max: 1 } : toFixedArity(1),
   }
 }
@@ -206,9 +215,7 @@ function createNthNormalExpression<Type extends number | string>(
   }
 }
 
-function createNumberPredNormalExpression(
-  predFunction: PredFunction<number>,
-): BuiltinNormalExpression<boolean> {
+function createNumberPredNormalExpression(predFunction: PredFunction<number>): BuiltinNormalExpression<boolean> {
   return {
     evaluate: (params, sourceCodeInfo) => {
       const value = params.get(0)
@@ -219,9 +226,7 @@ function createNumberPredNormalExpression(
   }
 }
 
-function createStringPredNormalExpression(
-  predFunction: PredFunction<string>,
-): BuiltinNormalExpression<boolean> {
+function createStringPredNormalExpression(predFunction: PredFunction<string>): BuiltinNormalExpression<boolean> {
   return {
     evaluate: (params, sourceCodeInfo) => {
       const value = params.get(0)

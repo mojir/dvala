@@ -1,8 +1,4 @@
 {
   "extends": "./tsconfig.json",
-  "include": [
-    "types/**/*",
-    "mcp-server/**/*",
-    "reference/**/*"
-  ]
+  "include": ["types/**/*", "mcp-server/**/*", "reference/**/*"]
 }

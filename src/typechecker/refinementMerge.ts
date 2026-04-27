@@ -56,18 +56,14 @@ export function mergeRefinementPredicates(
 ): { predicate: AstNode; source: string } {
   // If the binders already agree, skip the alpha-rename — saves one
   // tree walk and keeps the AST identity-shared.
-  const renamedOuter = innerBinder === outerBinder
-    ? outerPredicate
-    : alphaRenameSym(outerPredicate, outerBinder, innerBinder)
+  const renamedOuter =
+    innerBinder === outerBinder ? outerPredicate : alphaRenameSym(outerPredicate, outerBinder, innerBinder)
 
   // `And` is a variadic special-expression node: payload is the list of
   // operands. Flatten when either side is already an `And` so a chain
   // of three refinements doesn't produce a right-skewed `And(P, And(Q, R))`
   // — simplify & solver both prefer the flat form.
-  const mergedOperands: AstNode[] = [
-    ...flattenAnd(innerPredicate),
-    ...flattenAnd(renamedOuter),
-  ]
+  const mergedOperands: AstNode[] = [...flattenAnd(innerPredicate), ...flattenAnd(renamedOuter)]
   const mergedPredicate: AstNode = [NodeTypes.And, mergedOperands, 0]
 
   // Source reconstruction: prettyPrint the merged AST and prefix with

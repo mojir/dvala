@@ -61,12 +61,7 @@ const ARITHMETIC_BUILTINS = new Set(['+', '-', '*', '/', '%', '^', 'mod', 'quot'
  * their own source positions but those reference the predicate body,
  * which isn't what the user sees in the type-annotation context).
  */
-export function fragmentCheckPredicate(
-  predicate: AstNode,
-  binder: string,
-  source: string,
-  position: number,
-): void {
+export function fragmentCheckPredicate(predicate: AstNode, binder: string, source: string, position: number): void {
   checkBooleanExpr(predicate, binder, source, position)
 }
 
@@ -92,8 +87,8 @@ function checkBooleanExpr(node: AstNode, binder: string, source: string, positio
       // the `predicate-type` branch from the design doc: no coercion, a
       // var on its own isn't a predicate.
       throw new RefinementError(
-        `Refinement predicate must be a Boolean expression; got a bare identifier '${node[1] as string}'. `
-        + 'Use a relation (e.g. `x != 0`), a type-guard call (e.g. `isNumber(x)`), or a Boolean composition of those.',
+        `Refinement predicate must be a Boolean expression; got a bare identifier '${node[1] as string}'. ` +
+          'Use a relation (e.g. `x != 0`), a type-guard call (e.g. `isNumber(x)`), or a Boolean composition of those.',
         'predicate-type',
         source,
         position,
@@ -104,8 +99,8 @@ function checkBooleanExpr(node: AstNode, binder: string, source: string, positio
     case NodeTypes.Atom:
     case NodeTypes.TmplStr: {
       throw new RefinementError(
-        'Refinement predicate must be a Boolean expression; got a literal. '
-        + 'A literal on its own is not a predicate — use a comparison like `x == <literal>`.',
+        'Refinement predicate must be a Boolean expression; got a literal. ' +
+          'A literal on its own is not a predicate — use a comparison like `x == <literal>`.',
         'predicate-type',
         source,
         position,
@@ -118,8 +113,8 @@ function checkBooleanExpr(node: AstNode, binder: string, source: string, positio
     case NodeTypes.For:
     case NodeTypes.Block: {
       throw new RefinementError(
-        `Refinement predicate uses control-flow construct '${node[0] as string}', which is not in the accepted fragment. `
-        + 'Predicates must be pure Boolean expressions (relations, guards, `&&`/`||`/`!`).',
+        `Refinement predicate uses control-flow construct '${node[0] as string}', which is not in the accepted fragment. ` +
+          'Predicates must be pure Boolean expressions (relations, guards, `&&`/`||`/`!`).',
         'fragment',
         source,
         position,
@@ -130,8 +125,8 @@ function checkBooleanExpr(node: AstNode, binder: string, source: string, positio
     case NodeTypes.WithHandler:
     case NodeTypes.Handler: {
       throw new RefinementError(
-        `Refinement predicate contains an effect operation ('${node[0] as string}'). `
-        + 'Refinements describe values, not behaviors — effectful predicates are rejected.',
+        `Refinement predicate contains an effect operation ('${node[0] as string}'). ` +
+          'Refinements describe values, not behaviors — effectful predicates are rejected.',
         'fragment',
         source,
         position,
@@ -139,8 +134,8 @@ function checkBooleanExpr(node: AstNode, binder: string, source: string, positio
     }
     default: {
       throw new RefinementError(
-        `Refinement predicate uses a construct ('${node[0] as string}') that is not in the accepted fragment. `
-        + 'Allowed shapes: type-guard calls, relations, `count(var)`, and `&&` / `||` / `!` compositions of those.',
+        `Refinement predicate uses a construct ('${node[0] as string}') that is not in the accepted fragment. ` +
+          'Allowed shapes: type-guard calls, relations, `count(var)`, and `&&` / `||` / `!` compositions of those.',
         'fragment',
         source,
         position,
@@ -163,8 +158,8 @@ function checkCall(node: AstNode, binder: string, source: string, position: numb
   // property-accessor strings — all rejected.
   if (callee[0] !== NodeTypes.Builtin) {
     throw new RefinementError(
-      'Refinement predicate may only call Dvala builtin functions (type guards, relations, `count`, `!`). '
-      + 'User-defined or module-qualified functions are not in the Phase 1 fragment.',
+      'Refinement predicate may only call Dvala builtin functions (type guards, relations, `count`, `!`). ' +
+        'User-defined or module-qualified functions are not in the Phase 1 fragment.',
       'fragment',
       source,
       position,
@@ -198,8 +193,8 @@ function checkCall(node: AstNode, binder: string, source: string, position: numb
     }
     if (!isBinderRef(args[0]!, binder)) {
       throw new RefinementError(
-        `Refinement predicate: type-guard '${name}' must be applied to the binder '${binder}'. `
-        + 'Field access and other sub-expressions are deferred to a later phase.',
+        `Refinement predicate: type-guard '${name}' must be applied to the binder '${binder}'. ` +
+          'Field access and other sub-expressions are deferred to a later phase.',
         'fragment',
         source,
         position,
@@ -226,9 +221,9 @@ function checkCall(node: AstNode, binder: string, source: string, position: numb
   // try things like `{n | n * n > 0}` or `{i | i + 1 < N}` on first try.
   if (ARITHMETIC_BUILTINS.has(name)) {
     throw new RefinementError(
-      `Refinement predicate contains arithmetic operator '${name}', which is not in the Phase 1 fragment. `
-      + 'Phase 1 accepts relations (e.g. `x > 0`), type-guards (e.g. `isInteger(x)`), and `count(var)` only. '
-      + 'Arithmetic on refined variables is solved by Phase 3 (multi-variable linear arithmetic).',
+      `Refinement predicate contains arithmetic operator '${name}', which is not in the Phase 1 fragment. ` +
+        'Phase 1 accepts relations (e.g. `x > 0`), type-guards (e.g. `isInteger(x)`), and `count(var)` only. ' +
+        'Arithmetic on refined variables is solved by Phase 3 (multi-variable linear arithmetic).',
       'fragment',
       source,
       position,
@@ -237,8 +232,8 @@ function checkCall(node: AstNode, binder: string, source: string, position: numb
 
   // Any other builtin — rejected as outside the fragment.
   throw new RefinementError(
-    `Refinement predicate calls builtin '${name}', which is not in the accepted fragment. `
-    + 'Phase 1 accepts: type guards, relations (==, !=, <, <=, >, >=), `count(var)`, and `!` / `&&` / `||`.',
+    `Refinement predicate calls builtin '${name}', which is not in the accepted fragment. ` +
+      'Phase 1 accepts: type guards, relations (==, !=, <, <=, >, >=), `count(var)`, and `!` / `&&` / `||`.',
     'fragment',
     source,
     position,
@@ -262,8 +257,8 @@ function checkRelationOperands(
   if (lhsKind !== 'other') {
     if (!isLiteralLike(rhs)) {
       throw new RefinementError(
-        `Refinement predicate: relation '${relName}' requires a literal on the non-binder side. `
-        + 'References to other variables, arithmetic, and sub-expressions are deferred to a later phase.',
+        `Refinement predicate: relation '${relName}' requires a literal on the non-binder side. ` +
+          'References to other variables, arithmetic, and sub-expressions are deferred to a later phase.',
         'fragment',
         source,
         position,
@@ -276,8 +271,8 @@ function checkRelationOperands(
   if (rhsKind !== 'other') {
     if (!isLiteralLike(lhs)) {
       throw new RefinementError(
-        `Refinement predicate: relation '${relName}' requires a literal on the non-binder side. `
-        + 'References to other variables, arithmetic, and sub-expressions are deferred to a later phase.',
+        `Refinement predicate: relation '${relName}' requires a literal on the non-binder side. ` +
+          'References to other variables, arithmetic, and sub-expressions are deferred to a later phase.',
         'fragment',
         source,
         position,
@@ -293,18 +288,18 @@ function checkRelationOperands(
     // Phase 3 (multi-variable linear arithmetic) instead.
     if (isArithmeticCall(lhs)) {
       throw new RefinementError(
-        `Refinement predicate: relation '${relName}' has an arithmetic expression on its left-hand side, `
-        + 'which is not in the Phase 1 fragment. Phase 1 accepts only `binder` or `count(binder)` on the LHS. '
-        + 'Arithmetic on refined variables (e.g. `n + 1 > 0`) is solved by Phase 3 (multi-variable linear arithmetic).',
+        `Refinement predicate: relation '${relName}' has an arithmetic expression on its left-hand side, ` +
+          'which is not in the Phase 1 fragment. Phase 1 accepts only `binder` or `count(binder)` on the LHS. ' +
+          'Arithmetic on refined variables (e.g. `n + 1 > 0`) is solved by Phase 3 (multi-variable linear arithmetic).',
         'fragment',
         source,
         position,
       )
     }
     throw new RefinementError(
-      `Refinement predicate: relation '${relName}' must compare the binder '${binder}' `
-      + `(or 'count(${binder})') directly against a literal. `
-      + 'References to other variables, arithmetic, and sub-expressions are deferred to a later phase.',
+      `Refinement predicate: relation '${relName}' must compare the binder '${binder}' ` +
+        `(or 'count(${binder})') directly against a literal. ` +
+        'References to other variables, arithmetic, and sub-expressions are deferred to a later phase.',
       'fragment',
       source,
       position,
@@ -335,10 +330,10 @@ function classifyRelationLhs(node: AstNode, binder: string): 'binder' | 'countBi
   if (node[0] === NodeTypes.Call) {
     const [callee, args] = node[1] as [AstNode, AstNode[]]
     if (
-      callee[0] === NodeTypes.Builtin
-      && (callee[1] as string) === 'count'
-      && args.length === 1
-      && isBinderRef(args[0]!, binder)
+      callee[0] === NodeTypes.Builtin &&
+      (callee[1] as string) === 'count' &&
+      args.length === 1 &&
+      isBinderRef(args[0]!, binder)
     ) {
       return 'countBinder'
     }

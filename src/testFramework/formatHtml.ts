@@ -89,8 +89,7 @@ function renderTestCases(results: TestCaseResult[], filePath: string): string {
   for (const tc of results) {
     const parts = tc.name.split(' > ')
     const group = parts.length > 1 ? parts.slice(0, -1).join(' > ') : filePath
-    if (!groups.has(group))
-      groups.set(group, [])
+    if (!groups.has(group)) groups.set(group, [])
     groups.get(group)!.push(tc)
   }
 
@@ -106,10 +105,8 @@ function renderTestCases(results: TestCaseResult[], filePath: string): string {
       html += `  <li class="test ${tc.status}">`
       html += `<span class="icon">${icon}</span>`
       html += `<span class="name">${esc(name)}</span>`
-      if (durationStr)
-        html += `<span class="duration">${durationStr}</span>`
-      if (tc.status === 'skipped' && tc.reason)
-        html += `<span class="reason">(${esc(tc.reason)})</span>`
+      if (durationStr) html += `<span class="duration">${durationStr}</span>`
+      if (tc.status === 'skipped' && tc.reason) html += `<span class="reason">(${esc(tc.reason)})</span>`
       if (tc.status === 'failed' && tc.error) {
         html += renderErrorDetail(tc.error)
       }
@@ -140,26 +137,19 @@ function renderErrorDetail(error: unknown): string {
 }
 
 function esc(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof DvalaError)
-    return error.shortMessage
-  if (error instanceof Error)
-    return error.message
+  if (error instanceof DvalaError) return error.shortMessage
+  if (error instanceof Error) return error.message
   /* v8 ignore next 1 */
   return typeof error === 'string' ? error : 'Unknown error'
 }
 
 function formatLocation(sourceCodeInfo: SourceCodeInfo): string {
   const terms: string[] = []
-  if (sourceCodeInfo.filePath)
-    terms.push(sourceCodeInfo.filePath)
+  if (sourceCodeInfo.filePath) terms.push(sourceCodeInfo.filePath)
   if (sourceCodeInfo.position) {
     terms.push(`${sourceCodeInfo.position.line}`)
     terms.push(`${sourceCodeInfo.position.column}`)

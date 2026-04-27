@@ -2,13 +2,7 @@ import { describe, expect, it, test } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
 import { DvalaError } from '../errors'
 import { assertNumberOfParams, canBeOperator } from '../utils/arity'
-import {
-  asNonUndefined,
-  asUnknownRecord,
-  assertNonUndefined,
-  assertUnknownRecord,
-  isUnknownRecord,
-} from '.'
+import { asNonUndefined, asUnknownRecord, assertNonUndefined, assertUnknownRecord, isUnknownRecord } from '.'
 
 describe('typeGuards index file', () => {
   test('canBeOperator', () => {

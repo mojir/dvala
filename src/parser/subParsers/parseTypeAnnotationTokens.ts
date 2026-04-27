@@ -26,7 +26,10 @@ function rightAngleRunLength(token: ReturnType<ParserContext['tryPeek']>): numbe
   return 0
 }
 
-export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArrow?: boolean; stopAtRParen?: boolean; stopAtGt?: boolean }): string {
+export function collectTypeAnnotation(
+  ctx: ParserContext,
+  options?: { stopAtArrow?: boolean; stopAtRParen?: boolean; stopAtGt?: boolean },
+): string {
   const parts: string[] = []
   let depth = 0 // track balanced parens/brackets/braces
   let angleDepth = 0 // track Handler<...> and future generic type args
@@ -104,9 +107,11 @@ export function collectTypeAnnotation(ctx: ParserContext, options?: { stopAtArro
       // else. Refinement needs angleDepth suspended for its body.
       const next = ctx.peekAhead(1)
       const after = ctx.peekAhead(2)
-      const isRefinement
-        = next !== undefined && (isSymbolToken(next) || isReservedSymbolToken(next))
-        && after !== undefined && isOperatorToken(after, '|')
+      const isRefinement =
+        next !== undefined &&
+        (isSymbolToken(next) || isReservedSymbolToken(next)) &&
+        after !== undefined &&
+        isOperatorToken(after, '|')
       braceStack.push(isRefinement ? 'refinement' : 'other')
     }
     if (token[0] === 'RParen' || token[0] === 'RBracket') depth--

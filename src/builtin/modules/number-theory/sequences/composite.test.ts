@@ -25,18 +25,7 @@ describe('composite', () => {
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:compositeTakeWhile(-> $ < 20)')).toEqual([
-      4,
-      6,
-      8,
-      9,
-      10,
-      12,
-      14,
-      15,
-      16,
-      18,
-    ])
+    expect(runNth('nth:compositeTakeWhile(-> $ < 20)')).toEqual([4, 6, 8, 9, 10, 12, 14, 15, 16, 18])
   })
 
   it('should determine if numbers are in the sequence', () => {

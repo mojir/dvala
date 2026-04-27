@@ -76,7 +76,7 @@ export class TransientVector<T = unknown> {
     // Tail full — push tail into tree, start new tail
     const tailNode = makeNode(this._tail)
     this._tail = [val]
-    if ((this._size >>> BITS) > (1 << this._shift)) {
+    if (this._size >>> BITS > 1 << this._shift) {
       // Tree is full at current height — grow
       this._root = [makeNode(this._root), newPath(this._shift, tailNode)]
       this._shift += BITS
@@ -98,9 +98,10 @@ function pushTailMut(root: unknown[], shift: number, count: number, tailNode: IN
     newRoot[subidx] = tailNode
   } else {
     const child = newRoot[subidx] as INode | undefined
-    newRoot[subidx] = child !== undefined
-      ? makeNode(pushTailMut((child.array as unknown[]).slice(), shift - BITS, count, tailNode))
-      : newPath(shift - BITS, tailNode)
+    newRoot[subidx] =
+      child !== undefined
+        ? makeNode(pushTailMut((child.array as unknown[]).slice(), shift - BITS, count, tailNode))
+        : newPath(shift - BITS, tailNode)
   }
   return newRoot
 }
@@ -114,7 +115,9 @@ export class PersistentVector<T = unknown> implements Iterable<T> {
 
   readonly size: number
   /** Alias for `size` — lets PersistentVector work where `.length` is expected. */
-  get length(): number { return this.size }
+  get length(): number {
+    return this.size
+  }
   private readonly _shift: number
   private readonly _root: INode
   private readonly _tail: readonly T[]
@@ -145,8 +148,7 @@ export class PersistentVector<T = unknown> implements Iterable<T> {
   private nodeFor(i: number): readonly unknown[] {
     if (i >= this.tailOffset()) return this._tail
     let node = this._root
-    for (let level = this._shift; level > 0; level -= BITS)
-      node = node.array[(i >>> level) & MASK] as INode
+    for (let level = this._shift; level > 0; level -= BITS) node = node.array[(i >>> level) & MASK] as INode
     return node.array
   }
 
@@ -177,7 +179,7 @@ export class PersistentVector<T = unknown> implements Iterable<T> {
     const tailNode = makeNode(this._tail as unknown[])
     let newShift = this._shift
     let newRoot: INode
-    if ((this.size >>> BITS) > (1 << this._shift)) {
+    if (this.size >>> BITS > 1 << this._shift) {
       // Trie full at current height — grow one level
       newRoot = makeNode([this._root, newPath(this._shift, tailNode)])
       newShift += BITS
@@ -249,9 +251,8 @@ function pushTailPersistent(node: INode, level: number, count: number, tailNode:
     arr[subidx] = tailNode
   } else {
     const child = node.array[subidx] as INode | undefined
-    arr[subidx] = child !== undefined
-      ? pushTailPersistent(child, level - BITS, count, tailNode)
-      : newPath(level - BITS, tailNode)
+    arr[subidx] =
+      child !== undefined ? pushTailPersistent(child, level - BITS, count, tailNode) : newPath(level - BITS, tailNode)
   }
   return makeNode(arr)
 }

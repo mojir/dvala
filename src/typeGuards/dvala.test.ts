@@ -42,7 +42,16 @@ describe('dvala type guards', () => {
 
   it('obj', () => {
     const valid = [PersistentMap.empty(), PersistentMap.fromRecord({ a: 1 })]
-    const invalid = [0, { [FUNCTION_SYMBOL]: true }, /test/, PersistentVector.empty(), PersistentVector.from([1]), true, null, undefined]
+    const invalid = [
+      0,
+      { [FUNCTION_SYMBOL]: true },
+      /test/,
+      PersistentVector.empty(),
+      PersistentVector.from([1]),
+      true,
+      null,
+      undefined,
+    ]
     testTypeGuars(
       {
         valid,

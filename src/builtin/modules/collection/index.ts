@@ -16,16 +16,13 @@ import collectionModuleSource from './collection.dvala'
 function get(coll: Coll, key: string | number): Any | undefined {
   if (isObj(coll)) {
     // PersistentMap: use .get(key) for string keys
-    if (typeof key === 'string' && collHasKey(coll, key))
-      return toAny(coll.get(key))
+    if (typeof key === 'string' && collHasKey(coll, key)) return toAny(coll.get(key))
   } else if (isArr(coll)) {
     // PersistentVector: use .get(i) for numeric indices
-    if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.size)
-      return toAny(coll.get(key))
+    if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.size) return toAny(coll.get(key))
   } else if (typeof coll === 'string') {
     // String: index by integer to get character
-    if (isNumber(key, { nonNegative: true, integer: true }) && key < coll.length)
-      return toAny(coll[key])
+    if (isNumber(key, { nonNegative: true, integer: true }) && key < coll.length) return toAny(coll[key])
   }
   return undefined
 }
@@ -58,13 +55,13 @@ function assocInHelper(coll: Coll, keys: unknown[], value: Any, sourceCodeInfo?:
     return assoc(coll, key, value, sourceCodeInfo)
   }
   const nested = get(coll, key)
-  const nestedColl: Coll = (nested !== undefined && isColl(nested)) ? nested : PersistentMap.empty()
+  const nestedColl: Coll = nested !== undefined && isColl(nested) ? nested : PersistentMap.empty()
   const updatedNested = assocInHelper(nestedColl, keys.slice(1), value, sourceCodeInfo)
   return assoc(coll, key, toAny(updatedNested), sourceCodeInfo)
 }
 
 const collectionUtilsFunctions: BuiltinNormalExpressions = {
-  'getIn': {
+  getIn: {
     evaluate: (params, sourceCodeInfo): Any => {
       let coll = toAny(params.get(0))
       const keys = params.get(1) ?? PersistentVector.empty() // null behaves as empty array
@@ -74,10 +71,8 @@ const collectionUtilsFunctions: BuiltinNormalExpressions = {
         assertStringOrNumber(key, sourceCodeInfo)
         if (isColl(coll)) {
           const nextValue = get(coll, key)
-          if (nextValue !== undefined)
-            coll = nextValue
-          else
-            return defaultValue
+          if (nextValue !== undefined) coll = nextValue
+          else return defaultValue
         } else {
           return defaultValue
         }
@@ -92,15 +87,13 @@ const collectionUtilsFunctions: BuiltinNormalExpressions = {
       category: 'collection',
       returns: { type: 'any' },
       args: {
-        'a': { type: 'collection' },
-        'b': { type: 'array' },
-        'notFound': { type: 'any' },
+        a: { type: 'collection' },
+        b: { type: 'array' },
+        notFound: { type: 'any' },
       },
-      variants: [
-        { argumentNames: ['a', 'b'] },
-        { argumentNames: ['a', 'b', 'notFound'] },
-      ],
-      description: 'Returns the value in a nested collection, where `b` is an array of keys. Returns `not-found` if the key is not present. If `not-found` is not set, `null` is returned.',
+      variants: [{ argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'notFound'] }],
+      description:
+        'Returns the value in a nested collection, where `b` is an array of keys. Returns `not-found` if the key is not present. If `not-found` is not set, `null` is returned.',
       seeAlso: ['get', 'collection.assocIn', 'collection.updateIn'],
       examples: [
         `
@@ -125,7 +118,7 @@ cu.getIn(
       ],
     },
   },
-  'assocIn': {
+  assocIn: {
     evaluate: ([originalColl, keys, value], sourceCodeInfo): Coll => {
       assertColl(originalColl, sourceCodeInfo)
       assertArray(keys, sourceCodeInfo)
@@ -173,23 +166,22 @@ cu.assocIn(
       ],
     },
   },
-  'update': {
-    evaluate: () => { throw new Error('update: Dvala implementation should be used instead') },
+  update: {
+    evaluate: () => {
+      throw new Error('update: Dvala implementation should be used instead')
+    },
     arity: { min: 3 },
     docs: {
       type: '(Unknown[], (String | Number), (Unknown -> Unknown), ...Unknown) -> Unknown[]',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
-        'coll': { type: 'collection' },
-        'key': { type: ['string', 'number'] },
-        'fun': { type: 'function' },
-        'funArgs': { type: 'any', rest: true },
+        coll: { type: 'collection' },
+        key: { type: ['string', 'number'] },
+        fun: { type: 'function' },
+        funArgs: { type: 'any', rest: true },
       },
-      variants: [
-        { argumentNames: ['coll', 'key', 'fun'] },
-        { argumentNames: ['coll', 'key', 'fun', 'funArgs'] },
-      ],
+      variants: [{ argumentNames: ['coll', 'key', 'fun'] }, { argumentNames: ['coll', 'key', 'fun', 'funArgs'] }],
       description: `
 Updates a value in the \`coll\` collection, where \`key\` is a key. \`fun\` is a function
 that will take the old value and any supplied \`fun-args\` and
@@ -212,23 +204,22 @@ cu.update(
       ],
     },
   },
-  'updateIn': {
-    evaluate: () => { throw new Error('updateIn: Dvala implementation should be used instead') },
+  updateIn: {
+    evaluate: () => {
+      throw new Error('updateIn: Dvala implementation should be used instead')
+    },
     arity: { min: 3 },
     docs: {
       type: '(Unknown[], Unknown[], (Unknown -> Unknown), ...Unknown) -> Unknown[]',
       category: 'collection',
       returns: { type: 'collection' },
       args: {
-        'coll': { type: 'collection' },
-        'ks': { type: 'array' },
-        'fun': { type: 'function' },
-        'funArgs': { type: 'any', rest: true },
+        coll: { type: 'collection' },
+        ks: { type: 'array' },
+        fun: { type: 'function' },
+        funArgs: { type: 'any', rest: true },
       },
-      variants: [
-        { argumentNames: ['coll', 'ks', 'fun'] },
-        { argumentNames: ['coll', 'ks', 'fun', 'funArgs'] },
-      ],
+      variants: [{ argumentNames: ['coll', 'ks', 'fun'] }, { argumentNames: ['coll', 'ks', 'fun', 'funArgs'] }],
       description: `Updates a value in the \`coll\` collection, where \`ks\` is an array of
 keys and \`fun\` is a function that will take the old value and
 any supplied \`fun-args\` and return the new value. If any levels do not exist,
@@ -269,8 +260,10 @@ cu.updateIn(
       ],
     },
   },
-  'filteri': {
-    evaluate: () => { throw new Error('filteri: Dvala implementation should be used instead') },
+  filteri: {
+    evaluate: () => {
+      throw new Error('filteri: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown, Number) -> Boolean) -> Unknown[]',
@@ -280,11 +273,13 @@ cu.updateIn(
         a: { type: 'collection' },
         b: {
           type: 'function',
-          description: 'The function to call for each element in the collection. The function should take two arguments: the element itself and the index.',
+          description:
+            'The function to call for each element in the collection. The function should take two arguments: the element itself and the index.',
         },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Creates a new collection with all elements that pass the test implemented by `b`. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
+      description:
+        'Creates a new collection with all elements that pass the test implemented by `b`. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
       seeAlso: ['filter', 'collection.mapi'],
       examples: [
         'let cu = import("collection"); cu.filteri([1, 2, 3], (x, i) -> i % 2 == 0)',
@@ -293,8 +288,10 @@ cu.updateIn(
       ],
     },
   },
-  'mapi': {
-    evaluate: () => { throw new Error('mapi: Dvala implementation should be used instead') },
+  mapi: {
+    evaluate: () => {
+      throw new Error('mapi: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown, Number) -> Unknown) -> Unknown[]',
@@ -304,11 +301,13 @@ cu.updateIn(
         a: { type: 'collection' },
         b: {
           type: 'function',
-          description: 'The function to call for each element in the collection. The function should take two arguments: the element itself and the index.',
+          description:
+            'The function to call for each element in the collection. The function should take two arguments: the element itself and the index.',
         },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Creates a new collection populated with the results of calling `b` on every element in `a`. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
+      description:
+        'Creates a new collection populated with the results of calling `b` on every element in `a`. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
       seeAlso: ['map', 'collection.filteri'],
       examples: [
         'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x + i)',
@@ -319,8 +318,10 @@ cu.updateIn(
       ],
     },
   },
-  'reducei': {
-    evaluate: () => { throw new Error('reducei: Dvala implementation should be used instead') },
+  reducei: {
+    evaluate: () => {
+      throw new Error('reducei: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(3),
     docs: {
       type: '(Unknown[], (Unknown, Unknown, Number) -> Unknown, Unknown) -> Unknown',
@@ -330,7 +331,8 @@ cu.updateIn(
         coll: { type: 'collection' },
         fun: {
           type: 'function',
-          description: 'The function to call for each element in the collection. The function should take three arguments: the accumulator, the element itself, and the index.',
+          description:
+            'The function to call for each element in the collection. The function should take three arguments: the accumulator, the element itself, and the index.',
         },
         initial: {
           type: 'any',
@@ -338,7 +340,8 @@ cu.updateIn(
         },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Runs `fun` function on each element of the `coll`, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
+      description:
+        'Runs `fun` function on each element of the `coll`, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
       seeAlso: ['reduce', 'collection.reduceiRight', 'collection.reductionsi'],
       examples: [
         'let cu = import("collection"); cu.reducei([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
@@ -347,8 +350,10 @@ cu.updateIn(
       ],
     },
   },
-  'reduceRight': {
-    evaluate: () => { throw new Error('reduceRight: Dvala implementation should be used instead') },
+  reduceRight: {
+    evaluate: () => {
+      throw new Error('reduceRight: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(3),
     docs: {
       type: '(Unknown[], (Unknown, Unknown) -> Unknown, Unknown) -> Unknown',
@@ -360,7 +365,8 @@ cu.updateIn(
         initial: { type: 'any' },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Runs `fun` function on each element of the `coll` (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value.',
+      description:
+        'Runs `fun` function on each element of the `coll` (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value.',
       seeAlso: ['reduce', 'collection.reduceiRight'],
       examples: [
         'let cu = import("collection"); cu.reduceRight(["A", "B", "C"], str, "")',
@@ -368,8 +374,10 @@ cu.updateIn(
       ],
     },
   },
-  'reduceiRight': {
-    evaluate: () => { throw new Error('reduceiRight: Dvala implementation should be used instead') },
+  reduceiRight: {
+    evaluate: () => {
+      throw new Error('reduceiRight: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(3),
     docs: {
       type: '(Unknown[], (Unknown, Unknown, Number) -> Unknown, Unknown) -> Unknown',
@@ -379,7 +387,8 @@ cu.updateIn(
         coll: { type: 'collection' },
         fun: {
           type: 'function',
-          description: 'The function to call for each element in the collection. The function should take three arguments: the accumulator, the element itself, and the index.',
+          description:
+            'The function to call for each element in the collection. The function should take three arguments: the accumulator, the element itself, and the index.',
         },
         initial: {
           type: 'any',
@@ -387,7 +396,8 @@ cu.updateIn(
         },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Runs `fun` function on each element of the `coll` (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
+      description:
+        'Runs `fun` function on each element of the `coll` (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
       seeAlso: ['collection.reducei', 'collection.reduceRight'],
       examples: [
         'let cu = import("collection"); cu.reduceiRight([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
@@ -396,8 +406,10 @@ cu.updateIn(
       ],
     },
   },
-  'reductions': {
-    evaluate: () => { throw new Error('reductions: Dvala implementation should be used instead') },
+  reductions: {
+    evaluate: () => {
+      throw new Error('reductions: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(3),
     docs: {
       type: '(Unknown[], (Unknown, Unknown) -> Unknown, Unknown) -> Unknown[]',
@@ -426,8 +438,10 @@ cu.reductions(
       ],
     },
   },
-  'reductionsi': {
-    evaluate: () => { throw new Error('reductionsi: Dvala implementation should be used instead') },
+  reductionsi: {
+    evaluate: () => {
+      throw new Error('reductionsi: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(3),
     docs: {
       type: '(Unknown[], (Unknown, Unknown, Number) -> Unknown, Unknown) -> Unknown[]',
@@ -437,7 +451,8 @@ cu.reductions(
         coll: { type: 'collection' },
         fun: {
           type: 'function',
-          description: 'The function to call for each element in the collection. The function should take three arguments: the accumulator, the element itself, and the index.',
+          description:
+            'The function to call for each element in the collection. The function should take three arguments: the accumulator, the element itself, and the index.',
         },
         initial: {
           type: 'any',
@@ -445,7 +460,8 @@ cu.reductions(
         },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Returns an array of the intermediate values of the reduction (see `reduce`) of `coll` by `fun`. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
+      description:
+        'Returns an array of the intermediate values of the reduction (see `reduce`) of `coll` by `fun`. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
       seeAlso: ['collection.reductions', 'collection.reducei'],
       examples: [
         'let cu = import("collection"); cu.reductionsi([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
@@ -454,17 +470,14 @@ cu.reductions(
       ],
     },
   },
-  'notEmpty': {
+  notEmpty: {
     evaluate: ([coll], sourceCodeInfo): Coll | null => {
-      if (coll === null)
-        return null
+      if (coll === null) return null
 
       assertColl(coll, sourceCodeInfo)
-      if (typeof coll === 'string')
-        return coll.length > 0 ? coll : null
+      if (typeof coll === 'string') return coll.length > 0 ? coll : null
 
-      if (isArr(coll))
-        return coll.size > 0 ? coll : null
+      if (isArr(coll)) return coll.size > 0 ? coll : null
 
       // Obj is PersistentMap: use .size property
       return coll.size > 0 ? coll : null
@@ -491,8 +504,10 @@ cu.reductions(
       ],
     },
   },
-  'isEvery': {
-    evaluate: () => { throw new Error('isEvery: Dvala implementation should be used instead') },
+  isEvery: {
+    evaluate: () => {
+      throw new Error('isEvery: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown -> Boolean)) -> Boolean',
@@ -504,7 +519,13 @@ cu.reductions(
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns `true` if all entries in `a` pass the test implemented by `b`, otherwise returns `false`.',
-      seeAlso: ['collection.isAny', 'collection.notEvery', 'collection.notAny', 'functional.everyPred', 'grid.isCellEvery'],
+      seeAlso: [
+        'collection.isAny',
+        'collection.notEvery',
+        'collection.notAny',
+        'functional.everyPred',
+        'grid.isCellEvery',
+      ],
       examples: [
         'let cu = import("collection"); cu.isEvery([1, 2, 3], isNumber)',
         'let cu = import("collection"); cu.isEvery([1, 2, 3], isEven)',
@@ -538,8 +559,10 @@ cu.isEvery(
       ],
     },
   },
-  'isAny': {
-    evaluate: () => { throw new Error('isAny: Dvala implementation should be used instead') },
+  isAny: {
+    evaluate: () => {
+      throw new Error('isAny: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown -> Boolean)) -> Boolean',
@@ -551,7 +574,14 @@ cu.isEvery(
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns `true` if any element in `a` pass the test implemented by `b`, otherwise returns `false`.',
-      seeAlso: ['collection.isEvery', 'collection.notAny', 'collection.notEvery', 'functional.somePred', 'some', 'grid.isSome'],
+      seeAlso: [
+        'collection.isEvery',
+        'collection.notAny',
+        'collection.notEvery',
+        'functional.somePred',
+        'some',
+        'grid.isSome',
+      ],
       examples: [
         `
 let cu = import("collection");
@@ -583,8 +613,10 @@ cu.isAny(
       ],
     },
   },
-  'notAny': {
-    evaluate: () => { throw new Error('notAny: Dvala implementation should be used instead') },
+  notAny: {
+    evaluate: () => {
+      throw new Error('notAny: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown -> Boolean)) -> Boolean',
@@ -628,8 +660,10 @@ cu.notAny(
       ],
     },
   },
-  'notEvery': {
-    evaluate: () => { throw new Error('notEvery: Dvala implementation should be used instead') },
+  notEvery: {
+    evaluate: () => {
+      throw new Error('notEvery: Dvala implementation should be used instead')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(Unknown[], (Unknown -> Boolean)) -> Boolean',
@@ -640,7 +674,8 @@ cu.notAny(
         b: { type: 'function' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns `true` if at least one element in `a` does not pass the test implemented by `b`, otherwise returns `false`.',
+      description:
+        'Returns `true` if at least one element in `a` does not pass the test implemented by `b`, otherwise returns `false`.',
       seeAlso: ['collection.isEvery', 'collection.isAny', 'collection.notAny'],
       examples: [
         `

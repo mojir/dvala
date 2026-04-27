@@ -1,7 +1,14 @@
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
-import { isEffectNameToken, isLParenToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
+import {
+  isEffectNameToken,
+  isLParenToken,
+  isOperatorToken,
+  isRParenToken,
+  isReservedSymbolToken,
+  isSymbolToken,
+} from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseBindingTarget } from './parseBindingTarget'
@@ -23,7 +30,11 @@ interface ParsedHandlerClause {
  *
  * The handler value is created at evaluation time from this AST node.
  */
-type HandlerNode = [typeof NodeTypes.Handler, [ParsedHandlerClause[], [BindingTarget, AstNode[]] | null, boolean], number]
+type HandlerNode = [
+  typeof NodeTypes.Handler,
+  [ParsedHandlerClause[], [BindingTarget, AstNode[]] | null, boolean],
+  number,
+]
 
 /**
  * Parse `handler <clauses> [transform x -> expr] end`.
@@ -133,11 +144,7 @@ export function parseHandler(ctx: ParserContext, shallow = false): HandlerNode {
   }
   ctx.advance() // consume 'end'
 
-  const node = withSourceCodeInfo(
-    [NodeTypes.Handler, [clauses, transform, shallow], 0],
-    token[2],
-    ctx,
-  ) as HandlerNode
+  const node = withSourceCodeInfo([NodeTypes.Handler, [clauses, transform, shallow], 0], token[2], ctx) as HandlerNode
   ctx.setNodeEnd(node[2])
   ctx.builder?.endNode()
   return node

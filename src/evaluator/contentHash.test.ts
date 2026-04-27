@@ -54,8 +54,28 @@ describe('contentHash', () => {
     })
 
     it('should handle nested arrays', () => {
-      expect(contentHash([[1, 2], [3, 4]])).toBe(contentHash([[1, 2], [3, 4]]))
-      expect(contentHash([[1, 2], [3, 4]])).not.toBe(contentHash([[1, 2], [3, 5]]))
+      expect(
+        contentHash([
+          [1, 2],
+          [3, 4],
+        ]),
+      ).toBe(
+        contentHash([
+          [1, 2],
+          [3, 4],
+        ]),
+      )
+      expect(
+        contentHash([
+          [1, 2],
+          [3, 4],
+        ]),
+      ).not.toBe(
+        contentHash([
+          [1, 2],
+          [3, 5],
+        ]),
+      )
     })
 
     it('should handle empty arrays', () => {
@@ -104,19 +124,13 @@ describe('contentHash', () => {
 
     it('should handle deeply nested mixed structures', () => {
       const deep = {
-        level1: [
-          { level2: [1, 'two', null, { level3: true }] },
-        ],
+        level1: [{ level2: [1, 'two', null, { level3: true }] }],
       }
       const same = {
-        level1: [
-          { level2: [1, 'two', null, { level3: true }] },
-        ],
+        level1: [{ level2: [1, 'two', null, { level3: true }] }],
       }
       const different = {
-        level1: [
-          { level2: [1, 'two', null, { level3: false }] },
-        ],
+        level1: [{ level2: [1, 'two', null, { level3: false }] }],
       }
       expect(contentHash(deep)).toBe(contentHash(same))
       expect(contentHash(deep)).not.toBe(contentHash(different))
@@ -138,7 +152,7 @@ describe('contentHash', () => {
       for (const v of values) {
         const h = contentHash(v)
         expect(h).toBeGreaterThanOrEqual(0)
-        expect(h).toBeLessThanOrEqual(0xFFFFFFFF)
+        expect(h).toBeLessThanOrEqual(0xffffffff)
         expect(Number.isInteger(h)).toBe(true)
       }
     })

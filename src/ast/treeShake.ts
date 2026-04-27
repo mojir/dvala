@@ -80,7 +80,7 @@ export function treeShake(ast: Ast): Ast {
     const allDead = names.every(n => !live.has(n))
     if (allDead) {
       const node = ast.body[index]!
-      const [, value] = (node[1] as [unknown, AstNode])
+      const [, value] = node[1] as [unknown, AstNode]
       if (isSideEffectFree(value)) {
         indicesToRemove.add(index)
       }

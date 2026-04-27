@@ -5,7 +5,8 @@ import { collectionUtilsModule } from '../../src/builtin/modules/collection'
 const dvala = createDvala({ debug: true, modules: [collectionUtilsModule] })
 describe('determinant.', () => {
   it('should compile', () => {
-    expect(dvala.run(`
+    expect(
+      dvala.run(`
 let { isEvery } = import("collection");
 // Matrix multiplication with correct syntax
 let matrixMultiply = (matrixA, matrixB) -> do
@@ -64,7 +65,8 @@ let matrixB = [
 ];
 
 matrixMultiply(matrixA, matrixB);
-`)).toEqual([
+`),
+    ).toEqual([
       [58, 64],
       [139, 154],
     ])

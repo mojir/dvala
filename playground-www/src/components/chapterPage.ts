@@ -62,10 +62,11 @@ for (const { path: chapterPath, content } of rawChapters) {
   const sectionName = toTitleCase(sectionSlug)
   const chapterId = `${sectionSlug}-${chapterSlug}`
 
-  if (!sectionMap.has(dirSegment))
-    sectionMap.set(dirSegment, { name: sectionName, entries: [] })
+  if (!sectionMap.has(dirSegment)) sectionMap.set(dirSegment, { name: sectionName, entries: [] })
 
-  sectionMap.get(dirSegment)!.entries.push({ id: chapterId, title: extractTitle(content), raw: content, folder: sectionName })
+  sectionMap
+    .get(dirSegment)!
+    .entries.push({ id: chapterId, title: extractTitle(content), raw: content, folder: sectionName })
 }
 
 export const bookSections: BookSection[] = Array.from(sectionMap.values())
@@ -75,21 +76,29 @@ export const allChapters: ChapterEntry[] = bookSections.flatMap(f => f.entries)
 export function renderBookIndexPage(): string {
   const next = allChapters[0] ?? null
 
-  const sections = bookSections.map(folder => `
+  const sections = bookSections
+    .map(
+      folder => `
 <section class="book-toc__group">
   <h3 class="book-toc__group-title">${escapeHtml(folder.name)}</h3>
   <ul class="book-toc__list">
-    ${folder.entries.map(e => {
-      const h2s = [...e.raw.matchAll(/^##\s+(.+)$/gm)]
-      const subItems = h2s.map(m => {
-        const text = m[1]!.trim()
-        const id = slugifyHeading(text)
-        return `<li class="book-toc__subitem"><a href="${href(`/book/${e.id}`)}#${id}" onclick="event.preventDefault();Playground.navigate('/book/${e.id}');setTimeout(()=>{const el=document.getElementById('${id}');if(el){el.scrollIntoView();history.replaceState(null,'',location.pathname+'#${id}')}},80)">${escapeHtml(text)}</a></li>`
-      }).join('')
-      return `<li class="book-toc__item"><a href="${href(`/book/${e.id}`)}" onclick="event.preventDefault();Playground.navigate('/book/${e.id}')">${escapeHtml(e.title)}</a>${subItems ? `<ul class="book-toc__sublist">${subItems}</ul>` : ''}</li>`
-    }).join('')}
+    ${folder.entries
+      .map(e => {
+        const h2s = [...e.raw.matchAll(/^##\s+(.+)$/gm)]
+        const subItems = h2s
+          .map(m => {
+            const text = m[1]!.trim()
+            const id = slugifyHeading(text)
+            return `<li class="book-toc__subitem"><a href="${href(`/book/${e.id}`)}#${id}" onclick="event.preventDefault();Playground.navigate('/book/${e.id}');setTimeout(()=>{const el=document.getElementById('${id}');if(el){el.scrollIntoView();history.replaceState(null,'',location.pathname+'#${id}')}},80)">${escapeHtml(text)}</a></li>`
+          })
+          .join('')
+        return `<li class="book-toc__item"><a href="${href(`/book/${e.id}`)}" onclick="event.preventDefault();Playground.navigate('/book/${e.id}')">${escapeHtml(e.title)}</a>${subItems ? `<ul class="book-toc__sublist">${subItems}</ul>` : ''}</li>`
+      })
+      .join('')}
   </ul>
-</section>`).join('\n')
+</section>`,
+    )
+    .join('\n')
 
   return `
 <div class="book-page">
@@ -124,22 +133,22 @@ export function renderChapterPage(id: string): string {
 
   // Build sub-TOC from ## headings in the raw markdown
   const h2Matches = [...entry.raw.matchAll(/^##\s+(.+)$/gm)]
-  const subToc = h2Matches.length > 1
-    ? `<nav class="chapter-subtoc">${h2Matches.map(m => {
-      const text = m[1]!.trim()
-      const slug = slugifyHeading(text)
-      return `<a class="chapter-subtoc__link" href="#${slug}" onclick="event.preventDefault();history.pushState(null,'',location.pathname+'#${slug}');document.getElementById('${slug}')?.scrollIntoView({behavior:'smooth'})">${escapeHtml(text)}</a>`
-    }).join('')}</nav>`
-    : ''
+  const subToc =
+    h2Matches.length > 1
+      ? `<nav class="chapter-subtoc">${h2Matches
+          .map(m => {
+            const text = m[1]!.trim()
+            const slug = slugifyHeading(text)
+            return `<a class="chapter-subtoc__link" href="#${slug}" onclick="event.preventDefault();history.pushState(null,'',location.pathname+'#${slug}');document.getElementById('${slug}')?.scrollIntoView({behavior:'smooth'})">${escapeHtml(text)}</a>`
+          })
+          .join('')}</nav>`
+      : ''
 
   return `
 <div class="book-page">
   ${renderPageHeader({
     title: entry.title,
-    breadcrumbs: [
-      { label: 'The Book', path: '/book' },
-      { label: entry.title },
-    ],
+    breadcrumbs: [{ label: 'The Book', path: '/book' }, { label: entry.title }],
     actions: bookHeaderActions(),
     prev: prev ? { path: `/book/${prev.id}`, title: prev.title } : { path: '/book', title: 'Back to The Book' },
     up: { path: '/book', title: 'Back to The Book' },

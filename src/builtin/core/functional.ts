@@ -1,9 +1,5 @@
 import type { Any } from '../../interface'
-import type {
-  CompFunction,
-  ConstantlyFunction,
-  FunctionLike,
-} from '../../parser/types'
+import type { CompFunction, ConstantlyFunction, FunctionLike } from '../../parser/types'
 import { toAny } from '../../utils'
 import { getArityFromFunction, toFixedArity } from '../../utils/arity'
 import { FUNCTION_SYMBOL } from '../../utils/symbols'
@@ -12,7 +8,9 @@ import { assertFunctionLike } from '../../typeGuards/dvala'
 
 export const functionalNormalExpression: BuiltinNormalExpressions = {
   '|>': {
-    evaluate: (): never => { throw new Error('|> is implemented in Dvala') },
+    evaluate: (): never => {
+      throw new Error('|> is implemented in Dvala')
+    },
     arity: toFixedArity(2),
     docs: {
       type: '(A, (A) -> B) -> B',
@@ -28,17 +26,22 @@ export const functionalNormalExpression: BuiltinNormalExpressions = {
       examples: [
         `
 1 |> inc |> inc`,
-        { code: `range(10)
+        {
+          code: `range(10)
   |> map(_, -> $ ^ 2) // [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
   |> filter(_, isOdd)  // [1, 9, 25, 49, 81]
   |> reduce(_, +, 0)  // 165
   |> sqrt             // 12.84523257866513
-  |> round(_, 2)`, noCheck: true },
+  |> round(_, 2)`,
+          noCheck: true,
+        },
       ],
     },
   },
-  'apply': {
-    evaluate: (): never => { throw new Error('apply is implemented in Dvala') },
+  apply: {
+    evaluate: (): never => {
+      throw new Error('apply is implemented in Dvala')
+    },
     arity: { min: 2 },
     docs: {
       type: '(Function, Unknown[]) -> Unknown',
@@ -61,13 +64,16 @@ apply(
   (x, y) -> sqrt(x ^ 2 + y ^ 2),
   [3, 4]
 )`,
-        { code: `
-(x, y) -> sqrt(x ^ 2 + y ^ 2) apply [3, 4]`, noCheck: true },
+        {
+          code: `
+(x, y) -> sqrt(x ^ 2 + y ^ 2) apply [3, 4]`,
+          noCheck: true,
+        },
       ],
     },
   },
 
-  'identity': {
+  identity: {
     evaluate: ([value]): Any => {
       return toAny(value)
     },
@@ -84,7 +90,7 @@ apply(
     },
   },
 
-  'comp': {
+  comp: {
     evaluate: (params, sourceCodeInfo): CompFunction => {
       for (const param of params) assertFunctionLike(param, sourceCodeInfo)
       return {
@@ -113,17 +119,23 @@ apply(
   the next function (right-to-left) to the result, etc.`,
       seeAlso: ['|>', 'functional.juxt', 'functional.complement'],
       examples: [
-        { code: `
+        {
+          code: `
 let negativeQuotient = comp(-, /);
-negativeQuotient(9, 3)`, noCheck: true },
-        { code: `
+negativeQuotient(9, 3)`,
+          noCheck: true,
+        },
+        {
+          code: `
 let x = { bar: { foo: 42 } };
-comp("foo", "bar")(x)`, noCheck: true },
+comp("foo", "bar")(x)`,
+          noCheck: true,
+        },
       ],
     },
   },
 
-  'constantly': {
+  constantly: {
     evaluate: ([value], sourceCodeInfo): ConstantlyFunction => {
       return {
         [FUNCTION_SYMBOL]: true,
@@ -143,11 +155,13 @@ comp("foo", "bar")(x)`, noCheck: true },
       description: 'Returns a function that takes any number of arguments and always returns `x`.',
       seeAlso: ['identity', 'functional.fnull'],
       examples: [
-        { code: `
+        {
+          code: `
 let alwaysTrue = constantly(true);
-alwaysTrue(9, 3)`, noCheck: true },
+alwaysTrue(9, 3)`,
+          noCheck: true,
+        },
       ],
     },
   },
-
 }

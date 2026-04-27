@@ -1,7 +1,29 @@
 import { ParseError } from '../../errors'
-import type { AliasParam, AstNode, BindingTarget, ObjectBindingEntry, SymbolNode, UserDefinedSymbolNode } from '../types'
+import type {
+  AliasParam,
+  AstNode,
+  BindingTarget,
+  ObjectBindingEntry,
+  SymbolNode,
+  UserDefinedSymbolNode,
+} from '../types'
 import { bindingTargetTypes } from '../types'
-import { type Token, assertOperatorToken, isAtomToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
+import {
+  type Token,
+  assertOperatorToken,
+  isAtomToken,
+  isBasePrefixedNumberToken,
+  isLBraceToken,
+  isLBracketToken,
+  isNumberToken,
+  isOperatorToken,
+  isRBraceToken,
+  isRBracketToken,
+  isReservedSymbolToken,
+  isStringToken,
+  isSymbolToken,
+  isTemplateStringToken,
+} from '../../tokenizer/token'
 import { isSpecialSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { getSymbolName, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -18,7 +40,11 @@ import type { TokenDebugInfo } from '../../tokenizer/token'
  * Normal builtins (map, filter, etc.) are allowed — they can be shadowed.
  * Special expressions (if, let, for, etc.) cannot be used as variable names.
  */
-function toUserDefinedSymbol(symbol: SymbolNode, debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): UserDefinedSymbolNode {
+function toUserDefinedSymbol(
+  symbol: SymbolNode,
+  debugInfo: TokenDebugInfo | undefined,
+  ctx: ParserContext,
+): UserDefinedSymbolNode {
   if (isSpecialSymbolNode(symbol)) {
     throw new ParseError('Expected user defined symbol', ctx.resolveTokenDebugInfo(debugInfo))
   }
@@ -46,7 +72,16 @@ interface ParseBindingTargetOptions {
   allowTypeParams?: true
 }
 
-export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, noRest, allowLiteralPatterns, stopTypeAnnotationAtRParen, allowTypeParams }: ParseBindingTargetOptions = {}): BindingTarget {
+export function parseBindingTarget(
+  ctx: ParserContext,
+  {
+    requireDefaultValue,
+    noRest,
+    allowLiteralPatterns,
+    stopTypeAnnotationAtRParen,
+    allowTypeParams,
+  }: ParseBindingTargetOptions = {},
+): BindingTarget {
   const firstToken = ctx.tryPeek()
 
   // Wildcard _ (only in pattern matching context)
@@ -236,7 +271,9 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
       // keyDebugInfo / keyTokenDebug used for bind-target source info when there is
       // no 'as' alias — in that case the key token IS the binding token
       const keyDebugInfo = keySymbol[2] !== undefined ? ctx.sourceMap?.positions.get(keySymbol[2]) : undefined
-      const keyTokenDebug: TokenDebugInfo | undefined = keyDebugInfo ? [keyDebugInfo.start[0], keyDebugInfo.start[1]] : undefined
+      const keyTokenDebug: TokenDebugInfo | undefined = keyDebugInfo
+        ? [keyDebugInfo.start[0], keyDebugInfo.start[1]]
+        : undefined
       token = ctx.peek()
 
       // Duplicate detection by external key (the exported/destructured name)
@@ -254,7 +291,11 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
         ctx.advance()
         const name = toUserDefinedSymbol(parseSymbol(ctx), token[2], ctx)
         assertUniqueKey(token[2])
-        const symTarget = withSourceCodeInfo([bindingTargetTypes.symbol, [name, parseOptionalDefaulValue(ctx)], 0], token[2] as TokenDebugInfo, ctx)
+        const symTarget = withSourceCodeInfo(
+          [bindingTargetTypes.symbol, [name, parseOptionalDefaulValue(ctx)], 0],
+          token[2] as TokenDebugInfo,
+          ctx,
+        )
         ctx.setNodeEnd(symTarget[2])
         elements.push({ key: keyName, keyNodeId, target: symTarget })
       } else if (isRBraceToken(token) || isOperatorToken(token, ',') || isOperatorToken(token, '=')) {
@@ -266,11 +307,19 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
         }
 
         if (rest) {
-          const restTarget = withSourceCodeInfo([bindingTargetTypes.rest, [key[1], parseOptionalDefaulValue(ctx)], 0], keyTokenDebug, ctx)
+          const restTarget = withSourceCodeInfo(
+            [bindingTargetTypes.rest, [key[1], parseOptionalDefaulValue(ctx)], 0],
+            keyTokenDebug,
+            ctx,
+          )
           ctx.setNodeEnd(restTarget[2])
           elements.push({ key: key[1], keyNodeId, target: restTarget })
         } else {
-          const symTarget = withSourceCodeInfo([bindingTargetTypes.symbol, [key, parseOptionalDefaulValue(ctx)], 0], keyTokenDebug, ctx)
+          const symTarget = withSourceCodeInfo(
+            [bindingTargetTypes.symbol, [key, parseOptionalDefaulValue(ctx)], 0],
+            keyTokenDebug,
+            ctx,
+          )
           ctx.setNodeEnd(symTarget[2])
           elements.push({ key: key[1], keyNodeId, target: symTarget })
         }
@@ -302,7 +351,11 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     ctx.advance() // consume '}'
 
     // Create node now so setNodeEnd captures '}' as the end
-    const target = withSourceCodeInfo([bindingTargetTypes.object, [elements, undefined], 0], firstToken[2] as TokenDebugInfo, ctx)
+    const target = withSourceCodeInfo(
+      [bindingTargetTypes.object, [elements, undefined], 0],
+      firstToken[2] as TokenDebugInfo,
+      ctx,
+    )
     ctx.setNodeEnd(target[2])
 
     token = ctx.peek()
@@ -352,7 +405,10 @@ function parseBindingTypeParams(ctx: ParserContext): AliasParam[] {
     }
     const paramName = paramToken[1]
     if (seen.has(paramName)) {
-      throw new ParseError(`Duplicate type parameter '${paramName}' in generic parameter list`, ctx.peekSourceCodeInfo())
+      throw new ParseError(
+        `Duplicate type parameter '${paramName}' in generic parameter list`,
+        ctx.peekSourceCodeInfo(),
+      )
     }
     seen.add(paramName)
     ctx.advance()
@@ -384,13 +440,14 @@ function parseBindingTypeParams(ctx: ParserContext): AliasParam[] {
 }
 
 function isLiteralToken(token: Token | undefined): boolean {
-  return isNumberToken(token)
-    || isBasePrefixedNumberToken(token)
-    || isStringToken(token)
-    || isTemplateStringToken(token)
-    || isAtomToken(token)
-    || isReservedSymbolToken(token, 'true')
-    || isReservedSymbolToken(token, 'false')
-    || isReservedSymbolToken(token, 'null')
+  return (
+    isNumberToken(token) ||
+    isBasePrefixedNumberToken(token) ||
+    isStringToken(token) ||
+    isTemplateStringToken(token) ||
+    isAtomToken(token) ||
+    isReservedSymbolToken(token, 'true') ||
+    isReservedSymbolToken(token, 'false') ||
+    isReservedSymbolToken(token, 'null')
+  )
 }
-

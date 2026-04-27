@@ -44,13 +44,11 @@ describe('bundle', () => {
   })
 
   it('detects circular dependencies', () => {
-    expect(() => bundle(path.join(fixturesDir, 'circular-a.dvala')))
-      .toThrow(/[Cc]ircular dependency/)
+    expect(() => bundle(path.join(fixturesDir, 'circular-a.dvala'))).toThrow(/[Cc]ircular dependency/)
   })
 
   it('throws on missing file', () => {
-    expect(() => bundle(path.join(fixturesDir, 'nonexistent.dvala')))
-      .toThrow(/[Ff]ile not found/)
+    expect(() => bundle(path.join(fixturesDir, 'nonexistent.dvala'))).toThrow(/[Ff]ile not found/)
   })
 
   it('handles single-quoted import paths', () => {

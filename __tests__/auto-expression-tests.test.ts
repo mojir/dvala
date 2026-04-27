@@ -63,8 +63,7 @@ function generateTypeCheck(varName: string, returnType: TypedValue): string | nu
 
   const types = Array.isArray(returnType.type) ? returnType.type : [returnType.type]
   const checks = types.map(t => typeToCheck[t]).filter((c): c is string => c !== null)
-  if (checks.length === 0)
-    return null
+  if (checks.length === 0) return null
   return checks.map(c => `${c}(${varName})`).join(' || ')
 }
 
@@ -159,13 +158,7 @@ const skipModuleReturnTypeExamples: Record<string, Set<string>> = {
     'assertVector',
   ]),
   // Examples call the returned function to demonstrate usage
-  functional: new Set([
-    'complement',
-    'everyPred',
-    'somePred',
-    'fnull',
-    'juxt',
-  ]),
+  functional: new Set(['complement', 'everyPred', 'somePred', 'fnull', 'juxt']),
 }
 
 /**
@@ -210,8 +203,7 @@ const skipModuleExampleIndices: Record<string, Set<number>> = {
 // =========================================================================
 describe('auto: arity enforcement (core)', () => {
   for (const [name, expr] of Object.entries(normalExpressions)) {
-    if (skipArityTests.has(name))
-      continue
+    if (skipArityTests.has(name)) continue
     const { arity } = expr
 
     if (arity.min !== undefined && arity.min > 0) {
@@ -237,22 +229,17 @@ describe('auto: arity enforcement (core)', () => {
 // =========================================================================
 describe('auto: return type on examples (core)', () => {
   for (const [name, expr] of Object.entries(normalExpressions)) {
-    if (!expr.docs)
-      continue
-    if (skipReturnTypeExamples.has(name))
-      continue
+    if (!expr.docs) continue
+    if (skipReturnTypeExamples.has(name)) continue
     const { returns, examples } = expr.docs
 
     const typeCheck = generateTypeCheck('__r', returns)
-    if (!typeCheck)
-      continue // skip 'any', 'never'
+    if (!typeCheck) continue // skip 'any', 'never'
 
     for (const [i, entry] of examples.entries()) {
-      if (skipCoreExampleIndices[name]?.has(i))
-        continue
+      if (skipCoreExampleIndices[name]?.has(i)) continue
       const exampleCode = getExampleCode(entry)
-      if (exampleCode === null)
-        continue
+      if (exampleCode === null) continue
       it(`${name} example ${i + 1}: returns ${JSON.stringify(returns.type)}`, () => {
         const wrapped = `do
   let __r = do
@@ -271,13 +258,11 @@ end`
 // 3. MODULE EXPRESSIONS — arity + return type
 // =========================================================================
 for (const mod of allBuiltinModules) {
-  if (!mod.docs || Object.keys(mod.functions).length === 0)
-    continue
+  if (!mod.docs || Object.keys(mod.functions).length === 0) continue
 
   describe(`auto: arity enforcement (${mod.name})`, () => {
     for (const [fnName, expr] of Object.entries(mod.functions)) {
-      if (skipArityTests.has(fnName))
-        continue
+      if (skipArityTests.has(fnName)) continue
       const { arity } = expr
 
       if (arity.min !== undefined && arity.min > 0) {
@@ -303,12 +288,14 @@ for (const mod of allBuiltinModules) {
 
     // Pre-check: skip if no testable examples exist for this module
     const hasTestable = Object.entries(mod.docs!).some(([fnName, docs]) => {
-      if (skipReturnTypeExamples.has(fnName))
-        return false
-      if (moduleSkips?.has(fnName))
-        return false
-      return generateTypeCheck('__r', docs.returns) !== null
-        && docs.examples.some((e, i) => !skipModuleExampleIndices[`${mod.name}.${fnName}`]?.has(i) && getExampleCode(e) !== null)
+      if (skipReturnTypeExamples.has(fnName)) return false
+      if (moduleSkips?.has(fnName)) return false
+      return (
+        generateTypeCheck('__r', docs.returns) !== null &&
+        docs.examples.some(
+          (e, i) => !skipModuleExampleIndices[`${mod.name}.${fnName}`]?.has(i) && getExampleCode(e) !== null,
+        )
+      )
     })
     if (!hasTestable) {
       it.skip(`${mod.name}: all examples skipped`, () => {})
@@ -316,22 +303,17 @@ for (const mod of allBuiltinModules) {
     }
 
     for (const [fnName, docs] of Object.entries(mod.docs!)) {
-      if (skipReturnTypeExamples.has(fnName))
-        continue
-      if (moduleSkips?.has(fnName))
-        continue
+      if (skipReturnTypeExamples.has(fnName)) continue
+      if (moduleSkips?.has(fnName)) continue
 
       const typeCheck = generateTypeCheck('__r', docs.returns)
-      if (!typeCheck)
-        continue
+      if (!typeCheck) continue
 
       for (const [i, entry] of docs.examples.entries()) {
         const moduleExampleKey = `${mod.name}.${fnName}`
-        if (skipModuleExampleIndices[moduleExampleKey]?.has(i))
-          continue
+        if (skipModuleExampleIndices[moduleExampleKey]?.has(i)) continue
         const exampleCode = getExampleCode(entry)
-        if (exampleCode === null)
-          continue
+        if (exampleCode === null) continue
         it(`${mod.name}.${fnName} example ${i + 1}: returns ${JSON.stringify(docs.returns.type)}`, () => {
           const wrapped = `do
   let __r = do

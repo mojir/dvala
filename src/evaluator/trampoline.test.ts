@@ -106,8 +106,7 @@ describe('tick', () => {
     const initial: Step = { type: 'Eval', node, env: emptyEnv(), k: null }
     let step: Step | Promise<Step> = initial
     for (let i = 0; i < 1000; i++) {
-      if (step instanceof Promise)
-        throw new TypeError('Unexpected async')
+      if (step instanceof Promise) throw new TypeError('Unexpected async')
       if (step.type === 'Value' && listSize(step.k) === 0) {
         expect(step.value).toBe(6)
         return
@@ -512,7 +511,10 @@ describe('applyFrame', () => {
 
   describe('sequenceFrame', () => {
     it('should return value when all nodes evaluated', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+      ]
       const frame: SequenceFrame = {
         type: 'Sequence',
         nodes,
@@ -524,7 +526,11 @@ describe('applyFrame', () => {
     })
 
     it('should evaluate next node when more remain', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0], [NodeTypes.Num, 3, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+        [NodeTypes.Num, 3, 0],
+      ]
       const frame: SequenceFrame = {
         type: 'Sequence',
         nodes,
@@ -539,7 +545,10 @@ describe('applyFrame', () => {
     })
 
     it('should not push frame for last node', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+      ]
       const frame: SequenceFrame = {
         type: 'Sequence',
         nodes,
@@ -556,7 +565,10 @@ describe('applyFrame', () => {
 
   describe('andFrame', () => {
     it('should short-circuit on falsy value', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+      ]
       const frame: AndFrame = {
         type: 'And',
         nodes,
@@ -568,7 +580,11 @@ describe('applyFrame', () => {
     })
 
     it('should continue on truthy value with more nodes', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0], [NodeTypes.Num, 3, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+        [NodeTypes.Num, 3, 0],
+      ]
       const frame: AndFrame = {
         type: 'And',
         nodes,
@@ -597,7 +613,10 @@ describe('applyFrame', () => {
 
   describe('orFrame', () => {
     it('should short-circuit on truthy value', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+      ]
       const frame: OrFrame = {
         type: 'Or',
         nodes,
@@ -609,7 +628,11 @@ describe('applyFrame', () => {
     })
 
     it('should continue on falsy value', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0], [NodeTypes.Num, 3, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+        [NodeTypes.Num, 3, 0],
+      ]
       const frame: OrFrame = {
         type: 'Or',
         nodes,
@@ -626,7 +649,10 @@ describe('applyFrame', () => {
 
   describe('qqFrame', () => {
     it('should return value if non-null', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+      ]
       const frame: QqFrame = {
         type: 'Qq',
         nodes,
@@ -638,7 +664,10 @@ describe('applyFrame', () => {
     })
 
     it('should advance when value is null', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+      ]
       const frame: QqFrame = {
         type: 'Qq',
         nodes,
@@ -655,7 +684,10 @@ describe('applyFrame', () => {
 
   describe('arrayBuildFrame', () => {
     it('should add value and advance', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+      ]
       const frame: ArrayBuildFrame = {
         type: 'ArrayBuild',
         nodes,
@@ -764,7 +796,10 @@ describe('applyFrame', () => {
     })
 
     it('should continue collecting when more params remain', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0], [NodeTypes.Num, 2, 0]]
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0],
+        [NodeTypes.Num, 2, 0],
+      ]
       const frame: RecurFrame = {
         type: 'Recur',
         nodes,

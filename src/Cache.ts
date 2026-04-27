@@ -47,24 +47,20 @@ export class Cache {
   }
 
   public set(key: string, value: Ast): void {
-    if (this.has(key))
-      throw new Error(`AstCache - key already present: ${key}`)
+    if (this.has(key)) throw new Error(`AstCache - key already present: ${key}`)
 
     const newEntry: CacheEntry = { value, nextEntry: undefined, key }
 
     this.cache[key] = newEntry
     this._size += 1
 
-    if (this.lastEntry)
-      this.lastEntry.nextEntry = newEntry
+    if (this.lastEntry) this.lastEntry.nextEntry = newEntry
 
     this.lastEntry = newEntry
 
-    if (!this.firstEntry)
-      this.firstEntry = this.lastEntry
+    if (!this.firstEntry) this.firstEntry = this.lastEntry
 
-    while (this.maxSize !== null && this.size > this.maxSize)
-      this.dropFirstEntry()
+    while (this.maxSize !== null && this.size > this.maxSize) this.dropFirstEntry()
   }
 
   private dropFirstEntry(): void {

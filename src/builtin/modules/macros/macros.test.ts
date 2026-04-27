@@ -10,31 +10,37 @@ const dvala = createDvala({ modules: [macrosModule, astModule] })
 async function runAndCapturePrints(code: string): Promise<{ value: unknown; prints: string[] }> {
   const prints: string[] = []
   const handlers: Handlers = [
-    { pattern: 'dvala.io.print', handler: ctx => {
-      prints.push(String(ctx.arg))
-      ctx.resume(null)
-    } },
+    {
+      pattern: 'dvala.io.print',
+      handler: ctx => {
+        prints.push(String(ctx.arg))
+        ctx.resume(null)
+      },
+    },
   ]
   const result = await dvala.runAsync(code, { effectHandlers: handlers })
-  if (result.type !== 'completed')
-    throw new Error(`run failed: ${JSON.stringify(result)}`)
+  if (result.type !== 'completed') throw new Error(`run failed: ${JSON.stringify(result)}`)
   return { value: result.value, prints }
 }
 
 describe('macros module', () => {
   describe('unless', () => {
     it('evaluates body when condition is falsy', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let { unless } = import("macros");
         unless(false, 42)
-      `)).toBe(42)
+      `),
+      ).toBe(42)
     })
 
     it('returns null when condition is truthy', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let { unless } = import("macros");
         unless(true, 42)
-      `)).toBeNull()
+      `),
+      ).toBeNull()
     })
 
     it('does not evaluate body when condition is truthy', async () => {
@@ -49,7 +55,8 @@ describe('macros module', () => {
 
   describe('cond', () => {
     it('picks the first matching branch', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let { cond } = import("macros");
         let describe = (x) -> cond(
           x < 0, "negative",
@@ -57,14 +64,17 @@ describe('macros module', () => {
           "positive"
         );
         [describe(-1), describe(0), describe(5)]
-      `)).toEqual(['negative', 'zero', 'positive'])
+      `),
+      ).toEqual(['negative', 'zero', 'positive'])
     })
 
     it('returns null when no clause matches and no default is given', () => {
-      expect(dvala.run(`
+      expect(
+        dvala.run(`
         let { cond } = import("macros");
         cond(false, "a", false, "b")
-      `)).toBeNull()
+      `),
+      ).toBeNull()
     })
 
     it('does not evaluate non-matching branches', async () => {

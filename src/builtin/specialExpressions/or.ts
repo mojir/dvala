@@ -19,10 +19,7 @@ const docs: FunctionDocs = {
       rest: true,
     },
   },
-  variants: [
-    { argumentNames: ['a', 'b'] },
-    { argumentNames: ['a', 'b', 'c'] },
-  ],
+  variants: [{ argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'c'] }],
   description: `
   Computes logical \`or\`. Evaluation starts from left. As soon as an
   operand evaluates to \`true\`, the result is \`true\`; otherwise the
@@ -47,8 +44,7 @@ export const orSpecialExpression: BuiltinSpecialExpression<Any, OrNode> = {
       value = asAny(param, sourceCodeInfo)
       // Defensive: or always has at least one param from the parser
       /* v8 ignore next 2 */
-      if (value)
-        break
+      if (value) break
     }
     return value
   },

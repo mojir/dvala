@@ -116,7 +116,10 @@ describe('quote...end code templates', () => {
       expect(arr[0]).toBe('Call')
       const payload = arr[1] as unknown[]
       const fnArgs = payload[1] as unknown[][]
-      expect(fnArgs).toEqual([['Num', 1, -1], ['Num', 2, -1]])
+      expect(fnArgs).toEqual([
+        ['Num', 1, -1],
+        ['Num', 2, -1],
+      ])
     })
 
     it('should not spread a single AST node', () => {

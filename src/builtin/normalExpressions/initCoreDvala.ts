@@ -25,8 +25,7 @@ const coreDvalaSources: Record<string, string> = {
 let initialized = false
 
 export function initCoreDvalaSources(): void {
-  if (initialized)
-    return
+  if (initialized) return
   initialized = true
 
   for (const [, source] of Object.entries(coreDvalaSources)) {

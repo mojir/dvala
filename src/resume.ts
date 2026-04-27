@@ -56,9 +56,7 @@ export interface ResumeOptions {
  */
 export async function resume(snapshot: Snapshot, value: unknown, options?: ResumeOptions): Promise<RunResult> {
   try {
-    const modules = options?.modules
-      ? new Map(options.modules.map(m => [m.name, m]))
-      : undefined
+    const modules = options?.modules ? new Map(options.modules.map(m => [m.name, m])) : undefined
 
     // Convert a plain scope record to a Context for injection into globalContexts.
     // fromJS converts plain JS arrays/objects to PersistentVector/PersistentMap.
@@ -93,13 +91,19 @@ export async function resume(snapshot: Snapshot, value: unknown, options?: Resum
 
     const result = deserialized.initialStep
       ? await continueWithEffects(
-        deserialized.initialStep,
-        options?.handlers,
-        initialSnapshotState,
-        deserializeOptions,
-        options?.terminalSnapshot,
-      )
-      : await resumeWithEffects(deserialized.k, validateFromJS(value, 'resume() value'), options?.handlers, initialSnapshotState, deserializeOptions)
+          deserialized.initialStep,
+          options?.handlers,
+          initialSnapshotState,
+          deserializeOptions,
+          options?.terminalSnapshot,
+        )
+      : await resumeWithEffects(
+          deserialized.k,
+          validateFromJS(value, 'resume() value'),
+          options?.handlers,
+          initialSnapshotState,
+          deserializeOptions,
+        )
     // Apply toJS to convert PV/PM to plain JS arrays/objects, matching run() semantics
     if (result.type === 'completed') {
       return { ...result, value: toJS(result.value as Any) }

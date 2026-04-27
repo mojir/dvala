@@ -26,7 +26,13 @@ describe('mad', () => {
     expect(() => runVec('movingMad([], 1)')).toThrowError(DvalaError)
   })
   it('should calculate the centered moving mean absolute deviation of a vector with padding', () => {
-    expect(runVec('centeredMovingMad([1, 2, 3, 4, 5], 3)')).toEqual([null, 0.6666666666666666, 0.6666666666666666, 0.6666666666666666, null])
+    expect(runVec('centeredMovingMad([1, 2, 3, 4, 5], 3)')).toEqual([
+      null,
+      0.6666666666666666,
+      0.6666666666666666,
+      0.6666666666666666,
+      null,
+    ])
     expect(runVec('centeredMovingMad([1, -2, -3], 2)')).toEqual([null, 1.5, 0.5])
     expect(() => runVec('centeredMovingMad([1], 100)')).toThrow(DvalaError)
     expect(() => runVec('centeredMovingMad([], 1)')).toThrowError(DvalaError)

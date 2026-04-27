@@ -38,10 +38,14 @@ function nodeSize(node: unknown): number {
 }
 
 /** Assert that a value is an AST node (PV or plain array with string type tag). */
-function assertAstNode(value: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts value is [string, unknown, number] {
-  const ok = (isPersistentVector(value) || Array.isArray(value))
-    && nodeSize(value) >= 2
-    && typeof nodeElem(value, 0) === 'string'
+function assertAstNode(
+  value: unknown,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+): asserts value is [string, unknown, number] {
+  const ok =
+    (isPersistentVector(value) || Array.isArray(value)) &&
+    nodeSize(value) >= 2 &&
+    typeof nodeElem(value, 0) === 'string'
   if (!ok) {
     throw new TypeError('Expected an AST node [type, payload, nodeId]', sourceCodeInfo)
   }
@@ -75,7 +79,7 @@ function toPlainAstNode(node: unknown): AstNode {
 
 const astFunctions: BuiltinNormalExpressions = {
   // --- Value constructors ---
-  'num': {
+  num: {
     evaluate: ([n], sourceCodeInfo): Any => {
       assertNumber(n, sourceCodeInfo)
       return toAny([NodeTypes.Num, n, 0])
@@ -87,12 +91,10 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { n: { type: 'number' } },
       variants: [{ argumentNames: ['n'] }],
       description: 'Creates a number AST node.',
-      examples: [
-        'let { num } = import("ast"); num(42)',
-      ],
+      examples: ['let { num } = import("ast"); num(42)'],
     },
   },
-  'strNode': {
+  strNode: {
     evaluate: ([s], sourceCodeInfo): Any => {
       assertString(s, sourceCodeInfo)
       return toAny([NodeTypes.Str, s, 0])
@@ -104,12 +106,10 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Creates a string AST node.',
-      examples: [
-        'let { strNode } = import("ast"); strNode("hello")',
-      ],
+      examples: ['let { strNode } = import("ast"); strNode("hello")'],
     },
   },
-  'bool': {
+  bool: {
     evaluate: ([b], sourceCodeInfo): Any => {
       if (typeof b !== 'boolean') throw new TypeError('Expected a boolean', sourceCodeInfo)
       return toAny([NodeTypes.Reserved, b ? 'true' : 'false', 0])
@@ -121,12 +121,10 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { b: { type: 'boolean' } },
       variants: [{ argumentNames: ['b'] }],
       description: 'Creates a boolean AST node.',
-      examples: [
-        'let { bool } = import("ast"); bool(true)',
-      ],
+      examples: ['let { bool } = import("ast"); bool(true)'],
     },
   },
-  'nil': {
+  nil: {
     evaluate: (): Any => {
       return toAny([NodeTypes.Reserved, 'null', 0])
     },
@@ -137,14 +135,12 @@ const astFunctions: BuiltinNormalExpressions = {
       args: {},
       variants: [{ argumentNames: [] }],
       description: 'Creates a null AST node.',
-      examples: [
-        'let { nil } = import("ast"); nil()',
-      ],
+      examples: ['let { nil } = import("ast"); nil()'],
     },
   },
 
   // --- Identifier constructors ---
-  'sym': {
+  sym: {
     evaluate: ([name], sourceCodeInfo): Any => {
       assertString(name, sourceCodeInfo)
       return toAny([NodeTypes.Sym, name, 0])
@@ -156,12 +152,10 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { name: { type: 'string' } },
       variants: [{ argumentNames: ['name'] }],
       description: 'Creates a symbol (variable reference) AST node.',
-      examples: [
-        'let { sym } = import("ast"); sym("x")',
-      ],
+      examples: ['let { sym } = import("ast"); sym("x")'],
     },
   },
-  'builtin': {
+  builtin: {
     evaluate: ([name], sourceCodeInfo): Any => {
       assertString(name, sourceCodeInfo)
       return toAny([NodeTypes.Builtin, name, 0])
@@ -173,12 +167,10 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { name: { type: 'string' } },
       variants: [{ argumentNames: ['name'] }],
       description: 'Creates a builtin function reference AST node.',
-      examples: [
-        'let { builtin } = import("ast"); builtin("+")',
-      ],
+      examples: ['let { builtin } = import("ast"); builtin("+")'],
     },
   },
-  'effectNode': {
+  effectNode: {
     evaluate: ([name], sourceCodeInfo): Any => {
       assertString(name, sourceCodeInfo)
       return toAny([NodeTypes.Effect, name, 0])
@@ -190,14 +182,12 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { name: { type: 'string' } },
       variants: [{ argumentNames: ['name'] }],
       description: 'Creates an effect reference AST node.',
-      examples: [
-        'let { effectNode } = import("ast"); effectNode("dvala.io.print")',
-      ],
+      examples: ['let { effectNode } = import("ast"); effectNode("dvala.io.print")'],
     },
   },
 
   // --- Compound constructors ---
-  'call': {
+  call: {
     evaluate: ([fn, args], sourceCodeInfo): Any => {
       assertAstNode(fn, sourceCodeInfo)
       assertArray(args, sourceCodeInfo)
@@ -213,12 +203,10 @@ const astFunctions: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['fn', 'args'] }],
       description: 'Creates a function call AST node.',
-      examples: [
-        'let { call, builtin, num } = import("ast"); call(builtin("+"), [num(1), num(2)])',
-      ],
+      examples: ['let { call, builtin, num } = import("ast"); call(builtin("+"), [num(1), num(2)])'],
     },
   },
-  'ifNode': {
+  ifNode: {
     evaluate: ([cond, then, else_], sourceCodeInfo): Any => {
       assertAstNode(cond, sourceCodeInfo)
       assertAstNode(then, sourceCodeInfo)
@@ -239,12 +227,10 @@ const astFunctions: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['cond', 'thenBranch', 'elseBranch'] }],
       description: 'Creates an if-expression AST node.',
-      examples: [
-        'let { ifNode, sym, num } = import("ast"); ifNode(sym("x"), num(1), num(2))',
-      ],
+      examples: ['let { ifNode, sym, num } = import("ast"); ifNode(sym("x"), num(1), num(2))'],
     },
   },
-  'block': {
+  block: {
     evaluate: ([stmts], sourceCodeInfo): Any => {
       assertArray(stmts, sourceCodeInfo)
       const statementCount = isPersistentVector(stmts) ? stmts.size : (stmts as unknown[]).length
@@ -260,14 +246,12 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { stmts: { type: 'array', description: 'Array of statement AST nodes.' } },
       variants: [{ argumentNames: ['stmts'] }],
       description: 'Creates a block (do...end) AST node.',
-      examples: [
-        'let { block, num } = import("ast"); block([num(1), num(2)])',
-      ],
+      examples: ['let { block, num } = import("ast"); block([num(1), num(2)])'],
     },
   },
 
   // --- Predicates ---
-  'nodeType': {
+  nodeType: {
     evaluate: ([node], sourceCodeInfo): Any => {
       assertAstNode(node, sourceCodeInfo)
       return nodeElem(node, 0) as string
@@ -285,7 +269,7 @@ const astFunctions: BuiltinNormalExpressions = {
       ],
     },
   },
-  'isNum': {
+  isNum: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Num),
     arity: toFixedArity(1),
     docs: {
@@ -297,7 +281,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isNum, num } = import("ast"); isNum(num(42))'],
     },
   },
-  'isStr': {
+  isStr: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Str),
     arity: toFixedArity(1),
     docs: {
@@ -309,7 +293,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isStr, strNode } = import("ast"); isStr(strNode("hi"))'],
     },
   },
-  'isSym': {
+  isSym: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Sym),
     arity: toFixedArity(1),
     docs: {
@@ -321,7 +305,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isSym, sym } = import("ast"); isSym(sym("x"))'],
     },
   },
-  'isBuiltin': {
+  isBuiltin: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Builtin),
     arity: toFixedArity(1),
     docs: {
@@ -333,7 +317,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isBuiltin, builtin } = import("ast"); isBuiltin(builtin("+"))'],
     },
   },
-  'isCall': {
+  isCall: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Call),
     arity: toFixedArity(1),
     docs: {
@@ -345,7 +329,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isCall, call, builtin, num } = import("ast"); isCall(call(builtin("+"), [num(1)]))'],
     },
   },
-  'isIf': {
+  isIf: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.If),
     arity: toFixedArity(1),
     docs: {
@@ -357,7 +341,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isIf, ifNode, sym, num } = import("ast"); isIf(ifNode(sym("x"), num(1), num(2)))'],
     },
   },
-  'isBlock': {
+  isBlock: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Block),
     arity: toFixedArity(1),
     docs: {
@@ -369,7 +353,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isBlock, block, num } = import("ast"); isBlock(block([num(1)]))'],
     },
   },
-  'isLet': {
+  isLet: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Let),
     arity: toFixedArity(1),
     docs: {
@@ -381,7 +365,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isLet } = import("ast"); isLet(quote let x = 1 end)'],
     },
   },
-  'isFn': {
+  isFn: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Function),
     arity: toFixedArity(1),
     docs: {
@@ -393,8 +377,11 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isFn } = import("ast"); isFn(quote (x) -> x end)'],
     },
   },
-  'isBool': {
-    evaluate: ([node]): boolean => (isPersistentVector(node) || Array.isArray(node)) && nodeElem(node, 0) === NodeTypes.Reserved && (nodeElem(node, 1) === 'true' || nodeElem(node, 1) === 'false'),
+  isBool: {
+    evaluate: ([node]): boolean =>
+      (isPersistentVector(node) || Array.isArray(node)) &&
+      nodeElem(node, 0) === NodeTypes.Reserved &&
+      (nodeElem(node, 1) === 'true' || nodeElem(node, 1) === 'false'),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -405,8 +392,11 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isBool, bool } = import("ast"); isBool(bool(true))'],
     },
   },
-  'isNil': {
-    evaluate: ([node]): boolean => (isPersistentVector(node) || Array.isArray(node)) && nodeElem(node, 0) === NodeTypes.Reserved && nodeElem(node, 1) === 'null',
+  isNil: {
+    evaluate: ([node]): boolean =>
+      (isPersistentVector(node) || Array.isArray(node)) &&
+      nodeElem(node, 0) === NodeTypes.Reserved &&
+      nodeElem(node, 1) === 'null',
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -417,7 +407,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isNil, nil } = import("ast"); isNil(nil())'],
     },
   },
-  'isEffectNode': {
+  isEffectNode: {
     evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Effect),
     arity: toFixedArity(1),
     docs: {
@@ -429,12 +419,14 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: ['let { isEffectNode, effectNode } = import("ast"); isEffectNode(effectNode("dvala.io.print"))'],
     },
   },
-  'isAstNode': {
+  isAstNode: {
     evaluate: ([node]): boolean => {
-      return (isPersistentVector(node) || Array.isArray(node))
-        && nodeSize(node) >= 2
-        && typeof nodeElem(node, 0) === 'string'
-        && isNodeType(nodeElem(node, 0))
+      return (
+        (isPersistentVector(node) || Array.isArray(node)) &&
+        nodeSize(node) >= 2 &&
+        typeof nodeElem(node, 0) === 'string' &&
+        isNodeType(nodeElem(node, 0))
+      )
     },
     arity: toFixedArity(1),
     docs: {
@@ -451,7 +443,7 @@ const astFunctions: BuiltinNormalExpressions = {
   },
 
   // --- Accessors ---
-  'payload': {
+  payload: {
     evaluate: ([node], sourceCodeInfo): Any => {
       assertAstNode(node, sourceCodeInfo)
       return nodeElem(node, 1) as Any
@@ -471,7 +463,7 @@ const astFunctions: BuiltinNormalExpressions = {
   },
 
   // --- Pretty printing ---
-  'prettyPrint': {
+  prettyPrint: {
     evaluate: ([node], sourceCodeInfo): string => {
       assertAstNode(node, sourceCodeInfo)
       // prettyPrint expects plain JS arrays; convert PV back to nested plain arrays
@@ -527,27 +519,32 @@ const astSource = `{
 
 // Docs for functions defined in astSource (not in astFunctions)
 const additionalDocs: Record<string, FunctionDocs> = {
-  'decorate': {
+  decorate: {
     category: 'ast',
     returns: { type: 'array' },
     args: {
       ast: { type: 'array', description: 'The original AST node — either a let-binding or any expression.' },
-      transform: { type: 'function', description: 'A function that receives the value AST and returns transformed AST.' },
+      transform: {
+        type: 'function',
+        description: 'A function that receives the value AST and returns transformed AST.',
+      },
     },
     variants: [{ argumentNames: ['ast', 'transform'] }],
-    description: 'Decorator helper for macros: extracts the value from a let-binding (or uses the node directly), passes it to `transform`, and rewraps the result in the let. Use inside a macro to support both `#myMacro expr` and `#myMacro let x = expr` with the same transform logic.',
+    description:
+      'Decorator helper for macros: extracts the value from a let-binding (or uses the node directly), passes it to `transform`, and rewraps the result in the let. Use inside a macro to support both `#myMacro expr` and `#myMacro let x = expr` with the same transform logic.',
     examples: [
       'let { decorate, num } = import("ast");\ndecorate(num(1), (value) -> ["Call", [["Builtin", "+", 0], [value, value]], 0])',
     ],
   },
-  'letBindingName': {
+  letBindingName: {
     category: 'ast',
     returns: { type: 'any' },
     args: {
       ast: { type: 'array', description: 'An AST node — typically the argument a decorator macro receives.' },
     },
     variants: [{ argumentNames: ['ast'] }],
-    description: 'Returns the binding name when `ast` is `let <name> = <value>` with a symbol target, otherwise `null`. Pairs with `decorate` so decorator macros can include the binding name in messages (logs, error prefixes) without reaching into the Let AST shape themselves.',
+    description:
+      'Returns the binding name when `ast` is `let <name> = <value>` with a symbol target, otherwise `null`. Pairs with `decorate` so decorator macros can include the binding name in messages (logs, error prefixes) without reaching into the Let AST shape themselves.',
     examples: [
       'let { letBindingName } = import("ast");\nletBindingName(["Let", [["symbol", [["Sym", "greet", 0], null], 0], ["Str", "hi", 0]], 0])',
       'let { letBindingName, num } = import("ast");\nletBindingName(num(42))',

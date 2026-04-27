@@ -122,10 +122,14 @@ describe('linalg functions', () => {
     it('should refract a vector through a surface with a normal and refractive index ratio', () => {
       // Basic case - refraction in 2D
       // Angle of incidence is 45 degrees, normal is [0, 1], eta is 0.75 (air to water)
-      expect(deepEqual(runLin('lin:refract([1, -1], [0, 1], 0.75)'), [0.5303300858899106, -0.8477912478906585])).toBeTruthy()
+      expect(
+        deepEqual(runLin('lin:refract([1, -1], [0, 1], 0.75)'), [0.5303300858899106, -0.8477912478906585]),
+      ).toBeTruthy()
 
       // 3D refraction
-      expect(deepEqual(runLin('lin:refract([1, -1, 0], [0, 1, 0], 0.8)'), [0.565685424949238, -0.8246211251235321, 0])).toBeTruthy()
+      expect(
+        deepEqual(runLin('lin:refract([1, -1, 0], [0, 1, 0], 0.8)'), [0.565685424949238, -0.8246211251235321, 0]),
+      ).toBeTruthy()
 
       // Total internal reflection (entering from denser medium)
       // With eta = 1.5 (water to air) and a steep enough angle
@@ -209,18 +213,16 @@ describe('linalg functions', () => {
       expect(runLin('lin:normalizeMinmax([42])')).toEqual([0])
 
       // Decimal values
-      expect(runLin('lin:normalizeMinmax([1.5, 2.5, 3.5, 4.5])')).toEqual([0, 0.3333333333333333, 0.6666666666666666, 1])
+      expect(runLin('lin:normalizeMinmax([1.5, 2.5, 3.5, 4.5])')).toEqual([
+        0, 0.3333333333333333, 0.6666666666666666, 1,
+      ])
     })
   })
   describe('lin:normalizeRobust', () => {
     it('should normalize a vector using robust normalization', () => {
       // Basic case with positive numbers
       expect(runLin('lin:normalizeRobust([1, 2, 2, 4, 15])')).toEqual([
-        -0.6744907594765952,
-        0,
-        0,
-        1.3489815189531904,
-        8.768379873195737,
+        -0.6744907594765952, 0, 0, 1.3489815189531904, 8.768379873195737,
       ])
 
       // Case with all same numbers (should handle division by zero)
@@ -237,11 +239,7 @@ describe('linalg functions', () => {
     it('should normalize a vector using z-score normalization', () => {
       // Basic case with positive numbers
       expect(runLin('lin:normalizeZscore([1, 2, 2, 4, 15])')).toEqual([
-        -0.7318526549827781,
-        -0.5392598510399418,
-        -0.5392598510399418,
-        -0.15407424315426904,
-        1.9644466002169305,
+        -0.7318526549827781, -0.5392598510399418, -0.5392598510399418, -0.15407424315426904, 1.9644466002169305,
       ])
 
       // Case with all same numbers (should handle division by zero)
@@ -257,7 +255,9 @@ describe('linalg functions', () => {
   describe('lin:normalizeL1', () => {
     it('should normalize a vector using L1 normalization', () => {
       // Basic case with positive numbers
-      expect(runLin('lin:normalizeL1([1, 2, 3, 4, 5])')).toEqual([0.06666666666666667, 0.13333333333333333, 0.2, 0.26666666666666666, 0.3333333333333333])
+      expect(runLin('lin:normalizeL1([1, 2, 3, 4, 5])')).toEqual([
+        0.06666666666666667, 0.13333333333333333, 0.2, 0.26666666666666666, 0.3333333333333333,
+      ])
 
       // Case with all same numbers (should handle division by zero)
       expect(runLin('lin:normalizeL1([5, 5, 5, 5])')).toEqual([0.25, 0.25, 0.25, 0.25])
@@ -274,7 +274,9 @@ describe('linalg functions', () => {
   describe('lin:normalizeL2', () => {
     it('should normalize a vector using L2 normalization', () => {
       // Basic case with positive numbers
-      expect(runLin('lin:normalizeL2([1, 2, 3, 4, 5])')).toEqual([0.13483997249264842, 0.26967994498529685, 0.40451991747794525, 0.5393598899705937, 0.674199862463242])
+      expect(runLin('lin:normalizeL2([1, 2, 3, 4, 5])')).toEqual([
+        0.13483997249264842, 0.26967994498529685, 0.40451991747794525, 0.5393598899705937, 0.674199862463242,
+      ])
       // Case with all same numbers (should handle division by zero)
       expect(runLin('lin:normalizeL2([5, 5, 5, 5])')).toEqual([0.5, 0.5, 0.5, 0.5])
       // Empty array
@@ -288,7 +290,9 @@ describe('linalg functions', () => {
   describe('lin:normalizeLog', () => {
     it('should normalize a vector using log normalization', () => {
       // Basic case with positive numbers
-      expect(runLin('lin:normalizeLog([1, 2, 3, 4, 5])')).toEqual([0, 0.6931471805599453, 1.0986122886681096, 1.3862943611198906, 1.6094379124341003])
+      expect(runLin('lin:normalizeLog([1, 2, 3, 4, 5])')).toEqual([
+        0, 0.6931471805599453, 1.0986122886681096, 1.3862943611198906, 1.6094379124341003,
+      ])
 
       // Case with all same numbers (should handle division by zero)
       expect(runLin('lin:normalizeLog([5, 5, 5, 5])')).toEqual([0, 0, 0, 0])
@@ -694,7 +698,9 @@ describe('linalg functions', () => {
       expect(runLin('lin:kendallTau([1, 3, 2], [1, 2, 3])')).toBeCloseTo(0.3333)
 
       // All ties in vector A
-      expect(() => runLin('lin:kendallTau([5, 5, 5, 5], [1, 2, 3, 4])')).toThrow('Not enough data to calculate Kendall\'s Tau')
+      expect(() => runLin('lin:kendallTau([5, 5, 5, 5], [1, 2, 3, 4])')).toThrow(
+        "Not enough data to calculate Kendall's Tau",
+      )
 
       // All ties in vector B
       expect(() => runLin('lin:kendallTau([1, 2, 3, 4], [7, 7, 7, 7])')).toThrow(DvalaError)
@@ -716,7 +722,7 @@ describe('linalg functions', () => {
       expect(() => runLin('lin:kendallTau([1, 2, 3], [1, 2])')).toThrow(DvalaError)
 
       // All tied pairs (corner case)
-      expect(() => runLin('lin:kendallTau([1, 1, 1], [2, 2, 2])')).toThrow('Not enough data to calculate Kendall\'s Tau')
+      expect(() => runLin('lin:kendallTau([1, 1, 1], [2, 2, 2])')).toThrow("Not enough data to calculate Kendall's Tau")
 
       // Inverse relationship with some noise
       expect(runLin('lin:kendallTau([1, 2, 3, 4, 5], [5, 3, 4, 2, 1])')).toBeCloseTo(-0.8)
@@ -763,8 +769,16 @@ describe('linalg functions', () => {
       expect(runLin('lin:crossCorrelation([1, 1, 1], [1, 1, 1], 1)')).toBeCloseTo(1)
 
       // Similar patterns with offset
-      expect(runLin('lin:crossCorrelation([10, 12, 15, 10, 8, 15, 20, 25, 18, 15], [8, 10, 14, 9, 7, 13, 19, 23, 17, 14], 0)')).toBeCloseTo(0.995)
-      expect(runLin('lin:crossCorrelation([10, 12, 15, 10, 8, 15, 20, 25, 18, 15], [8, 10, 14, 9, 7, 13, 19, 23, 17, 14], 1)')).toBeCloseTo(0.614)
+      expect(
+        runLin(
+          'lin:crossCorrelation([10, 12, 15, 10, 8, 15, 20, 25, 18, 15], [8, 10, 14, 9, 7, 13, 19, 23, 17, 14], 0)',
+        ),
+      ).toBeCloseTo(0.995)
+      expect(
+        runLin(
+          'lin:crossCorrelation([10, 12, 15, 10, 8, 15, 20, 25, 18, 15], [8, 10, 14, 9, 7, 13, 19, 23, 17, 14], 1)',
+        ),
+      ).toBeCloseTo(0.614)
 
       // Uncorrelated vectors
       expect(runLin('lin:crossCorrelation([1, 2, 3, 4, 5], [5, 1, 3, 2, 4], 0)')).toBeCloseTo(-0.1)
@@ -792,20 +806,38 @@ describe('linalg functions', () => {
   describe('lin:rref', () => {
     it('should calculate the reduced row echelon form of a matrix', () => {
       // Basic case
-      expect(runLin('lin:rref([[1, 2], [3, 4]])')).toEqual([[1, 0], [0, 1]])
-      expect(runLin('lin:rref([[3, 4], [2, 1]])')).toEqual([[1, 0], [0, 1]])
+      expect(runLin('lin:rref([[1, 2], [3, 4]])')).toEqual([
+        [1, 0],
+        [0, 1],
+      ])
+      expect(runLin('lin:rref([[3, 4], [2, 1]])')).toEqual([
+        [1, 0],
+        [0, 1],
+      ])
       // Case with negative numbers
-      expect(runLin('lin:rref([[-1, -2], [-3, -4]])')).toEqual([[1, 0], [0, 1]])
+      expect(runLin('lin:rref([[-1, -2], [-3, -4]])')).toEqual([
+        [1, 0],
+        [0, 1],
+      ])
       // Case with mixed numbers
-      expect(runLin('lin:rref([[1, -2], [-3, 4]])')).toEqual([[1, 0], [0, 1]])
+      expect(runLin('lin:rref([[1, -2], [-3, 4]])')).toEqual([
+        [1, 0],
+        [0, 1],
+      ])
       // Case with single element matrix
       expect(runLin('lin:rref([[42]])')).toEqual([[1]])
 
-      expect(runLin(`lin:rref([
+      expect(
+        runLin(`lin:rref([
   [0, 2, 3],
   [1, 2, 3],
   [4, 5, 6]
-])`)).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+])`),
+      ).toEqual([
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+      ])
       // Case with empty matrix (should throw an error)
       expect(() => runLin('lin:rref([])')).toThrowError(DvalaError)
     })
@@ -844,12 +876,14 @@ describe('linalg functions', () => {
       expect(() => runLin('lin:solve([[1, 1], [2, 2]], [5, 7, 3])')).toThrow(DvalaError)
 
       // Larger system (4×4)
-      expect(runLin(`lin:solve([
+      expect(
+        runLin(`lin:solve([
         [2, 1, -1, 1], 
         [4, 5, -3, 2], 
         [6, -2, 5, -3], 
         [8, 3, 2, 4]
-      ], [5, 10, 2, 17])`)).toEqual([1.519607843137255, -0.17647058823529416, -0.5294117647058822, 1.6078431372549018])
+      ], [5, 10, 2, 17])`),
+      ).toEqual([1.519607843137255, -0.17647058823529416, -0.5294117647058822, 1.6078431372549018])
     })
   })
   describe('lin:toPolar', () => {
@@ -871,20 +905,11 @@ describe('linalg functions', () => {
   describe('lin:fromPolar', () => {
     it('should convert polar coordinates to Cartesian coordinates', () => {
       // Basic case
-      expect(runLin('lin:fromPolar([5, PI / 4])')).toEqual([
-        3.5355339059327378,
-        3.5355339059327373,
-      ])
+      expect(runLin('lin:fromPolar([5, PI / 4])')).toEqual([3.5355339059327378, 3.5355339059327373])
       // Case with negative numbers
-      expect(runLin('lin:fromPolar([5, -PI / 8])')).toEqual([
-        4.619397662556434,
-        -1.913417161825449,
-      ])
+      expect(runLin('lin:fromPolar([5, -PI / 8])')).toEqual([4.619397662556434, -1.913417161825449])
 
-      expect(runLin('lin:fromPolar([0, -PI / 8])')).toEqual([
-        0,
-        0,
-      ])
+      expect(runLin('lin:fromPolar([0, -PI / 8])')).toEqual([0, 0])
       // Case with single element vector (should throw an error)
       expect(() => runLin('lin:fromPolar([42])')).toThrowError(DvalaError)
       // Case with empty vector (should throw an error)

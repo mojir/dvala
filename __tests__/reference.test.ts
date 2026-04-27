@@ -1,5 +1,16 @@
 import { describe, expect, it, test } from 'vitest'
-import { allReference, apiReference, getLinkName, isCustomReference, isDatatypeReference, isEffectReference, isFunctionReference, isShorthandReference, moduleReference, normalExpressionReference } from '../reference'
+import {
+  allReference,
+  apiReference,
+  getLinkName,
+  isCustomReference,
+  isDatatypeReference,
+  isEffectReference,
+  isFunctionReference,
+  isShorthandReference,
+  moduleReference,
+  normalExpressionReference,
+} from '../reference'
 import { normalExpressionKeys, specialExpressionKeys, specialExpressions } from '../src/builtin'
 import { isUnknownRecord } from '../src/typeGuards'
 import { canBeOperator } from '../src/utils/arity'
@@ -30,8 +41,7 @@ const moduleExamples = [
 const dvala = createDvala({ modules: allBuiltinModules })
 describe('apiReference', () => {
   Object.entries(apiReference).forEach(([key, obj]) => {
-    if (!isFunctionReference(obj))
-      return
+    if (!isFunctionReference(obj)) return
     it(key, () => {
       expect(obj.title).toBe(key)
       expect(obj.description.length).toBeGreaterThanOrEqual(1)
@@ -40,12 +50,9 @@ describe('apiReference', () => {
 
       expect(obj.examples.length).toBeGreaterThan(0)
       expect(isUnknownRecord(obj.args)).toBe(true)
-      if (normalExpressionKeys.includes(key))
-        expect(obj.category).not.toBe('special-expression')
-      else if (specialExpressionKeys.includes(key))
-        expect(obj.category).toBe('special-expression')
-      else
-        throw new Error(`${key} is not a builtin function`)
+      if (normalExpressionKeys.includes(key)) expect(obj.category).not.toBe('special-expression')
+      else if (specialExpressionKeys.includes(key)) expect(obj.category).toBe('special-expression')
+      else throw new Error(`${key} is not a builtin function`)
     })
   })
 
@@ -74,14 +81,16 @@ describe('apiReference', () => {
   describe('argument names', () => {
     const allBuiltins = [...normalExpressionKeys, ...specialExpressionKeys]
     Object.entries(apiReference).forEach(([key, obj]) => {
-      if (!isFunctionReference(obj))
-        return
+      if (!isFunctionReference(obj)) return
       test(key, () => {
         const variants = obj.variants
         variants.forEach(variant => {
           const argumentNames = variant.argumentNames
           argumentNames.forEach(argName => {
-            expect(isReservedSymbol(argName) || allBuiltins.includes(argName), `${key} in ${obj.category} has invalid argument name ${argName}`).toBe(false)
+            expect(
+              isReservedSymbol(argName) || allBuiltins.includes(argName),
+              `${key} in ${obj.category} has invalid argument name ${argName}`,
+            ).toBe(false)
           })
         })
       })
@@ -97,8 +106,7 @@ describe('apiReference', () => {
           if (typeof entry === 'string' || !('noRun' in entry)) {
             if (typeof entry !== 'string' && 'throws' in entry)
               expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).toThrow()
-            else
-              expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+            else expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
           }
         })
       })
@@ -128,16 +136,15 @@ describe('apiReference', () => {
   })
 
   describe('operator functions', () => {
-    Object.entries(normalExpressionReference)
-      .forEach(([key, obj]) => {
-        test(key, () => {
-          const arity = normalExpressions[key]!.arity
-          if (canBeOperator(arity) && !obj.noOperatorDocumentation) {
-            expect(obj.args.a, `${obj.category} - ${key} is missing "a" arg`).toBeDefined()
-            expect(obj.args.b, `${obj.category} - ${key} is missing "b" arg`).toBeDefined()
-          }
-        })
+    Object.entries(normalExpressionReference).forEach(([key, obj]) => {
+      test(key, () => {
+        const arity = normalExpressions[key]!.arity
+        if (canBeOperator(arity) && !obj.noOperatorDocumentation) {
+          expect(obj.args.a, `${obj.category} - ${key} is missing "a" arg`).toBeDefined()
+          expect(obj.args.b, `${obj.category} - ${key} is missing "b" arg`).toBeDefined()
+        }
       })
+    })
   })
 })
 
@@ -199,8 +206,7 @@ describe('moduleReference', () => {
           if (typeof entry === 'string' || !('noRun' in entry)) {
             if (typeof entry !== 'string' && 'throws' in entry)
               expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).toThrow()
-            else
-              expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+            else expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
           }
         })
       })
@@ -212,8 +218,7 @@ describe('no orphaned reference data', () => {
   it('every documented special expression has a reference entry', () => {
     const docNames: string[] = []
     for (const [name, type] of Object.entries(specialExpressionTypes)) {
-      if (specialExpressions[type as keyof typeof specialExpressions]?.docs)
-        docNames.push(name)
+      if (specialExpressions[type as keyof typeof specialExpressions]?.docs) docNames.push(name)
     }
     const missing = docNames.filter(n => !(n in allReference))
     expect(missing, `Special expressions missing from allReference: ${missing.join(', ')}`).toEqual([])
@@ -350,9 +355,15 @@ describe('chapterExamples', () => {
         const example = lines.join('\n')
         it(`example ${index + 1}: ${example}`, () => {
           if (throws)
-            expect(() => dvala.run(example, { effectHandlers: testHandlers }), `${chapter.title} example ${index + 1}`).toThrow()
+            expect(
+              () => dvala.run(example, { effectHandlers: testHandlers }),
+              `${chapter.title} example ${index + 1}`,
+            ).toThrow()
           else
-            expect(() => dvala.run(example, { effectHandlers: testHandlers }), `${chapter.title} example ${index + 1}`).not.toThrow()
+            expect(
+              () => dvala.run(example, { effectHandlers: testHandlers }),
+              `${chapter.title} example ${index + 1}`,
+            ).not.toThrow()
         })
       })
     })

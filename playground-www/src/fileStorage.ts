@@ -33,10 +33,8 @@ function normalizeFiles(entries: SavedFile[]): { entries: SavedFile[]; changed: 
     const id = needsNewId ? crypto.randomUUID() : existingId
     const name = normalizeSavedFileName(entry.name)
     usedIds.add(id)
-    if (id !== entry.id)
-      changed = true
-    if (name !== entry.name)
-      changed = true
+    if (id !== entry.id) changed = true
+    if (name !== entry.name) changed = true
     return id === entry.id && name === entry.name ? entry : { ...entry, id, name }
   })
 
@@ -44,14 +42,15 @@ function normalizeFiles(entries: SavedFile[]): { entries: SavedFile[]; changed: 
 }
 
 export function initFiles(): Promise<void> {
-  return idbGet<SavedFile[]>(SAVED_FILES_STORE, STATE_KEY).then(entries => {
-    const normalized = normalizeFiles(entries ?? [])
-    fileCache = normalized.entries
-    if (normalized.changed && getDb())
-      idbPut(SAVED_FILES_STORE, STATE_KEY, normalized.entries)
-  }).catch(() => {
-    fileCache = []
-  })
+  return idbGet<SavedFile[]>(SAVED_FILES_STORE, STATE_KEY)
+    .then(entries => {
+      const normalized = normalizeFiles(entries ?? [])
+      fileCache = normalized.entries
+      if (normalized.changed && getDb()) idbPut(SAVED_FILES_STORE, STATE_KEY, normalized.entries)
+    })
+    .catch(() => {
+      fileCache = []
+    })
 }
 
 export function getSavedFiles(): SavedFile[] {

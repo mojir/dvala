@@ -17,14 +17,10 @@ export function openDb(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
     request.onupgradeneeded = e => {
       const db = (e.target as IDBOpenDBRequest).result
-      if (!db.objectStoreNames.contains(SAVED_SNAPSHOTS_STORE))
-        db.createObjectStore(SAVED_SNAPSHOTS_STORE)
-      if (!db.objectStoreNames.contains(TERMINAL_SNAPSHOTS_STORE))
-        db.createObjectStore(TERMINAL_SNAPSHOTS_STORE)
-      if (!db.objectStoreNames.contains(SAVED_FILES_STORE))
-        db.createObjectStore(SAVED_FILES_STORE)
-      if (!db.objectStoreNames.contains(FILE_HISTORIES_STORE))
-        db.createObjectStore(FILE_HISTORIES_STORE)
+      if (!db.objectStoreNames.contains(SAVED_SNAPSHOTS_STORE)) db.createObjectStore(SAVED_SNAPSHOTS_STORE)
+      if (!db.objectStoreNames.contains(TERMINAL_SNAPSHOTS_STORE)) db.createObjectStore(TERMINAL_SNAPSHOTS_STORE)
+      if (!db.objectStoreNames.contains(SAVED_FILES_STORE)) db.createObjectStore(SAVED_FILES_STORE)
+      if (!db.objectStoreNames.contains(FILE_HISTORIES_STORE)) db.createObjectStore(FILE_HISTORIES_STORE)
     }
     request.onsuccess = e => {
       dbInstance = (e.target as IDBOpenDBRequest).result

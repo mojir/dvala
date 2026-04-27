@@ -1,7 +1,12 @@
 import type { DoNode } from '../../builtin/specialExpressions/block'
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
-import { asReservedSymbolToken, assertReservedSymbolToken, isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
+import {
+  asReservedSymbolToken,
+  assertReservedSymbolToken,
+  isOperatorToken,
+  isReservedSymbolToken,
+} from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import type { ParserContext } from '../ParserContext'
 import { withSourceCodeInfo } from '../helpers'

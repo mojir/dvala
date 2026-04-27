@@ -25,18 +25,11 @@
         "benchmarks/**/*.ts",
         "scripts/**/*.{ts,mjs}"
       ],
-      "ignoreDependencies": [
-        "@vscode/vsce",
-        "serve"
-      ]
+      "ignoreDependencies": ["@vscode/vsce", "serve"]
     },
     "vscode-dvala": {
-      "entry": [
-        "src/debugAdapter.ts"
-      ],
-      "project": [
-        "src/**/*.ts"
-      ]
+      "entry": ["src/debugAdapter.ts"],
+      "project": ["src/**/*.ts"]
     }
   }
 }

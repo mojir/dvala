@@ -11,7 +11,11 @@ import { href } from './router'
 
 /** Converts heading text to a URL-safe id, matching the sub-TOC anchor generation. */
 export function slugifyHeading(text: string): string {
-  return text.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-')
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
 }
 
 const renderer = new marked.Renderer()

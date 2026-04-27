@@ -12,7 +12,7 @@ import type { SourceCodeInfo } from '../../../tokenizer/token'
 import stringModuleSource from './string.dvala'
 
 const stringUtilsFunctions: BuiltinNormalExpressions = {
-  'stringRepeat': {
+  stringRepeat: {
     evaluate: ([str, count], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       assertNumber(count, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -44,7 +44,7 @@ stringRepeat("***", 0)`,
     },
   },
 
-  'fromCharCode': {
+  fromCharCode: {
     evaluate: ([num], sourceCodeInfo): string => {
       assertNumber(num, sourceCodeInfo, { finite: true })
       const int = toNonNegativeInteger(num)
@@ -72,7 +72,7 @@ fromCharCode(0)`,
     },
   },
 
-  'toCharCode': {
+  toCharCode: {
     evaluate: ([str], sourceCodeInfo): number => {
       assertString(str, sourceCodeInfo, { nonEmpty: true })
       return asNonUndefined(str.codePointAt(0), sourceCodeInfo)
@@ -95,7 +95,7 @@ toCharCode("Albert")`,
     },
   },
 
-  'trimLeft': {
+  trimLeft: {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.replace(/^\s+/, '')
@@ -120,7 +120,7 @@ trimLeft("")`,
     },
   },
 
-  'trimRight': {
+  trimRight: {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.replace(/\s+$/, '')
@@ -145,11 +145,11 @@ trimRight("")`,
     },
   },
 
-  'splitLines': {
+  splitLines: {
     // Returns a plain JS string[] — cast to Any because it's an annotated collection
     evaluate: ([str], sourceCodeInfo): Any => {
       assertString(str, sourceCodeInfo)
-      return str.split((/\r\n|\n|\r/)).filter(line => line !== '') as unknown as Any
+      return str.split(/\r\n|\n|\r/).filter(line => line !== '') as unknown as Any
     },
     arity: toFixedArity(1),
     docs: {
@@ -173,13 +173,12 @@ splitLines("")`,
     },
   },
 
-  'padLeft': {
+  padLeft: {
     evaluate: ([str, length, padString], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       assertNumber(length, sourceCodeInfo, { integer: true })
 
-      if (padString !== undefined)
-        assertString(padString, sourceCodeInfo)
+      if (padString !== undefined) assertString(padString, sourceCodeInfo)
 
       return str.padStart(length, padString)
     },
@@ -195,11 +194,9 @@ splitLines("")`,
         length: { type: 'integer' },
         padString: { type: 'string' },
       },
-      variants: [
-        { argumentNames: ['s', 'length'] },
-        { argumentNames: ['s', 'length', 'padString'] },
-      ],
-      description: 'Pads from the start of `s` with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
+      variants: [{ argumentNames: ['s', 'length'] }, { argumentNames: ['s', 'length', 'padString'] }],
+      description:
+        'Pads from the start of `s` with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
       seeAlso: ['string.padRight'],
       examples: [
         `let { padLeft } = import("string");
@@ -216,13 +213,12 @@ padLeft("Albert", -1)`,
     },
   },
 
-  'padRight': {
+  padRight: {
     evaluate: ([str, length, padString], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       assertNumber(length, sourceCodeInfo, { integer: true })
 
-      if (padString !== undefined)
-        assertString(padString, sourceCodeInfo)
+      if (padString !== undefined) assertString(padString, sourceCodeInfo)
 
       return str.padEnd(length, padString)
     },
@@ -238,11 +234,9 @@ padLeft("Albert", -1)`,
         length: { type: 'integer' },
         padString: { type: 'string' },
       },
-      variants: [
-        { argumentNames: ['s', 'length'] },
-        { argumentNames: ['s', 'length', 'padString'] },
-      ],
-      description: 'Pads from the start of `s` with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
+      variants: [{ argumentNames: ['s', 'length'] }, { argumentNames: ['s', 'length', 'padString'] }],
+      description:
+        'Pads from the start of `s` with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
       seeAlso: ['string.padLeft'],
       examples: [
         `let { padRight } = import("string");
@@ -259,7 +253,7 @@ padRight("Albert", -1)`,
     },
   },
 
-  'template': {
+  template: {
     evaluate: ([templateString, ...placeholders], sourceCodeInfo): string => {
       assertString(templateString, sourceCodeInfo)
       // placeholders is a rest-spread from PV params, always a plain JS array — no assertion needed
@@ -297,7 +291,8 @@ padRight("Albert", -1)`,
         params: { type: 'any', rest: true },
       },
       variants: [{ argumentNames: ['s', 'params'] }],
-      description: 'Applies placeholders to a string. Support for basic pluralization - see examples. If pluralization is used, first placeholder must be a number.',
+      description:
+        'Applies placeholders to a string. Support for basic pluralization - see examples. If pluralization is used, first placeholder must be a number.',
       seeAlso: ['str'],
       examples: [
         `let { template } = import("string");
@@ -331,12 +326,11 @@ template("No book||||One book||||Two books||||Three books||||$1 books", 4)`,
     },
   },
 
-  'encodeBase64': {
+  encodeBase64: {
     evaluate: ([value], sourceCodeInfo): string => {
       assertString(value, sourceCodeInfo)
       return btoa(
         encodeURIComponent(value).replace(/%([0-9A-F]{2})/g, (_match, p1) => {
-
           return String.fromCharCode(Number.parseInt(p1, 16))
         }),
       )
@@ -357,15 +351,14 @@ encodeBase64("Albert")`,
     },
   },
 
-  'decodeBase64': {
+  decodeBase64: {
     evaluate: ([value], sourceCodeInfo): string => {
       assertString(value, sourceCodeInfo)
       try {
         return decodeURIComponent(
           Array.prototype.map
             .call(atob(value), c => {
-
-              return `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`
+              return `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`
             })
             .join(''),
         )
@@ -389,7 +382,7 @@ decodeBase64("QWxiZXJ0IPCfkLs=")`,
     },
   },
 
-  'encodeUriComponent': {
+  encodeUriComponent: {
     evaluate: ([value], sourceCodeInfo): string => {
       assertString(value, sourceCodeInfo)
       return encodeURIComponent(value)
@@ -410,7 +403,7 @@ encodeUriComponent("Hi everyone!?")`,
     },
   },
 
-  'decodeUriComponent': {
+  decodeUriComponent: {
     evaluate: ([value], sourceCodeInfo): string => {
       assertString(value, sourceCodeInfo)
       try {
@@ -435,7 +428,7 @@ decodeUriComponent("Hi%20everyone!%3F%20%F0%9F%91%8D")`,
     },
   },
 
-  'capitalize': {
+  capitalize: {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()

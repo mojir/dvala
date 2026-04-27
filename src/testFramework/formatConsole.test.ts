@@ -31,23 +31,26 @@ describe('formatConsole', () => {
   })
 
   it('omits ansi codes when color is false', () => {
-    const { text } = formatConsole(makeRun({
-      results: [{ name: 'a > passes', status: 'passed', durationMs: 1 }],
-    }), { color: false })
+    const { text } = formatConsole(
+      makeRun({
+        results: [{ name: 'a > passes', status: 'passed', durationMs: 1 }],
+      }),
+      { color: false },
+    )
     expect(text).not.toMatch(ansiRe)
   })
 
   it('emits ansi codes by default (color on)', () => {
-    const { text } = formatConsole(makeRun({
-      results: [{ name: 'passes', status: 'passed', durationMs: 1 }],
-    }))
+    const { text } = formatConsole(
+      makeRun({
+        results: [{ name: 'passes', status: 'passed', durationMs: 1 }],
+      }),
+    )
     expect(text).toMatch(ansiRe)
   })
 
   it('hides passed tests by default, but shows them when verbose', () => {
-    const results: TestRunResult['results'] = [
-      { name: 'suite > passes', status: 'passed', durationMs: 1 },
-    ]
+    const results: TestRunResult['results'] = [{ name: 'suite > passes', status: 'passed', durationMs: 1 }]
     const quiet = stripAnsi(formatConsole(makeRun({ results }), { color: false }).text)
     expect(quiet).not.toContain('passes')
     expect(quiet).toContain('1 passed')
@@ -88,9 +91,7 @@ describe('formatConsole', () => {
       code: 'let x = 42',
       filePath: '/tmp/foo.dvala',
     })
-    const results: TestRunResult['results'] = [
-      { name: 'adds', status: 'failed', error: err, durationMs: 2 },
-    ]
+    const results: TestRunResult['results'] = [{ name: 'adds', status: 'failed', error: err, durationMs: 2 }]
     const text = stripAnsi(formatConsole(makeRun({ results }), { color: false }).text)
     expect(text).toContain('bad stuff')
     // Location line includes path and line:column
@@ -100,10 +101,13 @@ describe('formatConsole', () => {
   })
 
   it('shows BAIL OUT and marks failure when a bailout is present', () => {
-    const { text, success } = formatConsole(makeRun({
-      bailout: new Error('parse failed'),
-      results: [],
-    }), { color: false })
+    const { text, success } = formatConsole(
+      makeRun({
+        bailout: new Error('parse failed'),
+        results: [],
+      }),
+      { color: false },
+    )
     expect(success).toBe(false)
     expect(text).toContain('BAIL OUT')
     expect(text).toContain('parse failed')
@@ -139,9 +143,7 @@ describe('formatConsole', () => {
 
   it('handles a DvalaError without sourceCodeInfo (no location line)', () => {
     const err = new DvalaError('no info', undefined)
-    const results: TestRunResult['results'] = [
-      { name: 'x', status: 'failed', error: err, durationMs: 1 },
-    ]
+    const results: TestRunResult['results'] = [{ name: 'x', status: 'failed', error: err, durationMs: 1 }]
     const text = stripAnsi(formatConsole(makeRun({ results }), { color: false }).text)
     expect(text).toContain('no info')
     expect(text).not.toContain(' at ')

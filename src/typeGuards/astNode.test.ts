@@ -27,12 +27,27 @@ import {
 } from './astNode'
 
 describe('node type guards', () => {
-  const specialExpressionNode: QqNode = [NodeTypes.Qq, [[NodeTypes.Reserved, null, 0], [NodeTypes.Reserved, null, 0]], 0]
+  const specialExpressionNode: QqNode = [
+    NodeTypes.Qq,
+    [
+      [NodeTypes.Reserved, null, 0],
+      [NodeTypes.Reserved, null, 0],
+    ],
+    0,
+  ]
   const symbolNode: SymbolNode = [NodeTypes.Sym, 'A name', 0]
   const numberNode: NumberNode = [NodeTypes.Num, 12, 0]
   const stringNode: StringNode = [NodeTypes.Str, 'foo', 0]
-  const normalExpressionNodeWithName: NormalExpressionNodeWithName = [NodeTypes.Call, [[NodeTypes.Builtin, '+', 0], []], 0]
-  const normalExpressionNodeWithoutName: NormalExpressionNodeExpression = [NodeTypes.Call, [stringNode, [numberNode]], 0]
+  const normalExpressionNodeWithName: NormalExpressionNodeWithName = [
+    NodeTypes.Call,
+    [[NodeTypes.Builtin, '+', 0], []],
+    0,
+  ]
+  const normalExpressionNodeWithoutName: NormalExpressionNodeExpression = [
+    NodeTypes.Call,
+    [stringNode, [numberNode]],
+    0,
+  ]
 
   const expressionNodes: ExpressionNode[] = [
     normalExpressionNodeWithName,

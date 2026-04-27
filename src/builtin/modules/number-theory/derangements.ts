@@ -38,8 +38,7 @@ function getAllDerangements(arr: Arr): PersistentVector<unknown>[] {
 }
 
 function countDerangements(n: number): number {
-  if (n === 1)
-    return 0
+  if (n === 1) return 0
 
   let a = 1 // !0
   let b = 0 // !1
@@ -55,7 +54,7 @@ function countDerangements(n: number): number {
 }
 
 export const derangementsNormalExpressions: BuiltinNormalExpressions = {
-  'derangements': {
+  derangements: {
     // Returns a PersistentVector of PersistentVectors (each derangement), cast to Any
     evaluate: ([set], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
@@ -63,7 +62,7 @@ export const derangementsNormalExpressions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'countDerangements': {
+  countDerangements: {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { finite: true, integer: true, positive: true })
       return countDerangements(n)

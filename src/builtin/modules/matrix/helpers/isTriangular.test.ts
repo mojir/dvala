@@ -54,10 +54,7 @@ describe('all isTriangular', () => {
     })
 
     it('should return false for a matrix with unequal row lengths', () => {
-      const matrix = [
-        [1, 2],
-        [3],
-      ]
+      const matrix = [[1, 2], [3]]
       expect(isTriangular(matrix)).toBe(false)
     })
   })
@@ -104,10 +101,7 @@ describe('all isTriangular', () => {
     })
 
     it('should return false for a matrix with unequal row lengths', () => {
-      const matrix = [
-        [1, 2],
-        [3],
-      ]
+      const matrix = [[1, 2], [3]]
       expect(isTriangularUpper(matrix)).toBe(false)
     })
   })
@@ -154,10 +148,7 @@ describe('all isTriangular', () => {
     })
 
     it('should return false for a matrix with unequal row lengths', () => {
-      const matrix = [
-        [1, 2],
-        [3],
-      ]
+      const matrix = [[1, 2], [3]]
       expect(isTriangularLower(matrix)).toBe(false)
     })
   })

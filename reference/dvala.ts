@@ -33,7 +33,5 @@ export function dvala(strings: TemplateStringsArray, ...values: unknown[]): stri
  * and shorthand.ts where the reference tests require no trailing semicolon.
  */
 export function snippet(code: string): string {
-  return format(code.trim())
-    .trimEnd()
-    .replace(/;$/, '')
+  return format(code.trim()).trimEnd().replace(/;$/, '')
 }

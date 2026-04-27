@@ -8,8 +8,7 @@ export const assertionNormalExpression: BuiltinNormalExpressions = {
       const value = params.get(0)
       const message = params.size === 2 ? params.get(1) : `${value}`
       assertString(message, sourceCodeInfo)
-      if (!value)
-        throw new AssertionError(message, sourceCodeInfo)
+      if (!value) throw new AssertionError(message, sourceCodeInfo)
 
       return true
     },
@@ -17,7 +16,8 @@ export const assertionNormalExpression: BuiltinNormalExpressions = {
     docs: {
       type: '((cond: Boolean) -> asserts {cond | cond == true}) & ((cond: Boolean, message: String) -> asserts {cond | cond == true})',
       category: 'assertion',
-      description: 'If `value` is `false` it throws `AssertionError` with `message`. If no `message` is provided, the message is derived from the value. Under strict Boolean, the value must be `Boolean` — e.g. `assert(x != null, "x is null")` instead of `assert(x, "x is null")`.',
+      description:
+        'If `value` is `false` it throws `AssertionError` with `message`. If no `message` is provided, the message is derived from the value. Under strict Boolean, the value must be `Boolean` — e.g. `assert(x != null, "x is null")` instead of `assert(x, "x is null")`.',
       returns: {
         type: 'boolean',
       },
@@ -31,15 +31,10 @@ export const assertionNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [
         {
-          argumentNames: [
-            'value',
-          ],
+          argumentNames: ['value'],
         },
         {
-          argumentNames: [
-            'value',
-            'message',
-          ],
+          argumentNames: ['value', 'message'],
         },
       ],
       examples: [

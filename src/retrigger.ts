@@ -66,9 +66,7 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
   }
 
   try {
-    const modules = options?.modules
-      ? new Map(options.modules.map(m => [m.name, m]))
-      : undefined
+    const modules = options?.modules ? new Map(options.modules.map(m => [m.name, m])) : undefined
 
     const deserializeOptions = {
       modules,
@@ -91,8 +89,7 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
       deserializeOptions,
     )
     // Apply toJS to convert PV/PM to plain JS arrays/objects, matching dvala.runAsync() semantics
-    if (result.type === 'completed')
-      return { ...result, value: toJS(result.value as Any) }
+    if (result.type === 'completed') return { ...result, value: toJS(result.value as Any) }
     return result
   } catch (error) {
     if (error instanceof DvalaError) {

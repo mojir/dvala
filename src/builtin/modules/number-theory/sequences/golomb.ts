@@ -9,6 +9,6 @@ function getGolombSeq(n: number): number[] {
 }
 
 export const golombSequence: SequenceDefinition<'golomb'> = {
-  'golombSeq': length => getGolombSeq(length),
-  'isGolomb': () => true,
+  golombSeq: length => getGolombSeq(length),
+  isGolomb: () => true,
 }

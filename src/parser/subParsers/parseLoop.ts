@@ -3,7 +3,13 @@ import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
 import type { SymbolToken } from '../../tokenizer/token'
-import { assertLParenToken, assertOperatorToken, assertRParenToken, isOperatorToken, isRParenToken } from '../../tokenizer/token'
+import {
+  assertLParenToken,
+  assertOperatorToken,
+  assertRParenToken,
+  isOperatorToken,
+  isRParenToken,
+} from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseBindingTarget } from './parseBindingTarget'

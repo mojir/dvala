@@ -13,13 +13,7 @@ describe('partitions', () => {
     it('should return the partitions of a number', () => {
       expect(runNth('nth:partitions(0)')).toEqual([[]])
       expect(runNth('nth:partitions(1)')).toEqual([[1]])
-      expect(runNth('nth:partitions(4)')).toEqual([
-        [4],
-        [3, 1],
-        [2, 2],
-        [2, 1, 1],
-        [1, 1, 1, 1],
-      ])
+      expect(runNth('nth:partitions(4)')).toEqual([[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]])
       expect(runNth('nth:partitions(5)')).toEqual([
         [5],
         [4, 1],

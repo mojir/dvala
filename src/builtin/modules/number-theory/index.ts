@@ -34,15 +34,13 @@ function lcm(a: number, b: number): number {
 }
 
 function mobius(n: number): number {
-  if (n === 1)
-    return 1
+  if (n === 1) return 1
 
   const factors = primeFactors(n)
   const uniqueFactors = new Set(factors)
 
   // If n has a repeated prime factor (not square-free)
-  if (uniqueFactors.size !== factors.length)
-    return 0
+  if (uniqueFactors.size !== factors.length) return 0
 
   // If square-free with even number of prime factors: return 1
   // If square-free with odd number of prime factors: return -1
@@ -154,7 +152,7 @@ function chineseRemainder(remainders: number[], moduli: number[]): number {
 }
 
 const combinatoricalNormalExpression: BuiltinNormalExpressions = {
-  'isCoprime': {
+  isCoprime: {
     evaluate: ([a, b], sourceCodeInfo): boolean => {
       assertNumber(a, sourceCodeInfo, { integer: true })
       assertNumber(b, sourceCodeInfo, { integer: true })
@@ -162,17 +160,16 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'isDivisibleBy': {
+  isDivisibleBy: {
     evaluate: ([value, divisor], sourceCodeInfo): boolean => {
       assertNumber(value, sourceCodeInfo, { integer: true })
       assertNumber(divisor, sourceCodeInfo, { integer: true })
-      if (divisor === 0)
-        return false
+      if (divisor === 0) return false
       return value % divisor === 0
     },
     arity: toFixedArity(2),
   },
-  'gcd': {
+  gcd: {
     evaluate: ([a, b], sourceCodeInfo): number => {
       assertNumber(a, sourceCodeInfo)
       assertNumber(b, sourceCodeInfo)
@@ -180,7 +177,7 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'lcm': {
+  lcm: {
     evaluate: ([a, b], sourceCodeInfo): number => {
       assertNumber(a, sourceCodeInfo)
       assertNumber(b, sourceCodeInfo)
@@ -189,7 +186,7 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
 
-  'multinomial': {
+  multinomial: {
     evaluate: ([...args_], sourceCodeInfo): number => {
       const args = assertVector(args_, sourceCodeInfo)
       const sum = args.reduce((acc: number, curr) => {
@@ -200,7 +197,7 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
   },
-  'isAmicable': {
+  isAmicable: {
     evaluate: ([a, b], sourceCodeInfo): boolean => {
       assertNumber(a, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(b, sourceCodeInfo, { integer: true, positive: true })
@@ -210,35 +207,31 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'eulerTotient': {
+  eulerTotient: {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       let result = n
       for (let p = 2; p * p <= n; p += 1) {
         if (n % p === 0) {
-          while (n % p === 0)
-            n /= p
+          while (n % p === 0) n /= p
           result -= result / p
         }
       }
-      if (n > 1)
-        result -= result / n
+      if (n > 1) result -= result / n
       return result
     },
     arity: toFixedArity(1),
   },
-  'mobius': {
+  mobius: {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
-      if (n === 1)
-        return 1
+      if (n === 1) return 1
 
       const factors = primeFactors(n)
       const uniqueFactors = new Set(factors)
 
       // If n has a repeated prime factor (not square-free)
-      if (uniqueFactors.size !== factors.length)
-        return 0
+      if (uniqueFactors.size !== factors.length) return 0
 
       // If square-free with even number of prime factors: return 1
       // If square-free with odd number of prime factors: return -1
@@ -246,28 +239,27 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'mertens': {
+  mertens: {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
-      if (n === 1)
-        return 1
+      if (n === 1) return 1
       let result = 0
       for (let i = 1; i <= n; i++) {
         const mobiusValue = mobius(i)
-        result += mobiusValue// * Math.floor(n / i)
+        result += mobiusValue // * Math.floor(n / i)
       }
       return result
     },
     arity: toFixedArity(1),
   },
-  'sigma': {
+  sigma: {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       return getDivisors(n).reduce((acc, curr) => acc + curr, 0)
     },
     arity: toFixedArity(1),
   },
-  'carmichaelLambda': {
+  carmichaelLambda: {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       if (n === 1) {
@@ -305,27 +297,30 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'cartesianProduct': {
+  cartesianProduct: {
     // Returns a PersistentVector of PersistentVectors (each product tuple), cast to Any
     evaluate: (params, sourceCodeInfo): Any => {
       for (const set of params) {
         assertArray(set, sourceCodeInfo)
       }
       const sets = [...params] as Arr[]
-      const result = sets.reduce((acc: PersistentVector<unknown>[], set) => {
-        const newAcc: PersistentVector<unknown>[] = []
-        for (const arr of acc) {
-          for (const value of set) {
-            newAcc.push(arr.append(value))
+      const result = sets.reduce(
+        (acc: PersistentVector<unknown>[], set) => {
+          const newAcc: PersistentVector<unknown>[] = []
+          for (const arr of acc) {
+            for (const value of set) {
+              newAcc.push(arr.append(value))
+            }
           }
-        }
-        return newAcc
-      }, [PersistentVector.empty()])
+          return newAcc
+        },
+        [PersistentVector.empty()],
+      )
       return PersistentVector.from(result)
     },
     arity: { min: 1 },
   },
-  'perfectPower': {
+  perfectPower: {
     // Returns a plain [number, number] tuple or null — cast to Any
     evaluate: ([n], sourceCodeInfo): Any => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
@@ -334,7 +329,7 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'modExp': {
+  modExp: {
     evaluate: ([base, exponent, modulus], sourceCodeInfo): number => {
       assertNumber(base, sourceCodeInfo, { finite: true })
       assertNumber(exponent, sourceCodeInfo, { integer: true, positive: true })
@@ -344,7 +339,7 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(3),
   },
-  'modInv': {
+  modInv: {
     evaluate: ([a, m], sourceCodeInfo): number => {
       assertNumber(a, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(m, sourceCodeInfo, { integer: true, positive: true })
@@ -357,7 +352,7 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'extendedGcd': {
+  extendedGcd: {
     // Returns a plain [number, number, number] tuple — cast to Any
     evaluate: ([a, b], sourceCodeInfo): Any => {
       assertNumber(a, sourceCodeInfo, { integer: true })
@@ -367,7 +362,7 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'chineseRemainder': {
+  chineseRemainder: {
     evaluate: ([remainders_, moduli_], sourceCodeInfo): number => {
       const remainders = assertVector(remainders_, sourceCodeInfo)
       const moduli = assertVector(moduli_, sourceCodeInfo)
@@ -382,7 +377,7 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'stirlingFirst': {
+  stirlingFirst: {
     evaluate: ([n, k], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(k, sourceCodeInfo, { integer: true, positive: true, lte: n })
@@ -404,14 +399,12 @@ const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'stirlingSecond': {
+  stirlingSecond: {
     evaluate: ([n, k], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(k, sourceCodeInfo, { integer: true, positive: true, lte: n })
-      if (k === 1)
-        return 1 // Only one way to put n objects into one subset
-      if (k === n)
-        return 1 // Only one way to put n objects into n subsets (one object per subset)
+      if (k === 1) return 1 // Only one way to put n objects into one subset
+      if (k === n) return 1 // Only one way to put n objects into n subsets (one object per subset)
 
       // Create a 2D array for memoization
       const dp: number[][] = Array.from({ length: n + 1 }, () => Array<number>(k + 1).fill(0))
@@ -466,8 +459,7 @@ function addNormalExpressions(normalExpressions: BuiltinNormalExpressions) {
 for (const [key, docs] of Object.entries(moduleDocs)) {
   // Defensive: all doc keys correspond to existing expressions
   /* v8 ignore next 2 */
-  if (combinatoricalNormalExpression[key])
-    combinatoricalNormalExpression[key].docs = docs
+  if (combinatoricalNormalExpression[key]) combinatoricalNormalExpression[key].docs = docs
 }
 
 export const numberTheoryModule: DvalaModule = {

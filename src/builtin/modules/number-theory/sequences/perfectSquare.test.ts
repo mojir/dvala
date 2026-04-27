@@ -27,17 +27,7 @@ describe('perfect-square', () => {
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:perfectSquareTakeWhile(-> $ < 100)')).toEqual([
-      1,
-      4,
-      9,
-      16,
-      25,
-      36,
-      49,
-      64,
-      81,
-    ])
+    expect(runNth('nth:perfectSquareTakeWhile(-> $ < 100)')).toEqual([1, 4, 9, 16, 25, 36, 49, 64, 81])
   })
 
   it('should determine if numbers are in the sequence', () => {

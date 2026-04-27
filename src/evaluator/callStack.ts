@@ -68,8 +68,7 @@ export function reconstructCallStack(k: ContinuationStack): CallStackEntry[] {
  *   at <main>        entry.dvala:5:1
  */
 export function formatCallStack(entries: CallStackEntry[]): string {
-  if (entries.length === 0)
-    return ''
+  if (entries.length === 0) return ''
 
   return entries
     .map(entry => {

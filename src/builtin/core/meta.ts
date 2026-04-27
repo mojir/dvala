@@ -15,7 +15,7 @@ export function getMetaNormalExpression(
   effectReference: Record<string, EffectReference>,
 ): BuiltinNormalExpressions {
   return {
-    'doc': {
+    doc: {
       evaluate: ([value], sourceCodeInfo): string => {
         assertNonUndefined(normalExpressionReference)
 
@@ -61,7 +61,7 @@ export function getMetaNormalExpression(
         ],
       },
     },
-    'withDoc': {
+    withDoc: {
       evaluate: ([fn, docString], sourceCodeInfo): Any => {
         assertFunctionLike(fn, sourceCodeInfo)
         assertString(docString, sourceCodeInfo)
@@ -84,7 +84,8 @@ export function getMetaNormalExpression(
           b: { type: 'string' },
         },
         variants: [{ argumentNames: ['a', 'b'] }],
-        description: 'Returns a new function with the documentation string `b` attached. The original function is not modified.',
+        description:
+          'Returns a new function with the documentation string `b` attached. The original function is not modified.',
         seeAlso: ['doc'],
         examples: [
           '((x, y) -> x + y) withDoc "Adds two numbers."',
@@ -92,7 +93,7 @@ export function getMetaNormalExpression(
         ],
       },
     },
-    'arity': {
+    arity: {
       evaluate: ([value], sourceCodeInfo): Any => {
         // Helper: convert a plain arity object to a PersistentMap so it's a valid Dvala object
         function arityToMap(a: Arity): Any {
@@ -106,8 +107,7 @@ export function getMetaNormalExpression(
         if (isEffect(value)) {
           const key = `-effect-${value.name}`
           const ref = effectReference[key]
-          if (!ref)
-            return PersistentMap.empty()
+          if (!ref) return PersistentMap.empty()
           // Derive arity from variants
           const argCounts = ref.variants.map(v => v.argumentNames.length)
           const min = Math.min(...argCounts)
@@ -129,7 +129,8 @@ export function getMetaNormalExpression(
         returns: { type: 'object' },
         args: { value: { type: ['function', 'effect'] } },
         variants: [{ argumentNames: ['value'] }],
-        description: 'Returns arity of the `value`. The arity is an object with the properties: `min` and `max`. If the function has fixed arity, `min` and `max` are equal to the number of required parameters. If no restrictions apply, empty object is returned. Also works on effects.',
+        description:
+          'Returns arity of the `value`. The arity is an object with the properties: `min` and `max`. If the function has fixed arity, `min` and `max` are equal to the number of required parameters. If no restrictions apply, empty object is returned. Also works on effects.',
         seeAlso: ['doc'],
         examples: [
           'arity(+)',

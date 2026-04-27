@@ -88,11 +88,7 @@ describe('CLI IO effect handlers', () => {
     const mainFile = path.join(exampleProjectDir, 'main.dvala')
     expect(fs.existsSync(mainFile)).toBe(true)
 
-    const result = await replEval(
-      'result.avg',
-      [],
-      ['repl', '-l', mainFile],
-    )
+    const result = await replEval('result.avg', [], ['repl', '-l', mainFile])
 
     expect(result).toBe('5')
   })
@@ -101,18 +97,12 @@ describe('CLI IO effect handlers', () => {
 
   describe('dvala.io.read', () => {
     it('returns a string', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.read, "Name: ")',
-        ['Alice'],
-      )
+      const result = await replEval('perform(@dvala.io.read, "Name: ")', ['Alice'])
       expect(result).toBe('Alice')
     })
 
     it('returns empty string for empty input', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.read, "Name: ")',
-        [''],
-      )
+      const result = await replEval('perform(@dvala.io.read, "Name: ")', [''])
       expect(result).toBe('')
     })
   })
@@ -121,34 +111,22 @@ describe('CLI IO effect handlers', () => {
 
   describe('dvala.io.pick', () => {
     it('returns the selected index as a number', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.pick, ["A", "B", "C"])',
-        ['1'],
-      )
+      const result = await replEval('perform(@dvala.io.pick, ["A", "B", "C"])', ['1'])
       expect(result).toBe('1')
     })
 
     it('returns 0 for first item', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.pick, ["X", "Y"])',
-        ['0'],
-      )
+      const result = await replEval('perform(@dvala.io.pick, ["X", "Y"])', ['0'])
       expect(result).toBe('0')
     })
 
     it('supports {items, options} format with default', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.pick, {items: ["A", "B"], options: {default: 1}})',
-        [''],
-      )
+      const result = await replEval('perform(@dvala.io.pick, {items: ["A", "B"], options: {default: 1}})', [''])
       expect(result).toBe('1')
     })
 
     it('returns null on empty input without default', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.pick, ["A", "B"])',
-        [''],
-      )
+      const result = await replEval('perform(@dvala.io.pick, ["A", "B"])', [''])
       expect(result).toBe('null')
     })
   })
@@ -157,42 +135,27 @@ describe('CLI IO effect handlers', () => {
 
   describe('dvala.io.confirm', () => {
     it('returns true for "y"', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.confirm, "OK?")',
-        ['y'],
-      )
+      const result = await replEval('perform(@dvala.io.confirm, "OK?")', ['y'])
       expect(result).toBe('true')
     })
 
     it('returns true for "yes"', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.confirm, "OK?")',
-        ['yes'],
-      )
+      const result = await replEval('perform(@dvala.io.confirm, "OK?")', ['yes'])
       expect(result).toBe('true')
     })
 
     it('returns true for "Y" (case insensitive)', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.confirm, "OK?")',
-        ['Y'],
-      )
+      const result = await replEval('perform(@dvala.io.confirm, "OK?")', ['Y'])
       expect(result).toBe('true')
     })
 
     it('returns false for "n"', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.confirm, "OK?")',
-        ['n'],
-      )
+      const result = await replEval('perform(@dvala.io.confirm, "OK?")', ['n'])
       expect(result).toBe('false')
     })
 
     it('returns false for empty input', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.confirm, "OK?")',
-        [''],
-      )
+      const result = await replEval('perform(@dvala.io.confirm, "OK?")', [''])
       expect(result).toBe('false')
     })
   })
@@ -202,16 +165,12 @@ describe('CLI IO effect handlers', () => {
 
   describe('dvala.io.print', () => {
     it('resumes with the original number value', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.print, 42)',
-      )
+      const result = await replEval('perform(@dvala.io.print, 42)')
       expect(result).toBe('42')
     })
 
     it('resumes with the original string value', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.print, "hello")',
-      )
+      const result = await replEval('perform(@dvala.io.print, "hello")')
       expect(result).toBe('hello')
     })
   })
@@ -221,9 +180,7 @@ describe('CLI IO effect handlers', () => {
 
   describe('dvala.io.error', () => {
     it('resumes with the original value', async () => {
-      const result = await replEval(
-        'perform(@dvala.io.error, "oops")',
-      )
+      const result = await replEval('perform(@dvala.io.error, "oops")')
       expect(result).toBe('oops')
     })
   })

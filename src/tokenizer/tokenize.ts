@@ -20,9 +20,7 @@ export function tokenize(input: string, debug: boolean, filePath: string | undef
   let prevToken: Token | undefined
 
   while (position < input.length) {
-    const debugInfo: TokenDebugInfo | undefined = debug
-      ? createDebugInfo(input, position)
-      : undefined
+    const debugInfo: TokenDebugInfo | undefined = debug ? createDebugInfo(input, position) : undefined
 
     const tokenDescriptor = getCurrentToken(input, position, prevToken)
 

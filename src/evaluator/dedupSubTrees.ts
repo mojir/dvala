@@ -18,24 +18,30 @@ import { contentHash } from './contentHash'
  * Their internal __poolRef markers belong to a different serialization context.
  */
 function isSuspensionBlobData(value: unknown): boolean {
-  return value !== null
-    && typeof value === 'object'
-    && '__suspensionBlob' in value
-    && (value as any).__suspensionBlob === true
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    '__suspensionBlob' in value &&
+    (value as any).__suspensionBlob === true
+  )
 }
 
 // ---------------------------------------------------------------------------
 // Pool reference marker
 // ---------------------------------------------------------------------------
 
-interface PoolRef { __poolRef: number }
+interface PoolRef {
+  __poolRef: number
+}
 
 export function isPoolRef(value: unknown): value is PoolRef {
-  return value !== null
-    && typeof value === 'object'
-    && '__poolRef' in value
-    && typeof (value as PoolRef).__poolRef === 'number'
-    && Object.keys(value).length === 1
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    '__poolRef' in value &&
+    typeof (value as PoolRef).__poolRef === 'number' &&
+    Object.keys(value).length === 1
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -47,39 +53,29 @@ export function isPoolRef(value: unknown): value is PoolRef {
 // in practice, so they are excluded from coverage.
 /* v8 ignore start */
 function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b)
-    return true
-  if (a === null || b === null)
-    return false
-  if (typeof a !== typeof b)
-    return false
+  if (a === b) return true
+  if (a === null || b === null) return false
+  if (typeof a !== typeof b) return false
 
   if (Array.isArray(a)) {
-    if (!Array.isArray(b))
-      return false
-    if (a.length !== b.length)
-      return false
+    if (!Array.isArray(b)) return false
+    if (a.length !== b.length) return false
     for (let i = 0; i < a.length; i++) {
-      if (!deepEqual(a[i], b[i]))
-        return false
+      if (!deepEqual(a[i], b[i])) return false
     }
     return true
   }
 
-  if (typeof a !== 'object')
-    return false
+  if (typeof a !== 'object') return false
 
   const aObj = a as Record<string, unknown>
   const bObj = b as Record<string, unknown>
   const aKeys = Object.keys(aObj)
   const bKeys = Object.keys(bObj)
-  if (aKeys.length !== bKeys.length)
-    return false
+  if (aKeys.length !== bKeys.length) return false
   for (const key of aKeys) {
-    if (!(key in bObj))
-      return false
-    if (!deepEqual(aObj[key], bObj[key]))
-      return false
+    if (!(key in bObj)) return false
+    if (!deepEqual(aObj[key], bObj[key])) return false
   }
   return true
 }
@@ -90,18 +86,13 @@ function deepEqual(a: unknown, b: unknown): boolean {
 // ---------------------------------------------------------------------------
 
 function estimateSize(value: unknown): number {
-  if (value === null)
-    return 4
-  if (value === undefined)
-    return 9
+  if (value === null) return 4
+  if (value === undefined) return 9
 
   const type = typeof value
-  if (type === 'boolean')
-    return value ? 4 : 5
-  if (type === 'number')
-    return String(value).length
-  if (type === 'string')
-    return (value as string).length + 2
+  if (type === 'boolean') return value ? 4 : 5
+  if (type === 'number') return String(value).length
+  if (type === 'string') return (value as string).length + 2
 
   if (Array.isArray(value)) {
     let size = 2 // [ ]
@@ -174,8 +165,7 @@ export function dedupSubTrees(
   for (const info of groups) {
     // A SubTreeInfo appears exactly once in groups; this guard is defensive.
     /* v8 ignore next 2 */
-    if (alreadyPooled.has(info))
-      continue
+    if (alreadyPooled.has(info)) continue
 
     const id = nextId++
     pool[id] = info.value
@@ -186,7 +176,7 @@ export function dedupSubTrees(
       if (Array.isArray(loc.parent)) {
         loc.parent[loc.key as number] = { __poolRef: id }
       } else {
-        (loc.parent)[loc.key as string] = { __poolRef: id }
+        loc.parent[loc.key as string] = { __poolRef: id }
       }
     }
   }

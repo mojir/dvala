@@ -8,7 +8,7 @@ function skewness(vector: number[]): number {
   if (stdDev === 0) {
     throw new Error('Standard deviation is zero, skewness is undefined')
   }
-  return vector.reduce((acc, val) => acc + ((val - mean) ** 3), 0) / (vector.length * stdDev ** 3)
+  return vector.reduce((acc, val) => acc + (val - mean) ** 3, 0) / (vector.length * stdDev ** 3)
 }
 
 function sampleSkewness(vector: number[]): number {
@@ -37,7 +37,7 @@ function sampleSkewness(vector: number[]): number {
   }
 
   // Calculate sample skewness with Fisher's adjustment
-  return (n / ((n - 1) * (n - 2))) * sumCubedDiffs / sampleStdDev ** 3
+  return ((n / ((n - 1) * (n - 2))) * sumCubedDiffs) / sampleStdDev ** 3
 }
 
 export const skewnessReductionFunction: ReductionFunctionDefinition<'skewness'> = {
@@ -46,6 +46,6 @@ export const skewnessReductionFunction: ReductionFunctionDefinition<'skewness'> 
 }
 
 export const sampleSkewnessReductionFunction: ReductionFunctionDefinition<'sampleSkewness'> = {
-  'sampleSkewness': vector => sampleSkewness(vector),
-  'minLength': 3,
+  sampleSkewness: vector => sampleSkewness(vector),
+  minLength: 3,
 }

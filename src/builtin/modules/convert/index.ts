@@ -52,17 +52,17 @@ const volumeUnits: UnitCategory = {
   baseUnit: 'l',
   description: 'volume',
   units: {
-    'ml': 0.001,
-    'cl': 0.01,
-    'dl': 0.1,
-    'l': 1,
-    'tsp': 0.00492892159375,
-    'tbsp': 0.01478676478125,
-    'flOz': 0.0295735295625,
-    'cup': 0.2365882365,
-    'pt': 0.473176473,
-    'qt': 0.946352946,
-    'gal': 3.785411784,
+    ml: 0.001,
+    cl: 0.01,
+    dl: 0.1,
+    l: 1,
+    tsp: 0.00492892159375,
+    tbsp: 0.01478676478125,
+    flOz: 0.0295735295625,
+    cup: 0.2365882365,
+    pt: 0.473176473,
+    qt: 0.946352946,
+    gal: 3.785411784,
   },
 }
 
@@ -99,11 +99,11 @@ const speedUnits: UnitCategory = {
   baseUnit: 'mps',
   description: 'speed',
   units: {
-    'mps': 1,
-    'kmh': 1 / 3.6,
-    'mph': 0.44704,
-    'kn': 0.514444,
-    'fps': 0.3048,
+    mps: 1,
+    kmh: 1 / 3.6,
+    mph: 0.44704,
+    kn: 0.514444,
+    fps: 0.3048,
   },
 }
 
@@ -184,17 +184,23 @@ const angleUnits: UnitCategory = {
 
 function celsiusTo(unit: 'c' | 'f' | 'k', value: number): number {
   switch (unit) {
-    case 'c': return value
-    case 'f': return value * 9 / 5 + 32
-    case 'k': return value + 273.15
+    case 'c':
+      return value
+    case 'f':
+      return (value * 9) / 5 + 32
+    case 'k':
+      return value + 273.15
   }
 }
 
 function toCelsius(unit: 'c' | 'f' | 'k', value: number): number {
   switch (unit) {
-    case 'c': return value
-    case 'f': return (value - 32) * 5 / 9
-    case 'k': return value - 273.15
+    case 'c':
+      return value
+    case 'f':
+      return ((value - 32) * 5) / 9
+    case 'k':
+      return value - 273.15
   }
 }
 
@@ -202,101 +208,101 @@ const temperatureUnits = ['c', 'f', 'k'] as const
 
 const unitDescriptions: Record<string, string> = {
   // Length
-  'angstrom': 'ångströms',
-  'um': 'micrometers',
-  'mm': 'millimeters',
-  'cm': 'centimeters',
-  'm': 'meters',
-  'km': 'kilometers',
-  'in': 'inches',
-  'ft': 'feet',
-  'yd': 'yards',
-  'mi': 'miles',
-  'nmi': 'nautical miles',
+  angstrom: 'ångströms',
+  um: 'micrometers',
+  mm: 'millimeters',
+  cm: 'centimeters',
+  m: 'meters',
+  km: 'kilometers',
+  in: 'inches',
+  ft: 'feet',
+  yd: 'yards',
+  mi: 'miles',
+  nmi: 'nautical miles',
   // Weight
-  'mg': 'milligrams',
-  'g': 'grams',
-  'kg': 'kilograms',
-  't': 'metric tons',
-  'oz': 'ounces',
-  'lb': 'pounds',
-  'st': 'stones',
+  mg: 'milligrams',
+  g: 'grams',
+  kg: 'kilograms',
+  t: 'metric tons',
+  oz: 'ounces',
+  lb: 'pounds',
+  st: 'stones',
   // Volume
-  'ml': 'milliliters',
-  'cl': 'centiliters',
-  'dl': 'deciliters',
-  'l': 'liters',
-  'tsp': 'teaspoons',
-  'tbsp': 'tablespoons',
-  'flOz': 'fluid ounces',
-  'cup': 'cups',
-  'pt': 'pints',
-  'qt': 'quarts',
-  'gal': 'gallons',
+  ml: 'milliliters',
+  cl: 'centiliters',
+  dl: 'deciliters',
+  l: 'liters',
+  tsp: 'teaspoons',
+  tbsp: 'tablespoons',
+  flOz: 'fluid ounces',
+  cup: 'cups',
+  pt: 'pints',
+  qt: 'quarts',
+  gal: 'gallons',
   // Time
-  'ms': 'milliseconds',
-  's': 'seconds',
-  'min': 'minutes',
-  'h': 'hours',
-  'day': 'days',
-  'week': 'weeks',
+  ms: 'milliseconds',
+  s: 'seconds',
+  min: 'minutes',
+  h: 'hours',
+  day: 'days',
+  week: 'weeks',
   // Area
-  'mm2': 'square millimeters',
-  'cm2': 'square centimeters',
-  'm2': 'square meters',
-  'km2': 'square kilometers',
-  'in2': 'square inches',
-  'ft2': 'square feet',
-  'yd2': 'square yards',
-  'acre': 'acres',
-  'hectare': 'hectares',
+  mm2: 'square millimeters',
+  cm2: 'square centimeters',
+  m2: 'square meters',
+  km2: 'square kilometers',
+  in2: 'square inches',
+  ft2: 'square feet',
+  yd2: 'square yards',
+  acre: 'acres',
+  hectare: 'hectares',
   // Speed
-  'mps': 'meters per second',
-  'kmh': 'kilometers per hour',
-  'mph': 'miles per hour',
-  'kn': 'knots',
-  'fps': 'feet per second',
+  mps: 'meters per second',
+  kmh: 'kilometers per hour',
+  mph: 'miles per hour',
+  kn: 'knots',
+  fps: 'feet per second',
   // Data
-  'b': 'bytes',
-  'kb': 'kilobytes',
-  'mb': 'megabytes',
-  'gb': 'gigabytes',
-  'tb': 'terabytes',
-  'pb': 'petabytes',
+  b: 'bytes',
+  kb: 'kilobytes',
+  mb: 'megabytes',
+  gb: 'gigabytes',
+  tb: 'terabytes',
+  pb: 'petabytes',
   // Pressure
-  'pa': 'pascals',
-  'kpa': 'kilopascals',
-  'bar': 'bars',
-  'atm': 'atmospheres',
-  'psi': 'pounds per square inch',
-  'mmhg': 'millimeters of mercury',
+  pa: 'pascals',
+  kpa: 'kilopascals',
+  bar: 'bars',
+  atm: 'atmospheres',
+  psi: 'pounds per square inch',
+  mmhg: 'millimeters of mercury',
   // Energy
-  'j': 'joules',
-  'kj': 'kilojoules',
-  'cal': 'calories',
-  'kcal': 'kilocalories',
-  'wh': 'wattHours',
-  'kwh': 'kilowattHours',
-  'btu': 'British thermal units',
+  j: 'joules',
+  kj: 'kilojoules',
+  cal: 'calories',
+  kcal: 'kilocalories',
+  wh: 'wattHours',
+  kwh: 'kilowattHours',
+  btu: 'British thermal units',
   // Power
-  'w': 'watts',
-  'kw': 'kilowatts',
-  'mw': 'megawatts',
-  'hp': 'horsepower',
+  w: 'watts',
+  kw: 'kilowatts',
+  mw: 'megawatts',
+  hp: 'horsepower',
   // Frequency
-  'hz': 'hertz',
-  'khz': 'kilohertz',
-  'mhz': 'megahertz',
-  'ghz': 'gigahertz',
+  hz: 'hertz',
+  khz: 'kilohertz',
+  mhz: 'megahertz',
+  ghz: 'gigahertz',
   // Angle
-  'deg': 'degrees',
-  'rad': 'radians',
-  'grad': 'gradians',
-  'turn': 'turns',
+  deg: 'degrees',
+  rad: 'radians',
+  grad: 'gradians',
+  turn: 'turns',
   // Temperature
-  'c': 'Celsius',
-  'f': 'Fahrenheit',
-  'k': 'Kelvin',
+  c: 'Celsius',
+  f: 'Fahrenheit',
+  k: 'Kelvin',
 }
 
 function convertFnName(from: string, to: string): string {
@@ -311,8 +317,7 @@ function generateLinearConversions(category: UnitCategory): BuiltinNormalExpress
 
   for (const from of unitNames) {
     for (const to of unitNames) {
-      if (from === to)
-        continue
+      if (from === to) continue
 
       const fromFactor = category.units[from]!
       const toFactor = category.units[to]!
@@ -323,9 +328,7 @@ function generateLinearConversions(category: UnitCategory): BuiltinNormalExpress
 
       const seeAlso = [
         `convert.${convertFnName(to, from)}`,
-        ...unitNames
-          .filter(u => u !== from && u !== to)
-          .map(u => `convert.${convertFnName(from, u)}`),
+        ...unitNames.filter(u => u !== from && u !== to).map(u => `convert.${convertFnName(from, u)}`),
       ]
 
       result[fnName] = {
@@ -362,8 +365,7 @@ function generateTemperatureConversions(): BuiltinNormalExpressions {
 
   for (const from of temperatureUnits) {
     for (const to of temperatureUnits) {
-      if (from === to)
-        continue
+      if (from === to) continue
 
       const fnName = `${from}To${to.charAt(0).toUpperCase()}${to.slice(1)}`
       const fromDesc = unitDescriptions[from]!
@@ -371,9 +373,7 @@ function generateTemperatureConversions(): BuiltinNormalExpressions {
 
       const seeAlso = [
         `convert.${convertFnName(to, from)}`,
-        ...temperatureUnits
-          .filter(u => u !== from && u !== to)
-          .map(u => `convert.${convertFnName(from, u)}`),
+        ...temperatureUnits.filter(u => u !== from && u !== to).map(u => `convert.${convertFnName(from, u)}`),
       ]
 
       result[fnName] = {

@@ -7,7 +7,7 @@ import { EPSILON } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
 
 export const predicatesNormalExpression: BuiltinNormalExpressions = {
-  'isFunction': {
+  isFunction: {
     evaluate: ([first]): boolean => isDvalaFunction(first) && !isMacroFunction(first),
     arity: toFixedArity(1),
     docs: {
@@ -17,7 +17,18 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a function (not a macro), otherwise `false`.',
-      seeAlso: ['isMacro', 'isString', 'isNumber', 'isBoolean', 'isAtom', 'isNull', 'isArray', 'isObject', 'isRegexp', 'typeOf'],
+      seeAlso: [
+        'isMacro',
+        'isString',
+        'isNumber',
+        'isBoolean',
+        'isAtom',
+        'isNull',
+        'isArray',
+        'isObject',
+        'isRegexp',
+        'typeOf',
+      ],
       examples: [
         'isFunction(+)',
         'isFunction(/)',
@@ -29,7 +40,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isMacro': {
+  isMacro: {
     evaluate: ([first]): boolean => isMacroFunction(first),
     arity: toFixedArity(1),
     docs: {
@@ -40,15 +51,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a macro, otherwise `false`.',
       seeAlso: ['isFunction', 'typeOf'],
-      examples: [
-        'isMacro(macro (ast) -> ast)',
-        'isMacro((x) -> x)',
-        'isMacro(42)',
-      ],
+      examples: ['isMacro(macro (ast) -> ast)', 'isMacro((x) -> x)', 'isMacro(42)'],
     },
   },
 
-  'isString': {
+  isString: {
     evaluate: ([first]): boolean => typeof first === 'string',
     arity: toFixedArity(1),
     docs: {
@@ -58,7 +65,20 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a string, otherwise `false`.',
-      seeAlso: ['isBlank', 'isNumber', 'isBoolean', 'isAtom', 'isNull', 'isArray', 'isObject', 'isRegexp', 'isFunction', 'isCollection', 'isSequence', 'typeOf'],
+      seeAlso: [
+        'isBlank',
+        'isNumber',
+        'isBoolean',
+        'isAtom',
+        'isNull',
+        'isArray',
+        'isObject',
+        'isRegexp',
+        'isFunction',
+        'isCollection',
+        'isSequence',
+        'typeOf',
+      ],
       examples: [
         'isString("")',
         'isString("A string")',
@@ -70,7 +90,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isNumber': {
+  isNumber: {
     evaluate: ([first]): boolean => typeof first === 'number',
     arity: toFixedArity(1),
     docs: {
@@ -80,7 +100,19 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a number, otherwise `false`.',
-      seeAlso: ['isInteger', 'isZero', 'isPos', 'isNeg', 'number', 'isString', 'isBoolean', 'isAtom', 'isNull', 'isFunction', 'typeOf'],
+      seeAlso: [
+        'isInteger',
+        'isZero',
+        'isPos',
+        'isNeg',
+        'number',
+        'isString',
+        'isBoolean',
+        'isAtom',
+        'isNull',
+        'isFunction',
+        'typeOf',
+      ],
       examples: [
         'isNumber(0)',
         'isNumber(2)',
@@ -92,7 +124,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isInteger': {
+  isInteger: {
     evaluate: ([first]): boolean => typeof first === 'number' && isNumber(first, { integer: true }),
     arity: toFixedArity(1),
     docs: {
@@ -116,7 +148,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isBoolean': {
+  isBoolean: {
     evaluate: ([first]): boolean => typeof first === 'boolean',
     arity: toFixedArity(1),
     docs: {
@@ -137,7 +169,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isAtom': {
+  isAtom: {
     evaluate: ([first]): boolean => isAtom(first),
     arity: toFixedArity(1),
     docs: {
@@ -148,16 +180,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is an atom (e.g. `:ok`, `:error`), otherwise `false`.',
       seeAlso: ['isString', 'isNumber', 'isBoolean', 'isNull', 'isFunction', 'typeOf'],
-      examples: [
-        'isAtom(:ok)',
-        'isAtom(:error)',
-        'isAtom("atom")',
-        'isAtom(42)',
-      ],
+      examples: ['isAtom(:ok)', 'isAtom(:error)', 'isAtom("atom")', 'isAtom(42)'],
     },
   },
 
-  'isNull': {
+  isNull: {
     evaluate: ([first]): boolean => first === null || first === undefined,
     arity: toFixedArity(1),
     docs: {
@@ -168,17 +195,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is `null`, otherwise `false`.',
       seeAlso: ['isEmpty', 'isNotEmpty', 'isString', 'isNumber', 'isBoolean', 'isAtom', 'isFunction', 'typeOf'],
-      examples: [
-        'isNull(null)',
-        'isNull(false)',
-        'isNull([1, 2, 3])',
-        'isNull(0)',
-        'isNull("A string")',
-      ],
+      examples: ['isNull(null)', 'isNull(false)', 'isNull([1, 2, 3])', 'isNull(0)', 'isNull("A string")'],
     },
   },
 
-  'isZero': {
+  isZero: {
     evaluate: ([value], sourceCodeInfo): boolean => {
       assertNumber(value, sourceCodeInfo, { finite: true })
       return Math.abs(value) < EPSILON
@@ -192,16 +213,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is `0`, otherwise `false`.',
       seeAlso: ['isPos', 'isNeg', 'isEven', 'isNumber'],
-      examples: [
-        'isZero(0)',
-        'isZero(-0.0)',
-        'isZero(1)',
-        'isZero(0.1)',
-      ],
+      examples: ['isZero(0)', 'isZero(-0.0)', 'isZero(1)', 'isZero(0.1)'],
     },
   },
 
-  'isPos': {
+  isPos: {
     evaluate: ([first], sourceCodeInfo): boolean => {
       assertNumber(first, sourceCodeInfo, { finite: true })
       return first > 0
@@ -215,16 +231,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is greater than `0`, otherwise `false`.',
       seeAlso: ['isNeg', 'isZero', 'isNumber'],
-      examples: [
-        'isPos(0)',
-        'isPos(-0.0)',
-        'isPos(1)',
-        'isPos(-0.1)',
-      ],
+      examples: ['isPos(0)', 'isPos(-0.0)', 'isPos(1)', 'isPos(-0.1)'],
     },
   },
 
-  'isNeg': {
+  isNeg: {
     evaluate: ([first], sourceCodeInfo): boolean => {
       assertNumber(first, sourceCodeInfo, { finite: true })
       return first < 0
@@ -238,16 +249,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is less than `0`, otherwise `false`.',
       seeAlso: ['isPos', 'isZero', 'isNumber'],
-      examples: [
-        'isNeg(0)',
-        'isNeg(-0.0)',
-        'isNeg(1)',
-        'isNeg(-0.1)',
-      ],
+      examples: ['isNeg(0)', 'isNeg(-0.0)', 'isNeg(1)', 'isNeg(-0.1)'],
     },
   },
 
-  'isEven': {
+  isEven: {
     evaluate: ([first], sourceCodeInfo): boolean => {
       assertNumber(first, sourceCodeInfo, { finite: true })
       return first % 2 === 0
@@ -261,16 +267,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is even, otherwise `false`.',
       seeAlso: ['isOdd', 'isInteger', 'isZero'],
-      examples: [
-        'isEven(0)',
-        'isEven(-0.0)',
-        'isEven(-1)',
-        'isEven(2.1)',
-      ],
+      examples: ['isEven(0)', 'isEven(-0.0)', 'isEven(-1)', 'isEven(2.1)'],
     },
   },
 
-  'isOdd': {
+  isOdd: {
     evaluate: ([first], sourceCodeInfo): boolean => {
       assertNumber(first, sourceCodeInfo, { finite: true })
       return isNumber(first, { integer: true }) && first % 2 !== 0
@@ -284,16 +285,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is odd, otherwise `false`.',
       seeAlso: ['isEven', 'isInteger'],
-      examples: [
-        'isOdd(1.0)',
-        'isOdd(1.001)',
-        'isOdd(-1)',
-        'isOdd(2.1)',
-      ],
+      examples: ['isOdd(1.0)', 'isOdd(1.001)', 'isOdd(-1)', 'isOdd(2.1)'],
     },
   },
 
-  'isArray': {
+  isArray: {
     evaluate: ([first]): boolean => {
       // Accept both PersistentVector (Dvala array type) and plain JS arrays
       // (returned by some module functions that haven't been ported to PV yet).
@@ -307,7 +303,17 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is an array, otherwise `false`.',
-      seeAlso: ['isSequence', 'isCollection', 'isObject', 'isString', 'isVector', 'isMatrix', 'isGrid', 'isFunction', 'typeOf'],
+      seeAlso: [
+        'isSequence',
+        'isCollection',
+        'isObject',
+        'isString',
+        'isVector',
+        'isMatrix',
+        'isGrid',
+        'isFunction',
+        'typeOf',
+      ],
       examples: [
         'isArray([])',
         'isArray([1, 2, 3])',
@@ -319,7 +325,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isCollection': {
+  isCollection: {
     evaluate: ([first]): boolean => {
       return isColl(first)
     },
@@ -344,7 +350,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isSequence': {
+  isSequence: {
     evaluate: ([first]): boolean => {
       return isSeq(first)
     },
@@ -369,7 +375,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isObject': {
+  isObject: {
     evaluate: ([first]): boolean => isObj(first),
     arity: toFixedArity(1),
     docs: {
@@ -392,7 +398,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isRegexp': {
+  isRegexp: {
     evaluate: ([value]): boolean => isRegularExpression(value),
     arity: toFixedArity(1),
     docs: {
@@ -417,7 +423,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isEffect': {
+  isEffect: {
     evaluate: ([value]): boolean => isEffect(value),
     arity: toFixedArity(1),
     docs: {
@@ -439,7 +445,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'isTrue': {
+  isTrue: {
     evaluate: ([value]): boolean => {
       return value === true
     },
@@ -452,16 +458,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is `true`, otherwise `false`.',
       seeAlso: ['isFalse', 'isBoolean'],
-      examples: [
-        'isTrue(false)',
-        'isTrue(true)',
-        'isTrue(1)',
-        'isTrue(0)',
-      ],
+      examples: ['isTrue(false)', 'isTrue(true)', 'isTrue(1)', 'isTrue(0)'],
     },
   },
 
-  'isFalse': {
+  isFalse: {
     evaluate: ([value]): boolean => {
       return value === false
     },
@@ -474,27 +475,19 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is `true`, otherwise `false`.',
       seeAlso: ['isTrue', 'isBoolean'],
-      examples: [
-        'isFalse(false)',
-        'isFalse(true)',
-        'isFalse(1)',
-        'isFalse(0)',
-      ],
+      examples: ['isFalse(false)', 'isFalse(true)', 'isFalse(1)', 'isFalse(0)'],
     },
   },
 
-  'isEmpty': {
+  isEmpty: {
     evaluate: ([coll], sourceCodeInfo): boolean => {
-      if (coll === null)
-        return true
+      if (coll === null) return true
 
       assertColl(coll, sourceCodeInfo)
-      if (typeof coll === 'string')
-        return coll.length === 0
+      if (typeof coll === 'string') return coll.length === 0
 
       // PersistentVector and PersistentMap both expose `.size`
-      if (isArr(coll))
-        return coll.size === 0
+      if (isArr(coll)) return coll.size === 0
 
       return coll.size === 0
     },
@@ -518,18 +511,15 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'isNotEmpty': {
+  isNotEmpty: {
     evaluate: ([coll], sourceCodeInfo): boolean => {
-      if (coll === null)
-        return false
+      if (coll === null) return false
 
       assertColl(coll, sourceCodeInfo)
-      if (typeof coll === 'string')
-        return coll.length > 0
+      if (typeof coll === 'string') return coll.length > 0
 
       // PersistentVector and PersistentMap both expose `.size`
-      if (isArr(coll))
-        return coll.size > 0
+      if (isArr(coll)) return coll.size > 0
 
       return coll.size > 0
     },
@@ -553,7 +543,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'isVector': {
+  isVector: {
     evaluate: ([vector]): boolean => isVector(vector),
     arity: toFixedArity(1),
     docs: {
@@ -564,14 +554,10 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { value: { type: 'any', description: 'The value to check.' } },
       variants: [{ argumentNames: ['value'] }],
-      examples: [
-        'isVector(1)',
-        'isVector([1, 2, 3])',
-        'isVector([1, 2, "3"])',
-      ],
+      examples: ['isVector(1)', 'isVector([1, 2, 3])', 'isVector([1, 2, "3"])'],
     },
   },
-  'isMatrix': {
+  isMatrix: {
     evaluate: ([matrix]): boolean => isMatrix(matrix),
     arity: toFixedArity(1),
     docs: {
@@ -591,13 +577,14 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'isGrid': {
+  isGrid: {
     evaluate: ([table]): boolean => isGrid(table),
     arity: toFixedArity(1),
     docs: {
       type: '(x: Unknown) -> x is Unknown[][]',
       category: 'predicate',
-      description: 'Checks if a `value` is a `grid`. A `grid` is an `array` of `arrays` where all inner `arrays` have the same length.',
+      description:
+        'Checks if a `value` is a `grid`. A `grid` is an `array` of `arrays` where all inner `arrays` have the same length.',
       seeAlso: ['isVector', 'isMatrix', 'isArray'],
       returns: { type: 'boolean' },
       args: { value: { type: 'any', description: 'The value to check.' } },
@@ -611,5 +598,4 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-
 }

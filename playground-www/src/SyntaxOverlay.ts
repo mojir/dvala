@@ -111,24 +111,25 @@ function renderTemplateStringToken(rawValue: string): string {
 export function tokenizeToHtml(code: string): string {
   try {
     const tokens = tokenizeSource(code).tokens
-    return tokens.map(token => {
-      if (token[0] === 'TemplateString')
-        return renderTemplateStringToken(token[1])
-      // QuoteSplice tokens ($^{, $^^{, etc.) are rendered as punctuation
-      if (token[0] === 'QuoteSplice')
-        return `<span style="color:${colors.punctuation}">${escapeHtml(token[1])}</span>`
-      const prefix = token[0] === 'Atom' ? ':' : token[0] === 'EffectName' ? '@' : token[0] === 'MacroPrefix' ? '#' : ''
-      const escaped = escapeHtml(token[1])
-      const color = getTokenColor(token)
-      if (!color)
-        return prefix + escaped
-      const extraStyle = isCommentToken(token)
-        ? 'font-style:italic;'
-        : token[0] === 'EffectName'
-          ? getEffectNameStyle(token[1])
-          : ''
-      return `<span style="color:${color};${extraStyle}">${prefix}${escaped}</span>`
-    }).join('')
+    return tokens
+      .map(token => {
+        if (token[0] === 'TemplateString') return renderTemplateStringToken(token[1])
+        // QuoteSplice tokens ($^{, $^^{, etc.) are rendered as punctuation
+        if (token[0] === 'QuoteSplice')
+          return `<span style="color:${colors.punctuation}">${escapeHtml(token[1])}</span>`
+        const prefix =
+          token[0] === 'Atom' ? ':' : token[0] === 'EffectName' ? '@' : token[0] === 'MacroPrefix' ? '#' : ''
+        const escaped = escapeHtml(token[1])
+        const color = getTokenColor(token)
+        if (!color) return prefix + escaped
+        const extraStyle = isCommentToken(token)
+          ? 'font-style:italic;'
+          : token[0] === 'EffectName'
+            ? getEffectNameStyle(token[1])
+            : ''
+        return `<span style="color:${color};${extraStyle}">${prefix}${escaped}</span>`
+      })
+      .join('')
   } catch {
     return escapeHtml(code)
   }
@@ -145,8 +146,7 @@ export class SyntaxOverlay {
 
   constructor(textareaId: string) {
     const textarea = document.getElementById(textareaId) as HTMLTextAreaElement
-    if (!textarea)
-      throw new Error(`Element #${textareaId} not found`)
+    if (!textarea) throw new Error(`Element #${textareaId} not found`)
 
     this.scrollContainer = document.createElement('div')
     this.scrollContainer.className = 'syntax-overlay-container fancy-scroll'
@@ -170,8 +170,12 @@ export class SyntaxOverlay {
     textarea.style.height = ''
 
     this.textarea = textarea
-    textarea.addEventListener('mousedown', () => { this.selectionLayer.innerHTML = '' })
-    textarea.addEventListener('keydown', () => { this.selectionLayer.innerHTML = '' })
+    textarea.addEventListener('mousedown', () => {
+      this.selectionLayer.innerHTML = ''
+    })
+    textarea.addEventListener('keydown', () => {
+      this.selectionLayer.innerHTML = ''
+    })
 
     // Keep textarea sized to match the pre content area
     const resizeObserver = new ResizeObserver(() => this.syncSize())
@@ -188,20 +192,17 @@ export class SyntaxOverlay {
 
   private updateLineNumbers(code: string): void {
     const lineCount = code === '' ? 1 : code.split('\n').length
-    if (lineCount === this.lastLineCount)
-      return
+    if (lineCount === this.lastLineCount) return
     this.lastLineCount = lineCount
     const digits = Math.max(2, String(lineCount).length)
     const lines: string[] = []
-    for (let i = 1; i <= lineCount; i++)
-      lines.push(String(i).padStart(digits))
+    for (let i = 1; i <= lineCount; i++) lines.push(String(i).padStart(digits))
     this.lineNumbers.textContent = lines.join('\n')
   }
 
   update(): void {
     const code = this.textarea.value
-    if (code === this.lastCode)
-      return
+    if (code === this.lastCode) return
     this.lastCode = code
 
     // Reset textarea size so the grid cell can shrink when content gets smaller

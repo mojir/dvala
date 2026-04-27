@@ -15,11 +15,16 @@ const docs: CustomDocs = {
   details: [
     ['value', 'any', 'The value to match against patterns.'],
     ['match-branch', 'case pattern [when guard] then body', 'A branch of the match expression.'],
-    ['pattern', 'pattern', 'A pattern to match: literal, variable, array destructuring, object destructuring, or wildcard (_).'],
+    [
+      'pattern',
+      'pattern',
+      'A pattern to match: literal, variable, array destructuring, object destructuring, or wildcard (_).',
+    ],
     ['guard', 'expression', 'An optional guard expression that must be truthy for the match to succeed.'],
     ['body', 'expressions', 'The expressions to evaluate if the pattern matches.'],
   ],
-  description: 'Pattern matching expression. Matches `value` against each `pattern` sequentially. If a pattern matches (and the optional `when` guard is truthy), the corresponding `body` is evaluated and its result returned. Bound variables from the pattern are available in the guard and body. If no pattern matches, `null` is returned.',
+  description:
+    'Pattern matching expression. Matches `value` against each `pattern` sequentially. If a pattern matches (and the optional `when` guard is truthy), the corresponding `body` is evaluated and its result returned. Bound variables from the pattern are available in the guard and body. If no pattern matches, `null` is returned.',
   examples: [
     `
 let day = if true then 1 else 2 end;
@@ -27,18 +32,24 @@ match day
   case 1 then "One"
   case 2 then "Two"
 end`,
-    { code: `
+    {
+      code: `
 match [1, 2, 3]
   case [x] then "one element"
   case [x, y] then "two elements"
   case [x, ...xs] then "first: " ++ str(x) ++ " rest: " ++ str(xs)
-end`, noCheck: true },
-    { code: `
+end`,
+      noCheck: true,
+    },
+    {
+      code: `
 match { type: "click", x: 10, y: 20 }
   case { type: "click", x, y } then "Click at " ++ str(x) ++ ", " ++ str(y)
   case { type: "keydown", key } then "Key: " ++ key
   case _ then "unknown event"
-end`, noCheck: true },
+end`,
+      noCheck: true,
+    },
     `
 let user = if true then { role: "admin", name: "Alice" } else { role: "user", name: "Bob" } end;
 match user

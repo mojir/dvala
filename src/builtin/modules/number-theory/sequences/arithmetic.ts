@@ -10,11 +10,7 @@ import type { SequenceNormalExpressions } from '.'
  * @param n The number to check
  * @returns true if the number is in the sequence, false otherwise
  */
-function isInArithmeticSequence(
-  start: number,
-  step: number,
-  n: number,
-): boolean {
+function isInArithmeticSequence(start: number, step: number, n: number): boolean {
   // Special case: If step is 0, n must equal start
   if (step === 0) {
     return approxEqual(n, start)
@@ -40,7 +36,7 @@ function isInArithmeticSequence(
 }
 
 export const arithmeticNormalExpressions: SequenceNormalExpressions<'arithmetic'> = {
-  'arithmeticSeq': {
+  arithmeticSeq: {
     evaluate: ([start, step, length], sourceCodeInfo): number[] => {
       assertNumber(start, sourceCodeInfo, { finite: true })
       assertNumber(step, sourceCodeInfo, { finite: true })
@@ -50,12 +46,14 @@ export const arithmeticNormalExpressions: SequenceNormalExpressions<'arithmetic'
     },
     arity: toFixedArity(3),
   },
-  'arithmeticTakeWhile': {
+  arithmeticTakeWhile: {
     /* v8 ignore next 1 */
-    evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
+    evaluate: () => {
+      throw new Error('unreachable: overridden by dvalaImpl')
+    },
     arity: toFixedArity(3),
   },
-  'arithmeticNth': {
+  arithmeticNth: {
     evaluate: ([start, step, n], sourceCodeInfo): number => {
       assertNumber(start, sourceCodeInfo, { finite: true })
       assertNumber(step, sourceCodeInfo, { finite: true })
@@ -64,7 +62,7 @@ export const arithmeticNormalExpressions: SequenceNormalExpressions<'arithmetic'
     },
     arity: toFixedArity(3),
   },
-  'isArithmetic': {
+  isArithmetic: {
     evaluate: ([start, step, n], sourceCodeInfo): boolean => {
       assertNumber(n, sourceCodeInfo)
       assertNumber(start, sourceCodeInfo, { finite: true })

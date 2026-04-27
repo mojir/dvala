@@ -19,9 +19,7 @@ const docs: FunctionDocs = {
       rest: true,
     },
   },
-  variants: [
-    { argumentNames: ['values'] },
-  ],
+  variants: [{ argumentNames: ['values'] }],
   description: 'Makes new array from `values`.',
   examples: [
     'array(1, 2, 3)',
@@ -47,5 +45,4 @@ export const arraySpecialExpression: BuiltinSpecialExpression<Any, ArrayNode> = 
 
     return result
   },
-
 }

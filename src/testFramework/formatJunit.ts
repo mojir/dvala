@@ -63,8 +63,7 @@ export function formatJunit(result: TestRunResult): { xml: string; success: bool
 }
 
 function msToSeconds(ms: number | undefined): string {
-  if (ms === undefined)
-    return '0'
+  if (ms === undefined) return '0'
   return (ms / 1000).toFixed(3)
 }
 
@@ -78,17 +77,14 @@ function escapeXml(str: string): string {
 }
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof DvalaError)
-    return error.shortMessage
-  if (error instanceof Error)
-    return error.message
+  if (error instanceof DvalaError) return error.shortMessage
+  if (error instanceof Error) return error.message
   /* v8 ignore next 1 */
   return typeof error === 'string' ? error : 'Unknown error'
 }
 
 function getErrorType(error: unknown): string {
-  if (error instanceof Error)
-    return error.constructor.name
+  if (error instanceof Error) return error.constructor.name
   /* v8 ignore next 1 */
   return 'Error'
 }
@@ -96,12 +92,10 @@ function getErrorType(error: unknown): string {
 // Build a detailed error string including location and code context
 function getErrorDetail(error: unknown): string {
   const message = getErrorMessage(error)
-  if (!(error instanceof DvalaError))
-    return message
+  if (!(error instanceof DvalaError)) return message
 
   const sourceCodeInfo = error.sourceCodeInfo
-  if (!sourceCodeInfo || typeof sourceCodeInfo === 'string')
-    return `${error.name}: ${message}`
+  if (!sourceCodeInfo || typeof sourceCodeInfo === 'string') return `${error.name}: ${message}`
 
   const location = formatLocation(sourceCodeInfo)
   const code = sourceCodeInfo.code
@@ -112,8 +106,7 @@ function getErrorDetail(error: unknown): string {
 
 function formatLocation(sourceCodeInfo: SourceCodeInfo): string {
   const terms: string[] = []
-  if (sourceCodeInfo.filePath)
-    terms.push(sourceCodeInfo.filePath)
+  if (sourceCodeInfo.filePath) terms.push(sourceCodeInfo.filePath)
   if (sourceCodeInfo.position) {
     terms.push(`${sourceCodeInfo.position.line}`)
     terms.push(`${sourceCodeInfo.position.column}`)

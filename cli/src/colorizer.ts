@@ -54,7 +54,11 @@ function createRightPad(length: number, char: string = ' ') {
 
 type Formatter = (text: string) => string
 
-function createFormatter(enableColors: boolean, colors: typeof Colors[keyof typeof Colors][], formatters: Formatter[]): {
+function createFormatter(
+  enableColors: boolean,
+  colors: (typeof Colors)[keyof typeof Colors][],
+  formatters: Formatter[],
+): {
   (text: string): string
   black: ReturnType<typeof createFormatter>
   red: ReturnType<typeof createFormatter>
@@ -86,12 +90,9 @@ function createFormatter(enableColors: boolean, colors: typeof Colors[keyof type
   rightPad: (length: number, char?: string) => ReturnType<typeof createFormatter>
 } {
   const fn = (text: string) => {
-    for (const formatter of formatters)
-      text = formatter(text)
+    for (const formatter of formatters) text = formatter(text)
 
-    return enableColors
-      ? colors.join('') + text + Colors.Reset
-      : text
+    return enableColors ? colors.join('') + text + Colors.Reset : text
   }
 
   Object.defineProperty(fn, 'black', {

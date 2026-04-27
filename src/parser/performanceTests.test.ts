@@ -45,14 +45,13 @@ describe.skip('performance comparison', () => {
       for (let i = 0; i < iterations; i++) {
         dvala.run(Array.isArray(expression) ? expression[0]! : expression)
       }
-      report.dvala = (performance.now() - startTime) * 1000 / iterations
+      report.dvala = ((performance.now() - startTime) * 1000) / iterations
 
       startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
-
         eval(Array.isArray(expression) ? expression[1]! : expression)
       }
-      report.eval = (performance.now() - startTime) * 1000 / iterations
+      report.eval = ((performance.now() - startTime) * 1000) / iterations
     }
 
     console.log('dvala.run is slower than eval by a factor', calculateFactor(entries))
@@ -87,14 +86,13 @@ describe.skip('performance comparison', () => {
         const ast = parseTokenStream(expression.tokenStream)
         void evaluate(ast, createContextStack())
       }
-      report.dvala = (performance.now() - startTime) * 1000 / iterations
+      report.dvala = ((performance.now() - startTime) * 1000) / iterations
 
       startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
-
         eval(Array.isArray(expression.expression) ? expression.expression[1]! : expression.expression)
       }
-      report.eval = (performance.now() - startTime) * 1000 / iterations
+      report.eval = ((performance.now() - startTime) * 1000) / iterations
     }
 
     console.log('dvala.parse + dvala.evaluate is slower than eval by a factor', calculateFactor(entries))
@@ -129,14 +127,13 @@ describe.skip('performance comparison', () => {
       for (let i = 0; i < iterations; i++) {
         void evaluate(expression.ast, createContextStack())
       }
-      report.dvala = (performance.now() - startTime) * 1000 / iterations
+      report.dvala = ((performance.now() - startTime) * 1000) / iterations
 
       startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
-
         eval(Array.isArray(expression.expression) ? expression.expression[1]! : expression.expression)
       }
-      report.eval = (performance.now() - startTime) * 1000 / iterations
+      report.eval = ((performance.now() - startTime) * 1000) / iterations
     }
 
     console.log('dvala.evaluate is slower than eval by a factor', calculateFactor(entries))
@@ -144,5 +141,10 @@ describe.skip('performance comparison', () => {
 })
 
 function calculateFactor(entries: { eval: number; dvala: number }[]) {
-  return Math.round(100 * entries.reduce((acc, { eval: evalTime, dvala: dvalaTime }) => acc + dvalaTime / evalTime, 0) / entries.length) / 100
+  return (
+    Math.round(
+      (100 * entries.reduce((acc, { eval: evalTime, dvala: dvalaTime }) => acc + dvalaTime / evalTime, 0)) /
+        entries.length,
+    ) / 100
+  )
 }

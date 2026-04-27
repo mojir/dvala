@@ -29,7 +29,7 @@ describe('bitwise', () => {
       it('samples', () => {
         expect(dvala.run('16 >>> 2')).toBe(4)
         expect(dvala.run('>>>(16, 2)')).toBe(4)
-        expect(dvala.run('>>>(-16, 2)')).toBe(0x3FFFFFFC)
+        expect(dvala.run('>>>(-16, 2)')).toBe(0x3ffffffc)
         expect(() => dvala.run('>>>()')).toThrow(DvalaError)
         expect(() => dvala.run('>>>(1)')).toThrow(DvalaError)
         expect(() => dvala.run('>>>(1, -2)')).toThrow(DvalaError)
@@ -68,7 +68,10 @@ describe('bitwise', () => {
     })
   }
 
-  for (const dvala of [createDvala({ modules: [bitwiseUtilsModule] }), createDvala({ modules: [bitwiseUtilsModule], debug: true })]) {
+  for (const dvala of [
+    createDvala({ modules: [bitwiseUtilsModule] }),
+    createDvala({ modules: [bitwiseUtilsModule], debug: true }),
+  ]) {
     describe('bitNot', () => {
       it('samples', () => {
         expect(dvala.run('let { bitNot } = import("bitwise"); bitNot(0)')).toBe(-1)

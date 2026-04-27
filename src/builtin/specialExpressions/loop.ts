@@ -42,15 +42,14 @@ export const loopSpecialExpression: BuiltinSpecialExpression<Any, LoopNode> = {
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
     const [bindings, body] = node[1]
 
-    const newContext = bindings
-      .reduce((context: Context, [target]) => {
-        const names = getAllBindingTargetNames(target)
+    const newContext = bindings.reduce((context: Context, [target]) => {
+      const names = getAllBindingTargetNames(target)
 
-        Object.keys(names).forEach(name => {
-          context[name] = { value: true }
-        })
-        return context
-      }, {})
+      Object.keys(names).forEach(name => {
+        context[name] = { value: true }
+      })
+      return context
+    }, {})
 
     const bindingValueNodes = bindings.map(([, value]) => value)
     const bindingsResult = getUndefinedSymbols(bindingValueNodes, contextStack, builtin)

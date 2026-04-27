@@ -13,7 +13,9 @@ describe('padovan', () => {
     expect(runNth('nth:padovanSeq(2)')).toEqual([1, 1])
     expect(runNth('nth:padovanSeq(3)')).toEqual([1, 1, 1])
     expect(runNth('nth:padovanSeq(4)')).toEqual([1, 1, 1, 2])
-    expect(runNth('nth:padovanSeq(22)')).toEqual([1, 1, 1, 2, 2, 3, 4, 5, 7, 9, 12, 16, 21, 28, 37, 49, 65, 86, 114, 151, 200, 265])
+    expect(runNth('nth:padovanSeq(22)')).toEqual([
+      1, 1, 1, 2, 2, 3, 4, 5, 7, 9, 12, 16, 21, 28, 37, 49, 65, 86, 114, 151, 200, 265,
+    ])
   })
 
   it('should return the correct nth term', () => {

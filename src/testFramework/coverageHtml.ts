@@ -60,7 +60,10 @@ function insertNode(parent: DirNode, parts: string[], summary: FileCoverageSumma
 // --- Aggregation ---
 
 function aggregate(node: DirNode): { linesHit: number; linesFound: number; exprsHit: number; exprsFound: number } {
-  let linesHit = 0, linesFound = 0, exprsHit = 0, exprsFound = 0
+  let linesHit = 0,
+    linesFound = 0,
+    exprsHit = 0,
+    exprsFound = 0
   for (const child of node.children) {
     if (child.type === 'file') {
       linesHit += child.summary.linesHit
@@ -69,8 +72,10 @@ function aggregate(node: DirNode): { linesHit: number; linesFound: number; exprs
       exprsFound += child.summary.exprsFound
     } else {
       const a = aggregate(child)
-      linesHit += a.linesHit; linesFound += a.linesFound
-      exprsHit += a.exprsHit; exprsFound += a.exprsFound
+      linesHit += a.linesHit
+      linesFound += a.linesFound
+      exprsHit += a.exprsHit
+      exprsFound += a.exprsFound
     }
   }
   return { linesHit, linesFound, exprsHit, exprsFound }
@@ -86,16 +91,19 @@ function generatePages(nodes: TreeNode[], files: Map<string, string>, prefix: st
 
   const rows = nodes.map(node => renderRow(node)).join('\n')
 
-  files.set(outPath, indexPage({
-    title: prefix ? `${prefix}/` : 'Coverage Report',
-    cssPath,
-    breadcrumbs: buildBreadcrumbs(prefix),
-    rootDir,
-    totalLinePct: pct(agg.linesHit, agg.linesFound),
-    totalExprPct: pct(agg.exprsHit, agg.exprsFound),
-    fileCount: countFiles(nodes),
-    rows,
-  }))
+  files.set(
+    outPath,
+    indexPage({
+      title: prefix ? `${prefix}/` : 'Coverage Report',
+      cssPath,
+      breadcrumbs: buildBreadcrumbs(prefix),
+      rootDir,
+      totalLinePct: pct(agg.linesHit, agg.linesFound),
+      totalExprPct: pct(agg.exprsHit, agg.exprsFound),
+      fileCount: countFiles(nodes),
+      rows,
+    }),
+  )
 
   // Recurse into subdirectories and generate file pages
   for (const node of nodes) {
@@ -208,7 +216,13 @@ ${p.breadcrumbs}
 
 // --- File page (annotated source) ---
 
-function filePage(summary: FileCoverageSummary, name: string, filePrefix: string, cssPath: string, rootDir: string): string {
+function filePage(
+  summary: FileCoverageSummary,
+  name: string,
+  filePrefix: string,
+  cssPath: string,
+  rootDir: string,
+): string {
   const source = summary.source ?? ''
   const sourceLines = source.split('\n')
   // Remove trailing empty line from split
@@ -217,13 +231,15 @@ function filePage(summary: FileCoverageSummary, name: string, filePrefix: string
   const linePct = pct(summary.linesHit, summary.linesFound)
   const exprPct = pct(summary.exprsHit, summary.exprsFound)
 
-  const lineRows = sourceLines.map((line, i) => {
-    const lineNum = i // 0-based
-    const hits = summary.lineHits.get(lineNum)
-    const rowClass = hits === undefined ? 'neutral' : hits > 0 ? 'covered' : 'uncovered'
-    const hitsCell = hits === undefined ? '' : `${hits}`
-    return `<tr class="${rowClass}"><td class="ln">${i + 1}</td><td class="hits">${hitsCell}</td><td class="src"><pre>${esc(line)}</pre></td></tr>`
-  }).join('\n')
+  const lineRows = sourceLines
+    .map((line, i) => {
+      const lineNum = i // 0-based
+      const hits = summary.lineHits.get(lineNum)
+      const rowClass = hits === undefined ? 'neutral' : hits > 0 ? 'covered' : 'uncovered'
+      const hitsCell = hits === undefined ? '' : `${hits}`
+      return `<tr class="${rowClass}"><td class="ln">${i + 1}</td><td class="hits">${hitsCell}</td><td class="src"><pre>${esc(line)}</pre></td></tr>`
+    })
+    .join('\n')
 
   return `<!DOCTYPE html>
 <html lang="en">

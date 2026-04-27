@@ -7,7 +7,19 @@ const WIDTH = 32 // branching factor
 // Boundary indices where the trie gains a new level:
 //   Level 1 → 2: first full trie flush at size 32+1 = 33
 //   Level 2 → 3: first slot 2 at size 2*1024+1 = 2049
-const BOUNDARIES = [0, 1, WIDTH - 1, WIDTH, WIDTH + 1, WIDTH * WIDTH - 1, WIDTH * WIDTH, WIDTH * WIDTH + 1, 2 * WIDTH * WIDTH - 1, 2 * WIDTH * WIDTH, 2 * WIDTH * WIDTH + 1]
+const BOUNDARIES = [
+  0,
+  1,
+  WIDTH - 1,
+  WIDTH,
+  WIDTH + 1,
+  WIDTH * WIDTH - 1,
+  WIDTH * WIDTH,
+  WIDTH * WIDTH + 1,
+  2 * WIDTH * WIDTH - 1,
+  2 * WIDTH * WIDTH,
+  2 * WIDTH * WIDTH + 1,
+]
 
 function makeRange(n: number): number[] {
   return Array.from({ length: n }, (_, i) => i)

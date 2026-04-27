@@ -1,7 +1,18 @@
 import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
-import { asLBraceToken, assertOperatorToken, assertRBraceToken, assertRBracketToken, isLBracketToken, isOperatorToken, isRBraceToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
+import {
+  asLBraceToken,
+  assertOperatorToken,
+  assertRBraceToken,
+  assertRBracketToken,
+  isLBracketToken,
+  isOperatorToken,
+  isRBraceToken,
+  isStringToken,
+  isSymbolToken,
+  isTemplateStringToken,
+} from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import { stringFromQuotedSymbol, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -10,8 +21,7 @@ import { parseTemplateString } from './parseTemplateString'
 
 export function parseObject(ctx: ParserContext): ObjectNode {
   ctx.builder?.startNode('Object')
-  const
-    firstToken = asLBraceToken(ctx.tryPeek())
+  const firstToken = asLBraceToken(ctx.tryPeek())
   ctx.advance()
   const entries: ObjectEntry[] = []
   while (!ctx.isAtEnd() && !isRBraceToken(ctx.tryPeek())) {
@@ -29,10 +39,8 @@ export function parseObject(ctx: ParserContext): ObjectNode {
         const stringNode = parseString(ctx, token)
         keyNode = withSourceCodeInfo([NodeTypes.Str, stringNode[1], 0], token[2], ctx)
       } else if (isSymbolToken(token)) {
-        const isQuoted = token[1].startsWith('\'')
-        const value = isQuoted
-          ? stringFromQuotedSymbol(token[1])
-          : token[1]
+        const isQuoted = token[1].startsWith("'")
+        const value = isQuoted ? stringFromQuotedSymbol(token[1]) : token[1]
         keyNode = withSourceCodeInfo([NodeTypes.Str, value, 0], token[2], ctx)
         ctx.advance()
         ctx.setNodeEnd(keyNode[2])

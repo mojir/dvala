@@ -27,22 +27,7 @@ describe('deficient', () => {
 
   it('should return the correct takeWhile sequence', () => {
     expect(runNth('nth:deficientTakeWhile(-> $ < 20)')).toEqual([
-      1,
-      2,
-      3,
-      4,
-      5,
-      7,
-      8,
-      9,
-      10,
-      11,
-      13,
-      14,
-      15,
-      16,
-      17,
-      19,
+      1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 19,
     ])
   })
 

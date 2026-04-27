@@ -199,7 +199,7 @@ export function bundle(entryPath: string, options?: BundleOptions): DvalaBundle 
 
   function stripExtension(filePath: string): string {
     if (filePath.endsWith('.dvala')) {
-      return filePath.slice(0, -('.dvala'.length))
+      return filePath.slice(0, -'.dvala'.length)
     }
     return filePath
   }
@@ -214,8 +214,7 @@ export function bundle(entryPath: string, options?: BundleOptions): DvalaBundle 
         return
       }
       /* v8 ignore next 3 */
-      if (visiting.has(filePath))
-        throw new Error(`Circular dependency detected during topological sort: ${filePath}`)
+      if (visiting.has(filePath)) throw new Error(`Circular dependency detected during topological sort: ${filePath}`)
 
       visiting.add(filePath)
 

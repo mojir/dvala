@@ -61,7 +61,7 @@ function scanExpression(raw: string, start: number): { expr: string; consumed: n
       const { str, consumed } = scanString(raw, i)
       expr += str
       i += consumed
-    } else if (c === '\'') {
+    } else if (c === "'") {
       const { str, consumed } = scanQuotedSymbol(raw, i)
       expr += str
       i += consumed
@@ -99,7 +99,7 @@ function scanString(raw: string, start: number): { str: string; consumed: number
 
 function scanQuotedSymbol(raw: string, start: number): { str: string; consumed: number } {
   let i = start + 1
-  let str = '\''
+  let str = "'"
   let escaping = false
   while (i < raw.length) {
     const c = raw[i]!
@@ -109,7 +109,7 @@ function scanQuotedSymbol(raw: string, start: number): { str: string; consumed: 
       escaping = false
     } else if (c === '\\') {
       escaping = true
-    } else if (c === '\'') {
+    } else if (c === "'") {
       break
     }
   }
@@ -236,8 +236,7 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
 
   for (const segment of segments) {
     if (segment.type === 'literal') {
-      if (segment.value.length === 0)
-        continue
+      if (segment.value.length === 0) continue
       segmentNodes.push(withSourceCodeInfo([NodeTypes.Str, segment.value, 0], debugInfo, ctx))
     } else {
       if (segment.value.trim().length === 0) {
@@ -271,9 +270,10 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
 
         // segStart = absolute [line, col] of the first char of the expression
         const segStartLine = debugInfo[0] + newlinesBefore
-        const segStartCol = newlinesBefore === 0
-          ? debugInfo[1] + 1 + segment.offset // +1 for the opening backtick
-          : segment.offset - lastNewlineIdx - 1
+        const segStartCol =
+          newlinesBefore === 0
+            ? debugInfo[1] + 1 + segment.offset // +1 for the opening backtick
+            : segment.offset - lastNewlineIdx - 1
 
         for (const [nodeId, innerPos] of innerCtx.sourceMap.positions) {
           ctx.sourceMap.positions.set(nodeId, {

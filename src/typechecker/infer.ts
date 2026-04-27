@@ -13,13 +13,39 @@
 
 import type { Type, EffectSet, RowVarTail, HandlerWrapperInfo, SequenceType } from './types'
 import {
-  StringType, BooleanType, NullType,
-  Unknown, Never, PureEffects, AnyFunction,
-  ClosedTail, OpenTail,
-  atom, indexType, keyofType, literal, fn, array, record as recordType, tuple, union, inter, neg, handlerType, sequence, sequenceElementAt, sequenceMayHaveIndex, toSequenceType,
-  functionAcceptsArity, functionArityLabel, getFunctionParamType,
-  typeToString, typeEquals,
-  effectSetToString, isEffectSubset, subtractEffects,
+  StringType,
+  BooleanType,
+  NullType,
+  Unknown,
+  Never,
+  PureEffects,
+  AnyFunction,
+  ClosedTail,
+  OpenTail,
+  atom,
+  indexType,
+  keyofType,
+  literal,
+  fn,
+  array,
+  record as recordType,
+  tuple,
+  union,
+  inter,
+  neg,
+  handlerType,
+  sequence,
+  sequenceElementAt,
+  sequenceMayHaveIndex,
+  toSequenceType,
+  functionAcceptsArity,
+  functionArityLabel,
+  getFunctionParamType,
+  typeToString,
+  typeEquals,
+  effectSetToString,
+  isEffectSubset,
+  subtractEffects,
 } from './types'
 import type { AliasParam, AstNode, ObjectBindingEntry } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
@@ -143,16 +169,24 @@ export class InferenceContext {
   /** Recoverable inference errors collected while continuing analysis. */
   private deferredErrors: TypeInferenceError[] = []
 
-  get level(): number { return this._level }
+  get level(): number {
+    return this._level
+  }
 
   /** Get the current (innermost) effect set being built. */
-  get currentEffects(): EffectSet { return this.effectStack[this.effectStack.length - 1]! }
+  get currentEffects(): EffectSet {
+    return this.effectStack[this.effectStack.length - 1]!
+  }
 
   /** Push a fresh effect set (entering a function body). */
-  pushEffects(): void { this.effectStack.push({ effects: new Set(), tail: ClosedTail }) }
+  pushEffects(): void {
+    this.effectStack.push({ effects: new Set(), tail: ClosedTail })
+  }
 
   /** Pop and return the effect set (leaving a function body). */
-  popEffects(): EffectSet { return this.effectStack.pop() ?? PureEffects }
+  popEffects(): EffectSet {
+    return this.effectStack.pop() ?? PureEffects
+  }
 
   get currentResume(): ResumeContext | undefined {
     return this.resumeStack[this.resumeStack.length - 1]
@@ -197,7 +231,9 @@ export class InferenceContext {
   }
 
   /** Record an effect in the current effect set. */
-  addEffect(name: string): void { this.currentEffects.effects.add(name) }
+  addEffect(name: string): void {
+    this.currentEffects.effects.add(name)
+  }
 
   /** Merge an inferred effect set into the current effect context. */
   addEffects(effects: EffectSet): void {
@@ -264,16 +300,24 @@ export class InferenceContext {
   private nextRowVarId = 0
 
   /** Enter a new let-binding scope (raises the level). */
-  enterLevel(): void { this._level++ }
+  enterLevel(): void {
+    this._level++
+  }
 
   /** Leave a let-binding scope (lowers the level). */
-  leaveLevel(): void { this._level-- }
+  leaveLevel(): void {
+    this._level--
+  }
 
   /** Reset the constraint cache (for fresh inference passes). */
-  resetCache(): void { this.constraintCache.clear() }
+  resetCache(): void {
+    this.constraintCache.clear()
+  }
 
   /** Snapshot the constraint cache size (for overload rollback). */
-  snapshotCacheSize(): number { return this.constraintCache.size }
+  snapshotCacheSize(): number {
+    return this.constraintCache.size
+  }
 
   /** Roll back the constraint cache to a previous size by removing recent entries. */
   restoreCacheSize(size: number): void {
@@ -303,24 +347,27 @@ function varKey(t: Type): string {
   if (t.tag === 'Primitive') return `P:${t.name}`
   if (t.tag === 'Atom') return `A:${t.name}`
   if (t.tag === 'Literal') return `L:${String(t.value)}`
-  if (t.tag === 'Function') return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}${t.asserts ? `:AS:${t.asserts.paramIndex}:${t.asserts.source}` : ''}`
+  if (t.tag === 'Function')
+    return `F:${t.params.length}:${t.params.map(varKey).join(',')}:${t.restParam !== undefined ? `...${varKey(t.restParam)}:` : ''}${varKey(t.ret)}:${t.handlerWrapper ? `HW:${t.handlerWrapper.paramIndex}:${[...t.handlerWrapper.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}` : ''}${t.asserts ? `:AS:${t.asserts.paramIndex}:${t.asserts.source}` : ''}`
   // The constraint cache uses these keys to skip redundant subtype checks,
   // so any field that affects subtyping must appear here. `introduced` must
   // be part of the key — `constrain`/`isSubtype` now compare it covariantly
   // (Phase 4-B), so two handler types that differ only in `introduced` are
   // distinct.
   if (t.tag === 'Handler') {
-    const tailKey = t.introduced.tail.tag === 'Closed'
-      ? ''
-      : t.introduced.tail.tag === 'Open'
-        ? ':open'
-        : `:rv${t.introduced.tail.id}`
+    const tailKey =
+      t.introduced.tail.tag === 'Closed'
+        ? ''
+        : t.introduced.tail.tag === 'Open'
+          ? ':open'
+          : `:rv${t.introduced.tail.id}`
     return `H:${varKey(t.body)}:${varKey(t.output)}:${[...t.handled.entries()].map(([name, sig]) => `${name}:${varKey(sig.argType)}:${varKey(sig.retType)}`).join(',')}:I:${[...t.introduced.effects].sort().join(',')}${tailKey}`
   }
   if (t.tag === 'Record') return `R:${[...t.fields.entries()].map(([k, v]) => `${k}=${varKey(v)}`).join(',')}`
   if (t.tag === 'Array') return `Ar:${varKey(t.element)}`
   if (t.tag === 'Tuple') return `Tu:${t.elements.map(varKey).join(',')}`
-  if (t.tag === 'Sequence') return `Sq:${t.prefix.map(varKey).join(',')}:${varKey(t.rest)}:${t.minLength}:${t.maxLength ?? '*'}`
+  if (t.tag === 'Sequence')
+    return `Sq:${t.prefix.map(varKey).join(',')}:${varKey(t.rest)}:${t.minLength}:${t.maxLength ?? '*'}`
   if (t.tag === 'Union') return `U:${t.members.map(varKey).join('|')}`
   if (t.tag === 'Inter') return `I:${t.members.map(varKey).join('&')}`
   if (t.tag === 'Neg') return `N:${varKey(t.inner)}`
@@ -425,7 +472,9 @@ function addRowVarLowerBound(ρ: RowVarTail, effects: Set<string>, visited = new
   for (const ub of ρ.upperBounds) {
     for (const e of effects) {
       if (!ub.has(e)) {
-        throw new TypeInferenceError(`Row-var ρ${ρ.id} lower bound '${e}' violates upper bound @{${[...ub].sort().join(', ')}}`)
+        throw new TypeInferenceError(
+          `Row-var ρ${ρ.id} lower bound '${e}' violates upper bound @{${[...ub].sort().join(', ')}}`,
+        )
       }
     }
   }
@@ -493,12 +542,7 @@ function setsEqual(a: Set<string>, b: Set<string>): boolean {
  * constrain call just adds an upper bound and no error is thrown,
  * so this helper is a pass-through in that case.
  */
-function constrainBoolean(
-  ctx: InferenceContext,
-  type: Type,
-  nodeId: number,
-  position: string,
-): void {
+function constrainBoolean(ctx: InferenceContext, type: Type, nodeId: number, position: string): void {
   try {
     constrain(ctx, type, BooleanType)
   } catch (error) {
@@ -534,10 +578,8 @@ function constrainBoolean(
 function suggestBooleanFix(type: Type): string | undefined {
   // Literal — the value is already known at type-check time.
   if (type.tag === 'Literal') {
-    if (typeof type.value === 'number')
-      return 'Did you mean `x != 0`?'
-    if (typeof type.value === 'string')
-      return 'Did you mean `x != ""` or `count(x) > 0`?'
+    if (typeof type.value === 'number') return 'Did you mean `x != 0`?'
+    if (typeof type.value === 'string') return 'Did you mean `x != ""` or `count(x) > 0`?'
     // boolean Literal is already <: Boolean — wouldn't reach this path.
     return undefined
   }
@@ -549,10 +591,8 @@ function suggestBooleanFix(type: Type): string | undefined {
 
   // Primitive non-Boolean operands.
   if (type.tag === 'Primitive') {
-    if (type.name === 'Number' || type.name === 'Integer')
-      return 'Did you mean `x != 0`?'
-    if (type.name === 'String')
-      return 'Did you mean `x != ""` or `count(x) > 0`?'
+    if (type.name === 'Number' || type.name === 'Integer') return 'Did you mean `x != 0`?'
+    if (type.name === 'String') return 'Did you mean `x != ""` or `count(x) > 0`?'
     // fall through
   }
 
@@ -563,8 +603,7 @@ function suggestBooleanFix(type: Type): string | undefined {
     return 'Did you mean `x != null`? (For default-value idioms, `x ?? default` replaces the old `x || default` pattern.)'
 
   // Sequence-like — the old `if xs` truthy pattern.
-  if (type.tag === 'Array' || type.tag === 'Tuple' || type.tag === 'Sequence')
-    return 'Did you mean `count(x) > 0`?'
+  if (type.tag === 'Array' || type.tag === 'Tuple' || type.tag === 'Sequence') return 'Did you mean `count(x) > 0`?'
 
   // Record — `if obj` was always truthy under the old rules; typically
   // the user meant a null-check on an optional value that got inferred
@@ -690,18 +729,16 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Deferring is sound: a later expansion call (let-annotation check,
   // display) gets another chance to reduce once bounds flow in.
   if (lhs.tag === 'Keyof' || lhs.tag === 'Index') {
-    const reduced = lhs.tag === 'Keyof'
-      ? keyofType(expandType(lhs.inner))
-      : indexType(expandType(lhs.target), expandType(lhs.key))
+    const reduced =
+      lhs.tag === 'Keyof' ? keyofType(expandType(lhs.inner)) : indexType(expandType(lhs.target), expandType(lhs.key))
     if (reduced.tag !== lhs.tag) {
       constrain(ctx, reduced, rhs)
     }
     return
   }
   if (rhs.tag === 'Keyof' || rhs.tag === 'Index') {
-    const reduced = rhs.tag === 'Keyof'
-      ? keyofType(expandType(rhs.inner))
-      : indexType(expandType(rhs.target), expandType(rhs.key))
+    const reduced =
+      rhs.tag === 'Keyof' ? keyofType(expandType(rhs.inner)) : indexType(expandType(rhs.target), expandType(rhs.key))
     if (reduced.tag !== rhs.tag) {
       constrain(ctx, lhs, reduced)
     }
@@ -787,8 +824,9 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
       return
     }
     // No member worked — report the last error
-    throw errors[errors.length - 1] ?? new TypeInferenceError(
-      `No overload matches: ${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`,
+    throw (
+      errors[errors.length - 1] ??
+      new TypeInferenceError(`No overload matches: ${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`)
     )
   }
 
@@ -809,8 +847,9 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
         }
       }
     }
-    throw errors[errors.length - 1] ?? new TypeInferenceError(
-      `${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`,
+    throw (
+      errors[errors.length - 1] ??
+      new TypeInferenceError(`${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`)
     )
   }
 
@@ -834,10 +873,11 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Number literals are also Integer when their value is integer-valued
   // (mirrors subtype.ts:literalMatchesPrimitive).
   if (lhs.tag === 'Literal' && rhs.tag === 'Primitive') {
-    const ok = (typeof lhs.value === 'number' && rhs.name === 'Number')
-      || (typeof lhs.value === 'number' && rhs.name === 'Integer' && Number.isInteger(lhs.value))
-      || (typeof lhs.value === 'string' && rhs.name === 'String')
-      || (typeof lhs.value === 'boolean' && rhs.name === 'Boolean')
+    const ok =
+      (typeof lhs.value === 'number' && rhs.name === 'Number') ||
+      (typeof lhs.value === 'number' && rhs.name === 'Integer' && Number.isInteger(lhs.value)) ||
+      (typeof lhs.value === 'string' && rhs.name === 'String') ||
+      (typeof lhs.value === 'boolean' && rhs.name === 'Boolean')
     if (!ok) {
       throw new TypeInferenceError(`${typeToString(lhs)} is not a subtype of ${rhs.name}`)
     }
@@ -922,8 +962,11 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
     // recorded the necessary edge — adding a structural throw here would
     // falsely reject legitimate row-var subtyping where the concrete
     // sides need the tail to close the gap.
-    if (lhs.introduced.tail.tag === 'Closed' && rhs.introduced.tail.tag === 'Closed'
-        && !isEffectSubset(lhs.introduced, rhs.introduced)) {
+    if (
+      lhs.introduced.tail.tag === 'Closed' &&
+      rhs.introduced.tail.tag === 'Closed' &&
+      !isEffectSubset(lhs.introduced, rhs.introduced)
+    ) {
       throw new TypeInferenceError(
         `Handler introduces effects ${effectSetToString(lhs.introduced) || '@{}'} not allowed by ${effectSetToString(rhs.introduced) || '@{}'}`,
       )
@@ -969,7 +1012,9 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
 
     if (!rhs.open) {
       if (lhs.open) {
-        throw new TypeInferenceError(`Open record ${typeToString(lhs)} is not a subtype of closed record ${typeToString(rhs)}`)
+        throw new TypeInferenceError(
+          `Open record ${typeToString(lhs)} is not a subtype of closed record ${typeToString(rhs)}`,
+        )
       }
 
       for (const name of lhs.fields.keys()) {
@@ -998,9 +1043,7 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // Tuple: element-wise covariant, same length
   if (lhs.tag === 'Tuple' && rhs.tag === 'Tuple') {
     if (lhs.elements.length !== rhs.elements.length) {
-      throw new TypeInferenceError(
-        `Tuple length mismatch: expected ${rhs.elements.length}, got ${lhs.elements.length}`,
-      )
+      throw new TypeInferenceError(`Tuple length mismatch: expected ${rhs.elements.length}, got ${lhs.elements.length}`)
     }
     for (let i = 0; i < lhs.elements.length; i++) {
       constrain(ctx, lhs.elements[i]!, rhs.elements[i]!)
@@ -1130,12 +1173,7 @@ export class TypeEnv {
  * Infer the type of an AST expression.
  * Returns the inferred type and populates the type map (nodeId → Type).
  */
-export function inferExpr(
-  node: AstNode,
-  ctx: InferenceContext,
-  env: TypeEnv,
-  typeMap: Map<number, Type>,
-): Type {
+export function inferExpr(node: AstNode, ctx: InferenceContext, env: TypeEnv, typeMap: Map<number, Type>): Type {
   const nodeType = node[0] as string
   const payload = node[1]
   const nodeId = node[2]
@@ -1144,7 +1182,7 @@ export function inferExpr(
 
   try {
     switch (nodeType) {
-    // --- Literals ---
+      // --- Literals ---
       case NodeTypes.Num:
         result = literal(payload as number)
         break
@@ -1157,7 +1195,7 @@ export function inferExpr(
         result = atom(payload as string)
         break
 
-        // --- Variables ---
+      // --- Variables ---
       case NodeTypes.Sym: {
         const name = payload as string
         const t = env.lookup(name)
@@ -1416,9 +1454,7 @@ export function inferExpr(
         const calleeType = inferExpr(calleeNode, ctx, env, typeMap)
         const handlerAlternatives = getHandlerAlternatives(calleeType)
 
-        if (handlerAlternatives.length > 0
-        && argNodes.length === 1
-        && isZeroArgFunctionNode(argNodes[0]!)) {
+        if (handlerAlternatives.length > 0 && argNodes.length === 1 && isZeroArgFunctionNode(argNodes[0]!)) {
           const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
           ctx.pushHandledSignatures(guaranteedHandled)
           let thunkType: Type
@@ -1429,26 +1465,39 @@ export function inferExpr(
           }
 
           const thunkAlternatives = getFunctionAlternatives(thunkType)
-          if (thunkAlternatives.length > 0 && thunkAlternatives.every(thunk => thunk.params.length === 0 && thunk.restParam === undefined)) {
-            const requiredBodyType = handlerAlternatives.length === 1
-              ? handlerAlternatives[0]!.body
-              : inter(...handlerAlternatives.map(handler => handler.body))
+          if (
+            thunkAlternatives.length > 0 &&
+            thunkAlternatives.every(thunk => thunk.params.length === 0 && thunk.restParam === undefined)
+          ) {
+            const requiredBodyType =
+              handlerAlternatives.length === 1
+                ? handlerAlternatives[0]!.body
+                : inter(...handlerAlternatives.map(handler => handler.body))
 
             constrain(ctx, thunkType, fn([], requiredBodyType))
 
             const residualEffects = subtractEffects(
-              unionEffectSets(thunkAlternatives.map(thunk => thunk.effects), ctx),
+              unionEffectSets(
+                thunkAlternatives.map(thunk => thunk.effects),
+                ctx,
+              ),
               new Set(guaranteedHandled.keys()),
             )
             ctx.addEffects(residualEffects)
             // Phase 4-B: union the handler's introduced effects back in,
             // mirroring the do-with-h application law. Union across
             // alternatives — any could be the active runtime handler.
-            ctx.addEffects(unionEffectSets(handlerAlternatives.map(h => h.introduced), ctx))
+            ctx.addEffects(
+              unionEffectSets(
+                handlerAlternatives.map(h => h.introduced),
+                ctx,
+              ),
+            )
 
-            result = handlerAlternatives.length === 1
-              ? handlerAlternatives[0]!.output
-              : union(...handlerAlternatives.map(handler => handler.output))
+            result =
+              handlerAlternatives.length === 1
+                ? handlerAlternatives[0]!.output
+                : union(...handlerAlternatives.map(handler => handler.output))
             break
           }
         }
@@ -1466,9 +1515,7 @@ export function inferExpr(
           }
           return inferExpr(arg, ctx, env, typeMap)
         })
-        const thunkAlternatives = argTypes.length === 1
-          ? getFunctionAlternatives(argTypes[0]!)
-          : []
+        const thunkAlternatives = argTypes.length === 1 ? getFunctionAlternatives(argTypes[0]!) : []
 
         // Phase 4-B application law for handler-wrapper functions: when the
         // callee carries HandlerWrapperInfo and the wrapper-arg is a thunk,
@@ -1483,7 +1530,10 @@ export function inferExpr(
           if (wrapperThunkType) {
             const innerAlts = getFunctionAlternatives(wrapperThunkType)
             if (innerAlts.length > 0) {
-              const thunkEffects = unionEffectSets(innerAlts.map(t => t.effects), ctx)
+              const thunkEffects = unionEffectSets(
+                innerAlts.map(t => t.effects),
+                ctx,
+              )
               const residual = subtractEffects(thunkEffects, new Set(wrapperInfo.handled.keys()))
               ctx.addEffects(residual)
               ctx.addEffects(wrapperInfo.introduced)
@@ -1492,46 +1542,54 @@ export function inferExpr(
           }
         }
 
-        const runtimeAlignedCollectionResult = inferCollectionCall(
-          calleeNode,
-          argTypes,
-          ctx,
-          env,
-          typeMap,
-        )
+        const runtimeAlignedCollectionResult = inferCollectionCall(calleeNode, argTypes, ctx, env, typeMap)
         if (runtimeAlignedCollectionResult) {
           result = runtimeAlignedCollectionResult
           break
         }
 
-        if (handlerAlternatives.length > 0 && thunkAlternatives.length > 0
-        && thunkAlternatives.every(thunk => thunk.params.length === 0 && thunk.restParam === undefined)) {
-          const requiredBodyType = handlerAlternatives.length === 1
-            ? handlerAlternatives[0]!.body
-            : inter(...handlerAlternatives.map(handler => handler.body))
+        if (
+          handlerAlternatives.length > 0 &&
+          thunkAlternatives.length > 0 &&
+          thunkAlternatives.every(thunk => thunk.params.length === 0 && thunk.restParam === undefined)
+        ) {
+          const requiredBodyType =
+            handlerAlternatives.length === 1
+              ? handlerAlternatives[0]!.body
+              : inter(...handlerAlternatives.map(handler => handler.body))
 
           constrain(ctx, argTypes[0]!, fn([], requiredBodyType))
 
           const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
           const residualEffects = subtractEffects(
-            unionEffectSets(thunkAlternatives.map(thunk => thunk.effects), ctx),
+            unionEffectSets(
+              thunkAlternatives.map(thunk => thunk.effects),
+              ctx,
+            ),
             new Set(guaranteedHandled.keys()),
           )
           ctx.addEffects(residualEffects)
           // Phase 4-B: union the handler's introduced effects, same as the
           // zero-arg branch above.
-          ctx.addEffects(unionEffectSets(handlerAlternatives.map(h => h.introduced), ctx))
+          ctx.addEffects(
+            unionEffectSets(
+              handlerAlternatives.map(h => h.introduced),
+              ctx,
+            ),
+          )
 
-          result = handlerAlternatives.length === 1
-            ? handlerAlternatives[0]!.output
-            : union(...handlerAlternatives.map(handler => handler.output))
+          result =
+            handlerAlternatives.length === 1
+              ? handlerAlternatives[0]!.output
+              : union(...handlerAlternatives.map(handler => handler.output))
           break
         }
 
         if (handlerAlternatives.length > 0 && argTypes.length === 1) {
-          const requiredBodyType = handlerAlternatives.length === 1
-            ? handlerAlternatives[0]!.body
-            : inter(...handlerAlternatives.map(handler => handler.body))
+          const requiredBodyType =
+            handlerAlternatives.length === 1
+              ? handlerAlternatives[0]!.body
+              : inter(...handlerAlternatives.map(handler => handler.body))
           const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
 
           constrain(ctx, argTypes[0]!, fn([], requiredBodyType))
@@ -1539,13 +1597,17 @@ export function inferExpr(
             // Capture both subtraction (handled) and union (introduced)
             // sides of the application law. Conservative across alternatives:
             // any alternative might be active, so introduced is unioned.
-            const introduced = unionEffectSets(handlerAlternatives.map(h => h.introduced), ctx)
+            const introduced = unionEffectSets(
+              handlerAlternatives.map(h => h.introduced),
+              ctx,
+            )
             ctx.noteWrappedThunkVar(argTypes[0].id, guaranteedHandled, introduced)
           }
 
-          result = handlerAlternatives.length === 1
-            ? handlerAlternatives[0]!.output
-            : union(...handlerAlternatives.map(handler => handler.output))
+          result =
+            handlerAlternatives.length === 1
+              ? handlerAlternatives[0]!.output
+              : union(...handlerAlternatives.map(handler => handler.output))
           break
         }
 
@@ -1588,7 +1650,10 @@ export function inferExpr(
         if (!wrapperBranchFired) {
           const calledEffects = selectedAlternative
             ? selectedAlternative.effects
-            : unionEffectSets(functionAlternatives.map(alt => alt.effects), ctx)
+            : unionEffectSets(
+                functionAlternatives.map(alt => alt.effects),
+                ctx,
+              )
           ctx.addEffects(calledEffects)
         }
 
@@ -1612,9 +1677,11 @@ export function inferExpr(
         // division-by-zero the compiler can prove) become severity:'warning'
         // diagnostics — decision #2 of the folding design. See
         // design/archive/2026-04-16_constant-folding-in-types.md.
-        if (ctx.foldEnabled
-          && functionAlternatives.length > 0
-          && functionAlternatives.every(alt => alt.effects.effects.size === 0 && alt.effects.tail.tag === 'Closed')) {
+        if (
+          ctx.foldEnabled &&
+          functionAlternatives.length > 0 &&
+          functionAlternatives.every(alt => alt.effects.effects.size === 0 && alt.effects.tail.tag === 'Closed')
+        ) {
           let foldOutcome = tryFoldBuiltinCall(calleeNode, argTypes)
           if (!foldOutcome && calleeNode[0] === NodeTypes.Sym) {
             const functionAst = env.lookupFunctionAst(calleeNode[1] as string)
@@ -1649,11 +1716,13 @@ export function inferExpr(
           if (foldOutcome?.type) {
             result = foldOutcome.type
           } else if (foldOutcome?.effectName !== undefined) {
-            ctx.deferError(new TypeInferenceError(
-              `This expression will perform \`@${foldOutcome.effectName}\` at runtime`,
-              nodeId,
-              'warning',
-            ))
+            ctx.deferError(
+              new TypeInferenceError(
+                `This expression will perform \`@${foldOutcome.effectName}\` at runtime`,
+                nodeId,
+                'warning',
+              ),
+            )
           }
         }
         break
@@ -1690,11 +1759,12 @@ export function inferExpr(
           if (Array.isArray(entry) && entry.length === 2) {
             const [keyNode, valueNode] = entry
             // Key is either a string literal or a symbol
-            const keyName = keyNode[0] === NodeTypes.Str
-              ? keyNode[1] as string
-              : keyNode[0] === NodeTypes.Sym
-                ? keyNode[1] as string
-                : String(keyNode[1])
+            const keyName =
+              keyNode[0] === NodeTypes.Str
+                ? (keyNode[1] as string)
+                : keyNode[0] === NodeTypes.Sym
+                  ? (keyNode[1] as string)
+                  : String(keyNode[1])
             const valueType = inferExpr(valueNode, ctx, env, typeMap)
             fields.set(keyName, valueType)
             // Record value type on the key node so hovering on the key shows the field type
@@ -1703,7 +1773,7 @@ export function inferExpr(
               typeMap.set(keyNodeId, valueType)
             }
           }
-        // Spread entries are handled at a later step
+          // Spread entries are handled at a later step
         }
         result = { tag: 'Record', fields, open: false }
         break
@@ -1711,8 +1781,8 @@ export function inferExpr(
 
       // --- Perform (effect invocation) ---
       case NodeTypes.Perform: {
-      // perform(@eff, arg) — adds the effect to the current effect set
-      // and returns the declared return type. Undeclared effects are errors.
+        // perform(@eff, arg) — adds the effect to the current effect set
+        // and returns the declared return type. Undeclared effects are errors.
         const [effectExpr, argExpr] = payload as [AstNode, AstNode | undefined]
         if (effectExpr[0] === NodeTypes.Effect) {
           const effectName = effectExpr[1] as string
@@ -1722,7 +1792,9 @@ export function inferExpr(
           // Fall back to explicit effect declarations when no handler proves it.
           const decl = ctx.currentHandledSignatures?.get(effectName) ?? getEffectDeclaration(effectName)
           if (!decl) {
-            throw new TypeInferenceError(`Undeclared effect @${effectName} — add 'effect @${effectName}(ArgType) -> RetType' before use`)
+            throw new TypeInferenceError(
+              `Undeclared effect @${effectName} — add 'effect @${effectName}(ArgType) -> RetType' before use`,
+            )
           }
 
           // If there's an arg, constrain it against the declared arg type
@@ -1746,12 +1818,12 @@ export function inferExpr(
         result = Unknown
         break
 
-        // --- Template string ---
+      // --- Template string ---
       case NodeTypes.TmplStr:
         result = StringType
         break
 
-        // --- And / Or ---
+      // --- And / Or ---
       case NodeTypes.And:
       case NodeTypes.Or: {
         const operands = payload as AstNode[]
@@ -1803,7 +1875,7 @@ export function inferExpr(
 
       // --- Nullish coalescing ---
       case NodeTypes.Qq: {
-      // ?? can have 2+ operands: a ?? b or ??(a, b, c)
+        // ?? can have 2+ operands: a ?? b or ??(a, b, c)
         const operands = payload as AstNode[]
         const types = operands.map(op => inferExpr(op, ctx, env, typeMap))
         result = union(...types)
@@ -1812,8 +1884,8 @@ export function inferExpr(
 
       // --- Match ---
       case NodeTypes.Match: {
-      // Payload: [matchExpr, [case1, case2, ...]]
-      // Each case: [pattern, body, guard | null]
+        // Payload: [matchExpr, [case1, case2, ...]]
+        // Each case: [pattern, body, guard | null]
         const matchPayload = payload as [AstNode, [AstNode, AstNode, AstNode | null][]]
         const matchExpr = matchPayload[0]
         const cases = matchPayload[1]
@@ -1831,7 +1903,9 @@ export function inferExpr(
 
           if (matchedType.tag === 'Never') {
             if (shouldWarnRedundantMatchCase(pattern, remainingType, matchSpace)) {
-              ctx.deferError(new TypeInferenceError('Redundant match case — pattern is unreachable', pattern[2], 'warning'))
+              ctx.deferError(
+                new TypeInferenceError('Redundant match case — pattern is unreachable', pattern[2], 'warning'),
+              )
             }
             continue
           }
@@ -1879,11 +1953,9 @@ export function inferExpr(
             if (ctx.foldEnabled) {
               const expandedGuard = expandType(guardType)
               if (expandedGuard.tag === 'Literal' && expandedGuard.value === false) {
-                ctx.deferError(new TypeInferenceError(
-                  'Redundant match case — guard is always false',
-                  pattern[2],
-                  'warning',
-                ))
+                ctx.deferError(
+                  new TypeInferenceError('Redundant match case — guard is always false', pattern[2], 'warning'),
+                )
                 continue
               }
             }
@@ -1903,10 +1975,7 @@ export function inferExpr(
 
         // Exhaustiveness only fires for match spaces we can track precisely.
         if (checkExhaustiveness && remainingType.tag !== 'Never') {
-          throw new TypeInferenceError(
-            `Non-exhaustive match — unhandled: ${typeToString(remainingType)}`,
-            nodeId,
-          )
+          throw new TypeInferenceError(`Non-exhaustive match — unhandled: ${typeToString(remainingType)}`, nodeId)
         }
 
         result = branchTypes.length > 0 ? union(...branchTypes) : Never
@@ -1915,8 +1984,8 @@ export function inferExpr(
 
       // --- Loop ---
       case NodeTypes.Loop: {
-      // Loop returns whatever the body returns when it doesn't recur
-      // For now, type it as Unknown (proper loop typing needs fixpoint)
+        // Loop returns whatever the body returns when it doesn't recur
+        // For now, type it as Unknown (proper loop typing needs fixpoint)
         result = Unknown
         break
       }
@@ -1926,14 +1995,14 @@ export function inferExpr(
         result = array(Unknown) // Conservative: array of unknown element type
         break
 
-        // --- Import ---
+      // --- Import ---
       case NodeTypes.Import: {
         const moduleName = payload as string
         // File import (relative path) — resolve and typecheck the imported file
         if (moduleName.startsWith('.') && ctx.resolveFileType) {
           result = ctx.resolveFileType(moduleName)
         } else {
-        // Module import — record of module exports with their declared types
+          // Module import — record of module exports with their declared types
           result = freshenAnnotationVars(ctx, getModuleType(moduleName))
         }
         break
@@ -1941,7 +2010,11 @@ export function inferExpr(
 
       // --- Handler (handler...end creates a handler value) ---
       case NodeTypes.Handler: {
-        const [clauses, transform] = payload as [{ effectName: string; params: AstNode[]; body: AstNode[] }[], [AstNode, AstNode[]] | null, boolean]
+        const [clauses, transform] = payload as [
+          { effectName: string; params: AstNode[]; body: AstNode[] }[],
+          [AstNode, AstNode[]] | null,
+          boolean,
+        ]
         const bodyType = ctx.freshVar()
         const answerType = ctx.freshVar()
         const handled = new Map<string, { argType: Type; retType: Type }>()
@@ -1956,10 +2029,10 @@ export function inferExpr(
         const introducedSets: EffectSet[] = []
 
         for (const clause of clauses) {
-        // When a handler clause lacks a source-level effect declaration, infer
-        // its payload/resume signature from how the clause body uses the
-        // parameter and resume value. This lets wrapper helpers propagate
-        // concrete perform-site types such as resume(null) -> Null.
+          // When a handler clause lacks a source-level effect declaration, infer
+          // its payload/resume signature from how the clause body uses the
+          // parameter and resume value. This lets wrapper helpers propagate
+          // concrete perform-site types such as resume(null) -> Null.
           const effectDecl = getEffectDeclaration(clause.effectName)
 
           const clauseEnv = env.child()
@@ -1989,9 +2062,7 @@ export function inferExpr(
           ctx.pushEffects()
           // Handler-clause bodies are a sequence-of-statements, just
           // like a Block — apply the same assert-narrowing semantics.
-          const { lastType: clauseBodyType } = inferStatementsWithAssertNarrowing(
-            clause.body, ctx, clauseEnv, typeMap,
-          )
+          const { lastType: clauseBodyType } = inferStatementsWithAssertNarrowing(clause.body, ctx, clauseEnv, typeMap)
           introducedSets.push(ctx.popEffects())
           ctx.popResume()
           constrain(ctx, clauseBodyType, answerType)
@@ -2003,7 +2074,10 @@ export function inferExpr(
           bindPattern(transformParam, bodyType, transformEnv, ctx, typeMap)
           ctx.pushEffects()
           const { lastType: transformResult } = inferStatementsWithAssertNarrowing(
-            transformBody, ctx, transformEnv, typeMap,
+            transformBody,
+            ctx,
+            transformEnv,
+            typeMap,
           )
           introducedSets.push(ctx.popEffects())
           constrain(ctx, transformResult, answerType)
@@ -2031,9 +2105,10 @@ export function inferExpr(
         let bodyType: Type = NullType
 
         if (handlerAlternatives.length > 0) {
-          const requiredBodyType = handlerAlternatives.length === 1
-            ? handlerAlternatives[0]!.body
-            : inter(...handlerAlternatives.map(handler => handler.body))
+          const requiredBodyType =
+            handlerAlternatives.length === 1
+              ? handlerAlternatives[0]!.body
+              : inter(...handlerAlternatives.map(handler => handler.body))
           const guaranteedHandled = intersectHandledSignatures(handlerAlternatives)
 
           ctx.pushHandledSignatures(guaranteedHandled)
@@ -2053,11 +2128,17 @@ export function inferExpr(
           // perform. Across multiple alternatives we conservatively take
           // the union — any of them could be the active one at runtime.
           // See design/archive/2026-04-19_handler-typing.md.
-          ctx.addEffects(unionEffectSets(handlerAlternatives.map(handler => handler.introduced), ctx))
+          ctx.addEffects(
+            unionEffectSets(
+              handlerAlternatives.map(handler => handler.introduced),
+              ctx,
+            ),
+          )
 
-          result = handlerAlternatives.length === 1
-            ? handlerAlternatives[0]!.output
-            : union(...handlerAlternatives.map(handler => handler.output))
+          result =
+            handlerAlternatives.length === 1
+              ? handlerAlternatives[0]!.output
+              : union(...handlerAlternatives.map(handler => handler.output))
         } else {
           const { lastType } = inferStatementsWithAssertNarrowing(bodyExprs, ctx, env, typeMap)
           bodyType = lastType
@@ -2093,7 +2174,7 @@ export function inferExpr(
         result = Unknown // Macro calls expand at compile time — result type unknown
         break
 
-        // --- Recur ---
+      // --- Recur ---
       case NodeTypes.Recur:
         result = Never // recur never returns (it jumps back to loop)
         break
@@ -2143,7 +2224,8 @@ function effectSetContainsVars(e: EffectSet): boolean {
 
 function containsVars(t: Type): boolean {
   switch (t.tag) {
-    case 'Var': return true
+    case 'Var':
+      return true
     case 'Function': {
       if (t.params.some(containsVars)) return true
       if (t.restParam !== undefined && containsVars(t.restParam)) return true
@@ -2159,25 +2241,36 @@ function containsVars(t: Type): boolean {
       if (effectSetContainsVars(t.introduced)) return true
       return false
     }
-    case 'Record': return [...t.fields.values()].some(containsVars)
-    case 'Array': return containsVars(t.element)
-    case 'Tuple': return t.elements.some(containsVars)
-    case 'Sequence': return t.prefix.some(containsVars) || containsVars(t.rest)
+    case 'Record':
+      return [...t.fields.values()].some(containsVars)
+    case 'Array':
+      return containsVars(t.element)
+    case 'Tuple':
+      return t.elements.some(containsVars)
+    case 'Sequence':
+      return t.prefix.some(containsVars) || containsVars(t.rest)
     case 'Union':
-    case 'Inter': return t.members.some(containsVars)
-    case 'Neg': return containsVars(t.inner)
-    case 'Keyof': return containsVars(t.inner)
-    case 'Index': return containsVars(t.target) || containsVars(t.key)
+    case 'Inter':
+      return t.members.some(containsVars)
+    case 'Neg':
+      return containsVars(t.inner)
+    case 'Keyof':
+      return containsVars(t.inner)
+    case 'Index':
+      return containsVars(t.target) || containsVars(t.key)
     // Recurse through `expanded` so a polymorphic alias (e.g. a type
     // parameterized on A at declaration) is correctly detected as
     // containing vars — otherwise `let f: MyAlias<A> = ...` would
     // skip the forall-binding path introduced in PR #87.
-    case 'Alias': return t.args.some(containsVars) || containsVars(t.expanded)
+    case 'Alias':
+      return t.args.some(containsVars) || containsVars(t.expanded)
     // Refinement carries vars only in its base. The predicate body is a
     // Dvala expression AST, not a type — any Vars inside it are symbol
     // references, not TypeVars, so the predicate doesn't contribute.
-    case 'Refined': return containsVars(t.base)
-    default: return false
+    case 'Refined':
+      return containsVars(t.base)
+    default:
+      return false
   }
 }
 
@@ -2194,10 +2287,7 @@ function containsVars(t: Type): boolean {
  * the source. Used by freshening, generalization, narrowing, expansion —
  * every path that produces a new Record from an existing one.
  */
-function rebuildRecord(
-  src: Extract<Type, { tag: 'Record' }>,
-  fields: Map<string, Type>,
-): Type {
+function rebuildRecord(src: Extract<Type, { tag: 'Record' }>, fields: Map<string, Type>): Type {
   const rec: Extract<Type, { tag: 'Record' }> = { tag: 'Record', fields, open: src.open }
   if (src.optionalFields && src.optionalFields.size > 0) {
     rec.optionalFields = new Set(src.optionalFields)
@@ -2268,8 +2358,10 @@ function freshenAllVars(
       for (const [k, v] of t.fields) fields.set(k, freshenAllVars(ctx, v, mapping, rowMapping))
       return rebuildRecord(t, fields)
     }
-    case 'Array': return array(freshenAllVars(ctx, t.element, mapping, rowMapping))
-    case 'Tuple': return tuple(t.elements.map(e => freshenAllVars(ctx, e, mapping, rowMapping)))
+    case 'Array':
+      return array(freshenAllVars(ctx, t.element, mapping, rowMapping))
+    case 'Tuple':
+      return tuple(t.elements.map(e => freshenAllVars(ctx, e, mapping, rowMapping)))
     case 'Sequence':
       return sequence(
         t.prefix.map(member => freshenAllVars(ctx, member, mapping, rowMapping)),
@@ -2277,32 +2369,40 @@ function freshenAllVars(
         t.minLength,
         t.maxLength,
       )
-    case 'Union': return union(...t.members.map(m => freshenAllVars(ctx, m, mapping, rowMapping)))
-    case 'Inter': return { tag: 'Inter', members: t.members.map(m => freshenAllVars(ctx, m, mapping, rowMapping)) }
-    case 'Neg': return { tag: 'Neg', inner: freshenAllVars(ctx, t.inner, mapping, rowMapping) }
-    case 'Keyof': return keyofType(freshenAllVars(ctx, t.inner, mapping, rowMapping))
-    case 'Index': return indexType(
-      freshenAllVars(ctx, t.target, mapping, rowMapping),
-      freshenAllVars(ctx, t.key, mapping, rowMapping),
-    )
+    case 'Union':
+      return union(...t.members.map(m => freshenAllVars(ctx, m, mapping, rowMapping)))
+    case 'Inter':
+      return { tag: 'Inter', members: t.members.map(m => freshenAllVars(ctx, m, mapping, rowMapping)) }
+    case 'Neg':
+      return { tag: 'Neg', inner: freshenAllVars(ctx, t.inner, mapping, rowMapping) }
+    case 'Keyof':
+      return keyofType(freshenAllVars(ctx, t.inner, mapping, rowMapping))
+    case 'Index':
+      return indexType(
+        freshenAllVars(ctx, t.target, mapping, rowMapping),
+        freshenAllVars(ctx, t.key, mapping, rowMapping),
+      )
     // Freshen both args and expanded form — they share identity for
     // vars via the same `mapping` table, so `type F<A> = (A) -> A`
     // with `A` appearing in both args[0] and expanded stays
     // consistent across the expansion after freshening.
-    case 'Alias': return {
-      tag: 'Alias',
-      name: t.name,
-      args: t.args.map(a => freshenAllVars(ctx, a, mapping, rowMapping)),
-      expanded: freshenAllVars(ctx, t.expanded, mapping, rowMapping),
-    }
-    case 'Refined': return {
-      tag: 'Refined',
-      base: freshenAllVars(ctx, t.base, mapping, rowMapping),
-      binder: t.binder,
-      predicate: t.predicate,
-      source: t.source,
-    }
-    default: return t
+    case 'Alias':
+      return {
+        tag: 'Alias',
+        name: t.name,
+        args: t.args.map(a => freshenAllVars(ctx, a, mapping, rowMapping)),
+        expanded: freshenAllVars(ctx, t.expanded, mapping, rowMapping),
+      }
+    case 'Refined':
+      return {
+        tag: 'Refined',
+        base: freshenAllVars(ctx, t.base, mapping, rowMapping),
+        binder: t.binder,
+        predicate: t.predicate,
+        source: t.source,
+      }
+    default:
+      return t
   }
 }
 
@@ -2396,10 +2496,7 @@ function freshenInner(
     case 'Keyof':
       return keyofType(freshenInner(ctx, t.inner, mapping, rowMapping))
     case 'Index':
-      return indexType(
-        freshenInner(ctx, t.target, mapping, rowMapping),
-        freshenInner(ctx, t.key, mapping, rowMapping),
-      )
+      return indexType(freshenInner(ctx, t.target, mapping, rowMapping), freshenInner(ctx, t.key, mapping, rowMapping))
     case 'Alias':
       return {
         tag: 'Alias',
@@ -2430,7 +2527,8 @@ function effectSetContainsVarsAboveLevel(e: EffectSet, level: number): boolean {
 /** Check if a type contains any variables above the given level. */
 function containsVarsAboveLevel(t: Type, level: number): boolean {
   switch (t.tag) {
-    case 'Var': return isGeneralizedTypeVar(t) || t.level > level
+    case 'Var':
+      return isGeneralizedTypeVar(t) || t.level > level
     case 'Function': {
       if (t.params.some(p => containsVarsAboveLevel(p, level))) return true
       if (t.restParam !== undefined && containsVarsAboveLevel(t.restParam, level)) return true
@@ -2448,18 +2546,29 @@ function containsVarsAboveLevel(t: Type, level: number): boolean {
       if (effectSetContainsVarsAboveLevel(t.introduced, level)) return true
       return false
     }
-    case 'Record': return [...t.fields.values()].some(v => containsVarsAboveLevel(v, level))
-    case 'Array': return containsVarsAboveLevel(t.element, level)
-    case 'Tuple': return t.elements.some(e => containsVarsAboveLevel(e, level))
-    case 'Sequence': return t.prefix.some(member => containsVarsAboveLevel(member, level)) || containsVarsAboveLevel(t.rest, level)
+    case 'Record':
+      return [...t.fields.values()].some(v => containsVarsAboveLevel(v, level))
+    case 'Array':
+      return containsVarsAboveLevel(t.element, level)
+    case 'Tuple':
+      return t.elements.some(e => containsVarsAboveLevel(e, level))
+    case 'Sequence':
+      return t.prefix.some(member => containsVarsAboveLevel(member, level)) || containsVarsAboveLevel(t.rest, level)
     case 'Union':
-    case 'Inter': return t.members.some(m => containsVarsAboveLevel(m, level))
-    case 'Neg': return containsVarsAboveLevel(t.inner, level)
-    case 'Keyof': return containsVarsAboveLevel(t.inner, level)
-    case 'Index': return containsVarsAboveLevel(t.target, level) || containsVarsAboveLevel(t.key, level)
-    case 'Alias': return t.args.some(a => containsVarsAboveLevel(a, level)) || containsVarsAboveLevel(t.expanded, level)
-    case 'Refined': return containsVarsAboveLevel(t.base, level)
-    default: return false
+    case 'Inter':
+      return t.members.some(m => containsVarsAboveLevel(m, level))
+    case 'Neg':
+      return containsVarsAboveLevel(t.inner, level)
+    case 'Keyof':
+      return containsVarsAboveLevel(t.inner, level)
+    case 'Index':
+      return containsVarsAboveLevel(t.target, level) || containsVarsAboveLevel(t.key, level)
+    case 'Alias':
+      return t.args.some(a => containsVarsAboveLevel(a, level)) || containsVarsAboveLevel(t.expanded, level)
+    case 'Refined':
+      return containsVarsAboveLevel(t.base, level)
+    default:
+      return false
   }
 }
 
@@ -2787,9 +2896,7 @@ function intersectHandledSignatures(
   for (const [name, sig] of first!.handled) {
     const shared = rest.every(handler => {
       const other = handler.handled.get(name)
-      return other
-        && typeEquals(sig.argType, other.argType)
-        && typeEquals(sig.retType, other.retType)
+      return other && typeEquals(sig.argType, other.argType) && typeEquals(sig.retType, other.retType)
     })
     if (shared) {
       intersection.set(name, sig)
@@ -2798,9 +2905,7 @@ function intersectHandledSignatures(
   return intersection
 }
 
-function intersectFunctionWrapperInfo(
-  functions: Extract<Type, { tag: 'Function' }>[],
-): HandlerWrapperInfo | undefined {
+function intersectFunctionWrapperInfo(functions: Extract<Type, { tag: 'Function' }>[]): HandlerWrapperInfo | undefined {
   if (functions.length === 0) return undefined
   const first = functions[0]!.handlerWrapper
   if (!first) return undefined
@@ -2962,7 +3067,7 @@ function selectFirstSuccessfulFunctionAlternative(
 }
 
 function isZeroArgFunctionNode(node: AstNode): boolean {
-  return node[0] === NodeTypes.Function && ((node[1] as [AstNode[], AstNode[]])[0]).length === 0
+  return node[0] === NodeTypes.Function && (node[1] as [AstNode[], AstNode[]])[0].length === 0
 }
 
 function inferFunctionNode(
@@ -3101,12 +3206,14 @@ function synthesizeFunctionOverloads(
     return undefined
   }
 
-  const overloads = retAlternatives.map((retAlternative, index) => fn(
-    paramAlternatives.map(alternatives => alternatives![index]!),
-    retAlternative,
-    effects,
-    handlerWrapper,
-  ))
+  const overloads = retAlternatives.map((retAlternative, index) =>
+    fn(
+      paramAlternatives.map(alternatives => alternatives![index]!),
+      retAlternative,
+      effects,
+      handlerWrapper,
+    ),
+  )
 
   return dedupeDisplayBounds([], overloads) as Extract<Type, { tag: 'Function' }>[]
 }
@@ -3123,10 +3230,7 @@ function getDisplayLowerAlternatives(type: Type): Type[] | undefined {
     : undefined
 }
 
-function inferFunctionWrapperInfo(
-  params: Type[],
-  ctx: InferenceContext,
-): HandlerWrapperInfo | undefined {
+function inferFunctionWrapperInfo(params: Type[], ctx: InferenceContext): HandlerWrapperInfo | undefined {
   for (let index = 0; index < params.length; index++) {
     const param = params[index]!
     if (param.tag !== 'Var') continue
@@ -3176,10 +3280,15 @@ function isConstrainedFunctionArityCompatible(
  * Returns undefined if the condition isn't a recognised narrowing shape,
  * in which case the If case falls back to normal inference of both branches.
  */
-function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
-  whenTrue: Map<string, Type>
-  whenFalse: Map<string, Type>
-} | undefined {
+function extractIfNarrowings(
+  cond: AstNode,
+  env: TypeEnv,
+):
+  | {
+      whenTrue: Map<string, Type>
+      whenFalse: Map<string, Type>
+    }
+  | undefined {
   // `&&`: then-branch narrowing is the conjunction of operand whenTrue
   // maps (intersect on key collision); else-branch narrowing isn't
   // expressible as a single env (would need a union of refinement worlds).
@@ -3233,8 +3342,7 @@ function extractIfNarrowings(cond: AstNode, env: TypeEnv): {
   // Equality narrowing: sym == literalOrAtom (or reversed).
   if (argNodes.length === 2 && (builtinName === '==' || builtinName === '!=')) {
     const [leftNode, rightNode] = argNodes as [AstNode, AstNode]
-    const narrow = extractEqualityNarrowing(leftNode, rightNode)
-      ?? extractEqualityNarrowing(rightNode, leftNode)
+    const narrow = extractEqualityNarrowing(leftNode, rightNode) ?? extractEqualityNarrowing(rightNode, leftNode)
     if (narrow) {
       // For `!=`, positive-branch narrowing is the complement.
       const negated = builtinName === '!='
@@ -3446,10 +3554,15 @@ function rewritePredicateNode(
  * out-of-fragment, etc.), letting the surrounding `extractIfNarrowings`
  * fall through to its default "no narrowing".
  */
-function extractRefinementNarrowing(cond: AstNode, env: TypeEnv): {
-  whenTrue: Map<string, Type>
-  whenFalse: Map<string, Type>
-} | undefined {
+function extractRefinementNarrowing(
+  cond: AstNode,
+  env: TypeEnv,
+):
+  | {
+      whenTrue: Map<string, Type>
+      whenFalse: Map<string, Type>
+    }
+  | undefined {
   const free = collectFreeBoundSymbols(cond, env)
   if (free.size !== 1) return undefined
   const binderName = [...free][0]!
@@ -3484,11 +3597,7 @@ function extractRefinementNarrowing(cond: AstNode, env: TypeEnv): {
   // Simplify to `P` so downstream consumers see a clean predicate.
   const notCond: AstNode = isNegationCall(cond)
     ? (cond[1] as [AstNode, AstNode[]])[1][0]!
-    : [NodeTypes.Call, [
-      [NodeTypes.Builtin, '!', 0] as AstNode,
-      [cond],
-      null,
-    ], 0] as unknown as AstNode
+    : ([NodeTypes.Call, [[NodeTypes.Builtin, '!', 0] as AstNode, [cond], null], 0] as unknown as AstNode)
   const falseSource = `${binderName} | ${prettyPrint(notCond).trim()}`
   const falseRefined: Type = {
     tag: 'Refined',
@@ -3512,11 +3621,7 @@ function extractRefinementNarrowing(cond: AstNode, env: TypeEnv): {
 function isNegationCall(node: AstNode): boolean {
   if (node[0] !== NodeTypes.Call) return false
   const [callee, args] = node[1] as [AstNode, AstNode[]]
-  return (
-    callee[0] === NodeTypes.Builtin
-    && callee[1] === '!'
-    && args.length === 1
-  )
+  return callee[0] === NodeTypes.Builtin && callee[1] === '!' && args.length === 1
 }
 
 /**
@@ -3656,10 +3761,7 @@ function mergeNarrowingPair(a: Type, b: Type): Type {
   const newBase = typeEquals(aBase, bBase) ? aBase : inter(aBase, bBase)
 
   if (aIsRef && bIsRef) {
-    const merged = mergeRefinementPredicates(
-      a.binder, a.predicate,
-      b.binder, b.predicate,
-    )
+    const merged = mergeRefinementPredicates(a.binder, a.predicate, b.binder, b.predicate)
     return {
       tag: 'Refined',
       base: newBase,
@@ -3802,7 +3904,12 @@ interface MatchCaseAnalysis {
   consumedType: Type
 }
 
-function analyzeMatchCase(pattern: AstNode, candidateType: Type, guard: AstNode | null, env: TypeEnv): MatchCaseAnalysis {
+function analyzeMatchCase(
+  pattern: AstNode,
+  candidateType: Type,
+  guard: AstNode | null,
+  env: TypeEnv,
+): MatchCaseAnalysis {
   const matchedByPattern = matchedTypeForPattern(pattern, candidateType)
   if (matchedByPattern.tag === 'Never') {
     return { matchedType: Never, consumedType: Never }
@@ -3948,9 +4055,7 @@ function narrowObjectMatchTypeByGuard(
 // Apply field-level narrowings to a record type (or union of records).
 function narrowRecordFieldTypes(type: Type, fieldNarrowings: Map<string, Type>): Type {
   if (type.tag === 'Union') {
-    const narrowed = type.members
-      .map(m => narrowRecordFieldTypes(m, fieldNarrowings))
-      .filter(m => m.tag !== 'Never')
+    const narrowed = type.members.map(m => narrowRecordFieldTypes(m, fieldNarrowings)).filter(m => m.tag !== 'Never')
     return narrowed.length === 0 ? Never : simplify(union(...narrowed))
   }
 
@@ -4010,9 +4115,8 @@ function matchedObjectPatternType(pattern: AstNode, candidateType: Type): Type {
 
   if (candidateType.tag === 'Union') {
     const compatibleMembers = candidateType.members.filter(
-      (member): member is Extract<Type, { tag: 'Record' }> => (
-        member.tag === 'Record' && recordTypeSupportsMatchPattern(fieldsObj, member)
-      ),
+      (member): member is Extract<Type, { tag: 'Record' }> =>
+        member.tag === 'Record' && recordTypeSupportsMatchPattern(fieldsObj, member),
     )
     const narrowedMembers = compatibleMembers
       .map(member => narrowRecordTypeForMatchPattern(fieldsObj, member))
@@ -4039,18 +4143,15 @@ function matchedArrayPatternType(pattern: AstNode, candidateType: Type): Type {
   return matchedExplicitArrayPatternType(elements, candidateType)
 }
 
-function matchedExplicitArrayPatternType(
-  elements: AstNode[],
-  candidateType: Type,
-): Type {
-
+function matchedExplicitArrayPatternType(elements: AstNode[], candidateType: Type): Type {
   if (candidateType.tag === 'Unknown' || candidateType.tag === 'Var') {
     return candidateType
   }
 
   if (candidateType.tag === 'Union') {
     const compatibleMembers = candidateType.members.filter(
-      (member): member is Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }> => arrayTypeSupportsMatchPattern(elements, member),
+      (member): member is Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }> =>
+        arrayTypeSupportsMatchPattern(elements, member),
     )
     const narrowedMembers = compatibleMembers
       .map(member => narrowArrayLikeTypeForMatchPattern(elements, member))
@@ -4058,8 +4159,10 @@ function matchedExplicitArrayPatternType(
     return narrowedMembers.length === 0 ? Never : simplify(union(...narrowedMembers))
   }
 
-  if ((candidateType.tag === 'Array' || candidateType.tag === 'Tuple' || candidateType.tag === 'Sequence')
-    && arrayTypeSupportsMatchPattern(elements, candidateType)) {
+  if (
+    (candidateType.tag === 'Array' || candidateType.tag === 'Tuple' || candidateType.tag === 'Sequence') &&
+    arrayTypeSupportsMatchPattern(elements, candidateType)
+  ) {
     return narrowArrayLikeTypeForMatchPattern(elements, candidateType)
   }
 
@@ -4085,9 +4188,9 @@ function explicitArrayPatternVariants(elements: AstNode[]): AstNode[][] {
     return [elements]
   }
 
-  return variantLengths.map(length => elements
-    .slice(0, length)
-    .map(element => element ? stripPatternDefault(element) : element))
+  return variantLengths.map(length =>
+    elements.slice(0, length).map(element => (element ? stripPatternDefault(element) : element)),
+  )
 }
 
 function stripPatternDefault(pattern: AstNode): AstNode {
@@ -4182,11 +4285,23 @@ function intersectMatchTypes(left: Type, right: Type): Type {
   if (isSubtype(expandedRight, expandedLeft)) return expandedRight
 
   if (expandedLeft.tag === 'Union') {
-    return simplify(union(...expandedLeft.members.map(member => intersectMatchTypes(member, expandedRight)).filter(member => member.tag !== 'Never')))
+    return simplify(
+      union(
+        ...expandedLeft.members
+          .map(member => intersectMatchTypes(member, expandedRight))
+          .filter(member => member.tag !== 'Never'),
+      ),
+    )
   }
 
   if (expandedRight.tag === 'Union') {
-    return simplify(union(...expandedRight.members.map(member => intersectMatchTypes(expandedLeft, member)).filter(member => member.tag !== 'Never')))
+    return simplify(
+      union(
+        ...expandedRight.members
+          .map(member => intersectMatchTypes(expandedLeft, member))
+          .filter(member => member.tag !== 'Never'),
+      ),
+    )
   }
 
   // Two records: collapse the structural intersection into a single
@@ -4210,10 +4325,7 @@ function intersectMatchTypes(left: Type, right: Type): Type {
  * is preserved only when BOTH sides agree the field is optional —
  * otherwise the side that requires the field wins.
  */
-function intersectRecords(
-  a: Type & { tag: 'Record' },
-  b: Type & { tag: 'Record' },
-): Type {
+function intersectRecords(a: Type & { tag: 'Record' }, b: Type & { tag: 'Record' }): Type {
   const fields = new Map<string, Type>()
   const optionalFields = new Set<string>()
   const allKeys = new Set<string>([...a.fields.keys(), ...b.fields.keys()])
@@ -4336,7 +4448,11 @@ function normalizeTrackableMatchSpace(type: Type): Type {
 
 function isTrackableMatchRemainder(type: Type): boolean {
   const expanded = simplify(expandTypeForMatchAnalysis(type))
-  if (expanded.tag === 'Literal' || expanded.tag === 'Atom' || (expanded.tag === 'Primitive' && expanded.name === 'Null')) {
+  if (
+    expanded.tag === 'Literal' ||
+    expanded.tag === 'Atom' ||
+    (expanded.tag === 'Primitive' && expanded.name === 'Null')
+  ) {
     return true
   }
   if (expanded.tag === 'Tuple') {
@@ -4380,7 +4496,9 @@ function subtractType(from: Type, subtract: Type): Type {
   if (isSubtype(expandedFrom, expandedSubtract)) return Never
 
   if (expandedSubtract.tag === 'Union') {
-    return simplify(expandedSubtract.members.reduce((remaining, member) => subtractType(remaining, member), expandedFrom))
+    return simplify(
+      expandedSubtract.members.reduce((remaining, member) => subtractType(remaining, member), expandedFrom),
+    )
   }
 
   if (expandedFrom.tag === 'Union') {
@@ -4509,7 +4627,13 @@ function subtractSequenceProductType(from: SequenceType, subtract: SequenceType)
  *                      ["array", [elements, default], id]
  *                      ["rest", [name, default], id]
  */
-function bindPattern(pattern: AstNode, type: Type, env: TypeEnv, ctx?: InferenceContext, typeMap?: Map<number, Type>): void {
+function bindPattern(
+  pattern: AstNode,
+  type: Type,
+  env: TypeEnv,
+  ctx?: InferenceContext,
+  typeMap?: Map<number, Type>,
+): void {
   const patternType = pattern[0] as string
   const expandedType = expandType(type)
   switch (patternType) {
@@ -4610,7 +4734,12 @@ function inferCollectionCall(
   }
 }
 
-function inferCollectionMapCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
+function inferCollectionMapCall(
+  calleeNode: AstNode,
+  argTypes: Type[],
+  ctx: InferenceContext,
+  typeMap: Map<number, Type>,
+): Type | null {
   if (argTypes.length < 2) return null
 
   const functionType = argTypes[argTypes.length - 1]!
@@ -4622,7 +4751,10 @@ function inferCollectionMapCall(calleeNode: AstNode, argTypes: Type[], ctx: Infe
   if (collectionTypes.every(isStringCollectionType)) {
     constrain(ctx, functionType, fn(new Array(collectionTypes.length).fill(StringType), StringType))
     if (calleeNode[2] > 0) {
-      typeMap.set(calleeNode[2], fn([...collectionTypes, fn(new Array(collectionTypes.length).fill(StringType), StringType)], StringType))
+      typeMap.set(
+        calleeNode[2],
+        fn([...collectionTypes, fn(new Array(collectionTypes.length).fill(StringType), StringType)], StringType),
+      )
     }
     return StringType
   }
@@ -4657,7 +4789,12 @@ function inferCollectionMapCall(calleeNode: AstNode, argTypes: Type[], ctx: Infe
   return result
 }
 
-function inferCollectionReduceCall(calleeNode: AstNode, argTypes: Type[], ctx: InferenceContext, typeMap: Map<number, Type>): Type | null {
+function inferCollectionReduceCall(
+  calleeNode: AstNode,
+  argTypes: Type[],
+  ctx: InferenceContext,
+  typeMap: Map<number, Type>,
+): Type | null {
   if (argTypes.length !== 3) return null
 
   const collectionType = expandType(argTypes[0]!)
@@ -4698,8 +4835,9 @@ function collectionElementType(type: Extract<Type, { tag: 'Array' | 'Tuple' | 'S
 }
 
 function isStringCollectionType(type: Type): boolean {
-  return (type.tag === 'Primitive' && type.name === 'String')
-    || (type.tag === 'Literal' && typeof type.value === 'string')
+  return (
+    (type.tag === 'Primitive' && type.name === 'String') || (type.tag === 'Literal' && typeof type.value === 'string')
+  )
 }
 
 function isArrayCollectionType(type: Type): type is Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }> {
@@ -4786,9 +4924,8 @@ function bindMatchCasePattern(
 
       if (expandedType.tag === 'Union') {
         const compatibleMembers = expandedType.members.filter(
-          (member): member is Extract<Type, { tag: 'Record' }> => (
-            member.tag === 'Record' && recordTypeSupportsMatchPattern(fieldsObj, member)
-          ),
+          (member): member is Extract<Type, { tag: 'Record' }> =>
+            member.tag === 'Record' && recordTypeSupportsMatchPattern(fieldsObj, member),
         )
         if (compatibleMembers.length === 0) return false
 
@@ -4819,7 +4956,8 @@ function bindMatchCasePattern(
 
       if (expandedType.tag === 'Union') {
         const compatibleMembers = expandedType.members.filter(
-          (member): member is Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }> => arrayTypeSupportsMatchPattern(elements, member),
+          (member): member is Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }> =>
+            arrayTypeSupportsMatchPattern(elements, member),
         )
         if (compatibleMembers.length === 0) return false
 
@@ -4946,11 +5084,7 @@ function patternHasDefault(pattern: AstNode): boolean {
   return Array.isArray(payload) && payload[1] !== undefined
 }
 
-function getRecordFieldPatternType(
-  type: Extract<Type, { tag: 'Record' }>,
-  fieldName: string,
-  pattern: AstNode,
-): Type {
+function getRecordFieldPatternType(type: Extract<Type, { tag: 'Record' }>, fieldName: string, pattern: AstNode): Type {
   const fieldType = type.fields.get(fieldName)
   if (fieldType !== undefined) {
     return fieldType
@@ -4992,10 +5126,7 @@ function getArrayElementPatternType(
   return patternHasDefault(pattern) ? Never : Unknown
 }
 
-function getArrayPatternRestType(
-  type: Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }>,
-  index: number,
-): Type {
+function getArrayPatternRestType(type: Extract<Type, { tag: 'Array' | 'Tuple' | 'Sequence' }>, index: number): Type {
   if (type.tag === 'Array') {
     return type
   }
@@ -5004,12 +5135,14 @@ function getArrayPatternRestType(
     return tuple(type.elements.slice(index))
   }
 
-  return simplify(sequence(
-    type.prefix.slice(index),
-    type.rest,
-    Math.max(0, type.minLength - index),
-    type.maxLength !== undefined ? Math.max(0, type.maxLength - index) : undefined,
-  ))
+  return simplify(
+    sequence(
+      type.prefix.slice(index),
+      type.rest,
+      Math.max(0, type.minLength - index),
+      type.maxLength !== undefined ? Math.max(0, type.maxLength - index) : undefined,
+    ),
+  )
 }
 
 function arrayPatternRestIndex(elements: AstNode[]): number {
@@ -5147,11 +5280,12 @@ function recordLiteralPatternTypes(pattern: AstNode, valueNode: AstNode, typeMap
       for (const entry of entries) {
         if (!Array.isArray(entry) || entry.length !== 2) continue
         const [keyNode, fieldValueNode] = entry
-        const keyName = keyNode[0] === NodeTypes.Str
-          ? keyNode[1] as string
-          : keyNode[0] === NodeTypes.Sym
-            ? keyNode[1] as string
-            : String(keyNode[1])
+        const keyName =
+          keyNode[0] === NodeTypes.Str
+            ? (keyNode[1] as string)
+            : keyNode[0] === NodeTypes.Sym
+              ? (keyNode[1] as string)
+              : String(keyNode[1])
         fieldNodes.set(keyName, fieldValueNode)
       }
 
@@ -5175,8 +5309,7 @@ function recordLiteralPatternTypes(pattern: AstNode, valueNode: AstNode, typeMap
         if (!elementPattern) continue
 
         if ((elementPattern[0] as string) === 'rest') {
-          const restTypes = valueElements.slice(i)
-            .map(elementNode => typeMap.get(elementNode[2]) ?? Unknown)
+          const restTypes = valueElements.slice(i).map(elementNode => typeMap.get(elementNode[2]) ?? Unknown)
           if (elementPattern[2] > 0) {
             typeMap.set(elementPattern[2], tuple(restTypes))
           }
@@ -5455,10 +5588,7 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
     case 'Keyof':
       return keyofType(expandType(t.inner, polarity, new Set(visited)))
     case 'Index':
-      return indexType(
-        expandType(t.target, polarity, new Set(visited)),
-        expandType(t.key, polarity, new Set(visited)),
-      )
+      return indexType(expandType(t.target, polarity, new Set(visited)), expandType(t.key, polarity, new Set(visited)))
     case 'Refined': {
       // Expand the base, preserve predicate + binder + source. Identity
       // share when expansion doesn't change the base so downstream
@@ -5476,7 +5606,11 @@ export function expandType(t: Type, polarity: 'positive' | 'negative' = 'positiv
  * readable upper-bound information over `Never` when a variable has no lower
  * bounds yet, and reconstructs record shapes from property-access constraints.
  */
-export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' = 'positive', visited = new Set<string>()): Type {
+export function expandTypeForDisplay(
+  t: Type,
+  polarity: 'positive' | 'negative' = 'positive',
+  visited = new Set<string>(),
+): Type {
   switch (t.tag) {
     case 'Var': {
       if (visited.has(typeVarIdentity(t))) return polarity === 'positive' ? Never : Unknown
@@ -5569,7 +5703,12 @@ export function expandTypeForDisplay(t: Type, polarity: 'positive' | 'negative' 
     case 'Neg':
       return neg(expandTypeForDisplay(t.inner, polarity === 'positive' ? 'negative' : 'positive', new Set(visited)))
     case 'Alias':
-      return { tag: 'Alias', name: t.name, args: t.args.map(arg => expandTypeForDisplay(arg, 'positive', new Set(visited))), expanded: expandTypeForDisplay(t.expanded, polarity, new Set(visited)) }
+      return {
+        tag: 'Alias',
+        name: t.name,
+        args: t.args.map(arg => expandTypeForDisplay(arg, 'positive', new Set(visited))),
+        expanded: expandTypeForDisplay(t.expanded, polarity, new Set(visited)),
+      }
     case 'Recursive':
       return { tag: 'Recursive', id: t.id, body: expandTypeForDisplay(t.body, polarity, new Set(visited)) }
     case 'Refined':
@@ -5608,12 +5747,7 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
           retType: sanitizeDisplayType(sig.retType, true),
         })
       }
-      return handlerType(
-        sanitizeDisplayType(t.body, true),
-        sanitizeDisplayType(t.output, true),
-        handled,
-        t.introduced,
-      )
+      return handlerType(sanitizeDisplayType(t.body, true), sanitizeDisplayType(t.output, true), handled, t.introduced)
     }
     case 'Record': {
       const fields = new Map<string, Type>()
@@ -5640,7 +5774,12 @@ export function sanitizeDisplayType(t: Type, nested = false): Type {
     case 'Neg':
       return neg(sanitizeDisplayType(t.inner, true))
     case 'Alias':
-      return { tag: 'Alias', name: t.name, args: t.args.map(arg => sanitizeDisplayType(arg, true)), expanded: sanitizeDisplayType(t.expanded, true) }
+      return {
+        tag: 'Alias',
+        name: t.name,
+        args: t.args.map(arg => sanitizeDisplayType(arg, true)),
+        expanded: sanitizeDisplayType(t.expanded, true),
+      }
     case 'Recursive':
       return { tag: 'Recursive', id: t.id, body: sanitizeDisplayType(t.body, true) }
     default:
@@ -5657,10 +5796,7 @@ function normalizeDisplayUnion(members: Type[]): Type {
     // union like `{type:"click", x, y} | {type:"keydown", key}` must stay a union.
     const first = members[0]!
     const firstKeys = [...first.fields.keys()]
-    const sameKeys = members.every(m =>
-      m.fields.size === firstKeys.length
-      && firstKeys.every(k => m.fields.has(k)),
-    )
+    const sameKeys = members.every(m => m.fields.size === firstKeys.length && firstKeys.every(k => m.fields.has(k)))
 
     if (sameKeys) {
       let varyingFields = 0

@@ -47,17 +47,14 @@ describe('attachTrivia', () => {
 
     it('block comment on own line', () => assertLossless('/* standalone */\nlet x = 1'))
 
-    it('multiple comments', () => assertLossless(
-      '// header\n// another\nlet x = 1 // trailing\nlet y = 2\n// footer\n',
-    ))
+    it('multiple comments', () =>
+      assertLossless('// header\n// another\nlet x = 1 // trailing\nlet y = 2\n// footer\n'))
 
     it('blank line between statements', () => assertLossless('let x = 1\n\nlet y = 2'))
 
     it('if expression', () => assertLossless('if true then 1 else 2 end'))
 
-    it('multiline if', () => assertLossless(
-      'if x > 0 then\n  x\nelse\n  -x\nend',
-    ))
+    it('multiline if', () => assertLossless('if x > 0 then\n  x\nelse\n  -x\nend'))
 
     it('array literal', () => assertLossless('[1, 2, 3]'))
 
@@ -83,27 +80,17 @@ describe('attachTrivia', () => {
 
     it('spread', () => assertLossless('[...xs, 4, 5]'))
 
-    it('comment between args', () => assertLossless(
-      'filter(/* an array */ [a, b], pred)',
-    ))
+    it('comment between args', () => assertLossless('filter(/* an array */ [a, b], pred)'))
 
-    it('complex mixed whitespace', () => assertLossless(
-      '  // file header\n\nlet x = 1\n  \n// section\nlet y = 2\n',
-    ))
+    it('complex mixed whitespace', () => assertLossless('  // file header\n\nlet x = 1\n  \n// section\nlet y = 2\n'))
 
     it('shebang', () => assertLossless('#!/usr/bin/env dvala\nlet x = 1'))
 
-    it('nested comments in blocks', () => assertLossless(
-      'do\n  // step 1\n  let x = 1;\n  // step 2\n  x + 1\nend',
-    ))
+    it('nested comments in blocks', () => assertLossless('do\n  // step 1\n  let x = 1;\n  // step 2\n  x + 1\nend'))
 
-    it('match expression', () => assertLossless(
-      'match x\n  case 1 then "one"\n  case 2 then "two"\nend',
-    ))
+    it('match expression', () => assertLossless('match x\n  case 1 then "one"\n  case 2 then "two"\nend'))
 
-    it('handler expression', () => assertLossless(
-      'handler\n  @my.eff(x) -> resume(x * 2)\nend',
-    ))
+    it('handler expression', () => assertLossless('handler\n  @my.eff(x) -> resume(x * 2)\nend'))
 
     it('tabs and mixed whitespace', () => assertLossless('\t\tlet x = 1'))
 
@@ -113,72 +100,51 @@ describe('attachTrivia', () => {
 
     it('adjacent block comments', () => assertLossless('/* a *//* b */'))
 
-    it('comment after closing delimiter', () => assertLossless(
-      '[1, 2] // numbers',
-    ))
+    it('comment after closing delimiter', () => assertLossless('[1, 2] // numbers'))
 
     it('macro prefix', () => assertLossless('#myMacro(1 + 2)'))
 
     it('effect names', () => assertLossless('perform(@dvala.io.print, "hello")'))
 
-    it('infix operators', () => assertLossless(
-      'let result = a + b * c - d / e % f',
-    ))
+    it('infix operators', () => assertLossless('let result = a + b * c - d / e % f'))
 
-    it('comparison and logical', () => assertLossless(
-      'if x > 0 && y < 10 || z == 0 then true else false end',
-    ))
+    it('comparison and logical', () => assertLossless('if x > 0 && y < 10 || z == 0 then true else false end'))
 
     it('null coalesce', () => assertLossless('a ?? b ?? c'))
 
     it('string concat operator', () => assertLossless('"hello" ++ " " ++ "world"'))
 
-    it('destructuring let', () => assertLossless(
-      'let [a, b, ...rest] = [1, 2, 3, 4, 5]',
-    ))
+    it('destructuring let', () => assertLossless('let [a, b, ...rest] = [1, 2, 3, 4, 5]'))
 
-    it('object destructuring', () => assertLossless(
-      'let {name, age} = {name: "Alice", age: 30}',
-    ))
+    it('object destructuring', () => assertLossless('let {name, age} = {name: "Alice", age: 30}'))
 
-    it('computed object key', () => assertLossless(
-      'let key = "foo"; {[key]: 42}',
-    ))
+    it('computed object key', () => assertLossless('let key = "foo"; {[key]: 42}'))
 
-    it('loop expression', () => assertLossless(
-      'loop (i = 0) -> if i >= 10 then i else recur(i + 1) end',
-    ))
+    it('loop expression', () => assertLossless('loop (i = 0) -> if i >= 10 then i else recur(i + 1) end'))
 
-    it('for expression', () => assertLossless(
-      'for (x in [1, 2, 3]) -> x * 2',
-    ))
+    it('for expression', () => assertLossless('for (x in [1, 2, 3]) -> x * 2'))
 
-    it('match expression with guards', () => assertLossless(
-      'match x case n when n > 0 then "positive" case _ then "non-positive" end',
-    ))
+    it('match expression with guards', () =>
+      assertLossless('match x case n when n > 0 then "positive" case _ then "non-positive" end'))
 
-    it('handler with transform', () => assertLossless(
-      'handler @my.eff(x) -> resume(x * 2) transform result -> result + 1 end',
-    ))
+    it('handler with transform', () =>
+      assertLossless('handler @my.eff(x) -> resume(x * 2) transform result -> result + 1 end'))
 
-    it('do with handler', () => assertLossless(
-      'do with myHandler; perform(@my.eff, 42) end',
-    ))
+    it('do with handler', () => assertLossless('do with myHandler; perform(@my.eff, 42) end'))
 
     it('import', () => assertLossless('let { test } = import("test")'))
 
     it('regex shorthand', () => assertLossless('#"^hello"i'))
 
-    it('chained access and calls', () => assertLossless(
-      'obj.method(a, b).field[0]',
-    ))
+    it('chained access and calls', () => assertLossless('obj.method(a, b).field[0]'))
 
     it('spread in args', () => assertLossless('foo(a, ...rest, b)'))
 
     it('shorthand object entries', () => assertLossless('{a, b, c: 3}'))
 
-    it('multiline real-world code', () => assertLossless(
-      `let { test, describe } = import("test");
+    it('multiline real-world code', () =>
+      assertLossless(
+        `let { test, describe } = import("test");
 let { assertEqual } = import("assertion");
 
 let add = (a, b) -> a + b;
@@ -192,10 +158,11 @@ describe("math", -> do
   end);
 end);
 `,
-    ))
+      ))
 
-    it('deeply nested with comments', () => assertLossless(
-      `// main program
+    it('deeply nested with comments', () =>
+      assertLossless(
+        `// main program
 let process = (items) -> do
   // filter valid items
   let valid = filter(items, -> $ > 0);
@@ -207,7 +174,7 @@ end;
 // entry point
 process([1, -2, 3, -4, 5]) // run it
 `,
-    ))
+      ))
   })
 
   describe('trivia attachment — split convention', () => {
@@ -254,11 +221,10 @@ process([1, -2, 3, -4, 5]) // run it
       expect(result.tokens[0]!.text).toBe('x')
 
       // The EOF comment and final newline should be in trailingTrivia
-      const allText = result.tokens.map(t =>
-        t.leadingTrivia.map(tr => tr.text).join('')
-        + t.text
-        + t.trailingTrivia.map(tr => tr.text).join(''),
-      ).join('') + result.trailingTrivia.map(t => t.text).join('')
+      const allText =
+        result.tokens
+          .map(t => t.leadingTrivia.map(tr => tr.text).join('') + t.text + t.trailingTrivia.map(tr => tr.text).join(''))
+          .join('') + result.trailingTrivia.map(t => t.text).join('')
 
       expect(allText).toBe('x\n// eof comment\n')
     })

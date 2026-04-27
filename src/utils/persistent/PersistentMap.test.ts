@@ -46,7 +46,11 @@ describe('PersistentMap', () => {
     })
 
     it('builds from [key, value] pairs', () => {
-      const pm = PersistentMap.from([['a', 1], ['b', 2], ['c', 3]])
+      const pm = PersistentMap.from([
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+      ])
       expect(pm.size).toBe(3)
       expect(pm.get('a')).toBe(1)
       expect(pm.get('b')).toBe(2)
@@ -54,7 +58,10 @@ describe('PersistentMap', () => {
     })
 
     it('later entries overwrite earlier ones for duplicate keys', () => {
-      const pm = PersistentMap.from([['x', 1], ['x', 2]])
+      const pm = PersistentMap.from([
+        ['x', 1],
+        ['x', 2],
+      ])
       expect(pm.size).toBe(1)
       expect(pm.get('x')).toBe(2)
     })
@@ -126,7 +133,9 @@ describe('PersistentMap', () => {
     })
 
     it('stores undefined-like falsy values', () => {
-      const pm = PersistentMap.empty<number | boolean>().assoc('zero', 0).assoc('false', false as boolean)
+      const pm = PersistentMap.empty<number | boolean>()
+        .assoc('zero', 0)
+        .assoc('false', false as boolean)
       expect(pm.get('zero')).toBe(0)
       expect(pm.get('false')).toBe(false)
     })
@@ -218,19 +227,32 @@ describe('PersistentMap', () => {
 
   describe('keys / values / entries', () => {
     it('keys returns all keys (any order)', () => {
-      const pm = PersistentMap.from([['a', 1], ['b', 2], ['c', 3]])
+      const pm = PersistentMap.from([
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+      ])
       expect(pm.keys().sort()).toEqual(['a', 'b', 'c'])
     })
 
     it('values returns all values (matching key order)', () => {
-      const pm = PersistentMap.from([['a', 1], ['b', 2]])
+      const pm = PersistentMap.from([
+        ['a', 1],
+        ['b', 2],
+      ])
       expect(pm.values().sort()).toEqual([1, 2])
     })
 
     it('entries returns all [k, v] pairs', () => {
-      const pm = PersistentMap.from([['a', 1], ['b', 2]])
+      const pm = PersistentMap.from([
+        ['a', 1],
+        ['b', 2],
+      ])
       const sorted = pm.entries().sort(([a], [b]) => a.localeCompare(b))
-      expect(sorted).toEqual([['a', 1], ['b', 2]])
+      expect(sorted).toEqual([
+        ['a', 1],
+        ['b', 2],
+      ])
     })
 
     it('keys/values/entries are consistent with each other', () => {
@@ -251,9 +273,17 @@ describe('PersistentMap', () => {
 
   describe('iteration', () => {
     it('iterates all [key, value] pairs', () => {
-      const pm = PersistentMap.from([['a', 1], ['b', 2], ['c', 3]])
+      const pm = PersistentMap.from([
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+      ])
       const entries = [...pm].sort(([a], [b]) => a.localeCompare(b))
-      expect(entries).toEqual([['a', 1], ['b', 2], ['c', 3]])
+      expect(entries).toEqual([
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+      ])
     })
 
     it('same map can be iterated multiple times', () => {
@@ -279,7 +309,10 @@ describe('PersistentMap', () => {
 
   describe('toRecord', () => {
     it('converts to plain object', () => {
-      const pm = PersistentMap.from([['a', 1], ['b', 2]])
+      const pm = PersistentMap.from([
+        ['a', 1],
+        ['b', 2],
+      ])
       const rec = pm.toRecord()
       expect(rec).toEqual({ a: 1, b: 2 })
     })
@@ -375,21 +408,34 @@ describe('PersistentMap', () => {
     })
 
     it('keys that differ only at the end', () => {
-      const pm = PersistentMap.from([['abc', 1], ['abd', 2], ['abe', 3]])
+      const pm = PersistentMap.from([
+        ['abc', 1],
+        ['abd', 2],
+        ['abe', 3],
+      ])
       expect(pm.get('abc')).toBe(1)
       expect(pm.get('abd')).toBe(2)
       expect(pm.get('abe')).toBe(3)
     })
 
     it('numeric-like string keys', () => {
-      const pm = PersistentMap.from([['0', 'a'], ['1', 'b'], ['10', 'c'], ['100', 'd']])
+      const pm = PersistentMap.from([
+        ['0', 'a'],
+        ['1', 'b'],
+        ['10', 'c'],
+        ['100', 'd'],
+      ])
       expect(pm.get('0')).toBe('a')
       expect(pm.get('10')).toBe('c')
       expect(pm.get('100')).toBe('d')
     })
 
     it('unicode keys', () => {
-      const pm = PersistentMap.from([['α', 1], ['β', 2], ['γ', 3]])
+      const pm = PersistentMap.from([
+        ['α', 1],
+        ['β', 2],
+        ['γ', 3],
+      ])
       expect(pm.get('α')).toBe(1)
       expect(pm.get('β')).toBe(2)
       expect(pm.get('γ')).toBe(3)
@@ -417,10 +463,7 @@ describe('PersistentMap', () => {
     })
 
     it('updates an existing key in a collision node', () => {
-      const pm = PersistentMap.empty<number>()
-        .assoc('Aa', 1)
-        .assoc('BB', 2)
-        .assoc('BB', 20)
+      const pm = PersistentMap.empty<number>().assoc('Aa', 1).assoc('BB', 2).assoc('BB', 20)
       expect(pm.size).toBe(2)
       expect(pm.get('Aa')).toBe(1)
       expect(pm.get('BB')).toBe(20)
@@ -435,10 +478,7 @@ describe('PersistentMap', () => {
 
     it('adds a third colliding key extending the collision node', () => {
       // 'AaAa', 'BBBB', 'AaBB' all collide at 2031744
-      const pm = PersistentMap.empty<number>()
-        .assoc('AaAa', 1)
-        .assoc('BBBB', 2)
-        .assoc('AaBB', 3)
+      const pm = PersistentMap.empty<number>().assoc('AaAa', 1).assoc('BBBB', 2).assoc('AaBB', 3)
       expect(pm.size).toBe(3)
       expect(pm.get('AaAa')).toBe(1)
       expect(pm.get('BBBB')).toBe(2)
@@ -446,10 +486,7 @@ describe('PersistentMap', () => {
     })
 
     it('iterates all entries in a collision node', () => {
-      const pm = PersistentMap.empty<number>()
-        .assoc('AaAa', 1)
-        .assoc('BBBB', 2)
-        .assoc('AaBB', 3)
+      const pm = PersistentMap.empty<number>().assoc('AaAa', 1).assoc('BBBB', 2).assoc('AaBB', 3)
       const seen = new Map<string, number>([...pm])
       expect(seen.get('AaAa')).toBe(1)
       expect(seen.get('BBBB')).toBe(2)
@@ -458,11 +495,7 @@ describe('PersistentMap', () => {
     })
 
     it('removes a key from a three-entry collision node (stays a collision)', () => {
-      const pm = PersistentMap.empty<number>()
-        .assoc('AaAa', 1)
-        .assoc('BBBB', 2)
-        .assoc('AaBB', 3)
-        .dissoc('BBBB')
+      const pm = PersistentMap.empty<number>().assoc('AaAa', 1).assoc('BBBB', 2).assoc('AaBB', 3).dissoc('BBBB')
       expect(pm.size).toBe(2)
       expect(pm.has('BBBB')).toBe(false)
       expect(pm.get('AaAa')).toBe(1)
@@ -470,10 +503,7 @@ describe('PersistentMap', () => {
     })
 
     it('removing down to one key collapses the collision node to a leaf', () => {
-      const pm = PersistentMap.empty<number>()
-        .assoc('Aa', 1)
-        .assoc('BB', 2)
-        .dissoc('BB')
+      const pm = PersistentMap.empty<number>().assoc('Aa', 1).assoc('BB', 2).dissoc('BB')
       expect(pm.size).toBe(1)
       expect(pm.get('Aa')).toBe(1)
       expect(pm.has('BB')).toBe(false)
@@ -500,10 +530,7 @@ describe('PersistentMap', () => {
     it('inserting a non-colliding key alongside a collision node wraps it in a bitmap node', () => {
       // 'Aa' and 'BB' share hash 2112; 'x' hashes differently (120). Inserting 'x'
       // after building the collision node exercises the expandCollision path.
-      const pm = PersistentMap.empty<number>()
-        .assoc('Aa', 1)
-        .assoc('BB', 2)
-        .assoc('x', 99)
+      const pm = PersistentMap.empty<number>().assoc('Aa', 1).assoc('BB', 2).assoc('x', 99)
       expect(pm.size).toBe(3)
       expect(pm.get('Aa')).toBe(1)
       expect(pm.get('BB')).toBe(2)
@@ -520,7 +547,10 @@ describe('PersistentMap', () => {
       expect(pm.keys().sort()).toEqual(['Aa', 'BB'])
       expect(pm.values().sort()).toEqual([1, 2])
       expect(pm.toRecord()).toEqual({ Aa: 1, BB: 2 })
-      expect(pm.entries().sort(([a], [b]) => a.localeCompare(b))).toEqual([['Aa', 1], ['BB', 2]])
+      expect(pm.entries().sort(([a], [b]) => a.localeCompare(b))).toEqual([
+        ['Aa', 1],
+        ['BB', 2],
+      ])
     })
   })
 })

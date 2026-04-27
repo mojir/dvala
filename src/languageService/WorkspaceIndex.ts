@@ -230,7 +230,11 @@ export class WorkspaceIndex {
    * on the local, the returned symbol carries the local name (`p`) and
    * `onKey: false` — signalling that this is a local-only rename.
    */
-  getSymbolAtPosition(filePath: string, line: number, column: number): { name: string; def: SymbolDef | null; onKey?: boolean } | null {
+  getSymbolAtPosition(
+    filePath: string,
+    line: number,
+    column: number,
+  ): { name: string; def: SymbolDef | null; onKey?: boolean } | null {
     const absolutePath = path.resolve(filePath)
     const fileSymbols = this.cache.get(absolutePath)?.symbols
     if (!fileSymbols) return null
@@ -242,8 +246,11 @@ export class WorkspaceIndex {
       if (positionMatches(def.location, line, column, def.name.length)) {
         return { name: def.name, def, onKey: false }
       }
-      if (def.keyLocation && def.importedName
-        && positionMatches(def.keyLocation, line, column, def.importedName.length)) {
+      if (
+        def.keyLocation &&
+        def.importedName &&
+        positionMatches(def.keyLocation, line, column, def.importedName.length)
+      ) {
         return { name: def.importedName, def, onKey: true }
       }
     }
@@ -367,7 +374,10 @@ export class WorkspaceIndex {
    * shorthand `{ pi }` produces two AST nodes (Str key + Sym value) at the
    * same source position.
    */
-  findAllOccurrences(filePath: string, symbolName: string): { file: string; line: number; column: number; nameLength: number }[] {
+  findAllOccurrences(
+    filePath: string,
+    symbolName: string,
+  ): { file: string; line: number; column: number; nameLength: number }[] {
     const absolutePath = path.resolve(filePath)
     const results: { file: string; line: number; column: number; nameLength: number }[] = []
     const seen = new Set<string>()
@@ -597,7 +607,12 @@ export class WorkspaceIndex {
 // ---------------------------------------------------------------------------
 
 /** True when (line, column) falls within the `nameLength` span starting at `loc`. */
-function positionMatches(loc: { line: number; column: number }, line: number, column: number, nameLength: number): boolean {
+function positionMatches(
+  loc: { line: number; column: number },
+  line: number,
+  column: number,
+  nameLength: number,
+): boolean {
   return loc.line === line && column >= loc.column && column < loc.column + nameLength
 }
 
@@ -614,9 +629,7 @@ function findDefAtPosition(defs: SymbolDef[], line: number, column: number): Sym
 /** Find the reference at a given source position (cursor must be within the name span). */
 function findRefAtPosition(refs: SymbolRef[], line: number, column: number): SymbolRef | null {
   for (const ref of refs) {
-    if (ref.location.line === line
-      && column >= ref.location.column
-      && column < ref.location.column + ref.name.length) {
+    if (ref.location.line === line && column >= ref.location.column && column < ref.location.column + ref.name.length) {
       return ref
     }
   }
@@ -659,7 +672,11 @@ function extractExports(nodes: AstNode[], sourceMap: SourceMap | undefined, file
 }
 
 /** Resolve a node ID to a source location. */
-function resolveLocation(nodeId: number, sourceMap: SourceMap | undefined, filePath: string): { file: string; line: number; column: number } {
+function resolveLocation(
+  nodeId: number,
+  sourceMap: SourceMap | undefined,
+  filePath: string,
+): { file: string; line: number; column: number } {
   if (!sourceMap) return { file: filePath, line: 0, column: 0 }
   const pos = sourceMap.positions.get(nodeId)
   if (!pos) return { file: filePath, line: 0, column: 0 }
@@ -683,11 +700,13 @@ const knownNodeTypes = new Set<string>(Object.values(NodeTypes))
 
 /** Check if a value looks like an AstNode: [knownType, payload, number]. */
 function isAstNode(value: unknown): value is AstNode {
-  return Array.isArray(value)
-    && value.length === 3
-    && typeof value[0] === 'string'
-    && knownNodeTypes.has(value[0])
-    && typeof value[2] === 'number'
+  return (
+    Array.isArray(value) &&
+    value.length === 3 &&
+    typeof value[0] === 'string' &&
+    knownNodeTypes.has(value[0]) &&
+    typeof value[2] === 'number'
+  )
 }
 
 function walkForImports(node: AstNode, fromFile: string, imports: Map<string, string>): void {
@@ -759,11 +778,7 @@ function rangeArea(range: ScopeRange): number {
  * `extractExports`. When the export value is a non-Sym expression
  * (`{ pi: 1 + 1 }`), `valueNodeId` is undefined and this check returns false.
  */
-function isReexport(
-  fileSymbols: FileSymbols,
-  name: string,
-  matchingImportDefs: Set<SymbolDef>,
-): boolean {
+function isReexport(fileSymbols: FileSymbols, name: string, matchingImportDefs: Set<SymbolDef>): boolean {
   for (const exp of fileSymbols.exports) {
     if (exp.name !== name) continue
     if (exp.valueNodeId === undefined) continue
@@ -803,7 +818,7 @@ function simpleHash(str: string): string {
   let hash = 0
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
+    hash = (hash << 5) - hash + char
     hash |= 0 // Convert to 32-bit integer
   }
   return hash.toString(36)

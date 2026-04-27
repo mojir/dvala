@@ -3,7 +3,13 @@ import type { CstToken } from '../../cst/types'
 import { isTrivia } from '../../cst/attachTrivia'
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
-import { isLBraceToken, isOperatorToken, isRBraceToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
+import {
+  isLBraceToken,
+  isOperatorToken,
+  isRBraceToken,
+  isReservedSymbolToken,
+  isSymbolToken,
+} from '../../tokenizer/token'
 import type { Token } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
 import { withSourceCodeInfo } from '../helpers'
@@ -113,9 +119,11 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
     const bt = bodyTokens[i]!
 
     // Skip symbols after '.' — property access, not a keyword
-    if (processedTokens.length > 0
-      && isOperatorToken(processedTokens[processedTokens.length - 1], '.')
-      && isSymbolToken(bt)) {
+    if (
+      processedTokens.length > 0 &&
+      isOperatorToken(processedTokens[processedTokens.length - 1], '.') &&
+      isSymbolToken(bt)
+    ) {
       processedTokens.push(bt)
       i++
       continue
@@ -148,10 +156,7 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
         i = extractSplice(bodyTokens, i, spliceExprs, processedTokens, templateId, resolvedSci, ctx.allocateId)
         continue
       } else if (effectiveLevel > 1) {
-        throw new ParseError(
-          `Splice level ${level} but only ${innerQuoteDepth + 1} quote level(s) deep`,
-          resolvedSci,
-        )
+        throw new ParseError(`Splice level ${level} but only ${innerQuoteDepth + 1} quote level(s) deep`, resolvedSci)
       }
       // effectiveLevel <= 0: belongs to an inner quote, pass through as-is
       processedTokens.push(bt)
@@ -255,7 +260,11 @@ function rebuildQuoteBodyCst(
   // Build the sub-parse input. Keeps trivia so sub-CST CstTokens carry the
   // same leading/trailing trivia (comments) the authored source had.
   const { subTokens, placeholderToSplice } = buildSubParseStream(
-    ctx, bodyStartPos, bodyEndPos, templateId, mainSpliceSubNodes,
+    ctx,
+    bodyStartPos,
+    bodyEndPos,
+    templateId,
+    mainSpliceSubNodes,
   )
 
   // Sub-parse with a fresh builder — yields a CST sub-tree whose root is a
@@ -281,13 +290,18 @@ function rebuildQuoteBodyCst(
   // first body CstToken but is missing from the sub-CST. Copy it over.
   // Losslessness check: without this, `quote\n    do end end` prints back as
   // `quote\ndo end end` because the indent before `do` is orphaned.
-  const pass1FirstLeaf = rawBodyChildren[0] !== undefined && !isCstToken(rawBodyChildren[0])
-    ? findFirstLeafToken(rawBodyChildren[0])
-    : (rawBodyChildren[0])
-  if (pass1FirstLeaf && pass1FirstLeaf.leadingTrivia && pass1FirstLeaf.leadingTrivia.length > 0
-    && subTree.children.length > 0) {
+  const pass1FirstLeaf =
+    rawBodyChildren[0] !== undefined && !isCstToken(rawBodyChildren[0])
+      ? findFirstLeafToken(rawBodyChildren[0])
+      : rawBodyChildren[0]
+  if (
+    pass1FirstLeaf &&
+    pass1FirstLeaf.leadingTrivia &&
+    pass1FirstLeaf.leadingTrivia.length > 0 &&
+    subTree.children.length > 0
+  ) {
     const subFirst = subTree.children[0]!
-    const subFirstLeaf = 'kind' in subFirst ? findFirstLeafToken(subFirst) : (subFirst)
+    const subFirstLeaf = 'kind' in subFirst ? findFirstLeafToken(subFirst) : subFirst
     if (subFirstLeaf && subFirstLeaf.leadingTrivia.length === 0) {
       subFirstLeaf.leadingTrivia = pass1FirstLeaf.leadingTrivia
     }
@@ -308,7 +322,7 @@ function rebuildQuoteBodyCst(
  * `text` + trivia arrays; sub-nodes carry `kind` + `children`.
  */
 function isCstToken(v: unknown): v is CstToken {
-  return typeof v === 'object' && v !== null && 'text' in (v) && !('kind' in (v))
+  return typeof v === 'object' && v !== null && 'text' in v && !('kind' in v)
 }
 
 /** Find the first leaf CstToken in a CST sub-tree (pre-order). */
@@ -322,9 +336,7 @@ function findFirstLeafToken(node: UntypedCstNode): CstToken | undefined {
 }
 
 function isSpliceCstNode(child: unknown): child is UntypedCstNode {
-  return typeof child === 'object' && child !== null
-    && 'kind' in (child)
-    && (child as { kind: string }).kind === 'Splice'
+  return typeof child === 'object' && child !== null && 'kind' in child && (child as { kind: string }).kind === 'Splice'
 }
 
 /**
@@ -366,9 +378,7 @@ function buildSubParseStream(
 
     // Property access: a symbol following '.' isn't a keyword even if it
     // shares text with one (e.g. `x.do`). Guard so we don't mis-track depth.
-    if (subTokens.length > 0
-      && isOperatorToken(subTokens[subTokens.length - 1], '.')
-      && isSymbolToken(t)) {
+    if (subTokens.length > 0 && isOperatorToken(subTokens[subTokens.length - 1], '.') && isSymbolToken(t)) {
       subTokens.push(t)
       i++
       continue
@@ -403,9 +413,7 @@ function buildSubParseStream(
         const placeholderName = `__splice_${templateId}_${placeholderIndex}__`
         // Placeholder tokens copy the marker's debug info when available so
         // later source-map and error-position lookups still make sense.
-        const placeholderToken: Token = t[2]
-          ? ['Symbol', placeholderName, t[2]]
-          : ['Symbol', placeholderName]
+        const placeholderToken: Token = t[2] ? ['Symbol', placeholderName, t[2]] : ['Symbol', placeholderName]
         subTokens.push(placeholderToken)
         // Splice node is optional at runtime because building the main Quote
         // CST children is conditional; if it's missing, the swap step simply
@@ -600,7 +608,12 @@ function replacePlaceholders(node: AstNode, spliceExprs: AstNode[], indexOffset 
   return node
 }
 
-function replacePlaceholdersInValue(value: unknown[], spliceExprs: AstNode[], indexOffset = 0, templateId?: number): unknown[] {
+function replacePlaceholdersInValue(
+  value: unknown[],
+  spliceExprs: AstNode[],
+  indexOffset = 0,
+  templateId?: number,
+): unknown[] {
   if (value.length >= 2 && typeof value[0] === 'string') {
     return replacePlaceholders(value as AstNode, spliceExprs, indexOffset, templateId)
   }

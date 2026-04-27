@@ -20,68 +20,120 @@ describe('getAllBindingTargetNames', () => {
   })
 
   it('should return all names for an object target', () => {
-    const bindingTarget: BindingTarget = [bindingTargetTypes.object, [
+    const bindingTarget: BindingTarget = [
+      bindingTargetTypes.object,
       [
-        { key: 'a', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'a', 0], undefined], 0] },
-        { key: 'b', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'b', 0], undefined], 0] },
+        [
+          { key: 'a', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'a', 0], undefined], 0] },
+          { key: 'b', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'b', 0], undefined], 0] },
+        ],
+        undefined,
       ],
-      undefined,
-    ], 0]
+      0,
+    ]
     const result = getAllBindingTargetNames(bindingTarget)
     expect(result).toEqual({ a: true, b: true })
   })
 
   it('should return all names for a nested object target', () => {
-    const bindingTarget: BindingTarget = [bindingTargetTypes.object, [
+    const bindingTarget: BindingTarget = [
+      bindingTargetTypes.object,
       [
-        { key: 'a', keyNodeId: 0, target: [bindingTargetTypes.object, [
-          [
-            { key: 'x', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'x', 0], undefined], 0] },
-            { key: 'y', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'y', 0], undefined], 0] },
-          ],
-          undefined,
-        ], 0] },
-        { key: 'z', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'z', 0], undefined], 0] },
+        [
+          {
+            key: 'a',
+            keyNodeId: 0,
+            target: [
+              bindingTargetTypes.object,
+              [
+                [
+                  {
+                    key: 'x',
+                    keyNodeId: 0,
+                    target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'x', 0], undefined], 0],
+                  },
+                  {
+                    key: 'y',
+                    keyNodeId: 0,
+                    target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'y', 0], undefined], 0],
+                  },
+                ],
+                undefined,
+              ],
+              0,
+            ],
+          },
+          { key: 'z', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'z', 0], undefined], 0] },
+        ],
+        undefined,
       ],
-      undefined,
-    ], 0]
+      0,
+    ]
 
     const result = getAllBindingTargetNames(bindingTarget)
     expect(result).toEqual({ x: true, y: true, z: true })
   })
 
   it('should return all names for an array target', () => {
-    const bindingTarget: ArrayBindingTarget = [bindingTargetTypes.array, [
+    const bindingTarget: ArrayBindingTarget = [
+      bindingTargetTypes.array,
       [
-        [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'a', 0], undefined], 0],
-        [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'b', 0], undefined], 0],
+        [
+          [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'a', 0], undefined], 0],
+          [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'b', 0], undefined], 0],
+        ],
+        undefined,
       ],
-      undefined,
-    ], 0]
+      0,
+    ]
 
     const result = getAllBindingTargetNames(bindingTarget)
     expect(result).toEqual({ a: true, b: true })
   })
 
   it('should return all names for a deeply nested structure', () => {
-    const bindingTarget: BindingTarget = [bindingTargetTypes.object, [
+    const bindingTarget: BindingTarget = [
+      bindingTargetTypes.object,
       [
-        { key: 'a', keyNodeId: 0, target: [bindingTargetTypes.array, [
-          [
-            [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'x', 0], undefined], 0],
-            [bindingTargetTypes.object, [
+        [
+          {
+            key: 'a',
+            keyNodeId: 0,
+            target: [
+              bindingTargetTypes.array,
               [
-                { key: 'y', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'y', 0], undefined], 0] },
-                { key: 'z', keyNodeId: 0, target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'z', 0], undefined], 0] },
+                [
+                  [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'x', 0], undefined], 0],
+                  [
+                    bindingTargetTypes.object,
+                    [
+                      [
+                        {
+                          key: 'y',
+                          keyNodeId: 0,
+                          target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'y', 0], undefined], 0],
+                        },
+                        {
+                          key: 'z',
+                          keyNodeId: 0,
+                          target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'z', 0], undefined], 0],
+                        },
+                      ],
+                      undefined,
+                    ],
+                    0,
+                  ],
+                ],
+                undefined,
               ],
-              undefined,
-            ], 0],
-          ],
-          undefined,
-        ], 0] },
+              0,
+            ],
+          },
+        ],
+        undefined,
       ],
-      undefined,
-    ], 0]
+      0,
+    ]
 
     const result = getAllBindingTargetNames(bindingTarget)
     expect(result).toEqual({ x: true, y: true, z: true })

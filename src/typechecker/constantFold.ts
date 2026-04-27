@@ -91,9 +91,13 @@ function valueToLiteralType(value: unknown): Type | null {
   if (typeof value === 'string') return literal(value)
   if (typeof value === 'boolean') return literal(value)
   // Atom values carry a `name` field (see typeGuards/dvala isAtom).
-  if (typeof value === 'object' && value !== null && 'name' in value
-    && typeof (value).name === 'string'
-    && '^^atom^^' in value) {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'name' in value &&
+    typeof value.name === 'string' &&
+    '^^atom^^' in value
+  ) {
     return atomType((value as { name: string }).name)
   }
   if (isPersistentVector(value)) {
@@ -172,10 +176,7 @@ function runFold(syntheticCall: AstNode): FoldOutcome | null {
  *                      callee, non-literal args, budget exhaustion, or any
  *                      unhandled sandbox failure — silent fallback).
  */
-export function tryFoldBuiltinCall(
-  calleeNode: AstNode,
-  argTypes: Type[],
-): FoldOutcome | null {
+export function tryFoldBuiltinCall(calleeNode: AstNode, argTypes: Type[]): FoldOutcome | null {
   // Phase C v1: only direct Builtin references. Module-imported functions
   // enter by symbol lookup and arrive here as `NodeTypes.Sym` — not folded
   // yet. User-defined functions route through `tryFoldUserFunctionCall`.
@@ -187,11 +188,7 @@ export function tryFoldBuiltinCall(
   // Synthesize a Call AST: [Call, [builtinNode, args, hints], nodeId].
   // nodeId=0 because this node is ephemeral and never surfaced.
   const calleeClone: AstNode = [NodeTypes.Builtin, calleeNode[1], 0] as unknown as AstNode
-  const syntheticCall: AstNode = [
-    NodeTypes.Call,
-    [calleeClone, argAsts, null],
-    0,
-  ] as unknown as AstNode
+  const syntheticCall: AstNode = [NodeTypes.Call, [calleeClone, argAsts, null], 0] as unknown as AstNode
 
   return runFold(syntheticCall)
 }
@@ -366,11 +363,7 @@ export function tryFoldUserFunctionCall(
   // Synthesize `[Call, [<FunctionAst>, args, null], 0]`. The evaluator
   // treats the callee as a literal function expression, creates a value,
   // and immediately applies it to the args.
-  const syntheticCall: AstNode = [
-    NodeTypes.Call,
-    [functionAst, argAsts, null],
-    0,
-  ] as unknown as AstNode
+  const syntheticCall: AstNode = [NodeTypes.Call, [functionAst, argAsts, null], 0] as unknown as AstNode
 
   // Wrap in a Block with let-bindings for each capture. Without captures,
   // skip the Block to avoid extra evaluator steps.

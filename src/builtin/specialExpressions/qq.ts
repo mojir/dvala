@@ -19,11 +19,7 @@ const docs: FunctionDocs = {
       rest: true,
     },
   },
-  variants: [
-    { argumentNames: ['a'] },
-    { argumentNames: ['a', 'b'] },
-    { argumentNames: ['a', 'b', 'c'] },
-  ],
+  variants: [{ argumentNames: ['a'] }, { argumentNames: ['a', 'b'] }, { argumentNames: ['a', 'b', 'c'] }],
   description: `Nullish coalescing operator. Returns the first non-\`null\` value.
 
 Evaluation is short-circuited — as soon as a non-\`null\` value is found, the remaining expressions are not evaluated.

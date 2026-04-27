@@ -29,15 +29,25 @@ export function getCommonArityFromFunctions(params: FunctionLike[]): Arity | nul
     if (acc === null) {
       return null
     }
-    const arity: Arity = (typeof param === 'number' || isColl(param)) ? toFixedArity(1) : param.arity
+    const arity: Arity = typeof param === 'number' || isColl(param) ? toFixedArity(1) : param.arity
     const { min: aMin, max: aMax } = arity
     const { min: bMin, max: bMax } = acc
-    const min = typeof aMin === 'number' && typeof bMin === 'number'
-      ? Math.max(aMin, bMin)
-      : typeof aMin === 'number' ? aMin : typeof bMin === 'number' ? bMin : undefined
-    const max = typeof aMax === 'number' && typeof bMax === 'number'
-      ? Math.min(aMax, bMax)
-      : typeof aMax === 'number' ? aMax : typeof bMax === 'number' ? bMax : undefined
+    const min =
+      typeof aMin === 'number' && typeof bMin === 'number'
+        ? Math.max(aMin, bMin)
+        : typeof aMin === 'number'
+          ? aMin
+          : typeof bMin === 'number'
+            ? bMin
+            : undefined
+    const max =
+      typeof aMax === 'number' && typeof bMax === 'number'
+        ? Math.min(aMax, bMax)
+        : typeof aMax === 'number'
+          ? aMax
+          : typeof bMax === 'number'
+            ? bMax
+            : undefined
 
     if (typeof min === 'number' && typeof max === 'number' && min > max) {
       return null
@@ -48,7 +58,7 @@ export function getCommonArityFromFunctions(params: FunctionLike[]): Arity | nul
 }
 
 export function getArityFromFunction(param: FunctionLike): Arity {
-  return (typeof param === 'number' || isColl(param)) ? toFixedArity(1) : param.arity
+  return typeof param === 'number' || isColl(param) ? toFixedArity(1) : param.arity
 }
 
 export function assertNumberOfParams(arity: Arity, length: number, sourceCodeInfo: SourceCodeInfo | undefined): void {

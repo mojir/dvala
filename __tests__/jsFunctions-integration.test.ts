@@ -18,9 +18,7 @@ describe('serializable bindings', () => {
     })
 
     it('accepts deeply nested plain objects', () => {
-      expect(dvala.run('x', { scope: { x: { a: { b: [1, 'two', null] } } } }))
-        .toEqual({ a: { b: [1, 'two', null] } })
+      expect(dvala.run('x', { scope: { x: { a: { b: [1, 'two', null] } } } })).toEqual({ a: { b: [1, 'two', null] } })
     })
   })
-
 })

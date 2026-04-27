@@ -337,10 +337,7 @@ export function qualifiedNameMatchesPattern(name: string, pattern: string): bool
  * Find all matching async handlers for an effect name, in registration order.
  * Returns an array of `[pattern, handler]` pairs.
  */
-export function findMatchingHandlers(
-  effectName: string,
-  handlers: Handlers | undefined,
-): [string, EffectHandler][] {
+export function findMatchingHandlers(effectName: string, handlers: Handlers | undefined): [string, EffectHandler][] {
   if (!handlers || handlers.length === 0) {
     return []
   }
@@ -366,7 +363,19 @@ export function findMatchingHandlers(
  */
 export type RunResult =
   | { type: 'completed'; value: unknown; scope?: Record<string, unknown>; snapshot?: Snapshot; sourceMap?: SourceMap }
-  | { type: 'suspended'; snapshot: Snapshot; sourceMap?: SourceMap; /** @internal Raw continuation and snapshots from branch suspension — used by executeParallelBranches for composition */ _rawSuspension?: { k: ContinuationStack; snapshots: Snapshot[]; nextSnapshotIndex: number; meta?: unknown; effectName?: string; effectArg?: Any } }
+  | {
+      type: 'suspended'
+      snapshot: Snapshot
+      sourceMap?: SourceMap
+      /** @internal Raw continuation and snapshots from branch suspension — used by executeParallelBranches for composition */ _rawSuspension?: {
+        k: ContinuationStack
+        snapshots: Snapshot[]
+        nextSnapshotIndex: number
+        meta?: unknown
+        effectName?: string
+        effectArg?: Any
+      }
+    }
   | { type: 'error'; error: DvalaError; snapshot?: Snapshot; sourceMap?: SourceMap }
   | { type: 'halted'; value: unknown; snapshot?: Snapshot; sourceMap?: SourceMap }
 

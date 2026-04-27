@@ -412,13 +412,7 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
 
   // --- Failure cases — fold surfaces the effect name; normal eval throws. ---
   describe('partial ops — @dvala.error surface', () => {
-    const cases: string[] = [
-      '1 / 0',
-      'sqrt(-1)',
-      '1 % 0',
-      'cbrt(0) / 0',
-      'number("not-a-number")',
-    ]
+    const cases: string[] = ['1 / 0', 'sqrt(-1)', '1 % 0', 'cbrt(0) / 0', 'number("not-a-number")']
 
     for (const src of cases) {
       it(`${src} — fold surfaces @dvala.error, normal eval throws`, () => {
@@ -461,8 +455,7 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
         expect(runNormal(src)).toBeCloseTo(expected, 10)
         const fold = runFold(src)
         expect(fold.ok).toBe(true)
-        if (fold.ok)
-          expect(fold.value as number).toBeCloseTo(expected, 10)
+        if (fold.ok) expect(fold.value as number).toBeCloseTo(expected, 10)
       })
     }
   })
@@ -473,8 +466,14 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
       { src: 'do let { splitLines } = import("string"); splitLines("a\\nb\\nc") end', expected: ['a', 'b', 'c'] },
       { src: 'do let { fromCharCode } = import("string"); fromCharCode(65) end', expected: 'A' },
       { src: 'do let { toCharCode } = import("string"); toCharCode("A") end', expected: 65 },
-      { src: 'do let { encodeUriComponent } = import("string"); encodeUriComponent("hello world") end', expected: 'hello%20world' },
-      { src: 'do let { decodeUriComponent } = import("string"); decodeUriComponent("hello%20world") end', expected: 'hello world' },
+      {
+        src: 'do let { encodeUriComponent } = import("string"); encodeUriComponent("hello world") end',
+        expected: 'hello%20world',
+      },
+      {
+        src: 'do let { decodeUriComponent } = import("string"); decodeUriComponent("hello%20world") end',
+        expected: 'hello world',
+      },
       { src: 'do let { encodeBase64 } = import("string"); encodeBase64("hi") end', expected: 'aGk=' },
       { src: 'do let { decodeBase64 } = import("string"); decodeBase64("aGk=") end', expected: 'hi' },
     ]
@@ -541,8 +540,7 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
         const normal = runNormal(src)
         const fold = runFold(src)
         expect(fold.ok).toBe(true)
-        if (fold.ok)
-          expect(fold.value).toEqual(normal)
+        if (fold.ok) expect(fold.value).toEqual(normal)
       })
     }
   })
@@ -551,8 +549,14 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
   describe('module: collection (extensions)', () => {
     const cases: { src: string; expected: unknown }[] = [
       { src: 'do let { getIn } = import("collection"); getIn({ a: { b: 42 } }, ["a", "b"]) end', expected: 42 },
-      { src: 'do let { getIn } = import("collection"); getIn({ a: 1 }, ["missing", "x"], "default") end', expected: 'default' },
-      { src: 'do let { assocIn } = import("collection"); assocIn({ a: { b: 1 } }, ["a", "b"], 99) end', expected: { a: { b: 99 } } },
+      {
+        src: 'do let { getIn } = import("collection"); getIn({ a: 1 }, ["missing", "x"], "default") end',
+        expected: 'default',
+      },
+      {
+        src: 'do let { assocIn } = import("collection"); assocIn({ a: { b: 1 } }, ["a", "b"], 99) end',
+        expected: { a: { b: 99 } },
+      },
       { src: 'do let { notEmpty } = import("collection"); notEmpty([1, 2, 3]) end', expected: [1, 2, 3] },
       { src: 'do let { notEmpty } = import("collection"); notEmpty([]) end', expected: null },
     ]
@@ -573,8 +577,17 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
       { src: 'do let { distinct } = import("sequence"); distinct([1, 2, 2, 3, 1]) end', expected: [1, 2, 3] },
       { src: 'do let { unshift } = import("sequence"); unshift([2, 3], 1) end', expected: [1, 2, 3] },
       { src: 'do let { removeAt } = import("sequence"); removeAt([10, 20, 30], 1) end', expected: [10, 30] },
-      { src: 'do let { splitAt } = import("sequence"); splitAt([1, 2, 3, 4], 2) end', expected: [[1, 2], [3, 4]] },
-      { src: 'do let { interleave } = import("sequence"); interleave([1, 2, 3], [10, 20, 30]) end', expected: [1, 10, 2, 20, 3, 30] },
+      {
+        src: 'do let { splitAt } = import("sequence"); splitAt([1, 2, 3, 4], 2) end',
+        expected: [
+          [1, 2],
+          [3, 4],
+        ],
+      },
+      {
+        src: 'do let { interleave } = import("sequence"); interleave([1, 2, 3], [10, 20, 30]) end',
+        expected: [1, 10, 2, 20, 3, 30],
+      },
       { src: 'do let { interpose } = import("sequence"); interpose([1, 2, 3], 0) end', expected: [1, 0, 2, 0, 3] },
       { src: 'do let { isStartsWith } = import("sequence"); isStartsWith("Hello world", "Hello") end', expected: true },
       { src: 'do let { isStartsWith } = import("sequence"); isStartsWith("Hello world", "bye") end', expected: false },
@@ -602,7 +615,10 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
       { src: 'do let { cumprod } = import("vector"); cumprod([1, 2, 3]) end', expected: [1, 2, 6] },
       { src: 'do let { isMonotonic } = import("vector"); isMonotonic([1, 2, 3]) end', expected: true },
       { src: 'do let { isIncreasing } = import("vector"); isIncreasing([1, 2, 3]) end', expected: true },
-      { src: 'do let { isStrictlyIncreasing } = import("vector"); isStrictlyIncreasing([1, 2, 2]) end', expected: false },
+      {
+        src: 'do let { isStrictlyIncreasing } = import("vector"); isStrictlyIncreasing([1, 2, 2]) end',
+        expected: false,
+      },
       { src: 'do let { linspace } = import("vector"); linspace(0, 1, 5) end', expected: [0, 0.25, 0.5, 0.75, 1] },
       { src: 'do let { sortIndices } = import("vector"); sortIndices([30, 10, 20]) end', expected: [1, 2, 0] },
     ]
@@ -618,7 +634,13 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
   // --- modules/matrix ---
   describe('module: matrix', () => {
     const cases: { src: string; expected: unknown }[] = [
-      { src: 'do let { mul } = import("matrix"); mul([[1, 2], [3, 4]], [[5, 6], [7, 8]]) end', expected: [[19, 22], [43, 50]] },
+      {
+        src: 'do let { mul } = import("matrix"); mul([[1, 2], [3, 4]], [[5, 6], [7, 8]]) end',
+        expected: [
+          [19, 22],
+          [43, 50],
+        ],
+      },
       { src: 'do let { det } = import("matrix"); det([[1, 2], [3, 4]]) end', expected: -2 },
       { src: 'do let { trace } = import("matrix"); trace([[1, 2], [3, 4]]) end', expected: 5 },
       { src: 'do let { isSquare } = import("matrix"); isSquare([[1, 2], [3, 4]]) end', expected: true },
@@ -642,10 +664,16 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
       { src: 'do let { dot } = import("linearAlgebra"); dot([1, 2, 3], [4, 5, 6]) end', expected: 32 },
       { src: 'do let { cross } = import("linearAlgebra"); cross([1, 0, 0], [0, 1, 0]) end', expected: [0, 0, 1] },
       { src: 'do let { lerp } = import("linearAlgebra"); lerp([0, 0], [10, 10], 0.5) end', expected: [5, 5] },
-      { src: 'do let { euclideanDistance } = import("linearAlgebra"); euclideanDistance([0, 0], [3, 4]) end', expected: 5 },
+      {
+        src: 'do let { euclideanDistance } = import("linearAlgebra"); euclideanDistance([0, 0], [3, 4]) end',
+        expected: 5,
+      },
       { src: 'do let { isOrthogonal } = import("linearAlgebra"); isOrthogonal([1, 0], [0, 1]) end', expected: true },
       { src: 'do let { isParallel } = import("linearAlgebra"); isParallel([1, 2], [2, 4]) end', expected: true },
-      { src: 'do let { cosineSimilarity } = import("linearAlgebra"); cosineSimilarity([1, 0], [1, 0]) end', expected: 1 },
+      {
+        src: 'do let { cosineSimilarity } = import("linearAlgebra"); cosineSimilarity([1, 0], [1, 0]) end',
+        expected: 1,
+      },
     ]
 
     for (const { src, expected } of cases) {
@@ -660,10 +688,34 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
   describe('module: grid', () => {
     const cases: { src: string; expected: unknown }[] = [
       { src: 'do let { shape } = import("grid"); shape([[1, 2, 3], [4, 5, 6]]) end', expected: [2, 3] },
-      { src: 'do let { fill } = import("grid"); fill(2, 2, 0) end', expected: [[0, 0], [0, 0]] },
-      { src: 'do let { transpose } = import("grid"); transpose([[1, 2], [3, 4]]) end', expected: [[1, 3], [2, 4]] },
-      { src: 'do let { flipH } = import("grid"); flipH([[1, 2], [3, 4]]) end', expected: [[2, 1], [4, 3]] },
-      { src: 'do let { flipV } = import("grid"); flipV([[1, 2], [3, 4]]) end', expected: [[3, 4], [1, 2]] },
+      {
+        src: 'do let { fill } = import("grid"); fill(2, 2, 0) end',
+        expected: [
+          [0, 0],
+          [0, 0],
+        ],
+      },
+      {
+        src: 'do let { transpose } = import("grid"); transpose([[1, 2], [3, 4]]) end',
+        expected: [
+          [1, 3],
+          [2, 4],
+        ],
+      },
+      {
+        src: 'do let { flipH } = import("grid"); flipH([[1, 2], [3, 4]]) end',
+        expected: [
+          [2, 1],
+          [4, 3],
+        ],
+      },
+      {
+        src: 'do let { flipV } = import("grid"); flipV([[1, 2], [3, 4]]) end',
+        expected: [
+          [3, 4],
+          [1, 2],
+        ],
+      },
       { src: 'do let { row } = import("grid"); row([[1, 2], [3, 4]], 0) end', expected: [1, 2] },
       { src: 'do let { col } = import("grid"); col([[1, 2], [3, 4]], 1) end', expected: [2, 4] },
     ]
@@ -786,17 +838,10 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
 
   // --- Budget exhaustion ---
   it('bails with reason=budget when step cap is exceeded', () => {
-    const smallBudgetFold = evaluateNodeForFold(
-      parseExpression('1 + 2 + 3 + 4 + 5'),
-      createContextStack(),
-      1,
-    )
+    const smallBudgetFold = evaluateNodeForFold(parseExpression('1 + 2 + 3 + 4 + 5'), createContextStack(), 1)
     expect(smallBudgetFold).toEqual({ ok: false, reason: 'budget' })
 
-    const okFold = evaluateNodeForFold(
-      parseExpression('1 + 2 + 3 + 4 + 5'),
-      createContextStack(),
-    )
+    const okFold = evaluateNodeForFold(parseExpression('1 + 2 + 3 + 4 + 5'), createContextStack())
     expect(okFold).toEqual({ ok: true, value: 15 })
   })
 
@@ -805,10 +850,7 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
     // Performing an unhandled effect surfaces as reason=effect. This hits the
     // `step.type === 'Perform'` branch (distinct from the DvalaError-wrapped
     // 'dvala.error' path exercised by division-by-zero etc.).
-    const fold = evaluateNodeForFold(
-      parseExpression('perform(@my.custom, 1)'),
-      createContextStack({}, moduleMap),
-    )
+    const fold = evaluateNodeForFold(parseExpression('perform(@my.custom, 1)'), createContextStack({}, moduleMap))
     expect(fold).toEqual({ ok: false, reason: 'effect', effectName: 'my.custom' })
   })
 
@@ -817,10 +859,7 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
     // `undefinedVar` is not in the fold sandbox's context stack — ReferenceError
     // is caught and mapped to { ok: false, reason: 'error' } so the caller doesn't
     // emit a spurious warning.
-    const fold = evaluateNodeForFold(
-      parseExpression('undefinedVar + 1'),
-      createContextStack({}, moduleMap),
-    )
+    const fold = evaluateNodeForFold(parseExpression('undefinedVar + 1'), createContextStack({}, moduleMap))
     expect(fold).toEqual({ ok: false, reason: 'error' })
   })
 })

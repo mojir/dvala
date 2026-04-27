@@ -57,11 +57,12 @@ export function initBuiltinTypes(normalExpressions: BuiltinNormalExpressions): v
         type: parsed.type,
         guardParam: parsed.guardParam,
         guardType: parsed.guardType,
-        assertsParam: parsed.assertsParam !== undefined
-          ? parsed.type.tag === 'Function' && parsed.type.asserts
-            ? parsed.type.asserts.paramIndex
-            : expr.docs?.asserts?.paramIndex
-          : extractAssertParamFromType(parsed.type) ?? expr.docs?.asserts?.paramIndex,
+        assertsParam:
+          parsed.assertsParam !== undefined
+            ? parsed.type.tag === 'Function' && parsed.type.asserts
+              ? parsed.type.asserts.paramIndex
+              : expr.docs?.asserts?.paramIndex
+            : (extractAssertParamFromType(parsed.type) ?? expr.docs?.asserts?.paramIndex),
       })
     } catch {
       // Silently degrade to Unknown — the builtin works at runtime,
@@ -75,7 +76,10 @@ function extractAssertParamFromType(type: Type): number | undefined {
   if (type.tag !== 'Inter') return undefined
 
   const assertParams = type.members
-    .filter((member): member is Extract<Type, { tag: 'Function' }> => member.tag === 'Function' && member.asserts !== undefined)
+    .filter(
+      (member): member is Extract<Type, { tag: 'Function' }> =>
+        member.tag === 'Function' && member.asserts !== undefined,
+    )
     .map(member => member.asserts!.paramIndex)
 
   if (assertParams.length === 0) return undefined
@@ -187,9 +191,7 @@ export function registerModuleType(
           retType: decl?.retType ?? Unknown,
         })
       }
-      const introduced = doc.wrapper.introduced.length > 0
-        ? effectSet(doc.wrapper.introduced)
-        : PureEffects
+      const introduced = doc.wrapper.introduced.length > 0 ? effectSet(doc.wrapper.introduced) : PureEffects
       const handlerWrapper: HandlerWrapperInfo = {
         paramIndex: doc.wrapper.paramIndex,
         handled,

@@ -38,7 +38,7 @@ function popcount(n: number): number {
   n -= (n >>> 1) & 0x55555555
   n = (n & 0x33333333) + ((n >>> 2) & 0x33333333)
   n = (n + (n >>> 4)) & 0x0f0f0f0f
-  return (Math.imul(n, 0x01010101) >>> 24)
+  return Math.imul(n, 0x01010101) >>> 24
 }
 
 /** The bit in the 32-bit virtual slot for `hash` at depth `shift`. */
@@ -124,7 +124,14 @@ function hamtInsert<V>(
     sizeChange.delta = 1
     if (node.hash === hash) {
       // Hash collision
-      return { type: 'collision', hash, entries: [[node.key, node.value], [key, value]] }
+      return {
+        type: 'collision',
+        hash,
+        entries: [
+          [node.key, node.value],
+          [key, value],
+        ],
+      }
     }
     // Different hashes — create a bitmap node merging both leaves
     return mergeTwoLeaves(node, { type: 'leaf', hash, key, value }, shift)
@@ -232,7 +239,7 @@ function mergeTwoLeaves<V>(a: LeafNode<V>, b: LeafNode<V>, shift: number): Bitma
   // Use unsigned comparison: bit() can return -2147483648 for slot 31 (1 << 31 is signed-negative).
   // bitmapIndex counts lower-positioned bits, so the child with the lower UNSIGNED bit value
   // belongs at index 0. Without >>> 0, the signed -2147483648 would wrongly sort first.
-  const [first, second] = (ba >>> 0) < (bb >>> 0) ? [a, b] : [b, a]
+  const [first, second] = ba >>> 0 < bb >>> 0 ? [a, b] : [b, a]
   return { type: 'bitmap', bitmap: ba | bb, children: [first, second] }
 }
 
@@ -245,7 +252,7 @@ function expandCollision<V>(collision: CollisionNode<V>, leaf: LeafNode<V>, shif
     return { type: 'bitmap', bitmap: bc, children: [child] }
   }
   // Same unsigned-comparison fix as mergeTwoLeaves — see comment there.
-  const [first, second] = (bc >>> 0) < (bl >>> 0) ? [collision, leaf] : [leaf, collision]
+  const [first, second] = bc >>> 0 < bl >>> 0 ? [collision, leaf] : [leaf, collision]
   return { type: 'bitmap', bitmap: bc | bl, children: [first, second] }
 }
 

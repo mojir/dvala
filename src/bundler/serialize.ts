@@ -24,9 +24,9 @@ export function serializeBundle(bundle: DvalaBundle): string {
       body: bundle.ast.body,
       sourceMap: bundle.ast.sourceMap
         ? {
-          sources: bundle.ast.sourceMap.sources,
-          positions: [...bundle.ast.sourceMap.positions.entries()],
-        }
+            sources: bundle.ast.sourceMap.sources,
+            positions: [...bundle.ast.sourceMap.positions.entries()],
+          }
         : undefined,
     },
   }
@@ -35,16 +35,13 @@ export function serializeBundle(bundle: DvalaBundle): string {
 
 /** Deserialize a parsed JSON object back to a DvalaBundle. Returns null if invalid. */
 export function deserializeBundle(parsed: unknown): DvalaBundle | null {
-  if (typeof parsed !== 'object' || parsed === null)
-    return null
+  if (typeof parsed !== 'object' || parsed === null) return null
 
   const obj = parsed as Record<string, unknown>
-  if (obj.version !== 1)
-    return null
+  if (obj.version !== 1) return null
 
   const ast = obj.ast as Record<string, unknown> | undefined
-  if (!ast || !Array.isArray(ast.body))
-    return null
+  if (!ast || !Array.isArray(ast.body)) return null
 
   let sourceMap: SourceMap | undefined
   const rawSourceMap = ast.sourceMap as { sources?: unknown[]; positions?: unknown[] } | undefined

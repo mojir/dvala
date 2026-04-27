@@ -7,7 +7,12 @@ import { resume } from '../src/resume'
 import { retrigger } from '../src/retrigger'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 import { miscNormalExpression } from '../src/builtin/core/misc'
-import { assertEffectNameToken, asEffectNameToken, assertTemplateStringToken, asTemplateStringToken } from '../src/tokenizer/token'
+import {
+  assertEffectNameToken,
+  asEffectNameToken,
+  assertTemplateStringToken,
+  asTemplateStringToken,
+} from '../src/tokenizer/token'
 import { asUserDefinedSymbolNode } from '../src/typeGuards/astNode'
 import { splitSegments } from '../src/parser/subParsers/parseTemplateString'
 import { tokenizeSource } from '../src/tooling'
@@ -24,9 +29,12 @@ describe('resume with modules option', () => {
     // Create a program that suspends via host effect
     const result = await dvala.runAsync('perform(@test.suspend, 42)', {
       effectHandlers: [
-        { pattern: 'test.suspend', handler: ({ suspend }) => {
-          suspend()
-        } },
+        {
+          pattern: 'test.suspend',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
       ],
     })
     expect(result.type).toBe('suspended')
@@ -49,7 +57,9 @@ describe('resume with modules option', () => {
 // ---------------------------------------------------------------------------
 describe('misc.ts macroexpand evaluate stub', () => {
   it('should throw when macroexpand evaluate is called directly', () => {
-    expect(() => miscNormalExpression['macroexpand']!.evaluate([] as never, undefined as never, undefined as never)).toThrow('macroexpand is handled by the evaluator')
+    expect(() =>
+      miscNormalExpression['macroexpand']!.evaluate([] as never, undefined as never, undefined as never),
+    ).toThrow('macroexpand is handled by the evaluator')
   })
 })
 
@@ -67,7 +77,9 @@ describe('qualifiedMatcher error for invalid type', () => {
 // ---------------------------------------------------------------------------
 describe('misc.ts raise evaluate stub', () => {
   it('should throw when raise evaluate is called directly', () => {
-    expect(() => miscNormalExpression['raise']!.evaluate([] as never, undefined as never, undefined as never)).toThrow('raise is implemented in Dvala')
+    expect(() => miscNormalExpression['raise']!.evaluate([] as never, undefined as never, undefined as never)).toThrow(
+      'raise is implemented in Dvala',
+    )
   })
 })
 
@@ -256,16 +268,12 @@ describe('parseTemplateString edge cases', () => {
 
   it('should parse deferred splice with no prefix literal', () => {
     const segments = splitSegments('$${x}')
-    expect(segments).toEqual([
-      { type: 'deferred', value: 'x', dollarCount: 2, offset: 3 },
-    ])
+    expect(segments).toEqual([{ type: 'deferred', value: 'x', dollarCount: 2, offset: 3 }])
   })
 
   it('should parse triple-dollar deferred splice', () => {
     const segments = splitSegments('$$${x}')
-    expect(segments).toEqual([
-      { type: 'deferred', value: 'x', dollarCount: 3, offset: 4 },
-    ])
+    expect(segments).toEqual([{ type: 'deferred', value: 'x', dollarCount: 3, offset: 4 }])
   })
 })
 
@@ -470,11 +478,13 @@ describe('parseQuote nested quote with splice passthrough', () => {
     // (level 1 - innerQuoteDepth 1 = 0), so it belongs to the inner quote
     // and should be passed through as-is in the outer quote's processing.
     // We just verify it parses without error.
-    expect(() => dvala.run(`
+    expect(() =>
+      dvala.run(`
       quote
         quote $^{42} end
       end
-    `)).not.toThrow()
+    `),
+    ).not.toThrow()
   })
 })
 
@@ -487,9 +497,12 @@ describe('retriggerWithEffects catch paths', () => {
   async function createSuspendedSnapshot(): Promise<Snapshot> {
     const result = await dvala.runAsync('perform(@test.action, 42)', {
       effectHandlers: [
-        { pattern: 'test.action', handler: ({ suspend }) => {
-          suspend()
-        } },
+        {
+          pattern: 'test.action',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
       ],
     })
     if (result.type !== 'suspended') throw new Error('Expected suspended')
@@ -501,9 +514,12 @@ describe('retriggerWithEffects catch paths', () => {
     const result = await retrigger(snapshot, {
       disableAutoCheckpoint: true,
       handlers: [
-        { pattern: 'test.action', handler: ({ halt, arg }) => {
-          halt(arg)
-        } },
+        {
+          pattern: 'test.action',
+          handler: ({ halt, arg }) => {
+            halt(arg)
+          },
+        },
       ],
     })
     expect(result.type).toBe('halted')
@@ -517,10 +533,13 @@ describe('retriggerWithEffects catch paths', () => {
     const result = await retrigger(snapshot, {
       disableAutoCheckpoint: true,
       handlers: [
-        { pattern: 'test.action', handler: () => {
-          // Throw a DvalaError directly to hit the instanceof DvalaError path
-          throw new DvalaError('retrigger error', undefined)
-        } },
+        {
+          pattern: 'test.action',
+          handler: () => {
+            // Throw a DvalaError directly to hit the instanceof DvalaError path
+            throw new DvalaError('retrigger error', undefined)
+          },
+        },
       ],
     })
     expect(result.type).toBe('error')
@@ -531,9 +550,12 @@ describe('retriggerWithEffects catch paths', () => {
     const result = await retrigger(snapshot, {
       disableAutoCheckpoint: true,
       handlers: [
-        { pattern: 'test.action', handler: () => {
-          throw 'plain string error'
-        } },
+        {
+          pattern: 'test.action',
+          handler: () => {
+            throw 'plain string error'
+          },
+        },
       ],
     })
     expect(result.type).toBe('error')
@@ -547,9 +569,12 @@ describe('trampoline-evaluator terminal snapshot halted', () => {
   it('should produce terminal snapshot with halted meta when terminalSnapshot enabled', async () => {
     const result = await dvala.runAsync('perform(@test.halt, 42)', {
       effectHandlers: [
-        { pattern: 'test.halt', handler: ({ halt, arg }) => {
-          halt(arg)
-        } },
+        {
+          pattern: 'test.halt',
+          handler: ({ halt, arg }) => {
+            halt(arg)
+          },
+        },
       ],
       terminalSnapshot: true,
     })
@@ -582,7 +607,12 @@ describe('resume.ts branch coverage', () => {
     const resumeDvala = createDvala()
     const suspended = await resumeDvala.runAsync('perform(@my.eff, 42)', {
       effectHandlers: [
-        { pattern: 'my.eff', handler: async ({ suspend }) => { suspend() } },
+        {
+          pattern: 'my.eff',
+          handler: async ({ suspend }) => {
+            suspend()
+          },
+        },
       ],
     })
     if (suspended.type !== 'suspended') throw new Error('expected suspended')
@@ -596,14 +626,24 @@ describe('retrigger.ts branch coverage', () => {
     const retriggerDvala = createDvala()
     const suspended = await retriggerDvala.runAsync('perform(@my.eff, 42)', {
       effectHandlers: [
-        { pattern: 'my.eff', handler: async ({ suspend }) => { suspend() } },
+        {
+          pattern: 'my.eff',
+          handler: async ({ suspend }) => {
+            suspend()
+          },
+        },
       ],
     })
     if (suspended.type !== 'suspended') throw new Error('expected suspended')
     const result = await retrigger(suspended.snapshot, {
       terminalSnapshot: true,
       handlers: [
-        { pattern: 'my.eff', handler: async ({ resume: r }) => { r('done') } },
+        {
+          pattern: 'my.eff',
+          handler: async ({ resume: r }) => {
+            r('done')
+          },
+        },
       ],
     })
     expect(result.type).toBe('completed')

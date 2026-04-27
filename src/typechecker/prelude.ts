@@ -47,9 +47,7 @@ export function installPreludeAliases(): void {
       const tokens = tokenize(preludeSource, false, '<prelude>')
       const min = minifyTokenStream(tokens, { removeWhiteSpace: true })
       const ast = parseToAst(min)
-      cached = ast.typeAliases
-        ? [...ast.typeAliases].map(([name, { params, body }]) => ({ name, params, body }))
-        : []
+      cached = ast.typeAliases ? [...ast.typeAliases].map(([name, { params, body }]) => ({ name, params, body })) : []
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn(`[dvala prelude] failed to parse src/prelude.dvala: ${e instanceof Error ? e.message : String(e)}`)

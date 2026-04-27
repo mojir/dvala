@@ -24,10 +24,7 @@ describe('isSquare', () => {
   })
 
   it('should return false for a matrix with unequal row lengths', () => {
-    const matrix = [
-      [1],
-      [3],
-    ]
+    const matrix = [[1], [3]]
     expect(isSquare(matrix)).toBe(false)
   })
 })
