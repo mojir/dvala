@@ -151,6 +151,8 @@ function buildBuiltinCompletions(): CompletionItem[]
 
 **Playground use:** Maps `CompletionItem` → `monaco.languages.CompletionItem` (kind enum maps to `CompletionItemKind`, `insertText` carries through, `params` becomes a snippet template). Wired via `registerCompletionItemProvider`.
 
+**Cleanup when this lands:** delete `getAutoCompleter` from [src/tooling.ts](../../src/tooling.ts) and the `AutoCompleter` class at [src/AutoCompleter/AutoCompleter.ts](../../src/AutoCompleter/AutoCompleter.ts). Both predate the language service and are kept alive by playground's `registerCompletionItemProvider` wiring at [playground-www/src/scripts.ts:4050,4076](../../playground-www/src/scripts.ts#L4050). Once the playground switches to the LS-backed `CompletionItem` provider above (Phase 2 of the playground plan), `getAutoCompleter` has no remaining production caller and the `AutoCompleter` directory can be deleted entirely. Coordinate the deletion with the playground integration PR.
+
 ### Module 5: `WorkspaceIndex` as public API
 
 **Priority:** High (formerly Low — bumped 2026-04-26 because the playground plan introduces multi-file in Phase 1, so cross-file symbol resolution is now load-bearing for Phase 2 features like go-to-def, find-references, and rename).
