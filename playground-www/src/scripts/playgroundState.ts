@@ -41,6 +41,7 @@ export const state: {
   activeContextBindingName: string | null
   resolveInfoModal: (() => void) | null
   infoModalOnConfirm: (() => void | Promise<void>) | null
+  resolveSnapshotModal: (() => void) | null
 } = {
   pendingEffects: [],
   currentEffectIndex: 0,
@@ -53,4 +54,5 @@ export const state: {
   activeContextBindingName: getState('current-context-binding-name'),
   resolveInfoModal: null,
   infoModalOnConfirm: null,
+  resolveSnapshotModal: null,
 }

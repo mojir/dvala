@@ -97,20 +97,30 @@ import { createPlaygroundAPI } from './playgroundAPI'
 import { createEffectHandlers } from './createEffectHandlers'
 import { elements } from './scripts/elements'
 import {
+  closeAllModals,
   closeInfoModal,
   createModalPanel,
   dismissInfoModal,
-  modalSizeMap,
+  popModal,
+  pushPanel,
   pushSavePanel,
   showInfoModal,
   showToast,
   slideBackSnapshotModal,
 } from './scripts/modals'
-import type { ModalSize } from './scripts/modals'
 import { state } from './scripts/playgroundState'
 import type { ContextEntryKind, PendingEffect } from './scripts/playgroundState'
 
-export { closeInfoModal, createModalPanel, showInfoModal, showToast, slideBackSnapshotModal } from './scripts/modals'
+export {
+  closeAllModals,
+  closeInfoModal,
+  createModalPanel,
+  popModal,
+  pushPanel,
+  showInfoModal,
+  showToast,
+  slideBackSnapshotModal,
+} from './scripts/modals'
 
 const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
@@ -324,8 +334,6 @@ let effectNavCounterEl: HTMLSpanElement | null = null
 let snapshotExecutionControlsVisible = false
 let isSyncingContextDetail = false
 let contextDetailHasParseError = false
-let overlayCloseAnimation: Animation | null = null
-
 // Toast hint for effect modals that can't be dismissed with Escape
 const EFFECT_MODAL_ESCAPE_HINT = 'Escape not supported here'
 type ContextUiSectionKey = 'bindings' | 'effectHandlers'
@@ -5050,58 +5058,6 @@ function snapshotLabel(snapshot: Snapshot): string {
   return `Checkpoint #${snapshot.index} — ${snapshot.message}`
 }
 
-function buildBreadcrumbs(panel: HTMLElement) {
-  const container = panel.querySelector('[data-ref="breadcrumbs"]') as HTMLElement
-  container.innerHTML = ''
-  container.style.display = ''
-
-  state.modalStack.forEach((entry, i) => {
-    if (i > 0) {
-      const sep = document.createElement('span')
-      sep.className = 'breadcrumb-sep'
-      sep.textContent = '›'
-      container.appendChild(sep)
-    }
-
-    const isLast = i === state.modalStack.length - 1
-    const span = document.createElement('span')
-    if (entry.icon) {
-      span.innerHTML = `<span class="breadcrumb-icon">${entry.icon}</span> ${entry.label}`
-    } else {
-      span.textContent = entry.label
-    }
-    span.className = isLast ? 'breadcrumb-item' : 'breadcrumb-item--clickable'
-    if (!isLast) {
-      const targetIndex = i
-      span.addEventListener('click', () => popToLevel(targetIndex))
-    }
-    container.appendChild(span)
-  })
-}
-
-function popToLevel(targetIndex: number) {
-  // Remove all panels above target immediately (no animation), keep the top one for animation
-  while (state.modalStack.length > targetIndex + 2) {
-    const { panel } = state.modalStack.pop()!
-    panel.remove()
-  }
-  // Animate the top panel out to the right
-  if (state.modalStack.length > targetIndex + 1) {
-    const { panel } = state.modalStack.pop()!
-    panel.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], {
-      duration: 250,
-      easing: 'ease',
-    }).onfinish = () => {
-      panel.remove()
-    }
-  }
-  state.currentSnapshot = state.modalStack[state.modalStack.length - 1]?.snapshot ?? null
-  // Update control bar based on current snapshot state
-  if (elements.executionControlBar.style.display === 'flex') {
-    updateExecutionControlBarForSnapshot()
-  }
-}
-
 const MAX_URL_LENGTH = 24 * 1024 // 24KB, arbitrary limit to avoid creating unshareable links
 
 function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: DvalaErrorJSON) {
@@ -5394,62 +5350,6 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
   return panel
 }
 
-/** Push a panel onto the modal stack. Sub-panels slide in from the right. */
-export function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEffect?: boolean) {
-  if (snapshot !== undefined) state.currentSnapshot = snapshot
-  const isRoot = state.modalStack.length === 0
-
-  // If a close animation is in progress, cancel it and do instant swap
-  const isReplacement = isRoot && overlayCloseAnimation !== null
-  if (isReplacement) {
-    overlayCloseAnimation!.cancel()
-    overlayCloseAnimation = null
-    elements.snapshotPanelContainer.innerHTML = ''
-    elements.snapshotPanelContainer.style.opacity = '1'
-  }
-
-  if (!isRoot) {
-    panel.style.position = 'absolute'
-    panel.style.top = '0'
-    panel.style.left = '0'
-    panel.style.right = '0'
-    panel.style.minHeight = `${elements.snapshotPanelContainer.offsetHeight}px`
-    panel.style.zIndex = String(state.modalStack.length + 1)
-  }
-
-  panel.style.display = 'flex'
-  elements.snapshotPanelContainer.appendChild(panel)
-  state.modalStack.push({
-    panel,
-    label,
-    icon: panel.dataset.icon,
-    snapshot: snapshot ?? state.currentSnapshot ?? null,
-    isEffect,
-  })
-  buildBreadcrumbs(panel)
-
-  if (!isRoot) {
-    // Slide in from right
-    panel.animate([{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }], {
-      duration: 250,
-      easing: 'ease',
-      fill: 'forwards',
-    })
-  } else {
-    const size = panel.dataset.size as ModalSize | undefined
-    elements.snapshotPanelContainer.style.maxWidth = isEffect ? '480px' : size ? modalSizeMap[size] : ''
-    elements.snapshotModal.style.display = 'flex'
-    // Fade in (unless replacing, then instant)
-    if (!isReplacement) {
-      const container = elements.snapshotPanelContainer
-      container.style.opacity = '0'
-      container.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease' }).onfinish = () => {
-        container.style.opacity = '1'
-      }
-    }
-  }
-}
-
 function pushCheckpointPanel(snapshot: Snapshot) {
   const panel = createSnapshotPanel(snapshot)
   pushPanel(panel, snapshotLabel(snapshot), snapshot)
@@ -5463,8 +5363,6 @@ function getSnapshotError(snapshot: Snapshot): DvalaErrorJSON | undefined {
   const meta = snapshot.meta as { error?: DvalaErrorJSON } | undefined
   return meta?.error
 }
-
-let resolveSnapshotModal: (() => void) | null = null
 
 // ─── Inline snapshot view (in code panel) ────────────────────────────────────
 
@@ -5535,7 +5433,7 @@ export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
   showSnapshotInPanel(snapshot, true)
 
   return new Promise<void>(resolve => {
-    resolveSnapshotModal = resolve
+    state.resolveSnapshotModal = resolve
   })
 }
 
@@ -5555,8 +5453,8 @@ export function closeSnapshotView() {
   populateSideSnapshotsList()
   state.currentSnapshot = null
   snapshotExecutionControlsVisible = false
-  resolveSnapshotModal?.()
-  resolveSnapshotModal = null
+  state.resolveSnapshotModal?.()
+  state.resolveSnapshotModal = null
   hideExecutionControlBar()
 
   // Sync view — will show empty or editor depending on side tab
@@ -5564,7 +5462,7 @@ export function closeSnapshotView() {
   syncPlaygroundUrlState(normalizeSideTab(getCurrentSideTab()))
 }
 
-function restoreInlineSnapshotContext() {
+export function restoreInlineSnapshotContext() {
   state.currentSnapshot = state.snapshotViewStack[state.snapshotViewStack.length - 1]?.snapshot ?? null
   if (getCurrentSideTab() === 'snapshots' && state.currentSnapshot && snapshotExecutionControlsVisible) {
     syncSnapshotExecutionControls()
@@ -5573,58 +5471,6 @@ function restoreInlineSnapshotContext() {
   hideExecutionControlBar()
 }
 
-/** Pop the current panel. Last panel fades out; sub-panels slide out. */
-export function popModal() {
-  if (state.modalStack.length === 0) return
-
-  if (state.modalStack.length === 1) {
-    // Clear state immediately so follow-up effects see a clean stack
-    const dyingPanel = state.modalStack[0]!.panel
-    state.modalStack.length = 0
-    resolveSnapshotModal?.()
-    resolveSnapshotModal = null
-    restoreInlineSnapshotContext()
-
-    // Fade out overlay and panel together
-    const overlay = elements.snapshotModal
-    const container = elements.snapshotPanelContainer
-    overlayCloseAnimation = overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease' })
-    overlayCloseAnimation.onfinish = () => {
-      overlayCloseAnimation = null
-      overlay.style.display = 'none'
-      container.style.opacity = ''
-      container.style.maxWidth = ''
-      container.innerHTML = ''
-      dyingPanel.remove()
-    }
-    return
-  }
-
-  // Slide out to the right
-  const { panel } = state.modalStack.pop()!
-  panel.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], {
-    duration: 250,
-    easing: 'ease',
-  }).onfinish = () => {
-    panel.remove()
-  }
-  state.currentSnapshot = state.modalStack[state.modalStack.length - 1]?.snapshot ?? null
-  // Update control bar based on current snapshot state
-  if (elements.executionControlBar.style.display === 'flex') {
-    updateExecutionControlBarForSnapshot()
-  }
-}
-
-export function closeAllModals() {
-  elements.snapshotModal.style.display = 'none'
-  elements.snapshotPanelContainer.style.opacity = ''
-  elements.snapshotPanelContainer.style.maxWidth = ''
-  elements.snapshotPanelContainer.innerHTML = ''
-  state.modalStack.length = 0
-  restoreInlineSnapshotContext()
-  resolveSnapshotModal?.()
-  resolveSnapshotModal = null
-}
 export function openImportSnapshotModal() {
   const input = document.createElement('input')
   input.type = 'file'
@@ -6304,8 +6150,8 @@ function openEffectPanel(): void {
     elements.snapshotPanelContainer.style.maxWidth = ''
     state.modalStack.length = 0
     state.currentSnapshot = null
-    resolveSnapshotModal?.()
-    resolveSnapshotModal = null
+    state.resolveSnapshotModal?.()
+    state.resolveSnapshotModal = null
   }
 
   const { panel, body } = createModalPanel({ size: 'small', noClose: true })
