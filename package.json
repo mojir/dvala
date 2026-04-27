@@ -132,6 +132,7 @@
     "dist"
   ],
   "scripts": {
+    "preinstall": "npx -y only-allow pnpm",
     "test": "wireit",
     "vitest": "vitest",
     "lint": "wireit",
