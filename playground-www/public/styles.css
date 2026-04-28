@@ -2142,19 +2142,18 @@ body.bottom-panel-collapsed #resize-divider-2 {
   display: none;
 }
 
-/* The Panel component shell (used inside #right-panel + #bottom-panel).
-   Containers use flex so the shell can stretch via `flex: 1` in the
-   uncollapsed case and shrink to its tab strip in the collapsed case
-   without the circular `height: 100%` of an auto-height parent. */
-#right-panel,
-#bottom-panel {
-  display: flex;
-  flex-direction: column;
-}
+/* The Panel component shell. The container element itself receives the
+   `panel-shell` class — there's no separate child wrapper. We deliberately
+   do NOT set `flex: 1` here: that would make the bottom panel inflate to
+   fill its parent's free space even when collapsed (its inline height is
+   cleared on collapse, but flex-grow ignores that). Instead, the bottom
+   panel is sized via inline `style.height` (set by applyLayout when
+   uncollapsed, cleared when collapsed → content height = strip only).
+   The right panel is a grid item — `align-self: stretch` (default) makes
+   it fill the cell with no flex needed. */
 .panel-shell {
   display: flex;
   flex-direction: column;
-  flex: 1;
   min-height: 0;
   background: var(--color-surface);
   overflow: hidden;
