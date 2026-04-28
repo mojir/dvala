@@ -1450,6 +1450,166 @@ test.describe('file operations', () => {
     // persisted in localStorage.
     await expect(page.locator('#explorer-file-list .explorer-item:has-text("foo.dvala")')).toHaveCount(1)
   })
+
+  test('multi-file import: a saved file can `import` another saved file and run', async ({ page }) => {
+    // Seed two files where `main.dvala` imports `./lib.dvala` from the same
+    // folder. Loading `main` and clicking Run should execute end-to-end —
+    // the playground's fileResolver consults the in-memory saved-files
+    // cache the same way `dvala run` consults disk.
+    const mainId = '11111111-1111-1111-1111-111111111111'
+    const libId = '22222222-2222-2222-2222-222222222222'
+    await page.evaluate(
+      ({ mainId, libId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          {
+            id: libId,
+            path: 'lib.dvala',
+            // Dvala modules export by ending in an object literal — there's
+            // no `export` keyword. The last expression of the file is what
+            // `import(...)` returns. The semicolon after the let is required
+            // — without it, the parser reads `let greet = ... { greet }` as
+            // a single statement and the file's "last expression" never
+            // resolves to the object literal.
+            code: 'let greet = (name) -> `hello, ${name}!`;\n{ greet }',
+            context: '',
+            createdAt: 1,
+            updatedAt: 1,
+            locked: false,
+          },
+          {
+            id: mainId,
+            path: 'main.dvala',
+            // Newlines don't terminate `let` statements — the trailing `;`
+            // is required, otherwise the parser reads the next expression
+            // as the let's value.
+            code: 'let { greet } = import("./lib");\ngreet("world")',
+            context: '',
+            createdAt: 2,
+            updatedAt: 2,
+            locked: false,
+          },
+        ])
+      },
+      { mainId, libId },
+    )
+    // Load main.dvala and run it.
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await navigateToPlayground(page)
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('hello, world!')
+  })
+
+  test('multi-file import: resolves across folders relative to the importing file', async ({ page }) => {
+    // main.dvala lives at the root and imports `./lib/math` — a file one
+    // folder deep. Exercises both folder-anchoring and the .dvala-suffix
+    // fallback (the import omits the extension).
+    const mainId = '44444444-4444-4444-4444-444444444444'
+    const libId = '55555555-5555-5555-5555-555555555555'
+    await page.evaluate(
+      ({ mainId, libId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          {
+            id: libId,
+            path: 'lib/math.dvala',
+            code: 'let double = (n) -> n * 2;\n{ double }',
+            context: '',
+            createdAt: 1,
+            updatedAt: 1,
+            locked: false,
+          },
+          {
+            id: mainId,
+            path: 'main.dvala',
+            code: 'let { double } = import("./lib/math");\ndouble(21)',
+            context: '',
+            createdAt: 2,
+            updatedAt: 2,
+            locked: false,
+          },
+        ])
+      },
+      { mainId, libId },
+    )
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await navigateToPlayground(page)
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('42')
+  })
+
+  test('multi-file import: nested file can `..` back up to a sibling folder', async ({ page }) => {
+    // tests/main.dvala imports `../lib/math`. Verifies fileResolverBaseDir
+    // is anchored at the importing file's folder, not the workspace root —
+    // without that, the runtime's `..` would walk past root and throw.
+    const mainId = '66666666-6666-6666-6666-666666666666'
+    const libId = '77777777-7777-7777-7777-777777777777'
+    await page.evaluate(
+      ({ mainId, libId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          {
+            id: libId,
+            path: 'lib/math.dvala',
+            code: 'let triple = (n) -> n * 3;\n{ triple }',
+            context: '',
+            createdAt: 1,
+            updatedAt: 1,
+            locked: false,
+          },
+          {
+            id: mainId,
+            path: 'tests/main.dvala',
+            code: 'let { triple } = import("../lib/math");\ntriple(14)',
+            context: '',
+            createdAt: 2,
+            updatedAt: 2,
+            locked: false,
+          },
+        ])
+      },
+      { mainId, libId },
+    )
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await navigateToPlayground(page)
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('42')
+  })
+
+  test('multi-file import: missing target file produces a useful error', async ({ page }) => {
+    const mainId = '33333333-3333-3333-3333-333333333333'
+    await page.evaluate((id: string) => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        {
+          id,
+          path: 'main.dvala',
+          code: 'import("./does-not-exist")',
+          context: '',
+          createdAt: 1,
+          updatedAt: 1,
+          locked: false,
+        },
+      ])
+    }, mainId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await navigateToPlayground(page)
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('File not found')
+    expect(output).toContain('does-not-exist')
+  })
 })
 
 // ---------------------------------------------------------------------------
