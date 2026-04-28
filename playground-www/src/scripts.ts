@@ -63,6 +63,7 @@ import type { SavedSnapshot, TerminalSnapshotEntry } from './snapshotStorage'
 import {
   clearAllFiles,
   fileDisplayName,
+  folderFromPath,
   getSavedFiles,
   initFiles,
   normalizeFilePath,
@@ -70,6 +71,7 @@ import {
   setSavedFiles,
   uniqueFilePath,
 } from './fileStorage'
+import { playgroundFileResolver } from './playgroundFileResolver'
 import type { SavedFile } from './fileStorage'
 import {
   clearAllFileHistories,
@@ -172,9 +174,36 @@ export {
   toggleFileLock,
 } from './scripts/files'
 
-const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
-const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
-const getDvala = (forceDebug?: 'debug') => (forceDebug || getState('debug') ? dvalaDebug : dvalaNoDebug)
+/**
+ * Returns a fresh Dvala instance configured with the playground's
+ * IndexedDB-backed file resolver. We instantiate per-call (not per-app)
+ * so each run can pin `fileResolverBaseDir` to the active file's folder
+ * — matching `dvala run` semantics, where the entry file's directory
+ * anchors all relative imports inside the program. createDvala is a
+ * thin factory (closures over already-built modules), so the cost of
+ * recreating it on every run is negligible.
+ */
+function getDvala(opts: { fileResolverBaseDir?: string } = {}) {
+  return createDvala({
+    debug: getState('debug'),
+    modules: allBuiltinModules,
+    fileResolver: playgroundFileResolver,
+    fileResolverBaseDir: opts.fileResolverBaseDir ?? '',
+  })
+}
+
+/** The path of the active saved file, or undefined when scratch is active. */
+function getActiveFilePath(): string | undefined {
+  const id = getState('current-file-id')
+  if (id === null) return undefined
+  return getSavedFiles().find(f => f.id === id)?.path
+}
+
+/** Folder of the active file (or `''` for scratch / root-level files). */
+function getActiveFileFolder(): string {
+  const filePath = getActiveFilePath()
+  return filePath ? folderFromPath(filePath) : ''
+}
 const MAX_FILE_HISTORY_STEPS = 99
 const CONTEXT_UI_STATE_KEY = '__playground'
 const dvalaCodeHistory = new StateHistory(
@@ -300,6 +329,8 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
         }
       },
       runCode: async code => {
+        // `playground.exec.run(code)` is freeform user code — resolves
+        // imports relative to the workspace root.
         const result = await getDvala().runAsync(code, { scope: {}, effectHandlers: [], pure: false })
         if (result.type === 'error') throw result.error
         if (result.type === 'suspended') throw new Error('File suspended')
@@ -3544,12 +3575,17 @@ export async function run() {
   try {
     const pure = getState('pure')
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
+    // Anchor file imports at the running file's folder (or workspace root
+    // for scratch). `filePath` is set so source maps and error messages can
+    // attribute lines to the right file.
+    const filePath = getActiveFilePath()
+    const baseDir = getActiveFileFolder()
     const runResult = await Promise.race([
-      getDvala().runAsync(
+      getDvala({ fileResolverBaseDir: baseDir }).runAsync(
         code,
         pure
-          ? { pure: true, disableAutoCheckpoint, terminalSnapshot: true }
-          : { effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
+          ? { pure: true, disableAutoCheckpoint, terminalSnapshot: true, filePath }
+          : { effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true, filePath },
       ),
       timeoutPromise,
     ])
@@ -3619,7 +3655,11 @@ export function runSync() {
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
-    const result = getDvala().run(code, pure ? { pure: true } : { effectHandlers: getSyncEffectHandlers() })
+    const filePath = getActiveFilePath()
+    const result = getDvala({ fileResolverBaseDir: getActiveFileFolder() }).run(
+      code,
+      pure ? { pure: true, filePath } : { effectHandlers: getSyncEffectHandlers(), filePath },
+    )
     const content = stringifyValue(result, false)
     appendOutput(content, 'result')
   } catch (error) {
@@ -3675,7 +3715,8 @@ function reportTypeDiagnostics(diagnostics: TypeDiagnostic[]): void {
 // We log to the console so a typechecker bug isn't silently invisible in dev.
 function typecheckAndReport(code: string): void {
   try {
-    const result = getDvala().typecheck(code)
+    const filePath = getActiveFilePath()
+    const result = getDvala().typecheck(code, { fileResolverBaseDir: getActiveFileFolder(), filePath })
     reportTypeDiagnostics(result.diagnostics)
   } catch (error) {
     console.warn('Pre-run typecheck failed:', error)
@@ -3692,7 +3733,8 @@ export function typecheck() {
   appendOutput(title, 'comment')
 
   try {
-    const result = getDvala().typecheck(code)
+    const filePath = getActiveFilePath()
+    const result = getDvala().typecheck(code, { fileResolverBaseDir: getActiveFileFolder(), filePath })
     if (result.diagnostics.length === 0) {
       appendOutput('No type errors', 'analyze')
     } else {
