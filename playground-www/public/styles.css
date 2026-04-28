@@ -2945,6 +2945,38 @@ button:focus {
   background: var(--color-surface);
 }
 
+/* Folder rows in the file tree. The chevron sits in the gutter created by
+   the `padding-left` indent set inline by the renderer. */
+.explorer-folder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  transition: background 0.1s, color 0.1s;
+}
+.explorer-folder:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+.explorer-folder__chevron {
+  font-size: 0.7rem;
+  width: 0.8rem;
+  text-align: center;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+.explorer-folder__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .explorer-item__name {
   flex: 1;
   min-width: 0;

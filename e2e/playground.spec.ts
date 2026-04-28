@@ -1426,6 +1426,57 @@ test.describe('file operations', () => {
     const pill = page.locator('#editor-toolbar .editor-toolbar__title')
     await expect(pill).toContainText('<scratch>')
   })
+
+  test('files with `/` in the path render as a folder tree', async ({ page }) => {
+    // Seed three files: one at the root + two sharing an `examples/` folder.
+    // The folder is collapsed by default — its children only render after
+    // a click on the folder row.
+    await page.evaluate(() => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id: 'a', path: 'root.dvala', code: '1', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id: 'b', path: 'examples/foo.dvala', code: '2', context: '', createdAt: 2, updatedAt: 2, locked: false },
+        { id: 'c', path: 'examples/bar.dvala', code: '3', context: '', createdAt: 3, updatedAt: 3, locked: false },
+      ])
+    })
+
+    const folderRow = page.locator('#explorer-file-list .explorer-folder')
+    await expect(folderRow).toHaveCount(1)
+    await expect(folderRow).toContainText('examples')
+    // Collapsed: only the root file + the folder row are visible (no nested items).
+    await expect(page.locator('#explorer-file-list .explorer-item:has-text("foo.dvala")')).toHaveCount(0)
+    await expect(page.locator('#explorer-file-list .explorer-item:has-text("bar.dvala")')).toHaveCount(0)
+    await expect(page.locator('#explorer-file-list .explorer-item:has-text("root.dvala")')).toHaveCount(1)
+
+    // Click to expand → both child files appear.
+    await folderRow.click()
+    await expect(page.locator('#explorer-file-list .explorer-item:has-text("foo.dvala")')).toHaveCount(1)
+    await expect(page.locator('#explorer-file-list .explorer-item:has-text("bar.dvala")')).toHaveCount(1)
+
+    // Click again to collapse.
+    await folderRow.click()
+    await expect(page.locator('#explorer-file-list .explorer-item:has-text("foo.dvala")')).toHaveCount(0)
+  })
+
+  test('expand/collapse state survives reload', async ({ page }) => {
+    await page.evaluate(() => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id: 'a', path: 'examples/foo.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
+      ])
+    })
+
+    await page.locator('#explorer-file-list .explorer-folder').click()
+    await expect(page.locator('#explorer-file-list .explorer-item:has-text("foo.dvala")')).toHaveCount(1)
+
+    await page.reload()
+    await waitForInit(page)
+    await navigateToPlayground(page)
+
+    // Folder should still be expanded after reload because the state is
+    // persisted in localStorage.
+    await expect(page.locator('#explorer-file-list .explorer-item:has-text("foo.dvala")')).toHaveCount(1)
+  })
 })
 
 // ---------------------------------------------------------------------------
