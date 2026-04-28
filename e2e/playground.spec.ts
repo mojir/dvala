@@ -1985,15 +1985,23 @@ test.describe('layout panels', () => {
     await expect(astBody).toBeVisible()
   })
 
-  test('Cmd/Ctrl+Shift+J toggles the right panel', async ({ page }) => {
+  test('Cmd/Ctrl+Shift+J toggles the right panel (both keymods)', async ({ page }) => {
     // Open via parse so we have something to toggle off.
     await setDvalaCode(page, '1 + 2')
     await page.evaluate(() => (window as any).Playground.parse())
     const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
     await expect(astBody).toBeVisible()
+    // Ctrl path (Linux / Windows)
     await page.keyboard.press('Control+Shift+j')
     await expect(astBody).not.toBeVisible()
     await page.keyboard.press('Control+Shift+j')
+    await expect(astBody).toBeVisible()
+    // Meta path (Mac Cmd) — handler checks `evt.ctrlKey || evt.metaKey`,
+    // so both modifiers should toggle. Without this assertion CI (Linux)
+    // silently leaves the metaKey branch uncovered.
+    await page.keyboard.press('Meta+Shift+j')
+    await expect(astBody).not.toBeVisible()
+    await page.keyboard.press('Meta+Shift+j')
     await expect(astBody).toBeVisible()
   })
 
@@ -2053,17 +2061,20 @@ test.describe('layout panels', () => {
     await expect(outputBody).toBeVisible()
   })
 
-  test('Cmd/Ctrl-J toggles the bottom panel', async ({ page }) => {
+  test('Cmd/Ctrl-J toggles the bottom panel (both keymods)', async ({ page }) => {
     const outputBody = page.locator('#bottom-panel .panel-shell__body[data-panel-tab-id="output"]')
     await expect(outputBody).toBeVisible()
 
-    // Cmd-J on Mac, Ctrl-J elsewhere — Playwright accepts `Control+j` on
-    // both since the global keydown handler in scripts.ts checks
-    // `evt.ctrlKey` (and Cmd registers as Meta, also handled).
+    // Cmd-J on Mac, Ctrl-J elsewhere — handler checks `evt.ctrlKey ||
+    // evt.metaKey`, so both modifiers should toggle. Cover both paths
+    // explicitly so CI (Linux) doesn't silently skip the metaKey branch.
     await page.keyboard.press('Control+j')
     await expect(outputBody).not.toBeVisible()
-
     await page.keyboard.press('Control+j')
+    await expect(outputBody).toBeVisible()
+    await page.keyboard.press('Meta+j')
+    await expect(outputBody).not.toBeVisible()
+    await page.keyboard.press('Meta+j')
     await expect(outputBody).toBeVisible()
   })
 

@@ -94,6 +94,7 @@ import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
 import { createPanel } from './scripts/panel'
+import { clampRightPercent, computeRightPanelPercent } from './scripts/layoutMath'
 import {
   persistBottomPanel,
   persistRightPanel,
@@ -1628,6 +1629,15 @@ function onDocumentClick(event: Event) {
   }
 }
 
+/**
+ * Lay out the playground's resizable surfaces (left side panel, code
+ * editor, right panel, bottom panel). Reads from the state store rather
+ * than from the Panel objects on purpose: it runs once at boot BEFORE
+ * `initLayoutPanels()` builds the Panel singletons, and the state slots
+ * are already populated by `state.ts` from localStorage at module init.
+ * Steady-state mutations route `onChange → persistRightPanel/Bottom →
+ * applyLayout`, keeping the state store and Panel instances in sync.
+ */
 function applyLayout() {
   calculateDimensions()
 
@@ -1638,7 +1648,7 @@ function applyLayout() {
   // indexes stay stable for child positioning. CSS hides the unused cells.
   const sidePercent = getState('resize-divider-1-percent')
   const rightPanelOpen = !getState('right-panel-collapsed')
-  const rightPercent = getState('right-panel-size-percent')
+  const rightPercent = clampRightPercent(getState('right-panel-size-percent'), sidePercent)
   const editorTop = document.getElementById('editor-top')
   if (editorTop) {
     if (rightPanelOpen) {
@@ -2893,6 +2903,14 @@ window.onload = async function () {
     if (getState('light-mode') === null) updateCSS()
   })
 
+  // Seed `body.bottom-panel-collapsed` from the persisted state BEFORE
+  // the first `applyLayout()` so `#resize-divider-2` doesn't flash
+  // visible for one paint when the bottom panel is supposed to start
+  // collapsed. The Panel objects don't exist yet (they're built inside
+  // `initLayoutPanels()` later in boot), so we read the state slot
+  // directly — this is the one place where the body class is sourced
+  // from state rather than from the Panel instance.
+  document.body.classList.toggle('bottom-panel-collapsed', getState('bottom-panel-collapsed'))
   applyLayout()
   injectPlaygroundEffects()
   populateSidebarVersion()
@@ -3068,11 +3086,11 @@ window.onload = async function () {
       updateState({ 'resize-divider-2-percent': resizeDivider2YPercent })
       applyLayout()
     } else if (moveParams.id === 'resize-divider-3') {
-      // Drag LEFT (smaller clientX) widens the right panel — flip the delta
-      // sign so the percent grows when the cursor moves toward the editor.
-      let rightPanelPercent = moveParams.percentBeforeMove - ((clientX - moveParams.startMoveX) / windowWidth) * 100
-      if (rightPanelPercent < 15) rightPanelPercent = 15
-      if (rightPanelPercent > 60) rightPanelPercent = 60
+      const rightPanelPercent = computeRightPanelPercent(
+        moveParams.percentBeforeMove,
+        clientX - moveParams.startMoveX,
+        windowWidth,
+      )
       updateState({ 'right-panel-size-percent': rightPanelPercent })
       applyLayout()
     }
@@ -4650,7 +4668,20 @@ export function doExport() {
   ]
   const codeKeys = ['dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end']
   const contextKeys = ['context', 'context-scroll-top', 'context-selection-start', 'context-selection-end']
-  const layoutKeys = ['sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent']
+  const layoutKeys = [
+    'sidebar-width',
+    'playground-height',
+    'resize-divider-1-percent',
+    'resize-divider-2-percent',
+    // Layout-shell panels (Phase 1) — active tab / collapsed flag /
+    // size %. Without these in the export the user's right-panel size
+    // and active-tool choice don't survive an export-import round-trip.
+    'right-panel-active-tab',
+    'right-panel-collapsed',
+    'right-panel-size-percent',
+    'bottom-panel-active-tab',
+    'bottom-panel-collapsed',
+  ]
 
   const includeCode = elements.exportOptCode.checked
   const includeContext = elements.exportOptContext.checked

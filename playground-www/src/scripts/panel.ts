@@ -234,6 +234,11 @@ export function createPanel(options: PanelOptions): Panel {
     }
     activeTabId = id
     if (collapsed) collapsed = false
+    // Order: applyActive first, then applyCollapsed. Both touch the
+    // panel-shell DOM but on disjoint sub-trees (tab strip vs. body
+    // wrapper / panel-shell--collapsed class), so the order doesn't
+    // affect rendering. Kept in this order so the active-tab swap is
+    // reflected before any layout-side effects of uncollapsing.
     applyActive()
     applyCollapsed()
     options.onChange?.({ activeTabId, collapsed })
