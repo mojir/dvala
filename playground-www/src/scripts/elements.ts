@@ -12,8 +12,11 @@ export const elements = {
   get dvalaPanel() {
     return document.getElementById('dvala-panel') as HTMLElement
   },
-  get outputPanel() {
-    return document.getElementById('output-panel') as HTMLElement
+  get bottomPanel() {
+    return document.getElementById('bottom-panel') as HTMLElement
+  },
+  get rightPanel() {
+    return document.getElementById('right-panel') as HTMLElement
   },
   get moreMenu() {
     return document.getElementById('more-menu') as HTMLElement
@@ -56,6 +59,9 @@ export const elements = {
   },
   get resizeDevider2() {
     return document.getElementById('resize-divider-2') as HTMLElement
+  },
+  get resizeDevider3() {
+    return document.getElementById('resize-divider-3') as HTMLElement
   },
   get dvalaPanelDebugInfo() {
     return document.getElementById('dvala-panel-debug-info') as HTMLDivElement

@@ -95,6 +95,16 @@ import { StateHistory } from './StateHistory'
 import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
+import { createPanel } from './scripts/panel'
+import {
+  getRightPanel,
+  persistBottomPanel,
+  persistRightPanel,
+  setBottomPanel,
+  setRightPanel,
+  syncBodyClasses,
+  tryGetBottomPanel,
+} from './scripts/panelInstances'
 import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
   focusScratch,
@@ -414,6 +424,12 @@ type MoveParams =
   | {
       id: 'resize-divider-2'
       startMoveY: number
+      percentBeforeMove: number
+    }
+  | {
+      // Right-panel drag handle: dragging LEFT widens the right panel.
+      id: 'resize-divider-3'
+      startMoveX: number
       percentBeforeMove: number
     }
 
@@ -1617,19 +1633,39 @@ function onDocumentClick(event: Event) {
 function applyLayout() {
   calculateDimensions()
 
-  // Set grid column widths for the editor-top area
+  // ---- editor-top horizontal grid ----
+  // Two collapsibles share the row: side-panel (left) + right-panel.
+  // When the right-panel is collapsed, divider-3 + right-panel get
+  // display:none via CSS; we still emit a 6-column template so the column
+  // indexes stay stable for child positioning. CSS hides the unused cells.
   const sidePercent = getState('resize-divider-1-percent')
+  const rightPanelOpen = !getState('right-panel-collapsed')
+  const rightPercent = getState('right-panel-size-percent')
   const editorTop = document.getElementById('editor-top')
   if (editorTop) {
-    editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr`
+    if (rightPanelOpen) {
+      editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 5px ${rightPercent}%`
+    } else {
+      editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 0 0`
+    }
+    editorTop.classList.toggle('right-panel-collapsed', !rightPanelOpen)
   }
 
-  // Vertical split: output height as percentage of tab height
+  // ---- bottom panel height ----
+  // resize-divider-2-percent is the EDITOR-TOP percentage (top region) — so
+  // bottom = 100 - that. When the bottom panel is collapsed, the height
+  // shrinks to just its tab-strip auto-height (CSS handles via the
+  // panel-shell--collapsed class).
   const tabPlayground = document.getElementById('tab-editor')
-  if (tabPlayground && elements.outputPanel) {
-    const tabHeight = tabPlayground.clientHeight
-    const outputHeight = (tabHeight * (100 - getState('resize-divider-2-percent'))) / 100
-    elements.outputPanel.style.height = `${outputHeight}px`
+  const bottomCollapsed = getState('bottom-panel-collapsed')
+  if (tabPlayground && elements.bottomPanel) {
+    if (bottomCollapsed) {
+      elements.bottomPanel.style.height = ''
+    } else {
+      const tabHeight = tabPlayground.clientHeight
+      const bottomHeight = (tabHeight * (100 - getState('resize-divider-2-percent'))) / 100
+      elements.bottomPanel.style.height = `${bottomHeight}px`
+    }
   }
   // wrapper.style.display = 'block' moved to the end of window.onload — see
   // boot sequence below. e2e tests use that signal as "fully booted", so it
@@ -2703,6 +2739,55 @@ function addOutputElement(element: HTMLElement) {
   saveState({ output: elements.outputResult.innerHTML })
 }
 
+/**
+ * Construct the right + bottom layout panels. Each is wired with a single
+ * tab in this PR: AST viewer in the right panel (populated lazily on
+ * `parse()`), Output in the bottom panel (the existing #output-result
+ * div is moved inside the Output tab's body so all the appendOutput call
+ * sites keep working unchanged).
+ *
+ * Tabs + collapsed state persist via the panel's onChange callback. The
+ * `body.bottom-panel-collapsed` class drives a CSS rule that hides the
+ * horizontal resize divider when the bottom is collapsed.
+ */
+function initLayoutPanels(): void {
+  // ---- Right panel ----
+  const rightPanel = createPanel({
+    containerEl: elements.rightPanel,
+    tabs: [{ id: 'ast', label: 'AST', title: 'Abstract syntax tree of the current file' }],
+    initialTabId: getState('right-panel-active-tab'),
+    initialCollapsed: getState('right-panel-collapsed'),
+    onChange: () => {
+      persistRightPanel()
+      applyLayout()
+    },
+  })
+  setRightPanel(rightPanel)
+
+  // ---- Bottom panel ----
+  const bottomPanel = createPanel({
+    containerEl: elements.bottomPanel,
+    tabs: [{ id: 'output', label: 'Output' }],
+    initialTabId: getState('bottom-panel-active-tab'),
+    initialCollapsed: getState('bottom-panel-collapsed'),
+    onChange: () => {
+      persistBottomPanel()
+      syncBodyClasses()
+      applyLayout()
+    },
+  })
+  setBottomPanel(bottomPanel)
+  // Move the seeded #output-result toolbar template into the Output tab
+  // body. Done after createPanel so the body div exists.
+  const outputBody = bottomPanel.getTabBody('output')
+  const tpl = document.getElementById('bottom-panel-output-template') as HTMLTemplateElement | null
+  if (tpl) {
+    outputBody.appendChild(tpl.content.cloneNode(true))
+    tpl.remove()
+  }
+  syncBodyClasses()
+}
+
 // Wire Monaco listeners that mirror the textarea-era event hooks: every model
 // change pushes into playground state + history; selection / scroll / focus
 // updates persist their own slices of state. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z
@@ -2788,6 +2873,7 @@ window.onload = async function () {
   wireTabStripListeners()
   wireTabKeyboardShortcuts()
   wireQuickOpenShortcut()
+  initLayoutPanels()
 
   syncDvalaCodeHistoryButtons()
 
@@ -2855,6 +2941,32 @@ window.onload = async function () {
     { passive: false },
   )
 
+  // Divider 3: drag left to widen the right panel. Same shape as divider 1
+  // but flips the sign (LEFT-ward drag → larger right-panel-size-percent).
+  elements.resizeDevider3?.addEventListener('mousedown', event => {
+    event.preventDefault()
+    document.body.classList.add('no-select')
+    moveParams = {
+      id: 'resize-divider-3',
+      startMoveX: event.clientX,
+      percentBeforeMove: getState('right-panel-size-percent'),
+    }
+  })
+  elements.resizeDevider3?.addEventListener(
+    'touchstart',
+    event => {
+      event.preventDefault()
+      const touch = event.touches[0]!
+      document.body.classList.add('no-select')
+      moveParams = {
+        id: 'resize-divider-3',
+        startMoveX: touch.clientX,
+        percentBeforeMove: getState('right-panel-size-percent'),
+      }
+    },
+    { passive: false },
+  )
+
   window.onresize = layout
   window.onmouseup = () => {
     document.body.classList.remove('no-select')
@@ -2863,6 +2975,8 @@ window.onload = async function () {
         saveState({ 'resize-divider-1-percent': getState('resize-divider-1-percent') }, false)
       else if (moveParams.id === 'resize-divider-2')
         saveState({ 'resize-divider-2-percent': getState('resize-divider-2-percent') }, false)
+      else if (moveParams.id === 'resize-divider-3')
+        saveState({ 'right-panel-size-percent': getState('right-panel-size-percent') }, false)
     }
     moveParams = null
   }
@@ -2874,6 +2988,8 @@ window.onload = async function () {
         saveState({ 'resize-divider-1-percent': getState('resize-divider-1-percent') }, false)
       else if (moveParams.id === 'resize-divider-2')
         saveState({ 'resize-divider-2-percent': getState('resize-divider-2-percent') }, false)
+      else if (moveParams.id === 'resize-divider-3')
+        saveState({ 'right-panel-size-percent': getState('right-panel-size-percent') }, false)
     }
     moveParams = null
   })
@@ -2899,6 +3015,14 @@ window.onload = async function () {
       if (resizeDivider2YPercent > 90) resizeDivider2YPercent = 90
 
       updateState({ 'resize-divider-2-percent': resizeDivider2YPercent })
+      applyLayout()
+    } else if (moveParams.id === 'resize-divider-3') {
+      // Drag LEFT (smaller clientX) widens the right panel — flip the delta
+      // sign so the percent grows when the cursor moves toward the editor.
+      let rightPanelPercent = moveParams.percentBeforeMove - ((clientX - moveParams.startMoveX) / windowWidth) * 100
+      if (rightPanelPercent < 15) rightPanelPercent = 15
+      if (rightPanelPercent > 60) rightPanelPercent = 60
+      updateState({ 'right-panel-size-percent': rightPanelPercent })
       applyLayout()
     }
   }
@@ -2963,6 +3087,14 @@ window.onload = async function () {
         case 'd':
           evt.preventDefault()
           toggleDebug()
+          break
+        case 'j':
+          // Cmd/Ctrl-J — toggle the bottom panel (Output / future
+          // tabs). Mirrors VS Code's "Toggle Panel" shortcut. Lives on
+          // the global window keydown rather than a Monaco editor
+          // command so it works regardless of where focus is.
+          evt.preventDefault()
+          tryGetBottomPanel()?.toggleCollapsed()
           break
         case '1':
           evt.preventDefault()
@@ -3820,8 +3952,7 @@ export function parse() {
   try {
     const tokens = tokenizeSource(code, true) // always debug for source map positions
     const ast = parseTokenStream(tokens)
-    console.log(ast)
-    showAstTreeModal(ast, title)
+    showAstInRightPanel(ast)
   } catch (error) {
     addOutputSeparator()
     appendOutput(title, 'comment')
@@ -3830,21 +3961,17 @@ export function parse() {
   }
 }
 
-function showAstTreeModal(ast: Ast, title: string) {
-  const { panel, body } = createModalPanel({
-    size: 'large',
-    onClose: () => {
-      popModal()
-      focusDvalaCode()
-    },
-  })
-
-  const treeViewer = createAstTreeViewer({ ast })
-
-  body.style.minHeight = '0'
-  body.appendChild(treeViewer)
-
-  pushPanel(panel, title)
+/**
+ * Render the parsed AST into the right panel's AST tab and ensure the
+ * panel is open + active. Replaces the previous modal-based viewer —
+ * keeps the editor in view alongside the tree, which is the whole point
+ * of moving structural views out of modals into a side-by-side panel.
+ */
+function showAstInRightPanel(ast: Ast): void {
+  const panel = getRightPanel()
+  panel.setActive('ast')
+  panel.setCollapsed(false)
+  panel.setTabBody('ast', createAstTreeViewer({ ast }))
 }
 
 export function parseCst() {

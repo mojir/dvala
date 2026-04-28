@@ -1911,8 +1911,11 @@ a.disabled {
 .editor-top {
   flex: 1;
   display: grid;
-  /* Columns: icons | side-panel | divider | code-panel. Side panel width set by JS. */
-  grid-template-columns: auto 1fr 5px 2fr;
+  /* Columns: icons | side-panel | divider-1 | code-panel | divider-3 | right-panel.
+     The right-panel cell collapses to 0 width (and divider-3 hides) when the
+     right panel is collapsed — applyLayout sets the template + toggles the
+     `.right-panel-collapsed` class on this container. */
+  grid-template-columns: auto 1fr 5px 2fr 5px 0;
   grid-template-rows: auto 1fr;
   min-height: 0;
   white-space: nowrap;
@@ -1924,6 +1927,15 @@ a.disabled {
 #resize-divider-1 { grid-column: 3; grid-row: 1 / -1; }
 #dvala-panel-header { grid-column: 4; grid-row: 1; }
 #dvala-panel { grid-column: 4; grid-row: 2; overflow: hidden; }
+#resize-divider-3 { grid-column: 5; grid-row: 1 / -1; }
+#right-panel { grid-column: 6; grid-row: 1 / -1; overflow: hidden; }
+
+/* Hide the right-panel + its divider when collapsed — saves the visual
+   slot from the editor area. */
+.editor-top.right-panel-collapsed #resize-divider-3,
+.editor-top.right-panel-collapsed #right-panel {
+  display: none;
+}
 
 /* Panel header bars */
 .side-panel__icons {
@@ -1945,6 +1957,9 @@ a.disabled {
   bottom: 0;
   width: 1px;
   background: var(--color-border-subtle);
+  /* Decorative-only: must not intercept clicks at the panel boundary
+     (Playwright caught this when collapsing the bottom panel). */
+  pointer-events: none;
 }
 
 .side-panel__icon {
@@ -2110,6 +2125,105 @@ a.disabled {
   text-overflow: ellipsis;
 }
 
+/* Layout panels (right + bottom). Both host the Panel component, which
+   adds its own .panel-shell wrapper inside. The outer #right-panel /
+   #bottom-panel divs are positioning containers only. */
+#bottom-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* Bottom panel collapsed: collapse to just the tab strip (no body shown). */
+#bottom-panel.layout-panel-collapsed {
+  height: auto !important; /* override the inline height applyLayout set */
+}
+
+/* Hide the horizontal resize divider when the bottom panel is collapsed. */
+.right-panel-collapsed #resize-divider-2,
+body.bottom-panel-collapsed #resize-divider-2 {
+  /* keep — only hide divider-2 when bottom is collapsed (not when right is) */
+}
+body.bottom-panel-collapsed #resize-divider-2 { display: none; }
+
+/* The Panel component shell (used inside #right-panel + #bottom-panel).
+   Containers use flex so the shell can stretch via `flex: 1` in the
+   uncollapsed case and shrink to its tab strip in the collapsed case
+   without the circular `height: 100%` of an auto-height parent. */
+#right-panel,
+#bottom-panel {
+  display: flex;
+  flex-direction: column;
+}
+.panel-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.panel-shell__strip {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  background: var(--color-surface-dim);
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: 0 var(--space-1);
+  flex-shrink: 0;
+}
+.panel-shell__tab {
+  background: transparent;
+  border: none;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.panel-shell__tab:hover {
+  color: var(--color-text);
+}
+.panel-shell__tab--active {
+  color: var(--color-text-bright);
+  border-bottom-color: var(--color-primary, var(--color-text-bright));
+}
+.panel-shell__bodies {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.panel-shell__body {
+  display: none;
+  height: 100%;
+  overflow: auto;
+}
+.panel-shell__body--active {
+  display: block;
+}
+/* Collapsed: hide body, keep tab strip. The container's height shrinks
+   to fit the strip (`height: auto` set by applyLayout when collapsed). */
+.panel-shell--collapsed .panel-shell__bodies {
+  display: none;
+}
+
+/* Toolbar inside a panel body (e.g. the Output's "Clear" button). */
+.panel-shell__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-2);
+  height: var(--panel-header-height);
+  background: var(--color-surface-dim);
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+.panel-shell__toolbar .panel-shell__title {
+  font-size: var(--font-size-sm);
+}
+
 #output-panel {
   display: flex;
   flex-direction: column;
@@ -2257,6 +2371,14 @@ a.disabled {
   height: 5px;
   width: 100%;
   cursor: row-resize;
+  background: var(--color-border-dim);
+  flex-shrink: 0;
+}
+
+/* Vertical divider between code editor and right panel. Mirror of
+   divider-1's role on the opposite side. */
+#resize-divider-3 {
+  cursor: col-resize;
   background: var(--color-border-dim);
   flex-shrink: 0;
 }

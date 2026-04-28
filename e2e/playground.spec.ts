@@ -185,13 +185,14 @@ test.describe('toolbar actions', () => {
     await setDvalaCode(page, '1 + 2')
     await page.evaluate(() => (window as any).Playground.parse())
 
-    // Parse now opens a modal with the AST tree viewer
-    const modal = page.locator('.modal-panel')
-    await expect(modal).toBeVisible({ timeout: 3000 })
+    // The AST viewer now renders into the right panel's `ast` tab body
+    // (used to be a modal); the panel un-collapses when parse() runs.
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).toBeVisible({ timeout: 3000 })
 
-    const modalText = await modal.textContent()
-    expect(modalText).toContain('Call')
-    expect(modalText).toContain('Num')
+    const text = await astBody.textContent()
+    expect(text).toContain('Call')
+    expect(text).toContain('Num')
   })
 
   test('reset playground clears everything', async ({ page }) => {
@@ -1845,6 +1846,94 @@ test.describe('quick open', () => {
     // with no rows).
     await page.evaluate(() => (window as any).Playground.openQuickOpen())
     await expect(page.locator('#quick-open-palette')).toHaveCount(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Layout panels (right + bottom)
+// ---------------------------------------------------------------------------
+
+test.describe('layout panels', () => {
+  test.beforeEach(async ({ page }) => {
+    // Reset panel state slots before each test so the assertions don't
+    // depend on residue from earlier runs (the e2e suite shares a
+    // browser context per worker).
+    await page.goto('')
+    await page.evaluate(() => {
+      localStorage.removeItem('playground-right-panel-collapsed')
+      localStorage.removeItem('playground-bottom-panel-collapsed')
+    })
+    await page.reload()
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await navigateToPlayground(page)
+  })
+
+  test('right panel is collapsed by default; parse() opens it with the AST tab', async ({ page }) => {
+    // The right panel host is in the DOM but its body is hidden until
+    // un-collapsed. Confirm the body isn't visible initially.
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).not.toBeVisible()
+
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+
+    await expect(astBody).toBeVisible()
+    await expect(astBody).toContainText('Call')
+  })
+
+  test('clicking the active tab on the bottom panel toggles its collapse', async ({ page }) => {
+    // Bottom panel keeps its tab strip visible when collapsed — the
+    // entire panel shrinks to strip height, so clicking the active tab
+    // is a discoverable toggle. Right panel collapses to nothing (cleaner
+    // default) so it has no equivalent strip-click; that asymmetry is
+    // intentional MVP. Cmd-J is the keyboard alternative for either.
+    const outputTab = page.locator('#bottom-panel .panel-shell__tab[data-panel-tab-id="output"]')
+    const outputBody = page.locator('#bottom-panel .panel-shell__body[data-panel-tab-id="output"]')
+    await expect(outputBody).toBeVisible()
+
+    await outputTab.click()
+    await expect(outputBody).not.toBeVisible()
+
+    await outputTab.click()
+    await expect(outputBody).toBeVisible()
+  })
+
+  test('Cmd/Ctrl-J toggles the bottom panel', async ({ page }) => {
+    const outputBody = page.locator('#bottom-panel .panel-shell__body[data-panel-tab-id="output"]')
+    await expect(outputBody).toBeVisible()
+
+    // Cmd-J on Mac, Ctrl-J elsewhere — Playwright accepts `Control+j` on
+    // both since the global keydown handler in scripts.ts checks
+    // `evt.ctrlKey` (and Cmd registers as Meta, also handled).
+    await page.keyboard.press('Control+j')
+    await expect(outputBody).not.toBeVisible()
+
+    await page.keyboard.press('Control+j')
+    await expect(outputBody).toBeVisible()
+  })
+
+  test('bottom panel collapsed state survives reload', async ({ page }) => {
+    const outputBody = page.locator('#bottom-panel .panel-shell__body[data-panel-tab-id="output"]')
+    await expect(outputBody).toBeVisible()
+
+    await page.keyboard.press('Control+j')
+    await expect(outputBody).not.toBeVisible()
+
+    await page.reload()
+    await waitForInit(page)
+    await navigateToPlayground(page)
+
+    await expect(outputBody).not.toBeVisible()
+  })
+
+  test('Output appears in the bottom panel tab', async ({ page }) => {
+    // Run produces output; confirm it lands inside the panel's Output tab body.
+    await setDvalaCode(page, '6 * 7')
+    await clickRun(page)
+    await waitForOutput(page)
+    const outputBody = page.locator('#bottom-panel .panel-shell__body[data-panel-tab-id="output"]')
+    await expect(outputBody).toContainText('42')
   })
 })
 
