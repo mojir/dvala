@@ -51,7 +51,16 @@ export function createPanel(options: PanelOptions): Panel {
   }
 
   const { containerEl } = options
-  let activeTabId = options.initialTabId ?? options.tabs[0]!.id
+  // Validate initialTabId against the actual tab list. Persisted state can
+  // name a tab that no longer exists (e.g. a future PR drops the Output
+  // tab — an old user's localStorage still says `'output'`). Falling back
+  // to the first tab keeps the panel usable instead of producing a blank
+  // body (no `tabBodies` entry would match an unknown id).
+  const knownIds = new Set(options.tabs.map(t => t.id))
+  let activeTabId =
+    options.initialTabId !== undefined && knownIds.has(options.initialTabId)
+      ? options.initialTabId
+      : options.tabs[0]!.id
   let collapsed = options.initialCollapsed ?? false
 
   // ---- Tab strip ----

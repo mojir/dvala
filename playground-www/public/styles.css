@@ -2134,17 +2134,13 @@ a.disabled {
   flex-shrink: 0;
 }
 
-/* Bottom panel collapsed: collapse to just the tab strip (no body shown). */
-#bottom-panel.layout-panel-collapsed {
-  height: auto !important; /* override the inline height applyLayout set */
-}
-
-/* Hide the horizontal resize divider when the bottom panel is collapsed. */
-.right-panel-collapsed #resize-divider-2,
+/* Bottom panel collapsed: applyLayout clears `style.height` so the
+   container sizes to its content (the tab strip). The body is hidden
+   via the `.panel-shell--collapsed .panel-shell__bodies` rule below.
+   Hide the horizontal resize divider too — it has nothing to resize. */
 body.bottom-panel-collapsed #resize-divider-2 {
-  /* keep — only hide divider-2 when bottom is collapsed (not when right is) */
+  display: none;
 }
-body.bottom-panel-collapsed #resize-divider-2 { display: none; }
 
 /* The Panel component shell (used inside #right-panel + #bottom-panel).
    Containers use flex so the shell can stretch via `flex: 1` in the

@@ -3055,6 +3055,14 @@ window.onload = async function () {
       document.getElementById('tab-btn-search')?.click()
       return
     }
+    // Cmd/Ctrl-J — toggle the bottom panel. Lifted out of the ctrlKey-only
+    // switch below so it works on Mac (where Cmd registers as metaKey,
+    // not ctrlKey). Mirrors the Cmd-K pattern above.
+    if ((evt.ctrlKey || evt.metaKey) && evt.key === 'j') {
+      evt.preventDefault()
+      tryGetBottomPanel()?.toggleCollapsed()
+      return
+    }
     if (evt.ctrlKey) {
       switch (evt.key) {
         case 'r':
@@ -3087,14 +3095,6 @@ window.onload = async function () {
         case 'd':
           evt.preventDefault()
           toggleDebug()
-          break
-        case 'j':
-          // Cmd/Ctrl-J — toggle the bottom panel (Output / future
-          // tabs). Mirrors VS Code's "Toggle Panel" shortcut. Lives on
-          // the global window keydown rather than a Monaco editor
-          // command so it works regardless of where focus is.
-          evt.preventDefault()
-          tryGetBottomPanel()?.toggleCollapsed()
           break
         case '1':
           evt.preventDefault()

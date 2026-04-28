@@ -59,7 +59,10 @@ export const defaultState = {
   'right-panel-size-percent': 35 as number, // % of total editor-area width
   'bottom-panel-active-tab': 'output' as string,
   'bottom-panel-collapsed': false as boolean, // output is on by default
-  'bottom-panel-size-percent': 30 as number, // % of total editor-area height
+  // Note: the bottom panel's height % lives in the existing
+  // `resize-divider-2-percent` slot (was the output panel's slot pre-PR
+  // and continues to be the canonical home). No separate
+  // `bottom-panel-size-percent` slot needed.
 } as const
 
 type State = {
