@@ -1,5 +1,8 @@
 const DB_NAME = 'dvala-playground'
-const DB_VERSION = 4
+// v5: the `path` field was added to SavedFile (Phase 1 step 14). Per the
+// design doc decision (pre-1.0, ephemeral state, no migration), the upgrade
+// drops the old saved-files store and recreates it empty.
+const DB_VERSION = 5
 
 export const SAVED_SNAPSHOTS_STORE = 'saved-snapshots'
 export const TERMINAL_SNAPSHOTS_STORE = 'terminal-snapshots'
@@ -17,10 +20,16 @@ export function openDb(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
     request.onupgradeneeded = e => {
       const db = (e.target as IDBOpenDBRequest).result
+      const oldVersion = e.oldVersion
       if (!db.objectStoreNames.contains(SAVED_SNAPSHOTS_STORE)) db.createObjectStore(SAVED_SNAPSHOTS_STORE)
       if (!db.objectStoreNames.contains(TERMINAL_SNAPSHOTS_STORE)) db.createObjectStore(TERMINAL_SNAPSHOTS_STORE)
-      if (!db.objectStoreNames.contains(SAVED_FILES_STORE)) db.createObjectStore(SAVED_FILES_STORE)
       if (!db.objectStoreNames.contains(FILE_HISTORIES_STORE)) db.createObjectStore(FILE_HISTORIES_STORE)
+      // v5 wipes saved-files and recreates the store with the new `path`
+      // schema. Pre-v5 entries used `name` and aren't migrated.
+      if (oldVersion < 5 && db.objectStoreNames.contains(SAVED_FILES_STORE)) {
+        db.deleteObjectStore(SAVED_FILES_STORE)
+      }
+      if (!db.objectStoreNames.contains(SAVED_FILES_STORE)) db.createObjectStore(SAVED_FILES_STORE)
     }
     request.onsuccess = e => {
       dbInstance = (e.target as IDBOpenDBRequest).result

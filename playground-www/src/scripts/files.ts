@@ -8,14 +8,18 @@ import {
   deleteFileHistory,
 } from '../fileHistoryStorage'
 import {
-  DVALA_FILE_SUFFIX,
   clearAllFiles,
+  fileDisplayName,
+  filenameFromPath,
+  folderFromPath,
   getSavedFiles,
   normalizeSavedFileName,
   setSavedFiles,
-  stripSavedFileSuffix,
+  uniquePathInFolder,
 } from '../fileStorage'
 import type { SavedFile } from '../fileStorage'
+import { buildFileTree } from '../fileTree'
+import type { TreeNode } from '../fileTree'
 import * as router from '../router'
 import {
   ICONS,
@@ -197,35 +201,19 @@ export function openScratchInEditor(
   if (options.toast) showToast(options.toast)
 }
 
-export function getUniqueSavedFileName(name: string, existingNames: Iterable<string>): string {
-  const normalizedName = normalizeSavedFileName(name)
-  const usedNames = new Set(existingNames)
-  if (!usedNames.has(normalizedName)) return normalizedName
-
-  const baseName = stripSavedFileSuffix(normalizedName)
-  let n = 2
-  let candidate = `${baseName} (${n})${DVALA_FILE_SUFFIX}`
-  while (usedNames.has(candidate)) {
-    n++
-    candidate = `${baseName} (${n})${DVALA_FILE_SUFFIX}`
-  }
-  return candidate
-}
+// uniquePathInFolder + uniqueFilePath live in fileStorage.ts (testable + reusable).
 
 /**
- * Create a new untitled file and return its ID.
+ * Create a new untitled file at the root folder and return its ID.
  * Generates a unique name: "Untitled File.dvala", "Untitled File (2).dvala", etc.
  */
 export function createUntitledFile(code = '', context = ''): string {
   const files = getSavedFiles()
-  const name = getUniqueSavedFileName(
-    'Untitled File',
-    files.map(entry => entry.name),
-  )
+  const path = uniquePathInFolder('', 'Untitled File', files)
   const now = Date.now()
   const createdFile: SavedFile = {
     id: crypto.randomUUID(),
-    name,
+    path,
     code,
     context,
     createdAt: now,
@@ -262,7 +250,7 @@ function populateExplorerFileList() {
       return
     }
     const currentFile = currentId ? files.find(entry => entry.id === currentId) : null
-    const currentTitle = currentFile ? currentFile.name : SCRATCH_TITLE
+    const currentTitle = currentFile ? fileDisplayName(currentFile) : SCRATCH_TITLE
     const currentCode = currentFile ? currentFile.code : scratchCode
     const lockIcon = currentFile?.locked
       ? `<span class="file-stats-panel__lock" title="Locked">${ICONS.lock}</span>`
@@ -303,79 +291,194 @@ function populateExplorerFileList() {
     return
   }
 
-  list.innerHTML = [
-    renderScratchExplorerItem(),
-    ...files.map(entry => {
-      const isActive = entry.id === currentId
-      const activeClass = isActive ? ' explorer-item--active' : ''
-      const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
-      const menuId = `explorer-menu-${entry.id}`
-      const menuItems: EditorMenuItem[] = [
-        {
-          action: `Playground.closeExplorerMenus();Playground.renameFile('${entry.id}')`,
-          icon: ICONS.edit,
-          label: 'Rename',
-        },
-        {
-          action: `Playground.closeExplorerMenus();Playground.duplicateFile('${entry.id}')`,
-          icon: ICONS.duplicate,
-          label: 'Duplicate',
-        },
-        {
-          action: `Playground.closeExplorerMenus();Playground.toggleFileLock('${entry.id}')`,
-          icon: entry.locked ? ICONS.unlock : ICONS.lock,
-          label: entry.locked ? 'Unlock' : 'Lock',
-        },
-        {
-          action: `Playground.closeExplorerMenus();Playground.downloadFile('${entry.id}')`,
-          icon: ICONS.download,
-          label: 'Export',
-        },
-        {
-          action: `Playground.closeExplorerMenus();Playground.shareFile('${entry.id}')`,
-          icon: ICONS.share,
-          label: 'Share',
-        },
-        {
-          action: `Playground.closeExplorerMenus();Playground.deleteSavedFile('${entry.id}')`,
-          danger: true,
-          icon: ICONS.trash,
-          label: 'Delete',
-        },
-      ]
-      return `
-      <div class="explorer-item${activeClass}" onclick="Playground.loadSavedFile('${entry.id}')" title="${escapeHtml(entry.name)}">
-        <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(entry.name)}</span>
+  // Tree-shape rendering. Folders are derived from each `path` value; the
+  // expand/collapse set lives in state so it survives reloads. Folders that
+  // no longer have a backing file are pruned out of the expand set on every
+  // render so localStorage doesn't accumulate stale paths.
+  const tree = buildFileTree(files)
+  const expanded = new Set<string>(getState('explorer-expanded-folders'))
+
+  list.innerHTML = renderScratchExplorerItem() + tree.map(node => renderTreeNode(node, 0, expanded, currentId)).join('')
+
+  // Walk the full tree (regardless of expansion state) to collect every
+  // folder path that still has a file under it. The pruned set must only
+  // drop folders that genuinely no longer exist — earlier we walked just
+  // the rendered subtree, which had the side effect of forgetting any
+  // folder nested inside a *collapsed* parent the next time the user
+  // expanded it.
+  const liveFolders = collectFolderPaths(tree)
+  const stillExpanded = [...expanded].filter(p => liveFolders.has(p))
+  if (stillExpanded.length !== expanded.size) {
+    saveState({ 'explorer-expanded-folders': stillExpanded }, false)
+  }
+
+  renderFileStats()
+}
+
+/** Recursively gather every folder path in the tree. */
+function collectFolderPaths(nodes: TreeNode[], into: Set<string> = new Set()): Set<string> {
+  for (const node of nodes) {
+    if (node.kind === 'folder') {
+      into.add(node.path)
+      collectFolderPaths(node.children, into)
+    }
+  }
+  return into
+}
+
+/**
+ * Render one tree node (file or folder) as an HTML string. Folders nest
+ * their children inline when expanded — there's no virtualization, so the
+ * whole subtree paints whenever any node changes. Fine for the scale of
+ * playground workspaces; revisit if anyone hits perf issues at 1000+ files.
+ *
+ * Click targets use `data-*` attributes + a delegated handler installed
+ * once on the parent list (see `wireExplorerListeners`). Inline `onclick`
+ * with interpolated user data would let a path containing a single quote
+ * inject arbitrary JS into the handler.
+ */
+function renderTreeNode(node: TreeNode, depth: number, expanded: Set<string>, currentId: string | null): string {
+  // 12px per depth level; the chevron sits in the indent gutter.
+  const indent = `padding-left:${depth * 12}px;`
+  if (node.kind === 'folder') {
+    const isExpanded = expanded.has(node.path)
+    const chevron = isExpanded ? '▾' : '▸'
+    const childrenHtml = isExpanded
+      ? node.children.map(c => renderTreeNode(c, depth + 1, expanded, currentId)).join('')
+      : ''
+    return `
+      <div class="explorer-folder" style="${indent}" data-folder-path="${escapeHtml(node.path)}" title="${escapeHtml(node.path)}">
+        <span class="explorer-folder__chevron">${chevron}</span>
+        <span class="explorer-folder__name" style="font-family:var(--font-mono);">${escapeHtml(node.name)}</span>
+      </div>${childrenHtml}`
+  }
+  const entry = node.file
+  const isActive = entry.id === currentId
+  const activeClass = isActive ? ' explorer-item--active' : ''
+  const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
+  const menuId = `explorer-menu-${entry.id}`
+  // Menu actions interpolate the file id, which is a UUID generated by
+  // crypto.randomUUID — safe in a JS string literal. The folder path above
+  // is user-supplied and goes through data-attribute + delegated handler.
+  const menuItems: EditorMenuItem[] = [
+    {
+      action: `Playground.closeExplorerMenus();Playground.renameFile('${entry.id}')`,
+      icon: ICONS.edit,
+      label: 'Rename',
+    },
+    {
+      action: `Playground.closeExplorerMenus();Playground.duplicateFile('${entry.id}')`,
+      icon: ICONS.duplicate,
+      label: 'Duplicate',
+    },
+    {
+      action: `Playground.closeExplorerMenus();Playground.toggleFileLock('${entry.id}')`,
+      icon: entry.locked ? ICONS.unlock : ICONS.lock,
+      label: entry.locked ? 'Unlock' : 'Lock',
+    },
+    {
+      action: `Playground.closeExplorerMenus();Playground.downloadFile('${entry.id}')`,
+      icon: ICONS.download,
+      label: 'Export',
+    },
+    {
+      action: `Playground.closeExplorerMenus();Playground.shareFile('${entry.id}')`,
+      icon: ICONS.share,
+      label: 'Share',
+    },
+    {
+      action: `Playground.closeExplorerMenus();Playground.deleteSavedFile('${entry.id}')`,
+      danger: true,
+      icon: ICONS.trash,
+      label: 'Delete',
+    },
+  ]
+  return `
+      <div class="explorer-item${activeClass}" style="${indent}" data-file-id="${entry.id}" title="${escapeHtml(entry.path)}">
+        <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(filenameFromPath(entry.path))}</span>
         ${lockHtml}
         <span class="explorer-item__actions" onclick="event.stopPropagation()">
           <button class="explorer-item__btn" onclick="Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
           ${renderEditorMenu({ id: menuId, items: menuItems })}
         </span>
       </div>`
-    }),
-  ].join('')
+}
 
-  renderFileStats()
+/**
+ * Wire a single delegated click handler on the explorer list. Each row
+ * carries a `data-folder-path` or `data-file-id` attribute; the handler
+ * dispatches based on the nearest matching ancestor of the click target.
+ *
+ * Called once during boot — guarded by `explorerListenersWired` so repeat
+ * boot calls (e.g. test harness reset) don't double-bind.
+ */
+let explorerListenersWired = false
+export function wireExplorerListeners(): void {
+  if (explorerListenersWired) return
+  const list = document.getElementById('explorer-file-list')
+  if (!list) return
+  explorerListenersWired = true
+  list.addEventListener('click', evt => {
+    const target = evt.target as HTMLElement
+    // Click inside the per-file actions menu (the "⋯" button + dropdown)
+    // shouldn't toggle the row; let those handlers run on their own.
+    if (target.closest('.explorer-item__actions')) return
+    const folder = target.closest<HTMLElement>('[data-folder-path]')
+    if (folder) {
+      toggleExplorerFolder(folder.dataset['folderPath']!)
+      return
+    }
+    const file = target.closest<HTMLElement>('[data-file-id]')
+    if (file) {
+      void loadSavedFile(file.dataset['fileId']!)
+    }
+  })
+}
+
+/**
+ * Toggle the expanded state of a folder in the tree. Public so the e2e
+ * suite can drive expand/collapse without clicking; everyday clicks come
+ * through the delegated listener in wireExplorerListeners.
+ */
+export function toggleExplorerFolder(path: string): void {
+  const expanded = new Set<string>(getState('explorer-expanded-folders'))
+  if (expanded.has(path)) expanded.delete(path)
+  else expanded.add(path)
+  saveState({ 'explorer-expanded-folders': [...expanded] }, false)
+  populateExplorerFileList()
 }
 
 export function renameFile(id: string) {
   const file = getSavedFiles().find(entry => entry.id === id)
   if (!file) return
-  showNameInputModal('Rename file', file.name, name => {
+  // Rename keeps the file anchored in its current folder — the user-typed
+  // string is treated as a basename, not an absolute path. Cross-folder
+  // moves are a deferred follow-up (tree drag-and-drop, Phase 1 later).
+  //
+  // Subtle: if the user types `sub/bar`, `normalizeSavedFileName` produces
+  // `sub/bar.dvala` and the resulting `newPath` becomes
+  // `${currentFolder}/sub/bar.dvala` — i.e. a file deeper in the tree, not
+  // a peer rename. This is intentional today (keeps the rename invariant
+  // simple) and the deferred drag-to-move work is the right place to add
+  // an explicit "move out of current folder" affordance.
+  const folder = folderFromPath(file.path)
+  const currentFilename = filenameFromPath(file.path)
+  showNameInputModal('Rename file', currentFilename, name => {
     const files = getSavedFiles()
-    const normalizedName = normalizeSavedFileName(name)
-    const duplicate = files.find(entry => entry.name === normalizedName && entry.id !== id)
+    const normalizedFilename = normalizeSavedFileName(name)
+    const newPath = folder === '' ? normalizedFilename : `${folder}/${normalizedFilename}`
+    const duplicate = files.find(entry => entry.path === newPath && entry.id !== id)
     const doRename = () => {
       const updated = files
-        .map(entry => (entry.id === id ? { ...entry, name: normalizedName, updatedAt: Date.now() } : entry))
+        .map(entry => (entry.id === id ? { ...entry, path: newPath, updatedAt: Date.now() } : entry))
         .filter(entry => !duplicate || entry.id !== duplicate.id)
       setSavedFiles(updated)
       updateCSS()
       populateSavedFilesList()
-      showToast(`Renamed to "${normalizedName}"`)
+      showToast(`Renamed to "${normalizedFilename}"`)
     }
     if (duplicate) {
-      void showInfoModal('Replace existing file?', `"${normalizedName}" already exists. Replace it?`, doRename)
+      void showInfoModal('Replace existing file?', `"${normalizedFilename}" already exists. Replace it?`, doRename)
     } else {
       doRename()
     }
@@ -429,7 +532,7 @@ export function shareFile(id: string) {
   const content = document.createElement('div')
   content.className = 'modal-body-row'
   content.innerHTML = `
-    <p style="margin:0 0 var(--space-3);">Share <strong>${escapeHtml(file.name)}</strong> as a link.</p>
+    <p style="margin:0 0 var(--space-3);">Share <strong>${escapeHtml(fileDisplayName(file))}</strong> as a link.</p>
     <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer;">
       <input type="checkbox" id="share-include-context" ${file.context.trim() ? '' : 'disabled'}>
       Include context${file.context.trim() ? '' : ' (empty)'}
@@ -515,7 +618,9 @@ export function deleteSavedFile(id: string) {
 export function downloadFile(id: string) {
   const file = getSavedFiles().find(entry => entry.id === id)
   if (!file) return
-  const filename = `${file.name.replace(/[^a-z0-9_-]/gi, '_')}.json`
+  // Slashes in the path become underscores in the download filename so the
+  // browser's "save as" dialog doesn't try to create folders.
+  const filename = `${file.path.replace(/[^a-z0-9_-]/gi, '_')}.json`
   const { id: _id, ...exportData } = file
   void saveFile(JSON.stringify(exportData, null, 2), filename)
 }
@@ -570,19 +675,20 @@ export function openImportFileModal() {
         void showInfoModal('Import failed', 'Invalid JSON — could not parse the file.')
         return
       }
-      if (typeof parsed !== 'object' || parsed === null || !('name' in parsed) || !('code' in parsed)) {
-        void showInfoModal('Import failed', 'Not a valid file object (requires at least "name" and "code").')
+      if (typeof parsed !== 'object' || parsed === null || !('code' in parsed)) {
+        void showInfoModal('Import failed', 'Not a valid file object (requires at least "code").')
         return
       }
       const raw = parsed as Record<string, unknown>
       const now = Date.now()
       const existing = getSavedFiles()
-      const existingNames = new Set(existing.map(p => p.name))
-      const rawName = typeof raw['name'] === 'string' ? raw['name'] : 'Imported File'
-      const name = getUniqueSavedFileName(rawName, existingNames)
+      // Accept either `path` (new schema) or legacy `name` exports — anything
+      // missing both falls back to "Imported File" at the root.
+      const rawPath = typeof raw['path'] === 'string' ? raw['path'] : typeof raw['name'] === 'string' ? raw['name'] : 'Imported File'
+      const path = uniquePathInFolder(folderFromPath(rawPath), filenameFromPath(rawPath), existing)
       const imported: SavedFile = {
         id: crypto.randomUUID(),
-        name,
+        path,
         code: typeof raw['code'] === 'string' ? raw['code'] : '',
         context: typeof raw['context'] === 'string' ? raw['context'] : '',
         createdAt: typeof raw['createdAt'] === 'number' ? raw['createdAt'] : now,
@@ -592,7 +698,7 @@ export function openImportFileModal() {
       setSavedFiles([imported, ...existing])
 
       populateSavedFilesList({ animateNewId: imported.id })
-      showToast(`Imported "${imported.name}"`)
+      showToast(`Imported "${fileDisplayName(imported)}"`)
     }
     reader.readAsText(file)
   }
@@ -603,13 +709,13 @@ export function duplicateFile(id: string) {
   const file = getSavedFiles().find(entry => entry.id === id)
   if (!file) return
   const now = Date.now()
-  const name = getUniqueSavedFileName(
-    `Copy of ${file.name}`,
-    getSavedFiles().map(entry => entry.name),
-  )
+  // Duplicate stays in the same folder as the source file; only the basename
+  // gets the "Copy of " prefix and the disambiguation tail.
+  const folder = folderFromPath(file.path)
+  const path = uniquePathInFolder(folder, `Copy of ${filenameFromPath(file.path)}`, getSavedFiles())
   const copy: SavedFile = {
     id: crypto.randomUUID(),
-    name,
+    path,
     code: file.code,
     context: file.context,
     createdAt: now,
@@ -633,24 +739,27 @@ export function duplicateFile(id: string) {
   updateContextState(copy.context, false)
   updateCSS()
   populateSavedFilesList({ animateNewId: copy.id })
-  showToast(`Created "${copy.name}"`)
+  showToast(`Created "${fileDisplayName(copy)}"`)
 }
 
 export function saveAs() {
   const currentId = getState('current-file-id')
   const currentFile = currentId ? getSavedFiles().find(entry => entry.id === currentId) : null
-  const defaultName = currentFile ? `Copy of ${currentFile.name}` : ''
+  // saveAs creates the copy in the source's folder (or the root for scratch).
+  const sourceFolder = currentFile ? folderFromPath(currentFile.path) : ''
+  const defaultName = currentFile ? `Copy of ${filenameFromPath(currentFile.path)}` : ''
   showNameInputModal('Save as', defaultName, name => {
     const files = getSavedFiles()
-    const normalizedName = normalizeSavedFileName(name)
-    const duplicate = files.find(entry => entry.name === normalizedName)
+    const normalizedFilename = normalizeSavedFileName(name)
+    const newPath = sourceFolder === '' ? normalizedFilename : `${sourceFolder}/${normalizedFilename}`
+    const duplicate = files.find(entry => entry.path === newPath)
     const doSave = () => {
       const filtered = duplicate ? files.filter(entry => entry.id !== duplicate.id) : files
       const now = Date.now()
       if (!currentId) persistScratchFromCurrentState()
       const createdFile: SavedFile = {
         id: crypto.randomUUID(),
-        name: normalizedName,
+        path: newPath,
         code: getState('dvala-code'),
         context: getState('context'),
         createdAt: now,
@@ -663,10 +772,10 @@ export function saveAs() {
 
       updateCSS()
       populateSavedFilesList({ animateNewId: createdFile.id })
-      showToast(`Saved as "${normalizedName}"`)
+      showToast(`Saved as "${normalizedFilename}"`)
     }
     if (duplicate) {
-      void showInfoModal('Replace existing file?', `"${normalizedName}" already exists. Replace it?`, doSave)
+      void showInfoModal('Replace existing file?', `"${normalizedFilename}" already exists. Replace it?`, doSave)
     } else {
       doSave()
     }

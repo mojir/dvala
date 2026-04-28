@@ -37,6 +37,10 @@ export const defaultState = {
   'current-context-entry-kind': 'binding' as 'binding' | 'effect-handler',
   'current-context-binding-name': null as string | null,
   'dvala-code-edited': false as boolean,
+  // Folder paths currently expanded in the file tree. Defaults to all folders
+  // collapsed; users opt in by clicking. Workspace-scoped state — survives
+  // reloads but lives in the same localStorage bucket as other prefs.
+  'explorer-expanded-folders': [] as string[],
 } as const
 
 type State = {

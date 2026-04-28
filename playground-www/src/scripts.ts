@@ -60,7 +60,16 @@ import {
   setTerminalSnapshots,
 } from './snapshotStorage'
 import type { SavedSnapshot, TerminalSnapshotEntry } from './snapshotStorage'
-import { clearAllFiles, getSavedFiles, initFiles, normalizeSavedFileName, setSavedFiles } from './fileStorage'
+import {
+  clearAllFiles,
+  fileDisplayName,
+  getSavedFiles,
+  initFiles,
+  normalizeFilePath,
+  normalizeSavedFileName,
+  setSavedFiles,
+  uniqueFilePath,
+} from './fileStorage'
 import type { SavedFile } from './fileStorage'
 import {
   clearAllFileHistories,
@@ -92,7 +101,6 @@ import {
   SCRATCH_TITLE,
   createUntitledFile,
   flushPendingAutoSave,
-  getUniqueSavedFileName,
   guardCodeReplacement,
   hasScratchContent,
   isScratchActive,
@@ -102,6 +110,7 @@ import {
   scheduleAutoSave,
   scheduleScratchEditedClear,
   showNameInputModal,
+  wireExplorerListeners,
 } from './scripts/files'
 import {
   closeAllModals,
@@ -158,6 +167,7 @@ export {
   saveAs,
   saveScratch,
   shareFile,
+  toggleExplorerFolder,
   toggleExplorerMenu,
   toggleFileLock,
 } from './scripts/files'
@@ -265,9 +275,12 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
       },
       getSavedFiles: () => getSavedFiles(),
       saveFile: (name, code) => {
+        // `name` from playground effects is interpreted as a full path. We
+        // only normalise the basename's `.dvala` suffix; folder structure is
+        // preserved as authored.
         const files = getSavedFiles()
-        const normalizedName = normalizeSavedFileName(name)
-        const existing = files.find(entry => entry.name === normalizedName)
+        const cleanedPath = normalizeFilePath(name) ?? normalizeSavedFileName(name)
+        const existing = files.find(entry => entry.path === cleanedPath)
         const now = Date.now()
         if (existing) {
           existing.code = code
@@ -276,7 +289,7 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
         } else {
           const createdFile: SavedFile = {
             id: crypto.randomUUID(),
-            name: normalizedName,
+            path: cleanedPath,
             code,
             context: '',
             createdAt: now,
@@ -2698,6 +2711,7 @@ window.onload = async function () {
   initExecutionControlBar()
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   wireCodeEditorListeners()
+  wireExplorerListeners()
 
   syncDvalaCodeHistoryButtons()
 
@@ -3954,10 +3968,14 @@ export function focusDvalaCode() {
   getCodeEditor().focus()
 }
 
-// Test-driving accessors. The e2e suite drives the editor through the
-// `Playground.*` global rather than poking DOM internals — Monaco doesn't
-// expose a `.value` like a textarea, so these are the supported probes.
-// Internal callers should keep using setDvalaCode / getState directly.
+// Test-driving accessors. The e2e suite drives the editor + file storage
+// through the `Playground.*` global rather than poking DOM internals or
+// importing modules directly. Internal callers should keep using
+// setDvalaCode / setSavedFiles / getState directly.
+export function setSavedFilesForTesting(files: SavedFile[]): void {
+  setSavedFiles(files)
+  populateSavedFilesList()
+}
 export function setEditorValue(code: string): void {
   setDvalaCode(code, true)
 }
@@ -4708,13 +4726,16 @@ export function doImport() {
   const payloadFiles = payload.savedFiles
   if (elements.importOptSavedFiles.checked && payloadFiles) {
     const existingIds = new Set(getSavedFiles().map(p => p.id))
-    const existingNames = new Set(getSavedFiles().map(p => p.name))
+    const existingPaths = new Set(getSavedFiles().map(p => p.path))
     const toAdd = payloadFiles
       .filter(p => !existingIds.has(p.id))
       .map(file => {
-        const normalizedName = getUniqueSavedFileName(file.name, existingNames)
-        existingNames.add(normalizedName)
-        return { ...file, name: normalizedName }
+        // Disambiguate by suffixing the basename when the path collides;
+        // folder structure is preserved.
+        const cleaned = normalizeFilePath(file.path) ?? normalizeSavedFileName(file.path)
+        const path = uniqueFilePath(cleaned, existingPaths)
+        existingPaths.add(path)
+        return { ...file, path }
       })
     const conflicts = payloadFiles.length - toAdd.length
     if (toAdd.length > 0) {
@@ -6278,7 +6299,7 @@ export function updateCSS() {
           getContextEffectHandlerInvalidDraft(context, state.activeContextBindingName) !== null)))
       ? state.activeContextBindingName
       : ''
-  const currentFileTitle = currentFile ? currentFile.name : SCRATCH_TITLE
+  const currentFileTitle = currentFile ? fileDisplayName(currentFile) : SCRATCH_TITLE
   const showCodePendingIndicator =
     !isContextTab &&
     !isLocked &&

@@ -69,14 +69,17 @@ export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
       deps.saveFile(name, content)
     },
     load(name: string): string {
-      const file = deps.getSavedFiles().find(entry => entry.name === name)
+      // The user-facing argument is a path (e.g. `"foo.dvala"` or
+      // `"examples/foo.dvala"`). Path lookups are exact; lookup by basename
+      // alone is ambiguous in a tree-shaped workspace.
+      const file = deps.getSavedFiles().find(entry => entry.path === name)
       if (!file) {
         throw new Error(`File "${name}" not found`)
       }
       return file.code
     },
     list(): string[] {
-      return deps.getSavedFiles().map(entry => entry.name)
+      return deps.getSavedFiles().map(entry => entry.path)
     },
   }
 
