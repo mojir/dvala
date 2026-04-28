@@ -1613,6 +1613,128 @@ test.describe('file operations', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Editor tabs
+// ---------------------------------------------------------------------------
+
+test.describe('editor tabs', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await navigateToPlayground(page)
+  })
+
+  test('opening a saved file adds a tab; switching tabs swaps the editor content', async ({ page }) => {
+    // Seed two files and open both. The strip should show scratch + 2 file
+    // tabs; clicking a tab switches the active file.
+    const aId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    const bId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    await page.evaluate(
+      ({ aId, bId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          { id: aId, path: 'a.dvala', code: '111', context: '', createdAt: 1, updatedAt: 1, locked: false },
+          { id: bId, path: 'b.dvala', code: '222', context: '', createdAt: 2, updatedAt: 2, locked: false },
+        ])
+      },
+      { aId, bId },
+    )
+    // Open both files via the explorer (which routes through openOrFocusFile).
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
+
+    const tabs = page.locator('#editor-tab-strip .editor-tab')
+    await expect(tabs).toHaveCount(3) // scratch + 2 files
+
+    // b.dvala is now active because it was the most recently opened.
+    const editorValue1 = await getDvalaCode(page)
+    expect(editorValue1).toBe('222')
+
+    // Click the a.dvala tab to switch.
+    await page.locator('#editor-tab-strip .editor-tab[data-tab-key]').nth(1).click()
+    const editorValue2 = await getDvalaCode(page)
+    expect(editorValue2).toBe('111')
+  })
+
+  test('closing a tab via × button switches to a neighbor', async ({ page }) => {
+    const aId = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+    await page.evaluate((id: string) => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id, path: 'closeable.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1, locked: false },
+      ])
+    }, aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+
+    // Click the close button on the active tab. The selector grabs the
+    // close button inside the one and only file tab (scratch has no close).
+    await page.locator('#editor-tab-strip .editor-tab--active .editor-tab__close').click()
+
+    // After close, only the scratch tab remains.
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+  })
+
+  test('the scratch tab cannot be closed (no × button)', async ({ page }) => {
+    // No file ever opened — only the scratch tab exists.
+    const closeButtons = page.locator('#editor-tab-strip .editor-tab__close')
+    await expect(closeButtons).toHaveCount(0)
+  })
+
+  test('open tab list + active tab survives a reload', async ({ page }) => {
+    const aId = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+    const bId = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+    await page.evaluate(
+      ({ aId, bId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          { id: aId, path: 'persist-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
+          { id: bId, path: 'persist-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
+        ])
+      },
+      { aId, bId },
+    )
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
+    // Switch back to a.dvala so it's the active tab on reload.
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+
+    await page.reload()
+    await waitForInit(page)
+    await navigateToPlayground(page)
+
+    // Both file tabs + scratch should still be present.
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(3)
+    // a.dvala should still be the active one.
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('persist-a.dvala')
+    expect(await getDvalaCode(page)).toBe('A')
+  })
+
+  test('typing in a file tab toggles the modified-dot indicator', async ({ page }) => {
+    const aId = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+    await page.evaluate((id: string) => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id, path: 'dirty-test.dvala', code: 'baseline', context: '', createdAt: 1, updatedAt: 1, locked: false },
+      ])
+    }, aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+
+    // Buffer matches file.code → no dot.
+    await expect(page.locator('#editor-tab-strip .editor-tab--dirty')).toHaveCount(0)
+
+    // Mutate the buffer — dot should appear.
+    await page.evaluate(() => (window as any).Playground.setEditorValue('mutated'))
+    await expect(page.locator('#editor-tab-strip .editor-tab--dirty')).toHaveCount(1)
+
+    // Restore — dot should disappear.
+    await page.evaluate(() => (window as any).Playground.setEditorValue('baseline'))
+    await expect(page.locator('#editor-tab-strip .editor-tab--dirty')).toHaveCount(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Tab state persistence
 // ---------------------------------------------------------------------------
 

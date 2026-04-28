@@ -95,6 +95,14 @@ import { StateHistory } from './StateHistory'
 import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
+import {
+  focusScratch,
+  initTabs,
+  notifyTabsChanged,
+  openOrFocusFile,
+  wireTabKeyboardShortcuts,
+  wireTabStripListeners,
+} from './scripts/tabs'
 import { throttle } from './utils'
 import { createPlaygroundAPI } from './playgroundAPI'
 import { createEffectHandlers } from './createEffectHandlers'
@@ -2575,20 +2583,11 @@ export function newFile() {
   flushPendingAutoSave()
   if (isScratchActive()) persistScratchFromCurrentState()
   const id = createUntitledFile()
-  saveState(
-    {
-      'active-side-tab': 'files',
-      'dvala-code': '',
-      'current-file-id': id,
-      'dvala-code-edited': false,
-      'dvala-code-selection-start': 0,
-      'dvala-code-selection-end': 0,
-      'dvala-code-scroll-top': 0,
-    },
-    false,
-  )
+  saveState({ 'active-side-tab': 'files', 'dvala-code-edited': false }, false)
+  // openOrFocusFile creates a fresh tab + model for the new file and syncs
+  // current-file-id + dvala-code. No need to manually setValue.
+  openOrFocusFile(id)
   activateCurrentFileHistory(true)
-  getCodeEditor().setValue('')
   showSideTab('files')
   updateCSS()
   populateSavedFilesList()
@@ -2613,6 +2612,15 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
 
   const editor = getCodeEditor()
   editor.setValue(value)
+  // setValue suppresses the onChange event (avoids double history pushes
+  // for programmatic writes). The tab strip's modified-dot is normally
+  // refreshed by that listener, so trigger a manual repaint here for the
+  // dot to reflect dirty/clean transitions caused by setEditorValue and
+  // friends. Same goes for the `scratch-code` mirror — listener-side
+  // updates don't run, so we have to do it here.
+  notifyTabsChanged()
+  const scratchActive = getState('current-file-id') === null
+  const scratchMirror = scratchActive ? { 'scratch-code': value } : {}
 
   if (pushToHistory) {
     const sel = editor.getSelectionRange()
@@ -2621,13 +2629,14 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
         'dvala-code': value,
         'dvala-code-selection-start': sel.start,
         'dvala-code-selection-end': sel.end,
+        ...scratchMirror,
       },
       false,
     )
     pushActiveDvalaCodeHistoryEntry()
     scheduleAutoSave()
   } else {
-    saveState({ 'dvala-code': value }, false)
+    saveState({ 'dvala-code': value, ...scratchMirror }, false)
   }
 
   if (scroll === 'top') editor.scrollToTop()
@@ -2641,7 +2650,10 @@ export function resetOutput() {
 
 export function resetPlayground() {
   flushPendingAutoSave()
-  saveState({ 'current-file-id': null, 'dvala-code-edited': false, 'scratch-code': '', 'scratch-context': '' }, false)
+  saveState({ 'dvala-code-edited': false, 'scratch-code': '', 'scratch-context': '' }, false)
+  // Switch to the scratch tab BEFORE clearing the buffer — otherwise
+  // setDvalaCode('') would wipe whichever file tab happens to be active.
+  focusScratch()
   activateCurrentFileHistory(true)
   setDvalaCode('', true)
   updateContextState('', true)
@@ -2688,9 +2700,18 @@ function wireCodeEditorListeners(): void {
   const editor = getCodeEditor()
   editor.onChange(value => {
     setDvalaCode(value, true)
-    if (getState('current-file-id') === null) scheduleScratchEditedClear()
-    else saveState({ 'dvala-code-edited': true })
+    if (getState('current-file-id') === null) {
+      // Scratch is now its own tab with its own model, but `scratch-code`
+      // remains the durable storage slot — initTabs hydrates the scratch
+      // model from it on every reload. Mirror keystrokes through so scratch
+      // survives a refresh.
+      saveState({ 'scratch-code': value }, false)
+      scheduleScratchEditedClear()
+    } else saveState({ 'dvala-code-edited': true })
     updateCSS()
+    // Repaint the tab strip so the modified dot turns on/off as the active
+    // tab's buffer diverges from / matches its baseline.
+    notifyTabsChanged()
   })
   editor.onCursorOrSelectionChange(() => {
     if (ignoreSelectionChange) return
@@ -2743,6 +2764,9 @@ window.onload = async function () {
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   wireCodeEditorListeners()
   wireExplorerListeners()
+  initTabs()
+  wireTabStripListeners()
+  wireTabKeyboardShortcuts()
 
   syncDvalaCodeHistoryButtons()
 

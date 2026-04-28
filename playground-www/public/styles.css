@@ -2913,6 +2913,103 @@ button:focus {
 }
 
 /* ============================================================
+   Editor tab strip (sits above the Monaco host).
+   ============================================================ */
+.editor-tab-strip {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  overflow-x: auto;
+  background: var(--color-surface-dim);
+  border-bottom: 1px solid var(--color-border-subtle);
+  height: 28px;
+  user-select: none;
+}
+.editor-tab-strip:empty {
+  display: none;
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1) 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  border-right: 1px solid var(--color-border-subtle);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 200px;
+  transition: background 0.1s, color 0.1s;
+}
+.editor-tab:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+.editor-tab--active {
+  background: var(--color-surface);
+  color: var(--color-text-bright);
+}
+
+.editor-tab__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Modified indicator — shown for file tabs whose buffer differs from disk. */
+.editor-tab__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-text-bright);
+  flex-shrink: 0;
+}
+
+.editor-tab__close {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 1.1rem;
+  line-height: 1;
+  width: 1.4em;
+  height: 1.4em;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  /* The close button is invisible until the tab is active or hovered, so
+     the strip stays clean when many files are open. */
+  visibility: hidden;
+}
+.editor-tab:hover .editor-tab__close,
+.editor-tab--active .editor-tab__close {
+  visibility: visible;
+}
+.editor-tab__close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-bright);
+}
+
+/* When the tab is dirty AND not hovered/active, the dot replaces the close
+   button so the user still sees the unsaved indicator. The renderer omits
+   the close button entirely for the scratch tab. */
+.editor-tab--dirty .editor-tab__close {
+  visibility: hidden;
+}
+.editor-tab--dirty:hover .editor-tab__close,
+.editor-tab--active.editor-tab--dirty .editor-tab__close {
+  visibility: visible;
+}
+.editor-tab--dirty:hover .editor-tab__dot,
+.editor-tab--active.editor-tab--dirty .editor-tab__dot {
+  display: none;
+}
+
+/* ============================================================
   Explorer panel (file list in editor tab)
   ============================================================ */
 .explorer-list {
