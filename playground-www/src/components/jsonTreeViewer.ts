@@ -126,8 +126,12 @@ export function createJsonTreeViewer(options: JsonTreeViewerOptions): JsonTreeVi
   let treePercent = DEFAULT_TREE_PERCENT
 
   function applyTreePercent(): void {
-    treeEl.style.flex = `0 0 ${treePercent}%`
-    detailEl.style.flex = `1 1 ${100 - treePercent}%`
+    // The tree is `flex: 1` (grow to fill) and the detail carries the
+    // explicit basis. This way, when the detail is hidden via
+    // `display: none`, the tree automatically expands to fill the full
+    // height — no separate "tree at 100%" mode needed.
+    treeEl.style.flex = '1 1 0'
+    detailEl.style.flex = `0 0 ${100 - treePercent}%`
   }
   applyTreePercent()
 

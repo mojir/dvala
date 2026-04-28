@@ -291,7 +291,10 @@ describe('createJsonTreeViewer — splitter resize', () => {
 
     const tree = handle.el.querySelector<HTMLElement>('.json-tree')!
     const detail = handle.el.querySelector<HTMLElement>('.json-tree__detail')!
-    expect(tree.style.flex).toContain('60%')
+    // Tree is always `flex: 1` (grows to fill). The detail carries the
+    // explicit basis. This way the tree fills the full height when the
+    // detail is hidden — see the "tree fills full height" test below.
+    expect(tree.style.flex).toMatch(/^1 1 0(?:px)?$/)
     expect(detail.style.flex).toContain('40%')
 
     // Stub getBoundingClientRect so deltaY → percent conversion is
@@ -314,9 +317,10 @@ describe('createJsonTreeViewer — splitter resize', () => {
     const splitter = handle.el.querySelector<HTMLElement>('.json-tree__splitter')!
     const downEvt = new MouseEvent('mousedown', { clientY: 50, bubbles: true, cancelable: true })
     splitter.dispatchEvent(downEvt)
-    // Drag down 20px → tree should grow by 20% to 80%.
+    // Drag down 20px → tree grows (now 80% of wrapper) → detail's
+    // basis shrinks to 20%. Tree's `flex: 1` consumes the rest.
     document.dispatchEvent(new MouseEvent('mousemove', { clientY: 70 }))
-    expect(tree.style.flex).toContain('80%')
+    expect(tree.style.flex).toMatch(/^1 1 0(?:px)?$/)
     expect(detail.style.flex).toContain('20%')
     document.dispatchEvent(new MouseEvent('mouseup'))
   })
@@ -344,10 +348,30 @@ describe('createJsonTreeViewer — splitter resize', () => {
     })
     const splitter = handle.el.querySelector<HTMLElement>('.json-tree__splitter')!
     splitter.dispatchEvent(new MouseEvent('mousedown', { clientY: 50, bubbles: true, cancelable: true }))
-    // Drag well past the upper bound — should clamp at 85%.
+    // Drag well past the upper bound — tree clamps at 85%, so detail's
+    // basis clamps at 15%.
     document.dispatchEvent(new MouseEvent('mousemove', { clientY: 999 }))
-    const tree = handle.el.querySelector<HTMLElement>('.json-tree')!
-    expect(tree.style.flex).toContain('85%')
+    const detail = handle.el.querySelector<HTMLElement>('.json-tree__detail')!
+    expect(detail.style.flex).toContain('15%')
     document.dispatchEvent(new MouseEvent('mouseup'))
+  })
+
+  it('tree fills full height when the detail pane is closed', () => {
+    const handle = createJsonTreeViewer({ data: { x: 1 } })
+    mount(handle)
+    // Open then close the detail.
+    const xRow = Array.from(handle.el.querySelectorAll<HTMLElement>('.json-tree__node')).find(r =>
+      r.textContent?.includes('x:'),
+    )!
+    xRow.click()
+    const closeBtn = handle.el.querySelector<HTMLButtonElement>('.json-tree__detail-close')!
+    closeBtn.click()
+    // Tree's flex stays `1 1 0` (grow to fill). Detail is `display:none`
+    // so it contributes no layout space — flexbox auto-expands the
+    // tree to take up everything.
+    const tree = handle.el.querySelector<HTMLElement>('.json-tree')!
+    const detail = handle.el.querySelector<HTMLElement>('.json-tree__detail')!
+    expect(tree.style.flex).toMatch(/^1 1 0(?:px)?$/)
+    expect(detail.style.display).toBe('none')
   })
 })
