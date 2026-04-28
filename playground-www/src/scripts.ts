@@ -100,6 +100,7 @@ import {
   initTabs,
   notifyTabsChanged,
   openOrFocusFile,
+  setTabLifecycleHooks,
   wireTabKeyboardShortcuts,
   wireTabStripListeners,
 } from './scripts/tabs'
@@ -287,6 +288,11 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
       setEditorContent: code => {
         getCodeEditor().setValue(code)
         saveState({ 'dvala-code': code }, false)
+        // setValue suppresses Monaco's onChange so the tab strip's
+        // modified-dot doesn't update on its own — fire a manual repaint
+        // so a Dvala program calling `playground.setEditorContent(...)`
+        // sees the dot reflect dirty/clean.
+        notifyTabsChanged()
       },
       insertEditorText: (text, position) => {
         const editor = getCodeEditor()
@@ -2764,6 +2770,14 @@ window.onload = async function () {
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   wireCodeEditorListeners()
   wireExplorerListeners()
+  // Wire lifecycle hooks BEFORE initTabs so any future tab switch routes
+  // through them. The before-swap hook flushes pending autosave (avoids
+  // the next-tick race where the wrong file gets saved); the after-swap
+  // hook re-keys the undo/redo history to the new active file.
+  setTabLifecycleHooks({
+    beforeSwap: () => flushPendingAutoSave(),
+    afterSwap: () => activateCurrentFileHistory(false),
+  })
   initTabs()
   wireTabStripListeners()
   wireTabKeyboardShortcuts()
@@ -3647,6 +3661,9 @@ export async function run() {
     if (getState('dvala-code') !== uiSnapshot.dvalaCode) {
       editor.setValue(uiSnapshot.dvalaCode)
       saveState({ 'dvala-code': uiSnapshot.dvalaCode }, false)
+      // Same reasoning as in `setEditorContent` above — setValue
+      // suppresses onChange so the modified-dot needs a manual nudge.
+      notifyTabsChanged()
     }
     if (getState('context') !== uiSnapshot.context) {
       updateContextState(uiSnapshot.context, false)

@@ -22,6 +22,7 @@ import { KeyCode, KeyMod } from '../codeEditor'
 import { fileDisplayName, getSavedFiles } from '../fileStorage'
 import type { SavedFile } from '../fileStorage'
 import { getState, saveState } from '../state'
+import type { PersistedTab } from '../state'
 import { getCodeEditor, tryGetCodeEditor } from './codeEditorInstance'
 
 /** Sentinel key for the scratch tab — distinct from any UUID Monaco-side. */
@@ -45,10 +46,6 @@ interface ScratchTab {
   lastSyncedCode: string
 }
 type OpenTab = FileTab | ScratchTab
-
-// Keys persisted to localStorage. Models + viewState are not serialized —
-// they're reconstructed from SavedFile.code / scratch-code on hydrate.
-type PersistedTab = { kind: 'file'; id: string } | { kind: 'scratch' }
 
 let openTabs: OpenTab[] = []
 let activeKey: string | null = null
@@ -74,6 +71,36 @@ function onTabsChange(cb: () => void): () => void {
  */
 export function notifyTabsChanged(): void {
   notify()
+}
+
+// Lifecycle hooks fired around every active-tab swap. `beforeSwap` runs
+// while the OLD tab is still current (so callers can flush autosave with
+// the old id + content). `afterSwap` runs after `current-file-id` and
+// `dvala-code` reflect the NEW tab (so callers can load that tab's
+// undo/redo history). Registered once during boot from `scripts.ts` to
+// avoid a circular import.
+let beforeSwapHook: (() => void) | null = null
+let afterSwapHook: (() => void) | null = null
+
+export function setTabLifecycleHooks(opts: { beforeSwap?: () => void; afterSwap?: () => void }): void {
+  if (opts.beforeSwap) beforeSwapHook = opts.beforeSwap
+  if (opts.afterSwap) afterSwapHook = opts.afterSwap
+}
+
+/**
+ * Reset module-level state. Test-only — every other caller should use the
+ * lifecycle (initTabs at boot, never re-run). Without this, vitest tests
+ * leak open-tab + active-tab state between cases since the module is
+ * loaded once per worker.
+ */
+export function __resetForTesting(): void {
+  openTabs = []
+  activeKey = null
+  changeListeners.clear()
+  beforeSwapHook = null
+  afterSwapHook = null
+  stripListenersWired = false
+  keyboardShortcutsWired = false
 }
 
 function getActiveTab(): OpenTab | null {
@@ -151,10 +178,15 @@ export function initTabs(): void {
           return SCRATCH_KEY
         })()
   activeKey = fallbackActiveKey
-  // Mount the active tab's model; the constructor's bootstrapping model is
-  // discarded by setActiveModel.
+  // Capture the bootstrap model created implicitly by `monaco.editor.create`
+  // before swapping in the active tab's model. Monaco's `setModel` only
+  // detaches the previous model — it does NOT dispose it — so we have to
+  // free it ourselves or leak the buffer + tokenization state on every
+  // page load.
+  const bootstrapModel = editor.getActiveModel()
   const active = getActiveTab()!
   editor.setActiveModel(active.model, active.viewState)
+  if (bootstrapModel !== active.model) editor.disposeModel(bootstrapModel)
   syncCurrentFileIdState(active)
   persistTabsState()
   notify()
@@ -208,7 +240,7 @@ export function closeTab(key: string): void {
   setActive(next.key)
 }
 
-function closeActiveTab(): void {
+export function closeActiveTab(): void {
   if (activeKey === null) return
   closeTab(activeKey)
 }
@@ -233,13 +265,13 @@ export function closeTabsForMissingFiles(): void {
  * Select tab by 1-based index (matches Cmd-1..9 conventions). No-op if the
  * index is out of range.
  */
-function setActiveByIndex(oneBasedIndex: number): void {
+export function setActiveByIndex(oneBasedIndex: number): void {
   const tab = openTabs[oneBasedIndex - 1]
   if (tab) setActive(tab.key)
 }
 
 /** Cycle to the next (delta=+1) or previous (delta=-1) tab, wrapping. */
-function cycleActive(delta: number): void {
+export function cycleActive(delta: number): void {
   if (openTabs.length === 0 || activeKey === null) return
   const idx = openTabs.findIndex(t => t.key === activeKey)
   if (idx === -1) return
@@ -255,6 +287,12 @@ function cycleActive(delta: number): void {
 function setActive(key: string): void {
   if (activeKey === key) return
   const editor = getCodeEditor()
+  // beforeSwap runs while `current-file-id` still points at the OLD tab.
+  // The `flushPendingAutoSave` hook lives here so any debounced save fires
+  // against the right file; without this, switching tabs mid-debounce
+  // would persist the new tab's content into the old tab's record (and
+  // worse, clear the wrong tab's modified-dot via markActiveTabSynced).
+  beforeSwapHook?.()
   // Save the outgoing tab's viewState so coming back restores cursor / scroll.
   const outgoing = getActiveTab()
   if (outgoing) outgoing.viewState = editor.saveViewState()
@@ -264,6 +302,11 @@ function setActive(key: string): void {
   if (!incoming) return
   editor.setActiveModel(incoming.model, incoming.viewState)
   syncCurrentFileIdState(incoming)
+  // afterSwap runs once the legacy state slots reflect the NEW tab. The
+  // `activateCurrentFileHistory` hook reads `current-file-id` to load the
+  // right per-file undo/redo stack — without this, Cmd-Z after a tab-strip
+  // click operates on the previous tab's history.
+  afterSwapHook?.()
   persistTabsState()
   notify()
 }
@@ -342,6 +385,7 @@ function renderTabStrip(): void {
   // on every change is fine. Click target shape: each tab is a div with
   // `data-tab-key`; the close button has `data-close-key` so a delegated
   // listener can dispatch without per-tab handlers.
+  const activeKeyAtRender = activeKey
   strip.innerHTML = openTabs
     .map(tab => {
       const isActive = tab.key === activeKey
@@ -366,6 +410,17 @@ function renderTabStrip(): void {
         </div>`
     })
     .join('')
+  // Keep the active tab visible. Without this, keyboard cycling
+  // (Cmd-PageUp/Down, Cmd-1..9) on a strip with many tabs can leave the
+  // active tab outside the visible scroll window. `inline: 'nearest'`
+  // avoids unnecessary horizontal jumps when the active tab is already
+  // within view.
+  if (activeKeyAtRender !== null) {
+    const activeEl = strip.querySelector<HTMLElement>(
+      `.editor-tab[data-tab-key="${CSS.escape(activeKeyAtRender)}"]`,
+    )
+    activeEl?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }
 }
 
 let stripListenersWired = false
