@@ -2765,11 +2765,10 @@ function initLayoutPanels(): void {
   // collapsing/uncollapsing the panel lives on the editor tab bar (so it
   // stays reachable while the panel itself is 0-width); `Cmd+Shift+J` is
   // the keyboard mirror.
-  const persistedActive = getState('right-panel-active-tab')
   const rightPanel = createPanel({
     containerEl: elements.rightPanel,
     tabs: RIGHT_PANEL_TOOL_TABS,
-    initialTabId: persistedActive ?? undefined,
+    initialTabId: getState('right-panel-active-tab'),
     initialCollapsed: getState('right-panel-collapsed'),
     onChange: ({ collapsed }) => {
       persistRightPanel()
@@ -2790,10 +2789,7 @@ function initLayoutPanels(): void {
   const rightPanelToggleBtn = document.getElementById('right-panel-toggle-btn')
   if (rightPanelToggleBtn) {
     rightPanelToggleBtn.innerHTML = panelRightIcon
-    rightPanelToggleBtn.addEventListener('click', evt => {
-      evt.preventDefault()
-      rightPanel.toggleCollapsed()
-    })
+    rightPanelToggleBtn.addEventListener('click', () => rightPanel.toggleCollapsed())
   }
   // Populate the active tab once at boot if the panel is uncollapsed
   // (persisted state). Otherwise leave bodies empty — the first time the

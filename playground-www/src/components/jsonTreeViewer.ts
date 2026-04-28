@@ -23,12 +23,6 @@ interface JsonTreeViewerOptions {
    */
   formatDetail?: (selected: unknown) => string
   /**
-   * @deprecated The detail pane is closed by default; the placeholder is
-   * never visible. The option is kept for future tools that want an
-   * open-by-default master-detail experience — currently unused.
-   */
-  detailPlaceholder?: string
-  /**
    * Title shown in the detail pane's header bar (left of the close-X).
    * Lets each tool label its detail view ("Dvala source", "Token
    * detail", etc.). Empty string or omitted leaves the slot blank.
@@ -219,8 +213,10 @@ export function createJsonTreeViewer(options: JsonTreeViewerOptions): JsonTreeVi
     } catch (err) {
       // Defensive: a custom formatDetail (e.g. prettyPrint) might choke
       // on a non-AST sub-value the user happened to click. Fall back to
-      // raw JSON instead of leaving the pane empty / broken.
-      pre.textContent = `${JSON.stringify(value, null, 2)}\n\n(format error: ${err instanceof Error ? err.message : String(err)})`
+      // raw JSON instead of leaving the pane empty / broken. Use a
+      // safeStringify wrapper because `JSON.stringify(bigintValue)`
+      // throws too — we'd compound the error otherwise.
+      pre.textContent = `${safeStringify(value)}\n\n(format error: ${err instanceof Error ? err.message : String(err)})`
     }
     detailContent.appendChild(pre)
     openDetailPane()
@@ -320,6 +316,10 @@ export function createJsonTreeViewer(options: JsonTreeViewerOptions): JsonTreeVi
     kind: 'array' | 'object',
     childDepth: number,
   ): void {
+    // Path entries are values only — not (label, value) pairs. The
+    // `resolveDetailTarget` resolver only needs to inspect each value's
+    // shape (e.g. AST checks for the 3-tuple pattern), so threading the
+    // index/key through would just be noise.
     if (kind === 'array') {
       const arr = parentCtx.value as unknown[]
       arr.forEach((item, i) => {
@@ -362,6 +362,14 @@ export function createJsonTreeViewer(options: JsonTreeViewerOptions): JsonTreeVi
 // ---------------------------------------------------------------------------
 // Helpers — value classification + summary text
 // ---------------------------------------------------------------------------
+//
+// The viewer is JSON-shaped data only. `bigint` / `symbol` / function values
+// fall into the `'other'` bucket — `appendValueSummary` shows their `String()`
+// form, which is fine for an at-a-glance label. The detail pane's default
+// `JSON.stringify` formatter doesn't handle them (returns `undefined`), but
+// the detail-pane try/catch falls through to a sensible string in that
+// case. Callers passing exotic data should provide a `formatDetail` that
+// understands their shape.
 
 type ValueKind = 'array' | 'object' | 'string' | 'number' | 'boolean' | 'null' | 'undefined' | 'other'
 
@@ -408,4 +416,18 @@ function appendValueSummary(row: HTMLElement, value: unknown, kind: ValueKind): 
       summary.textContent = String(value)
   }
   row.appendChild(summary)
+}
+
+/** `JSON.stringify` throws on `bigint` and returns `undefined` for `symbol` /
+ *  function values. We use this in the detail pane's error fallback so the
+ *  fallback path can't itself raise — a try/catch followed by an
+ *  unconditional `String(...)` is the cheapest robust formatter for
+ *  arbitrary input. */
+function safeStringify(value: unknown): string {
+  try {
+    const s = JSON.stringify(value, null, 2)
+    return typeof s === 'string' ? s : String(value)
+  } catch {
+    return String(value)
+  }
 }

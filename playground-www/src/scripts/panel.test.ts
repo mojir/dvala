@@ -256,94 +256,24 @@ describe('strip click behavior', () => {
   })
 })
 
-describe('hidden tabs + showTab/hideTab', () => {
-  it('does not render hidden tabs in the strip at boot', () => {
-    const c = makeContainer()
-    const p = createPanel({
-      containerEl: c,
-      tabs: [
-        { id: 'a', label: 'A', hidden: true },
-        { id: 'b', label: 'B' },
-      ],
-    })
-    const aBtn = c.querySelector('[data-panel-tab-id="a"]') as HTMLButtonElement
-    expect(aBtn.style.display).toBe('none')
-    expect(p.isTabVisible('a')).toBe(false)
-    expect(p.isTabVisible('b')).toBe(true)
-    expect(p.getVisibleTabIds()).toEqual(['b'])
-  })
-
-  it('skips hidden tabs when picking the initial active tab', () => {
-    const c = makeContainer()
-    const p = createPanel({
-      containerEl: c,
-      // The first listed tab is hidden — the first VISIBLE one wins.
-      tabs: [
-        { id: 'a', label: 'A', hidden: true },
-        { id: 'b', label: 'B' },
-      ],
-    })
-    expect(p.getActiveTabId()).toBe('b')
-  })
-
-  it('returns null active tab when every tab starts hidden', () => {
-    const p = createPanel({
-      containerEl: makeContainer(),
-      tabs: [
-        { id: 'a', label: 'A', hidden: true },
-        { id: 'b', label: 'B', hidden: true },
-      ],
-    })
-    expect(p.getActiveTabId()).toBeNull()
-  })
-
-  it('falls back to first visible tab when initialTabId names a hidden tab', () => {
-    const p = createPanel({
-      containerEl: makeContainer(),
-      initialTabId: 'a',
-      tabs: [
-        { id: 'a', label: 'A', hidden: true },
-        { id: 'b', label: 'B' },
-      ],
-    })
-    expect(p.getActiveTabId()).toBe('b')
-  })
-
-  it('showTab makes a hidden tab visible without auto-activating', () => {
+describe('runtime show/hide via showTab + hideTab', () => {
+  it('all tabs start visible (no `hidden` initial-state flag)', () => {
     const c = makeContainer()
     const p = createPanel({
       containerEl: c,
       tabs: [
         { id: 'a', label: 'A' },
-        { id: 'b', label: 'B', hidden: true },
+        { id: 'b', label: 'B' },
       ],
     })
-    p.showTab('b')
+    expect(p.isTabVisible('a')).toBe(true)
     expect(p.isTabVisible('b')).toBe(true)
-    // Still on 'a' — showTab is a visibility primitive, not an activator.
-    expect(p.getActiveTabId()).toBe('a')
-    const bBtn = c.querySelector('[data-panel-tab-id="b"]') as HTMLButtonElement
-    expect(bBtn.style.display).not.toBe('none')
+    expect(p.getVisibleTabIds()).toEqual(['a', 'b'])
+    const aBtn = c.querySelector('[data-panel-tab-id="a"]') as HTMLButtonElement
+    expect(aBtn.style.display).not.toBe('none')
   })
 
-  it('showTab on an empty panel auto-activates the new tab', () => {
-    const onChange = vi.fn()
-    const p = createPanel({
-      containerEl: makeContainer(),
-      tabs: [
-        { id: 'a', label: 'A', hidden: true },
-        { id: 'b', label: 'B', hidden: true },
-      ],
-      onChange,
-    })
-    expect(p.getActiveTabId()).toBeNull()
-    p.showTab('b')
-    expect(p.getActiveTabId()).toBe('b')
-    // Active changed — onChange must fire.
-    expect(onChange).toHaveBeenCalledWith({ activeTabId: 'b', collapsed: false })
-  })
-
-  it('showTab on already-visible tab is a no-op (no onChange)', () => {
+  it('showTab on an already-visible tab is a no-op (no onChange)', () => {
     const onChange = vi.fn()
     const p = createPanel({
       containerEl: makeContainer(),
@@ -352,6 +282,44 @@ describe('hidden tabs + showTab/hideTab', () => {
     })
     p.showTab('a')
     expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('showTab re-reveals a previously-hidden tab without auto-activating', () => {
+    const c = makeContainer()
+    const p = createPanel({
+      containerEl: c,
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+    })
+    p.hideTab('b')
+    expect(p.isTabVisible('b')).toBe(false)
+    p.showTab('b')
+    expect(p.isTabVisible('b')).toBe(true)
+    // Still on 'a' — showTab is a visibility primitive, not an activator.
+    expect(p.getActiveTabId()).toBe('a')
+    const bBtn = c.querySelector('[data-panel-tab-id="b"]') as HTMLButtonElement
+    expect(bBtn.style.display).not.toBe('none')
+  })
+
+  it('showTab on a panel with all tabs hidden auto-activates the new tab', () => {
+    const onChange = vi.fn()
+    const p = createPanel({
+      containerEl: makeContainer(),
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+      onChange,
+    })
+    p.hideTab('a')
+    p.hideTab('b')
+    expect(p.getActiveTabId()).toBeNull()
+    onChange.mockClear()
+    p.showTab('b')
+    expect(p.getActiveTabId()).toBe('b')
+    expect(onChange).toHaveBeenCalledWith({ activeTabId: 'b', collapsed: true })
   })
 
   it('hideTab on the active tab activates the next visible tab to the right', () => {
@@ -430,14 +398,15 @@ describe('hidden tabs + showTab/hideTab', () => {
     expect(onTabClose).toHaveBeenCalledTimes(1)
   })
 
-  it('setActive on a hidden tab throws', () => {
+  it('setActive on a runtime-hidden tab throws', () => {
     const p = createPanel({
       containerEl: makeContainer(),
       tabs: [
         { id: 'a', label: 'A' },
-        { id: 'b', label: 'B', hidden: true },
+        { id: 'b', label: 'B' },
       ],
     })
+    p.hideTab('b')
     expect(() => p.setActive('b')).toThrow(/hidden/)
   })
 })

@@ -3092,6 +3092,11 @@ button:focus {
   border-bottom: 1px solid var(--color-border-subtle);
   height: 28px;
 }
+/* The tab strip itself stretches across the bar's width minus the
+   trailing toggle button. We deliberately do NOT hide it via `:empty`
+   here — even when zero file tabs are open, the surrounding
+   `.editor-tab-bar` stays visible because of the right-panel toggle
+   button at its rightmost edge. */
 .editor-tab-strip {
   display: flex;
   flex-direction: row;

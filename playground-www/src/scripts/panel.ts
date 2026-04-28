@@ -1,14 +1,23 @@
 // Panel component — a collapsible, tabbed container for debug surfaces.
 //
 // Two instances are created at boot from `scripts.ts`: a right panel for
-// structural views (AST viewer, outline) and a bottom panel for linear
-// views (output, eventually state history / snapshots / effect traces).
-// The same component handles both — orientation differences are pure CSS.
+// structural views (Tokens / AST / CST / Doc Tree) and a bottom panel
+// for linear views (Output, eventually state history / snapshots / effect
+// traces). The same component handles both — orientation differences are
+// pure CSS.
 //
 // Tabs are registered up-front. Each tab owns a body `<div>` that callers
 // write into via `getTabBody(id)` or `setTabBody(id, content)`. The panel
 // shows / hides bodies based on the active tab; switching tabs is a CSS
 // toggle, not a DOM rebuild — viewport scroll position survives a swap.
+//
+// Closable + runtime show/hide API (`closable` flag, `showTab`/`hideTab`/
+// `onTabClose`) is deliberately kept around even though neither current
+// panel uses it — the planned consumer is a future "Snapshots" tab on
+// the bottom panel that pops in when the user takes a snapshot and out
+// when they dismiss it. No corresponding `hidden` initial-state flag
+// because tabs that come and go semantically belong to the runtime API,
+// not the static spec.
 
 interface PanelTabSpec {
   id: string
@@ -16,20 +25,11 @@ interface PanelTabSpec {
   /** Optional title attribute for the tab button (tooltips). */
   title?: string
   /**
-   * If true, render an "x" close button on the tab. Clicking it hides the
-   * tab (`hideTab`) and fires `onTabClose`. The right panel uses this for
-   * tool tabs (AST/Tokens/CST) that the user can dismiss; the bottom
-   * panel's Output tab is non-closable so the toolbar stays visible.
+   * If true, render an "x" close button on the tab. Clicking it calls
+   * `hideTab(id)` and fires `onTabClose`. Currently unused — both panels
+   * register non-closable tabs. Reserved for the planned Snapshots tab.
    */
   closable?: boolean
-  /**
-   * If true, the tab is registered but not rendered in the strip. Use for
-   * "summon-on-demand" tabs that start invisible and become visible when a
-   * caller runs the corresponding tool (parse → show 'ast'). Hidden tabs
-   * never count as the active tab — the active tab always falls back to
-   * the first VISIBLE tab if the persisted/initial id is hidden.
-   */
-  hidden?: boolean
 }
 
 interface PanelOptions {
@@ -98,32 +98,25 @@ export function createPanel(options: PanelOptions): Panel {
   const { containerEl } = options
   const knownIds = new Set(options.tabs.map(t => t.id))
 
-  // Hidden flags are mutable runtime state — the spec only seeds the initial
-  // visibility so `showTab`/`hideTab` can flip it later.
+  // Per-tab visibility flags — mutated at runtime by `hideTab`/`showTab`.
+  // All tabs start visible (no `hidden` initial-state flag); the runtime
+  // API is for tabs that come and go after construction.
   const hiddenFlags = new Map<string, boolean>()
-  for (const tab of options.tabs) hiddenFlags.set(tab.id, tab.hidden ?? false)
+  for (const tab of options.tabs) hiddenFlags.set(tab.id, false)
 
   function visibleIdsInOrder(): string[] {
     return options.tabs.filter(t => !hiddenFlags.get(t.id)).map(t => t.id)
   }
 
   // Pick the initial active tab. Validate `initialTabId` against the tab
-  // list AND its current visibility — persisted state can name a tab that
-  // no longer exists (e.g. a future PR drops a tab; an old user's
-  // localStorage still says `'output'`) or a tab that starts hidden.
-  // Falling back to the first visible tab keeps the panel usable. If no
-  // tabs are visible at boot, `activeTabId` is null and the panel is
-  // effectively empty (still mountable; tabs become visible via showTab).
-  function pickInitialActive(): string | null {
-    if (
-      options.initialTabId !== undefined
-      && knownIds.has(options.initialTabId)
-      && !hiddenFlags.get(options.initialTabId)
-    ) {
+  // list — persisted state can name a tab that no longer exists (e.g. a
+  // future PR drops a tab; an old user's localStorage still says
+  // `'output'`). Falling back to the first tab keeps the panel usable.
+  function pickInitialActive(): string {
+    if (options.initialTabId !== undefined && knownIds.has(options.initialTabId)) {
       return options.initialTabId
     }
-    const firstVisible = visibleIdsInOrder()[0]
-    return firstVisible ?? null
+    return options.tabs[0]!.id
   }
 
   let activeTabId: string | null = pickInitialActive()
@@ -165,8 +158,6 @@ export function createPanel(options: PanelOptions): Panel {
       closeBtn.setAttribute('aria-label', `Close ${tab.label} tab`)
       tabBtn.appendChild(closeBtn)
     }
-
-    if (hiddenFlags.get(tab.id)) tabBtn.style.display = 'none'
 
     stripEl.appendChild(tabBtn)
     tabButtons.set(tab.id, tabBtn)
