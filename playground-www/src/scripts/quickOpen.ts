@@ -68,14 +68,22 @@ export function openQuickOpen(): void {
   let items: QuickOpenItem[] = []
   let selectedIndex = 0
 
-  const close = () => {
+  const close = (options: { restoreEditorFocus?: boolean } = {}) => {
+    const { restoreEditorFocus = false } = options
     overlay.remove()
     document.removeEventListener('keydown', onKey, true)
     activePicker = null
+    if (restoreEditorFocus) {
+      // The picker steals focus into its search input. Return it to Monaco on
+      // the next task for keyboard-driven closes so Cmd/Ctrl-P keeps working
+      // without an extra click, but don't steal focus back after mouse
+      // dismissals.
+      setTimeout(() => tryGetCodeEditor()?.focus(), 0)
+    }
   }
 
-  const select = (item: QuickOpenItem) => {
-    close()
+  const select = (item: QuickOpenItem, options: { restoreEditorFocus?: boolean } = {}) => {
+    close(options)
     openOrFocusFile(item.id)
   }
 
@@ -121,14 +129,14 @@ export function openQuickOpen(): void {
     if (evt.key === 'Escape') {
       evt.preventDefault()
       evt.stopPropagation()
-      close()
+      close({ restoreEditorFocus: true })
       return
     }
     if (evt.key === 'Enter') {
       evt.preventDefault()
       evt.stopPropagation()
       const chosen = items[selectedIndex]
-      if (chosen) select(chosen)
+      if (chosen) select(chosen, { restoreEditorFocus: true })
       return
     }
     if (evt.key === 'ArrowDown') {
