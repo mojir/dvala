@@ -1567,7 +1567,9 @@ function applyLayout() {
     const outputHeight = (tabHeight * (100 - getState('resize-divider-2-percent'))) / 100
     elements.outputPanel.style.height = `${outputHeight}px`
   }
-  elements.wrapper.style.display = 'block'
+  // wrapper.style.display = 'block' moved to the end of window.onload — see
+  // boot sequence below. e2e tests use that signal as "fully booted", so it
+  // must come AFTER the async editor init, not at the first applyLayout pass.
 }
 
 const layout = throttle(applyLayout)
@@ -2973,6 +2975,13 @@ window.onload = async function () {
   applyState(true)
   populateSnapshotsList()
   populateSavedFilesList()
+
+  // Reveal the page now that the editor + state are fully wired. e2e's
+  // `waitForInit` uses `wrapper.style.display === 'block'` as the "fully
+  // booted" signal — moving this here (rather than the first applyLayout
+  // call earlier in window.onload) ensures the editor is constructed before
+  // tests start dispatching `Playground.*` calls.
+  elements.wrapper.style.display = 'block'
 
   router.init(appPath => {
     routeToPath(appPath)
