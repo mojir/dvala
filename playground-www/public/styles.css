@@ -3010,6 +3010,91 @@ button:focus {
 }
 
 /* ============================================================
+   Quick Open palette (Cmd/Ctrl-P file picker)
+   ============================================================ */
+.quick-open__overlay {
+  position: fixed;
+  inset: 0;
+  /* Backdrop is subtle — the palette is the focus, not the dimming. */
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  /* Top offset matches Spotlight / VS Code conventions — palette sits in
+     the upper third rather than vertically centered. */
+  padding-top: 12vh;
+}
+
+.quick-open__palette {
+  width: min(560px, 90vw);
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.quick-open__input {
+  width: 100%;
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  background: transparent;
+  color: var(--color-text-bright);
+  border: none;
+  border-bottom: 1px solid var(--color-border-subtle);
+  outline: none;
+}
+
+.quick-open__results {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1) 0;
+}
+
+.quick-open__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+}
+.quick-open__row:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+.quick-open__row--selected {
+  background: var(--color-surface-hover);
+  color: var(--color-text-bright);
+}
+
+.quick-open__label {
+  flex-shrink: 0;
+}
+.quick-open__detail {
+  margin-left: auto;
+  color: var(--color-text-faintest);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.quick-open__empty {
+  padding: var(--space-2);
+  color: var(--color-text-faintest);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ============================================================
   Explorer panel (file list in editor tab)
   ============================================================ */
 .explorer-list {
