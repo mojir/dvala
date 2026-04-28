@@ -325,8 +325,10 @@ function getPlaygroundPanel(): string {
          before boot finishes; createPanel re-parents it once the panel is
          constructed. -->
     <template id="bottom-panel-output-template">
+      <!-- The panel's tab strip already identifies this as "Output" — no
+           need to repeat the title in a body toolbar. The Clear button
+           lives directly on the strip via flex layout (see CSS). -->
       <div class="panel-shell__toolbar">
-        <span class="panel-shell__title">Output</span>
         <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn output-clear-btn" aria-label="Clear output">${trashIcon} Clear</a>
       </div>
       <div id="output-result" class="fancy-scroll"></div>
