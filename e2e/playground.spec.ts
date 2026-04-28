@@ -1735,6 +1735,120 @@ test.describe('editor tabs', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Quick Open (Cmd/Ctrl-P)
+// ---------------------------------------------------------------------------
+
+test.describe('quick open', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await navigateToPlayground(page)
+  })
+
+  test('opens a centered palette listing all saved files', async ({ page }) => {
+    const aId = '11111111-1111-4111-8111-111111111111'
+    const bId = '22222222-2222-4222-8222-222222222222'
+    await page.evaluate(
+      ({ aId, bId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          { id: aId, path: 'main.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
+          { id: bId, path: 'lib/util.dvala', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
+        ])
+      },
+      { aId, bId },
+    )
+
+    await page.evaluate(() => (window as any).Playground.openQuickOpen())
+    await expect(page.locator('#quick-open-palette')).toBeVisible()
+    // Both files should appear with empty query.
+    await expect(page.locator('.quick-open__row')).toHaveCount(2)
+  })
+
+  test('typing filters by fuzzy match on the path', async ({ page }) => {
+    await page.evaluate(() => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id: 'a', path: 'main.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id: 'b', path: 'lib/util.dvala', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
+        { id: 'c', path: 'examples/foo.dvala', code: '', context: '', createdAt: 3, updatedAt: 3, locked: false },
+      ])
+    })
+    await page.evaluate(() => (window as any).Playground.openQuickOpen())
+
+    const input = page.locator('.quick-open__input')
+    await input.fill('util')
+    await expect(page.locator('.quick-open__row')).toHaveCount(1)
+    await expect(page.locator('.quick-open__row .quick-open__label')).toContainText('util.dvala')
+  })
+
+  test('Enter on a result opens the selected file as a tab', async ({ page }) => {
+    const targetId = '33333333-3333-4333-8333-333333333333'
+    await page.evaluate((id: string) => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id, path: 'target.dvala', code: 'OPENED', context: '', createdAt: 1, updatedAt: 1, locked: false },
+      ])
+    }, targetId)
+
+    await page.evaluate(() => (window as any).Playground.openQuickOpen())
+    await page.locator('.quick-open__input').press('Enter')
+
+    // Picker dismissed.
+    await expect(page.locator('#quick-open-palette')).toHaveCount(0)
+    // The selected file is now the active tab.
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('target.dvala')
+    expect(await getDvalaCode(page)).toBe('OPENED')
+  })
+
+  test('Escape dismisses the picker', async ({ page }) => {
+    await page.evaluate(() => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id: 'x', path: 'x.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
+      ])
+    })
+    await page.evaluate(() => (window as any).Playground.openQuickOpen())
+    await expect(page.locator('#quick-open-palette')).toBeVisible()
+    await page.locator('.quick-open__input').press('Escape')
+    await expect(page.locator('#quick-open-palette')).toHaveCount(0)
+  })
+
+  test('arrow keys move the selection; Enter opens the highlighted row', async ({ page }) => {
+    const aId = '44444444-4444-4444-8444-444444444444'
+    const bId = '55555555-5555-4555-8555-555555555555'
+    await page.evaluate(
+      ({ aId, bId }) => {
+        const w = window as any
+        // Same insertion order so empty-query ranking preserves it.
+        w.Playground.setSavedFilesForTesting([
+          { id: aId, path: 'first.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
+          { id: bId, path: 'second.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
+        ])
+      },
+      { aId, bId },
+    )
+    await page.evaluate(() => (window as any).Playground.openQuickOpen())
+
+    // Arrow-down moves selection from row 0 → row 1; Enter opens row 1.
+    await page.locator('.quick-open__input').press('ArrowDown')
+    await page.locator('.quick-open__input').press('Enter')
+
+    expect(await getDvalaCode(page)).toBe('B')
+  })
+
+  test('does nothing when the workspace has no saved files', async ({ page }) => {
+    // resetPlayground + clearAllSavedFiles in beforeEach already left zero
+    // files. Trying to open the picker should be a no-op (avoids a popup
+    // with no rows).
+    await page.evaluate(() => (window as any).Playground.openQuickOpen())
+    await expect(page.locator('#quick-open-palette')).toHaveCount(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Tab state persistence
 // ---------------------------------------------------------------------------
 

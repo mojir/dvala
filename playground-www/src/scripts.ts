@@ -95,6 +95,7 @@ import { StateHistory } from './StateHistory'
 import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
+import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
   focusScratch,
   initTabs,
@@ -161,6 +162,11 @@ export {
 } from './scripts/modals'
 
 export { getCurrentSideTab, showSideTab, toggleSideSnapshotsShowAll } from './scripts/sidePanels'
+
+// Quick Open is normally invoked via Cmd/Ctrl-P inside the editor; the
+// re-export gives the e2e suite a platform-agnostic way to drive the
+// picker (`Playground.openQuickOpen()`).
+export { openQuickOpen } from './scripts/quickOpen'
 
 export {
   clearAllSavedFiles,
@@ -2781,6 +2787,7 @@ window.onload = async function () {
   initTabs()
   wireTabStripListeners()
   wireTabKeyboardShortcuts()
+  wireQuickOpenShortcut()
 
   syncDvalaCodeHistoryButtons()
 
