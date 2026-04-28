@@ -3,7 +3,6 @@ import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import { getLinkName } from '../../reference'
 import type { Any, UnknownRecord } from '../../src/interface'
-import type { Ast } from '../../src/parser/types'
 import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from '../../src/evaluator/effectTypes'
 import { extractCheckpointSnapshots } from '../../src/evaluator/suspension'
@@ -13,22 +12,21 @@ import { retrigger } from '../../src/retrigger'
 import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
-import {
-  buildDocTree,
-  formatSource,
-  getAutoCompleter,
-  getUndefinedSymbols,
-  parseToCst,
-  parseTokenStream,
-  tokenizeSource,
-} from '../../src/tooling'
+import { formatSource, getAutoCompleter, getUndefinedSymbols } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
-import { createAstTreeViewer } from './components/astTreeViewer'
+import {
+  RIGHT_PANEL_TOOL_TABS,
+  refreshActiveRightPanelTab,
+  showAstInRightPanel,
+  showCstInRightPanel,
+  showDocTreeInRightPanel,
+  showTokensInRightPanel,
+} from './scripts/rightPanelTools'
 import { renderBenchmarksCharts } from './components/benchmarksPage'
 import type { EditorMenuItem } from './editorMenu'
 import { renderEditorMenu } from './editorMenu'
-import { addIcon, copyIcon, downloadIcon, saveIcon, shareIcon } from './icons'
+import { addIcon, copyIcon, downloadIcon, panelRightIcon, saveIcon, shareIcon } from './icons'
 import { renderCodeBlock } from './renderCodeBlock'
 import { renderShell } from './shell'
 import * as router from './router'
@@ -97,13 +95,13 @@ import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
 import { createPanel } from './scripts/panel'
 import {
-  getRightPanel,
   persistBottomPanel,
   persistRightPanel,
   setBottomPanel,
   setRightPanel,
   syncBodyClasses,
   tryGetBottomPanel,
+  tryGetRightPanel,
 } from './scripts/panelInstances'
 import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
@@ -2761,18 +2759,42 @@ function initLayoutPanels(): void {
   const refreshEditorLayout = () => tryGetCodeEditor()?.layout()
 
   // ---- Right panel ----
+  // Three tool tabs (AST/Tokens/CST) are always present in the strip — the
+  // user clicks to switch between them, and the active tab auto-refreshes
+  // whenever the editor's active file changes. The toggle affordance for
+  // collapsing/uncollapsing the panel lives on the editor tab bar (so it
+  // stays reachable while the panel itself is 0-width); `Cmd+Shift+J` is
+  // the keyboard mirror.
   const rightPanel = createPanel({
     containerEl: elements.rightPanel,
-    tabs: [{ id: 'ast', label: 'AST', title: 'Abstract syntax tree of the current file' }],
+    tabs: RIGHT_PANEL_TOOL_TABS,
     initialTabId: getState('right-panel-active-tab'),
     initialCollapsed: getState('right-panel-collapsed'),
-    onChange: () => {
+    onChange: ({ collapsed }) => {
       persistRightPanel()
       applyLayout()
       refreshEditorLayout()
+      // When the panel is open (after either a tab-swap or an uncollapse),
+      // make sure the active tab reflects the active file. We re-run on
+      // every onChange — the compute is fast and this avoids tracking
+      // "active tab actually changed" bookkeeping.
+      if (!collapsed) refreshActiveRightPanelTab(() => getState('dvala-code'))
     },
   })
   setRightPanel(rightPanel)
+  // Wire the toggle button on the editor tab bar. The button lives in
+  // shell.ts — putting the affordance on the editor's strip (instead of
+  // the right panel's own strip) keeps it reachable when the panel is
+  // collapsed to 0 width.
+  const rightPanelToggleBtn = document.getElementById('right-panel-toggle-btn')
+  if (rightPanelToggleBtn) {
+    rightPanelToggleBtn.innerHTML = panelRightIcon
+    rightPanelToggleBtn.addEventListener('click', () => rightPanel.toggleCollapsed())
+  }
+  // Populate the active tab once at boot if the panel is uncollapsed
+  // (persisted state). Otherwise leave bodies empty — the first time the
+  // user opens the panel, onChange's refresh will fill it.
+  refreshActiveRightPanelTab(() => getState('dvala-code'))
 
   // ---- Bottom panel ----
   // The Clear button lives in the panel's tab strip (right edge) rather
@@ -2888,7 +2910,15 @@ window.onload = async function () {
   // hook re-keys the undo/redo history to the new active file.
   setTabLifecycleHooks({
     beforeSwap: () => flushPendingAutoSave(),
-    afterSwap: () => activateCurrentFileHistory(false),
+    afterSwap: () => {
+      activateCurrentFileHistory(false)
+      // After swapping editor tabs, re-run the active right-panel tool
+      // (AST/Tokens/CST) against the new active file. The right panel
+      // always reflects the file you're looking at — no manual re-trigger
+      // needed. Inactive tools stay stale until the user clicks them
+      // (the panel's onChange callback then refreshes the new active tab).
+      refreshActiveRightPanelTab(() => getState('dvala-code'))
+    },
   })
   initTabs()
   wireTabStripListeners()
@@ -3076,12 +3106,16 @@ window.onload = async function () {
       document.getElementById('tab-btn-search')?.click()
       return
     }
-    // Cmd/Ctrl-J — toggle the bottom panel. Lifted out of the ctrlKey-only
-    // switch below so it works on Mac (where Cmd registers as metaKey,
-    // not ctrlKey). Mirrors the Cmd-K pattern above.
-    if ((evt.ctrlKey || evt.metaKey) && evt.key === 'j') {
+    // Cmd/Ctrl-J — toggle the bottom panel. Cmd/Ctrl-Shift-J is the
+    // mirror for the right panel. Both lifted out of the ctrlKey-only
+    // switch below so they work on Mac (where Cmd registers as metaKey,
+    // not ctrlKey). Mirrors the Cmd-K pattern above. We check
+    // `evt.code === 'KeyJ'` because shift produces uppercase 'J' on
+    // many layouts; matching the physical key keeps the binding stable.
+    if ((evt.ctrlKey || evt.metaKey) && evt.code === 'KeyJ') {
       evt.preventDefault()
-      tryGetBottomPanel()?.toggleCollapsed()
+      if (evt.shiftKey) tryGetRightPanel()?.toggleCollapsed()
+      else tryGetBottomPanel()?.toggleCollapsed()
       return
     }
     if (evt.ctrlKey) {
@@ -3968,141 +4002,25 @@ export function showFeatureCard(id: string) {
 export function parse() {
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
-  const title = selectedCode.code ? 'Parse selection' : 'Parse'
-
-  try {
-    const tokens = tokenizeSource(code, true) // always debug for source map positions
-    const ast = parseTokenStream(tokens)
-    showAstInRightPanel(ast)
-  } catch (error) {
-    addOutputSeparator()
-    appendOutput(title, 'comment')
-    appendOutput(error, 'error')
-    focusDvalaCode()
-  }
-}
-
-/**
- * Render the parsed AST into the right panel's AST tab and ensure the
- * panel is open + active. Replaces the previous modal-based viewer —
- * keeps the editor in view alongside the tree, which is the whole point
- * of moving structural views out of modals into a side-by-side panel.
- */
-function showAstInRightPanel(ast: Ast): void {
-  const panel = getRightPanel()
-  panel.setActive('ast')
-  panel.setCollapsed(false)
-  panel.setTabBody('ast', createAstTreeViewer({ ast }))
+  showAstInRightPanel(code)
 }
 
 export function parseCst() {
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
-  const title = selectedCode.code ? 'CST (selection)' : 'CST'
-
-  try {
-    const tokenStream = tokenizeSource(code, true)
-    const { tree, trailingTrivia } = parseToCst(tokenStream)
-    const content = JSON.stringify({ tree, trailingTrivia }, null, 2)
-    showRawJsonModal(content, title)
-  } catch (error) {
-    addOutputSeparator()
-    appendOutput(title, 'comment')
-    appendOutput(error, 'error')
-    focusDvalaCode()
-  }
+  showCstInRightPanel(code)
 }
 
 export function docTree() {
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
-  const title = selectedCode.code ? 'Wadler-Lindig Doc tree (selection)' : 'Wadler-Lindig Doc tree'
-
-  try {
-    const tokenStream = tokenizeSource(code, true)
-    const { tree, trailingTrivia } = parseToCst(tokenStream)
-    const doc = buildDocTree(tree, trailingTrivia)
-    const content = JSON.stringify(doc, null, 2)
-    showRawJsonModal(content, title)
-  } catch (error) {
-    addOutputSeparator()
-    appendOutput(title, 'comment')
-    appendOutput(error, 'error')
-    focusDvalaCode()
-  }
-}
-
-function showRawJsonModal(content: string, title: string) {
-  const dismiss = () => {
-    popModal()
-    focusDvalaCode()
-  }
-
-  const { panel, body } = createModalPanel({
-    size: 'large',
-    footerActions: [
-      {
-        label: 'Copy',
-        action: () => {
-          void navigator.clipboard.writeText(content)
-          showToast(`${title} copied to clipboard`)
-        },
-      },
-      { label: 'Close', action: dismiss },
-    ],
-    onClose: dismiss,
-  })
-
-  const copyButton = panel.querySelector<HTMLButtonElement>('.modal-panel__footer .button')
-  if (copyButton) copyButton.innerHTML = `${copyIcon} Copy`
-
-  body.style.padding = '0'
-
-  const pre = document.createElement('pre')
-  pre.className = 'fancy-scroll'
-  pre.textContent = content
-  pre.tabIndex = 0
-  pre.style.margin = '0'
-  pre.style.minHeight = '26rem'
-  pre.style.height = '60vh'
-  pre.style.padding = 'var(--space-2)'
-  pre.style.overflow = 'auto'
-  pre.style.background = 'var(--color-code-bg)'
-  pre.style.color = 'var(--color-text)'
-  pre.style.fontFamily = 'var(--font-mono)'
-  pre.style.fontSize = 'var(--font-size-sm)'
-  pre.style.whiteSpace = 'pre'
-  body.appendChild(pre)
-
-  pushPanel(panel, title)
-  setTimeout(() => {
-    pre.focus()
-  }, 0)
+  showDocTreeInRightPanel(code)
 }
 
 export function tokenize() {
-  addOutputSeparator()
-
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
-  const title = selectedCode.code ? 'Tokenize selection' : 'Tokenize'
-
-  appendOutput(`${title}${getState('debug') ? ' (debug)' : ''}`, 'comment')
-
-  const hijacker = hijackConsole()
-  try {
-    const result = tokenizeSource(code, getState('debug'))
-    const content = JSON.stringify(result, null, 2)
-    appendOutput(content, 'tokenize')
-    hijacker.releaseConsole()
-    console.log(result)
-  } catch (error) {
-    appendOutput(error, 'error')
-    hijacker.releaseConsole()
-    return
-  } finally {
-    focusDvalaCode()
-  }
+  showTokensInRightPanel(code)
 }
 
 export function format() {

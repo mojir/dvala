@@ -20,6 +20,9 @@ export function getRightPanel(): Panel {
   if (!rightPanel) throw new Error('Right panel not initialised yet')
   return rightPanel
 }
+export function tryGetRightPanel(): Panel | null {
+  return rightPanel
+}
 export function tryGetBottomPanel(): Panel | null {
   return bottomPanel
 }
@@ -37,13 +40,21 @@ export function syncBodyClasses(): void {
 /**
  * Persist the panel state slots that survive reloads. Called from each
  * panel's `onChange` callback; debouncing isn't necessary — toggle events
- * are infrequent and writing a couple of localStorage keys is fast.
+ * are infrequent and writing a few localStorage keys is fast.
+ *
+ * Both calls fall back to a known-good tab id when `getActiveTabId()`
+ * returns null — that only happens if every tab is hidden (today neither
+ * panel makes its tabs closable, but the Panel API supports it). The
+ * sentinel keeps the persisted state human-readable and avoids any
+ * downstream `?? undefined` chains.
  */
 export function persistRightPanel(): void {
   if (!rightPanel) return
   saveState(
     {
-      'right-panel-active-tab': rightPanel.getActiveTabId(),
+      // 'tokens' is the leftmost tool tab (pipeline order) — best default
+      // if the user somehow ends up with no active right-panel tab.
+      'right-panel-active-tab': rightPanel.getActiveTabId() ?? 'tokens',
       'right-panel-collapsed': rightPanel.isCollapsed(),
     },
     false,
@@ -53,7 +64,7 @@ export function persistBottomPanel(): void {
   if (!bottomPanel) return
   saveState(
     {
-      'bottom-panel-active-tab': bottomPanel.getActiveTabId(),
+      'bottom-panel-active-tab': bottomPanel.getActiveTabId() ?? 'output',
       'bottom-panel-collapsed': bottomPanel.isCollapsed(),
     },
     false,

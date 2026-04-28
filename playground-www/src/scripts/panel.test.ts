@@ -255,3 +255,208 @@ describe('strip click behavior', () => {
     expect(p.isCollapsed()).toBe(false)
   })
 })
+
+describe('runtime show/hide via showTab + hideTab', () => {
+  it('all tabs start visible (no `hidden` initial-state flag)', () => {
+    const c = makeContainer()
+    const p = createPanel({
+      containerEl: c,
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+    })
+    expect(p.isTabVisible('a')).toBe(true)
+    expect(p.isTabVisible('b')).toBe(true)
+    expect(p.getVisibleTabIds()).toEqual(['a', 'b'])
+    const aBtn = c.querySelector('[data-panel-tab-id="a"]') as HTMLButtonElement
+    expect(aBtn.style.display).not.toBe('none')
+  })
+
+  it('showTab on an already-visible tab is a no-op (no onChange)', () => {
+    const onChange = vi.fn()
+    const p = createPanel({
+      containerEl: makeContainer(),
+      tabs: [{ id: 'a', label: 'A' }],
+      onChange,
+    })
+    p.showTab('a')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('showTab re-reveals a previously-hidden tab without auto-activating', () => {
+    const c = makeContainer()
+    const p = createPanel({
+      containerEl: c,
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+    })
+    p.hideTab('b')
+    expect(p.isTabVisible('b')).toBe(false)
+    p.showTab('b')
+    expect(p.isTabVisible('b')).toBe(true)
+    // Still on 'a' — showTab is a visibility primitive, not an activator.
+    expect(p.getActiveTabId()).toBe('a')
+    const bBtn = c.querySelector('[data-panel-tab-id="b"]') as HTMLButtonElement
+    expect(bBtn.style.display).not.toBe('none')
+  })
+
+  it('showTab on a panel with all tabs hidden auto-activates the new tab', () => {
+    const onChange = vi.fn()
+    const p = createPanel({
+      containerEl: makeContainer(),
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+      onChange,
+    })
+    p.hideTab('a')
+    p.hideTab('b')
+    expect(p.getActiveTabId()).toBeNull()
+    onChange.mockClear()
+    p.showTab('b')
+    expect(p.getActiveTabId()).toBe('b')
+    expect(onChange).toHaveBeenCalledWith({ activeTabId: 'b', collapsed: true })
+  })
+
+  it('hideTab on the active tab activates the next visible tab to the right', () => {
+    const p = createPanel({
+      containerEl: makeContainer(),
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+        { id: 'c', label: 'C' },
+      ],
+    })
+    expect(p.getActiveTabId()).toBe('a')
+    p.hideTab('a')
+    expect(p.isTabVisible('a')).toBe(false)
+    expect(p.getActiveTabId()).toBe('b')
+  })
+
+  it('hideTab on the rightmost active tab falls back to the previous visible tab', () => {
+    const p = createPanel({
+      containerEl: makeContainer(),
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+        { id: 'c', label: 'C' },
+      ],
+    })
+    p.setActive('c')
+    p.hideTab('c')
+    expect(p.getActiveTabId()).toBe('b')
+  })
+
+  it('hideTab on an inactive tab leaves the active tab alone', () => {
+    const onChange = vi.fn()
+    const p = createPanel({
+      containerEl: makeContainer(),
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+      onChange,
+    })
+    p.hideTab('b')
+    expect(p.getActiveTabId()).toBe('a')
+    // Closing an inactive tab is a visibility-only change — onChange
+    // (which carries active/collapsed state) should NOT fire.
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('hideTab on the last visible tab clears active + auto-collapses', () => {
+    const onChange = vi.fn()
+    const p = createPanel({
+      containerEl: makeContainer(),
+      tabs: [{ id: 'a', label: 'A' }],
+      onChange,
+    })
+    p.hideTab('a')
+    expect(p.getActiveTabId()).toBeNull()
+    expect(p.isCollapsed()).toBe(true)
+    expect(onChange).toHaveBeenCalledWith({ activeTabId: null, collapsed: true })
+  })
+
+  it('hideTab is idempotent (no double-fire of onTabClose / onChange)', () => {
+    const onChange = vi.fn()
+    const onTabClose = vi.fn()
+    const p = createPanel({
+      containerEl: makeContainer(),
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+      onChange,
+      onTabClose,
+    })
+    p.hideTab('b')
+    p.hideTab('b')
+    expect(onTabClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('setActive on a runtime-hidden tab throws', () => {
+    const p = createPanel({
+      containerEl: makeContainer(),
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+    })
+    p.hideTab('b')
+    expect(() => p.setActive('b')).toThrow(/hidden/)
+  })
+})
+
+describe('closable tabs (close button)', () => {
+  it('renders an "x" element only on closable tabs', () => {
+    const c = makeContainer()
+    createPanel({
+      containerEl: c,
+      tabs: [
+        { id: 'a', label: 'A', closable: true },
+        { id: 'b', label: 'B' },
+      ],
+    })
+    expect(c.querySelector('[data-panel-tab-close="a"]')).not.toBeNull()
+    expect(c.querySelector('[data-panel-tab-close="b"]')).toBeNull()
+  })
+
+  it('clicking the close-X hides the tab and fires onTabClose', () => {
+    const onTabClose = vi.fn()
+    const c = makeContainer()
+    const p = createPanel({
+      containerEl: c,
+      tabs: [
+        { id: 'a', label: 'A', closable: true },
+        { id: 'b', label: 'B' },
+      ],
+      onTabClose,
+    })
+    const closeEl = c.querySelector('[data-panel-tab-close="a"]') as HTMLElement
+    closeEl.click()
+    expect(p.isTabVisible('a')).toBe(false)
+    expect(onTabClose).toHaveBeenCalledWith('a')
+  })
+
+  it('close-X click does NOT also activate the tab', () => {
+    // Without stopPropagation in the close-button branch, the click
+    // would bubble to the tab button and activate it before hiding.
+    const c = makeContainer()
+    const p = createPanel({
+      containerEl: c,
+      tabs: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B', closable: true },
+      ],
+    })
+    expect(p.getActiveTabId()).toBe('a')
+    const closeEl = c.querySelector('[data-panel-tab-close="b"]') as HTMLElement
+    closeEl.click()
+    expect(p.getActiveTabId()).toBe('a')
+    expect(p.isTabVisible('b')).toBe(false)
+  })
+})
