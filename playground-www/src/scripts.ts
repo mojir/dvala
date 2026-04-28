@@ -82,7 +82,7 @@ import {
 import type { HistoryEntry, HistoryStatus } from './StateHistory'
 import { StateHistory } from './StateHistory'
 import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
-import { CodeEditor, monaco as monacoApi } from './codeEditor'
+import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
 import { throttle } from './utils'
 import { createPlaygroundAPI } from './playgroundAPI'
@@ -2667,10 +2667,8 @@ function wireCodeEditorListeners(): void {
   })
   // Route Cmd/Ctrl-Z and Cmd/Ctrl-Shift-Z to the playground's history rather
   // than Monaco's built-in undo stack.
-  editor.addCommand(monacoApi.KeyMod.CtrlCmd | monacoApi.KeyCode.KeyZ, () => undoDvalaCodeHistory())
-  editor.addCommand(monacoApi.KeyMod.CtrlCmd | monacoApi.KeyMod.Shift | monacoApi.KeyCode.KeyZ, () =>
-    redoDvalaCodeHistory(),
-  )
+  editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyZ, () => undoDvalaCodeHistory())
+  editor.addCommand(KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyZ, () => redoDvalaCodeHistory())
 }
 
 window.onload = async function () {
@@ -6093,6 +6091,13 @@ function getSelectedDvalaCode(): {
 }
 
 export function applyState(scrollToTop = false) {
+  // Defensive: applyState writes through the Monaco editor (via setDvalaCode +
+  // setSelection). Today every caller fires after the editor is constructed,
+  // but this no-op guard keeps the function safe if a future caller wires it
+  // earlier in boot.
+  const editor = tryGetCodeEditor()
+  if (!editor) return
+
   const contextTextAreaSelectionStart = getState('context-selection-start')
   const contextTextAreaSelectionEnd = getState('context-selection-end')
   const dvalaTextAreaSelectionStart = getState('dvala-code-selection-start')
@@ -6106,7 +6111,7 @@ export function applyState(scrollToTop = false) {
   elements.contextTextArea.selectionEnd = contextTextAreaSelectionEnd
 
   setDvalaCode(getState('dvala-code'), false, scrollToTop ? 'top' : undefined)
-  getCodeEditor().setSelection(dvalaTextAreaSelectionStart, dvalaTextAreaSelectionEnd)
+  editor.setSelection(dvalaTextAreaSelectionStart, dvalaTextAreaSelectionEnd)
 
   if (activeDvalaCodeHistoryFileId !== getState('current-file-id')) activateCurrentFileHistory(false)
 

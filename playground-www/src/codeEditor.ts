@@ -395,8 +395,8 @@ export class CodeEditor {
   onCursorOrSelectionChange(cb: () => void): monaco.IDisposable {
     return this.editor.onDidChangeCursorSelection(() => cb())
   }
-  onScroll(cb: (top: number, left: number) => void): monaco.IDisposable {
-    return this.editor.onDidScrollChange(e => cb(e.scrollTop, e.scrollLeft))
+  onScroll(cb: (top: number) => void): monaco.IDisposable {
+    return this.editor.onDidScrollChange(e => cb(e.scrollTop))
   }
   onFocus(cb: () => void): monaco.IDisposable {
     return this.editor.onDidFocusEditorWidget(() => cb())
@@ -424,6 +424,8 @@ export class CodeEditor {
   }
 }
 
-// Re-export Monaco's KeyCode/KeyMod so callers can build keybindings without
-// importing monaco-editor directly.
-export { monaco }
+// Narrow re-export: callers building keybindings need these two namespaces,
+// nothing else. Keeping the surface tight keeps `monaco-editor` imports
+// confined to this module.
+export const KeyCode = monaco.KeyCode
+export const KeyMod = monaco.KeyMod

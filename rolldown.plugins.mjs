@@ -50,6 +50,14 @@ export function markdownSourcePlugin() {
  *
  * Each stub is loaded under a `.js`-suffixed virtual id so rolldown picks
  * the JS pipeline rather than trying to parse the original extension.
+ *
+ * **Caveat — the `*.css` match is intentionally broad.** Any CSS import
+ * introduced anywhere in the playground bundle (not just from Monaco) is
+ * silently swallowed in production with no warning, which can cause
+ * missing-styles bugs that are hard to diagnose. If you add a new
+ * component that does `import './foo.css'`, ship the stylesheet as a
+ * separate static asset and `<link>` it from the production HTML
+ * (see how `monaco-editor.css` is wired in `playground-builder/`).
  */
 export function cssStubPlugin() {
   const CSS_PREFIX = '\0css-stub:'
