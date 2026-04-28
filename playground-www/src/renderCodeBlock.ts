@@ -6,7 +6,7 @@
  * cards, snapshot panels, and anywhere code is displayed.
  */
 
-import { tokenizeToHtml } from './SyntaxOverlay'
+import { tokenizeToHtml } from './tokenizeToHtml'
 import { playIcon } from './icons'
 import { runExampleCode } from './runExampleCode'
 

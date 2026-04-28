@@ -58,7 +58,6 @@ Single root `pnpm-lock.yaml` covers both members. `pnpm install` at the root ins
 ## TS Coding Conventions
 
 - Do not shadow variables
-- Imports must be sorted alphabetically
 - `it()` descriptions must begin with lowercase
 - No side-effect imports for module registration
 - Every built-in function needs a `docs` property with `category`, `description`, `returns`, `args`, `variants`, `examples`

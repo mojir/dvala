@@ -11,7 +11,7 @@
 
 import type { Ast, AstNode } from '../../../src/parser/types'
 import { prettyPrint } from '../../../src/prettyPrint'
-import { tokenizeToHtml } from '../SyntaxOverlay'
+import { tokenizeToHtml } from '../tokenizeToHtml'
 
 /** A tree node — either an AstNode or a BindingTarget (same [type, payload, id] shape). */
 type TreeNode = [string, unknown, number]

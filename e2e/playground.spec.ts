@@ -28,15 +28,18 @@ async function waitForInit(page: Page) {
 /** Navigate to the playground (editor) tab so the editor is visible. */
 async function navigateToPlayground(page: Page) {
   await page.evaluate(() => (window as any).Playground.navigateToTab('editor'))
-  await page.locator('#dvala-textarea').waitFor({ state: 'visible', timeout: 3000 })
+  await page.locator('#dvala-editor-host').waitFor({ state: 'visible', timeout: 3000 })
 }
 
-/** Clear the playground and type code into the Dvala textarea. */
+/** Get the current editor contents. */
+async function getDvalaCode(page: Page): Promise<string> {
+  return page.evaluate(() => (window as any).Playground.getEditorValue())
+}
+
+/** Replace the editor contents and trigger the playground's change handlers. */
 async function setDvalaCode(page: Page, code: string) {
   await navigateToPlayground(page)
-  const textarea = page.locator('#dvala-textarea')
-  await textarea.click()
-  await textarea.fill(code)
+  await page.evaluate(c => (window as any).Playground.setEditorValue(c), code)
 }
 
 /** Set context JSON via localStorage state (the context textarea is not directly visible in the new UI). */
@@ -86,7 +89,7 @@ test.describe('playground loads', () => {
     // Navigate to playground tab to verify editor elements
     await navigateToPlayground(page)
     await expect(page.locator('#tab-editor')).toBeVisible()
-    await expect(page.locator('#dvala-textarea')).toBeVisible()
+    await expect(page.locator('#dvala-editor-host')).toBeVisible()
     await expect(page.locator('#output-result')).toBeVisible()
   })
 })
@@ -132,7 +135,9 @@ test.describe('code execution', () => {
 
   test('runs via Ctrl+R keyboard shortcut', async ({ page }) => {
     await setDvalaCode(page, '2 * 21')
-    await page.locator('#dvala-textarea').press('Control+r')
+    // Focus the Monaco editor, then dispatch the Ctrl+R global shortcut.
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    await page.keyboard.press('Control+r')
     await waitForOutput(page)
 
     const output = await getOutputText(page)
@@ -187,7 +192,7 @@ test.describe('toolbar actions', () => {
 
     await page.evaluate(() => (window as any).Playground.resetPlayground())
 
-    const dvalaValue = await page.locator('#dvala-textarea').inputValue()
+    const dvalaValue = await getDvalaCode(page)
     const contextValue = await page.locator('#context-textarea').inputValue()
     const outputHtml = await page.locator('#output-result').innerHTML()
 
@@ -291,7 +296,7 @@ test.describe('examples', () => {
     await loadButton.click()
 
     // Code should be populated in the editor
-    const dvalaValue = await page.locator('#dvala-textarea').inputValue()
+    const dvalaValue = await getDvalaCode(page)
     expect(dvalaValue.length).toBeGreaterThan(0)
   })
 })
@@ -310,7 +315,7 @@ test.describe('state persistence', () => {
     await waitForInit(page)
     await navigateToPlayground(page)
 
-    const dvalaValue = await page.locator('#dvala-textarea').inputValue()
+    const dvalaValue = await getDvalaCode(page)
     expect(dvalaValue).toBe(code)
   })
 })
@@ -365,7 +370,7 @@ test.describe('share', () => {
     await waitForInit(page)
     await navigateToPlayground(page)
 
-    const dvalaValue = await page.locator('#dvala-textarea').inputValue()
+    const dvalaValue = await getDvalaCode(page)
     expect(dvalaValue).toBe(code)
 
     // The context textarea is a hidden backing element; read its value via evaluate
@@ -658,7 +663,7 @@ test.describe('files', () => {
     await page.locator('#explorer-file-list .explorer-item').nth(1).click()
 
     await navigateToPlayground(page)
-    const fileValue = await page.locator('#dvala-textarea').inputValue()
+    const fileValue = await getDvalaCode(page)
     expect(fileValue).toBe('99 * 2')
   })
 
@@ -753,18 +758,22 @@ test.describe('error interception', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('source maps', () => {
-  test('playground.js contains sourceMappingURL comment', async ({ page }) => {
-    const response = await page.goto('/playground.js')
-    expect(response?.status()).toBe(200)
-    const content = await response?.text()
+  // playground.js + .map are large enough that Chromium evicts them from the
+  // inspector cache before `response.text()` can read them. Use Playwright's
+  // `request` fixture (an APIRequestContext) which fetches outside the page
+  // and bypasses the inspector cache.
+  test('playground.js contains sourceMappingURL comment', async ({ request, baseURL }) => {
+    const response = await request.get(`${baseURL ?? ''}/playground.js`)
+    expect(response.status()).toBe(200)
+    const content = await response.text()
     expect(content).toContain('//# sourceMappingURL=playground.js.map')
   })
 
-  test('playground.js.map is accessible and valid', async ({ page }) => {
-    const response = await page.goto('/playground.js.map')
-    expect(response?.status()).toBe(200)
-    const content = await response?.text()
-    const map = JSON.parse(content!)
+  test('playground.js.map is accessible and valid', async ({ request, baseURL }) => {
+    const response = await request.get(`${baseURL ?? ''}/playground.js.map`)
+    expect(response.status()).toBe(200)
+    const content = await response.text()
+    const map = JSON.parse(content)
     expect(map.version).toBe(3)
     expect(map.file).toBe('playground.js')
     expect(Array.isArray(map.sources)).toBe(true)
@@ -1400,8 +1409,7 @@ test.describe('file operations', () => {
     await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), fileId!)
     await navigateToPlayground(page)
 
-    const textarea = page.locator('#dvala-textarea')
-    const isReadOnly = await textarea.evaluate(el => (el as HTMLTextAreaElement).readOnly)
+    const isReadOnly = await page.evaluate(() => (window as any).Playground.isEditorReadOnly())
     expect(isReadOnly).toBe(true)
   })
 

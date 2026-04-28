@@ -36,6 +36,52 @@ export function markdownSourcePlugin() {
 }
 
 /**
+ * Production-only stubs for two import shapes that rolldown can't handle but
+ * the playground bundle drags in via `monaco-editor`:
+ *
+ * 1. `*.css` — rolldown removed CSS bundling support. The prebuilt Monaco
+ *    stylesheet is loaded via `<link>` in `playground-www/index.html`
+ *    instead.
+ * 2. `*?worker` — Vite-specific worker URL syntax. Production rolldown
+ *    resolves it to a no-op worker stub; Monaco then logs a warning and
+ *    runs without web workers (acceptable for v1 — Monaco's worker is
+ *    used for rich features we haven't enabled yet, like JS/TS/JSON
+ *    language services). Vite dev mode handles `?worker` natively.
+ *
+ * Each stub is loaded under a `.js`-suffixed virtual id so rolldown picks
+ * the JS pipeline rather than trying to parse the original extension.
+ *
+ * **Caveat — the `*.css` match is intentionally broad.** Any CSS import
+ * introduced anywhere in the playground bundle (not just from Monaco) is
+ * silently swallowed in production with no warning, which can cause
+ * missing-styles bugs that are hard to diagnose. If you add a new
+ * component that does `import './foo.css'`, ship the stylesheet as a
+ * separate static asset and `<link>` it from the production HTML
+ * (see how `monaco-editor.css` is wired in `playground-builder/`).
+ */
+export function cssStubPlugin() {
+  const CSS_PREFIX = '\0css-stub:'
+  const WORKER_PREFIX = '\0worker-stub:'
+  const WORKER_STUB =
+    'class NoopWorker { constructor() {} terminate() {} postMessage() {} addEventListener() {} removeEventListener() {} dispatchEvent() { return false } }; export default NoopWorker;'
+  return {
+    name: 'css-stub',
+    resolveId(id) {
+      if (id.endsWith('.css')) {
+        return { id: `${CSS_PREFIX}${id}.js`, external: false }
+      }
+      if (id.endsWith('?worker')) {
+        return { id: `${WORKER_PREFIX}${id}.js`, external: false }
+      }
+    },
+    load(id) {
+      if (id.startsWith(CSS_PREFIX)) return 'export default {}'
+      if (id.startsWith(WORKER_PREFIX)) return WORKER_STUB
+    },
+  }
+}
+
+/**
  * Provides a virtual module `virtual:book-chapters` that exports all book chapter .md files
  * as a sorted array of { path, content } objects, discovered at build time by scanning book/.
  * This avoids import.meta.glob (unsupported in iife output format) while still being dynamic —

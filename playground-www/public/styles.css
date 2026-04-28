@@ -2900,6 +2900,18 @@ button:focus {
   cursor: default;
 }
 
+/* Monaco editor host. Sized by its grid cell; Monaco's automaticLayout
+   handles internal resizing. The locked variant matches the textarea's
+   read-only treatment so the visual contract carries over. */
+.dvala-editor-host {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+.dvala-editor-host--locked {
+  opacity: 0.7;
+}
+
 /* ============================================================
   Explorer panel (file list in editor tab)
   ============================================================ */

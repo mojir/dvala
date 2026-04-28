@@ -183,6 +183,7 @@
     "highlight.js": "^11.11.1",
     "knip": "^6.7.0",
     "minimatch": "^10.2.5",
+    "monaco-editor": "^0.55.1",
     "open-cli": "^9.0.0",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0",
