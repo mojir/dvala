@@ -324,14 +324,14 @@ function getPlaygroundPanel(): string {
          below seeds #output-result so existing code paths can reach it
          before boot finishes; createPanel re-parents it once the panel is
          constructed. -->
+    <!-- Output tab body. The Clear button is moved into the panel tab
+         strip at boot time via the trailingActions option so the panel
+         has a single visual bar instead of a strip plus toolbar pair. -->
     <template id="bottom-panel-output-template">
-      <!-- The panel's tab strip already identifies this as "Output" — no
-           need to repeat the title in a body toolbar. The Clear button
-           lives directly on the strip via flex layout (see CSS). -->
-      <div class="panel-shell__toolbar">
-        <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn output-clear-btn" aria-label="Clear output">${trashIcon} Clear</a>
-      </div>
       <div id="output-result" class="fancy-scroll"></div>
+    </template>
+    <template id="bottom-panel-output-trailing-template">
+      <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn output-clear-btn" aria-label="Clear output">${trashIcon} Clear</a>
     </template>
 
   `

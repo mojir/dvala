@@ -2205,18 +2205,15 @@ body.bottom-panel-collapsed #resize-divider-2 {
   display: none;
 }
 
-/* Toolbar inside a panel body (e.g. the Output's "Clear" button). The
-   panel's tab strip identifies the tab; the toolbar holds tab-specific
-   actions only, right-aligned. */
-.panel-shell__toolbar {
+/* Right-side action area in the tab strip — tab-shell-level controls
+   (e.g. Output's "Clear" button) live here so the panel has a single
+   horizontal bar instead of a strip + toolbar pair. */
+.panel-shell__strip-actions {
+  margin-left: auto;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 0 var(--space-2);
-  height: var(--panel-header-height);
-  background: var(--color-surface-dim);
-  border-bottom: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
+  gap: var(--space-1);
+  padding-right: var(--space-2);
 }
 
 #output-panel {

@@ -2751,6 +2751,15 @@ function addOutputElement(element: HTMLElement) {
  * horizontal resize divider when the bottom is collapsed.
  */
 function initLayoutPanels(): void {
+  // After every panel state change we explicitly call `editor.layout()`.
+  // Monaco's `automaticLayout: true` watches the editor host element via
+  // ResizeObserver, but the Observer only fires on the next animation
+  // frame and can miss the snap when the bottom panel collapses fast —
+  // the editor would render at the old (smaller) height until the next
+  // user action triggered a reflow. Forcing layout here makes the
+  // editor expand into the freed space immediately.
+  const refreshEditorLayout = () => tryGetCodeEditor()?.layout()
+
   // ---- Right panel ----
   const rightPanel = createPanel({
     containerEl: elements.rightPanel,
@@ -2760,25 +2769,37 @@ function initLayoutPanels(): void {
     onChange: () => {
       persistRightPanel()
       applyLayout()
+      refreshEditorLayout()
     },
   })
   setRightPanel(rightPanel)
 
   // ---- Bottom panel ----
+  // The Clear button lives in the panel's tab strip (right edge) rather
+  // than as a separate body toolbar — single-bar look, matches
+  // VS Code / Chrome DevTools panel conventions.
+  const trailingTpl = document.getElementById('bottom-panel-output-trailing-template') as HTMLTemplateElement | null
+  const trailingActions = document.createElement('div')
+  if (trailingTpl) {
+    trailingActions.appendChild(trailingTpl.content.cloneNode(true))
+    trailingTpl.remove()
+  }
+
   const bottomPanel = createPanel({
     containerEl: elements.bottomPanel,
     tabs: [{ id: 'output', label: 'Output' }],
     initialTabId: getState('bottom-panel-active-tab'),
     initialCollapsed: getState('bottom-panel-collapsed'),
+    trailingActions,
     onChange: () => {
       persistBottomPanel()
       syncBodyClasses()
       applyLayout()
+      refreshEditorLayout()
     },
   })
   setBottomPanel(bottomPanel)
-  // Move the seeded #output-result toolbar template into the Output tab
-  // body. Done after createPanel so the body div exists.
+  // Seed the Output tab's body with the static template (`#output-result`).
   const outputBody = bottomPanel.getTabBody('output')
   const tpl = document.getElementById('bottom-panel-output-template') as HTMLTemplateElement | null
   if (tpl) {

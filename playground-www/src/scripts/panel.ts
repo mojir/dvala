@@ -26,6 +26,13 @@ interface PanelOptions {
   initialCollapsed?: boolean
   /** Fires after every state change (active-tab swap, collapse toggle). */
   onChange?: (state: { activeTabId: string; collapsed: boolean }) => void
+  /**
+   * Optional element rendered at the right edge of the tab strip — useful
+   * for tab-shell-level actions (e.g. an Output panel's Clear button) so
+   * the body doesn't need its own toolbar. The element's children get
+   * pushed right via `margin-left: auto`.
+   */
+  trailingActions?: HTMLElement
 }
 
 export interface Panel {
@@ -90,6 +97,11 @@ export function createPanel(options: PanelOptions): Panel {
     body.setAttribute('role', 'tabpanel')
     bodiesEl.appendChild(body)
     tabBodies.set(tab.id, body)
+  }
+
+  if (options.trailingActions) {
+    options.trailingActions.classList.add('panel-shell__strip-actions')
+    stripEl.appendChild(options.trailingActions)
   }
 
   // Reset the container — we own its children now. Caller passes an empty
