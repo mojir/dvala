@@ -279,6 +279,12 @@ function currentThemeId(): string {
 export class CodeEditor {
   private readonly editor: monaco.editor.IStandaloneCodeEditor
   private readonly model: monaco.editor.ITextModel
+  // Set while a programmatic `setValue` is in flight; `onChange` listeners
+  // registered through this wrapper skip events fired during that window.
+  // Without this gate, callers like `setEditorValue` push a duplicate history
+  // entry: once for the explicit write, once for the synchronous re-entry
+  // through Monaco's `onDidChangeContent`.
+  private suppressChange = false
 
   constructor(host: HTMLElement, opts: { initialValue?: string } = {}) {
     registerLanguage()
@@ -315,7 +321,12 @@ export class CodeEditor {
   }
   setValue(value: string): void {
     if (this.model.getValue() === value) return
-    this.model.setValue(value)
+    this.suppressChange = true
+    try {
+      this.model.setValue(value)
+    } finally {
+      this.suppressChange = false
+    }
   }
 
   // --- selection / cursor (offset-based, matching the old textarea API) ---
@@ -390,7 +401,10 @@ export class CodeEditor {
 
   // --- listeners ---
   onChange(cb: (value: string) => void): monaco.IDisposable {
-    return this.model.onDidChangeContent(() => cb(this.model.getValue()))
+    return this.model.onDidChangeContent(() => {
+      if (this.suppressChange) return
+      cb(this.model.getValue())
+    })
   }
   onCursorOrSelectionChange(cb: () => void): monaco.IDisposable {
     return this.editor.onDidChangeCursorSelection(() => cb())

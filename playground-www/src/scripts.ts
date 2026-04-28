@@ -3954,7 +3954,7 @@ export function setEditorValue(code: string): void {
 }
 
 export function getEditorValue(): string {
-  return getState('dvala-code')
+  return getCodeEditor().getValue()
 }
 
 export function isEditorReadOnly(): boolean {
@@ -6107,27 +6107,27 @@ function getSelectedDvalaCode(): {
 }
 
 export function applyState(scrollToTop = false) {
-  // Defensive: applyState writes through the Monaco editor (via setDvalaCode +
-  // setSelection). Today every caller fires after the editor is constructed,
-  // but this no-op guard keeps the function safe if a future caller wires it
-  // earlier in boot.
-  const editor = tryGetCodeEditor()
-  if (!editor) return
-
-  const contextTextAreaSelectionStart = getState('context-selection-start')
-  const contextTextAreaSelectionEnd = getState('context-selection-end')
-  const dvalaTextAreaSelectionStart = getState('dvala-code-selection-start')
-  const dvalaTextAreaSelectionEnd = getState('dvala-code-selection-end')
+  const contextSelectionStart = getState('context-selection-start')
+  const contextSelectionEnd = getState('context-selection-end')
+  const dvalaSelectionStart = getState('dvala-code-selection-start')
+  const dvalaSelectionEnd = getState('dvala-code-selection-end')
 
   setOutput(getState('output'), false)
   getDataFromUrl()
 
   updateContextState(getState('context'), false)
-  elements.contextTextArea.selectionStart = contextTextAreaSelectionStart
-  elements.contextTextArea.selectionEnd = contextTextAreaSelectionEnd
+  elements.contextTextArea.selectionStart = contextSelectionStart
+  elements.contextTextArea.selectionEnd = contextSelectionEnd
 
-  setDvalaCode(getState('dvala-code'), false, scrollToTop ? 'top' : undefined)
-  editor.setSelection(dvalaTextAreaSelectionStart, dvalaTextAreaSelectionEnd)
+  // Editor-dependent restoration is gated: every live caller fires after the
+  // editor exists, but skipping the editor-touching lines keeps the function
+  // safe if a future caller wires applyState earlier in boot. The non-editor
+  // restoration above (output, context) still runs in that case.
+  const editor = tryGetCodeEditor()
+  if (editor) {
+    setDvalaCode(getState('dvala-code'), false, scrollToTop ? 'top' : undefined)
+    editor.setSelection(dvalaSelectionStart, dvalaSelectionEnd)
+  }
 
   if (activeDvalaCodeHistoryFileId !== getState('current-file-id')) activateCurrentFileHistory(false)
 
@@ -6140,7 +6140,7 @@ export function applyState(scrollToTop = false) {
     else if (getState('focused-panel') === 'dvala-code') focusDvalaCode()
 
     elements.contextTextArea.scrollTop = getState('context-scroll-top')
-    getCodeEditor().setScrollTop(getState('dvala-code-scroll-top'))
+    tryGetCodeEditor()?.setScrollTop(getState('dvala-code-scroll-top'))
     elements.outputResult.scrollTop = getState('output-scroll-top')
   }, 0)
 }
