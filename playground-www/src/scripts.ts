@@ -82,8 +82,9 @@ import {
 import type { HistoryEntry, HistoryStatus } from './StateHistory'
 import { StateHistory } from './StateHistory'
 import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
-import { SyntaxOverlay } from './SyntaxOverlay'
-import { isMac, throttle } from './utils'
+import { CodeEditor, monaco as monacoApi } from './codeEditor'
+import { getCodeEditor, setCodeEditor } from './scripts/codeEditorInstance'
+import { throttle } from './utils'
 import { createPlaygroundAPI } from './playgroundAPI'
 import { createEffectHandlers } from './createEffectHandlers'
 import { elements } from './scripts/elements'
@@ -234,35 +235,29 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
   if (!_playgroundHandlers) {
     const api = createPlaygroundAPI({
       showToast: (msg, opts) => showToast(msg, opts),
-      isEditorReadOnly: () => elements.dvalaTextArea.readOnly,
-      getEditorContent: () => elements.dvalaTextArea.value,
+      isEditorReadOnly: () => getCodeEditor().isReadOnly(),
+      getEditorContent: () => getCodeEditor().getValue(),
       setEditorContent: code => {
-        elements.dvalaTextArea.value = code
-        syntaxOverlay.update()
+        getCodeEditor().setValue(code)
         saveState({ 'dvala-code': code }, false)
       },
       insertEditorText: (text, position) => {
-        const ta = elements.dvalaTextArea
-        const pos = position ?? ta.selectionStart
-        ta.setRangeText(text, pos, pos, 'end')
-        syntaxOverlay.update()
-        saveState({ 'dvala-code': ta.value }, false)
+        const editor = getCodeEditor()
+        const pos = position ?? editor.getCursor()
+        editor.insertAt(text, pos)
+        saveState({ 'dvala-code': editor.getValue() }, false)
       },
-      getEditorSelection: () => {
-        const ta = elements.dvalaTextArea
-        return ta.value.slice(ta.selectionStart, ta.selectionEnd)
-      },
+      getEditorSelection: () => getCodeEditor().getSelectedText(),
       setEditorSelection: (start, end) => {
-        const ta = elements.dvalaTextArea
-        ta.selectionStart = start
-        ta.selectionEnd = end
-        ta.focus()
+        const editor = getCodeEditor()
+        editor.setSelection(start, end)
+        editor.focus()
       },
-      getEditorCursor: () => elements.dvalaTextArea.selectionStart,
+      getEditorCursor: () => getCodeEditor().getCursor(),
       setEditorCursor: position => {
-        const ta = elements.dvalaTextArea
-        ta.selectionStart = ta.selectionEnd = position
-        ta.focus()
+        const editor = getCodeEditor()
+        editor.setCursor(position)
+        editor.focus()
       },
       getContextContent: () => elements.contextTextArea.value,
       setContextContent: json => {
@@ -362,7 +357,8 @@ type OutputType = 'error' | 'output' | 'result' | 'analyze' | 'tokenize' | 'pars
 
 let moveParams: MoveParams | null = null
 
-export let syntaxOverlay: SyntaxOverlay
+// The Monaco editor instance — populated during boot below. Most code reaches
+// for it via `getCodeEditor()` from `./scripts/codeEditorInstance`.
 let autoCompleter: AutoCompleter | null = null
 let ignoreSelectionChange = false
 // Refs valid while the unified effect panel is open
@@ -1577,7 +1573,7 @@ function applyLayout() {
 const layout = throttle(applyLayout)
 
 export const undoDvalaCodeHistory = throttle(() => {
-  if (elements.dvalaTextArea.readOnly) return
+  if (getCodeEditor().isReadOnly()) return
   ignoreSelectionChange = true
   try {
     const historyEntry = dvalaCodeHistory.undo()
@@ -1599,7 +1595,7 @@ export const undoDvalaCodeHistory = throttle(() => {
 })
 
 export const redoDvalaCodeHistory = throttle(() => {
-  if (elements.dvalaTextArea.readOnly) return
+  if (getCodeEditor().isReadOnly()) return
   ignoreSelectionChange = true
   try {
     const historyEntry = dvalaCodeHistory.redo()
@@ -2546,8 +2542,7 @@ export function newFile() {
     false,
   )
   activateCurrentFileHistory(true)
-  elements.dvalaTextArea.value = ''
-  syntaxOverlay.update()
+  getCodeEditor().setValue('')
   showSideTab('files')
   updateCSS()
   populateSavedFilesList()
@@ -2570,15 +2565,16 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
     return
   }
 
-  elements.dvalaTextArea.value = value
-  syntaxOverlay?.update()
+  const editor = getCodeEditor()
+  editor.setValue(value)
 
   if (pushToHistory) {
+    const sel = editor.getSelectionRange()
     saveState(
       {
         'dvala-code': value,
-        'dvala-code-selection-start': elements.dvalaTextArea.selectionStart,
-        'dvala-code-selection-end': elements.dvalaTextArea.selectionEnd,
+        'dvala-code-selection-start': sel.start,
+        'dvala-code-selection-end': sel.end,
       },
       false,
     )
@@ -2588,9 +2584,8 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
     saveState({ 'dvala-code': value }, false)
   }
 
-  if (scroll === 'top') syntaxOverlay?.scrollContainer.scrollTo(0, 0)
-  else if (scroll === 'bottom')
-    syntaxOverlay?.scrollContainer.scrollTo({ top: syntaxOverlay.scrollContainer.scrollHeight, behavior: 'smooth' })
+  if (scroll === 'top') editor.scrollToTop()
+  else if (scroll === 'bottom') editor.scrollToBottom()
 }
 
 export function resetOutput() {
@@ -2638,6 +2633,46 @@ function addOutputElement(element: HTMLElement) {
   saveState({ output: elements.outputResult.innerHTML })
 }
 
+// Wire Monaco listeners that mirror the textarea-era event hooks: every model
+// change pushes into playground state + history; selection / scroll / focus
+// updates persist their own slices of state. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z
+// are routed to the playground's coarse-grained history (matches existing
+// behavior — Monaco's intra-edit undo would be a behavior change, deferred).
+function wireCodeEditorListeners(): void {
+  const editor = getCodeEditor()
+  editor.onChange(value => {
+    setDvalaCode(value, true)
+    if (getState('current-file-id') === null) scheduleScratchEditedClear()
+    else saveState({ 'dvala-code-edited': true })
+    updateCSS()
+  })
+  editor.onCursorOrSelectionChange(() => {
+    if (ignoreSelectionChange) return
+    const sel = editor.getSelectionRange()
+    saveState({
+      'dvala-code-selection-start': sel.start,
+      'dvala-code-selection-end': sel.end,
+    })
+  })
+  editor.onScroll(top => {
+    saveState({ 'dvala-code-scroll-top': top })
+  })
+  editor.onFocus(() => {
+    saveState({ 'focused-panel': 'dvala-code' })
+    updateCSS()
+  })
+  editor.onBlur(() => {
+    saveState({ 'focused-panel': null })
+    updateCSS()
+  })
+  // Route Cmd/Ctrl-Z and Cmd/Ctrl-Shift-Z to the playground's history rather
+  // than Monaco's built-in undo stack.
+  editor.addCommand(monacoApi.KeyMod.CtrlCmd | monacoApi.KeyCode.KeyZ, () => undoDvalaCodeHistory())
+  editor.addCommand(monacoApi.KeyMod.CtrlCmd | monacoApi.KeyMod.Shift | monacoApi.KeyCode.KeyZ, () =>
+    redoDvalaCodeHistory(),
+  )
+}
+
 window.onload = async function () {
   // Apply the theme attribute before rendering the shell to avoid a flash of the wrong theme.
   // We can't call updateCSS() here because the DOM elements it references don't exist yet.
@@ -2661,7 +2696,8 @@ window.onload = async function () {
   await initFiles()
   pruneFileHistories(['<scratch>', ...getSavedFiles().map(file => file.id)])
   initExecutionControlBar()
-  syntaxOverlay = new SyntaxOverlay('dvala-textarea')
+  setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
+  wireCodeEditorListeners()
 
   syncDvalaCodeHistoryButtons()
 
@@ -2874,18 +2910,10 @@ window.onload = async function () {
       evt.preventDefault()
       void resumeSnapshot()
     }
-    if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && !evt.shiftKey && evt.key === 'z') {
-      if (document.activeElement === elements.dvalaTextArea && !elements.dvalaTextArea.readOnly) {
-        evt.preventDefault()
-        undoDvalaCodeHistory()
-      }
-    }
-    if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && evt.shiftKey && evt.key === 'z') {
-      if (document.activeElement === elements.dvalaTextArea && !elements.dvalaTextArea.readOnly) {
-        evt.preventDefault()
-        redoDvalaCodeHistory()
-      }
-    }
+    // Cmd/Ctrl-Z and Cmd/Ctrl-Shift-Z are wired on the Monaco editor in
+    // wireCodeEditorListeners() so Monaco swallows them when focused. The
+    // window-level fallback that previously gated on the textarea is gone —
+    // the editor command takes precedence within its DOM subtree.
   })
   elements.contextTextArea.addEventListener('keydown', evt => {
     keydownHandler(evt, () => updateContextState(elements.contextTextArea.value, true))
@@ -2930,40 +2958,8 @@ window.onload = async function () {
     updateCSS()
   })
 
-  elements.dvalaTextArea.addEventListener('keydown', evt => {
-    keydownHandler(evt, () => {
-      setDvalaCode(elements.dvalaTextArea.value, true)
-      if (getState('current-file-id') === null) scheduleScratchEditedClear()
-      else saveState({ 'dvala-code-edited': true })
-      updateCSS()
-    })
-  })
-  elements.dvalaTextArea.addEventListener('input', () => {
-    setDvalaCode(elements.dvalaTextArea.value, true)
-    if (getState('current-file-id') === null) scheduleScratchEditedClear()
-    else saveState({ 'dvala-code-edited': true })
-    updateCSS()
-    syntaxOverlay.update()
-  })
-  syntaxOverlay.scrollContainer.addEventListener('scroll', () => {
-    saveState({ 'dvala-code-scroll-top': syntaxOverlay.scrollContainer.scrollTop })
-  })
-  elements.dvalaTextArea.addEventListener('selectionchange', () => {
-    if (!ignoreSelectionChange) {
-      saveState({
-        'dvala-code-selection-start': elements.dvalaTextArea.selectionStart,
-        'dvala-code-selection-end': elements.dvalaTextArea.selectionEnd,
-      })
-    }
-  })
-  elements.dvalaTextArea.addEventListener('focusin', () => {
-    saveState({ 'focused-panel': 'dvala-code' })
-    updateCSS()
-  })
-  elements.dvalaTextArea.addEventListener('focusout', () => {
-    saveState({ 'focused-panel': null })
-    updateCSS()
-  })
+  // Code-editor listeners are wired in wireCodeEditorListeners() (called once
+  // during boot, right after the CodeEditor is constructed).
 
   elements.outputResult.addEventListener('scroll', () => {
     saveState({ 'output-scroll-top': elements.outputResult.scrollTop })
@@ -3476,14 +3472,15 @@ export async function run() {
   const dvalaParams = getDvalaParamsFromContext()
 
   // Snapshot UI state that playground effects may modify
-  const ta = elements.dvalaTextArea
+  const editor = getCodeEditor()
+  const editorSelection = editor.getSelectionRange()
   const uiSnapshot = {
     dvalaCode: getState('dvala-code'),
     context: getState('context'),
-    scrollTop: syntaxOverlay.scrollContainer.scrollTop,
-    scrollLeft: syntaxOverlay.scrollContainer.scrollLeft,
-    selectionStart: ta.selectionStart,
-    selectionEnd: ta.selectionEnd,
+    scrollTop: editor.getScrollTop(),
+    scrollLeft: editor.getScrollLeft(),
+    selectionStart: editorSelection.start,
+    selectionEnd: editorSelection.end,
     route: location.pathname,
   }
 
@@ -3567,22 +3564,21 @@ export async function run() {
     document.body.classList.remove('dvala-running')
     // Restore UI state modified by playground effects
     if (getState('dvala-code') !== uiSnapshot.dvalaCode) {
-      elements.dvalaTextArea.value = uiSnapshot.dvalaCode
-      syntaxOverlay.update()
+      editor.setValue(uiSnapshot.dvalaCode)
       saveState({ 'dvala-code': uiSnapshot.dvalaCode }, false)
     }
     if (getState('context') !== uiSnapshot.context) {
       updateContextState(uiSnapshot.context, false)
     }
-    syntaxOverlay.scrollContainer.scrollTop = uiSnapshot.scrollTop
-    syntaxOverlay.scrollContainer.scrollLeft = uiSnapshot.scrollLeft
+    editor.setScrollTop(uiSnapshot.scrollTop)
+    editor.setScrollLeft(uiSnapshot.scrollLeft)
     if (location.pathname !== uiSnapshot.route) {
       router.navigate(uiSnapshot.route)
     }
     hijacker.releaseConsole()
     focusDvalaCode()
-    ta.setSelectionRange(uiSnapshot.selectionStart, uiSnapshot.selectionEnd)
-    syntaxOverlay.scrollContainer.scrollTop = uiSnapshot.scrollTop
+    editor.setSelection(uiSnapshot.selectionStart, uiSnapshot.selectionEnd)
+    editor.setScrollTop(uiSnapshot.scrollTop)
   }
 }
 
@@ -3948,7 +3944,7 @@ export function focusContext() {
 }
 
 export function focusDvalaCode() {
-  elements.dvalaTextArea.focus()
+  getCodeEditor().focus()
 }
 
 function makeArgRow(content: string, index?: number, copyContent?: string): HTMLElement {
@@ -6086,10 +6082,11 @@ function getSelectedDvalaCode(): {
   const selectionStart = getState('dvala-code-selection-start')
   const selectionEnd = getState('dvala-code-selection-end')
 
+  const value = getCodeEditor().getValue()
   return {
-    leadingCode: elements.dvalaTextArea.value.substring(0, selectionStart),
-    trailingCode: elements.dvalaTextArea.value.substring(selectionEnd),
-    code: elements.dvalaTextArea.value.substring(selectionStart, selectionEnd),
+    leadingCode: value.substring(0, selectionStart),
+    trailingCode: value.substring(selectionEnd),
+    code: value.substring(selectionStart, selectionEnd),
     selectionStart,
     selectionEnd,
   }
@@ -6109,8 +6106,7 @@ export function applyState(scrollToTop = false) {
   elements.contextTextArea.selectionEnd = contextTextAreaSelectionEnd
 
   setDvalaCode(getState('dvala-code'), false, scrollToTop ? 'top' : undefined)
-  elements.dvalaTextArea.selectionStart = dvalaTextAreaSelectionStart
-  elements.dvalaTextArea.selectionEnd = dvalaTextAreaSelectionEnd
+  getCodeEditor().setSelection(dvalaTextAreaSelectionStart, dvalaTextAreaSelectionEnd)
 
   if (activeDvalaCodeHistoryFileId !== getState('current-file-id')) activateCurrentFileHistory(false)
 
@@ -6123,7 +6119,7 @@ export function applyState(scrollToTop = false) {
     else if (getState('focused-panel') === 'dvala-code') focusDvalaCode()
 
     elements.contextTextArea.scrollTop = getState('context-scroll-top')
-    syntaxOverlay.scrollContainer.scrollTop = getState('dvala-code-scroll-top')
+    getCodeEditor().setScrollTop(getState('dvala-code-scroll-top'))
     elements.outputResult.scrollTop = getState('output-scroll-top')
   }, 0)
 }
@@ -6133,6 +6129,14 @@ export function updateCSS() {
   const lightModePref = getState('light-mode')
   const isLight = lightModePref !== null ? lightModePref : window.matchMedia('(prefers-color-scheme: light)').matches
   document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark')
+
+  // Repaint Monaco for the new theme. Editor is constructed during boot, so
+  // it may not exist on the first updateCSS() call before window.onload.
+  try {
+    getCodeEditor().setTheme(isLight ? 'light' : 'dark')
+  } catch {
+    // editor not yet initialised — first paint will pick up the right theme
+  }
 
   // Sync the theme segmented control: null=System, true=Light, false=Dark
   const activeThemeId =
@@ -6262,8 +6266,8 @@ export function updateCSS() {
   elements.dvalaCodeTitleString.style.fontFamily = fileTitleFontFamily
   elements.dvalaCodeTitleInput.style.fontFamily = fileTitleFontFamily
   elements.editorToolbarTitle.style.fontFamily = !isContextTab ? 'var(--font-mono)' : ''
-  elements.dvalaTextArea.readOnly = isLocked
-  elements.dvalaTextArea.classList.toggle('panel-textarea--locked', isLocked)
+  getCodeEditor().setReadOnly(isLocked)
+  elements.dvalaEditorHost.classList.toggle('dvala-editor-host--locked', isLocked)
   elements.dvalaCodeLockedIndicator.style.display = isLocked ? 'inline-flex' : 'none'
   elements.saveScratchButton.style.display = showSaveScratchButton ? 'inline-flex' : 'none'
   syncDvalaCodeHistoryButtons()

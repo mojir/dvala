@@ -28,13 +28,12 @@ import {
   formatTime,
   hideExecutionControlBar,
   saveFile,
-  syntaxOverlay,
   toggleEditorMenu,
   updateContextState,
   updateCSS,
 } from '../scripts'
 import { getState, saveState } from '../state'
-import { elements } from './elements'
+import { getCodeEditor } from './codeEditorInstance'
 import {
   createModalPanel,
   popModal,
@@ -83,10 +82,10 @@ export function loadSavedFile(id: string) {
     false,
   )
   activateCurrentFileHistory(false)
-  elements.dvalaTextArea.value = file.code
+  const editor = getCodeEditor()
+  editor.setValue(file.code)
   updateContextState(file.context, false)
-  syntaxOverlay?.update()
-  syntaxOverlay?.scrollContainer.scrollTo(0, 0)
+  editor.scrollToTop()
   syncCodePanelView('files')
   syncPlaygroundUrlState('files')
   updateCSS()
@@ -630,9 +629,8 @@ export function duplicateFile(id: string) {
     false,
   )
   activateCurrentFileHistory(true)
-  elements.dvalaTextArea.value = copy.code
+  getCodeEditor().setValue(copy.code)
   updateContextState(copy.context, false)
-  syntaxOverlay.update()
   updateCSS()
   populateSavedFilesList({ animateNewId: copy.id })
   showToast(`Created "${copy.name}"`)

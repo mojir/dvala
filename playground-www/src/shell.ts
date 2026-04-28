@@ -299,7 +299,7 @@ function getPlaygroundPanel(): string {
 
       <div id="dvala-panel">
         <div id="dvala-editor-view">
-          <textarea id="dvala-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Dvala code editor"></textarea>
+          <div id="dvala-editor-host" class="dvala-editor-host" aria-label="Dvala code editor"></div>
         </div>
         <div id="context-detail-view" style="display:none;">
           <textarea id="context-detail-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context binding JSON"></textarea>

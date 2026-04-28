@@ -507,6 +507,7 @@ function writeIndexPage() {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap"></noscript>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="monaco-editor.css">
     <script>
       // GitHub Pages SPA routing: restore path from query param set by 404.html.
       // 404.html encodes the path as: /?/<path>&<search> where the first '&' separates
@@ -573,6 +574,12 @@ function setupDocDir() {
 
 function copyAssets() {
   fs.cpSync(path.join(__dirname, '../../playground-www/public/'), path.join(DOC_DIR), { recursive: true })
+  // Monaco's prebuilt stylesheet — production rolldown can't bundle CSS, so we
+  // ship it as a separate static asset and `<link>` it from the HTML template.
+  fs.copyFileSync(
+    path.join(__dirname, '../../node_modules/monaco-editor/min/vs/editor/editor.main.css'),
+    path.join(DOC_DIR, 'monaco-editor.css'),
+  )
   const jsFile = path.join(__dirname, '../../playground-www/build/playground.js')
   const mapFile = path.join(__dirname, '../../playground-www/build/playground.js.map')
   let jsContent = fs.readFileSync(jsFile, 'utf8')

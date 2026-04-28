@@ -1,15 +1,21 @@
-import type { Token } from '../../src/tokenizer/token'
+// Static Dvala syntax-highlighter — renders source as styled HTML for
+// non-editable contexts (book chapters, feature cards, example pages, doc
+// modals). The interactive editor uses Monaco; this is a no-runtime fallback
+// for places that just need to display code.
+
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { standardEffectNames } from '../../src/evaluator/standardEffects'
 import { splitSegments } from '../../src/parser/subParsers/parseTemplateString'
-import { playgroundEffectReference } from './playgroundEffects'
+import type { Token } from '../../src/tokenizer/token'
 import { tokenizeSource } from '../../src/tooling'
+import { playgroundEffectReference } from './playgroundEffects'
 
 const normalExpressionSet = new Set(normalExpressionKeys)
 const specialExpressionSet = new Set(specialExpressionKeys)
 const playgroundEffectNames = new Set(Object.values(playgroundEffectReference).map(r => r.title))
-// Internal effects handled by the engine but not in the standardEffects registry
+// Internal effects handled by the engine but not in the standardEffects registry.
 const internalEffectNames = new Set(['dvala.error', 'dvala.macro.expand'])
+const effectConstructs = new Set(['perform', 'effectName', 'qualifiedName', 'qualifiedMatcher'])
 
 const colors = {
   keyword: 'var(--syntax-keyword)',
@@ -23,8 +29,6 @@ const colors = {
   effect: 'var(--syntax-effect)',
   effectConstruct: 'var(--syntax-effect-construct)',
 }
-
-const effectConstructs = new Set(['perform', 'effectName', 'qualifiedName', 'qualifiedMatcher'])
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -132,99 +136,5 @@ export function tokenizeToHtml(code: string): string {
       .join('')
   } catch {
     return escapeHtml(code)
-  }
-}
-
-export class SyntaxOverlay {
-  private textarea: HTMLTextAreaElement
-  private highlight: HTMLPreElement
-  private selectionLayer: HTMLPreElement
-  private lineNumbers: HTMLDivElement
-  readonly scrollContainer: HTMLDivElement
-  private lastCode: string | null = null
-  private lastLineCount = 0
-
-  constructor(textareaId: string) {
-    const textarea = document.getElementById(textareaId) as HTMLTextAreaElement
-    if (!textarea) throw new Error(`Element #${textareaId} not found`)
-
-    this.scrollContainer = document.createElement('div')
-    this.scrollContainer.className = 'syntax-overlay-container fancy-scroll'
-    this.scrollContainer.style.height = textarea.style.height || 'calc(100% - 32px)'
-
-    this.lineNumbers = document.createElement('div')
-    this.lineNumbers.className = 'syntax-overlay-line-numbers'
-
-    this.selectionLayer = document.createElement('pre')
-    this.selectionLayer.className = 'syntax-overlay-selection'
-
-    this.highlight = document.createElement('pre')
-    this.highlight.className = 'syntax-overlay-highlight'
-
-    textarea.parentNode!.insertBefore(this.scrollContainer, textarea)
-    this.scrollContainer.appendChild(this.lineNumbers)
-    this.scrollContainer.appendChild(this.selectionLayer)
-    this.scrollContainer.appendChild(this.highlight)
-    this.scrollContainer.appendChild(textarea)
-
-    textarea.style.height = ''
-
-    this.textarea = textarea
-    textarea.addEventListener('mousedown', () => {
-      this.selectionLayer.innerHTML = ''
-    })
-    textarea.addEventListener('keydown', () => {
-      this.selectionLayer.innerHTML = ''
-    })
-
-    // Keep textarea sized to match the pre content area
-    const resizeObserver = new ResizeObserver(() => this.syncSize())
-    resizeObserver.observe(this.highlight)
-
-    this.update()
-  }
-
-  private syncSize(): void {
-    const style = getComputedStyle(this.highlight)
-    this.textarea.style.width = style.width
-    this.textarea.style.height = style.height
-  }
-
-  private updateLineNumbers(code: string): void {
-    const lineCount = code === '' ? 1 : code.split('\n').length
-    if (lineCount === this.lastLineCount) return
-    this.lastLineCount = lineCount
-    const digits = Math.max(2, String(lineCount).length)
-    const lines: string[] = []
-    for (let i = 1; i <= lineCount; i++) lines.push(String(i).padStart(digits))
-    this.lineNumbers.textContent = lines.join('\n')
-  }
-
-  update(): void {
-    const code = this.textarea.value
-    if (code === this.lastCode) return
-    this.lastCode = code
-
-    // Reset textarea size so the grid cell can shrink when content gets smaller
-    this.textarea.style.height = ''
-    this.textarea.style.width = ''
-
-    this.highlight.innerHTML = `${tokenizeToHtml(code)}\n`
-    this.selectionLayer.innerHTML = ''
-    this.updateLineNumbers(code)
-    this.syncSize()
-  }
-
-  /** Render a selection background for a character range. */
-  setSelection(start: number, end: number): void {
-    const code = this.textarea.value
-    if (start < 0 || end <= start || start >= code.length) {
-      this.selectionLayer.innerHTML = ''
-      return
-    }
-    const before = escapeHtml(code.slice(0, start))
-    const selected = escapeHtml(code.slice(start, end))
-    const after = escapeHtml(code.slice(end))
-    this.selectionLayer.innerHTML = `${before}<span class="syntax-highlight-range">${selected}</span>${after}\n`
   }
 }

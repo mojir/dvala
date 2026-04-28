@@ -23,7 +23,3 @@ export function throttle(func: () => void) {
     }
   }
 }
-
-export function isMac(): boolean {
-  return navigator.platform.includes('Mac')
-}

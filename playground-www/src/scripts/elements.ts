@@ -48,8 +48,8 @@ export const elements = {
   get outputResult() {
     return document.getElementById('output-result') as HTMLElement
   },
-  get dvalaTextArea() {
-    return document.getElementById('dvala-textarea') as HTMLTextAreaElement
+  get dvalaEditorHost() {
+    return document.getElementById('dvala-editor-host') as HTMLDivElement
   },
   get resizeDevider1() {
     return document.getElementById('resize-divider-1') as HTMLElement
