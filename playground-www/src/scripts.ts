@@ -83,7 +83,7 @@ import type { HistoryEntry, HistoryStatus } from './StateHistory'
 import { StateHistory } from './StateHistory'
 import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { CodeEditor, monaco as monacoApi } from './codeEditor'
-import { getCodeEditor, setCodeEditor } from './scripts/codeEditorInstance'
+import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
 import { throttle } from './utils'
 import { createPlaygroundAPI } from './playgroundAPI'
 import { createEffectHandlers } from './createEffectHandlers'
@@ -6130,13 +6130,10 @@ export function updateCSS() {
   const isLight = lightModePref !== null ? lightModePref : window.matchMedia('(prefers-color-scheme: light)').matches
   document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark')
 
-  // Repaint Monaco for the new theme. Editor is constructed during boot, so
-  // it may not exist on the first updateCSS() call before window.onload.
-  try {
-    getCodeEditor().setTheme(isLight ? 'light' : 'dark')
-  } catch {
-    // editor not yet initialised — first paint will pick up the right theme
-  }
+  // Repaint Monaco for the new theme. The first updateCSS() call fires inside
+  // window.onload before the editor is constructed — skip silently then; boot
+  // creates the editor with the right theme already.
+  tryGetCodeEditor()?.setTheme(isLight ? 'light' : 'dark')
 
   // Sync the theme segmented control: null=System, true=Light, false=Dark
   const activeThemeId =
@@ -6266,8 +6263,10 @@ export function updateCSS() {
   elements.dvalaCodeTitleString.style.fontFamily = fileTitleFontFamily
   elements.dvalaCodeTitleInput.style.fontFamily = fileTitleFontFamily
   elements.editorToolbarTitle.style.fontFamily = !isContextTab ? 'var(--font-mono)' : ''
-  getCodeEditor().setReadOnly(isLocked)
-  elements.dvalaEditorHost.classList.toggle('dvala-editor-host--locked', isLocked)
+  // Same boot-order caveat as the theme call above — first updateCSS() runs
+  // before the editor exists.
+  tryGetCodeEditor()?.setReadOnly(isLocked)
+  elements.dvalaEditorHost?.classList.toggle('dvala-editor-host--locked', isLocked)
   elements.dvalaCodeLockedIndicator.style.display = isLocked ? 'inline-flex' : 'none'
   elements.saveScratchButton.style.display = showSaveScratchButton ? 'inline-flex' : 'none'
   syncDvalaCodeHistoryButtons()

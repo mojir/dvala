@@ -19,3 +19,10 @@ export function getCodeEditor(): CodeEditor {
   if (!instance) throw new Error('CodeEditor not initialised yet')
   return instance
 }
+
+// Used by code paths that may run during boot before `setCodeEditor` has been
+// called (e.g. the first `updateCSS()` call inside `window.onload`, fired
+// before the editor is constructed). Callers no-op if it returns null.
+export function tryGetCodeEditor(): CodeEditor | null {
+  return instance
+}
