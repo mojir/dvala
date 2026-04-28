@@ -3945,6 +3945,22 @@ export function focusDvalaCode() {
   getCodeEditor().focus()
 }
 
+// Test-driving accessors. The e2e suite drives the editor through the
+// `Playground.*` global rather than poking DOM internals — Monaco doesn't
+// expose a `.value` like a textarea, so these are the supported probes.
+// Internal callers should keep using setDvalaCode / getState directly.
+export function setEditorValue(code: string): void {
+  setDvalaCode(code, true)
+}
+
+export function getEditorValue(): string {
+  return getState('dvala-code')
+}
+
+export function isEditorReadOnly(): boolean {
+  return tryGetCodeEditor()?.isReadOnly() ?? false
+}
+
 function makeArgRow(content: string, index?: number, copyContent?: string): HTMLElement {
   const row = document.createElement('div')
   row.style.cssText = `display:flex; flex-direction:row; gap:3px; align-items:center; min-width:0; padding-right:0.5rem;${index !== undefined ? ' height:1.4rem;' : ''}`
