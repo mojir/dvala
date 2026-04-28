@@ -299,7 +299,10 @@ function getPlaygroundPanel(): string {
 
       <div id="dvala-panel">
         <div id="dvala-editor-view">
-          <div id="editor-tab-strip" class="editor-tab-strip" role="tablist" aria-label="Open files"></div>
+          <div class="editor-tab-bar">
+            <div id="editor-tab-strip" class="editor-tab-strip" role="tablist" aria-label="Open files"></div>
+            <a id="right-panel-toggle-btn" href="#" role="button" class="right-panel-toggle-btn" aria-label="Toggle right panel (Cmd+Shift+J)" title="Toggle right panel (Cmd+Shift+J)"></a>
+          </div>
           <div id="dvala-editor-host" class="dvala-editor-host" aria-label="Dvala code editor"></div>
         </div>
         <div id="context-detail-view" style="display:none;">

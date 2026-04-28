@@ -2176,6 +2176,9 @@ body.bottom-panel-collapsed #resize-divider-2 {
   font-family: var(--font-mono);
   cursor: pointer;
   border-bottom: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 .panel-shell__tab:hover {
   color: var(--color-text);
@@ -2183,6 +2186,55 @@ body.bottom-panel-collapsed #resize-divider-2 {
 .panel-shell__tab--active {
   color: var(--color-text-bright);
   border-bottom-color: var(--color-primary, var(--color-text-bright));
+}
+/* Close-X on closable tabs. The "x" is a span (not a real <button>) so
+   it nests inside the tab <button> without the validator complaining;
+   we still mark it role=button + ARIA-label it for assistive tech. The
+   strip's delegated click handler matches `[data-panel-tab-close]` first
+   and stops propagation, so a click on the X never activates the tab. */
+.panel-shell__tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 1.1em;
+  margin-left: 0.1em;
+  color: var(--color-text-dim, var(--color-text-secondary));
+  font-size: 1.1em;
+  line-height: 1;
+  border-radius: 2px;
+  cursor: pointer;
+  /* Hover affordance is fine on the close-X itself; opacity 0.7 → 1
+     telegraphs interactivity without being noisy when several closable
+     tabs are visible. */
+  opacity: 0.7;
+}
+.panel-shell__tab-close:hover {
+  opacity: 1;
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--color-text);
+}
+/* Right-panel toggle button. Lives at the rightmost edge of the editor
+   tab bar (NOT inside the right panel itself, so it stays reachable
+   while the panel is 0-width). Visually subdued (not competing with
+   file tab labels) but obviously interactive on hover. */
+.right-panel-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 100%;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim, var(--color-text-secondary));
+  text-decoration: none;
+  border-left: 1px solid var(--color-border-subtle);
+  opacity: 0.7;
+}
+.right-panel-toggle-btn:hover {
+  opacity: 1;
+  color: var(--color-text);
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.06));
 }
 .panel-shell__bodies {
   flex: 1;
@@ -3028,18 +3080,25 @@ button:focus {
 /* ============================================================
    Editor tab strip (sits above the Monaco host).
    ============================================================ */
-.editor-tab-strip {
+/* The editor tab bar is the strip + the right-panel toggle in a single
+   horizontal row. The strip stretches; the toggle stays pinned at the
+   far right (rightmost regardless of how many file tabs are open). */
+.editor-tab-bar {
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   flex-shrink: 0;
-  overflow-x: auto;
   background: var(--color-surface-dim);
   border-bottom: 1px solid var(--color-border-subtle);
   height: 28px;
-  user-select: none;
 }
-.editor-tab-strip:empty {
-  display: none;
+.editor-tab-strip {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  flex: 1;
+  min-width: 0; /* allow the strip to shrink below children's intrinsic width */
+  user-select: none;
 }
 
 .editor-tab {
@@ -4582,88 +4641,58 @@ h2.discrete {
 
 
 /* ============================================================
-   AST Tree Viewer
+   JSON Tree Viewer (right-panel master-detail viewer)
+
+   Used by the right panel's AST/Tokens/CST tabs. The wrapper is a
+   vertical flex container split into:
+     - .json-tree (top, scrollable) — the master pane
+     - .json-tree__splitter — visual divider
+     - .json-tree__detail (bottom, scrollable) — formatted detail
+
+   The split is fixed (60/40) — making it draggable would need a tiny
+   resize handler; the right panel as a whole is already resizable, so
+   this is good enough for now.
    ============================================================ */
 
-.ast-tree-viewer {
+.json-tree-viewer {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
 }
 
-.ast-tree__toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) 0;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
-.ast-tree__search {
-  flex: 1;
-  min-width: 140px;
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+/* `.json-tree` flex-basis is set inline by the viewer (so the splitter
+   drag can update it). Default is 60% tree / 40% detail; the wrapper's
+   `min-height: 0` lets either pane shrink below its intrinsic size.
+   Background is set explicitly so the tree and detail panes share an
+   identical surface — relying on inherited transparency was causing
+   subtle optical-illusion drift between them. */
+.json-tree {
   background: var(--color-surface);
-  color: var(--color-text);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-}
-.ast-tree__search:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-.ast-tree__search::placeholder {
-  color: var(--color-text-dim);
-}
-
-.ast-tree__btn {
-  padding: 3px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.ast-tree__btn:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text);
-}
-
-.ast-tree {
-  flex: 1;
-  overflow-y: auto;
+  overflow: auto;
   font-family: var(--font-mono);
   font-size: 0.85rem;
   line-height: 1.6;
-  padding-bottom: var(--space-4);
+  padding: var(--space-2);
+  min-height: 0;
 }
 
-.ast-tree__node {
+.json-tree__node {
   display: flex;
   align-items: baseline;
   padding: 1px 4px;
   border-radius: 3px;
-  cursor: default;
+  cursor: pointer;
   white-space: nowrap;
 }
-.ast-tree__node:hover {
+.json-tree__node:hover {
   background: rgba(255, 255, 255, 0.06);
 }
-.ast-tree__node--selected {
+.json-tree__node--selected {
   background: rgba(86, 156, 214, 0.15);
 }
-.ast-tree__node--match {
-  outline: 1px solid var(--color-primary);
-  outline-offset: -1px;
-}
 
-.ast-tree__arrow {
+.json-tree__arrow {
   display: inline-block;
   width: 1em;
   text-align: center;
@@ -4672,76 +4701,150 @@ h2.discrete {
   flex-shrink: 0;
   user-select: none;
 }
-.ast-tree__arrow--open {
+.json-tree__arrow--open {
   color: var(--color-text-secondary);
 }
 
-.ast-tree__label {
+.json-tree__label {
   color: var(--color-text-dim);
-  margin-right: 0.5ch;
+  margin-right: 0.25ch;
 }
 
-.ast-tree__type {
-  font-weight: 600;
+/* Per-kind styling for the value summary on a tree node. Strings get the
+   string color; numbers/booleans get a subtle accent; arrays/objects
+   stay neutral since their content is the children below. */
+.json-tree__value {
+  margin-left: 0.25ch;
 }
-
-.ast-tree__summary {
-  color: var(--color-text-secondary);
-  margin-left: 0.5ch;
+.json-tree__value--string {
+  color: var(--syntax-string, var(--color-text));
 }
-
-.ast-tree__id {
+.json-tree__value--number {
+  color: var(--syntax-number, var(--color-text));
+}
+.json-tree__value--boolean {
+  color: var(--syntax-keyword, var(--color-text));
+}
+.json-tree__value--null,
+.json-tree__value--undefined {
   color: var(--color-text-dim);
-  font-size: 0.75em;
-  opacity: 0.5;
-  margin-left: 0.75ch;
-}
-
-.ast-tree__empty {
-  padding: var(--space-4);
-  color: var(--color-text-dim);
-  text-align: center;
   font-style: italic;
 }
-
-.ast-tree__toast {
-  position: absolute;
-  right: 8px;
-  top: -2px;
-  background: var(--color-surface-2);
-  color: var(--color-text);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  pointer-events: none;
-  animation: ast-toast-fade 1.2s ease forwards;
-}
-@keyframes ast-toast-fade {
-  0% { opacity: 1; }
-  70% { opacity: 1; }
-  100% { opacity: 0; }
+.json-tree__value--array,
+.json-tree__value--object {
+  color: var(--color-text-secondary);
 }
 
-.ast-tree__preview {
-  border-top: 1px solid var(--color-border);
-  padding: var(--space-3);
-  min-height: 2.5em;
+/* Drag-handle splitter between tree (top) and detail (bottom). The wider
+   hit area makes it grabbable without being visually heavy — most of the
+   visible "line" is a 1px border on the centered ::before. */
+.json-tree__splitter {
+  height: 6px;
   flex-shrink: 0;
+  cursor: row-resize;
+  background: transparent;
+  position: relative;
+}
+.json-tree__splitter::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--color-border);
+}
+.json-tree__splitter:hover::before {
+  background: var(--color-primary, var(--color-text-bright));
+}
+/* While a drag is in progress we want the cursor to stay row-resize
+   everywhere AND text selection disabled (selecting tree rows during
+   a drag is unhelpful and visually noisy). */
+body.json-tree-viewer-resizing,
+body.json-tree-viewer-resizing * {
+  cursor: row-resize !important;
+  user-select: none !important;
+}
+
+/* `.json-tree__detail` flex is set inline by the viewer; flex defaults
+   here are a defensive fallback if init runs out of order. The pane is
+   a vertical flex column: a thin header (title + close-X), then the
+   scrolling content area. Background is set explicitly to match
+   `.json-tree` — the two panes need to look like one continuous
+   surface split by the resize handle. */
+.json-tree__detail {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
   font-family: var(--font-mono);
   font-size: 0.85rem;
-  background: var(--color-surface-1);
+  min-height: 0;
+  overflow: hidden;
+}
+/* Header is a flex row: title takes all available space (flex:1), close
+   sits at the far right (flex-shrink:0). The title element is always
+   present in DOM (even when empty) so this layout is stable regardless
+   of whether the caller passes a `detailTitle`. The header also opts
+   out of any inherited surface override — same background as the
+   detail pane (which itself inherits the wrapper's surface). */
+.json-tree__detail-header {
+  display: flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+  background: transparent;
+}
+.json-tree__detail-title {
+  flex: 1;
+  text-align: left;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: var(--font-sans, inherit);
+}
+.json-tree__detail-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-dim, var(--color-text-secondary));
+  font-size: 1.1em;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 2px;
+  opacity: 0.7;
+}
+.json-tree__detail-close:hover {
+  opacity: 1;
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--color-text);
+}
+.json-tree__detail-content {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-2);
+  min-height: 0;
 }
 
-.ast-tree__preview-hint {
-  color: var(--color-text-dim);
-  font-style: italic;
-  font-size: 0.8rem;
-}
-
-.ast-tree__preview-code {
+.json-tree__detail-code {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.5;
+}
+
+/* Error state for a right-panel tool tab. We render in-pane (instead of
+   logging to the Output channel) because auto-refresh fires on every
+   editor-tab swap — broken code would otherwise emit one error toast
+   per swap. The error message stays where the user expects to find it. */
+.right-panel-tool-error {
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--syntax-error, var(--color-error, var(--color-text)));
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 

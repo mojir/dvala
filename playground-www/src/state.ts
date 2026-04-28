@@ -51,10 +51,11 @@ export const defaultState = {
   'open-tabs': [{ kind: 'scratch' }] as PersistedTab[],
   /** Key of the currently focused tab (file id or `<scratch>`). */
   'active-tab-key': '<scratch>' as string,
-  // Layout-shell state. Right panel hosts structural views (AST viewer);
-  // bottom panel hosts linear views (Output, eventually state history /
-  // snapshots). Both persist their active-tab + collapsed flag + size %.
-  'right-panel-active-tab': 'ast' as string,
+  // Layout-shell state. Right panel hosts structural views (AST/Tokens/
+  // CST); bottom panel hosts linear views (Output, eventually state
+  // history / snapshots). Both persist their active-tab + collapsed flag
+  // + size %.
+  'right-panel-active-tab': null as string | null,
   'right-panel-collapsed': true as boolean, // start collapsed; user opts in
   'right-panel-size-percent': 35 as number, // % of total editor-area width
   'bottom-panel-active-tab': 'output' as string,

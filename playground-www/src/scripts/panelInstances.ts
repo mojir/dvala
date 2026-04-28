@@ -20,6 +20,9 @@ export function getRightPanel(): Panel {
   if (!rightPanel) throw new Error('Right panel not initialised yet')
   return rightPanel
 }
+export function tryGetRightPanel(): Panel | null {
+  return rightPanel
+}
 export function tryGetBottomPanel(): Panel | null {
   return bottomPanel
 }
@@ -37,7 +40,7 @@ export function syncBodyClasses(): void {
 /**
  * Persist the panel state slots that survive reloads. Called from each
  * panel's `onChange` callback; debouncing isn't necessary — toggle events
- * are infrequent and writing a couple of localStorage keys is fast.
+ * are infrequent and writing a few localStorage keys is fast.
  */
 export function persistRightPanel(): void {
   if (!rightPanel) return
@@ -53,7 +56,7 @@ export function persistBottomPanel(): void {
   if (!bottomPanel) return
   saveState(
     {
-      'bottom-panel-active-tab': bottomPanel.getActiveTabId(),
+      'bottom-panel-active-tab': bottomPanel.getActiveTabId() ?? 'output',
       'bottom-panel-collapsed': bottomPanel.isCollapsed(),
     },
     false,

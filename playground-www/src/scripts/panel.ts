@@ -15,17 +15,32 @@ interface PanelTabSpec {
   label: string
   /** Optional title attribute for the tab button (tooltips). */
   title?: string
+  /**
+   * If true, render an "x" close button on the tab. Clicking it hides the
+   * tab (`hideTab`) and fires `onTabClose`. The right panel uses this for
+   * tool tabs (AST/Tokens/CST) that the user can dismiss; the bottom
+   * panel's Output tab is non-closable so the toolbar stays visible.
+   */
+  closable?: boolean
+  /**
+   * If true, the tab is registered but not rendered in the strip. Use for
+   * "summon-on-demand" tabs that start invisible and become visible when a
+   * caller runs the corresponding tool (parse → show 'ast'). Hidden tabs
+   * never count as the active tab — the active tab always falls back to
+   * the first VISIBLE tab if the persisted/initial id is hidden.
+   */
+  hidden?: boolean
 }
 
 interface PanelOptions {
   /** The empty `<div>` we render into. The panel takes over its content. */
   containerEl: HTMLElement
   tabs: PanelTabSpec[]
-  /** If absent, the first tab is active. */
+  /** If absent, the first visible tab is active. */
   initialTabId?: string
   initialCollapsed?: boolean
   /** Fires after every state change (active-tab swap, collapse toggle). */
-  onChange?: (state: { activeTabId: string; collapsed: boolean }) => void
+  onChange?: (state: { activeTabId: string | null; collapsed: boolean }) => void
   /**
    * Optional element rendered at the right edge of the tab strip — useful
    * for tab-shell-level actions (e.g. an Output panel's Clear button) so
@@ -33,20 +48,43 @@ interface PanelOptions {
    * pushed right via `margin-left: auto`.
    */
   trailingActions?: HTMLElement
+  /**
+   * Fires after the user clicks a tab's "x" close button. The Panel has
+   * already hidden the tab and (if needed) re-picked the active tab /
+   * collapsed itself by the time this fires — callers use this hook to
+   * react (e.g. drop the tab's auto-refresh subscription).
+   */
+  onTabClose?: (tabId: string) => void
 }
 
 export interface Panel {
-  /** Switch the active tab. Throws on unknown id — silent no-ops mask bugs. */
+  /** Switch the active tab. Throws on unknown id — silent no-ops mask bugs.
+   * Throws if the target tab is currently hidden — call `showTab` first. */
   setActive(tabId: string): void
   /** Toggle collapsed state. Collapsed = body hidden, tab strip stays. */
   setCollapsed(collapsed: boolean): void
   isCollapsed(): boolean
   toggleCollapsed(): void
-  getActiveTabId(): string
+  /** Active tab id, or `null` when no tabs are visible. */
+  getActiveTabId(): string | null
   /** Get the writable body element for a specific tab. */
   getTabBody(tabId: string): HTMLElement
   /** Replace a tab's body content. Convenience for one-shot writes. */
   setTabBody(tabId: string, content: HTMLElement): void
+  /**
+   * Show a previously-hidden tab in the strip. No-op when already visible.
+   * Does NOT auto-activate; callers usually pair with `setActive`.
+   */
+  showTab(tabId: string): void
+  /**
+   * Hide a tab from the strip. If it was the active tab, activate the
+   * next visible tab (or fall back to no active tab + auto-collapse if
+   * none remain). Idempotent.
+   */
+  hideTab(tabId: string): void
+  isTabVisible(tabId: string): boolean
+  /** Snapshot of currently-visible tab ids in their DOM order. */
+  getVisibleTabIds(): string[]
 }
 
 /** Build the panel DOM and wire its event handlers. */
@@ -58,16 +96,37 @@ export function createPanel(options: PanelOptions): Panel {
   }
 
   const { containerEl } = options
-  // Validate initialTabId against the actual tab list. Persisted state can
-  // name a tab that no longer exists (e.g. a future PR drops the Output
-  // tab — an old user's localStorage still says `'output'`). Falling back
-  // to the first tab keeps the panel usable instead of producing a blank
-  // body (no `tabBodies` entry would match an unknown id).
   const knownIds = new Set(options.tabs.map(t => t.id))
-  let activeTabId =
-    options.initialTabId !== undefined && knownIds.has(options.initialTabId)
-      ? options.initialTabId
-      : options.tabs[0]!.id
+
+  // Hidden flags are mutable runtime state — the spec only seeds the initial
+  // visibility so `showTab`/`hideTab` can flip it later.
+  const hiddenFlags = new Map<string, boolean>()
+  for (const tab of options.tabs) hiddenFlags.set(tab.id, tab.hidden ?? false)
+
+  function visibleIdsInOrder(): string[] {
+    return options.tabs.filter(t => !hiddenFlags.get(t.id)).map(t => t.id)
+  }
+
+  // Pick the initial active tab. Validate `initialTabId` against the tab
+  // list AND its current visibility — persisted state can name a tab that
+  // no longer exists (e.g. a future PR drops a tab; an old user's
+  // localStorage still says `'output'`) or a tab that starts hidden.
+  // Falling back to the first visible tab keeps the panel usable. If no
+  // tabs are visible at boot, `activeTabId` is null and the panel is
+  // effectively empty (still mountable; tabs become visible via showTab).
+  function pickInitialActive(): string | null {
+    if (
+      options.initialTabId !== undefined
+      && knownIds.has(options.initialTabId)
+      && !hiddenFlags.get(options.initialTabId)
+    ) {
+      return options.initialTabId
+    }
+    const firstVisible = visibleIdsInOrder()[0]
+    return firstVisible ?? null
+  }
+
+  let activeTabId: string | null = pickInitialActive()
   let collapsed = options.initialCollapsed ?? false
 
   // ---- Tab strip ----
@@ -80,16 +139,37 @@ export function createPanel(options: PanelOptions): Panel {
   bodiesEl.className = 'panel-shell__bodies'
 
   const tabBodies = new Map<string, HTMLElement>()
+  const tabButtons = new Map<string, HTMLButtonElement>()
 
   for (const tab of options.tabs) {
     const tabBtn = document.createElement('button')
     tabBtn.type = 'button'
     tabBtn.className = 'panel-shell__tab'
     tabBtn.dataset['panelTabId'] = tab.id
-    tabBtn.textContent = tab.label
     if (tab.title) tabBtn.title = tab.title
     tabBtn.setAttribute('role', 'tab')
+
+    // Label sits in its own span so the close button can be a peer node
+    // without disturbing centering or text flow.
+    const labelEl = document.createElement('span')
+    labelEl.className = 'panel-shell__tab-label'
+    labelEl.textContent = tab.label
+    tabBtn.appendChild(labelEl)
+
+    if (tab.closable) {
+      const closeBtn = document.createElement('span')
+      closeBtn.className = 'panel-shell__tab-close'
+      closeBtn.textContent = '×'
+      closeBtn.dataset['panelTabClose'] = tab.id
+      closeBtn.setAttribute('role', 'button')
+      closeBtn.setAttribute('aria-label', `Close ${tab.label} tab`)
+      tabBtn.appendChild(closeBtn)
+    }
+
+    if (hiddenFlags.get(tab.id)) tabBtn.style.display = 'none'
+
     stripEl.appendChild(tabBtn)
+    tabButtons.set(tab.id, tabBtn)
 
     const body = document.createElement('div')
     body.className = 'panel-shell__body'
@@ -128,21 +208,37 @@ export function createPanel(options: PanelOptions): Panel {
     containerEl.classList.toggle('panel-shell--collapsed', collapsed)
   }
 
+  function applyVisibility(): void {
+    for (const [id, btn] of tabButtons) {
+      btn.style.display = hiddenFlags.get(id) ? 'none' : ''
+    }
+  }
+
   // ---- Event wiring ----
   // Delegated click on the tab strip — single listener, no per-tab handlers.
   stripEl.addEventListener('click', evt => {
-    const target = (evt.target as HTMLElement).closest<HTMLButtonElement>('[data-panel-tab-id]')
-    if (!target) return
-    const id = target.dataset['panelTabId']
-    if (!id || id === activeTabId) {
+    const targetEl = evt.target as HTMLElement
+    // Close button takes precedence — a click on the "x" should hide the
+    // tab without first activating it. We check the close-button data
+    // attribute before falling through to the tab-button handler.
+    const closeEl = targetEl.closest<HTMLElement>('[data-panel-tab-close]')
+    if (closeEl) {
+      evt.stopPropagation()
+      const id = closeEl.dataset['panelTabClose']
+      if (id) panel.hideTab(id)
+      return
+    }
+    const tabEl = targetEl.closest<HTMLButtonElement>('[data-panel-tab-id]')
+    if (!tabEl) return
+    const id = tabEl.dataset['panelTabId']
+    if (!id) return
+    if (id === activeTabId) {
       // Clicking the already-active tab toggles collapsed — matches VS Code's
       // "click activity bar icon to hide pane" behavior. Without this, a
       // panel with one tab would have no way to toggle from the strip.
-      if (id === activeTabId) {
-        collapsed = !collapsed
-        applyCollapsed()
-        options.onChange?.({ activeTabId, collapsed })
-      }
+      collapsed = !collapsed
+      applyCollapsed()
+      options.onChange?.({ activeTabId, collapsed })
       return
     }
     activeTabId = id
@@ -152,13 +248,17 @@ export function createPanel(options: PanelOptions): Panel {
     options.onChange?.({ activeTabId, collapsed })
   })
 
+  applyVisibility()
   applyActive()
   applyCollapsed()
 
   // ---- Public API ----
-  return {
+  // Defined as a const so the click handler can reference `panel.hideTab`
+  // without a forward-reference cycle. Returned at the end of the function.
+  const panel: Panel = {
     setActive(tabId) {
       if (!tabBodies.has(tabId)) throw new Error(`Unknown panel tab: ${tabId}`)
+      if (hiddenFlags.get(tabId)) throw new Error(`Cannot activate hidden panel tab: ${tabId}`)
       if (tabId === activeTabId) return
       activeTabId = tabId
       applyActive()
@@ -189,6 +289,68 @@ export function createPanel(options: PanelOptions): Panel {
       body.innerHTML = ''
       body.appendChild(content)
     },
+    showTab(tabId) {
+      if (!tabBodies.has(tabId)) throw new Error(`Unknown panel tab: ${tabId}`)
+      if (!hiddenFlags.get(tabId)) return
+      hiddenFlags.set(tabId, false)
+      applyVisibility()
+      // If nothing was active (all tabs were hidden), this newly-shown
+      // tab becomes the active one. We don't auto-activate otherwise —
+      // showTab is a visibility primitive, callers pair with setActive.
+      if (activeTabId === null) {
+        activeTabId = tabId
+        applyActive()
+        options.onChange?.({ activeTabId, collapsed })
+      }
+    },
+    hideTab(tabId) {
+      if (!tabBodies.has(tabId)) throw new Error(`Unknown panel tab: ${tabId}`)
+      if (hiddenFlags.get(tabId)) return
+      hiddenFlags.set(tabId, true)
+      applyVisibility()
+      // If we just hid the active tab, fall to the next visible neighbor —
+      // prefer the one to the right (DOM order), then the one to the
+      // left, mirroring VS Code's tab-close semantics.
+      let activeChanged = false
+      let collapsedChanged = false
+      if (tabId === activeTabId) {
+        const remaining = visibleIdsInOrder()
+        if (remaining.length === 0) {
+          activeTabId = null
+          // No tabs left to show — collapse so the empty body doesn't
+          // hold layout space. Keep the strip visible (it has the trailing
+          // actions slot and shows "where" the panel is).
+          if (!collapsed) {
+            collapsed = true
+            collapsedChanged = true
+          }
+        } else {
+          // Pick the next-visible tab in DOM order. If the closed tab was
+          // the rightmost, fall back to the new last entry.
+          const originalIdx = options.tabs.findIndex(t => t.id === tabId)
+          const next =
+            options.tabs.slice(originalIdx + 1).find(t => !hiddenFlags.get(t.id))
+            ?? options.tabs.slice(0, originalIdx).reverse().find(t => !hiddenFlags.get(t.id))
+          activeTabId = next?.id ?? remaining[0]!
+        }
+        activeChanged = true
+        applyActive()
+        if (collapsedChanged) applyCollapsed()
+      }
+      options.onTabClose?.(tabId)
+      if (activeChanged || collapsedChanged) {
+        options.onChange?.({ activeTabId, collapsed })
+      }
+    },
+    isTabVisible(tabId) {
+      if (!tabBodies.has(tabId)) throw new Error(`Unknown panel tab: ${tabId}`)
+      return !hiddenFlags.get(tabId)
+    },
+    getVisibleTabIds() {
+      return visibleIdsInOrder()
+    },
   }
+
+  return panel
 }
 
