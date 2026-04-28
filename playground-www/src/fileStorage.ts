@@ -17,7 +17,7 @@ export interface SavedFile {
 
 // Re-exported for callers that still talk in terms of "filename" rather than
 // path; saves them an extra import. New code should reach for `filePath.ts`.
-export { DVALA_FILE_SUFFIX, filenameFromPath, folderFromPath, normalizeFilePath, stripDvalaSuffix } from './filePath'
+export { filenameFromPath, folderFromPath, normalizeFilePath, stripDvalaSuffix } from './filePath'
 
 const STATE_KEY = 'state'
 
@@ -88,6 +88,18 @@ export function uniqueFilePath(path: string, taken: Set<string>): string {
     const candidate = `${dir}${stem} (${n})${ext}`
     if (!taken.has(candidate)) return candidate
   }
+}
+
+/**
+ * Pick a unique filename within `folder`. Disambiguates by appending
+ * ` (n)` to the basename — folder structure is preserved. Used by file
+ * creation paths (new file, duplicate, import) so the caller doesn't have
+ * to assemble the full path itself.
+ */
+export function uniquePathInFolder(folder: string, filename: string, files: SavedFile[]): string {
+  const intendedPath = folder === '' ? ensureDvalaSuffix(filename) : `${folder}/${ensureDvalaSuffix(filename)}`
+  const taken = new Set(files.map(f => f.path))
+  return uniqueFilePath(intendedPath, taken)
 }
 
 export function initFiles(): Promise<void> {

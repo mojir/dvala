@@ -13,7 +13,7 @@
 // Forbidden: leading slash, trailing slash, double slashes, empty segments,
 // `..` segments. Filenames must end in `.dvala`.
 
-export const DVALA_FILE_SUFFIX = '.dvala'
+const DVALA_FILE_SUFFIX = '.dvala'
 
 /** Last `/`-separated segment of a path (the file's display name). */
 export function filenameFromPath(path: string): string {

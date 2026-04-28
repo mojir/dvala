@@ -73,6 +73,14 @@ async function getOutputText(page: Page): Promise<string> {
   return (await page.locator('#output-result').textContent()) ?? ''
 }
 
+/** Read the first saved file's id from its `data-file-id` attribute. */
+async function firstSavedFileId(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const item = document.querySelector<HTMLElement>('#explorer-file-list .explorer-item[data-file-id]')
+    return item?.dataset['fileId'] ?? null
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -680,20 +688,12 @@ test.describe('files', () => {
       { timeout: 5000 },
     )
 
-    // Delete via JS using the first saved file's onclick attribute to extract id
+    // Delete via JS using the first saved file's data-file-id attribute
     await page.evaluate(() => {
-      // Find first non-scratch file (scratch has onclick="Playground.openScratch()")
-      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-      for (const item of items) {
-        const onclick = item.getAttribute('onclick') ?? ''
-        if (onclick.includes('loadSavedFile')) {
-          const match = onclick.match(/loadSavedFile\('([^']+)'\)/)
-          if (match?.[1]) {
-            ;(window as any).Playground.deleteSavedFile(match[1])
-            return
-          }
-        }
-      }
+      const items = document.querySelectorAll<HTMLElement>('#explorer-file-list .explorer-item[data-file-id]')
+      const first = items[0]
+      const id = first?.dataset['fileId']
+      if (id) (window as any).Playground.deleteSavedFile(id)
     })
 
     await page.waitForFunction(
@@ -1334,16 +1334,7 @@ test.describe('file operations', () => {
     await setDvalaCode(page, '1')
     await saveAsFile(page, 'original-name')
 
-    // Extract the file id from the explorer item
-    const fileId = await page.evaluate(() => {
-      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-      for (const item of items) {
-        const onclick = item.getAttribute('onclick') ?? ''
-        const match = onclick.match(/loadSavedFile\('([^']+)'\)/)
-        if (match?.[1]) return match[1]
-      }
-      return null
-    })
+    const fileId = await firstSavedFileId(page)
     expect(fileId).toBeTruthy()
 
     // Rename via JS API
@@ -1365,16 +1356,7 @@ test.describe('file operations', () => {
     await setDvalaCode(page, '2 + 2')
     await saveAsFile(page, 'dup-source')
 
-    const fileId = await page.evaluate(() => {
-      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-      for (const item of items) {
-        const onclick = item.getAttribute('onclick') ?? ''
-        const match = onclick.match(/loadSavedFile\('([^']+)'\)/)
-        if (match?.[1]) return match[1]
-      }
-      return null
-    })
-
+    const fileId = await firstSavedFileId(page)
     await page.evaluate((id: string) => (window as any).Playground.duplicateFile(id), fileId!)
 
     await page.waitForFunction(
@@ -1393,16 +1375,7 @@ test.describe('file operations', () => {
     await setDvalaCode(page, 'locked')
     await saveAsFile(page, 'lock-me')
 
-    const fileId = await page.evaluate(() => {
-      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-      for (const item of items) {
-        const onclick = item.getAttribute('onclick') ?? ''
-        const match = onclick.match(/loadSavedFile\('([^']+)'\)/)
-        if (match?.[1]) return match[1]
-      }
-      return null
-    })
-
+    const fileId = await firstSavedFileId(page)
     await page.evaluate((id: string) => (window as any).Playground.toggleFileLock(id), fileId!)
 
     // Load the locked file

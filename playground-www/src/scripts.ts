@@ -110,6 +110,7 @@ import {
   scheduleAutoSave,
   scheduleScratchEditedClear,
   showNameInputModal,
+  wireExplorerListeners,
 } from './scripts/files'
 import {
   closeAllModals,
@@ -2710,6 +2711,7 @@ window.onload = async function () {
   initExecutionControlBar()
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   wireCodeEditorListeners()
+  wireExplorerListeners()
 
   syncDvalaCodeHistoryButtons()
 

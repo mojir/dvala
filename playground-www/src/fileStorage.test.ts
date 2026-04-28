@@ -1,5 +1,24 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { clearAllFiles, getSavedFiles, normalizeSavedFileName, setSavedFiles, stripDvalaSuffix } from './fileStorage'
+import {
+  clearAllFiles,
+  getSavedFiles,
+  normalizeSavedFileName,
+  setSavedFiles,
+  stripDvalaSuffix,
+  uniqueFilePath,
+  uniquePathInFolder,
+} from './fileStorage'
+import type { SavedFile } from './fileStorage'
+
+const file = (id: string, path: string): SavedFile => ({
+  id,
+  path,
+  code: '',
+  context: '',
+  createdAt: 0,
+  updatedAt: 0,
+  locked: false,
+})
 
 describe('normalizeSavedFileName', () => {
   it('should append .dvala when it is missing', () => {
@@ -71,5 +90,54 @@ describe('setSavedFiles', () => {
       { id: 'b', path: '../escape.dvala', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
     ])
     expect(getSavedFiles().map(f => f.path)).toEqual(['foo.dvala'])
+  })
+})
+
+describe('uniqueFilePath', () => {
+  it('returns the input unchanged when nothing collides', () => {
+    expect(uniqueFilePath('foo.dvala', new Set())).toBe('foo.dvala')
+  })
+
+  it('appends ` (n)` to the basename for the first collision', () => {
+    expect(uniqueFilePath('foo.dvala', new Set(['foo.dvala']))).toBe('foo (2).dvala')
+  })
+
+  it('skips already-occupied counters until it finds a free one', () => {
+    const taken = new Set(['foo.dvala', 'foo (2).dvala', 'foo (3).dvala'])
+    expect(uniqueFilePath('foo.dvala', taken)).toBe('foo (4).dvala')
+  })
+
+  it('preserves the folder portion of the path', () => {
+    expect(uniqueFilePath('a/b/foo.dvala', new Set(['a/b/foo.dvala']))).toBe('a/b/foo (2).dvala')
+  })
+
+  it('handles paths with no extension', () => {
+    expect(uniqueFilePath('foo', new Set(['foo']))).toBe('foo (2)')
+  })
+})
+
+describe('uniquePathInFolder', () => {
+  it('returns the path verbatim when free at the root', () => {
+    expect(uniquePathInFolder('', 'foo', [])).toBe('foo.dvala')
+  })
+
+  it('appends ` (n)` when a sibling already has the name', () => {
+    expect(uniquePathInFolder('', 'foo', [file('a', 'foo.dvala')])).toBe('foo (2).dvala')
+  })
+
+  it('only considers files in the same folder when checking collisions', () => {
+    // `foo.dvala` exists at the root but not in `examples/`, so the request
+    // for `examples/foo` returns the unmodified path.
+    expect(uniquePathInFolder('examples', 'foo', [file('a', 'foo.dvala')])).toBe('examples/foo.dvala')
+  })
+
+  it('respects collisions inside the target folder', () => {
+    expect(uniquePathInFolder('examples', 'foo', [file('a', 'foo.dvala'), file('b', 'examples/foo.dvala')])).toBe(
+      'examples/foo (2).dvala',
+    )
+  })
+
+  it('appends the .dvala suffix when missing', () => {
+    expect(uniquePathInFolder('examples', 'bar', [])).toBe('examples/bar.dvala')
   })
 })

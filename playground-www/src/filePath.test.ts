@@ -77,4 +77,12 @@ describe('normalizeFilePath', () => {
   it('strips trailing whitespace', () => {
     expect(normalizeFilePath('  foo  ')).toBe('foo.dvala')
   })
+  it("treats a trailing slash as if it weren't there (no empty folders)", () => {
+    // `"foo/"` collapses to `["foo"]` after the empty-segment filter, then the
+    // basename gets the .dvala suffix. The result is a root-level file, not a
+    // folder named `foo` — folders are only meaningful when something lives
+    // inside them.
+    expect(normalizeFilePath('foo/')).toBe('foo.dvala')
+    expect(normalizeFilePath('examples/')).toBe('examples.dvala')
+  })
 })

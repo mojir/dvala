@@ -8,7 +8,6 @@ import {
   deleteFileHistory,
 } from '../fileHistoryStorage'
 import {
-  DVALA_FILE_SUFFIX,
   clearAllFiles,
   fileDisplayName,
   filenameFromPath,
@@ -16,7 +15,7 @@ import {
   getSavedFiles,
   normalizeSavedFileName,
   setSavedFiles,
-  stripDvalaSuffix,
+  uniquePathInFolder,
 } from '../fileStorage'
 import type { SavedFile } from '../fileStorage'
 import { buildFileTree } from '../fileTree'
@@ -202,31 +201,7 @@ export function openScratchInEditor(
   if (options.toast) showToast(options.toast)
 }
 
-function getUniqueSavedFileName(name: string, existingNames: Iterable<string>): string {
-  const normalizedName = normalizeSavedFileName(name)
-  const usedNames = new Set(existingNames)
-  if (!usedNames.has(normalizedName)) return normalizedName
-
-  const baseName = stripDvalaSuffix(normalizedName)
-  let n = 2
-  let candidate = `${baseName} (${n})${DVALA_FILE_SUFFIX}`
-  while (usedNames.has(candidate)) {
-    n++
-    candidate = `${baseName} (${n})${DVALA_FILE_SUFFIX}`
-  }
-  return candidate
-}
-
-/**
- * Pick a unique filename within the same folder. The disambiguation tail
- * (` (2)`, ` (3)`, …) is applied to the basename only — folder structure
- * is preserved.
- */
-function uniquePathInFolder(folder: string, filename: string, files: SavedFile[]): string {
-  const siblings = files.filter(f => folderFromPath(f.path) === folder).map(f => filenameFromPath(f.path))
-  const unique = getUniqueSavedFileName(filename, siblings)
-  return folder === '' ? unique : `${folder}/${unique}`
-}
+// uniquePathInFolder + uniqueFilePath live in fileStorage.ts (testable + reusable).
 
 /**
  * Create a new untitled file at the root folder and return its ID.
@@ -318,21 +293,37 @@ function populateExplorerFileList() {
 
   // Tree-shape rendering. Folders are derived from each `path` value; the
   // expand/collapse set lives in state so it survives reloads. Folders that
-  // no longer have a backing file are silently dropped from the expand set
-  // when we render — that keeps localStorage from accumulating stale paths.
+  // no longer have a backing file are pruned out of the expand set on every
+  // render so localStorage doesn't accumulate stale paths.
   const tree = buildFileTree(files)
   const expanded = new Set<string>(getState('explorer-expanded-folders'))
-  const remaining = new Set<string>()
 
-  list.innerHTML = renderScratchExplorerItem() + tree.map(node => renderTreeNode(node, 0, expanded, remaining, currentId)).join('')
+  list.innerHTML = renderScratchExplorerItem() + tree.map(node => renderTreeNode(node, 0, expanded, currentId)).join('')
 
-  // Prune the expanded set to only paths that still resolve to folders. Avoids
-  // a slow drift where deleted folders linger in localStorage forever.
-  if (remaining.size !== expanded.size || [...expanded].some(p => !remaining.has(p))) {
-    saveState({ 'explorer-expanded-folders': [...remaining].filter(p => expanded.has(p)) }, false)
+  // Walk the full tree (regardless of expansion state) to collect every
+  // folder path that still has a file under it. The pruned set must only
+  // drop folders that genuinely no longer exist — earlier we walked just
+  // the rendered subtree, which had the side effect of forgetting any
+  // folder nested inside a *collapsed* parent the next time the user
+  // expanded it.
+  const liveFolders = collectFolderPaths(tree)
+  const stillExpanded = [...expanded].filter(p => liveFolders.has(p))
+  if (stillExpanded.length !== expanded.size) {
+    saveState({ 'explorer-expanded-folders': stillExpanded }, false)
   }
 
   renderFileStats()
+}
+
+/** Recursively gather every folder path in the tree. */
+function collectFolderPaths(nodes: TreeNode[], into: Set<string> = new Set()): Set<string> {
+  for (const node of nodes) {
+    if (node.kind === 'folder') {
+      into.add(node.path)
+      collectFolderPaths(node.children, into)
+    }
+  }
+  return into
 }
 
 /**
@@ -340,25 +331,23 @@ function populateExplorerFileList() {
  * their children inline when expanded — there's no virtualization, so the
  * whole subtree paints whenever any node changes. Fine for the scale of
  * playground workspaces; revisit if anyone hits perf issues at 1000+ files.
+ *
+ * Click targets use `data-*` attributes + a delegated handler installed
+ * once on the parent list (see `wireExplorerListeners`). Inline `onclick`
+ * with interpolated user data would let a path containing a single quote
+ * inject arbitrary JS into the handler.
  */
-function renderTreeNode(
-  node: TreeNode,
-  depth: number,
-  expanded: Set<string>,
-  remaining: Set<string>,
-  currentId: string | null,
-): string {
+function renderTreeNode(node: TreeNode, depth: number, expanded: Set<string>, currentId: string | null): string {
   // 12px per depth level; the chevron sits in the indent gutter.
   const indent = `padding-left:${depth * 12}px;`
   if (node.kind === 'folder') {
-    remaining.add(node.path)
     const isExpanded = expanded.has(node.path)
     const chevron = isExpanded ? '▾' : '▸'
     const childrenHtml = isExpanded
-      ? node.children.map(c => renderTreeNode(c, depth + 1, expanded, remaining, currentId)).join('')
+      ? node.children.map(c => renderTreeNode(c, depth + 1, expanded, currentId)).join('')
       : ''
     return `
-      <div class="explorer-folder" style="${indent}" onclick="Playground.toggleExplorerFolder('${node.path}')" title="${escapeHtml(node.path)}">
+      <div class="explorer-folder" style="${indent}" data-folder-path="${escapeHtml(node.path)}" title="${escapeHtml(node.path)}">
         <span class="explorer-folder__chevron">${chevron}</span>
         <span class="explorer-folder__name" style="font-family:var(--font-mono);">${escapeHtml(node.name)}</span>
       </div>${childrenHtml}`
@@ -368,6 +357,9 @@ function renderTreeNode(
   const activeClass = isActive ? ' explorer-item--active' : ''
   const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
   const menuId = `explorer-menu-${entry.id}`
+  // Menu actions interpolate the file id, which is a UUID generated by
+  // crypto.randomUUID — safe in a JS string literal. The folder path above
+  // is user-supplied and goes through data-attribute + delegated handler.
   const menuItems: EditorMenuItem[] = [
     {
       action: `Playground.closeExplorerMenus();Playground.renameFile('${entry.id}')`,
@@ -402,7 +394,7 @@ function renderTreeNode(
     },
   ]
   return `
-      <div class="explorer-item${activeClass}" style="${indent}" onclick="Playground.loadSavedFile('${entry.id}')" title="${escapeHtml(entry.path)}">
+      <div class="explorer-item${activeClass}" style="${indent}" data-file-id="${entry.id}" title="${escapeHtml(entry.path)}">
         <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(filenameFromPath(entry.path))}</span>
         ${lockHtml}
         <span class="explorer-item__actions" onclick="event.stopPropagation()">
@@ -413,8 +405,40 @@ function renderTreeNode(
 }
 
 /**
- * Toggle the expanded state of a folder in the tree. Wired from the rendered
- * HTML; the state write triggers a re-render via `populateExplorerFileList`.
+ * Wire a single delegated click handler on the explorer list. Each row
+ * carries a `data-folder-path` or `data-file-id` attribute; the handler
+ * dispatches based on the nearest matching ancestor of the click target.
+ *
+ * Called once during boot — guarded by `explorerListenersWired` so repeat
+ * boot calls (e.g. test harness reset) don't double-bind.
+ */
+let explorerListenersWired = false
+export function wireExplorerListeners(): void {
+  if (explorerListenersWired) return
+  const list = document.getElementById('explorer-file-list')
+  if (!list) return
+  explorerListenersWired = true
+  list.addEventListener('click', evt => {
+    const target = evt.target as HTMLElement
+    // Click inside the per-file actions menu (the "⋯" button + dropdown)
+    // shouldn't toggle the row; let those handlers run on their own.
+    if (target.closest('.explorer-item__actions')) return
+    const folder = target.closest<HTMLElement>('[data-folder-path]')
+    if (folder) {
+      toggleExplorerFolder(folder.dataset['folderPath']!)
+      return
+    }
+    const file = target.closest<HTMLElement>('[data-file-id]')
+    if (file) {
+      void loadSavedFile(file.dataset['fileId']!)
+    }
+  })
+}
+
+/**
+ * Toggle the expanded state of a folder in the tree. Public so the e2e
+ * suite can drive expand/collapse without clicking; everyday clicks come
+ * through the delegated listener in wireExplorerListeners.
  */
 export function toggleExplorerFolder(path: string): void {
   const expanded = new Set<string>(getState('explorer-expanded-folders'))
@@ -427,8 +451,16 @@ export function toggleExplorerFolder(path: string): void {
 export function renameFile(id: string) {
   const file = getSavedFiles().find(entry => entry.id === id)
   if (!file) return
-  // Rename only changes the basename — the file stays in its current folder.
-  // Moving across folders is a follow-up (tree drag-and-drop, Phase 1 later).
+  // Rename keeps the file anchored in its current folder — the user-typed
+  // string is treated as a basename, not an absolute path. Cross-folder
+  // moves are a deferred follow-up (tree drag-and-drop, Phase 1 later).
+  //
+  // Subtle: if the user types `sub/bar`, `normalizeSavedFileName` produces
+  // `sub/bar.dvala` and the resulting `newPath` becomes
+  // `${currentFolder}/sub/bar.dvala` — i.e. a file deeper in the tree, not
+  // a peer rename. This is intentional today (keeps the rename invariant
+  // simple) and the deferred drag-to-move work is the right place to add
+  // an explicit "move out of current folder" affordance.
   const folder = folderFromPath(file.path)
   const currentFilename = filenameFromPath(file.path)
   showNameInputModal('Rename file', currentFilename, name => {
