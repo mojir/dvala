@@ -278,7 +278,11 @@ function currentThemeId(): string {
 
 export class CodeEditor {
   private readonly editor: monaco.editor.IStandaloneCodeEditor
-  private readonly model: monaco.editor.ITextModel
+  // Active text model. Mutable: tabs swap their own per-file models in via
+  // `setActiveModel(...)`. The initial model is created by `monaco.editor.create`
+  // and is owned by Monaco — call sites that swap *into* this slot are
+  // responsible for disposing models they created.
+  private model: monaco.editor.ITextModel
   // Set while a programmatic `setValue` is in flight; `onChange` listeners
   // registered through this wrapper skip events fired during that window.
   // Without this gate, callers like `setEditorValue` push a duplicate history
@@ -313,6 +317,48 @@ export class CodeEditor {
       inlineSuggest: { enabled: false },
     })
     this.model = this.editor.getModel()!
+  }
+
+  // ---- multi-model support (used by the tab manager) ----
+
+  /**
+   * Create a fresh `ITextModel` for the Dvala language. The caller (the tab
+   * manager) owns the returned model and must call `disposeModel(model)` when
+   * the tab is closed; otherwise Monaco leaks the buffer and its tokenization
+   * state.
+   */
+  createModel(initialValue: string): monaco.editor.ITextModel {
+    return monaco.editor.createModel(initialValue, 'dvala')
+  }
+
+  disposeModel(model: monaco.editor.ITextModel): void {
+    model.dispose()
+  }
+
+  getActiveModel(): monaco.editor.ITextModel {
+    return this.model
+  }
+
+  /** Capture the current cursor / scroll / folds for the active model. */
+  saveViewState(): monaco.editor.ICodeEditorViewState | null {
+    return this.editor.saveViewState()
+  }
+
+  /**
+   * Swap the visible model and optionally restore a previously saved view
+   * state (cursor, scroll, folds, selection). Suppresses the synchronous
+   * change event Monaco fires on model swap, so tab-switch doesn't trigger
+   * the playground's auto-save / history-push side effects.
+   */
+  setActiveModel(model: monaco.editor.ITextModel, viewState: monaco.editor.ICodeEditorViewState | null): void {
+    this.suppressChange = true
+    try {
+      this.editor.setModel(model)
+      this.model = model
+      if (viewState) this.editor.restoreViewState(viewState)
+    } finally {
+      this.suppressChange = false
+    }
   }
 
   // --- value ---
@@ -401,7 +447,9 @@ export class CodeEditor {
 
   // --- listeners ---
   onChange(cb: (value: string) => void): monaco.IDisposable {
-    return this.model.onDidChangeContent(() => {
+    // `editor.onDidChangeModelContent` follows the active model — `setActiveModel`
+    // can swap models without us having to re-subscribe.
+    return this.editor.onDidChangeModelContent(() => {
       if (this.suppressChange) return
       cb(this.model.getValue())
     })

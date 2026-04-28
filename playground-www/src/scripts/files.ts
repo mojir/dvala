@@ -25,7 +25,6 @@ import {
   ICONS,
   MAX_URL_LENGTH,
   activateCurrentFileHistory,
-  applyState,
   closeAllEditorMenus,
   escapeHtml,
   focusDvalaCode,
@@ -46,6 +45,14 @@ import {
   showToast,
 } from './modals'
 import { state } from './playgroundState'
+import {
+  closeTab,
+  closeTabsForMissingFiles,
+  focusScratch,
+  markActiveTabSynced,
+  notifyTabsChanged,
+  openOrFocusFile,
+} from './tabs'
 import { syncCodePanelView, syncPlaygroundUrlState } from './sidePanels'
 
 // ─── Saved Files ──────────────────────────────────────────────────────────────
@@ -73,23 +80,13 @@ export function loadSavedFile(id: string) {
   if (getState('current-file-id') === id) return
   cancelScratchEditedClear()
   flushPendingAutoSave()
-  saveState(
-    {
-      'dvala-code': file.code,
-      context: file.context,
-      'current-file-id': file.id,
-      'dvala-code-edited': false,
-      'dvala-code-selection-start': 0,
-      'dvala-code-selection-end': 0,
-      'dvala-code-scroll-top': 0,
-    },
-    false,
-  )
+  saveState({ context: file.context, 'dvala-code-edited': false }, false)
+  // openOrFocusFile syncs `current-file-id` + `dvala-code` to the tab's
+  // model and swaps Monaco's active model, preserving cursor / scroll for
+  // any tab the user reopens.
+  openOrFocusFile(file.id)
   activateCurrentFileHistory(false)
-  const editor = getCodeEditor()
-  editor.setValue(file.code)
   updateContextState(file.context, false)
-  editor.scrollToTop()
   syncCodePanelView('files')
   syncPlaygroundUrlState('files')
   updateCSS()
@@ -160,14 +157,7 @@ export function openScratchInEditor(
 
   flushPendingAutoSave()
 
-  saveState(
-    {
-      'scratch-code': code,
-      'scratch-context': context,
-    },
-    false,
-  )
-
+  saveState({ 'scratch-code': code, 'scratch-context': context }, false)
   closeSnapshotViewIfNeeded()
 
   saveState(
@@ -177,23 +167,28 @@ export function openScratchInEditor(
       'context-scroll-top': 0,
       'context-selection-start': 0,
       'context-selection-end': 0,
-      'current-file-id': null,
-      'dvala-code': code,
       'dvala-code-edited': false,
-      'dvala-code-scroll-top': 0,
-      'dvala-code-selection-start': 0,
-      'dvala-code-selection-end': 0,
       'focused-panel': 'dvala-code',
     },
     false,
   )
+
+  // Switch to the scratch tab and rewrite its model if the caller passed an
+  // explicit `code`. focusScratch() handles the model swap + state mirror;
+  // the explicit setEditorValue happens AFTER focus so the write lands in
+  // the scratch tab's model rather than whatever was previously active.
+  focusScratch()
+  if (options.code !== undefined) getCodeEditor().setValue(code)
 
   activateCurrentFileHistory(true)
 
   if (options.navigateToPlayground) router.navigate('/editor')
 
   syncPlaygroundUrlState('files')
-  applyState()
+  // updateCSS reads `current-file-id` to refresh the title pill + lock state
+  // for the now-active scratch tab; without it the pill keeps showing the
+  // previously-focused file's name.
+  updateCSS()
   populateExplorerFileList()
 
   if (options.focusCode) focusDvalaCode()
@@ -475,6 +470,11 @@ export function renameFile(id: string) {
       setSavedFiles(updated)
       updateCSS()
       populateSavedFilesList()
+      // The tab's display name comes from the file's path; re-render the
+      // strip so the rename shows up immediately. Also: if a duplicate
+      // file was overwritten, its tab (if any) needs to close.
+      if (duplicate) closeTabsForMissingFiles()
+      notifyTabsChanged()
       showToast(`Renamed to "${normalizedFilename}"`)
     }
     if (duplicate) {
@@ -551,12 +551,14 @@ export function closeExplorerMenus() {
   closeAllEditorMenus()
 }
 
-function clearActiveFileSelection() {
-  openScratchInEditor()
-}
-
 export function closeActiveFile() {
-  clearActiveFileSelection()
+  // Close the active tab; the tab manager falls back to a neighbor (or
+  // scratch if it was the last file tab open).
+  const currentId = getState('current-file-id')
+  if (currentId === null) return // already on scratch — nothing to close
+  closeTab(currentId)
+  populateExplorerFileList()
+  updateCSS()
 }
 
 export function openScratch() {
@@ -603,9 +605,10 @@ export function deleteSavedFile(id: string) {
     deleteFileHistory(id)
     const updated = getSavedFiles().filter(p => p.id !== id)
     setSavedFiles(updated)
-    if (getState('current-file-id') === id) {
-      clearActiveFileSelection()
-    }
+    // Close any open tab pointing at the deleted file (tab manager falls
+    // back to a neighbor or scratch). Replaces the previous
+    // clearActiveFileSelection-via-openScratch dance.
+    closeTabsForMissingFiles()
     populateSavedFilesList()
   }
   if (file.locked) {
@@ -636,7 +639,7 @@ export function toggleFileLock(id: string) {
 export function clearAllSavedFiles() {
   clearAllFiles()
   clearAllFileHistories()
-  clearActiveFileSelection()
+  closeTabsForMissingFiles()
   populateSavedFilesList()
 }
 
@@ -650,9 +653,7 @@ export function clearUnlockedFiles() {
       unlocked.forEach(entry => deleteFileHistory(entry.id))
       const kept = getSavedFiles().filter(p => p.locked)
       setSavedFiles(kept)
-      if (!kept.find(p => p.id === getState('current-file-id'))) {
-        clearActiveFileSelection()
-      }
+      closeTabsForMissingFiles()
       populateSavedFilesList()
       showToast('Unlocked files cleared')
     },
@@ -723,19 +724,11 @@ export function duplicateFile(id: string) {
     locked: false,
   }
   setSavedFiles([copy, ...getSavedFiles()])
-  saveState(
-    {
-      'dvala-code': copy.code,
-      context: copy.context,
-      'current-file-id': copy.id,
-      'dvala-code-selection-start': 0,
-      'dvala-code-selection-end': 0,
-      'dvala-code-scroll-top': 0,
-    },
-    false,
-  )
+  saveState({ context: copy.context }, false)
+  // Open the duplicate in a fresh tab. openOrFocusFile creates the model
+  // from copy.code and syncs current-file-id + dvala-code state.
+  openOrFocusFile(copy.id)
   activateCurrentFileHistory(true)
-  getCodeEditor().setValue(copy.code)
   updateContextState(copy.context, false)
   updateCSS()
   populateSavedFilesList({ animateNewId: copy.id })
@@ -767,7 +760,11 @@ export function saveAs() {
         locked: false,
       }
       setSavedFiles([createdFile, ...filtered])
-      saveState({ 'current-file-id': createdFile.id }, false)
+      // Open the new file as a tab so close / switch flows find it. Without
+      // this, saveAs leaves the current tab pointed at scratch (or whatever
+      // was active) while `current-file-id` claims the new file exists.
+      openOrFocusFile(createdFile.id)
+      // openOrFocusFile syncs `current-file-id` already.
       activateCurrentFileHistory(true)
 
       updateCSS()
@@ -912,6 +909,9 @@ export function scheduleAutoSave() {
       p.id === id ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() } : p,
     )
     setSavedFiles(updated)
+    // Resets the modified dot on the active file tab — the buffer now
+    // matches the file's stored code.
+    markActiveTabSynced()
     populateSavedFilesList()
     updateCSS()
   }, PENDING_INDICATOR_DELAY)

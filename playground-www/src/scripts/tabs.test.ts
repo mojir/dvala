@@ -1,0 +1,458 @@
+// Unit tests for the tab manager. The module holds state in module-level
+// `let` bindings; we mock its three external dependencies (codeEditor,
+// fileStorage, state) and call `__resetForTesting` between tests.
+
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// ----- Stub Monaco model: tabs.ts only consumes `getValue()`. -----
+type StubModel = {
+  __id: string
+  __code: string
+  __disposed: boolean
+  getValue: () => string
+}
+
+let modelCounter = 0
+function makeStubModel(code: string): StubModel {
+  modelCounter += 1
+  return {
+    __id: `model-${modelCounter}`,
+    __code: code,
+    __disposed: false,
+    getValue() {
+      return this.__code
+    },
+  }
+}
+
+// ----- Stub editor: created models, disposed models, current model. -----
+type StubEditor = {
+  active: StubModel
+  created: StubModel[]
+  disposed: StubModel[]
+  viewStateSaves: number
+  viewStateRestores: unknown[]
+  createModel: (code: string) => StubModel
+  disposeModel: (m: StubModel) => void
+  getActiveModel: () => StubModel
+  setActiveModel: (m: StubModel, vs: unknown) => void
+  saveViewState: () => unknown
+}
+
+let editor: StubEditor
+function makeStubEditor(): StubEditor {
+  const bootstrap = makeStubModel('')
+  const inst: StubEditor = {
+    active: bootstrap,
+    created: [],
+    disposed: [],
+    viewStateSaves: 0,
+    viewStateRestores: [],
+    createModel(code) {
+      const m = makeStubModel(code)
+      inst.created.push(m)
+      return m
+    },
+    disposeModel(m) {
+      m.__disposed = true
+      inst.disposed.push(m)
+    },
+    getActiveModel() {
+      return inst.active
+    },
+    setActiveModel(m, vs) {
+      inst.active = m
+      inst.viewStateRestores.push(vs ?? null)
+    },
+    saveViewState() {
+      inst.viewStateSaves += 1
+      return { vs: inst.viewStateSaves }
+    },
+  }
+  return inst
+}
+
+// ----- Stub state store: object-backed getState/saveState. -----
+const stateStore: Record<string, unknown> = {}
+
+// ----- Stub saved files: getSavedFiles consults this list. -----
+let savedFiles: { id: string; path: string; code: string }[] = []
+
+vi.mock('./codeEditorInstance', () => ({
+  getCodeEditor: () => editor,
+  tryGetCodeEditor: () => editor,
+}))
+
+vi.mock('../fileStorage', () => ({
+  getSavedFiles: () => savedFiles,
+  fileDisplayName: (f: { path: string }) => f.path.split('/').pop() ?? f.path,
+}))
+
+vi.mock('../state', () => ({
+  getState: (k: string) => stateStore[k],
+  saveState: (next: Record<string, unknown>) => {
+    Object.assign(stateStore, next)
+  },
+}))
+
+// `tabs.ts` imports KeyCode/KeyMod for shortcut binding — they're not
+// exercised by these tests but the import has to resolve.
+vi.mock('../codeEditor', () => ({
+  KeyCode: new Proxy({}, { get: () => 0 }),
+  KeyMod: new Proxy({}, { get: () => 0 }),
+}))
+
+// Pull in the module under test. `vi.mock` calls are hoisted by vitest so
+// they execute before this import resolves — equivalent to top-level await
+// without the unsupported syntax.
+import * as tabs from './tabs'
+
+function makeFile(id: string, path: string, code = `code-${id}`) {
+  return { id, path, code }
+}
+
+beforeEach(() => {
+  // Fully reset shared state between tests.
+  for (const k of Object.keys(stateStore)) delete stateStore[k]
+  savedFiles = []
+  modelCounter = 0
+  editor = makeStubEditor()
+  tabs.__resetForTesting()
+  // Defaults the production state.ts ships.
+  stateStore['open-tabs'] = [{ kind: 'scratch' }]
+  stateStore['active-tab-key'] = '<scratch>'
+  stateStore['scratch-code'] = ''
+  stateStore['current-file-id'] = null
+})
+
+// ----------------------------------------------------------------------
+// initTabs hydration
+// ----------------------------------------------------------------------
+
+describe('initTabs', () => {
+  it('hydrates the scratch tab on a fresh boot', () => {
+    tabs.initTabs()
+    // One scratch tab → exactly one createModel call.
+    expect(editor.created).toHaveLength(1)
+    expect(editor.active).toBe(editor.created[0])
+    expect(stateStore['active-tab-key']).toBe('<scratch>')
+    expect(stateStore['current-file-id']).toBeNull()
+  })
+
+  it('disposes the bootstrap model created by `monaco.editor.create`', () => {
+    const bootstrap = editor.active
+    tabs.initTabs()
+    expect(bootstrap.__disposed).toBe(true)
+    expect(editor.disposed).toContain(bootstrap)
+  })
+
+  it('restores persisted file tabs that still have backing files', () => {
+    savedFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    stateStore['open-tabs'] = [{ kind: 'scratch' }, { kind: 'file', id: 'a' }, { kind: 'file', id: 'b' }]
+    stateStore['active-tab-key'] = 'b'
+    tabs.initTabs()
+    expect(stateStore['active-tab-key']).toBe('b')
+    expect(stateStore['current-file-id']).toBe('b')
+  })
+
+  it("drops persisted tabs whose files are gone, falling back to scratch", () => {
+    stateStore['open-tabs'] = [{ kind: 'scratch' }, { kind: 'file', id: 'gone' }]
+    stateStore['active-tab-key'] = 'gone'
+    tabs.initTabs()
+    expect(stateStore['active-tab-key']).toBe('<scratch>')
+    expect(stateStore['current-file-id']).toBeNull()
+  })
+
+  it('always inserts a scratch tab even if the persisted list omitted it', () => {
+    savedFiles = [makeFile('a', 'a.dvala')]
+    stateStore['open-tabs'] = [{ kind: 'file', id: 'a' }]
+    stateStore['active-tab-key'] = 'a'
+    tabs.initTabs()
+    // Open-tabs should now lead with scratch + the file.
+    const persisted = stateStore['open-tabs'] as { kind: string }[]
+    expect(persisted[0]).toEqual({ kind: 'scratch' })
+    expect(persisted).toHaveLength(2)
+  })
+
+  it('falls back to current-file-id when active-tab-key is missing', () => {
+    savedFiles = [makeFile('a', 'a.dvala')]
+    stateStore['open-tabs'] = [{ kind: 'scratch' }, { kind: 'file', id: 'a' }]
+    stateStore['active-tab-key'] = 'unknown'
+    stateStore['current-file-id'] = 'a'
+    tabs.initTabs()
+    expect(stateStore['active-tab-key']).toBe('a')
+  })
+})
+
+// ----------------------------------------------------------------------
+// openOrFocusFile / focusScratch
+// ----------------------------------------------------------------------
+
+describe('openOrFocusFile', () => {
+  beforeEach(() => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala', 'A'), makeFile('b', 'b.dvala', 'B')]
+  })
+
+  it('creates a new tab + activates it for an unopened file', () => {
+    tabs.openOrFocusFile('a')
+    expect(stateStore['active-tab-key']).toBe('a')
+    expect(stateStore['current-file-id']).toBe('a')
+    expect(stateStore['dvala-code']).toBe('A')
+  })
+
+  it('focuses the existing tab on second open without creating a duplicate model', () => {
+    tabs.openOrFocusFile('a')
+    const modelsAfterFirst = editor.created.length
+    tabs.openOrFocusFile('a')
+    expect(editor.created.length).toBe(modelsAfterFirst)
+  })
+
+  it('does nothing when the file id is unknown', () => {
+    const before = JSON.parse(JSON.stringify(stateStore))
+    tabs.openOrFocusFile('does-not-exist')
+    expect(stateStore['active-tab-key']).toBe(before['active-tab-key'])
+  })
+
+  it('inserts new tabs after the active one (matches VS Code behavior)', () => {
+    tabs.openOrFocusFile('a')
+    tabs.openOrFocusFile('b')
+    const persisted = stateStore['open-tabs'] as { kind: string; id?: string }[]
+    // [scratch, a, b] — 'a' is the previously-active tab when 'b' opened.
+    expect(persisted.map(t => (t.kind === 'scratch' ? '<s>' : t.id))).toEqual(['<s>', 'a', 'b'])
+  })
+})
+
+describe('focusScratch', () => {
+  it('switches back to scratch from a file tab', () => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala')]
+    tabs.openOrFocusFile('a')
+    tabs.focusScratch()
+    expect(stateStore['active-tab-key']).toBe('<scratch>')
+    expect(stateStore['current-file-id']).toBeNull()
+  })
+})
+
+// ----------------------------------------------------------------------
+// closeTab + closeActiveTab + closeTabsForMissingFiles
+// ----------------------------------------------------------------------
+
+describe('closeTab', () => {
+  beforeEach(() => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+  })
+
+  it('refuses to close the scratch tab (it is sticky)', () => {
+    tabs.closeTab('<scratch>')
+    const persisted = stateStore['open-tabs'] as unknown[]
+    expect(persisted).toHaveLength(1)
+  })
+
+  it('removes a file tab and disposes its model', () => {
+    tabs.openOrFocusFile('a')
+    const aModel = editor.active
+    tabs.closeTab('a')
+    expect(aModel.__disposed).toBe(true)
+    expect(editor.disposed).toContain(aModel)
+  })
+
+  it('falls back to the left neighbor when closing the active tab', () => {
+    tabs.openOrFocusFile('a')
+    tabs.openOrFocusFile('b')
+    // Tabs: [<scratch>, a, b], active = b.
+    tabs.closeTab('b')
+    // Neighbor on the left is 'a'.
+    expect(stateStore['active-tab-key']).toBe('a')
+  })
+
+  it('falls back to the right tab if closing the leftmost file tab', () => {
+    tabs.openOrFocusFile('a')
+    tabs.openOrFocusFile('b')
+    // Now active = b. Switch back to a, then close — right neighbor is now b.
+    tabs.openOrFocusFile('a')
+    tabs.closeTab('a')
+    expect(stateStore['active-tab-key']).toBe('b')
+  })
+
+  it('falls back to scratch when closing the only file tab', () => {
+    tabs.openOrFocusFile('a')
+    tabs.closeTab('a')
+    expect(stateStore['active-tab-key']).toBe('<scratch>')
+  })
+
+  it('does not change active when closing a non-active tab', () => {
+    tabs.openOrFocusFile('a')
+    tabs.openOrFocusFile('b')
+    expect(stateStore['active-tab-key']).toBe('b')
+    tabs.closeTab('a')
+    expect(stateStore['active-tab-key']).toBe('b')
+  })
+
+  it('is a no-op when the key does not match any open tab', () => {
+    const before = stateStore['active-tab-key']
+    tabs.closeTab('never-opened')
+    expect(stateStore['active-tab-key']).toBe(before)
+  })
+})
+
+describe('closeActiveTab', () => {
+  it('closes the currently-active file tab', () => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala')]
+    tabs.openOrFocusFile('a')
+    tabs.closeActiveTab()
+    expect(stateStore['active-tab-key']).toBe('<scratch>')
+  })
+
+  it('is a no-op when scratch is the active tab', () => {
+    tabs.initTabs()
+    tabs.closeActiveTab()
+    expect(stateStore['active-tab-key']).toBe('<scratch>')
+  })
+})
+
+describe('closeTabsForMissingFiles', () => {
+  it('drops tabs whose backing file is no longer in savedFiles', () => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    tabs.openOrFocusFile('a')
+    tabs.openOrFocusFile('b')
+    // Simulate deletion of 'a' from saved files.
+    savedFiles = savedFiles.filter(f => f.id !== 'a')
+    tabs.closeTabsForMissingFiles()
+    const persisted = stateStore['open-tabs'] as { kind: string; id?: string }[]
+    expect(persisted.map(t => (t.kind === 'scratch' ? '<s>' : t.id))).toEqual(['<s>', 'b'])
+    // 'b' was active and still exists, so it stays active.
+    expect(stateStore['active-tab-key']).toBe('b')
+  })
+
+  it('falls back to scratch when the active tab is missing', () => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala')]
+    tabs.openOrFocusFile('a')
+    savedFiles = []
+    tabs.closeTabsForMissingFiles()
+    expect(stateStore['active-tab-key']).toBe('<scratch>')
+  })
+})
+
+// ----------------------------------------------------------------------
+// setActiveByIndex / cycleActive
+// ----------------------------------------------------------------------
+
+describe('keyboard navigation', () => {
+  beforeEach(() => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala'), makeFile('c', 'c.dvala')]
+    tabs.openOrFocusFile('a')
+    tabs.openOrFocusFile('b')
+    tabs.openOrFocusFile('c')
+  })
+
+  it('setActiveByIndex(1) selects the leftmost (1-based)', () => {
+    tabs.setActiveByIndex(1)
+    expect(stateStore['active-tab-key']).toBe('<scratch>')
+  })
+
+  it('setActiveByIndex selects file tabs by 1-based position', () => {
+    tabs.setActiveByIndex(2)
+    expect(stateStore['active-tab-key']).toBe('a')
+    tabs.setActiveByIndex(4)
+    expect(stateStore['active-tab-key']).toBe('c')
+  })
+
+  it('setActiveByIndex is a no-op when out of range', () => {
+    tabs.setActiveByIndex(2) // → 'a'
+    tabs.setActiveByIndex(99)
+    expect(stateStore['active-tab-key']).toBe('a')
+    tabs.setActiveByIndex(0)
+    expect(stateStore['active-tab-key']).toBe('a')
+  })
+
+  it('cycleActive(+1) wraps from last to first', () => {
+    expect(stateStore['active-tab-key']).toBe('c')
+    tabs.cycleActive(+1)
+    expect(stateStore['active-tab-key']).toBe('<scratch>')
+  })
+
+  it('cycleActive(-1) wraps from first to last', () => {
+    tabs.setActiveByIndex(1) // → scratch
+    tabs.cycleActive(-1)
+    expect(stateStore['active-tab-key']).toBe('c')
+  })
+})
+
+// ----------------------------------------------------------------------
+// Lifecycle hooks (regressions for review blockers #1 + #3)
+// ----------------------------------------------------------------------
+
+describe('setTabLifecycleHooks', () => {
+  it('beforeSwap fires while the OLD tab id is still current', () => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    tabs.openOrFocusFile('a')
+    let observedDuringHook: unknown = 'unset'
+    tabs.setTabLifecycleHooks({
+      beforeSwap: () => {
+        observedDuringHook = stateStore['current-file-id']
+      },
+    })
+    tabs.openOrFocusFile('b')
+    expect(observedDuringHook).toBe('a')
+  })
+
+  it('afterSwap fires once current-file-id reflects the NEW tab', () => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    tabs.openOrFocusFile('a')
+    let observedDuringHook: unknown = 'unset'
+    tabs.setTabLifecycleHooks({
+      afterSwap: () => {
+        observedDuringHook = stateStore['current-file-id']
+      },
+    })
+    tabs.openOrFocusFile('b')
+    expect(observedDuringHook).toBe('b')
+  })
+
+  it('beforeSwap fires before afterSwap on the same swap', () => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    tabs.openOrFocusFile('a')
+    const order: string[] = []
+    tabs.setTabLifecycleHooks({
+      beforeSwap: () => order.push('before'),
+      afterSwap: () => order.push('after'),
+    })
+    tabs.openOrFocusFile('b')
+    expect(order).toEqual(['before', 'after'])
+  })
+
+  it('does not fire hooks when the swap is a no-op (same tab)', () => {
+    tabs.initTabs()
+    savedFiles = [makeFile('a', 'a.dvala')]
+    tabs.openOrFocusFile('a')
+    let count = 0
+    tabs.setTabLifecycleHooks({ beforeSwap: () => (count += 1) })
+    tabs.openOrFocusFile('a')
+    expect(count).toBe(0)
+  })
+})
+
+// ----------------------------------------------------------------------
+// notifyTabsChanged + onTabsChange semantics
+// ----------------------------------------------------------------------
+
+describe('notifyTabsChanged', () => {
+  it('triggers re-render hooks subscribed via the renderer', () => {
+    // The internal renderer is wired at module load via onTabsChange, so we
+    // can't subscribe again — but notifyTabsChanged itself should be a
+    // pure trigger that doesn't mutate tab state.
+    tabs.initTabs()
+    const beforeKey = stateStore['active-tab-key']
+    tabs.notifyTabsChanged()
+    expect(stateStore['active-tab-key']).toBe(beforeKey)
+  })
+})

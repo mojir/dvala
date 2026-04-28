@@ -1,6 +1,11 @@
 import type { UnknownRecord } from '../../src/interface'
 import { reactive } from './lib/reactive'
 
+// Persisted tab list shape. Models + viewState aren't serializable; only
+// "which files / scratch are open" survives reloads. Hydration in
+// `scripts/tabs.ts::initTabs` reconstructs models from SavedFile.code.
+export type PersistedTab = { kind: 'file'; id: string } | { kind: 'scratch' }
+
 export const defaultState = {
   'sidebar-width': 350 as number,
   'playground-height': 350 as number,
@@ -41,6 +46,11 @@ export const defaultState = {
   // collapsed; users opt in by clicking. Workspace-scoped state — survives
   // reloads but lives in the same localStorage bucket as other prefs.
   'explorer-expanded-folders': [] as string[],
+  // List of tabs the user has open in the editor. Reconstructed into
+  // Monaco models on boot — see `scripts/tabs.ts::initTabs`.
+  'open-tabs': [{ kind: 'scratch' }] as PersistedTab[],
+  /** Key of the currently focused tab (file id or `<scratch>`). */
+  'active-tab-key': '<scratch>' as string,
 } as const
 
 type State = {

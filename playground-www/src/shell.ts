@@ -299,6 +299,7 @@ function getPlaygroundPanel(): string {
 
       <div id="dvala-panel">
         <div id="dvala-editor-view">
+          <div id="editor-tab-strip" class="editor-tab-strip" role="tablist" aria-label="Open files"></div>
           <div id="dvala-editor-host" class="dvala-editor-host" aria-label="Dvala code editor"></div>
         </div>
         <div id="context-detail-view" style="display:none;">
