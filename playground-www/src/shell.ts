@@ -299,7 +299,10 @@ function getPlaygroundPanel(): string {
 
       <div id="dvala-panel">
         <div id="dvala-editor-view">
-          <div id="editor-tab-strip" class="editor-tab-strip" role="tablist" aria-label="Open files"></div>
+          <div class="editor-tab-bar">
+            <div id="editor-tab-strip" class="editor-tab-strip" role="tablist" aria-label="Open files"></div>
+            <button type="button" id="right-panel-toggle-btn" class="right-panel-toggle-btn" aria-label="Toggle right panel (Cmd+Shift+J)" title="Toggle right panel (Cmd+Shift+J)"></button>
+          </div>
           <div id="dvala-editor-host" class="dvala-editor-host" aria-label="Dvala code editor"></div>
         </div>
         <div id="context-detail-view" style="display:none;">
@@ -311,17 +314,28 @@ function getPlaygroundPanel(): string {
           <div id="snapshot-footer"></div>
         </div>
       </div>
+      <div id="resize-divider-3"></div>
+      <div id="right-panel" class="layout-panel"></div>
     </div>
 
     <div id="resize-divider-2"></div>
 
-    <div id="output-panel">
-      <div class="panel-header">
-        <span class="panel-header__title">Output</span>
-        <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn output-clear-btn" aria-label="Clear output">${trashIcon} Clear</a>
-      </div>
+    <div id="bottom-panel" class="layout-panel"></div>
+    <!-- Output content is mounted into the bottom panel by createPanel; the
+         old standalone #output-panel + #output-result divs now live inside
+         a tab body that the Panel component manages. The static markup
+         below seeds #output-result so existing code paths can reach it
+         before boot finishes; createPanel re-parents it once the panel is
+         constructed. -->
+    <!-- Output tab body. The Clear button is moved into the panel tab
+         strip at boot time via the trailingActions option so the panel
+         has a single visual bar instead of a strip plus toolbar pair. -->
+    <template id="bottom-panel-output-template">
       <div id="output-result" class="fancy-scroll"></div>
-    </div>
+    </template>
+    <template id="bottom-panel-output-trailing-template">
+      <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn output-clear-btn" aria-label="Clear output">${trashIcon} Clear</a>
+    </template>
 
   `
 }

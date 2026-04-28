@@ -3,7 +3,6 @@ import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import { getLinkName } from '../../reference'
 import type { Any, UnknownRecord } from '../../src/interface'
-import type { Ast } from '../../src/parser/types'
 import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from '../../src/evaluator/effectTypes'
 import { extractCheckpointSnapshots } from '../../src/evaluator/suspension'
@@ -13,22 +12,21 @@ import { retrigger } from '../../src/retrigger'
 import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
-import {
-  buildDocTree,
-  formatSource,
-  getAutoCompleter,
-  getUndefinedSymbols,
-  parseToCst,
-  parseTokenStream,
-  tokenizeSource,
-} from '../../src/tooling'
+import { formatSource, getAutoCompleter, getUndefinedSymbols } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
-import { createAstTreeViewer } from './components/astTreeViewer'
+import {
+  RIGHT_PANEL_TOOL_TABS,
+  refreshActiveRightPanelTab,
+  showAstInRightPanel,
+  showCstInRightPanel,
+  showDocTreeInRightPanel,
+  showTokensInRightPanel,
+} from './scripts/rightPanelTools'
 import { renderBenchmarksCharts } from './components/benchmarksPage'
 import type { EditorMenuItem } from './editorMenu'
 import { renderEditorMenu } from './editorMenu'
-import { addIcon, copyIcon, downloadIcon, saveIcon, shareIcon } from './icons'
+import { addIcon, copyIcon, downloadIcon, panelRightIcon, saveIcon, shareIcon } from './icons'
 import { renderCodeBlock } from './renderCodeBlock'
 import { renderShell } from './shell'
 import * as router from './router'
@@ -95,6 +93,17 @@ import { StateHistory } from './StateHistory'
 import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
+import { createPanel } from './scripts/panel'
+import { clampRightPercent, computeRightPanelPercent } from './scripts/layoutMath'
+import {
+  persistBottomPanel,
+  persistRightPanel,
+  setBottomPanel,
+  setRightPanel,
+  syncBodyClasses,
+  tryGetBottomPanel,
+  tryGetRightPanel,
+} from './scripts/panelInstances'
 import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
   focusScratch,
@@ -414,6 +423,12 @@ type MoveParams =
   | {
       id: 'resize-divider-2'
       startMoveY: number
+      percentBeforeMove: number
+    }
+  | {
+      // Right-panel drag handle: dragging LEFT widens the right panel.
+      id: 'resize-divider-3'
+      startMoveX: number
       percentBeforeMove: number
     }
 
@@ -1614,22 +1629,51 @@ function onDocumentClick(event: Event) {
   }
 }
 
+/**
+ * Lay out the playground's resizable surfaces (left side panel, code
+ * editor, right panel, bottom panel). Reads from the state store rather
+ * than from the Panel objects on purpose: it runs once at boot BEFORE
+ * `initLayoutPanels()` builds the Panel singletons, and the state slots
+ * are already populated by `state.ts` from localStorage at module init.
+ * Steady-state mutations route `onChange → persistRightPanel/Bottom →
+ * applyLayout`, keeping the state store and Panel instances in sync.
+ */
 function applyLayout() {
   calculateDimensions()
 
-  // Set grid column widths for the editor-top area
+  // ---- editor-top horizontal grid ----
+  // Two collapsibles share the row: side-panel (left) + right-panel.
+  // When the right-panel is collapsed, divider-3 + right-panel get
+  // display:none via CSS; we still emit a 6-column template so the column
+  // indexes stay stable for child positioning. CSS hides the unused cells.
   const sidePercent = getState('resize-divider-1-percent')
+  const rightPanelOpen = !getState('right-panel-collapsed')
+  const rightPercent = clampRightPercent(getState('right-panel-size-percent'), sidePercent)
   const editorTop = document.getElementById('editor-top')
   if (editorTop) {
-    editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr`
+    if (rightPanelOpen) {
+      editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 5px ${rightPercent}%`
+    } else {
+      editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 0 0`
+    }
+    editorTop.classList.toggle('right-panel-collapsed', !rightPanelOpen)
   }
 
-  // Vertical split: output height as percentage of tab height
+  // ---- bottom panel height ----
+  // resize-divider-2-percent is the EDITOR-TOP percentage (top region) — so
+  // bottom = 100 - that. When the bottom panel is collapsed, the height
+  // shrinks to just its tab-strip auto-height (CSS handles via the
+  // panel-shell--collapsed class).
   const tabPlayground = document.getElementById('tab-editor')
-  if (tabPlayground && elements.outputPanel) {
-    const tabHeight = tabPlayground.clientHeight
-    const outputHeight = (tabHeight * (100 - getState('resize-divider-2-percent'))) / 100
-    elements.outputPanel.style.height = `${outputHeight}px`
+  const bottomCollapsed = getState('bottom-panel-collapsed')
+  if (tabPlayground && elements.bottomPanel) {
+    if (bottomCollapsed) {
+      elements.bottomPanel.style.height = ''
+    } else {
+      const tabHeight = tabPlayground.clientHeight
+      const bottomHeight = (tabHeight * (100 - getState('resize-divider-2-percent'))) / 100
+      elements.bottomPanel.style.height = `${bottomHeight}px`
+    }
   }
   // wrapper.style.display = 'block' moved to the end of window.onload — see
   // boot sequence below. e2e tests use that signal as "fully booted", so it
@@ -2703,6 +2747,100 @@ function addOutputElement(element: HTMLElement) {
   saveState({ output: elements.outputResult.innerHTML })
 }
 
+/**
+ * Construct the right + bottom layout panels. Each is wired with a single
+ * tab in this PR: AST viewer in the right panel (populated lazily on
+ * `parse()`), Output in the bottom panel (the existing #output-result
+ * div is moved inside the Output tab's body so all the appendOutput call
+ * sites keep working unchanged).
+ *
+ * Tabs + collapsed state persist via the panel's onChange callback. The
+ * `body.bottom-panel-collapsed` class drives a CSS rule that hides the
+ * horizontal resize divider when the bottom is collapsed.
+ */
+function initLayoutPanels(): void {
+  // After every panel state change we explicitly call `editor.layout()`.
+  // Monaco's `automaticLayout: true` watches the editor host element via
+  // ResizeObserver, but the Observer only fires on the next animation
+  // frame and can miss the snap when the bottom panel collapses fast —
+  // the editor would render at the old (smaller) height until the next
+  // user action triggered a reflow. Forcing layout here makes the
+  // editor expand into the freed space immediately.
+  const refreshEditorLayout = () => tryGetCodeEditor()?.layout()
+
+  // ---- Right panel ----
+  // Three tool tabs (AST/Tokens/CST) are always present in the strip — the
+  // user clicks to switch between them, and the active tab auto-refreshes
+  // whenever the editor's active file changes. The toggle affordance for
+  // collapsing/uncollapsing the panel lives on the editor tab bar (so it
+  // stays reachable while the panel itself is 0-width); `Cmd+Shift+J` is
+  // the keyboard mirror.
+  const rightPanel = createPanel({
+    containerEl: elements.rightPanel,
+    tabs: RIGHT_PANEL_TOOL_TABS,
+    initialTabId: getState('right-panel-active-tab'),
+    initialCollapsed: getState('right-panel-collapsed'),
+    onChange: ({ collapsed }) => {
+      persistRightPanel()
+      applyLayout()
+      refreshEditorLayout()
+      // When the panel is open (after either a tab-swap or an uncollapse),
+      // make sure the active tab reflects the active file. We re-run on
+      // every onChange — the compute is fast and this avoids tracking
+      // "active tab actually changed" bookkeeping.
+      if (!collapsed) refreshActiveRightPanelTab(() => getState('dvala-code'))
+    },
+  })
+  setRightPanel(rightPanel)
+  // Wire the toggle button on the editor tab bar. The button lives in
+  // shell.ts — putting the affordance on the editor's strip (instead of
+  // the right panel's own strip) keeps it reachable when the panel is
+  // collapsed to 0 width.
+  const rightPanelToggleBtn = document.getElementById('right-panel-toggle-btn')
+  if (rightPanelToggleBtn) {
+    rightPanelToggleBtn.innerHTML = panelRightIcon
+    rightPanelToggleBtn.addEventListener('click', () => rightPanel.toggleCollapsed())
+  }
+  // Populate the active tab once at boot if the panel is uncollapsed
+  // (persisted state). Otherwise leave bodies empty — the first time the
+  // user opens the panel, onChange's refresh will fill it.
+  refreshActiveRightPanelTab(() => getState('dvala-code'))
+
+  // ---- Bottom panel ----
+  // The Clear button lives in the panel's tab strip (right edge) rather
+  // than as a separate body toolbar — single-bar look, matches
+  // VS Code / Chrome DevTools panel conventions.
+  const trailingTpl = document.getElementById('bottom-panel-output-trailing-template') as HTMLTemplateElement | null
+  const trailingActions = document.createElement('div')
+  if (trailingTpl) {
+    trailingActions.appendChild(trailingTpl.content.cloneNode(true))
+    trailingTpl.remove()
+  }
+
+  const bottomPanel = createPanel({
+    containerEl: elements.bottomPanel,
+    tabs: [{ id: 'output', label: 'Output' }],
+    initialTabId: getState('bottom-panel-active-tab'),
+    initialCollapsed: getState('bottom-panel-collapsed'),
+    trailingActions,
+    onChange: () => {
+      persistBottomPanel()
+      syncBodyClasses()
+      applyLayout()
+      refreshEditorLayout()
+    },
+  })
+  setBottomPanel(bottomPanel)
+  // Seed the Output tab's body with the static template (`#output-result`).
+  const outputBody = bottomPanel.getTabBody('output')
+  const tpl = document.getElementById('bottom-panel-output-template') as HTMLTemplateElement | null
+  if (tpl) {
+    outputBody.appendChild(tpl.content.cloneNode(true))
+    tpl.remove()
+  }
+  syncBodyClasses()
+}
+
 // Wire Monaco listeners that mirror the textarea-era event hooks: every model
 // change pushes into playground state + history; selection / scroll / focus
 // updates persist their own slices of state. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z
@@ -2765,6 +2903,14 @@ window.onload = async function () {
     if (getState('light-mode') === null) updateCSS()
   })
 
+  // Seed `body.bottom-panel-collapsed` from the persisted state BEFORE
+  // the first `applyLayout()` so `#resize-divider-2` doesn't flash
+  // visible for one paint when the bottom panel is supposed to start
+  // collapsed. The Panel objects don't exist yet (they're built inside
+  // `initLayoutPanels()` later in boot), so we read the state slot
+  // directly — this is the one place where the body class is sourced
+  // from state rather than from the Panel instance.
+  document.body.classList.toggle('bottom-panel-collapsed', getState('bottom-panel-collapsed'))
   applyLayout()
   injectPlaygroundEffects()
   populateSidebarVersion()
@@ -2782,12 +2928,21 @@ window.onload = async function () {
   // hook re-keys the undo/redo history to the new active file.
   setTabLifecycleHooks({
     beforeSwap: () => flushPendingAutoSave(),
-    afterSwap: () => activateCurrentFileHistory(false),
+    afterSwap: () => {
+      activateCurrentFileHistory(false)
+      // After swapping editor tabs, re-run the active right-panel tool
+      // (AST/Tokens/CST) against the new active file. The right panel
+      // always reflects the file you're looking at — no manual re-trigger
+      // needed. Inactive tools stay stale until the user clicks them
+      // (the panel's onChange callback then refreshes the new active tab).
+      refreshActiveRightPanelTab(() => getState('dvala-code'))
+    },
   })
   initTabs()
   wireTabStripListeners()
   wireTabKeyboardShortcuts()
   wireQuickOpenShortcut()
+  initLayoutPanels()
 
   syncDvalaCodeHistoryButtons()
 
@@ -2855,6 +3010,32 @@ window.onload = async function () {
     { passive: false },
   )
 
+  // Divider 3: drag left to widen the right panel. Same shape as divider 1
+  // but flips the sign (LEFT-ward drag → larger right-panel-size-percent).
+  elements.resizeDevider3?.addEventListener('mousedown', event => {
+    event.preventDefault()
+    document.body.classList.add('no-select')
+    moveParams = {
+      id: 'resize-divider-3',
+      startMoveX: event.clientX,
+      percentBeforeMove: getState('right-panel-size-percent'),
+    }
+  })
+  elements.resizeDevider3?.addEventListener(
+    'touchstart',
+    event => {
+      event.preventDefault()
+      const touch = event.touches[0]!
+      document.body.classList.add('no-select')
+      moveParams = {
+        id: 'resize-divider-3',
+        startMoveX: touch.clientX,
+        percentBeforeMove: getState('right-panel-size-percent'),
+      }
+    },
+    { passive: false },
+  )
+
   window.onresize = layout
   window.onmouseup = () => {
     document.body.classList.remove('no-select')
@@ -2863,6 +3044,8 @@ window.onload = async function () {
         saveState({ 'resize-divider-1-percent': getState('resize-divider-1-percent') }, false)
       else if (moveParams.id === 'resize-divider-2')
         saveState({ 'resize-divider-2-percent': getState('resize-divider-2-percent') }, false)
+      else if (moveParams.id === 'resize-divider-3')
+        saveState({ 'right-panel-size-percent': getState('right-panel-size-percent') }, false)
     }
     moveParams = null
   }
@@ -2874,6 +3057,8 @@ window.onload = async function () {
         saveState({ 'resize-divider-1-percent': getState('resize-divider-1-percent') }, false)
       else if (moveParams.id === 'resize-divider-2')
         saveState({ 'resize-divider-2-percent': getState('resize-divider-2-percent') }, false)
+      else if (moveParams.id === 'resize-divider-3')
+        saveState({ 'right-panel-size-percent': getState('right-panel-size-percent') }, false)
     }
     moveParams = null
   })
@@ -2899,6 +3084,14 @@ window.onload = async function () {
       if (resizeDivider2YPercent > 90) resizeDivider2YPercent = 90
 
       updateState({ 'resize-divider-2-percent': resizeDivider2YPercent })
+      applyLayout()
+    } else if (moveParams.id === 'resize-divider-3') {
+      const rightPanelPercent = computeRightPanelPercent(
+        moveParams.percentBeforeMove,
+        clientX - moveParams.startMoveX,
+        windowWidth,
+      )
+      updateState({ 'right-panel-size-percent': rightPanelPercent })
       applyLayout()
     }
   }
@@ -2929,6 +3122,18 @@ window.onload = async function () {
     if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
       evt.preventDefault()
       document.getElementById('tab-btn-search')?.click()
+      return
+    }
+    // Cmd/Ctrl-J — toggle the bottom panel. Cmd/Ctrl-Shift-J is the
+    // mirror for the right panel. Both lifted out of the ctrlKey-only
+    // switch below so they work on Mac (where Cmd registers as metaKey,
+    // not ctrlKey). Mirrors the Cmd-K pattern above. We check
+    // `evt.code === 'KeyJ'` because shift produces uppercase 'J' on
+    // many layouts; matching the physical key keeps the binding stable.
+    if ((evt.ctrlKey || evt.metaKey) && evt.code === 'KeyJ') {
+      evt.preventDefault()
+      if (evt.shiftKey) tryGetRightPanel()?.toggleCollapsed()
+      else tryGetBottomPanel()?.toggleCollapsed()
       return
     }
     if (evt.ctrlKey) {
@@ -3815,146 +4020,25 @@ export function showFeatureCard(id: string) {
 export function parse() {
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
-  const title = selectedCode.code ? 'Parse selection' : 'Parse'
-
-  try {
-    const tokens = tokenizeSource(code, true) // always debug for source map positions
-    const ast = parseTokenStream(tokens)
-    console.log(ast)
-    showAstTreeModal(ast, title)
-  } catch (error) {
-    addOutputSeparator()
-    appendOutput(title, 'comment')
-    appendOutput(error, 'error')
-    focusDvalaCode()
-  }
-}
-
-function showAstTreeModal(ast: Ast, title: string) {
-  const { panel, body } = createModalPanel({
-    size: 'large',
-    onClose: () => {
-      popModal()
-      focusDvalaCode()
-    },
-  })
-
-  const treeViewer = createAstTreeViewer({ ast })
-
-  body.style.minHeight = '0'
-  body.appendChild(treeViewer)
-
-  pushPanel(panel, title)
+  showAstInRightPanel(code)
 }
 
 export function parseCst() {
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
-  const title = selectedCode.code ? 'CST (selection)' : 'CST'
-
-  try {
-    const tokenStream = tokenizeSource(code, true)
-    const { tree, trailingTrivia } = parseToCst(tokenStream)
-    const content = JSON.stringify({ tree, trailingTrivia }, null, 2)
-    showRawJsonModal(content, title)
-  } catch (error) {
-    addOutputSeparator()
-    appendOutput(title, 'comment')
-    appendOutput(error, 'error')
-    focusDvalaCode()
-  }
+  showCstInRightPanel(code)
 }
 
 export function docTree() {
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
-  const title = selectedCode.code ? 'Wadler-Lindig Doc tree (selection)' : 'Wadler-Lindig Doc tree'
-
-  try {
-    const tokenStream = tokenizeSource(code, true)
-    const { tree, trailingTrivia } = parseToCst(tokenStream)
-    const doc = buildDocTree(tree, trailingTrivia)
-    const content = JSON.stringify(doc, null, 2)
-    showRawJsonModal(content, title)
-  } catch (error) {
-    addOutputSeparator()
-    appendOutput(title, 'comment')
-    appendOutput(error, 'error')
-    focusDvalaCode()
-  }
-}
-
-function showRawJsonModal(content: string, title: string) {
-  const dismiss = () => {
-    popModal()
-    focusDvalaCode()
-  }
-
-  const { panel, body } = createModalPanel({
-    size: 'large',
-    footerActions: [
-      {
-        label: 'Copy',
-        action: () => {
-          void navigator.clipboard.writeText(content)
-          showToast(`${title} copied to clipboard`)
-        },
-      },
-      { label: 'Close', action: dismiss },
-    ],
-    onClose: dismiss,
-  })
-
-  const copyButton = panel.querySelector<HTMLButtonElement>('.modal-panel__footer .button')
-  if (copyButton) copyButton.innerHTML = `${copyIcon} Copy`
-
-  body.style.padding = '0'
-
-  const pre = document.createElement('pre')
-  pre.className = 'fancy-scroll'
-  pre.textContent = content
-  pre.tabIndex = 0
-  pre.style.margin = '0'
-  pre.style.minHeight = '26rem'
-  pre.style.height = '60vh'
-  pre.style.padding = 'var(--space-2)'
-  pre.style.overflow = 'auto'
-  pre.style.background = 'var(--color-code-bg)'
-  pre.style.color = 'var(--color-text)'
-  pre.style.fontFamily = 'var(--font-mono)'
-  pre.style.fontSize = 'var(--font-size-sm)'
-  pre.style.whiteSpace = 'pre'
-  body.appendChild(pre)
-
-  pushPanel(panel, title)
-  setTimeout(() => {
-    pre.focus()
-  }, 0)
+  showDocTreeInRightPanel(code)
 }
 
 export function tokenize() {
-  addOutputSeparator()
-
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
-  const title = selectedCode.code ? 'Tokenize selection' : 'Tokenize'
-
-  appendOutput(`${title}${getState('debug') ? ' (debug)' : ''}`, 'comment')
-
-  const hijacker = hijackConsole()
-  try {
-    const result = tokenizeSource(code, getState('debug'))
-    const content = JSON.stringify(result, null, 2)
-    appendOutput(content, 'tokenize')
-    hijacker.releaseConsole()
-    console.log(result)
-  } catch (error) {
-    appendOutput(error, 'error')
-    hijacker.releaseConsole()
-    return
-  } finally {
-    focusDvalaCode()
-  }
+  showTokensInRightPanel(code)
 }
 
 export function format() {
@@ -4584,7 +4668,20 @@ export function doExport() {
   ]
   const codeKeys = ['dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end']
   const contextKeys = ['context', 'context-scroll-top', 'context-selection-start', 'context-selection-end']
-  const layoutKeys = ['sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent']
+  const layoutKeys = [
+    'sidebar-width',
+    'playground-height',
+    'resize-divider-1-percent',
+    'resize-divider-2-percent',
+    // Layout-shell panels (Phase 1) — active tab / collapsed flag /
+    // size %. Without these in the export the user's right-panel size
+    // and active-tool choice don't survive an export-import round-trip.
+    'right-panel-active-tab',
+    'right-panel-collapsed',
+    'right-panel-size-percent',
+    'bottom-panel-active-tab',
+    'bottom-panel-collapsed',
+  ]
 
   const includeCode = elements.exportOptCode.checked
   const includeContext = elements.exportOptContext.checked

@@ -180,6 +180,7 @@
     "@vscode/vsce": "^3.7.1",
     "esbuild": "^0.28.0",
     "glob": "^13.0.6",
+    "happy-dom": "^20.9.0",
     "highlight.js": "^11.11.1",
     "knip": "^6.7.0",
     "minimatch": "^10.2.5",

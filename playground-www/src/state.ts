@@ -51,6 +51,21 @@ export const defaultState = {
   'open-tabs': [{ kind: 'scratch' }] as PersistedTab[],
   /** Key of the currently focused tab (file id or `<scratch>`). */
   'active-tab-key': '<scratch>' as string,
+  // Layout-shell state. Right panel hosts structural views (Tokens / AST
+  // / CST / Doc Tree); bottom panel hosts linear views (Output, eventually
+  // state history / snapshots). Both persist their active-tab + collapsed
+  // flag + size %. `right-panel-active-tab` defaults to 'tokens' (the
+  // leftmost tool tab, pipeline order); `persistRightPanel` falls back to
+  // that same id if the panel ever ends up with no active tab.
+  'right-panel-active-tab': 'tokens' as string,
+  'right-panel-collapsed': true as boolean, // start collapsed; user opts in
+  'right-panel-size-percent': 35 as number, // % of total editor-area width
+  'bottom-panel-active-tab': 'output' as string,
+  'bottom-panel-collapsed': false as boolean, // output is on by default
+  // Note: the bottom panel's height % lives in the existing
+  // `resize-divider-2-percent` slot (was the output panel's slot pre-PR
+  // and continues to be the canonical home). No separate
+  // `bottom-panel-size-percent` slot needed.
 } as const
 
 type State = {

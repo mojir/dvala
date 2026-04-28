@@ -171,27 +171,34 @@ test.describe('toolbar actions', () => {
     expect(output).toContain('unknownSymbol')
   })
 
-  test('tokenize produces output', async ({ page }) => {
+  test('tokenize opens the right panel Tokens tab', async ({ page }) => {
     await setDvalaCode(page, '1 + 2')
     await page.evaluate(() => (window as any).Playground.tokenize())
-    await waitForOutput(page)
 
-    const output = await getOutputText(page)
-    expect(output).toContain('Tokenize')
-    expect(output).toContain('Number')
+    // Tokenize used to dump JSON into the Output channel. It now renders
+    // into the right panel's Tokens tab — same treatment as parse().
+    const tokensBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="tokens"]')
+    await expect(tokensBody).toBeVisible({ timeout: 3000 })
+    const text = await tokensBody.textContent()
+    // Token type strings (e.g. "Number") are visible at the default
+    // expand depth of 2 — tokens are arrays of [type, value, position].
+    expect(text).toContain('Number')
   })
 
-  test('parse produces AST output', async ({ page }) => {
+  test('parse opens the right panel AST tab', async ({ page }) => {
     await setDvalaCode(page, '1 + 2')
     await page.evaluate(() => (window as any).Playground.parse())
 
-    // Parse now opens a modal with the AST tree viewer
-    const modal = page.locator('.modal-panel')
-    await expect(modal).toBeVisible({ timeout: 3000 })
+    // The AST viewer renders into the right panel's `ast` tab body (used
+    // to be a modal); the panel un-collapses when parse() runs.
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).toBeVisible({ timeout: 3000 })
 
-    const modalText = await modal.textContent()
-    expect(modalText).toContain('Call')
-    expect(modalText).toContain('Num')
+    const text = await astBody.textContent()
+    // AST nodes are 3-tuples; default expand depth of 2 surfaces the
+    // type string ("Call") inline. "Num" lives one level deeper and is
+    // only visible after the user expands a child node.
+    expect(text).toContain('Call')
   })
 
   test('reset playground clears everything', async ({ page }) => {
@@ -1845,6 +1852,253 @@ test.describe('quick open', () => {
     // with no rows).
     await page.evaluate(() => (window as any).Playground.openQuickOpen())
     await expect(page.locator('#quick-open-palette')).toHaveCount(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Layout panels (right + bottom)
+// ---------------------------------------------------------------------------
+
+test.describe('layout panels', () => {
+  test.beforeEach(async ({ page }) => {
+    // Reset panel state slots before each test so the assertions don't
+    // depend on residue from earlier runs (the e2e suite shares a
+    // browser context per worker).
+    await page.goto('')
+    await page.evaluate(() => {
+      localStorage.removeItem('playground-right-panel-collapsed')
+      localStorage.removeItem('playground-bottom-panel-collapsed')
+    })
+    await page.reload()
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await navigateToPlayground(page)
+  })
+
+  test('right panel shows all four tool tabs (Tokens / AST / CST / Doc Tree) in pipeline order', async ({ page }) => {
+    // Open the panel via parse(); all four tabs should be present in the
+    // strip in pipeline order — the user switches between them by clicking,
+    // no summon-on-demand mechanism.
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+
+    const strip = page.locator('#right-panel .panel-shell__strip')
+    const tabIds = await strip
+      .locator('[data-panel-tab-id]')
+      .evaluateAll(els => els.map(el => (el as HTMLElement).dataset['panelTabId']))
+    expect(tabIds).toEqual(['tokens', 'ast', 'cst', 'doc'])
+    // No close-X buttons on right-panel tabs (the panel is toggled as a
+    // whole via the editor-bar icon / Cmd+Shift+J).
+    await expect(strip.locator('.panel-shell__tab-close')).toHaveCount(0)
+  })
+
+  test('docTree opens the right panel Doc Tree tab', async ({ page }) => {
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.docTree())
+    const docBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="doc"]')
+    await expect(docBody).toBeVisible({ timeout: 3000 })
+    // Wadler-Lindig Doc tree is JSON; just verify the body is non-empty.
+    const text = (await docBody.textContent()) ?? ''
+    expect(text.trim().length).toBeGreaterThan(0)
+  })
+
+  test('clicking an AST node row shows pretty-printed Dvala source in the detail pane', async ({ page }) => {
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).toBeVisible()
+
+    // Find the depth-1 row — the root array's only child, the Call AST
+    // node. With initialExpandDepth=2 it's visible without further
+    // clicks. Identify it by its [0] label.
+    const callNodeRow = astBody.locator('.json-tree__node').filter({ hasText: '[0]' }).first()
+    await expect(callNodeRow).toBeVisible()
+    await callNodeRow.click()
+
+    const detail = astBody.locator('.json-tree__detail-code')
+    await expect(detail).toBeVisible()
+    await expect(detail).toContainText('1 + 2')
+  })
+
+  test('clicking an inner AST tuple element walks up to the enclosing AST node', async ({ page }) => {
+    // The 3-tuple shape `[type, payload, id]` exposes the leading type
+    // string ("Call") as a separate tree row. Clicking that row should
+    // still show the parent Call node's pretty-printed source — the
+    // user's mental model is "every row is a node" and the resolver in
+    // rightPanelTools.ts walks up to the deepest enclosing AST tuple.
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).toBeVisible()
+
+    // Find the type-string row — the first depth-2 row labelled `[0]:`
+    // that contains the literal "Call" value.
+    const callTypeRow = astBody.locator('.json-tree__node').filter({ hasText: '"Call"' }).first()
+    await expect(callTypeRow).toBeVisible()
+    await callTypeRow.click()
+
+    const detail = astBody.locator('.json-tree__detail-code')
+    await expect(detail).toBeVisible()
+    await expect(detail).toContainText('1 + 2')
+  })
+
+  test('detail pane is closed by default; opens on node click; closes via X', async ({ page }) => {
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).toBeVisible()
+
+    const detail = astBody.locator('.json-tree__detail').first()
+    await expect(detail).toBeHidden()
+
+    const callRow = astBody.locator('.json-tree__node').filter({ hasText: '"Call"' }).first()
+    await callRow.click()
+    await expect(detail).toBeVisible()
+
+    await detail.locator('.json-tree__detail-close').click()
+    await expect(detail).toBeHidden()
+  })
+
+  test('right panel: clicking an inactive tab refreshes its content', async ({ page }) => {
+    // Auto-refresh is per-active-tab. Switching from AST to Tokens should
+    // populate the Tokens body (it had no content before).
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+    await page.locator('#right-panel .panel-shell__tab[data-panel-tab-id="tokens"]').click()
+    const tokensBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="tokens"]')
+    await expect(tokensBody).toBeVisible()
+    await expect(tokensBody).toContainText('Number')
+  })
+
+  test('right-panel toggle button on the editor tab bar collapses + expands the panel', async ({ page }) => {
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).toBeVisible()
+    // Toggle button lives on the editor tab bar (not inside the right
+    // panel), so it stays clickable while the panel is collapsed.
+    const toggleBtn = page.locator('#right-panel-toggle-btn')
+    await toggleBtn.click()
+    await expect(astBody).not.toBeVisible()
+    // Click again to re-open.
+    await toggleBtn.click()
+    await expect(astBody).toBeVisible()
+  })
+
+  test('Cmd/Ctrl+Shift+J toggles the right panel (both keymods)', async ({ page }) => {
+    // Open via parse so we have something to toggle off.
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).toBeVisible()
+    // Ctrl path (Linux / Windows)
+    await page.keyboard.press('Control+Shift+j')
+    await expect(astBody).not.toBeVisible()
+    await page.keyboard.press('Control+Shift+j')
+    await expect(astBody).toBeVisible()
+    // Meta path (Mac Cmd) — handler checks `evt.ctrlKey || evt.metaKey`,
+    // so both modifiers should toggle. Without this assertion CI (Linux)
+    // silently leaves the metaKey branch uncovered.
+    await page.keyboard.press('Meta+Shift+j')
+    await expect(astBody).not.toBeVisible()
+    await page.keyboard.press('Meta+Shift+j')
+    await expect(astBody).toBeVisible()
+  })
+
+  test('right panel auto-refreshes the active tool when the editor tab swaps', async ({ page }) => {
+    // Seed a saved file with a Let-statement source. The active tab will
+    // be scratch (with `1 + 2`), so initial AST shows a Call node.
+    const fileId = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+    await page.evaluate(
+      ({ id }: { id: string }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          { id, path: 'letFile.dvala', code: 'let a = 1; a', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        ])
+      },
+      { id: fileId },
+    )
+
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).toContainText('Call')
+
+    // Open the saved file as a new tab; the afterSwap hook should re-run
+    // the AST tool against the new active file's source (`let a = 1; a`).
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), fileId)
+    // The Let type tag is visible at the default expand depth.
+    await expect(astBody).toContainText('Let')
+  })
+
+  test('right panel is collapsed by default; parse() opens it with the AST tab', async ({ page }) => {
+    // The right panel host is in the DOM but its body is hidden until
+    // un-collapsed. Confirm the body isn't visible initially.
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).not.toBeVisible()
+
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+
+    await expect(astBody).toBeVisible()
+    await expect(astBody).toContainText('Call')
+  })
+
+  test('clicking the active tab on the bottom panel toggles its collapse', async ({ page }) => {
+    // Bottom panel keeps its tab strip visible when collapsed — the
+    // entire panel shrinks to strip height, so clicking the active tab
+    // is a discoverable toggle. Right panel collapses to nothing (cleaner
+    // default) so it has no equivalent strip-click; that asymmetry is
+    // intentional MVP. Cmd-J is the keyboard alternative for either.
+    const outputTab = page.locator('#bottom-panel .panel-shell__tab[data-panel-tab-id="output"]')
+    const outputBody = page.locator('#bottom-panel .panel-shell__body[data-panel-tab-id="output"]')
+    await expect(outputBody).toBeVisible()
+
+    await outputTab.click()
+    await expect(outputBody).not.toBeVisible()
+
+    await outputTab.click()
+    await expect(outputBody).toBeVisible()
+  })
+
+  test('Cmd/Ctrl-J toggles the bottom panel (both keymods)', async ({ page }) => {
+    const outputBody = page.locator('#bottom-panel .panel-shell__body[data-panel-tab-id="output"]')
+    await expect(outputBody).toBeVisible()
+
+    // Cmd-J on Mac, Ctrl-J elsewhere — handler checks `evt.ctrlKey ||
+    // evt.metaKey`, so both modifiers should toggle. Cover both paths
+    // explicitly so CI (Linux) doesn't silently skip the metaKey branch.
+    await page.keyboard.press('Control+j')
+    await expect(outputBody).not.toBeVisible()
+    await page.keyboard.press('Control+j')
+    await expect(outputBody).toBeVisible()
+    await page.keyboard.press('Meta+j')
+    await expect(outputBody).not.toBeVisible()
+    await page.keyboard.press('Meta+j')
+    await expect(outputBody).toBeVisible()
+  })
+
+  test('bottom panel collapsed state survives reload', async ({ page }) => {
+    const outputBody = page.locator('#bottom-panel .panel-shell__body[data-panel-tab-id="output"]')
+    await expect(outputBody).toBeVisible()
+
+    await page.keyboard.press('Control+j')
+    await expect(outputBody).not.toBeVisible()
+
+    await page.reload()
+    await waitForInit(page)
+    await navigateToPlayground(page)
+
+    await expect(outputBody).not.toBeVisible()
+  })
+
+  test('Output appears in the bottom panel tab', async ({ page }) => {
+    // Run produces output; confirm it lands inside the panel's Output tab body.
+    await setDvalaCode(page, '6 * 7')
+    await clickRun(page)
+    await waitForOutput(page)
+    const outputBody = page.locator('#bottom-panel .panel-shell__body[data-panel-tab-id="output"]')
+    await expect(outputBody).toContainText('42')
   })
 })
 
