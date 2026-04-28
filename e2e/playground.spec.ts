@@ -1503,6 +1503,88 @@ test.describe('file operations', () => {
     expect(output).toContain('hello, world!')
   })
 
+  test('multi-file import: resolves across folders relative to the importing file', async ({ page }) => {
+    // main.dvala lives at the root and imports `./lib/math` — a file one
+    // folder deep. Exercises both folder-anchoring and the .dvala-suffix
+    // fallback (the import omits the extension).
+    const mainId = '44444444-4444-4444-4444-444444444444'
+    const libId = '55555555-5555-5555-5555-555555555555'
+    await page.evaluate(
+      ({ mainId, libId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          {
+            id: libId,
+            path: 'lib/math.dvala',
+            code: 'let double = (n) -> n * 2;\n{ double }',
+            context: '',
+            createdAt: 1,
+            updatedAt: 1,
+            locked: false,
+          },
+          {
+            id: mainId,
+            path: 'main.dvala',
+            code: 'let { double } = import("./lib/math");\ndouble(21)',
+            context: '',
+            createdAt: 2,
+            updatedAt: 2,
+            locked: false,
+          },
+        ])
+      },
+      { mainId, libId },
+    )
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await navigateToPlayground(page)
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('42')
+  })
+
+  test('multi-file import: nested file can `..` back up to a sibling folder', async ({ page }) => {
+    // tests/main.dvala imports `../lib/math`. Verifies fileResolverBaseDir
+    // is anchored at the importing file's folder, not the workspace root —
+    // without that, the runtime's `..` would walk past root and throw.
+    const mainId = '66666666-6666-6666-6666-666666666666'
+    const libId = '77777777-7777-7777-7777-777777777777'
+    await page.evaluate(
+      ({ mainId, libId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          {
+            id: libId,
+            path: 'lib/math.dvala',
+            code: 'let triple = (n) -> n * 3;\n{ triple }',
+            context: '',
+            createdAt: 1,
+            updatedAt: 1,
+            locked: false,
+          },
+          {
+            id: mainId,
+            path: 'tests/main.dvala',
+            code: 'let { triple } = import("../lib/math");\ntriple(14)',
+            context: '',
+            createdAt: 2,
+            updatedAt: 2,
+            locked: false,
+          },
+        ])
+      },
+      { mainId, libId },
+    )
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await navigateToPlayground(page)
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('42')
+  })
+
   test('multi-file import: missing target file produces a useful error', async ({ page }) => {
     const mainId = '33333333-3333-3333-3333-333333333333'
     await page.evaluate((id: string) => {
