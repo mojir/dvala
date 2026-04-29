@@ -358,7 +358,7 @@ function getModals(): string {
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-snapshots"> Saved snapshots</label>
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-recent-snapshots"> Recent snapshots</label>
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-layout"> Layout</label>
-      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-files"> Saved files</label>
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-workspace-files"> Workspace files</label>
     </div>
     <div class="modal-btn-row">
       <button class="button" onclick="Playground.doExport()">Export</button>
@@ -378,7 +378,7 @@ function getModals(): string {
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-snapshots"><span id="import-opt-saved-snapshots-label">Saved snapshots</span></label>
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-recent-snapshots"><span id="import-opt-recent-snapshots-label">Recent snapshots</span></label>
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-layout"><span id="import-opt-layout-label">Layout</span></label>
-      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-files"><span id="import-opt-saved-files-label">Saved files</span></label>
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-workspace-files"><span id="import-opt-workspace-files-label">Workspace files</span></label>
     </div>
     <div class="modal-btn-row">
       <button class="button" onclick="Playground.doImport()">Import</button>

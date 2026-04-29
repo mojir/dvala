@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as fileStorage from './fileStorage'
-import type { SavedFile } from './fileStorage'
+import type { WorkspaceFile } from './fileStorage'
 import { playgroundFileResolver, resolvePlaygroundPath } from './playgroundFileResolver'
 
-const file = (path: string, code = ''): SavedFile => ({
+const file = (path: string, code = ''): WorkspaceFile => ({
   id: path,
   path,
   code,
@@ -46,8 +46,8 @@ describe('resolvePlaygroundPath', () => {
 describe('playgroundFileResolver', () => {
   let restoreFiles: (() => void) | null = null
 
-  function withFiles(files: SavedFile[]): void {
-    const spy = vi.spyOn(fileStorage, 'getSavedFiles').mockReturnValue(files)
+  function withFiles(files: WorkspaceFile[]): void {
+    const spy = vi.spyOn(fileStorage, 'getWorkspaceFiles').mockReturnValue(files)
     restoreFiles = () => spy.mockRestore()
   }
 

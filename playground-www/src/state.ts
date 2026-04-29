@@ -3,7 +3,7 @@ import { reactive } from './lib/reactive'
 
 // Persisted tab list shape. Models + viewState aren't serializable; only
 // "which files / scratch are open" survives reloads. Hydration in
-// `scripts/tabs.ts::initTabs` reconstructs models from SavedFile.code.
+// `scripts/tabs.ts::initTabs` reconstructs models from WorkspaceFile.code.
 export type PersistedTab = { kind: 'file'; id: string } | { kind: 'scratch' }
 
 export const defaultState = {

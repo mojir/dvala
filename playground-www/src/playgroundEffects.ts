@@ -197,7 +197,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       group: 'Files',
       description: 'Save a file. Defaults to current editor content.',
       args: {
-        name: { type: 'string', description: 'Name for the saved file.' },
+        name: { type: 'string', description: 'Name for the workspace file.' },
         code: { type: 'string', description: 'Source code to save. Defaults to current editor content.' },
       },
       returns: { type: 'null' },
@@ -210,9 +210,9 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
     {
       name: 'playground.files.load',
       group: 'Files',
-      description: 'Load a saved file by name. Fails if not found.',
+      description: 'Load a workspace file by name. Fails if not found.',
       args: {
-        name: { type: 'string', description: 'Name of the saved file to load.' },
+        name: { type: 'string', description: 'Name of the workspace file to load.' },
       },
       returns: { type: 'string' },
       variants: [{ argumentNames: ['name'] }],
@@ -221,7 +221,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
     {
       name: 'playground.files.list',
       group: 'Files',
-      description: 'List all saved file names.',
+      description: 'List all workspace file names.',
       args: {},
       returns: { type: 'string', array: true },
       variants: [{ argumentNames: [] }],

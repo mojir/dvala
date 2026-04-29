@@ -1,4 +1,4 @@
-import type { SavedFile } from './fileStorage'
+import type { WorkspaceFile } from './fileStorage'
 
 export interface PlaygroundAPI {
   ui: {
@@ -44,7 +44,7 @@ interface PlaygroundDeps {
   setEditorCursor(position: number): void
   getContextContent(): string
   setContextContent(json: string): void
-  getSavedFiles(): SavedFile[]
+  getWorkspaceFiles(): WorkspaceFile[]
   saveFile(name: string, code: string): void
   runCode(code: string): Promise<unknown>
   navigateTo(route: string): void
@@ -72,14 +72,14 @@ export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
       // The user-facing argument is a path (e.g. `"foo.dvala"` or
       // `"examples/foo.dvala"`). Path lookups are exact; lookup by basename
       // alone is ambiguous in a tree-shaped workspace.
-      const file = deps.getSavedFiles().find(entry => entry.path === name)
+      const file = deps.getWorkspaceFiles().find(entry => entry.path === name)
       if (!file) {
         throw new Error(`File "${name}" not found`)
       }
       return file.code
     },
     list(): string[] {
-      return deps.getSavedFiles().map(entry => entry.path)
+      return deps.getWorkspaceFiles().map(entry => entry.path)
     },
   }
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { SavedFile } from './fileStorage'
+import type { WorkspaceFile } from './fileStorage'
 import { buildFileTree } from './fileTree'
 
-const file = (id: string, path: string): SavedFile => ({
+const file = (id: string, path: string): WorkspaceFile => ({
   id,
   path,
   code: '',

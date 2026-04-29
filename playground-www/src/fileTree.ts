@@ -1,4 +1,4 @@
-// Tree shape derived from the playground's flat list of `SavedFile.path`
+// Tree shape derived from the playground's flat list of `WorkspaceFile.path`
 // values. Folders are pure derivation — they exist iff at least one file's
 // path is prefixed by them — so empty folders are not representable today.
 //
@@ -6,7 +6,7 @@
 // makes the rendering logic easier to test.
 
 import { filenameFromPath, splitPath } from './filePath'
-import type { SavedFile } from './fileStorage'
+import type { WorkspaceFile } from './fileStorage'
 
 export type TreeNode =
   | {
@@ -20,11 +20,11 @@ export type TreeNode =
     }
   | {
       kind: 'file'
-      file: SavedFile
+      file: WorkspaceFile
     }
 
 /** Build the tree. The order is folders-before-files at each level, alphabetical within each group. */
-export function buildFileTree(files: SavedFile[]): TreeNode[] {
+export function buildFileTree(files: WorkspaceFile[]): TreeNode[] {
   const root: TreeNode[] = []
   for (const file of files) {
     insertFile(root, file, splitPath(file.path), '')
@@ -33,7 +33,7 @@ export function buildFileTree(files: SavedFile[]): TreeNode[] {
   return root
 }
 
-function insertFile(siblings: TreeNode[], file: SavedFile, segments: string[], parentPath: string): void {
+function insertFile(siblings: TreeNode[], file: WorkspaceFile, segments: string[], parentPath: string): void {
   if (segments.length === 1) {
     siblings.push({ kind: 'file', file })
     return

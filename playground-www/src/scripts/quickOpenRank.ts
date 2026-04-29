@@ -7,7 +7,7 @@
 // it without spinning up jsdom.
 
 import { fileDisplayName } from '../fileStorage'
-import type { SavedFile } from '../fileStorage'
+import type { WorkspaceFile } from '../fileStorage'
 
 export interface QuickOpenItem {
   /** Stable identifier (file id). */
@@ -62,7 +62,7 @@ export function rankQuickOpen(query: string, path: string): number | null {
  * Build the picker's full item list (sorted by ranker for the given query).
  * Pure function — easy to unit-test independently of the DOM.
  */
-export function rankSavedFiles(query: string, files: SavedFile[]): QuickOpenItem[] {
+export function rankWorkspaceFiles(query: string, files: WorkspaceFile[]): QuickOpenItem[] {
   const ranked: { item: QuickOpenItem; score: number }[] = []
   for (const file of files) {
     const score = rankQuickOpen(query, file.path)

@@ -1,11 +1,11 @@
 import { ensureDvalaSuffix, filenameFromPath, normalizeFilePath } from './filePath'
 import { getDb, idbClear, idbGet, idbPut, SAVED_FILES_STORE } from './idb'
 
-// Single source of truth for a saved file. `path` is the canonical
+// Single source of truth for a workspace file. `path` is the canonical
 // identifier — it carries both the folder structure (split on `/`) and the
 // display name (last segment). Folders themselves aren't stored; they're
 // derived from the set of file paths.
-export interface SavedFile {
+export interface WorkspaceFile {
   id: string
   path: string
   code: string
@@ -21,32 +21,31 @@ export { filenameFromPath, folderFromPath, normalizeFilePath, stripDvalaSuffix }
 
 const STATE_KEY = 'state'
 
-let fileCache: SavedFile[] = []
+let fileCache: WorkspaceFile[] = []
 
 /**
  * Backwards-compat for callers that still think in terms of "name." Returns
  * the last path segment. New code should call `filenameFromPath` directly.
  */
-export function fileDisplayName(file: SavedFile): string {
+export function fileDisplayName(file: WorkspaceFile): string {
   return filenameFromPath(file.path)
 }
 
 /**
  * Take a user-supplied filename (no folder) and produce a normalised path
- * value suitable for storing on `SavedFile.path`. Existing callers that
- * worked in terms of `normalizeSavedFileName(name)` should call this with
+ * value suitable for storing on `WorkspaceFile.path`. Callers should pass
  * just the basename — the function preserves the `.dvala` suffix contract.
  */
-export function normalizeSavedFileName(name: string): string {
+export function normalizeWorkspaceFileName(name: string): string {
   return ensureDvalaSuffix(name)
 }
 
-function normalizeFiles(entries: SavedFile[]): { entries: SavedFile[]; changed: boolean } {
+function normalizeFiles(entries: WorkspaceFile[]): { entries: WorkspaceFile[]; changed: boolean } {
   let changed = false
   const usedIds = new Set<string>()
   const usedPaths = new Set<string>()
 
-  const normalized: SavedFile[] = []
+  const normalized: WorkspaceFile[] = []
   for (const entry of entries) {
     const existingId = typeof entry.id === 'string' ? entry.id.trim() : ''
     const needsNewId = existingId === '' || usedIds.has(existingId)
@@ -96,14 +95,14 @@ export function uniqueFilePath(path: string, taken: Set<string>): string {
  * creation paths (new file, duplicate, import) so the caller doesn't have
  * to assemble the full path itself.
  */
-export function uniquePathInFolder(folder: string, filename: string, files: SavedFile[]): string {
+export function uniquePathInFolder(folder: string, filename: string, files: WorkspaceFile[]): string {
   const intendedPath = folder === '' ? ensureDvalaSuffix(filename) : `${folder}/${ensureDvalaSuffix(filename)}`
   const taken = new Set(files.map(f => f.path))
   return uniqueFilePath(intendedPath, taken)
 }
 
 export function initFiles(): Promise<void> {
-  return idbGet<SavedFile[]>(SAVED_FILES_STORE, STATE_KEY)
+  return idbGet<WorkspaceFile[]>(SAVED_FILES_STORE, STATE_KEY)
     .then(entries => {
       const normalized = normalizeFiles(entries ?? [])
       fileCache = normalized.entries
@@ -114,11 +113,11 @@ export function initFiles(): Promise<void> {
     })
 }
 
-export function getSavedFiles(): SavedFile[] {
+export function getWorkspaceFiles(): WorkspaceFile[] {
   return fileCache
 }
 
-export function setSavedFiles(entries: SavedFile[]): void {
+export function setWorkspaceFiles(entries: WorkspaceFile[]): void {
   const normalized = normalizeFiles(entries)
   fileCache = normalized.entries
   if (getDb()) idbPut(SAVED_FILES_STORE, STATE_KEY, normalized.entries)

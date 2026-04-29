@@ -62,15 +62,15 @@ import {
   clearAllFiles,
   fileDisplayName,
   folderFromPath,
-  getSavedFiles,
+  getWorkspaceFiles,
   initFiles,
   normalizeFilePath,
-  normalizeSavedFileName,
-  setSavedFiles,
+  normalizeWorkspaceFileName,
+  setWorkspaceFiles,
   uniqueFilePath,
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
-import type { SavedFile } from './fileStorage'
+import type { WorkspaceFile } from './fileStorage'
 import {
   clearAllFileHistories,
   getFileHistory,
@@ -127,7 +127,7 @@ import {
   isScratchActive,
   openScratchInEditor,
   persistScratchFromCurrentState,
-  populateSavedFilesList,
+  populateWorkspaceFilesList,
   scheduleAutoSave,
   scheduleScratchEditedClear,
   showNameInputModal,
@@ -178,15 +178,15 @@ export { getCurrentSideTab, showSideTab, toggleSideSnapshotsShowAll } from './sc
 export { openQuickOpen } from './scripts/quickOpen'
 
 export {
-  clearAllSavedFiles,
+  clearAllWorkspaceFiles,
   clearScratch,
   clearUnlockedFiles,
   closeActiveFile,
   closeExplorerMenus,
-  deleteSavedFile,
+  deleteWorkspaceFile,
   downloadFile,
   duplicateFile,
-  loadSavedFile,
+  loadWorkspaceFile,
   openImportFileModal,
   openScratch,
   renameFile,
@@ -216,11 +216,11 @@ function getDvala(opts: { fileResolverBaseDir?: string } = {}) {
   })
 }
 
-/** The path of the active saved file, or undefined when scratch is active. */
+/** The path of the active workspace file, or undefined when scratch is active. */
 function getActiveFilePath(): string | undefined {
   const id = getState('current-file-id')
   if (id === null) return undefined
-  return getSavedFiles().find(f => f.id === id)?.path
+  return getWorkspaceFiles().find(f => f.id === id)?.path
 }
 
 /** Folder of the active file (or `''` for scratch / root-level files). */
@@ -248,7 +248,7 @@ function createDvalaCodeHistoryEntryFromState(): HistoryEntry {
 
 function isCurrentFileLocked(): boolean {
   const currentFileId = getState('current-file-id')
-  return currentFileId !== null && getSavedFiles().some(file => file.id === currentFileId && file.locked)
+  return currentFileId !== null && getWorkspaceFiles().some(file => file.id === currentFileId && file.locked)
 }
 
 function syncDvalaCodeHistoryButtons(status: HistoryStatus = dvalaCodeHistory.getStatus()) {
@@ -331,21 +331,21 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
       setContextContent: json => {
         updateContextState(json, false)
       },
-      getSavedFiles: () => getSavedFiles(),
+      getWorkspaceFiles: () => getWorkspaceFiles(),
       saveFile: (name, code) => {
         // `name` from playground effects is interpreted as a full path. We
         // only normalise the basename's `.dvala` suffix; folder structure is
         // preserved as authored.
-        const files = getSavedFiles()
-        const cleanedPath = normalizeFilePath(name) ?? normalizeSavedFileName(name)
+        const files = getWorkspaceFiles()
+        const cleanedPath = normalizeFilePath(name) ?? normalizeWorkspaceFileName(name)
         const existing = files.find(entry => entry.path === cleanedPath)
         const now = Date.now()
         if (existing) {
           existing.code = code
           existing.updatedAt = now
-          setSavedFiles([...files])
+          setWorkspaceFiles([...files])
         } else {
-          const createdFile: SavedFile = {
+          const createdFile: WorkspaceFile = {
             id: crypto.randomUUID(),
             path: cleanedPath,
             code,
@@ -354,7 +354,7 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
             updatedAt: now,
             locked: false,
           }
-          setSavedFiles([createdFile, ...files])
+          setWorkspaceFiles([createdFile, ...files])
         }
       },
       runCode: async code => {
@@ -1742,7 +1742,7 @@ function updateStorageUsage() {
       JSON.stringify({
         saved: getSavedSnapshots(),
         terminal: getTerminalSnapshots(),
-        files: getSavedFiles(),
+        files: getWorkspaceFiles(),
       }),
     ).length
     idbEl.textContent = formatStorageSize(bytes)
@@ -1760,7 +1760,7 @@ export function clearLocalStorageData() {
 export function clearIndexedDbData() {
   void showInfoModal(
     'Clear IndexedDB',
-    'This will delete all saved snapshots, recent snapshots, and saved files.',
+    'This will delete all saved snapshots, recent snapshots, and workspace files.',
     () => {
       clearAllSnapshots()
       clearAllFiles()
@@ -1768,7 +1768,7 @@ export function clearIndexedDbData() {
       saveState({ 'current-file-id': null }, false)
       activateCurrentFileHistory(true)
       populateSnapshotsList()
-      populateSavedFilesList()
+      populateWorkspaceFilesList()
       updateCSS()
       updateStorageUsage()
     },
@@ -2646,7 +2646,7 @@ export function newFile() {
   activateCurrentFileHistory(true)
   showSideTab('files')
   updateCSS()
-  populateSavedFilesList()
+  populateWorkspaceFilesList()
   focusDvalaCode()
 }
 
@@ -2917,7 +2917,7 @@ window.onload = async function () {
   await initSnapshotStorage()
   await initFileHistories()
   await initFiles()
-  pruneFileHistories(['<scratch>', ...getSavedFiles().map(file => file.id)])
+  pruneFileHistories(['<scratch>', ...getWorkspaceFiles().map(file => file.id)])
   initExecutionControlBar()
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   wireCodeEditorListeners()
@@ -3269,7 +3269,7 @@ window.onload = async function () {
 
   applyState(true)
   populateSnapshotsList()
-  populateSavedFilesList()
+  populateWorkspaceFilesList()
 
   // Reveal the page now that the editor + state are fully wired. e2e's
   // `waitForInit` uses `wrapper.style.display === 'block'` as the "fully
@@ -3304,7 +3304,7 @@ function getDataFromUrl() {
 
   const urlFileId = urlParams.get('fileId')
   if (activeView === 'files' && urlFileId && getState('current-file-id') !== urlFileId) {
-    const file = getSavedFiles().find(entry => entry.id === urlFileId)
+    const file = getWorkspaceFiles().find(entry => entry.id === urlFileId)
     if (file) {
       if (isScratchActive()) persistScratchFromCurrentState()
       saveState(
@@ -4145,10 +4145,10 @@ export function focusDvalaCode() {
 // Test-driving accessors. The e2e suite drives the editor + file storage
 // through the `Playground.*` global rather than poking DOM internals or
 // importing modules directly. Internal callers should keep using
-// setDvalaCode / setSavedFiles / getState directly.
-export function setSavedFilesForTesting(files: SavedFile[]): void {
-  setSavedFiles(files)
-  populateSavedFilesList()
+// setDvalaCode / setWorkspaceFiles / getState directly.
+export function setWorkspaceFilesForTesting(files: WorkspaceFile[]): void {
+  setWorkspaceFiles(files)
+  populateWorkspaceFilesList()
 }
 export function setEditorValue(code: string): void {
   setDvalaCode(code, true)
@@ -4701,7 +4701,7 @@ export function doExport() {
   const includeSaved = elements.exportOptSavedSnapshots.checked
   const includeRecent = elements.exportOptRecentSnapshots.checked
   const includeLayout = elements.exportOptLayout.checked
-  const includeFiles = elements.exportOptSavedFiles.checked
+  const includeFiles = elements.exportOptWorkspaceFiles.checked
 
   const allowedKeys = new Set<string>([
     ...(includeCode ? codeKeys.map(k => `playground-${k}`) : []),
@@ -4734,7 +4734,7 @@ export function doExport() {
       data,
       ...(includeSaved ? { savedSnapshots: getSavedSnapshots() } : {}),
       ...(includeRecent ? { recentSnapshots: getTerminalSnapshots() } : {}),
-      ...(includeFiles ? { savedFiles: getSavedFiles() } : {}),
+      ...(includeFiles ? { savedFiles: getWorkspaceFiles() } : {}),
     },
     null,
     2,
@@ -4774,12 +4774,17 @@ export async function saveFile(content: string, filename: string): Promise<void>
   URL.revokeObjectURL(url)
 }
 
+// JSON wire-format keys (`savedSnapshots` / `savedFiles`) are intentionally
+// kept under their pre-Phase-1.5 names. The export shape gets reworked in
+// 23i/23l when snapshots become JSON files in `.dvala-playground/snapshots/`;
+// renaming the keys now would burn a compat break without a paired schema
+// change.
 type ExportPayload = {
   version: number
   data: Record<string, string>
   savedSnapshots?: SavedSnapshot[]
   recentSnapshots?: TerminalSnapshotEntry[]
-  savedFiles?: SavedFile[]
+  savedFiles?: WorkspaceFile[]
 }
 
 function isExportPayload(value: unknown): value is ExportPayload {
@@ -4854,7 +4859,7 @@ export function importPlayground() {
         setup(elements.importOptLayout, elements.importOptLayoutLabel, hasLayout)
         setup(elements.importOptSavedSnapshots, elements.importOptSavedSnapshotsLabel, hasSaved)
         setup(elements.importOptRecentSnapshots, elements.importOptRecentSnapshotsLabel, hasRecent)
-        setup(elements.importOptSavedFiles, elements.importOptSavedFilesLabel, hasFiles)
+        setup(elements.importOptWorkspaceFiles, elements.importOptWorkspaceFilesLabel, hasFiles)
 
         elements.importOptionsModal.style.display = 'flex'
       } catch {
@@ -4923,29 +4928,29 @@ export function doImport() {
   }
 
   const payloadFiles = payload.savedFiles
-  if (elements.importOptSavedFiles.checked && payloadFiles) {
-    const existingIds = new Set(getSavedFiles().map(p => p.id))
-    const existingPaths = new Set(getSavedFiles().map(p => p.path))
+  if (elements.importOptWorkspaceFiles.checked && payloadFiles) {
+    const existingIds = new Set(getWorkspaceFiles().map(p => p.id))
+    const existingPaths = new Set(getWorkspaceFiles().map(p => p.path))
     const toAdd = payloadFiles
       .filter(p => !existingIds.has(p.id))
       .map(file => {
         // Disambiguate by suffixing the basename when the path collides;
         // folder structure is preserved.
-        const cleaned = normalizeFilePath(file.path) ?? normalizeSavedFileName(file.path)
+        const cleaned = normalizeFilePath(file.path) ?? normalizeWorkspaceFileName(file.path)
         const path = uniqueFilePath(cleaned, existingPaths)
         existingPaths.add(path)
         return { ...file, path }
       })
     const conflicts = payloadFiles.length - toAdd.length
     if (toAdd.length > 0) {
-      setSavedFiles([...getSavedFiles(), ...toAdd])
-      imported.push(`${toAdd.length} saved file${toAdd.length !== 1 ? 's' : ''}`)
+      setWorkspaceFiles([...getWorkspaceFiles(), ...toAdd])
+      imported.push(`${toAdd.length} workspace file${toAdd.length !== 1 ? 's' : ''}`)
     }
-    if (conflicts > 0) skipped.push(`${conflicts} saved file${conflicts !== 1 ? 's' : ''} (already exist)`)
+    if (conflicts > 0) skipped.push(`${conflicts} workspace file${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
   populateSnapshotsList()
-  populateSavedFilesList()
+  populateWorkspaceFilesList()
   pendingImportPayload = null
 
   const importedHtml =
@@ -6480,7 +6485,7 @@ export function updateCSS() {
   if (benchmarksTabBtn) benchmarksTabBtn.style.display = getState('playground-developer') ? '' : 'none'
 
   const currentFileId = getState('current-file-id')
-  const currentFile = currentFileId ? getSavedFiles().find(entry => entry.id === currentFileId) : null
+  const currentFile = currentFileId ? getWorkspaceFiles().find(entry => entry.id === currentFileId) : null
   const isLocked = currentFile?.locked ?? false
   const isContextTab = getCurrentSideTab() === 'context'
   const context = isContextTab ? getParsedContext() : null

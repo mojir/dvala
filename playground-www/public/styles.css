@@ -4355,7 +4355,7 @@ button:focus {
 }
 
 /* ============================================================
-  List pages (saved files, snapshots)
+  List pages (workspace files, snapshots)
   ============================================================ */
 .list-page__header {
   display: flex;
@@ -4401,7 +4401,7 @@ button:focus {
 }
 
 #snapshots-list,
-#saved-files-list {
+#workspace-files-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--space-2);
@@ -4409,7 +4409,7 @@ button:focus {
 
 #snapshots-list .list-group-label,
 #snapshots-list button:not(.snapshot-card),
-#saved-files-list .list-group-label {
+#workspace-files-list .list-group-label {
   grid-column: 1 / -1;
 }
 

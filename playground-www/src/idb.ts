@@ -1,5 +1,5 @@
 const DB_NAME = 'dvala-playground'
-// v5: the `path` field was added to SavedFile (Phase 1 step 14). Per the
+// v5: the `path` field was added to WorkspaceFile (Phase 1 step 14). Per the
 // design doc decision (pre-1.0, ephemeral state, no migration), the upgrade
 // drops the old saved-files store and recreates it empty.
 const DB_VERSION = 5
