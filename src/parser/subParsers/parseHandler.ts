@@ -114,16 +114,27 @@ export function parseHandler(ctx: ParserContext, shallow = false, linear = false
     }
 
     // Linear handlers don't permit explicit `resume` — the body's value IS
-    // the implicit resume (Phase 1.5 / 23e design). Reject `resume` keyword
-    // usages anywhere in the clause body, but stop at nested Handler / Macro
-    // boundaries (those rebind `resume` to themselves and shouldn't be
-    // affected by the outer linear handler's contract).
+    // the implicit resume. Reject `resume` keyword usages anywhere in the
+    // clause body, but stop at nested Handler / Macro boundaries (those
+    // rebind `resume` to themselves).
     if (linear && containsResumeOutsideNestedHandler(body)) {
       throw new ParseError(
         '`resume` is not available in linear handler clauses — return the value to resume, ' +
-          'or destructure `{ fail, halt, suspend, next }` from the second parameter for non-resume terminations.',
+          'or `perform(@dvala.error, msg)` to fail.',
         ctx.peekSourceCodeInfo(),
       )
+    }
+
+    // Return-as-resume wrap. Replace the last expression of the body with
+    // a Resume node wrapping it: `... ; lastExpr` → `... ; resume(lastExpr)`.
+    // Earlier statements run as side effects; the tail's value becomes the
+    // resume value. If the body never reaches its tail (e.g. an inner
+    // `perform(@dvala.error, ...)` propagates up past this handler, or any
+    // other suspension / error short-circuits), the wrapping resume simply
+    // never fires — exactly what we want.
+    if (linear && body.length > 0) {
+      const lastExpr = body[body.length - 1]!
+      body[body.length - 1] = withSourceCodeInfo([NodeTypes.Resume, lastExpr, 0], token[2], ctx)
     }
 
     clauses.push({ effectName, params, body })

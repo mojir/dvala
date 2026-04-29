@@ -43,21 +43,24 @@ The term "linear" is established in this corner of the algebraic-effects literat
 
 ## Proposal
 
-### Surface syntax
+### Surface syntax (v1)
 
 ```dvala
 let h = linear handler 
-  @x(v) -> v * 2                          // implicit resume(v * 2)
-  @y(v, { fail }) -> fail("nope")          // explicit fail
-  @z(v, { halt }) -> halt(v)               // explicit halt
-  @w(v, { fail, halt, suspend }) ->
-    if v < 0 then fail("neg")
-    else if v == 0 then halt(0)
-    else suspend({ note: "paused", v })
-    end
+  @x(v) -> v * 2                                      // implicit resume(v * 2)
+  @y(v) -> if v < 0 then perform(@dvala.error, "neg") else v end
 end;
 do with h;
   perform(@x, 21)
+end
+```
+
+Future-form preview (v1.5+ — the destructured-ops syntax this design plans toward):
+
+```dvala
+let h = linear handler 
+  @x(v) -> v * 2
+  @y(v, { fail, halt, suspend }) -> ...
 end
 ```
 
@@ -82,17 +85,19 @@ The body of a `linear handler` clause:
 
 ### Settling operations
 
-All 5 settling ops are available in v1 (resume + four explicit ops):
+**v1 scope (this PR): resume only.** The body's return value is the implicit resume; that's the entire surface. To fail, the user calls `perform(@dvala.error, msg)` from inside the clause body — the perform propagates past this handler to whatever outer handler exists for `@dvala.error`, with normal Dvala semantics. No special `fail` form needed; the existing effect machinery does it.
 
-| Op | Semantics | Type |
-|---|---|---|
-| (return value) | Implicit `resume(value)` — continue at the perform site | clause's body type |
-| `fail(msg?)` | Trigger `@dvala.error` (matches host `fail`) | `(string?) -> Never` |
-| `halt(value?)` | Clean termination, bypasses error path | `(any?) -> Never` |
-| `suspend(meta?)` | Capture as snapshot, return control to the host | `(any?) -> Never` |
-| `next()` | Defer to the next matching handler in the host-handler list | `() -> Never` |
+| Op | Semantics |
+|---|---|
+| (return value) | Implicit `resume(value)` — continue at the perform site |
+| `perform(@dvala.error, msg)` from body | Aborts past this handler via the standard error channel |
 
-Non-settling host-context operations (`checkpoint`, `resumeFrom`, `onScopeExit`) and read-only props (`effectName`, `signal`, `snapshots`) are **deferred from v1** — they can be added incrementally to the destructure context object without breaking changes.
+**Why scope down from the original "5 ops via destructured second param" plan:** implementing `fail` / `halt` / `suspend` / `next` as Dvala-source values requires either (a) a host-handler bridge that re-enters the trampoline from JS — invasive — or (b) several new internal effects routed from within the handler dispatch path. Both significantly larger than the barrier-crossing change v1 actually needs. The playground's boundary-handler use case (the immediate consumer) only needs resume + a way to fail; `perform(@dvala.error, ...)` covers fail without new mechanism.
+
+**v1.5+ deliverables (non-breaking to add later):**
+- Destructured second param `@effect(arg, { fail, halt, suspend, next }) -> body` — additive grammar; existing single-param clauses keep working.
+- The four settling ops as values bound from the engine context.
+- Non-settling helpers (`checkpoint`, `resumeFrom`, `onScopeExit`).
 
 ### Dispatch semantics
 
@@ -110,15 +115,9 @@ When a `linear handler` value is installed via `do with h`, the engine routes th
 
 ### Static checks
 
-Two checks at parse / typecheck time:
+**v1: reject `resume` keyword inside linear-handler clauses (parse error).** Free; mechanical; the parser already knows it's inside a linear handler. Error message: *"`resume` is not available in linear handler clauses — return the value to resume, or `perform(@dvala.error, msg)` to fail."*
 
-1. **Reject `resume` keyword inside linear-handler clauses (parse error).** Free; mechanical; the parser already knows it's inside a linear handler. Error message: *"`resume` is not available in linear handler clauses — return the value to resume, or destructure `{ fail, halt, suspend, next }` for non-resume terminations."*
-
-2. **Type the four explicit settling ops as `Never` (diverging).** `fail`, `halt`, `suspend`, `next` are typed as never-returning functions. The typechecker's existing `Never` propagation gives us:
-   - **Dead-code detection** — `fail("a"); 42` flags as unreachable because `42` follows a `Never`.
-   - **Alias detection for free** — `let leaked = fail; leaked("oops"); 42` also flags, because `leaked` propagates the `Never`-returning type.
-
-Out of scope for v1: escape-via-closure detection (e.g. returning a closure that captures `fail` and is called after the dispatch has settled). The runtime `settled` flag throws a clear error in that case; full escape analysis would need region/lifetime types, which Dvala doesn't have.
+The other static check from the original design ("type fail/halt/suspend/next as Never") is moot in v1 since those ops aren't surfaced. When the destructured-ops form lands in v1.5+, that check comes with it.
 
 ---
 
