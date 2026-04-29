@@ -15,6 +15,7 @@
 // file lands as a tab — same surface the explorer uses.
 
 import { KeyCode, KeyMod } from '../codeEditor'
+import { isInPlaygroundFolder } from '../filePath'
 import { getWorkspaceFiles } from '../fileStorage'
 import { tryGetCodeEditor } from './codeEditorInstance'
 import { rankWorkspaceFiles } from './quickOpenRank'
@@ -39,9 +40,12 @@ export function openQuickOpen(): void {
   if (activePicker) return
 
   const files = getWorkspaceFiles()
-  // Ergonomic: if the workspace is empty, don't bother with a popup —
-  // a Cmd-P with no files would just be a noise event.
-  if (files.length === 0) return
+  // Ergonomic: if there are no pickable files, don't bother with a popup —
+  // a Cmd-P with nothing to pick would just be a noise event. Files under
+  // `.dvala-playground/` (scratch, handlers, snapshots) aren't pickable
+  // through Quick Open, so they don't count toward this check (Phase 1.5
+  // step 23b/23c).
+  if (files.every(f => isInPlaygroundFolder(f.path))) return
 
   const overlay = document.createElement('div')
   overlay.id = PICKER_ID

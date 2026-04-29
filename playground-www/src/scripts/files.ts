@@ -19,6 +19,13 @@ import {
 } from '../fileStorage'
 import type { WorkspaceFile } from '../fileStorage'
 import { buildFileTree } from '../fileTree'
+import {
+  ensureScratchFile,
+  getScratchCode as readScratchCode,
+  getScratchContext as readScratchContext,
+  isScratchPath,
+  setScratchCodeAndContext,
+} from '../scratchBuffer'
 import type { TreeNode } from '../fileTree'
 import * as router from '../router'
 import {
@@ -103,11 +110,13 @@ export function isScratchActive(): boolean {
 }
 
 function getScratchCode(): string {
-  return isScratchActive() ? getState('dvala-code') : getState('scratch-code')
+  // When scratch is the active tab, the live editor content (`dvala-code`)
+  // is ahead of what's persisted; otherwise read the scratch workspace file.
+  return isScratchActive() ? getState('dvala-code') : readScratchCode()
 }
 
 function getScratchContext(): string {
-  return isScratchActive() ? getState('context') : getState('scratch-context')
+  return isScratchActive() ? getState('context') : readScratchContext()
 }
 
 export function hasScratchContent(): boolean {
@@ -116,13 +125,7 @@ export function hasScratchContent(): boolean {
 
 export function persistScratchFromCurrentState() {
   if (!isScratchActive()) return
-  saveState(
-    {
-      'scratch-code': getState('dvala-code'),
-      'scratch-context': getState('context'),
-    },
-    false,
-  )
+  setScratchCodeAndContext(getState('dvala-code'), getState('context'))
 }
 
 function closeSnapshotViewIfNeeded() {
@@ -152,12 +155,12 @@ export function openScratchInEditor(
     return
   }
 
-  const code = options.code ?? getState('scratch-code')
-  const context = options.context ?? getState('scratch-context')
+  const code = options.code ?? readScratchCode()
+  const context = options.context ?? readScratchContext()
 
   flushPendingAutoSave()
 
-  saveState({ 'scratch-code': code, 'scratch-context': context }, false)
+  setScratchCodeAndContext(code, context)
   closeSnapshotViewIfNeeded()
 
   saveState(
@@ -572,13 +575,7 @@ export function saveScratch() {
 
 export function clearScratch() {
   const clear = () => {
-    saveState(
-      {
-        'scratch-code': '',
-        'scratch-context': '',
-      },
-      false,
-    )
+    setScratchCodeAndContext('', '')
 
     if (isScratchActive())
       openScratchInEditor({ code: '', context: '', focusCode: true, toast: 'Scratch cleared', force: true })
@@ -600,6 +597,12 @@ export function clearScratch() {
 export function deleteWorkspaceFile(id: string) {
   const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
+  // The scratch buffer's backing file is undeletable — clearing scratch goes
+  // through `clearScratch` (sets code/context to ''), not deletion. The UI
+  // doesn't expose a delete affordance for it (it lives under the hidden
+  // .dvala-playground/ folder), so this guard is defense-in-depth against
+  // programmatic callers (Playground.* API, tests).
+  if (isScratchPath(file.path)) return
   const doDelete = async () => {
     await animateFileCardRemoval(id)
     deleteFileHistory(id)
@@ -638,6 +641,10 @@ export function toggleFileLock(id: string) {
 
 export function clearAllWorkspaceFiles() {
   clearAllFiles()
+  // Re-create the scratch buffer's backing file (Phase 1.5 step 23c —
+  // scratch is undeletable; "clear everything" wipes its content but the
+  // file itself comes right back, empty).
+  ensureScratchFile()
   clearAllFileHistories()
   closeTabsForMissingFiles()
   populateWorkspaceFilesList()

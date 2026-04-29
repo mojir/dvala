@@ -88,6 +88,14 @@ vi.mock('../fileStorage', () => ({
   fileDisplayName: (f: { path: string }) => f.path.split('/').pop() ?? f.path,
 }))
 
+// Phase 1.5 step 23c: scratch is backed by a workspace file at
+// `.dvala-playground/scratch.dvala`. The seed flows through this getter; the
+// test stubs it to whatever the test wants the scratch buffer to start with.
+let scratchSeed = ''
+vi.mock('../scratchBuffer', () => ({
+  getScratchCode: () => scratchSeed,
+}))
+
 vi.mock('../state', () => ({
   getState: (k: string) => stateStore[k],
   saveState: (next: Record<string, unknown>) => {
@@ -121,8 +129,8 @@ beforeEach(() => {
   // Defaults the production state.ts ships.
   stateStore['open-tabs'] = [{ kind: 'scratch' }]
   stateStore['active-tab-key'] = '<scratch>'
-  stateStore['scratch-code'] = ''
   stateStore['current-file-id'] = null
+  scratchSeed = ''
 })
 
 // ----------------------------------------------------------------------

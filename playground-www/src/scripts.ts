@@ -70,6 +70,7 @@ import {
   uniqueFilePath,
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
+import { ensureScratchFile, setScratchCode, setScratchCodeAndContext } from './scratchBuffer'
 import type { WorkspaceFile } from './fileStorage'
 import {
   clearAllFileHistories,
@@ -1764,6 +1765,9 @@ export function clearIndexedDbData() {
     () => {
       clearAllSnapshots()
       clearAllFiles()
+      // Phase 1.5 step 23c — scratch is undeletable; recreate its backing
+      // file (empty) so the editor still has somewhere to land.
+      ensureScratchFile()
       clearAllFileHistories()
       saveState({ 'current-file-id': null }, false)
       activateCurrentFileHistory(true)
@@ -2672,11 +2676,11 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
   // for programmatic writes). The tab strip's modified-dot is normally
   // refreshed by that listener, so trigger a manual repaint here for the
   // dot to reflect dirty/clean transitions caused by setEditorValue and
-  // friends. Same goes for the `scratch-code` mirror — listener-side
+  // friends. Same goes for the scratch-buffer mirror — listener-side
   // updates don't run, so we have to do it here.
   notifyTabsChanged()
   const scratchActive = getState('current-file-id') === null
-  const scratchMirror = scratchActive ? { 'scratch-code': value } : {}
+  if (scratchActive) setScratchCode(value)
 
   if (pushToHistory) {
     const sel = editor.getSelectionRange()
@@ -2685,14 +2689,13 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
         'dvala-code': value,
         'dvala-code-selection-start': sel.start,
         'dvala-code-selection-end': sel.end,
-        ...scratchMirror,
       },
       false,
     )
     pushActiveDvalaCodeHistoryEntry()
     scheduleAutoSave()
   } else {
-    saveState({ 'dvala-code': value, ...scratchMirror }, false)
+    saveState({ 'dvala-code': value }, false)
   }
 
   if (scroll === 'top') editor.scrollToTop()
@@ -2706,7 +2709,8 @@ export function resetOutput() {
 
 export function resetPlayground() {
   flushPendingAutoSave()
-  saveState({ 'dvala-code-edited': false, 'scratch-code': '', 'scratch-context': '' }, false)
+  saveState({ 'dvala-code-edited': false }, false)
+  setScratchCodeAndContext('', '')
   // Switch to the scratch tab BEFORE clearing the buffer — otherwise
   // setDvalaCode('') would wipe whichever file tab happens to be active.
   focusScratch()
@@ -2851,11 +2855,11 @@ function wireCodeEditorListeners(): void {
   editor.onChange(value => {
     setDvalaCode(value, true)
     if (getState('current-file-id') === null) {
-      // Scratch is now its own tab with its own model, but `scratch-code`
-      // remains the durable storage slot — initTabs hydrates the scratch
-      // model from it on every reload. Mirror keystrokes through so scratch
-      // survives a refresh.
-      saveState({ 'scratch-code': value }, false)
+      // Scratch is its own tab with its own model; the durable storage
+      // lives in the scratch workspace file (`.dvala-playground/scratch.dvala`,
+      // Phase 1.5 step 23c). `initTabs` hydrates the scratch model from
+      // there on reload — mirror every keystroke so reloads survive.
+      setScratchCode(value)
       scheduleScratchEditedClear()
     } else saveState({ 'dvala-code-edited': true })
     updateCSS()
@@ -2917,6 +2921,10 @@ window.onload = async function () {
   await initSnapshotStorage()
   await initFileHistories()
   await initFiles()
+  // Phase 1.5 step 23c: scratch is a workspace file at
+  // `.dvala-playground/scratch.dvala`. Make sure it exists before anything
+  // else reads from it (initTabs seeds the scratch model from this file).
+  ensureScratchFile()
   pruneFileHistories(['<scratch>', ...getWorkspaceFiles().map(file => file.id)])
   initExecutionControlBar()
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))

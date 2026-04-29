@@ -6,21 +6,23 @@
 // had when they last left that tab.
 //
 // One synthetic "scratch" tab represents the unsaved buffer. Its content
-// lives in the tab's model just like any other tab; the persisted slot
-// `scratch-code` is a snapshot kept in sync with the scratch model so the
-// existing scratch-* state machinery (history keying on `<scratch>`,
-// autosave guards, snapshot links) keeps working unchanged.
+// lives in the tab's model just like any other tab; the persisted backing
+// store is a workspace file at `.dvala-playground/scratch.dvala` (Phase 1.5
+// step 23c) which `getScratchCode` reads. The existing scratch-* state
+// machinery (history keying on `<scratch>`, autosave guards, snapshot
+// links) still keys on the SCRATCH_KEY sentinel; 23h retires that.
 //
 // Persistence: only the *list of open tabs* and which one is active are
 // persisted (localStorage via `state.ts`); models and viewState live in
-// memory and are reconstructed on boot from the underlying WorkspaceFile / scratch
-// state. That keeps localStorage small and avoids serializing Monaco's
-// internal viewState shape (which Monaco doesn't formally guarantee).
+// memory and are reconstructed on boot from the underlying WorkspaceFile /
+// scratch file. That keeps localStorage small and avoids serializing
+// Monaco's internal viewState shape (which Monaco doesn't formally guarantee).
 
 import type * as monacoNs from 'monaco-editor'
 import { KeyCode, KeyMod } from '../codeEditor'
 import { fileDisplayName, getWorkspaceFiles } from '../fileStorage'
 import type { WorkspaceFile } from '../fileStorage'
+import { getScratchCode } from '../scratchBuffer'
 import { getState, saveState } from '../state'
 import type { PersistedTab } from '../state'
 import { getCodeEditor, tryGetCodeEditor } from './codeEditorInstance'
@@ -348,8 +350,10 @@ function makeFileTab(editor: ReturnType<typeof getCodeEditor>, file: WorkspaceFi
 }
 
 function makeScratchTab(editor: ReturnType<typeof getCodeEditor>): ScratchTab {
-  // Seed scratch's model from the persisted scratch-code so reloads survive.
-  const seed = getState('scratch-code')
+  // Seed scratch's model from its workspace file (.dvala-playground/scratch.dvala,
+  // Phase 1.5 step 23c) so reloads survive. `ensureScratchFile` runs at boot
+  // before this is called, so the file is guaranteed to exist.
+  const seed = getScratchCode()
   return {
     kind: 'scratch',
     key: SCRATCH_KEY,

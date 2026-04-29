@@ -48,7 +48,6 @@ async function setContext(page: Page, json: string) {
   // Set context state directly via localStorage and trigger an applyState cycle.
   await page.evaluate((contextJson: string) => {
     localStorage.setItem('playground-context', JSON.stringify(contextJson))
-    localStorage.setItem('playground-scratch-context', JSON.stringify(contextJson))
     // Also set the textarea value and fire an input event so the app picks it up
     const textarea = document.getElementById('context-textarea') as HTMLTextAreaElement | null
     if (textarea) {
