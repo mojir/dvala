@@ -136,6 +136,7 @@ Use the project skills and agents proactively — don't do manually what a skill
 - **`/fix-issue`** — When the user asks to fix a GitHub issue by number.
 - **`/report-issue`** — When the user reports a bug or asks to file an issue.
 - **`/dvala-run`** — When the user wants to quickly run a Dvala snippet.
+- **`/interview`** — When the user has a list of questions or decisions to work through. Walks them one at a time, with options + a recommendation + confidence (low/medium/high) for each. Use proactively when the user shares a numbered list of open items or says things like "let's decide a few things."
 
 ### When to use agents
 
