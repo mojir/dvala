@@ -5654,26 +5654,69 @@ describe('shallow handler — extended coverage', () => {
   })
 })
 
-// Linear handler — Phase 1 of the language feature lands the parser /
-// AST plumbing. Runtime dispatch (host-style: single-shot, barrier-free)
-// arrives in a follow-up commit; until then a `linear handler` value still
-// installs at the Dvala layer. These tests cover the parse path only.
-// See design/active/2026-04-29_linear-handler.md.
-describe('linear handler (parser plumbing)', () => {
-  it('parses and evaluates `linear handler ... end`', () => {
+// Linear handler — language feature in development.
+// Runtime dispatch (host-style: single-shot, barrier-free) lands in a
+// follow-up commit; until then a `linear handler` value installs at the
+// Dvala layer. Parse-time though, the static rule is already in place:
+// `resume` is forbidden inside a linear-handler clause (the body's value
+// is the implicit resume). See design/active/2026-04-29_linear-handler.md.
+describe('linear handler (parsing rules)', () => {
+  it('rejects `resume` keyword inside a linear-handler clause body', () => {
+    expect(() =>
+      dvala.run(`
+        linear handler
+          @test.eff(v) -> resume(v * 2)
+        end
+      `),
+    ).toThrow(/resume.*not available in linear handler clauses/)
+  })
+
+  it('rejects `resume` even when nested deep in the clause body (e.g. inside an `if`)', () => {
+    expect(() =>
+      dvala.run(`
+        linear handler
+          @test.eff(v) -> if v > 0 then resume(v) else 0 end
+        end
+      `),
+    ).toThrow(/resume.*not available in linear handler clauses/)
+  })
+
+  it('allows `resume` inside a *nested* regular handler (it binds to the inner handler)', () => {
+    // The inner `handler @inner ... end` defines its own resume scope; the
+    // walker stops descending into it. The outer linear handler doesn't
+    // contain a `resume` itself, so it parses cleanly.
     const result = dvala.run(`
       let h = linear handler
-        @test.eff(v) -> resume(v * 2)
+        @test.outer(v) -> do
+          let inner = handler @test.inner() -> resume(v * 2) end;
+          do with inner; perform(@test.inner) end
+        end
+      end;
+      h(-> perform(@test.outer, 21))
+    `)
+    // Without explicit resume in the OUTER linear clause, the do-block's
+    // last expression (the inner do-with's result) becomes the clause's
+    // value. Pre step 6+7, that value aborts the outer with-block.
+    expect(result).toBe(42)
+  })
+
+  it('parses `linear handler ... end` with a non-resume body', () => {
+    const result = dvala.run(`
+      let h = linear handler
+        @test.eff(v) -> v * 2
       end;
       h(-> perform(@test.eff, 21))
     `)
+    // Pre step 6+7, no-resume = abort with the body's value. Post step 6+7,
+    // the body's value will become the implicit resume value (return-as-
+    // resume). Both yield 42 here because there's no code after `perform`.
     expect(result).toBe(42)
   })
 
   it('parses `linear shallow handler ... end` (modifiers in either order)', () => {
     const result = dvala.run(`
       let h = linear shallow handler
-        @test.eff(v) -> resume(v * 2)
+        @test.eff(v) -> v * 2
       end;
       h(-> perform(@test.eff, 21))
     `)
@@ -5683,7 +5726,7 @@ describe('linear handler (parser plumbing)', () => {
   it('parses `shallow linear handler ... end` (modifiers in either order)', () => {
     const result = dvala.run(`
       let h = shallow linear handler
-        @test.eff(v) -> resume(v * 2)
+        @test.eff(v) -> v * 2
       end;
       h(-> perform(@test.eff, 21))
     `)
