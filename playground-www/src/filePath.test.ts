@@ -3,7 +3,9 @@ import {
   ensureDvalaSuffix,
   filenameFromPath,
   folderFromPath,
+  isInPlaygroundFolder,
   normalizeFilePath,
+  PLAYGROUND_FOLDER,
   splitPath,
   stripDvalaSuffix,
 } from './filePath'
@@ -84,5 +86,28 @@ describe('normalizeFilePath', () => {
     // inside them.
     expect(normalizeFilePath('foo/')).toBe('foo.dvala')
     expect(normalizeFilePath('examples/')).toBe('examples.dvala')
+  })
+})
+
+describe('isInPlaygroundFolder', () => {
+  it('matches the folder itself', () => {
+    expect(isInPlaygroundFolder(PLAYGROUND_FOLDER)).toBe(true)
+  })
+  it('matches files directly inside the folder', () => {
+    expect(isInPlaygroundFolder(`${PLAYGROUND_FOLDER}/scratch.dvala`)).toBe(true)
+    expect(isInPlaygroundFolder(`${PLAYGROUND_FOLDER}/handlers.dvala`)).toBe(true)
+  })
+  it('matches files nested deeper (e.g. snapshot JSON files)', () => {
+    expect(isInPlaygroundFolder(`${PLAYGROUND_FOLDER}/snapshots/abc.json`)).toBe(true)
+  })
+  it('does not match unrelated workspace files', () => {
+    expect(isInPlaygroundFolder('foo.dvala')).toBe(false)
+    expect(isInPlaygroundFolder('examples/foo.dvala')).toBe(false)
+  })
+  it('rejects look-alike prefixes (no exact folder boundary)', () => {
+    // `.dvala-playground-extra/foo` is not under the reserved folder — the
+    // boundary check requires either an exact match or a `/` separator.
+    expect(isInPlaygroundFolder(`${PLAYGROUND_FOLDER}-extra/foo.dvala`)).toBe(false)
+    expect(isInPlaygroundFolder(`${PLAYGROUND_FOLDER}foo.dvala`)).toBe(false)
   })
 })

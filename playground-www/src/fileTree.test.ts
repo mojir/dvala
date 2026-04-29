@@ -66,4 +66,17 @@ describe('buildFileTree', () => {
     if (m.kind !== 'folder') throw new Error('expected folder m')
     expect(m.children.map(n => (n.kind === 'file' ? n.file.path : n.path))).toEqual(['m/a.dvala', 'm/z.dvala'])
   })
+
+  it('hides files under the reserved .dvala-playground/ folder', () => {
+    // Phase 1.5 step 23b: .dvala-playground/ files (scratch, handlers,
+    // snapshots) are surfaced separately, not in the tree.
+    const tree = buildFileTree([
+      file('a', 'foo.dvala'),
+      file('b', '.dvala-playground/scratch.dvala'),
+      file('c', '.dvala-playground/handlers.dvala'),
+      file('d', '.dvala-playground/snapshots/x.json'),
+    ])
+    expect(tree).toHaveLength(1)
+    expect(tree[0]).toMatchObject({ kind: 'file', file: { path: 'foo.dvala' } })
+  })
 })

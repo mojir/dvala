@@ -91,4 +91,18 @@ describe('rankWorkspaceFiles', () => {
   it('returns an empty list for queries with no matches', () => {
     expect(rankWorkspaceFiles('zzz', files)).toEqual([])
   })
+
+  it('skips files under the reserved .dvala-playground/ folder', () => {
+    // Phase 1.5 step 23b: scratch / handlers / snapshots aren't pickable
+    // through Quick Open — they're reachable through their pinned virtual
+    // tree entries and the Snapshots side tab.
+    const all: WorkspaceFile[] = [
+      file('a', 'main.dvala'),
+      file('b', '.dvala-playground/scratch.dvala'),
+      file('c', '.dvala-playground/handlers.dvala'),
+    ]
+    expect(rankWorkspaceFiles('', all).map(r => r.id)).toEqual(['a'])
+    expect(rankWorkspaceFiles('scratch', all)).toEqual([])
+    expect(rankWorkspaceFiles('handlers', all)).toEqual([])
+  })
 })
