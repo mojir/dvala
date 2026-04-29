@@ -70,6 +70,7 @@ import {
   uniqueFilePath,
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
+import { ensureHandlersFile } from './handlersBuffer'
 import { ensureScratchFile, setScratchCode, setScratchCodeAndContext } from './scratchBuffer'
 import type { WorkspaceFile } from './fileStorage'
 import {
@@ -1765,9 +1766,11 @@ export function clearIndexedDbData() {
     () => {
       clearAllSnapshots()
       clearAllFiles()
-      // Phase 1.5 step 23c — scratch is undeletable; recreate its backing
-      // file (empty) so the editor still has somewhere to land.
+      // Phase 1.5 step 23c/23d — scratch + handlers are undeletable;
+      // recreate their backing files (empty) so the editor still has
+      // somewhere to land and boundary handlers stay declarable.
       ensureScratchFile()
+      ensureHandlersFile()
       clearAllFileHistories()
       saveState({ 'current-file-id': null }, false)
       activateCurrentFileHistory(true)
@@ -2921,10 +2924,14 @@ window.onload = async function () {
   await initSnapshotStorage()
   await initFileHistories()
   await initFiles()
-  // Phase 1.5 step 23c: scratch is a workspace file at
-  // `.dvala-playground/scratch.dvala`. Make sure it exists before anything
-  // else reads from it (initTabs seeds the scratch model from this file).
+  // Phase 1.5 step 23c/23d: the scratch + handlers buffers are workspace
+  // files under `.dvala-playground/`. Make sure both exist before anything
+  // else reads from them (initTabs seeds the scratch model from the
+  // scratch file; the explorer renders the pinned virtual entries against
+  // these files; 23e wraps every run in the handlers buffer's effect-
+  // handler declarations).
   ensureScratchFile()
+  ensureHandlersFile()
   pruneFileHistories(['<scratch>', ...getWorkspaceFiles().map(file => file.id)])
   initExecutionControlBar()
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))

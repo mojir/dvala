@@ -20,6 +20,11 @@ import {
 import type { WorkspaceFile } from '../fileStorage'
 import { buildFileTree } from '../fileTree'
 import {
+  getHandlersFile,
+  HANDLERS_FILE_PATH,
+  isHandlersPath,
+} from '../handlersBuffer'
+import {
   ensureScratchFile,
   getScratchCode as readScratchCode,
   getScratchContext as readScratchContext,
@@ -104,6 +109,7 @@ export function loadWorkspaceFile(id: string) {
 // ─── Explorer panel (compact file list in editor tab) ────────────────────────
 
 export const SCRATCH_TITLE = '<scratch>'
+const HANDLERS_TITLE = '<handlers>'
 
 export function isScratchActive(): boolean {
   return getState('current-file-id') === null
@@ -240,6 +246,19 @@ function populateExplorerFileList() {
       </div>`
   }
 
+  // Phase 1.5 step 23d: handlers buffer pinned second-from-top. Unlike
+  // scratch (still routed via the SCRATCH_KEY sentinel until 23h), this
+  // is a regular workspace file — clicking opens it via openOrFocusFile.
+  const renderHandlersExplorerItem = () => {
+    const handlers = getHandlersFile()
+    if (!handlers) return ''
+    const activeClass = currentId === handlers.id ? ' explorer-item--active' : ''
+    return `
+      <div class="explorer-item${activeClass}" onclick="Playground.loadWorkspaceFile('${handlers.id}')" title="Boundary effect handlers (always wraps every run)">
+        <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(HANDLERS_TITLE)}</span>
+      </div>`
+  }
+
   const renderFileStats = () => {
     if (!stats) return
     // No stats panel when scratch is active
@@ -283,8 +302,12 @@ function populateExplorerFileList() {
       </div>`
   }
 
-  if (files.length === 0) {
-    list.innerHTML = `${renderScratchExplorerItem()}<div class="explorer-empty">No workspace files</div>`
+  // The scratch + handlers buffers are always present under
+  // `.dvala-playground/`; the "No workspace files" hint is about
+  // user-authored files only. `buildFileTree` already filters those out
+  // (Phase 1.5 step 23b), so check the resulting tree's length here.
+  if (files.every(f => f.path === HANDLERS_FILE_PATH || isScratchPath(f.path))) {
+    list.innerHTML = `${renderScratchExplorerItem()}${renderHandlersExplorerItem()}<div class="explorer-empty">No workspace files</div>`
     renderFileStats()
     return
   }
@@ -296,7 +319,10 @@ function populateExplorerFileList() {
   const tree = buildFileTree(files)
   const expanded = new Set<string>(getState('explorer-expanded-folders'))
 
-  list.innerHTML = renderScratchExplorerItem() + tree.map(node => renderTreeNode(node, 0, expanded, currentId)).join('')
+  list.innerHTML =
+    renderScratchExplorerItem() +
+    renderHandlersExplorerItem() +
+    tree.map(node => renderTreeNode(node, 0, expanded, currentId)).join('')
 
   // Walk the full tree (regardless of expansion state) to collect every
   // folder path that still has a file under it. The pruned set must only
@@ -597,12 +623,12 @@ export function clearScratch() {
 export function deleteWorkspaceFile(id: string) {
   const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
-  // The scratch buffer's backing file is undeletable — clearing scratch goes
-  // through `clearScratch` (sets code/context to ''), not deletion. The UI
-  // doesn't expose a delete affordance for it (it lives under the hidden
-  // .dvala-playground/ folder), so this guard is defense-in-depth against
-  // programmatic callers (Playground.* API, tests).
-  if (isScratchPath(file.path)) return
+  // The scratch + handlers buffers are undeletable (Phase 1.5 step 23c/23d).
+  // Their tree entries are pinned virtual items; the UI doesn't expose a
+  // delete affordance for them (they live under the hidden .dvala-playground/
+  // folder), so this guard is defense-in-depth against programmatic callers
+  // (Playground.* API, tests).
+  if (isScratchPath(file.path) || isHandlersPath(file.path)) return
   const doDelete = async () => {
     await animateFileCardRemoval(id)
     deleteFileHistory(id)
