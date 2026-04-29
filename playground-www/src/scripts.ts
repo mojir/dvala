@@ -4162,6 +4162,18 @@ export function isEditorReadOnly(): boolean {
   return tryGetCodeEditor()?.isReadOnly() ?? false
 }
 
+// Test-only cursor accessors — the playground-effects API exposes these to
+// Dvala programs (`perform(@playground.editor.setCursor, ...)`), but e2e
+// tests need them on the `Playground.*` global so they can probe per-tab
+// viewState preservation without round-tripping through `runCode`.
+export function getEditorCursor(): number {
+  return getCodeEditor().getCursor()
+}
+
+export function setEditorCursor(position: number): void {
+  getCodeEditor().setCursor(position)
+}
+
 function makeArgRow(content: string, index?: number, copyContent?: string): HTMLElement {
   const row = document.createElement('div')
   row.style.cssText = `display:flex; flex-direction:row; gap:3px; align-items:center; min-width:0; padding-right:0.5rem;${index !== undefined ? ' height:1.4rem;' : ''}`
