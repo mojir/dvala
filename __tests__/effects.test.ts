@@ -5653,3 +5653,49 @@ describe('shallow handler — extended coverage', () => {
     expect(result).toEqual([10, 20, 30])
   })
 })
+
+// Linear handler — Phase 1 of the language feature lands the parser /
+// AST plumbing. Runtime dispatch (host-style: single-shot, barrier-free)
+// arrives in a follow-up commit; until then a `linear handler` value still
+// installs at the Dvala layer. These tests cover the parse path only.
+// See design/active/2026-04-29_linear-handler.md.
+describe('linear handler (parser plumbing)', () => {
+  it('parses and evaluates `linear handler ... end`', () => {
+    const result = dvala.run(`
+      let h = linear handler
+        @test.eff(v) -> resume(v * 2)
+      end;
+      h(-> perform(@test.eff, 21))
+    `)
+    expect(result).toBe(42)
+  })
+
+  it('parses `linear shallow handler ... end` (modifiers in either order)', () => {
+    const result = dvala.run(`
+      let h = linear shallow handler
+        @test.eff(v) -> resume(v * 2)
+      end;
+      h(-> perform(@test.eff, 21))
+    `)
+    expect(result).toBe(42)
+  })
+
+  it('parses `shallow linear handler ... end` (modifiers in either order)', () => {
+    const result = dvala.run(`
+      let h = shallow linear handler
+        @test.eff(v) -> resume(v * 2)
+      end;
+      h(-> perform(@test.eff, 21))
+    `)
+    expect(result).toBe(42)
+  })
+
+  it('falls back to plain symbol when `linear` is not followed by `handler`', () => {
+    // `linear` is a contextual keyword. As a regular variable it still works.
+    const result = dvala.run(`
+      let linear = 5;
+      linear * 2
+    `)
+    expect(result).toBe(10)
+  })
+})

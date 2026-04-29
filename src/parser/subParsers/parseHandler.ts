@@ -24,15 +24,19 @@ interface ParsedHandlerClause {
 }
 
 /**
- * HandlerNode: ["Handler", [clauses, transform], nodeId]
+ * HandlerNode: ["Handler", [clauses, transform, shallow, linear], nodeId]
  * - clauses: array of { effectName, params, body } parsed clause descriptors
  * - transform: [paramBindingTarget, bodyExprs] | null
+ * - shallow: `shallow handler ...` — resume does NOT reinstall on continuation
+ * - linear: `linear handler ...` — host-style dispatch (single-shot resume,
+ *   barrier-free reach into parallel/race branches). See
+ *   design/active/2026-04-29_linear-handler.md.
  *
  * The handler value is created at evaluation time from this AST node.
  */
 type HandlerNode = [
   typeof NodeTypes.Handler,
-  [ParsedHandlerClause[], [BindingTarget, AstNode[]] | null, boolean],
+  [ParsedHandlerClause[], [BindingTarget, AstNode[]] | null, boolean, boolean],
   number,
 ]
 
@@ -48,11 +52,11 @@ type HandlerNode = [
  * Duplicate effect names are a parse error.
  * Transform: optional, `transform x -> expr` (or `transform x -> do...end`).
  */
-export function parseHandler(ctx: ParserContext, shallow = false): HandlerNode {
-  // startNode is emitted by the caller for `shallow handler` (since `shallow`
-  // is consumed in parseExpression before calling parseHandler). For non-shallow
-  // handlers, we start the node here.
-  if (!shallow) {
+export function parseHandler(ctx: ParserContext, shallow = false, linear = false): HandlerNode {
+  // startNode is emitted by the caller when a `shallow` or `linear` modifier
+  // was consumed in parseExpression before calling parseHandler. For a plain
+  // `handler ... end`, we start the node here.
+  if (!shallow && !linear) {
     ctx.builder?.startNode('Handler')
   }
   // `handler` is a contextual keyword (Symbol token, not ReservedSymbol)
@@ -144,7 +148,11 @@ export function parseHandler(ctx: ParserContext, shallow = false): HandlerNode {
   }
   ctx.advance() // consume 'end'
 
-  const node = withSourceCodeInfo([NodeTypes.Handler, [clauses, transform, shallow], 0], token[2], ctx) as HandlerNode
+  const node = withSourceCodeInfo(
+    [NodeTypes.Handler, [clauses, transform, shallow, linear], 0],
+    token[2],
+    ctx,
+  ) as HandlerNode
   ctx.setNodeEnd(node[2])
   ctx.builder?.endNode()
   return node

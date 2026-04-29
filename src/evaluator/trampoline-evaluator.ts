@@ -493,9 +493,10 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
     case NodeTypes.Handler: {
       // Create a first-class handler value from the handler...end expression.
       // Clauses and transform are stored as AST (evaluated lazily in clause scope).
-      const [parsedClauses, transform, shallow] = node[1] as [
+      const [parsedClauses, transform, shallow, linear] = node[1] as [
         { effectName: string; params: BindingTarget[]; body: AstNode[] }[],
         [BindingTarget, AstNode[]] | null,
+        boolean,
         boolean,
       ]
       const clauses: HandlerClause[] = parsedClauses.map(c => ({
@@ -515,6 +516,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         clauseMap,
         transform,
         shallow: shallow ?? false,
+        linear: linear ?? false,
         closureEnv: env,
         arity: { min: 1, max: 1 }, // h(-> body)
       }

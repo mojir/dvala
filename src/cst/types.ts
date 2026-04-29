@@ -417,6 +417,8 @@ interface CstHandler {
   kind: 'Handler'
   /** The `shallow` keyword, if this is a shallow handler. */
   shallowKeyword?: CstToken
+  /** The `linear` keyword, if this is a linear handler (host-style dispatch). */
+  linearKeyword?: CstToken
   handlerKeyword: CstToken
   clauses: CstHandlerClause[]
   transform?: CstHandlerTransform
