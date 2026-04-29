@@ -1508,13 +1508,18 @@ function formatFunction(node: UntypedCstNode): Doc {
 }
 
 function formatHandler(node: UntypedCstNode): Doc {
-  // Children: [shallow], handler, @effect(params) -> body, ..., [transform param -> body], end
+  // Children: [shallow|linear]*, handler, @effect(params) -> body, ..., [transform param -> body], end
+  // The two modifiers may appear in either order; emit them in the order
+  // they were written so we don't disturb the user's source.
   const iter = new ChildIterator(node.children)
   const parts: Doc[] = []
 
-  // Optional shallow keyword
-  if (iter.isToken('shallow')) {
-    parts.push(iter.emitClosing('shallow'), text(' '))
+  while (iter.isToken('shallow') || iter.isToken('linear')) {
+    if (iter.isToken('shallow')) {
+      parts.push(iter.emitClosing('shallow'), text(' '))
+    } else {
+      parts.push(iter.emitClosing('linear'), text(' '))
+    }
   }
 
   parts.push(iter.emitToken('handler'))

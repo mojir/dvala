@@ -65,8 +65,11 @@ function classifyLetBinding(tokens: Token[], startIndex: number): SymbolDef['kin
   if (rhs[0] === 'Symbol' && rhs[1] === 'macro') return 'macro'
   // Check for handler keyword
   if (rhs[0] === 'Symbol' && rhs[1] === 'handler') return 'handler'
-  // Check for shallow handler
+  // Check for shallow / linear handler (modifier keyword precedes `handler`).
+  // Both modifiers are recognised here regardless of order; the parser
+  // accepts `shallow linear handler` and `linear shallow handler`.
   if (rhs[0] === 'Symbol' && rhs[1] === 'shallow') return 'handler'
+  if (rhs[0] === 'Symbol' && rhs[1] === 'linear') return 'handler'
   // Check for function literal: `(` or `() ->`
   if (rhs[0] === 'LParen') return 'function'
   // Check for import
