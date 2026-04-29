@@ -34,7 +34,7 @@ Evolve the playground from a browser-only demo surface into a lightweight in-bro
 ### Related design docs
 
 - [Language Service Next](2026-04-02_language-service-next.md) — cross-file rename + shared-LS extraction. This plan depends on the shared-LS track making the LS callable from a browser context.
-- [Shared Language Services](2026-04-16_shared-language-services.md) — extraction strategy.
+- [Shared Language Services](../archive/2026-04-16_shared-language-services.md) — extraction strategy. Phase 1 + 2 of the extraction shipped (`src/shared/` exists with `typeDisplay`, `diagnosticBuilder`, `callContext`, `completionBuilder`); doc archived.
 
 ---
 
@@ -157,7 +157,14 @@ The language service today exposes `WorkspaceIndex` + symbol table primitives. P
 
 **Architecture note.** The LS runs in a Web Worker from day one. Monaco providers in the main thread, LS logic in the worker, message-passing between them. The worker plumbing is greenfield — the current VSCode extension ([vscode-dvala/src/extension.ts](../../vscode-dvala/src/extension.ts), 1026 LOC) implements providers in-process, so there's no existing LSP-style protocol to reuse. The worker discipline (serializable I/O, no shared object identity) is what the shared-LS extraction track is establishing anyway, so the cost is paid in shared-LS regardless.
 
-**Dependency.** Phase 2 has a **hard prerequisite** on shared-LS extraction ([2026-04-16_shared-language-services.md](2026-04-16_shared-language-services.md)) — the playground needs to consume LS APIs without dragging in CLI/Node-only code. The extraction track has been moved up in priority and is actively driven so it lands before Phase 2 starts.
+**Dependency status (updated 2026-04-29).** The shared-LS extraction track ([archive/2026-04-16_shared-language-services.md](../archive/2026-04-16_shared-language-services.md)) has substantially shipped: [src/shared/](../../src/shared/) provides `typeDisplay`, `diagnosticBuilder`, `callContext`, `completionBuilder`, and `types` — all DOM-free and consumed by the VS Code extension today. **Unblocked:** the first three Phase 2 deliverables (diagnostics, hover, completions). **Still gated:** workspace-level features (go-to-def, find-references, rename) — these read through `WorkspaceIndex` / `SymbolTableBuilder` which are still under [src/languageService/](../../src/languageService/) and not yet consumable by a worker bundle. Track that remaining extraction as it's unblocked by the first Phase 2 PR (provider patterns + worker boundary stabilize).
+
+**First PR scope.** Worker plumbing has no validation surface in isolation — to know it works end-to-end you need a real provider exercising it. The first Phase 2 PR therefore bundles two things:
+
+1. **Worker stand-up.** Vite `?worker` import, Monaco's own languages-workers configured, an LS message protocol skeleton (request/response shape + correlation IDs), error propagation across the boundary. Smoke test: a no-op round-trip from main thread → worker → main thread.
+2. **Diagnostics provider.** On every parse/typecheck (debounced ~200ms), the main thread sends source to the worker; the worker runs parse + typecheck + builds diagnostics via `src/shared/diagnosticBuilder` (`buildParseDiagnostics`, `buildSymbolDiagnostics`, `buildTypeDiagnostics`); the main thread receives them and pushes to `monaco.editor.setModelMarkers`.
+
+Diagnostics is the right first provider because it's *push-only* — no synchronous query path, no UI race conditions to debug. If the worker bundle, message protocol, or diagnostic mapping has a bug, it surfaces as marker misalignment in the editor — easy to localize. Subsequent Phase 2 PRs (hover, completions, go-to-def, rename, formatter) each add a provider on top of the established worker. Hover and completions are the natural next picks since `typeDisplay` and `completionBuilder` are already in `src/shared/`.
 
 **Risk: Monaco's provider model may not fit every Dvala feature.** Monaco's `languages.*` API is shaped around mainstream languages. Dvala-specific introspection — refinement-type evidence trails, effect handler resolution paths, snapshot/replay diffing, suspended-continuation state — may not map cleanly to `registerHoverProvider` / `setModelMarkers` / `registerCodeLensProvider` / etc. **Mitigation:** Phase 2 ships LS parity for what fits; features that don't fit move to Phase 2.5 and live in the right or bottom panels we already built in Phase 1 (right panel for structural views: types, refinements, AST detail; bottom panel for traces, snapshots, effect resolution timelines). The layout shell *is* the escape hatch — we don't need to invent new UI surfaces, just populate them.
 
@@ -194,9 +201,9 @@ The language service today exposes `WorkspaceIndex` + symbol table primitives. P
 
 ### Open before implementation
 
-These need answers before Phase 0 starts. The user is taking the shared-LS extraction plan ([2026-04-16_shared-language-services.md](2026-04-16_shared-language-services.md)) first; some of these may resolve naturally during that work.
+These need answers before each phase starts. The shared-LS extraction track ([archive/2026-04-16_shared-language-services.md](../archive/2026-04-16_shared-language-services.md)) was driven in parallel with Phase 0 + 1 and resolved naturally — see the Phase 2 sequencing entry below.
 
-- **Phase 2 / shared-LS sequencing.** Phase 2 is hard-blocked on shared-LS extraction, which is unstarted (`src/shared/` doesn't exist yet). Sequence options: (a) strictly serial — Phase 0 → Phase 1 → shared-LS → Phase 2; (b) parallel — shared-LS as an independent track alongside Phase 0+1; (c) roll shared-LS extraction into Phase 1's scope. Decision deferred until shared-LS work begins and its pace is known.
+- ~~**Phase 2 / shared-LS sequencing.**~~ **Resolved 2026-04-29: parallel track (option b) was taken in practice.** Shared-LS Phase 1 + 2 shipped while Phase 1 of the playground plan was running — `src/shared/` exists with `typeDisplay`, `diagnosticBuilder`, `callContext`, `completionBuilder`, and DOM-free `types`. The first three Phase 2 deliverables (diagnostics, hover, completions) are unblocked; workspace-level features (go-to-def, find-references, rename) still depend on a worker-safe extraction of `WorkspaceIndex` / `SymbolTableBuilder` and will be addressed as their PRs come up.
 - **Two-surface API discipline (`dvala/internal`).** The plan describes a `dvala` (public) vs. `dvala/internal` (introspection) split. In a single-package monorepo where the playground imports via `'../../src/...'` paths today, this is a *discipline*, not a packaging boundary. Question: do we add a real `src/internal.ts` re-export module to make the discipline visible (and grep-able), or document it as a code-review convention only? Decide during the Phase 0 import audit (step 3) once we see how large the actual deep-import surface is.
 - **`scripts.ts` split — single PR or per-concern slices.** The plan calls for one PR per concern (sidePanels, contextEditor, files, modals, runActions, keybindings, init) for git-blame preservation. That's ~6 PRs of pure mechanical refactor. Alternative: one big mechanical PR. Trade-off: blame granularity vs. review overhead. Lean per-concern, but worth confirming when we get there.
 - ~~**Execution-semantics spike (Phase 0 step 5) — keep or drop.**~~ **Resolved 2026-04-27: divergence found, Phase 1 step 17 is NOT a no-op.** The 30-minute read of [playground-www/src/scripts.ts](../../playground-www/src/scripts.ts) and [cli/src/cli.ts](../../cli/src/cli.ts) found:
@@ -247,14 +254,16 @@ These need answers before Phase 0 starts. The user is taking the shared-LS extra
 
 ### Phase 2 — LS parity
 
-24. Audit which LS features are already callable from the browser; list the import-graph blockers (Node-only deps, etc.).
-25. Stand up the worker: Vite `?worker` import, Monaco's own workers configured, LS message protocol (reused from VSCode extension) wired across the boundary. Confirm dev + prod bundles both load the worker correctly.
-26. Wire diagnostics first — debounced, runs after parse/typecheck, pushed via `setModelMarkers`.
-27. Hover provider (built-in docs + inferred types).
-28. Go-to-definition + find-references (backed by `WorkspaceIndex`).
-29. Rename provider (depends on LS-next cross-file rename).
-30. Completions provider.
-31. Document formatter.
+**First PR (steps 24–26): worker + diagnostics.** Bundled because worker plumbing has no validation surface alone. Each subsequent step is a separate PR.
+
+24. Audit which `src/shared/` modules + remaining `src/languageService/` modules are worker-safe. Most of `src/shared/` is already DOM-free by design; the gap is `WorkspaceIndex` / `SymbolTableBuilder` (still under `src/languageService/`, not yet consumed by the VS Code extension via the shared-LS path). Audit output: a short list of additional files (if any) the diagnostics worker needs and confirmation they import nothing browser-incompatible.
+25. Stand up the worker: Vite `?worker` import, Monaco's own languages-workers configured, LS message protocol skeleton (request/response shape + correlation IDs, transferable error objects). Confirm dev + prod bundles both load the worker correctly. **Smoke test:** a no-op round-trip from main thread → worker → main thread, asserted in an e2e test.
+26. Diagnostics provider — debounced ~200ms after parse/typecheck. Worker computes via `src/shared/diagnosticBuilder` (`buildParseDiagnostics`, `buildSymbolDiagnostics`, `buildTypeDiagnostics`); main thread pushes to `monaco.editor.setModelMarkers`. Replace the playground's existing best-effort diagnostics path. Cover with e2e: parse error → marker present, fix → marker clears, type error → underline + hover summary.
+27. Hover provider (built-in docs + inferred types). Backed by `src/shared/typeDisplay` (`findTypeAtPosition`, `formatHoverType`).
+28. Completions provider. Backed by `src/shared/completionBuilder` + `src/shared/callContext`.
+29. Go-to-definition + find-references (backed by `WorkspaceIndex`). Depends on `WorkspaceIndex` being made worker-safe (extraction follow-up; tracked as a separate PR before this step).
+30. Rename provider (depends on LS-next cross-file rename).
+31. Document formatter (backed by `prettyPrint`).
 32. Performance pass: profile on a 50-file workspace; tune debouncing and message-batching as needed.
 
 ### Phase 3 — CLI
@@ -277,5 +286,5 @@ These need answers before Phase 0 starts. The user is taking the shared-LS extra
 
 - Phase 0 has no dependencies and is small (config + audit). Ship first — every subsequent phase benefits from the faster iteration loop.
 - Phase 1 depends on Phase 0 only via DX (not strictly blocking, but Phase 1's audit of execution semantics + introducing the `FileBackend` interface is dramatically easier with HMR working). Otherwise Phase 1 has no external dependencies.
-- Phase 2 has a hard prerequisite: shared-LS extraction must land first. Extraction has been moved up in priority to ensure it doesn't gate Phase 2.
+- Phase 2's first PR (worker + diagnostics) is unblocked: shared-LS Phase 1 + 2 shipped in parallel with the playground's Phase 1, and `src/shared/diagnosticBuilder` is everything the diagnostics provider needs. Hover + completions PRs are also unblocked. Workspace-level providers (go-to-def, find-references, rename) still need `WorkspaceIndex` / `SymbolTableBuilder` extracted into a worker-safe form — handle as a follow-up extraction PR before step 29 lands.
 - Phase 3 depends on Phase 1 (tree view + multi-file + tabs + layout) and is much more useful with Phase 2 (LS features against a real project).
