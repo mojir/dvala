@@ -81,6 +81,14 @@ async function firstSavedFileId(page: Page): Promise<string | null> {
   })
 }
 
+/**
+ * Modifier name to drive Monaco's `KeyMod.CtrlCmd`-bound shortcuts via
+ * Playwright. Monaco picks the modifier from `navigator.platform`, which
+ * mirrors the host OS in headless Chromium — so the test process's OS
+ * (`Meta` on Mac, `Control` elsewhere) is the right discriminator.
+ */
+const MONACO_CMD_MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -1359,6 +1367,40 @@ test.describe('file operations', () => {
     await expect(page.locator('#explorer-file-list')).toContainText('renamed-file')
   })
 
+  test('renaming a file inside a folder keeps it in that folder', async ({ page }) => {
+    // The rename UI is intentionally scoped to basename-only — it preserves
+    // the source's containing folder, treating the typed string as a
+    // basename rather than a path. (Cross-folder moves are deferred to
+    // Phase 1's drag-and-drop work; see comments in scripts/files.ts
+    // renameFile.) This test pins down that contract so the deferred work
+    // doesn't silently regress it.
+    const fileId = '60606060-6060-6060-6060-606060606060'
+    await page.evaluate((id: string) => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id, path: 'examples/foo.dvala', code: '1', context: '', createdAt: 1, updatedAt: 1, locked: false },
+      ])
+    }, fileId)
+
+    await page.evaluate((id: string) => (window as any).Playground.renameFile(id), fileId)
+    const input = page.locator('#snapshot-modal .modal-panel input[type="text"]')
+    await input.waitFor({ timeout: 2000 })
+    await input.fill('bar')
+    await input.press('Enter')
+
+    // Tree should still show the `examples` folder. Expand it before
+    // probing for the file row — children only render on expand.
+    const folderRow = page.locator('#explorer-file-list .explorer-folder')
+    await expect(folderRow).toContainText('examples')
+    await folderRow.click()
+    await expect(page.locator('#explorer-file-list .explorer-item:has-text("bar.dvala")')).toHaveCount(1)
+
+    // The explorer renders each file row with `title="<path>"`, so the DOM
+    // is authoritative without poking module internals.
+    const fileRow = page.locator(`#explorer-file-list .explorer-item[data-file-id="${fileId}"]`)
+    await expect(fileRow).toHaveAttribute('title', 'examples/bar.dvala')
+  })
+
   test('duplicating a file adds a second entry', async ({ page }) => {
     await setDvalaCode(page, '2 + 2')
     await saveAsFile(page, 'dup-source')
@@ -1739,6 +1781,148 @@ test.describe('editor tabs', () => {
     await page.evaluate(() => (window as any).Playground.setEditorValue('baseline'))
     await expect(page.locator('#editor-tab-strip .editor-tab--dirty')).toHaveCount(0)
   })
+
+  test('Cmd/Ctrl-W closes the active tab (Monaco-bound shortcut)', async ({ page }) => {
+    // Open one file so a closeable tab exists in addition to <scratch>.
+    const aId = '10101010-1010-1010-1010-101010101010'
+    await page.evaluate((id: string) => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id, path: 'closable-via-keybind.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1, locked: false },
+      ])
+    }, aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(2)
+    // Monaco's `editor.addCommand` only fires while the editor has focus.
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    await page.keyboard.press(`${MONACO_CMD_MOD}+w`)
+
+    // After close, only the scratch tab remains and is active.
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+  })
+
+  test('Cmd/Ctrl-PageDown / -PageUp cycle through open tabs (wrapping)', async ({ page }) => {
+    // Strip ends up as: [scratch, A, B] with B active (last opened).
+    const aId = '20202020-2020-2020-2020-202020202020'
+    const bId = '21212121-2121-2121-2121-212121212121'
+    await page.evaluate(
+      ({ aId, bId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          { id: aId, path: 'cycle-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
+          { id: bId, path: 'cycle-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
+        ])
+      },
+      { aId, bId },
+    )
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
+
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    // From B, PageDown wraps to scratch (next-with-wrap on a 3-tab strip).
+    await page.keyboard.press(`${MONACO_CMD_MOD}+PageDown`)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    // PageDown again → A.
+    await page.keyboard.press(`${MONACO_CMD_MOD}+PageDown`)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('cycle-a.dvala')
+    // PageUp → back to scratch.
+    await page.keyboard.press(`${MONACO_CMD_MOD}+PageUp`)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+  })
+
+  test('Cmd/Ctrl-1..9 jumps to the Nth open tab', async ({ page }) => {
+    // Strip: [scratch (1), A (2), B (3)] with B active.
+    const aId = '30303030-3030-3030-3030-303030303030'
+    const bId = '31313131-3131-3131-3131-313131313131'
+    await page.evaluate(
+      ({ aId, bId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          { id: aId, path: 'idx-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
+          { id: bId, path: 'idx-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
+        ])
+      },
+      { aId, bId },
+    )
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
+
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    // Cmd-1 → scratch.
+    await page.keyboard.press(`${MONACO_CMD_MOD}+1`)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    // Cmd-2 → A.
+    await page.keyboard.press(`${MONACO_CMD_MOD}+2`)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('idx-a.dvala')
+    // Cmd-3 → B.
+    await page.keyboard.press(`${MONACO_CMD_MOD}+3`)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('idx-b.dvala')
+  })
+
+  test('middle-click on a tab closes it (auxclick button === 1)', async ({ page }) => {
+    const aId = '40404040-4040-4040-4040-404040404040'
+    await page.evaluate((id: string) => {
+      const w = window as any
+      w.Playground.setSavedFilesForTesting([
+        { id, path: 'aux-close.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1, locked: false },
+      ])
+    }, aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(2)
+    // Middle-click anywhere on the file tab — handler reads the closest
+    // `[data-tab-key]` ancestor, so we don't need to aim at the close button.
+    await page
+      .locator('#editor-tab-strip .editor-tab[data-tab-key]')
+      .filter({ hasText: 'aux-close.dvala' })
+      .click({ button: 'middle' })
+
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+  })
+
+  test('switching tabs and back preserves cursor position (per-tab viewState)', async ({ page }) => {
+    // Each tab owns a saved Monaco viewState — cursor / scroll / folds — so
+    // returning to a tab restores where the user was. Verify by setting a
+    // distinctive cursor offset on tab A, switching to B, and confirming the
+    // offset is restored when we return to A.
+    const aId = '50505050-5050-5050-5050-505050505050'
+    const bId = '51515151-5151-5151-5151-515151515151'
+    await page.evaluate(
+      ({ aId, bId }) => {
+        const w = window as any
+        w.Playground.setSavedFilesForTesting([
+          {
+            id: aId,
+            path: 'view-a.dvala',
+            // Multi-line so cursor offsets exercise both column and row.
+            code: 'line one\nline two\nline three',
+            context: '',
+            createdAt: 1,
+            updatedAt: 1,
+            locked: false,
+          },
+          { id: bId, path: 'view-b.dvala', code: 'B-only', context: '', createdAt: 2, updatedAt: 2, locked: false },
+        ])
+      },
+      { aId, bId },
+    )
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    // Pick an offset that lands inside line two (past the first newline) so
+    // a "back to start" regression on tab swap is unambiguous.
+    await page.evaluate(() => (window as any).Playground.setEditorCursor(13))
+    expect(await page.evaluate(() => (window as any).Playground.getEditorCursor())).toBe(13)
+
+    // Switch away (B), then back to A.
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+
+    // Cursor offset should still be 13. Without saved viewState, Monaco
+    // would default to (1,1) i.e. offset 0.
+    expect(await page.evaluate(() => (window as any).Playground.getEditorCursor())).toBe(13)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -2090,6 +2274,27 @@ test.describe('layout panels', () => {
     await navigateToPlayground(page)
 
     await expect(outputBody).not.toBeVisible()
+  })
+
+  test('right panel collapsed state survives reload', async ({ page }) => {
+    // Open the right panel first (parse() un-collapses it onto the AST tab).
+    await setDvalaCode(page, '1 + 2')
+    await page.evaluate(() => (window as any).Playground.parse())
+    const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
+    await expect(astBody).toBeVisible()
+
+    // Collapse via the editor-bar toggle button (matches the user's primary
+    // gesture; the keyboard path is covered by an adjacent test).
+    await page.locator('#right-panel-toggle-btn').click()
+    await expect(astBody).not.toBeVisible()
+
+    await page.reload()
+    await waitForInit(page)
+    await navigateToPlayground(page)
+
+    // The persisted `playground-right-panel-collapsed` flag should keep the
+    // panel collapsed across boot, mirroring the bottom panel's behavior.
+    await expect(astBody).not.toBeVisible()
   })
 
   test('Output appears in the bottom panel tab', async ({ page }) => {
