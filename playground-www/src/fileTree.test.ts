@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { SavedFile } from './fileStorage'
+import type { WorkspaceFile } from './fileStorage'
 import { buildFileTree } from './fileTree'
 
-const file = (id: string, path: string): SavedFile => ({
+const file = (id: string, path: string): WorkspaceFile => ({
   id,
   path,
   code: '',
@@ -65,5 +65,18 @@ describe('buildFileTree', () => {
     const m = tree[0]!
     if (m.kind !== 'folder') throw new Error('expected folder m')
     expect(m.children.map(n => (n.kind === 'file' ? n.file.path : n.path))).toEqual(['m/a.dvala', 'm/z.dvala'])
+  })
+
+  it('hides files under the reserved .dvala-playground/ folder', () => {
+    // Phase 1.5 step 23b: .dvala-playground/ files (scratch, handlers,
+    // snapshots) are surfaced separately, not in the tree.
+    const tree = buildFileTree([
+      file('a', 'foo.dvala'),
+      file('b', '.dvala-playground/scratch.dvala'),
+      file('c', '.dvala-playground/handlers.dvala'),
+      file('d', '.dvala-playground/snapshots/x.json'),
+    ])
+    expect(tree).toHaveLength(1)
+    expect(tree[0]).toMatchObject({ kind: 'file', file: { path: 'foo.dvala' } })
   })
 })

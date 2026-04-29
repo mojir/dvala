@@ -62,15 +62,17 @@ import {
   clearAllFiles,
   fileDisplayName,
   folderFromPath,
-  getSavedFiles,
+  getWorkspaceFiles,
   initFiles,
   normalizeFilePath,
-  normalizeSavedFileName,
-  setSavedFiles,
+  normalizeWorkspaceFileName,
+  setWorkspaceFiles,
   uniqueFilePath,
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
-import type { SavedFile } from './fileStorage'
+import { ensureHandlersFile, wrapWithBoundaryHandler } from './handlersBuffer'
+import { ensureScratchFile, setScratchCode, setScratchCodeAndContext } from './scratchBuffer'
+import type { WorkspaceFile } from './fileStorage'
 import {
   clearAllFileHistories,
   getFileHistory,
@@ -127,7 +129,7 @@ import {
   isScratchActive,
   openScratchInEditor,
   persistScratchFromCurrentState,
-  populateSavedFilesList,
+  populateWorkspaceFilesList,
   scheduleAutoSave,
   scheduleScratchEditedClear,
   showNameInputModal,
@@ -178,15 +180,15 @@ export { getCurrentSideTab, showSideTab, toggleSideSnapshotsShowAll } from './sc
 export { openQuickOpen } from './scripts/quickOpen'
 
 export {
-  clearAllSavedFiles,
+  clearAllWorkspaceFiles,
   clearScratch,
   clearUnlockedFiles,
   closeActiveFile,
   closeExplorerMenus,
-  deleteSavedFile,
+  deleteWorkspaceFile,
   downloadFile,
   duplicateFile,
-  loadSavedFile,
+  loadWorkspaceFile,
   openImportFileModal,
   openScratch,
   renameFile,
@@ -216,11 +218,11 @@ function getDvala(opts: { fileResolverBaseDir?: string } = {}) {
   })
 }
 
-/** The path of the active saved file, or undefined when scratch is active. */
+/** The path of the active workspace file, or undefined when scratch is active. */
 function getActiveFilePath(): string | undefined {
   const id = getState('current-file-id')
   if (id === null) return undefined
-  return getSavedFiles().find(f => f.id === id)?.path
+  return getWorkspaceFiles().find(f => f.id === id)?.path
 }
 
 /** Folder of the active file (or `''` for scratch / root-level files). */
@@ -248,7 +250,7 @@ function createDvalaCodeHistoryEntryFromState(): HistoryEntry {
 
 function isCurrentFileLocked(): boolean {
   const currentFileId = getState('current-file-id')
-  return currentFileId !== null && getSavedFiles().some(file => file.id === currentFileId && file.locked)
+  return currentFileId !== null && getWorkspaceFiles().some(file => file.id === currentFileId && file.locked)
 }
 
 function syncDvalaCodeHistoryButtons(status: HistoryStatus = dvalaCodeHistory.getStatus()) {
@@ -331,21 +333,21 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
       setContextContent: json => {
         updateContextState(json, false)
       },
-      getSavedFiles: () => getSavedFiles(),
+      getWorkspaceFiles: () => getWorkspaceFiles(),
       saveFile: (name, code) => {
         // `name` from playground effects is interpreted as a full path. We
         // only normalise the basename's `.dvala` suffix; folder structure is
         // preserved as authored.
-        const files = getSavedFiles()
-        const cleanedPath = normalizeFilePath(name) ?? normalizeSavedFileName(name)
+        const files = getWorkspaceFiles()
+        const cleanedPath = normalizeFilePath(name) ?? normalizeWorkspaceFileName(name)
         const existing = files.find(entry => entry.path === cleanedPath)
         const now = Date.now()
         if (existing) {
           existing.code = code
           existing.updatedAt = now
-          setSavedFiles([...files])
+          setWorkspaceFiles([...files])
         } else {
-          const createdFile: SavedFile = {
+          const createdFile: WorkspaceFile = {
             id: crypto.randomUUID(),
             path: cleanedPath,
             code,
@@ -354,7 +356,7 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
             updatedAt: now,
             locked: false,
           }
-          setSavedFiles([createdFile, ...files])
+          setWorkspaceFiles([createdFile, ...files])
         }
       },
       runCode: async code => {
@@ -1742,7 +1744,7 @@ function updateStorageUsage() {
       JSON.stringify({
         saved: getSavedSnapshots(),
         terminal: getTerminalSnapshots(),
-        files: getSavedFiles(),
+        files: getWorkspaceFiles(),
       }),
     ).length
     idbEl.textContent = formatStorageSize(bytes)
@@ -1760,15 +1762,20 @@ export function clearLocalStorageData() {
 export function clearIndexedDbData() {
   void showInfoModal(
     'Clear IndexedDB',
-    'This will delete all saved snapshots, recent snapshots, and saved files.',
+    'This will delete all saved snapshots, recent snapshots, and workspace files.',
     () => {
       clearAllSnapshots()
       clearAllFiles()
+      // Phase 1.5 step 23c/23d — scratch + handlers are undeletable;
+      // recreate their backing files (empty) so the editor still has
+      // somewhere to land and boundary handlers stay declarable.
+      ensureScratchFile()
+      ensureHandlersFile()
       clearAllFileHistories()
       saveState({ 'current-file-id': null }, false)
       activateCurrentFileHistory(true)
       populateSnapshotsList()
-      populateSavedFilesList()
+      populateWorkspaceFilesList()
       updateCSS()
       updateStorageUsage()
     },
@@ -2646,7 +2653,7 @@ export function newFile() {
   activateCurrentFileHistory(true)
   showSideTab('files')
   updateCSS()
-  populateSavedFilesList()
+  populateWorkspaceFilesList()
   focusDvalaCode()
 }
 
@@ -2672,11 +2679,11 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
   // for programmatic writes). The tab strip's modified-dot is normally
   // refreshed by that listener, so trigger a manual repaint here for the
   // dot to reflect dirty/clean transitions caused by setEditorValue and
-  // friends. Same goes for the `scratch-code` mirror — listener-side
+  // friends. Same goes for the scratch-buffer mirror — listener-side
   // updates don't run, so we have to do it here.
   notifyTabsChanged()
   const scratchActive = getState('current-file-id') === null
-  const scratchMirror = scratchActive ? { 'scratch-code': value } : {}
+  if (scratchActive) setScratchCode(value)
 
   if (pushToHistory) {
     const sel = editor.getSelectionRange()
@@ -2685,14 +2692,13 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
         'dvala-code': value,
         'dvala-code-selection-start': sel.start,
         'dvala-code-selection-end': sel.end,
-        ...scratchMirror,
       },
       false,
     )
     pushActiveDvalaCodeHistoryEntry()
     scheduleAutoSave()
   } else {
-    saveState({ 'dvala-code': value, ...scratchMirror }, false)
+    saveState({ 'dvala-code': value }, false)
   }
 
   if (scroll === 'top') editor.scrollToTop()
@@ -2706,7 +2712,8 @@ export function resetOutput() {
 
 export function resetPlayground() {
   flushPendingAutoSave()
-  saveState({ 'dvala-code-edited': false, 'scratch-code': '', 'scratch-context': '' }, false)
+  saveState({ 'dvala-code-edited': false }, false)
+  setScratchCodeAndContext('', '')
   // Switch to the scratch tab BEFORE clearing the buffer — otherwise
   // setDvalaCode('') would wipe whichever file tab happens to be active.
   focusScratch()
@@ -2851,11 +2858,11 @@ function wireCodeEditorListeners(): void {
   editor.onChange(value => {
     setDvalaCode(value, true)
     if (getState('current-file-id') === null) {
-      // Scratch is now its own tab with its own model, but `scratch-code`
-      // remains the durable storage slot — initTabs hydrates the scratch
-      // model from it on every reload. Mirror keystrokes through so scratch
-      // survives a refresh.
-      saveState({ 'scratch-code': value }, false)
+      // Scratch is its own tab with its own model; the durable storage
+      // lives in the scratch workspace file (`.dvala-playground/scratch.dvala`,
+      // Phase 1.5 step 23c). `initTabs` hydrates the scratch model from
+      // there on reload — mirror every keystroke so reloads survive.
+      setScratchCode(value)
       scheduleScratchEditedClear()
     } else saveState({ 'dvala-code-edited': true })
     updateCSS()
@@ -2917,7 +2924,15 @@ window.onload = async function () {
   await initSnapshotStorage()
   await initFileHistories()
   await initFiles()
-  pruneFileHistories(['<scratch>', ...getSavedFiles().map(file => file.id)])
+  // Phase 1.5 step 23c/23d: the scratch + handlers buffers are workspace
+  // files under `.dvala-playground/`. Make sure both exist before anything
+  // else reads from them (initTabs seeds the scratch model from the
+  // scratch file; the explorer renders the pinned virtual entries against
+  // these files; 23e wraps every run in the handlers buffer's effect-
+  // handler declarations).
+  ensureScratchFile()
+  ensureHandlersFile()
+  pruneFileHistories(['<scratch>', ...getWorkspaceFiles().map(file => file.id)])
   initExecutionControlBar()
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   wireCodeEditorListeners()
@@ -3269,7 +3284,7 @@ window.onload = async function () {
 
   applyState(true)
   populateSnapshotsList()
-  populateSavedFilesList()
+  populateWorkspaceFilesList()
 
   // Reveal the page now that the editor + state are fully wired. e2e's
   // `waitForInit` uses `wrapper.style.display === 'block'` as the "fully
@@ -3304,7 +3319,7 @@ function getDataFromUrl() {
 
   const urlFileId = urlParams.get('fileId')
   if (activeView === 'files' && urlFileId && getState('current-file-id') !== urlFileId) {
-    const file = getSavedFiles().find(entry => entry.id === urlFileId)
+    const file = getWorkspaceFiles().find(entry => entry.id === urlFileId)
     if (file) {
       if (isScratchActive()) persistScratchFromCurrentState()
       saveState(
@@ -3760,14 +3775,25 @@ function routeToPath(appPath: string): void {
 export async function run() {
   addOutputSeparator()
   const selectedCode = getSelectedDvalaCode()
-  const code = selectedCode.code || getState('dvala-code')
+  const userCode = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Run selection' : 'Run'
 
   appendOutput(title, 'comment')
 
-  // Always typecheck before running. Diagnostics are informational and
-  // never block evaluation — matches the createDvala design contract.
-  typecheckAndReport(code)
+  // Always typecheck before running. Typecheck the user's code as-written
+  // (not the boundary-wrapped version) so diagnostic line/column numbers
+  // line up with the editor. The trade-off: the typechecker doesn't know
+  // about boundary handlers, so an effect handled by the handlers buffer
+  // will still flag as "unhandled" until the user wraps it themselves —
+  // a small "compiles but runs" gap inherited from boundary handlers
+  // being a runtime convenience. Future work: feed boundary handlers into
+  // the typechecker too.
+  typecheckAndReport(userCode)
+
+  // Phase 1.5 step 23e: wrap the user's code in the handlers buffer's
+  // boundary handler before evaluation. When the handlers buffer is empty,
+  // the wrap is a no-op (returns userCode unchanged).
+  const code = wrapWithBoundaryHandler(userCode)
 
   const startTime = performance.now()
   document.body.classList.add('dvala-running')
@@ -4145,11 +4171,17 @@ export function focusDvalaCode() {
 // Test-driving accessors. The e2e suite drives the editor + file storage
 // through the `Playground.*` global rather than poking DOM internals or
 // importing modules directly. Internal callers should keep using
-// setDvalaCode / setSavedFiles / getState directly.
-export function setSavedFilesForTesting(files: SavedFile[]): void {
-  setSavedFiles(files)
-  populateSavedFilesList()
+// setDvalaCode / setWorkspaceFiles / getState directly.
+export function setWorkspaceFilesForTesting(files: WorkspaceFile[]): void {
+  setWorkspaceFiles(files)
+  populateWorkspaceFilesList()
 }
+/**
+ * Test-only handle into the handlers buffer (Phase 1.5 step 23e). Lets e2e
+ * tests stage boundary-handler declarations without going through the
+ * Monaco editor + tab swap dance.
+ */
+export { setHandlersCode as setHandlersCodeForTesting } from './handlersBuffer'
 export function setEditorValue(code: string): void {
   setDvalaCode(code, true)
 }
@@ -4701,7 +4733,7 @@ export function doExport() {
   const includeSaved = elements.exportOptSavedSnapshots.checked
   const includeRecent = elements.exportOptRecentSnapshots.checked
   const includeLayout = elements.exportOptLayout.checked
-  const includeFiles = elements.exportOptSavedFiles.checked
+  const includeFiles = elements.exportOptWorkspaceFiles.checked
 
   const allowedKeys = new Set<string>([
     ...(includeCode ? codeKeys.map(k => `playground-${k}`) : []),
@@ -4734,7 +4766,7 @@ export function doExport() {
       data,
       ...(includeSaved ? { savedSnapshots: getSavedSnapshots() } : {}),
       ...(includeRecent ? { recentSnapshots: getTerminalSnapshots() } : {}),
-      ...(includeFiles ? { savedFiles: getSavedFiles() } : {}),
+      ...(includeFiles ? { savedFiles: getWorkspaceFiles() } : {}),
     },
     null,
     2,
@@ -4774,12 +4806,17 @@ export async function saveFile(content: string, filename: string): Promise<void>
   URL.revokeObjectURL(url)
 }
 
+// JSON wire-format keys (`savedSnapshots` / `savedFiles`) are intentionally
+// kept under their pre-Phase-1.5 names. The export shape gets reworked in
+// 23i/23l when snapshots become JSON files in `.dvala-playground/snapshots/`;
+// renaming the keys now would burn a compat break without a paired schema
+// change.
 type ExportPayload = {
   version: number
   data: Record<string, string>
   savedSnapshots?: SavedSnapshot[]
   recentSnapshots?: TerminalSnapshotEntry[]
-  savedFiles?: SavedFile[]
+  savedFiles?: WorkspaceFile[]
 }
 
 function isExportPayload(value: unknown): value is ExportPayload {
@@ -4854,7 +4891,7 @@ export function importPlayground() {
         setup(elements.importOptLayout, elements.importOptLayoutLabel, hasLayout)
         setup(elements.importOptSavedSnapshots, elements.importOptSavedSnapshotsLabel, hasSaved)
         setup(elements.importOptRecentSnapshots, elements.importOptRecentSnapshotsLabel, hasRecent)
-        setup(elements.importOptSavedFiles, elements.importOptSavedFilesLabel, hasFiles)
+        setup(elements.importOptWorkspaceFiles, elements.importOptWorkspaceFilesLabel, hasFiles)
 
         elements.importOptionsModal.style.display = 'flex'
       } catch {
@@ -4923,29 +4960,29 @@ export function doImport() {
   }
 
   const payloadFiles = payload.savedFiles
-  if (elements.importOptSavedFiles.checked && payloadFiles) {
-    const existingIds = new Set(getSavedFiles().map(p => p.id))
-    const existingPaths = new Set(getSavedFiles().map(p => p.path))
+  if (elements.importOptWorkspaceFiles.checked && payloadFiles) {
+    const existingIds = new Set(getWorkspaceFiles().map(p => p.id))
+    const existingPaths = new Set(getWorkspaceFiles().map(p => p.path))
     const toAdd = payloadFiles
       .filter(p => !existingIds.has(p.id))
       .map(file => {
         // Disambiguate by suffixing the basename when the path collides;
         // folder structure is preserved.
-        const cleaned = normalizeFilePath(file.path) ?? normalizeSavedFileName(file.path)
+        const cleaned = normalizeFilePath(file.path) ?? normalizeWorkspaceFileName(file.path)
         const path = uniqueFilePath(cleaned, existingPaths)
         existingPaths.add(path)
         return { ...file, path }
       })
     const conflicts = payloadFiles.length - toAdd.length
     if (toAdd.length > 0) {
-      setSavedFiles([...getSavedFiles(), ...toAdd])
-      imported.push(`${toAdd.length} saved file${toAdd.length !== 1 ? 's' : ''}`)
+      setWorkspaceFiles([...getWorkspaceFiles(), ...toAdd])
+      imported.push(`${toAdd.length} workspace file${toAdd.length !== 1 ? 's' : ''}`)
     }
-    if (conflicts > 0) skipped.push(`${conflicts} saved file${conflicts !== 1 ? 's' : ''} (already exist)`)
+    if (conflicts > 0) skipped.push(`${conflicts} workspace file${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
   populateSnapshotsList()
-  populateSavedFilesList()
+  populateWorkspaceFilesList()
   pendingImportPayload = null
 
   const importedHtml =
@@ -6480,7 +6517,7 @@ export function updateCSS() {
   if (benchmarksTabBtn) benchmarksTabBtn.style.display = getState('playground-developer') ? '' : 'none'
 
   const currentFileId = getState('current-file-id')
-  const currentFile = currentFileId ? getSavedFiles().find(entry => entry.id === currentFileId) : null
+  const currentFile = currentFileId ? getWorkspaceFiles().find(entry => entry.id === currentFileId) : null
   const isLocked = currentFile?.locked ?? false
   const isContextTab = getCurrentSideTab() === 'context'
   const context = isContextTab ? getParsedContext() : null

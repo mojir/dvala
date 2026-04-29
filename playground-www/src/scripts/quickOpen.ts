@@ -15,9 +15,10 @@
 // file lands as a tab — same surface the explorer uses.
 
 import { KeyCode, KeyMod } from '../codeEditor'
-import { getSavedFiles } from '../fileStorage'
+import { isInPlaygroundFolder } from '../filePath'
+import { getWorkspaceFiles } from '../fileStorage'
 import { tryGetCodeEditor } from './codeEditorInstance'
-import { rankSavedFiles } from './quickOpenRank'
+import { rankWorkspaceFiles } from './quickOpenRank'
 import type { QuickOpenItem } from './quickOpenRank'
 import { openOrFocusFile } from './tabs'
 
@@ -38,10 +39,13 @@ let activePicker: { close: () => void } | null = null
 export function openQuickOpen(): void {
   if (activePicker) return
 
-  const files = getSavedFiles()
-  // Ergonomic: if the workspace is empty, don't bother with a popup —
-  // a Cmd-P with no files would just be a noise event.
-  if (files.length === 0) return
+  const files = getWorkspaceFiles()
+  // Ergonomic: if there are no pickable files, don't bother with a popup —
+  // a Cmd-P with nothing to pick would just be a noise event. Files under
+  // `.dvala-playground/` (scratch, handlers, snapshots) aren't pickable
+  // through Quick Open, so they don't count toward this check (Phase 1.5
+  // step 23b/23c).
+  if (files.every(f => isInPlaygroundFolder(f.path))) return
 
   const overlay = document.createElement('div')
   overlay.id = PICKER_ID
@@ -91,7 +95,7 @@ export function openQuickOpen(): void {
   // animations, full repaint. Workspaces are small enough that
   // re-creating the children on every keystroke is fine.
   const render = () => {
-    items = rankSavedFiles(input.value, getSavedFiles())
+    items = rankWorkspaceFiles(input.value, getWorkspaceFiles())
     if (selectedIndex >= items.length) selectedIndex = Math.max(0, items.length - 1)
     list.innerHTML = ''
     if (items.length === 0) {

@@ -6,21 +6,23 @@
 // had when they last left that tab.
 //
 // One synthetic "scratch" tab represents the unsaved buffer. Its content
-// lives in the tab's model just like any other tab; the persisted slot
-// `scratch-code` is a snapshot kept in sync with the scratch model so the
-// existing scratch-* state machinery (history keying on `<scratch>`,
-// autosave guards, snapshot links) keeps working unchanged.
+// lives in the tab's model just like any other tab; the persisted backing
+// store is a workspace file at `.dvala-playground/scratch.dvala` (Phase 1.5
+// step 23c) which `getScratchCode` reads. The existing scratch-* state
+// machinery (history keying on `<scratch>`, autosave guards, snapshot
+// links) still keys on the SCRATCH_KEY sentinel; 23h retires that.
 //
 // Persistence: only the *list of open tabs* and which one is active are
 // persisted (localStorage via `state.ts`); models and viewState live in
-// memory and are reconstructed on boot from the underlying SavedFile / scratch
-// state. That keeps localStorage small and avoids serializing Monaco's
-// internal viewState shape (which Monaco doesn't formally guarantee).
+// memory and are reconstructed on boot from the underlying WorkspaceFile /
+// scratch file. That keeps localStorage small and avoids serializing
+// Monaco's internal viewState shape (which Monaco doesn't formally guarantee).
 
 import type * as monacoNs from 'monaco-editor'
 import { KeyCode, KeyMod } from '../codeEditor'
-import { fileDisplayName, getSavedFiles } from '../fileStorage'
-import type { SavedFile } from '../fileStorage'
+import { fileDisplayName, getWorkspaceFiles } from '../fileStorage'
+import type { WorkspaceFile } from '../fileStorage'
+import { getScratchCode } from '../scratchBuffer'
 import { getState, saveState } from '../state'
 import type { PersistedTab } from '../state'
 import { getCodeEditor, tryGetCodeEditor } from './codeEditorInstance'
@@ -140,7 +142,7 @@ export function initTabs(): void {
   const editor = getCodeEditor()
   const persisted = getState('open-tabs') as PersistedTab[]
   const persistedActiveKey = getState('active-tab-key')
-  const files = new Map(getSavedFiles().map(f => [f.id, f]))
+  const files = new Map(getWorkspaceFiles().map(f => [f.id, f]))
   const seen = new Set<string>()
   const restored: OpenTab[] = []
 
@@ -196,7 +198,7 @@ export function initTabs(): void {
 export function openOrFocusFile(fileId: string): void {
   const editor = tryGetCodeEditor()
   if (!editor) return
-  const file = getSavedFiles().find(f => f.id === fileId)
+  const file = getWorkspaceFiles().find(f => f.id === fileId)
   if (!file) return
   const existing = openTabs.find(t => t.kind === 'file' && t.fileId === fileId)
   if (existing) {
@@ -246,11 +248,11 @@ export function closeActiveTab(): void {
 }
 
 /**
- * Close any tabs whose backing file is gone — called by `deleteSavedFile`
- * / `clearAllSavedFiles` so stale tabs don't outlive their data.
+ * Close any tabs whose backing file is gone — called by `deleteWorkspaceFile`
+ * / `clearAllWorkspaceFiles` so stale tabs don't outlive their data.
  */
 export function closeTabsForMissingFiles(): void {
-  const liveIds = new Set(getSavedFiles().map(f => f.id))
+  const liveIds = new Set(getWorkspaceFiles().map(f => f.id))
   // Iterate from the end so splice indexes stay valid. Reuse closeTab so
   // active-tab fallback runs once at the end, not per file.
   for (let i = openTabs.length - 1; i >= 0; i--) {
@@ -336,7 +338,7 @@ function persistTabsState(): void {
   saveState({ 'open-tabs': persisted, 'active-tab-key': activeKey ?? SCRATCH_KEY }, false)
 }
 
-function makeFileTab(editor: ReturnType<typeof getCodeEditor>, file: SavedFile): FileTab {
+function makeFileTab(editor: ReturnType<typeof getCodeEditor>, file: WorkspaceFile): FileTab {
   return {
     kind: 'file',
     key: file.id,
@@ -348,8 +350,10 @@ function makeFileTab(editor: ReturnType<typeof getCodeEditor>, file: SavedFile):
 }
 
 function makeScratchTab(editor: ReturnType<typeof getCodeEditor>): ScratchTab {
-  // Seed scratch's model from the persisted scratch-code so reloads survive.
-  const seed = getState('scratch-code')
+  // Seed scratch's model from its workspace file (.dvala-playground/scratch.dvala,
+  // Phase 1.5 step 23c) so reloads survive. `ensureScratchFile` runs at boot
+  // before this is called, so the file is guaranteed to exist.
+  const seed = getScratchCode()
   return {
     kind: 'scratch',
     key: SCRATCH_KEY,
@@ -370,7 +374,7 @@ function escapeHtml(s: string): string {
 /** Display label for a tab in the strip — filename for files, sentinel for scratch. */
 function tabLabel(tab: OpenTab): string {
   if (tab.kind === 'scratch') return '<scratch>'
-  const file = getSavedFiles().find(f => f.id === tab.fileId)
+  const file = getWorkspaceFiles().find(f => f.id === tab.fileId)
   return file ? fileDisplayName(file) : '(missing)'
 }
 

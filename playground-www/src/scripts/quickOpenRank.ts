@@ -6,8 +6,9 @@
 // default node environment. Keeping the ranker DOM-free lets us unit-test
 // it without spinning up jsdom.
 
+import { isInPlaygroundFolder } from '../filePath'
 import { fileDisplayName } from '../fileStorage'
-import type { SavedFile } from '../fileStorage'
+import type { WorkspaceFile } from '../fileStorage'
 
 export interface QuickOpenItem {
   /** Stable identifier (file id). */
@@ -60,11 +61,14 @@ export function rankQuickOpen(query: string, path: string): number | null {
 
 /**
  * Build the picker's full item list (sorted by ranker for the given query).
- * Pure function — easy to unit-test independently of the DOM.
+ * Files under `.dvala-playground/` are skipped — those buffers (scratch,
+ * handlers) are reachable through their pinned virtual entries, not through
+ * the file picker. Pure function — easy to unit-test independently of the DOM.
  */
-export function rankSavedFiles(query: string, files: SavedFile[]): QuickOpenItem[] {
+export function rankWorkspaceFiles(query: string, files: WorkspaceFile[]): QuickOpenItem[] {
   const ranked: { item: QuickOpenItem; score: number }[] = []
   for (const file of files) {
+    if (isInPlaygroundFolder(file.path)) continue
     const score = rankQuickOpen(query, file.path)
     if (score === null) continue
     const slash = file.path.lastIndexOf('/')

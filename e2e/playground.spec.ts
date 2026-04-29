@@ -48,7 +48,6 @@ async function setContext(page: Page, json: string) {
   // Set context state directly via localStorage and trigger an applyState cycle.
   await page.evaluate((contextJson: string) => {
     localStorage.setItem('playground-context', JSON.stringify(contextJson))
-    localStorage.setItem('playground-scratch-context', JSON.stringify(contextJson))
     // Also set the textarea value and fire an input event so the app picks it up
     const textarea = document.getElementById('context-textarea') as HTMLTextAreaElement | null
     if (textarea) {
@@ -73,8 +72,8 @@ async function getOutputText(page: Page): Promise<string> {
   return (await page.locator('#output-result').textContent()) ?? ''
 }
 
-/** Read the first saved file's id from its `data-file-id` attribute. */
-async function firstSavedFileId(page: Page): Promise<string | null> {
+/** Read the first workspace file's id from its `data-file-id` attribute. */
+async function firstWorkspaceFileId(page: Page): Promise<string | null> {
   return page.evaluate(() => {
     const item = document.querySelector<HTMLElement>('#explorer-file-list .explorer-item[data-file-id]')
     return item?.dataset['fileId'] ?? null
@@ -147,6 +146,27 @@ test.describe('code execution', () => {
 
     const output = await getOutputText(page)
     expect(output.toLowerCase()).toContain('error')
+  })
+
+  test('handlers buffer wraps user code as a boundary effect handler (Phase 1.5 step 23e)', async ({ page }) => {
+    // Stage a `linear handler` in `.dvala-playground/handlers.dvala` and run
+    // scratch code that performs the matching effect. The boundary wrap
+    // should turn `perform(@x, 21)` into 42 without the user writing
+    // `do with` themselves. `linear handler` is the recommended shape for
+    // handlers buffers — host-style dispatch (single-shot resume,
+    // barrier-free reach into parallel branches).
+    await page.evaluate(() => {
+      ;(window as any).Playground.setHandlersCodeForTesting('linear handler @x(v) -> v * 2 end')
+    })
+    await setDvalaCode(page, 'perform(@x, 21)')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('42')
+
+    // Reset for downstream tests — empty handlers buffer means no wrap.
+    await page.evaluate(() => (window as any).Playground.setHandlersCodeForTesting(''))
   })
 
   test('runs via Ctrl+R keyboard shortcut', async ({ page }) => {
@@ -636,16 +656,16 @@ test.describe('files', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
-    // Clear all saved files to ensure a clean state
-    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    // Clear all workspace files to ensure a clean state
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
   })
 
-  test('files side panel shows only scratch when no files saved', async ({ page }) => {
+  test('files side panel shows only scratch when no workspace files exist', async ({ page }) => {
     await navigateToPlayground(page)
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
     const fileList = page.locator('#explorer-file-list')
     await expect(fileList).toBeVisible()
-    // Only the Scratch item should be present, no saved file cards
+    // Only the Scratch item should be present, no workspace file cards
     const cards = fileList.locator('.snapshot-card')
     await expect(cards).toHaveCount(0)
   })
@@ -655,11 +675,11 @@ test.describe('files', () => {
     await saveAsFile(page, 'My Test File')
 
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
-    // Wait for the saved file to appear as an explorer-item (scratch is always first)
+    // Wait for the workspace file to appear as an explorer-item (scratch is always first)
     await page.waitForFunction(
       () => {
         const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-        // More than 1 item means scratch + at least one saved file
+        // More than 1 item means scratch + at least one workspace file
         return items.length > 1
       },
       { timeout: 5000 },
@@ -668,22 +688,24 @@ test.describe('files', () => {
     await expect(fileList).toContainText('My Test File')
   })
 
-  test('loading a saved file restores code into editor', async ({ page }) => {
+  test('loading a workspace file restores code into editor', async ({ page }) => {
     await setDvalaCode(page, '99 * 2')
     await saveAsFile(page, 'Restore Test')
 
-    // Reset playground (scratch), then click the saved file item to load it
+    // Reset playground (scratch), then click the workspace file item to load it
     await page.evaluate(() => (window as any).Playground.resetPlayground())
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
     await page.waitForFunction(
       () => {
         const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-        return items.length > 1
+        // Two pinned virtual entries (<scratch>, <handlers>) plus at least
+        // one user-authored file means the file we just saved has rendered.
+        return items.length > 2
       },
       { timeout: 5000 },
     )
-    // Click the second explorer item (first is scratch)
-    await page.locator('#explorer-file-list .explorer-item').nth(1).click()
+    // Click the third explorer item (after the pinned <scratch> and <handlers>).
+    await page.locator('#explorer-file-list .explorer-item').nth(2).click()
 
     await navigateToPlayground(page)
     const fileValue = await getDvalaCode(page)
@@ -703,23 +725,23 @@ test.describe('files', () => {
       { timeout: 5000 },
     )
 
-    // Delete via JS using the first saved file's data-file-id attribute
+    // Delete via JS using the first workspace file's data-file-id attribute
     await page.evaluate(() => {
       const items = document.querySelectorAll<HTMLElement>('#explorer-file-list .explorer-item[data-file-id]')
       const first = items[0]
       const id = first?.dataset['fileId']
-      if (id) (window as any).Playground.deleteSavedFile(id)
+      if (id) (window as any).Playground.deleteWorkspaceFile(id)
     })
 
     await page.waitForFunction(
       () => {
         const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-        return items.length === 1 // only scratch remains
+        return items.length === 2 // only the pinned <scratch> + <handlers> entries remain
       },
       { timeout: 5000 },
     )
-    // Only scratch remains
-    await expect(page.locator('#explorer-file-list .explorer-item')).toHaveCount(1)
+    // Only the two pinned virtual entries (<scratch>, <handlers>) remain.
+    await expect(page.locator('#explorer-file-list .explorer-item')).toHaveCount(2)
   })
 })
 
@@ -1057,7 +1079,7 @@ test.describe('playground effects', () => {
   })
 
   test('storage.load fails for nonexistent file', async ({ page }) => {
-    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
     await setDvalaCode(page, 'perform(@playground.files.load, "does-not-exist")')
     await clickRun(page)
     await waitForOutput(page)
@@ -1068,8 +1090,8 @@ test.describe('playground effects', () => {
   // ── Files ──
 
   test('storage save, list, and load round-trip', async ({ page }) => {
-    // Clear any existing saved files
-    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    // Clear any existing workspace files
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
 
     // File names are normalized to add .dvala suffix on save, so load uses the full name
     await setDvalaCode(
@@ -1241,7 +1263,7 @@ test.describe('editor toolbar', () => {
   })
 
   test('filename pill updates when a file is loaded', async ({ page }) => {
-    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
     await setDvalaCode(page, '1 + 1')
     await saveAsFile(page, 'pill-test')
 
@@ -1286,7 +1308,7 @@ test.describe('scratch', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
-    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
     await navigateToPlayground(page)
   })
 
@@ -1307,13 +1329,15 @@ test.describe('scratch', () => {
     await expect(stats).toBeHidden()
   })
 
-  test('stats panel appears when a saved file is selected', async ({ page }) => {
+  test('stats panel appears when a workspace file is selected', async ({ page }) => {
     await setDvalaCode(page, '42')
     await saveAsFile(page, 'stats-test')
 
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
-    // click the saved file (second item)
-    await page.locator('#explorer-file-list .explorer-item').nth(1).click()
+    // Click the workspace file. The first two items are the pinned virtual
+    // entries `<scratch>` (23c) and `<handlers>` (23d); the user-authored
+    // file follows at index 2.
+    await page.locator('#explorer-file-list .explorer-item').nth(2).click()
 
     const stats = page.locator('#explorer-file-stats')
     await expect(stats).toBeVisible({ timeout: 3000 })
@@ -1341,7 +1365,7 @@ test.describe('file operations', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
-    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
     await navigateToPlayground(page)
   })
 
@@ -1349,7 +1373,7 @@ test.describe('file operations', () => {
     await setDvalaCode(page, '1')
     await saveAsFile(page, 'original-name')
 
-    const fileId = await firstSavedFileId(page)
+    const fileId = await firstWorkspaceFileId(page)
     expect(fileId).toBeTruthy()
 
     // Rename via JS API
@@ -1377,7 +1401,7 @@ test.describe('file operations', () => {
     const fileId = '60606060-6060-6060-6060-606060606060'
     await page.evaluate((id: string) => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id, path: 'examples/foo.dvala', code: '1', context: '', createdAt: 1, updatedAt: 1, locked: false },
       ])
     }, fileId)
@@ -1405,7 +1429,7 @@ test.describe('file operations', () => {
     await setDvalaCode(page, '2 + 2')
     await saveAsFile(page, 'dup-source')
 
-    const fileId = await firstSavedFileId(page)
+    const fileId = await firstWorkspaceFileId(page)
     await page.evaluate((id: string) => (window as any).Playground.duplicateFile(id), fileId!)
 
     await page.waitForFunction(
@@ -1424,11 +1448,11 @@ test.describe('file operations', () => {
     await setDvalaCode(page, 'locked')
     await saveAsFile(page, 'lock-me')
 
-    const fileId = await firstSavedFileId(page)
+    const fileId = await firstWorkspaceFileId(page)
     await page.evaluate((id: string) => (window as any).Playground.toggleFileLock(id), fileId!)
 
     // Load the locked file
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), fileId!)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), fileId!)
     await navigateToPlayground(page)
 
     const isReadOnly = await page.evaluate(() => (window as any).Playground.isEditorReadOnly())
@@ -1455,7 +1479,7 @@ test.describe('file operations', () => {
     // a click on the folder row.
     await page.evaluate(() => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id: 'a', path: 'root.dvala', code: '1', context: '', createdAt: 1, updatedAt: 1, locked: false },
         { id: 'b', path: 'examples/foo.dvala', code: '2', context: '', createdAt: 2, updatedAt: 2, locked: false },
         { id: 'c', path: 'examples/bar.dvala', code: '3', context: '', createdAt: 3, updatedAt: 3, locked: false },
@@ -1483,7 +1507,7 @@ test.describe('file operations', () => {
   test('expand/collapse state survives reload', async ({ page }) => {
     await page.evaluate(() => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id: 'a', path: 'examples/foo.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
       ])
     })
@@ -1500,17 +1524,17 @@ test.describe('file operations', () => {
     await expect(page.locator('#explorer-file-list .explorer-item:has-text("foo.dvala")')).toHaveCount(1)
   })
 
-  test('multi-file import: a saved file can `import` another saved file and run', async ({ page }) => {
+  test('multi-file import: a workspace file can `import` another workspace file and run', async ({ page }) => {
     // Seed two files where `main.dvala` imports `./lib.dvala` from the same
     // folder. Loading `main` and clicking Run should execute end-to-end —
-    // the playground's fileResolver consults the in-memory saved-files
+    // the playground's fileResolver consults the in-memory workspace-files
     // cache the same way `dvala run` consults disk.
     const mainId = '11111111-1111-1111-1111-111111111111'
     const libId = '22222222-2222-2222-2222-222222222222'
     await page.evaluate(
       ({ mainId, libId }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           {
             id: libId,
             path: 'lib.dvala',
@@ -1543,7 +1567,7 @@ test.describe('file operations', () => {
       { mainId, libId },
     )
     // Load main.dvala and run it.
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), mainId)
     await navigateToPlayground(page)
     await clickRun(page)
     await waitForOutput(page)
@@ -1561,7 +1585,7 @@ test.describe('file operations', () => {
     await page.evaluate(
       ({ mainId, libId }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           {
             id: libId,
             path: 'lib/math.dvala',
@@ -1584,7 +1608,7 @@ test.describe('file operations', () => {
       },
       { mainId, libId },
     )
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), mainId)
     await navigateToPlayground(page)
     await clickRun(page)
     await waitForOutput(page)
@@ -1602,7 +1626,7 @@ test.describe('file operations', () => {
     await page.evaluate(
       ({ mainId, libId }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           {
             id: libId,
             path: 'lib/math.dvala',
@@ -1625,7 +1649,7 @@ test.describe('file operations', () => {
       },
       { mainId, libId },
     )
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), mainId)
     await navigateToPlayground(page)
     await clickRun(page)
     await waitForOutput(page)
@@ -1638,7 +1662,7 @@ test.describe('file operations', () => {
     const mainId = '33333333-3333-3333-3333-333333333333'
     await page.evaluate((id: string) => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         {
           id,
           path: 'main.dvala',
@@ -1650,7 +1674,7 @@ test.describe('file operations', () => {
         },
       ])
     }, mainId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), mainId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), mainId)
     await navigateToPlayground(page)
     await clickRun(page)
     await waitForOutput(page)
@@ -1670,11 +1694,11 @@ test.describe('editor tabs', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
-    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
     await navigateToPlayground(page)
   })
 
-  test('opening a saved file adds a tab; switching tabs swaps the editor content', async ({ page }) => {
+  test('opening a workspace file adds a tab; switching tabs swaps the editor content', async ({ page }) => {
     // Seed two files and open both. The strip should show scratch + 2 file
     // tabs; clicking a tab switches the active file.
     const aId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -1682,7 +1706,7 @@ test.describe('editor tabs', () => {
     await page.evaluate(
       ({ aId, bId }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           { id: aId, path: 'a.dvala', code: '111', context: '', createdAt: 1, updatedAt: 1, locked: false },
           { id: bId, path: 'b.dvala', code: '222', context: '', createdAt: 2, updatedAt: 2, locked: false },
         ])
@@ -1690,8 +1714,8 @@ test.describe('editor tabs', () => {
       { aId, bId },
     )
     // Open both files via the explorer (which routes through openOrFocusFile).
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), bId)
 
     const tabs = page.locator('#editor-tab-strip .editor-tab')
     await expect(tabs).toHaveCount(3) // scratch + 2 files
@@ -1710,11 +1734,11 @@ test.describe('editor tabs', () => {
     const aId = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
     await page.evaluate((id: string) => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id, path: 'closeable.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1, locked: false },
       ])
     }, aId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
 
     // Click the close button on the active tab. The selector grabs the
     // close button inside the one and only file tab (scratch has no close).
@@ -1737,17 +1761,17 @@ test.describe('editor tabs', () => {
     await page.evaluate(
       ({ aId, bId }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           { id: aId, path: 'persist-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
           { id: bId, path: 'persist-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
         ])
       },
       { aId, bId },
     )
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), bId)
     // Switch back to a.dvala so it's the active tab on reload.
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
 
     await page.reload()
     await waitForInit(page)
@@ -1764,11 +1788,11 @@ test.describe('editor tabs', () => {
     const aId = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
     await page.evaluate((id: string) => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id, path: 'dirty-test.dvala', code: 'baseline', context: '', createdAt: 1, updatedAt: 1, locked: false },
       ])
     }, aId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
 
     // Buffer matches file.code → no dot.
     await expect(page.locator('#editor-tab-strip .editor-tab--dirty')).toHaveCount(0)
@@ -1787,11 +1811,11 @@ test.describe('editor tabs', () => {
     const aId = '10101010-1010-1010-1010-101010101010'
     await page.evaluate((id: string) => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id, path: 'closable-via-keybind.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1, locked: false },
       ])
     }, aId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
 
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(2)
     // Monaco's `editor.addCommand` only fires while the editor has focus.
@@ -1810,15 +1834,15 @@ test.describe('editor tabs', () => {
     await page.evaluate(
       ({ aId, bId }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           { id: aId, path: 'cycle-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
           { id: bId, path: 'cycle-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
         ])
       },
       { aId, bId },
     )
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), bId)
 
     await page.evaluate(() => (window as any).Playground.focusDvalaCode())
     // From B, PageDown wraps to scratch (next-with-wrap on a 3-tab strip).
@@ -1839,15 +1863,15 @@ test.describe('editor tabs', () => {
     await page.evaluate(
       ({ aId, bId }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           { id: aId, path: 'idx-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
           { id: bId, path: 'idx-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
         ])
       },
       { aId, bId },
     )
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), bId)
 
     await page.evaluate(() => (window as any).Playground.focusDvalaCode())
     // Cmd-1 → scratch.
@@ -1865,11 +1889,11 @@ test.describe('editor tabs', () => {
     const aId = '40404040-4040-4040-4040-404040404040'
     await page.evaluate((id: string) => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id, path: 'aux-close.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1, locked: false },
       ])
     }, aId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
 
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(2)
     // Middle-click anywhere on the file tab — handler reads the closest
@@ -1893,7 +1917,7 @@ test.describe('editor tabs', () => {
     await page.evaluate(
       ({ aId, bId }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           {
             id: aId,
             path: 'view-a.dvala',
@@ -1909,15 +1933,15 @@ test.describe('editor tabs', () => {
       },
       { aId, bId },
     )
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
     // Pick an offset that lands inside line two (past the first newline) so
     // a "back to start" regression on tab swap is unambiguous.
     await page.evaluate(() => (window as any).Playground.setEditorCursor(13))
     expect(await page.evaluate(() => (window as any).Playground.getEditorCursor())).toBe(13)
 
     // Switch away (B), then back to A.
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), bId)
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), aId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), bId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
 
     // Cursor offset should still be 13. Without saved viewState, Monaco
     // would default to (1,1) i.e. offset 0.
@@ -1934,17 +1958,17 @@ test.describe('quick open', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
-    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
     await navigateToPlayground(page)
   })
 
-  test('opens a centered palette listing all saved files', async ({ page }) => {
+  test('opens a centered palette listing all workspace files', async ({ page }) => {
     const aId = '11111111-1111-4111-8111-111111111111'
     const bId = '22222222-2222-4222-8222-222222222222'
     await page.evaluate(
       ({ aId, bId }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           { id: aId, path: 'main.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
           { id: bId, path: 'lib/util.dvala', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
         ])
@@ -1961,7 +1985,7 @@ test.describe('quick open', () => {
   test('typing filters by fuzzy match on the path', async ({ page }) => {
     await page.evaluate(() => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id: 'a', path: 'main.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
         { id: 'b', path: 'lib/util.dvala', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
         { id: 'c', path: 'examples/foo.dvala', code: '', context: '', createdAt: 3, updatedAt: 3, locked: false },
@@ -1979,7 +2003,7 @@ test.describe('quick open', () => {
     const targetId = '33333333-3333-4333-8333-333333333333'
     await page.evaluate((id: string) => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id, path: 'target.dvala', code: 'OPENED', context: '', createdAt: 1, updatedAt: 1, locked: false },
       ])
     }, targetId)
@@ -1997,7 +2021,7 @@ test.describe('quick open', () => {
   test('Escape dismisses the picker', async ({ page }) => {
     await page.evaluate(() => {
       const w = window as any
-      w.Playground.setSavedFilesForTesting([
+      w.Playground.setWorkspaceFilesForTesting([
         { id: 'x', path: 'x.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
       ])
     })
@@ -2014,7 +2038,7 @@ test.describe('quick open', () => {
       ({ aId, bId }) => {
         const w = window as any
         // Same insertion order so empty-query ranking preserves it.
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           { id: aId, path: 'first.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
           { id: bId, path: 'second.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
         ])
@@ -2030,8 +2054,8 @@ test.describe('quick open', () => {
     expect(await getDvalaCode(page)).toBe('B')
   })
 
-  test('does nothing when the workspace has no saved files', async ({ page }) => {
-    // resetPlayground + clearAllSavedFiles in beforeEach already left zero
+  test('does nothing when the workspace has no workspace files', async ({ page }) => {
+    // resetPlayground + clearAllWorkspaceFiles in beforeEach already left zero
     // files. Trying to open the picker should be a no-op (avoids a popup
     // with no rows).
     await page.evaluate(() => (window as any).Playground.openQuickOpen())
@@ -2190,13 +2214,13 @@ test.describe('layout panels', () => {
   })
 
   test('right panel auto-refreshes the active tool when the editor tab swaps', async ({ page }) => {
-    // Seed a saved file with a Let-statement source. The active tab will
+    // Seed a workspace file with a Let-statement source. The active tab will
     // be scratch (with `1 + 2`), so initial AST shows a Call node.
     const fileId = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
     await page.evaluate(
       ({ id }: { id: string }) => {
         const w = window as any
-        w.Playground.setSavedFilesForTesting([
+        w.Playground.setWorkspaceFilesForTesting([
           { id, path: 'letFile.dvala', code: 'let a = 1; a', context: '', createdAt: 1, updatedAt: 1, locked: false },
         ])
       },
@@ -2208,9 +2232,9 @@ test.describe('layout panels', () => {
     const astBody = page.locator('#right-panel .panel-shell__body[data-panel-tab-id="ast"]')
     await expect(astBody).toContainText('Call')
 
-    // Open the saved file as a new tab; the afterSwap hook should re-run
+    // Open the workspace file as a new tab; the afterSwap hook should re-run
     // the AST tool against the new active file's source (`let a = 1; a`).
-    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), fileId)
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), fileId)
     // The Let type tag is visible at the default expand depth.
     await expect(astBody).toContainText('Let')
   })

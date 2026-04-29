@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { SavedFile } from '../fileStorage'
-import { rankQuickOpen, rankSavedFiles } from './quickOpenRank'
+import type { WorkspaceFile } from '../fileStorage'
+import { rankQuickOpen, rankWorkspaceFiles } from './quickOpenRank'
 
-const file = (id: string, path: string): SavedFile => ({
+const file = (id: string, path: string): WorkspaceFile => ({
   id,
   path,
   code: '',
@@ -56,8 +56,8 @@ describe('rankQuickOpen', () => {
   })
 })
 
-describe('rankSavedFiles', () => {
-  const files: SavedFile[] = [
+describe('rankWorkspaceFiles', () => {
+  const files: WorkspaceFile[] = [
     file('a', 'main.dvala'),
     file('b', 'lib/util.dvala'),
     file('c', 'examples/foo.dvala'),
@@ -65,30 +65,44 @@ describe('rankSavedFiles', () => {
   ]
 
   it('returns every file in insertion order when query is empty', () => {
-    const ranked = rankSavedFiles('', files)
+    const ranked = rankWorkspaceFiles('', files)
     expect(ranked.map(r => r.id)).toEqual(['a', 'b', 'c', 'd'])
   })
 
   it('drops non-matching files and ranks matches', () => {
-    const ranked = rankSavedFiles('util', files)
+    const ranked = rankWorkspaceFiles('util', files)
     // Both 'lib/util.dvala' (basename match) and 'utils/helper.dvala'
     // (folder match) match. The basename match should rank first.
     expect(ranked.map(r => r.id)).toEqual(['b', 'd'])
   })
 
   it('produces label + detail split on the last `/`', () => {
-    const ranked = rankSavedFiles('util', files)
+    const ranked = rankWorkspaceFiles('util', files)
     const util = ranked.find(r => r.id === 'b')!
     expect(util.label).toBe('util.dvala')
     expect(util.detail).toBe('lib')
   })
 
   it('keeps detail empty for root-level files', () => {
-    const ranked = rankSavedFiles('main', files)
+    const ranked = rankWorkspaceFiles('main', files)
     expect(ranked[0]?.detail).toBe('')
   })
 
   it('returns an empty list for queries with no matches', () => {
-    expect(rankSavedFiles('zzz', files)).toEqual([])
+    expect(rankWorkspaceFiles('zzz', files)).toEqual([])
+  })
+
+  it('skips files under the reserved .dvala-playground/ folder', () => {
+    // Phase 1.5 step 23b: scratch / handlers / snapshots aren't pickable
+    // through Quick Open — they're reachable through their pinned virtual
+    // tree entries and the Snapshots side tab.
+    const all: WorkspaceFile[] = [
+      file('a', 'main.dvala'),
+      file('b', '.dvala-playground/scratch.dvala'),
+      file('c', '.dvala-playground/handlers.dvala'),
+    ]
+    expect(rankWorkspaceFiles('', all).map(r => r.id)).toEqual(['a'])
+    expect(rankWorkspaceFiles('scratch', all)).toEqual([])
+    expect(rankWorkspaceFiles('handlers', all)).toEqual([])
   })
 })

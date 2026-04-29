@@ -1,12 +1,12 @@
-// Tree shape derived from the playground's flat list of `SavedFile.path`
+// Tree shape derived from the playground's flat list of `WorkspaceFile.path`
 // values. Folders are pure derivation — they exist iff at least one file's
 // path is prefixed by them — so empty folders are not representable today.
 //
 // The renderer in `scripts/files.ts` consumes this shape; keeping it pure
 // makes the rendering logic easier to test.
 
-import { filenameFromPath, splitPath } from './filePath'
-import type { SavedFile } from './fileStorage'
+import { filenameFromPath, isInPlaygroundFolder, splitPath } from './filePath'
+import type { WorkspaceFile } from './fileStorage'
 
 export type TreeNode =
   | {
@@ -20,20 +20,28 @@ export type TreeNode =
     }
   | {
       kind: 'file'
-      file: SavedFile
+      file: WorkspaceFile
     }
 
-/** Build the tree. The order is folders-before-files at each level, alphabetical within each group. */
-export function buildFileTree(files: SavedFile[]): TreeNode[] {
+/**
+ * Build the visible tree. Files under `.dvala-playground/` are filtered out
+ * — they're surfaced separately (pinned `<scratch>` / `<handlers>` virtual
+ * entries; Snapshots side tab) per the Phase 1.5 state model. The
+ * `FileBackend` still stores them; visibility is a renderer concern.
+ *
+ * Order: folders-before-files at each level, alphabetical within each group.
+ */
+export function buildFileTree(files: WorkspaceFile[]): TreeNode[] {
   const root: TreeNode[] = []
   for (const file of files) {
+    if (isInPlaygroundFolder(file.path)) continue
     insertFile(root, file, splitPath(file.path), '')
   }
   sortNodes(root)
   return root
 }
 
-function insertFile(siblings: TreeNode[], file: SavedFile, segments: string[], parentPath: string): void {
+function insertFile(siblings: TreeNode[], file: WorkspaceFile, segments: string[], parentPath: string): void {
   if (segments.length === 1) {
     siblings.push({ kind: 'file', file })
     return

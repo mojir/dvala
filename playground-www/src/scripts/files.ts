@@ -12,13 +12,26 @@ import {
   fileDisplayName,
   filenameFromPath,
   folderFromPath,
-  getSavedFiles,
-  normalizeSavedFileName,
-  setSavedFiles,
+  getWorkspaceFiles,
+  normalizeWorkspaceFileName,
+  setWorkspaceFiles,
   uniquePathInFolder,
 } from '../fileStorage'
-import type { SavedFile } from '../fileStorage'
+import type { WorkspaceFile } from '../fileStorage'
 import { buildFileTree } from '../fileTree'
+import {
+  ensureHandlersFile,
+  getHandlersFile,
+  HANDLERS_FILE_PATH,
+  isHandlersPath,
+} from '../handlersBuffer'
+import {
+  ensureScratchFile,
+  getScratchCode as readScratchCode,
+  getScratchContext as readScratchContext,
+  isScratchPath,
+  setScratchCodeAndContext,
+} from '../scratchBuffer'
 import type { TreeNode } from '../fileTree'
 import * as router from '../router'
 import {
@@ -55,7 +68,7 @@ import {
 } from './tabs'
 import { syncCodePanelView, syncPlaygroundUrlState } from './sidePanels'
 
-// ─── Saved Files ──────────────────────────────────────────────────────────────
+// ─── Workspace Files ──────────────────────────────────────────────────────────
 
 function animateFileCardRemoval(id: string): Promise<void> {
   const card = document.querySelector(`.snapshot-card[data-file-id="${id}"]`)
@@ -67,13 +80,13 @@ function animateFileCardRemoval(id: string): Promise<void> {
   })
 }
 
-export function populateSavedFilesList(options: { animateNewId?: string } = {}) {
+export function populateWorkspaceFilesList(options: { animateNewId?: string } = {}) {
   void options
   populateExplorerFileList()
 }
 
-export function loadSavedFile(id: string) {
-  const file = getSavedFiles().find(entry => entry.id === id)
+export function loadWorkspaceFile(id: string) {
+  const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
   if (isScratchActive()) persistScratchFromCurrentState()
   closeSnapshotViewIfNeeded()
@@ -91,23 +104,26 @@ export function loadSavedFile(id: string) {
   syncPlaygroundUrlState('files')
   updateCSS()
   populateExplorerFileList()
-  populateSavedFilesList()
+  populateWorkspaceFilesList()
 }
 
 // ─── Explorer panel (compact file list in editor tab) ────────────────────────
 
 export const SCRATCH_TITLE = '<scratch>'
+const HANDLERS_TITLE = '<handlers>'
 
 export function isScratchActive(): boolean {
   return getState('current-file-id') === null
 }
 
 function getScratchCode(): string {
-  return isScratchActive() ? getState('dvala-code') : getState('scratch-code')
+  // When scratch is the active tab, the live editor content (`dvala-code`)
+  // is ahead of what's persisted; otherwise read the scratch workspace file.
+  return isScratchActive() ? getState('dvala-code') : readScratchCode()
 }
 
 function getScratchContext(): string {
-  return isScratchActive() ? getState('context') : getState('scratch-context')
+  return isScratchActive() ? getState('context') : readScratchContext()
 }
 
 export function hasScratchContent(): boolean {
@@ -116,13 +132,7 @@ export function hasScratchContent(): boolean {
 
 export function persistScratchFromCurrentState() {
   if (!isScratchActive()) return
-  saveState(
-    {
-      'scratch-code': getState('dvala-code'),
-      'scratch-context': getState('context'),
-    },
-    false,
-  )
+  setScratchCodeAndContext(getState('dvala-code'), getState('context'))
 }
 
 function closeSnapshotViewIfNeeded() {
@@ -152,12 +162,12 @@ export function openScratchInEditor(
     return
   }
 
-  const code = options.code ?? getState('scratch-code')
-  const context = options.context ?? getState('scratch-context')
+  const code = options.code ?? readScratchCode()
+  const context = options.context ?? readScratchContext()
 
   flushPendingAutoSave()
 
-  saveState({ 'scratch-code': code, 'scratch-context': context }, false)
+  setScratchCodeAndContext(code, context)
   closeSnapshotViewIfNeeded()
 
   saveState(
@@ -203,10 +213,10 @@ export function openScratchInEditor(
  * Generates a unique name: "Untitled File.dvala", "Untitled File (2).dvala", etc.
  */
 export function createUntitledFile(code = '', context = ''): string {
-  const files = getSavedFiles()
+  const files = getWorkspaceFiles()
   const path = uniquePathInFolder('', 'Untitled File', files)
   const now = Date.now()
-  const createdFile: SavedFile = {
+  const createdFile: WorkspaceFile = {
     id: crypto.randomUUID(),
     path,
     code,
@@ -215,7 +225,7 @@ export function createUntitledFile(code = '', context = ''): string {
     updatedAt: now,
     locked: false,
   }
-  setSavedFiles([createdFile, ...files])
+  setWorkspaceFiles([createdFile, ...files])
   return createdFile.id
 }
 
@@ -224,7 +234,7 @@ function populateExplorerFileList() {
   const stats = document.getElementById('explorer-file-stats')
   if (!list) return
 
-  const files = getSavedFiles()
+  const files = getWorkspaceFiles()
   const currentId = getState('current-file-id')
   const scratchCode = getScratchCode()
 
@@ -234,6 +244,19 @@ function populateExplorerFileList() {
     return `
       <div class="explorer-item${activeClass}" onclick="Playground.openScratch()" title="Scratch">
         <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(SCRATCH_TITLE)}</span>
+      </div>`
+  }
+
+  // Phase 1.5 step 23d: handlers buffer pinned second-from-top. Unlike
+  // scratch (still routed via the SCRATCH_KEY sentinel until 23h), this
+  // is a regular workspace file — clicking opens it via openOrFocusFile.
+  const renderHandlersExplorerItem = () => {
+    const handlers = getHandlersFile()
+    if (!handlers) return ''
+    const activeClass = currentId === handlers.id ? ' explorer-item--active' : ''
+    return `
+      <div class="explorer-item${activeClass}" onclick="Playground.loadWorkspaceFile('${handlers.id}')" title="Boundary effect handlers (always wraps every run)">
+        <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(HANDLERS_TITLE)}</span>
       </div>`
   }
 
@@ -280,8 +303,12 @@ function populateExplorerFileList() {
       </div>`
   }
 
-  if (files.length === 0) {
-    list.innerHTML = `${renderScratchExplorerItem()}<div class="explorer-empty">No saved files</div>`
+  // The scratch + handlers buffers are always present under
+  // `.dvala-playground/`; the "No workspace files" hint is about
+  // user-authored files only. `buildFileTree` already filters those out
+  // (Phase 1.5 step 23b), so check the resulting tree's length here.
+  if (files.every(f => f.path === HANDLERS_FILE_PATH || isScratchPath(f.path))) {
+    list.innerHTML = `${renderScratchExplorerItem()}${renderHandlersExplorerItem()}<div class="explorer-empty">No workspace files</div>`
     renderFileStats()
     return
   }
@@ -293,7 +320,10 @@ function populateExplorerFileList() {
   const tree = buildFileTree(files)
   const expanded = new Set<string>(getState('explorer-expanded-folders'))
 
-  list.innerHTML = renderScratchExplorerItem() + tree.map(node => renderTreeNode(node, 0, expanded, currentId)).join('')
+  list.innerHTML =
+    renderScratchExplorerItem() +
+    renderHandlersExplorerItem() +
+    tree.map(node => renderTreeNode(node, 0, expanded, currentId)).join('')
 
   // Walk the full tree (regardless of expansion state) to collect every
   // folder path that still has a file under it. The pruned set must only
@@ -382,7 +412,7 @@ function renderTreeNode(node: TreeNode, depth: number, expanded: Set<string>, cu
       label: 'Share',
     },
     {
-      action: `Playground.closeExplorerMenus();Playground.deleteSavedFile('${entry.id}')`,
+      action: `Playground.closeExplorerMenus();Playground.deleteWorkspaceFile('${entry.id}')`,
       danger: true,
       icon: ICONS.trash,
       label: 'Delete',
@@ -425,7 +455,7 @@ export function wireExplorerListeners(): void {
     }
     const file = target.closest<HTMLElement>('[data-file-id]')
     if (file) {
-      void loadSavedFile(file.dataset['fileId']!)
+      void loadWorkspaceFile(file.dataset['fileId']!)
     }
   })
 }
@@ -444,13 +474,13 @@ export function toggleExplorerFolder(path: string): void {
 }
 
 export function renameFile(id: string) {
-  const file = getSavedFiles().find(entry => entry.id === id)
+  const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
   // Rename keeps the file anchored in its current folder — the user-typed
   // string is treated as a basename, not an absolute path. Cross-folder
   // moves are a deferred follow-up (tree drag-and-drop, Phase 1 later).
   //
-  // Subtle: if the user types `sub/bar`, `normalizeSavedFileName` produces
+  // Subtle: if the user types `sub/bar`, `normalizeWorkspaceFileName` produces
   // `sub/bar.dvala` and the resulting `newPath` becomes
   // `${currentFolder}/sub/bar.dvala` — i.e. a file deeper in the tree, not
   // a peer rename. This is intentional today (keeps the rename invariant
@@ -459,17 +489,17 @@ export function renameFile(id: string) {
   const folder = folderFromPath(file.path)
   const currentFilename = filenameFromPath(file.path)
   showNameInputModal('Rename file', currentFilename, name => {
-    const files = getSavedFiles()
-    const normalizedFilename = normalizeSavedFileName(name)
+    const files = getWorkspaceFiles()
+    const normalizedFilename = normalizeWorkspaceFileName(name)
     const newPath = folder === '' ? normalizedFilename : `${folder}/${normalizedFilename}`
     const duplicate = files.find(entry => entry.path === newPath && entry.id !== id)
     const doRename = () => {
       const updated = files
         .map(entry => (entry.id === id ? { ...entry, path: newPath, updatedAt: Date.now() } : entry))
         .filter(entry => !duplicate || entry.id !== duplicate.id)
-      setSavedFiles(updated)
+      setWorkspaceFiles(updated)
       updateCSS()
-      populateSavedFilesList()
+      populateWorkspaceFilesList()
       // The tab's display name comes from the file's path; re-render the
       // strip so the rename shows up immediately. Also: if a duplicate
       // file was overwritten, its tab (if any) needs to close.
@@ -486,7 +516,7 @@ export function renameFile(id: string) {
 }
 
 export function shareFile(id: string) {
-  const file = getSavedFiles().find(entry => entry.id === id)
+  const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
 
   const dismiss = () => popModal()
@@ -572,13 +602,7 @@ export function saveScratch() {
 
 export function clearScratch() {
   const clear = () => {
-    saveState(
-      {
-        'scratch-code': '',
-        'scratch-context': '',
-      },
-      false,
-    )
+    setScratchCodeAndContext('', '')
 
     if (isScratchActive())
       openScratchInEditor({ code: '', context: '', focusCode: true, toast: 'Scratch cleared', force: true })
@@ -597,19 +621,25 @@ export function clearScratch() {
   void showInfoModal('Clear scratch', 'This will clear the scratch buffer.', clear)
 }
 
-export function deleteSavedFile(id: string) {
-  const file = getSavedFiles().find(entry => entry.id === id)
+export function deleteWorkspaceFile(id: string) {
+  const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
+  // The scratch + handlers buffers are undeletable (Phase 1.5 step 23c/23d).
+  // Their tree entries are pinned virtual items; the UI doesn't expose a
+  // delete affordance for them (they live under the hidden .dvala-playground/
+  // folder), so this guard is defense-in-depth against programmatic callers
+  // (Playground.* API, tests).
+  if (isScratchPath(file.path) || isHandlersPath(file.path)) return
   const doDelete = async () => {
     await animateFileCardRemoval(id)
     deleteFileHistory(id)
-    const updated = getSavedFiles().filter(p => p.id !== id)
-    setSavedFiles(updated)
+    const updated = getWorkspaceFiles().filter(p => p.id !== id)
+    setWorkspaceFiles(updated)
     // Close any open tab pointing at the deleted file (tab manager falls
     // back to a neighbor or scratch). Replaces the previous
     // clearActiveFileSelection-via-openScratch dance.
     closeTabsForMissingFiles()
-    populateSavedFilesList()
+    populateWorkspaceFilesList()
   }
   if (file.locked) {
     void showInfoModal('Delete file', 'This file is locked. Are you sure you want to permanently delete it?', doDelete)
@@ -619,7 +649,7 @@ export function deleteSavedFile(id: string) {
 }
 
 export function downloadFile(id: string) {
-  const file = getSavedFiles().find(entry => entry.id === id)
+  const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
   // Slashes in the path become underscores in the download filename so the
   // browser's "save as" dialog doesn't try to create folders.
@@ -629,18 +659,23 @@ export function downloadFile(id: string) {
 }
 
 export function toggleFileLock(id: string) {
-  const files = getSavedFiles()
+  const files = getWorkspaceFiles()
   const updated = files.map(entry => (entry.id === id ? { ...entry, locked: !entry.locked } : entry))
-  setSavedFiles(updated)
-  populateSavedFilesList()
+  setWorkspaceFiles(updated)
+  populateWorkspaceFilesList()
   if (id === getState('current-file-id')) updateCSS()
 }
 
-export function clearAllSavedFiles() {
+export function clearAllWorkspaceFiles() {
   clearAllFiles()
+  // Re-create the reserved buffers' backing files (Phase 1.5 step 23c+23d —
+  // scratch + handlers are undeletable; "clear everything" wipes their
+  // contents but the files themselves come right back, empty).
+  ensureScratchFile()
+  ensureHandlersFile()
   clearAllFileHistories()
   closeTabsForMissingFiles()
-  populateSavedFilesList()
+  populateWorkspaceFilesList()
 }
 
 export function clearUnlockedFiles() {
@@ -648,13 +683,17 @@ export function clearUnlockedFiles() {
     'Remove unlocked files',
     'This will delete all unlocked files. Locked files will be kept.',
     async () => {
-      const unlocked = getSavedFiles().filter(p => !p.locked)
+      // Reserved buffers (scratch / handlers) are undeletable; treat them
+      // like locked files for the purpose of this sweep, regardless of the
+      // `locked` flag on their record.
+      const isReserved = (path: string) => isScratchPath(path) || isHandlersPath(path)
+      const unlocked = getWorkspaceFiles().filter(p => !p.locked && !isReserved(p.path))
       await Promise.all(unlocked.map(entry => animateFileCardRemoval(entry.id)))
       unlocked.forEach(entry => deleteFileHistory(entry.id))
-      const kept = getSavedFiles().filter(p => p.locked)
-      setSavedFiles(kept)
+      const kept = getWorkspaceFiles().filter(p => p.locked || isReserved(p.path))
+      setWorkspaceFiles(kept)
       closeTabsForMissingFiles()
-      populateSavedFilesList()
+      populateWorkspaceFilesList()
       showToast('Unlocked files cleared')
     },
   )
@@ -682,12 +721,12 @@ export function openImportFileModal() {
       }
       const raw = parsed as Record<string, unknown>
       const now = Date.now()
-      const existing = getSavedFiles()
+      const existing = getWorkspaceFiles()
       // Accept either `path` (new schema) or legacy `name` exports — anything
       // missing both falls back to "Imported File" at the root.
       const rawPath = typeof raw['path'] === 'string' ? raw['path'] : typeof raw['name'] === 'string' ? raw['name'] : 'Imported File'
       const path = uniquePathInFolder(folderFromPath(rawPath), filenameFromPath(rawPath), existing)
-      const imported: SavedFile = {
+      const imported: WorkspaceFile = {
         id: crypto.randomUUID(),
         path,
         code: typeof raw['code'] === 'string' ? raw['code'] : '',
@@ -696,9 +735,9 @@ export function openImportFileModal() {
         updatedAt: typeof raw['updatedAt'] === 'number' ? raw['updatedAt'] : now,
         locked: typeof raw['locked'] === 'boolean' ? raw['locked'] : false,
       }
-      setSavedFiles([imported, ...existing])
+      setWorkspaceFiles([imported, ...existing])
 
-      populateSavedFilesList({ animateNewId: imported.id })
+      populateWorkspaceFilesList({ animateNewId: imported.id })
       showToast(`Imported "${fileDisplayName(imported)}"`)
     }
     reader.readAsText(file)
@@ -707,14 +746,14 @@ export function openImportFileModal() {
 }
 
 export function duplicateFile(id: string) {
-  const file = getSavedFiles().find(entry => entry.id === id)
+  const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
   const now = Date.now()
   // Duplicate stays in the same folder as the source file; only the basename
   // gets the "Copy of " prefix and the disambiguation tail.
   const folder = folderFromPath(file.path)
-  const path = uniquePathInFolder(folder, `Copy of ${filenameFromPath(file.path)}`, getSavedFiles())
-  const copy: SavedFile = {
+  const path = uniquePathInFolder(folder, `Copy of ${filenameFromPath(file.path)}`, getWorkspaceFiles())
+  const copy: WorkspaceFile = {
     id: crypto.randomUUID(),
     path,
     code: file.code,
@@ -723,7 +762,7 @@ export function duplicateFile(id: string) {
     updatedAt: now,
     locked: false,
   }
-  setSavedFiles([copy, ...getSavedFiles()])
+  setWorkspaceFiles([copy, ...getWorkspaceFiles()])
   saveState({ context: copy.context }, false)
   // Open the duplicate in a fresh tab. openOrFocusFile creates the model
   // from copy.code and syncs current-file-id + dvala-code state.
@@ -731,26 +770,26 @@ export function duplicateFile(id: string) {
   activateCurrentFileHistory(true)
   updateContextState(copy.context, false)
   updateCSS()
-  populateSavedFilesList({ animateNewId: copy.id })
+  populateWorkspaceFilesList({ animateNewId: copy.id })
   showToast(`Created "${fileDisplayName(copy)}"`)
 }
 
 export function saveAs() {
   const currentId = getState('current-file-id')
-  const currentFile = currentId ? getSavedFiles().find(entry => entry.id === currentId) : null
+  const currentFile = currentId ? getWorkspaceFiles().find(entry => entry.id === currentId) : null
   // saveAs creates the copy in the source's folder (or the root for scratch).
   const sourceFolder = currentFile ? folderFromPath(currentFile.path) : ''
   const defaultName = currentFile ? `Copy of ${filenameFromPath(currentFile.path)}` : ''
   showNameInputModal('Save as', defaultName, name => {
-    const files = getSavedFiles()
-    const normalizedFilename = normalizeSavedFileName(name)
+    const files = getWorkspaceFiles()
+    const normalizedFilename = normalizeWorkspaceFileName(name)
     const newPath = sourceFolder === '' ? normalizedFilename : `${sourceFolder}/${normalizedFilename}`
     const duplicate = files.find(entry => entry.path === newPath)
     const doSave = () => {
       const filtered = duplicate ? files.filter(entry => entry.id !== duplicate.id) : files
       const now = Date.now()
       if (!currentId) persistScratchFromCurrentState()
-      const createdFile: SavedFile = {
+      const createdFile: WorkspaceFile = {
         id: crypto.randomUUID(),
         path: newPath,
         code: getState('dvala-code'),
@@ -759,7 +798,7 @@ export function saveAs() {
         updatedAt: now,
         locked: false,
       }
-      setSavedFiles([createdFile, ...filtered])
+      setWorkspaceFiles([createdFile, ...filtered])
       // Open the new file as a tab so close / switch flows find it. Without
       // this, saveAs leaves the current tab pointed at scratch (or whatever
       // was active) while `current-file-id` claims the new file exists.
@@ -768,7 +807,7 @@ export function saveAs() {
       activateCurrentFileHistory(true)
 
       updateCSS()
-      populateSavedFilesList({ animateNewId: createdFile.id })
+      populateWorkspaceFilesList({ animateNewId: createdFile.id })
       showToast(`Saved as "${normalizedFilename}"`)
     }
     if (duplicate) {
@@ -879,10 +918,10 @@ export function flushPendingAutoSave() {
   state.autoSaveTimer = null
   const id = getState('current-file-id')
   if (id) {
-    const updated = getSavedFiles().map(p =>
+    const updated = getWorkspaceFiles().map(p =>
       p.id === id ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() } : p,
     )
-    setSavedFiles(updated)
+    setWorkspaceFiles(updated)
   }
 }
 
@@ -899,20 +938,20 @@ export function guardCodeReplacement(proceed: () => void) {
 export function scheduleAutoSave() {
   const currentId = getState('current-file-id')
   if (!currentId) return
-  if (getSavedFiles().find(p => p.id === currentId)?.locked) return
+  if (getWorkspaceFiles().find(p => p.id === currentId)?.locked) return
   if (state.autoSaveTimer) clearTimeout(state.autoSaveTimer)
   state.autoSaveTimer = setTimeout(() => {
     state.autoSaveTimer = null
     const id = getState('current-file-id')
     if (!id) return
-    const updated = getSavedFiles().map(p =>
+    const updated = getWorkspaceFiles().map(p =>
       p.id === id ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() } : p,
     )
-    setSavedFiles(updated)
+    setWorkspaceFiles(updated)
     // Resets the modified dot on the active file tab — the buffer now
     // matches the file's stored code.
     markActiveTabSynced()
-    populateSavedFilesList()
+    populateWorkspaceFilesList()
     updateCSS()
   }, PENDING_INDICATOR_DELAY)
   updateCSS()

@@ -147,11 +147,11 @@ export const elements = {
   get importOptLayoutLabel() {
     return document.getElementById('import-opt-layout-label') as HTMLLabelElement
   },
-  get importOptSavedFiles() {
-    return document.getElementById('import-opt-saved-files') as HTMLInputElement
+  get importOptWorkspaceFiles() {
+    return document.getElementById('import-opt-workspace-files') as HTMLInputElement
   },
-  get importOptSavedFilesLabel() {
-    return document.getElementById('import-opt-saved-files-label') as HTMLLabelElement
+  get importOptWorkspaceFilesLabel() {
+    return document.getElementById('import-opt-workspace-files-label') as HTMLLabelElement
   },
   get importResultModal() {
     return document.getElementById('import-result-modal') as HTMLDivElement
@@ -180,8 +180,8 @@ export const elements = {
   get exportOptLayout() {
     return document.getElementById('export-opt-layout') as HTMLInputElement
   },
-  get exportOptSavedFiles() {
-    return document.getElementById('export-opt-saved-files') as HTMLInputElement
+  get exportOptWorkspaceFiles() {
+    return document.getElementById('export-opt-workspace-files') as HTMLInputElement
   },
   get toastContainer() {
     return document.getElementById('toast-container') as HTMLDivElement

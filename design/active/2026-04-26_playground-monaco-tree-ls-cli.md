@@ -359,11 +359,22 @@ These steps land **before Phase 2** so the LS worker, REPL, and CLI mode are all
 
 23b. Introduce the `.dvala-playground/` folder convention. Define the reserved-folder contract: web mode persists it as a virtual folder in IndexedDB; CLI mode (Phase 3) persists it on disk via the bridge backend. The folder is hidden from the file tree by a tree-rendering rule, not a backend rule.
 
-23c. Reshape scratch as a workspace file at `.dvala-playground/scratch.dvala`. Persistence routes through the standard `FileBackend` — no separate scratch-only backend. Tree pinning rule: render `<scratch>` as a virtual entry at the top of the file tree, pointing at the underlying file. Tab closable; buffer undeletable. IDB schema bump drops the legacy `scratch-code` / `scratch-context` keys (silent wipe — pre-1.0).
+23c. Reshape scratch as a workspace file at `.dvala-playground/scratch.dvala`. Persistence routes through the standard `FileBackend` — no separate scratch-only backend. Tree pinning rule: render `<scratch>` as a virtual entry at the top of the file tree, pointing at the underlying file. Buffer undeletable (`deleteWorkspaceFile` refuses the scratch path). The legacy `scratch-code` / `scratch-context` `localStorage` keys are dropped from `state.ts`; no migration / wipe — pre-1.0, so leftover keys in users' browsers are harmless cruft and pre-existing scratch contents are intentionally not preserved. **Tab-level "closable" deferred to 23h** — the `SCRATCH_KEY` / `current-file-id === null` sentinels stay until the broader migration retires them; the scratch tab remains sticky for now, but the underlying storage already routes through `FileBackend`.
 
 23d. Add the handlers buffer at `.dvala-playground/handlers.dvala`. Same tree pinning treatment as scratch (`<handlers>` virtual entry, second pinned position). File starts empty; user authors `let X = handler @tag(...) -> ... end` declarations as they would in any Dvala file.
 
-23e. Implement the boundary-handler runtime auto-wrap. Before evaluating user code (run path, REPL load), parse `.dvala-playground/handlers.dvala`, extract the top-level `let X = handler ... end` declarations, and wrap the user's code with `do with X; do with Y; ... end` (one wrap per declaration). Language-level handlers in the user's code take precedence within their `do with` scopes; boundary handlers are the outermost wrap.
+23e. Implement the boundary-handler runtime auto-wrap. Before evaluating user code (run path, REPL load), the playground synthesises this wrap when the handlers buffer is non-empty:
+
+```dvala
+let __playgroundBoundary__ = do
+  <handlers.dvala contents>
+end;
+do with __playgroundBoundary__;
+  <user code>
+end
+```
+
+The handlers buffer is a regular Dvala expression — its **result value** is the boundary handler. Single handler, multiple effect cases, composed via `effectHandler.compose`, dynamically built — anything that evaluates to a handler value works. No AST walking / name extraction is needed. Language-level `do with` clauses inside the user's code shadow the boundary within their scope (verified: an inner handler takes precedence). When the handlers buffer is empty / whitespace-only, no wrap is applied. Parse errors in the buffer surface as runtime errors when the user's code runs (the wrap is built lazily; the engine reports the error against the wrapped source).
 
 23f. Remove the Bindings UI and the legacy effect-handler authoring UI. Drop the "Context" left-panel tab; remove the `'binding'` and `'effect-handler'` kinds from `state.ts`; silent wipe of any stored bindings + JS handler entries (pre-1.0). After this step the legacy JS-handler authoring surface is gone.
 

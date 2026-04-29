@@ -4,7 +4,7 @@
 // via `dvala run` — the divergence flagged in the Phase 0 spike of
 // `design/active/2026-04-26_playground-monaco-tree-ls-cli.md`.
 
-import { getSavedFiles } from './fileStorage'
+import { getWorkspaceFiles } from './fileStorage'
 
 /**
  * Pure path arithmetic, matching the resolution the runtime applies in
@@ -32,14 +32,14 @@ export function resolvePlaygroundPath(fromDir: string, importPath: string): stri
 }
 
 /**
- * Look up `importPath` in the playground's saved-files cache. Tries the
+ * Look up `importPath` in the playground's workspace-files cache. Tries the
  * resolved path verbatim first, then with the `.dvala` suffix appended —
  * matches both Monaco-stored canonical paths (always `.dvala`-suffixed)
  * and source code that imports without the extension.
  */
 export function playgroundFileResolver(importPath: string, fromDir: string): string {
   const resolved = resolvePlaygroundPath(fromDir, importPath)
-  const files = getSavedFiles()
+  const files = getWorkspaceFiles()
   const exact = files.find(f => f.path === resolved)
   if (exact) return exact.code
   const withExt = files.find(f => f.path === `${resolved}.dvala`)

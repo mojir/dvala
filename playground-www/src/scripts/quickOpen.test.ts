@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-type SavedFileStub = { id: string; path: string; code: string }
+type WorkspaceFileStub = { id: string; path: string; code: string }
 
 class FakeElement {
   id = ''
@@ -87,12 +87,12 @@ function createFakeDocument(): FakeDocument {
   }
 }
 
-let savedFiles: SavedFileStub[] = []
+let workspaceFiles: WorkspaceFileStub[] = []
 let focusSpy: any
 let openOrFocusFileSpy: any
 
 vi.mock('../fileStorage', () => ({
-  getSavedFiles: () => savedFiles,
+  getWorkspaceFiles: () => workspaceFiles,
   fileDisplayName: (file: { path: string }) => file.path.split('/').pop() ?? file.path,
 }))
 
@@ -120,7 +120,7 @@ function keyEvent(key: string) {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.resetModules()
-  savedFiles = [{ id: 'file-a', path: 'target.dvala', code: 'OPENED' }]
+  workspaceFiles = [{ id: 'file-a', path: 'target.dvala', code: 'OPENED' }]
   focusSpy = vi.fn()
   openOrFocusFileSpy = vi.fn()
   const doc = createFakeDocument()
