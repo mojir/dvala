@@ -75,16 +75,27 @@ const BOUNDARY_BINDING = '__playgroundBoundary__'
  * Wrap `userCode` so the value of the handlers buffer becomes a boundary
  * effect handler around the run (Phase 1.5 step 23e). The handlers buffer
  * is treated as a regular Dvala expression — its **result value** is the
- * handler, which lets the user compose handlers freely (one handler with
- * many effect cases, `effectHandler.compose(h1, h2)`, dynamically built,
- * imported, etc.).
+ * handler.
  *
- * Returns `userCode` unchanged when the buffer is empty / whitespace-only,
- * so the wrap is invisible until the user actually puts something there.
+ * **Recommended:** write `linear handler ... end` in the handlers buffer.
+ * Linear handlers (engine-side feature, see
+ * `design/active/2026-04-29_linear-handler.md`) get the host-style dispatch
+ * semantics that suit the boundary use case: single-shot resume + reach
+ * into `parallel(...)` / `race(...)` branches via `dispatchPerform`'s
+ * barrier-crossing path. A plain `handler ... end` will still install
+ * (the user can opt into Dvala-handler semantics deliberately) but loses
+ * those properties — multi-shot is allowed, parallel branches are
+ * isolated. The playground intentionally doesn't enforce the kind at
+ * install time; the user picks per buffer.
  *
- * Note on `;` placement: `with <expr>` *requires* a trailing `;` before the
- * next statement — newlines aren't statement separators in Dvala. The wrap
- * is built with explicit `;` after each `with` clause for that reason.
+ * The wrap returns `userCode` unchanged when the buffer is empty /
+ * whitespace-only, so it's invisible until the user actually puts
+ * something there.
+ *
+ * Note on `;` placement: `with <expr>` *requires* a trailing `;` before
+ * the next statement — newlines aren't statement separators in Dvala.
+ * The wrap is built with explicit `;` after each `with` clause for that
+ * reason.
  */
 export function wrapWithBoundaryHandler(userCode: string): string {
   const handlersCode = getHandlersCode().trim()

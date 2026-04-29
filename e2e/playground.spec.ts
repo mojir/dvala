@@ -149,12 +149,14 @@ test.describe('code execution', () => {
   })
 
   test('handlers buffer wraps user code as a boundary effect handler (Phase 1.5 step 23e)', async ({ page }) => {
-    // Stage a boundary handler in `.dvala-playground/handlers.dvala` and
-    // run scratch code that performs the matching effect. The boundary
-    // wrap should turn `perform(@x, 21)` into 42 without the user writing
-    // `do with` themselves.
+    // Stage a `linear handler` in `.dvala-playground/handlers.dvala` and run
+    // scratch code that performs the matching effect. The boundary wrap
+    // should turn `perform(@x, 21)` into 42 without the user writing
+    // `do with` themselves. `linear handler` is the recommended shape for
+    // handlers buffers — host-style dispatch (single-shot resume,
+    // barrier-free reach into parallel branches).
     await page.evaluate(() => {
-      ;(window as any).Playground.setHandlersCodeForTesting('handler @x(v) -> resume(v * 2) end')
+      ;(window as any).Playground.setHandlersCodeForTesting('linear handler @x(v) -> v * 2 end')
     })
     await setDvalaCode(page, 'perform(@x, 21)')
     await clickRun(page)

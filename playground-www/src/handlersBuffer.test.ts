@@ -97,10 +97,10 @@ describe('wrapWithBoundaryHandler', () => {
     expect(wrapWithBoundaryHandler('1 + 1')).toBe('1 + 1')
   })
   it('wraps the user code when the handlers buffer is non-empty', () => {
-    setHandlersCode('handler @x(v) -> resume(v * 2) end')
+    setHandlersCode('linear handler @x(v) -> v * 2 end')
     const wrapped = wrapWithBoundaryHandler('perform(@x, 21)')
     expect(wrapped).toContain('let __playgroundBoundary__ = do')
-    expect(wrapped).toContain('handler @x(v) -> resume(v * 2) end')
+    expect(wrapped).toContain('linear handler @x(v) -> v * 2 end')
     expect(wrapped).toContain('do with __playgroundBoundary__;')
     expect(wrapped).toContain('perform(@x, 21)')
   })
@@ -112,13 +112,15 @@ describe('wrapWithBoundaryHandler', () => {
     const dvala = createDvala()
     const runWrapped = (userCode: string): unknown => dvala.run(wrapWithBoundaryHandler(userCode))
 
-    it('a single-handler buffer handles effects in user code', () => {
-      setHandlersCode('handler @x(v) -> resume(v * 2) end')
+    it('a linear-handler buffer handles effects in user code (return-as-resume)', () => {
+      // The recommended shape for handlers.dvala — a `linear handler`. No
+      // `resume` keyword in the clause; the body's value IS the resume.
+      setHandlersCode('linear handler @x(v) -> v * 2 end')
       expect(runWrapped('perform(@x, 21)')).toBe(42)
     })
 
-    it('a multi-statement handlers buffer (last expression is the handler)', () => {
-      setHandlersCode('let bonus = 100;\nhandler @x(v) -> resume(v + bonus) end')
+    it('a multi-statement handlers buffer (last expression is the linear handler)', () => {
+      setHandlersCode('let bonus = 100;\nlinear handler @x(v) -> v + bonus end')
       expect(runWrapped('perform(@x, 5)')).toBe(105)
     })
 
@@ -128,15 +130,34 @@ describe('wrapWithBoundaryHandler', () => {
     })
 
     it('a user-side `do with` shadows the boundary within its scope', () => {
-      setHandlersCode('handler @x(v) -> resume(v * 10) end')
+      setHandlersCode('linear handler @x(v) -> v * 10 end')
+      // The inner regular handler wins for its scope; outside that scope
+      // the linear boundary catches the second perform.
       const result = runWrapped('let inner = handler @x(v) -> resume(v + 1) end;\ndo with inner; perform(@x, 5) end')
-      // Inner handler wins → 5 + 1 = 6 (not 50 from the boundary).
-      expect(result).toBe(6)
+      expect(result).toBe(6) // 5 + 1 from inner handler — boundary not reached
     })
 
     it('user code that does not use the boundary effect runs normally', () => {
-      setHandlersCode('handler @x(v) -> resume(v * 2) end')
+      setHandlersCode('linear handler @x(v) -> v * 2 end')
       expect(runWrapped('1 + 2 + 3')).toBe(6)
+    })
+
+    it('a regular (non-linear) handler buffer still works as a Dvala-layer handler', () => {
+      // Users can opt into Dvala-handler semantics deliberately by writing
+      // `handler ... end` instead of `linear handler ... end`. The wrap
+      // installs whatever the buffer evaluates to.
+      setHandlersCode('handler @x(v) -> resume(v * 3) end')
+      expect(runWrapped('perform(@x, 14)')).toBe(42)
+    })
+
+    it('the linear boundary reaches effects from inside `parallel(...)` branches', async () => {
+      // The headline benefit of the linear-handler swap: effects from
+      // inside parallel branches reach the boundary, which a plain Dvala
+      // handler couldn't do (regression-tested in the engine test suite).
+      setHandlersCode('linear handler @x(v) -> v * 2 end')
+      const wrapped = wrapWithBoundaryHandler('parallel([-> perform(@x, 10), -> perform(@x, 20)])')
+      const result = await dvala.runAsync(wrapped)
+      expect(result).toMatchObject({ type: 'completed', value: [20, 40] })
     })
   })
 })
