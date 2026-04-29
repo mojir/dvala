@@ -1,6 +1,6 @@
 # Linear handler — host-style effect handler in Dvala syntax
 
-**Status:** v1 implemented on the `design/linear-handler` branch (parser + AST + return-as-resume + barrier-crossing). Documentation pending.
+**Status:** v1 implemented on the `design/linear-handler` branch (parser + AST + return-as-resume + barrier-crossing + book chapter). Ready to PR to main.
 **Created:** 2026-04-29
 
 ## Goal
@@ -147,7 +147,7 @@ No typecheck changes needed; the existing machinery handles linear handlers via 
 
 ## Open Questions
 
-- **Interaction with `transform`.** Existing `handler ... transform x -> body end` syntax — does `linear handler` support `transform` clauses? The parser accepts `transform` after the clauses regardless of `linear`, and the dispatch path is shared. Initial answer: yes, same shape; the transform fires on the implicit-resume value just like on an explicit `resume(...)` value. Not yet exercised by tests; worth confirming when documentation gets written.
+(None remaining for v1.) The design's last open item — the `transform`-clause interaction — was confirmed during step 10 documentation: `linear handler ... transform r -> body end` works the same way it does on a plain handler. The transform fires on the normal-completion path with the implicit-resume value (verified: `linear handler @x(v) -> v * 2 transform r -> { ok: true, value: r } end` returns `{ ok: true, value: 42 }` for `perform(@x, 21)`).
 
 ---
 
@@ -162,7 +162,7 @@ This is the engine-side work. v1 unblocks the playground's Phase 1.5 step 23e (w
 5. **Engine — barrier-crossing in `dispatchPerform`.** When walking the continuation stack, don't break at barrier frames; set a `crossedBarrier` flag and skip non-linear AlgebraicHandle frames once the flag is set. ✅ Shipped in `c42178da`.
 6. **Formatter** ([src/formatter/cstFormat.ts](../../src/formatter/cstFormat.ts)) and **language-service token-scanner** ([src/languageService/tokenScan.ts](../../src/languageService/tokenScan.ts)) recognise `linear` alongside `shallow`. ✅ Shipped in `92626ba5`.
 7. **Tests.** Parser smoke + rejection cases, runtime tests for return-as-resume, fail-via-`@dvala.error`, parallel-branch barrier-crossing, regression guard for plain handlers staying isolated. ✅ Shipped progressively (`__tests__/effects.test.ts`).
-8. **Documentation.** Pending. A handlers-chapter section explaining `linear handler`, the body shape, `perform(@dvala.error, ...)` for failing, and the parallel-branch reach. Reference data so `dvala doc handler` mentions the linear variant. Smoke-test the `transform`-clause interaction documented as an open question above.
+8. **Documentation.** ✅ Shipped. New "Linear Handlers" section in [book/05-advanced/02-effects.md](../../book/05-advanced/02-effects.md) covers the body shape, `perform(@dvala.error, ...)` for failing, the parallel-branch reach, the `linear shallow handler` / `transform` interactions, and "when to reach for it." (No `dvala doc` reference-data update needed — neither `handler` nor `shallow` currently has a `dvala doc` entry, so there's no precedent to extend; the book chapter is the canonical source.)
 
 After the engine work merges to main, **return to playground 23e**: replace the current `wrapWithBoundaryHandler` (which prepends a plain `do with __playgroundBoundary__; ... end` Dvala-level wrap) with one that wraps the handlers buffer's expression in `linear handler ... end`. The shape becomes:
 
