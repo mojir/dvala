@@ -148,6 +148,25 @@ test.describe('code execution', () => {
     expect(output.toLowerCase()).toContain('error')
   })
 
+  test('handlers buffer wraps user code as a boundary effect handler (Phase 1.5 step 23e)', async ({ page }) => {
+    // Stage a boundary handler in `.dvala-playground/handlers.dvala` and
+    // run scratch code that performs the matching effect. The boundary
+    // wrap should turn `perform(@x, 21)` into 42 without the user writing
+    // `do with` themselves.
+    await page.evaluate(() => {
+      ;(window as any).Playground.setHandlersCodeForTesting('handler @x(v) -> resume(v * 2) end')
+    })
+    await setDvalaCode(page, 'perform(@x, 21)')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('42')
+
+    // Reset for downstream tests — empty handlers buffer means no wrap.
+    await page.evaluate(() => (window as any).Playground.setHandlersCodeForTesting(''))
+  })
+
   test('runs via Ctrl+R keyboard shortcut', async ({ page }) => {
     await setDvalaCode(page, '2 * 21')
     // Focus the Monaco editor, then dispatch the Ctrl+R global shortcut.

@@ -70,7 +70,7 @@ import {
   uniqueFilePath,
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
-import { ensureHandlersFile } from './handlersBuffer'
+import { ensureHandlersFile, wrapWithBoundaryHandler } from './handlersBuffer'
 import { ensureScratchFile, setScratchCode, setScratchCodeAndContext } from './scratchBuffer'
 import type { WorkspaceFile } from './fileStorage'
 import {
@@ -3775,14 +3775,25 @@ function routeToPath(appPath: string): void {
 export async function run() {
   addOutputSeparator()
   const selectedCode = getSelectedDvalaCode()
-  const code = selectedCode.code || getState('dvala-code')
+  const userCode = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Run selection' : 'Run'
 
   appendOutput(title, 'comment')
 
-  // Always typecheck before running. Diagnostics are informational and
-  // never block evaluation — matches the createDvala design contract.
-  typecheckAndReport(code)
+  // Always typecheck before running. Typecheck the user's code as-written
+  // (not the boundary-wrapped version) so diagnostic line/column numbers
+  // line up with the editor. The trade-off: the typechecker doesn't know
+  // about boundary handlers, so an effect handled by the handlers buffer
+  // will still flag as "unhandled" until the user wraps it themselves —
+  // a small "compiles but runs" gap inherited from boundary handlers
+  // being a runtime convenience. Future work: feed boundary handlers into
+  // the typechecker too.
+  typecheckAndReport(userCode)
+
+  // Phase 1.5 step 23e: wrap the user's code in the handlers buffer's
+  // boundary handler before evaluation. When the handlers buffer is empty,
+  // the wrap is a no-op (returns userCode unchanged).
+  const code = wrapWithBoundaryHandler(userCode)
 
   const startTime = performance.now()
   document.body.classList.add('dvala-running')
@@ -4165,6 +4176,12 @@ export function setWorkspaceFilesForTesting(files: WorkspaceFile[]): void {
   setWorkspaceFiles(files)
   populateWorkspaceFilesList()
 }
+/**
+ * Test-only handle into the handlers buffer (Phase 1.5 step 23e). Lets e2e
+ * tests stage boundary-handler declarations without going through the
+ * Monaco editor + tab swap dance.
+ */
+export { setHandlersCode as setHandlersCodeForTesting } from './handlersBuffer'
 export function setEditorValue(code: string): void {
   setDvalaCode(code, true)
 }
