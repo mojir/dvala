@@ -149,6 +149,14 @@ export interface HandlerFunction extends GenericDvalaFunction {
   transform: [BindingTarget, AstNode[]] | null
   /** If true, shallow handler — resume does NOT reinstall the handler around the continuation. */
   shallow: boolean
+  /**
+   * If true, linear handler — host-style dispatch: single-shot resume
+   * (multi-shot impossible by parser construction), barrier-free reach into
+   * parallel/race branches, return-as-resume body shape (the body's tail
+   * value is the implicit resume; explicit `resume` keyword is rejected).
+   * See `design/active/2026-04-29_linear-handler.md`.
+   */
+  linear: boolean
   /** Closure environment captured at handler creation. */
   closureEnv: unknown // ContextStack — stored as unknown to avoid circular import
 }

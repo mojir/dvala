@@ -5653,3 +5653,148 @@ describe('shallow handler — extended coverage', () => {
     expect(result).toEqual([10, 20, 30])
   })
 })
+
+// Linear handler — language feature in development.
+// Runtime dispatch (host-style: single-shot, barrier-free) lands in a
+// follow-up commit; until then a `linear handler` value installs at the
+// Dvala layer. Parse-time though, the static rule is already in place:
+// `resume` is forbidden inside a linear-handler clause (the body's value
+// is the implicit resume). See design/active/2026-04-29_linear-handler.md.
+describe('linear handler (parsing rules)', () => {
+  it('rejects `resume` keyword inside a linear-handler clause body', () => {
+    expect(() =>
+      dvala.run(`
+        linear handler
+          @test.eff(v) -> resume(v * 2)
+        end
+      `),
+    ).toThrow(/resume.*not available in linear handler clauses/)
+  })
+
+  it('rejects `resume` even when nested deep in the clause body (e.g. inside an `if`)', () => {
+    expect(() =>
+      dvala.run(`
+        linear handler
+          @test.eff(v) -> if v > 0 then resume(v) else 0 end
+        end
+      `),
+    ).toThrow(/resume.*not available in linear handler clauses/)
+  })
+
+  it('allows `resume` inside a *nested* regular handler (it binds to the inner handler)', () => {
+    // The inner `handler @inner ... end` defines its own resume scope; the
+    // walker stops descending into it. The outer linear handler doesn't
+    // contain a `resume` itself, so it parses cleanly.
+    const result = dvala.run(`
+      let h = linear handler
+        @test.outer(v) -> do
+          let inner = handler @test.inner() -> resume(v * 2) end;
+          do with inner; perform(@test.inner) end
+        end
+      end;
+      h(-> perform(@test.outer, 21))
+    `)
+    // Without explicit resume in the OUTER linear clause, the do-block's
+    // last expression (the inner do-with's result) becomes the clause's
+    // value. Pre step 6+7, that value aborts the outer with-block.
+    expect(result).toBe(42)
+  })
+
+  it('return-as-resume: body value becomes the resume value (continuation continues past perform)', () => {
+    // The clause has NO `resume` keyword (forbidden in linear handlers); the
+    // body's tail expression is the implicit resume. Two performs prove the
+    // continuation actually continues after each (vs. abort, which would
+    // short-circuit at the first perform).
+    const result = dvala.run(`
+      let h = linear handler
+        @test.eff(v) -> v * 2
+      end;
+      do with h;
+        let a = perform(@test.eff, 21);
+        let b = perform(@test.eff, 100);
+        a + b
+      end
+    `)
+    expect(result).toBe(42 + 200)
+  })
+
+  it('parses `linear shallow handler ... end` (modifiers in either order)', () => {
+    const result = dvala.run(`
+      let h = linear shallow handler
+        @test.eff(v) -> v * 2
+      end;
+      h(-> perform(@test.eff, 21))
+    `)
+    expect(result).toBe(42)
+  })
+
+  it('parses `shallow linear handler ... end` (modifiers in either order)', () => {
+    const result = dvala.run(`
+      let h = shallow linear handler
+        @test.eff(v) -> v * 2
+      end;
+      h(-> perform(@test.eff, 21))
+    `)
+    expect(result).toBe(42)
+  })
+
+  it('failing via `perform(@dvala.error, ...)` from the clause body propagates past the handler', () => {
+    // The clause body performs @dvala.error before reaching its tail. The
+    // implicit-resume wrap never fires because the perform short-circuits
+    // evaluation of the body. The error surfaces past the linear handler
+    // (and past the do-with), demonstrating the "use perform(@dvala.error)
+    // to fail" pattern documented for v1.
+    expect(() =>
+      dvala.run(`
+        let h = linear handler
+          @test.eff(v) ->
+            if v < 0 then perform(@dvala.error, { message: "negative" })
+            else v
+            end
+        end;
+        do with h;
+          perform(@test.eff, -5)
+        end
+      `),
+    ).toThrow(/negative/)
+  })
+
+  it('reaches effects performed inside `parallel(...)` branches (barrier-crossing)', async () => {
+    // `parallel(...)` installs a ParallelBranchBarrier. Plain Dvala handlers
+    // installed outside the parallel can't catch effects from inside its
+    // branches; linear handlers explicitly cross the barrier (host-style
+    // dispatch).
+    const result = await dvala.runAsync(`
+      let h = linear handler
+        @test.eff(v) -> v * 2
+      end;
+      do with h;
+        parallel([-> perform(@test.eff, 10), -> perform(@test.eff, 20)])
+      end
+    `)
+    expect(result).toMatchObject({ type: 'completed', value: [20, 40] })
+  })
+
+  it('a non-linear handler installed outside parallel CANNOT catch effects from inside (regression guard)', async () => {
+    // Confirms the existing barrier-isolation behavior still holds for
+    // plain Dvala handlers — only linear ones cross.
+    const result = await dvala.runAsync(`
+      let h = handler
+        @test.eff(v) -> resume(v * 2)
+      end;
+      do with h;
+        parallel([-> perform(@test.eff, 10)])
+      end
+    `)
+    expect(result.type).toBe('error')
+  })
+
+  it('falls back to plain symbol when `linear` is not followed by `handler`', () => {
+    // `linear` is a contextual keyword. As a regular variable it still works.
+    const result = dvala.run(`
+      let linear = 5;
+      linear * 2
+    `)
+    expect(result).toBe(10)
+  })
+})

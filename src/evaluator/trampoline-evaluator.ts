@@ -493,9 +493,10 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
     case NodeTypes.Handler: {
       // Create a first-class handler value from the handler...end expression.
       // Clauses and transform are stored as AST (evaluated lazily in clause scope).
-      const [parsedClauses, transform, shallow] = node[1] as [
+      const [parsedClauses, transform, shallow, linear] = node[1] as [
         { effectName: string; params: BindingTarget[]; body: AstNode[] }[],
         [BindingTarget, AstNode[]] | null,
+        boolean,
         boolean,
       ]
       const clauses: HandlerClause[] = parsedClauses.map(c => ({
@@ -515,6 +516,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         clauseMap,
         transform,
         shallow: shallow ?? false,
+        linear: linear ?? false,
         closureEnv: env,
         arity: { min: 1, max: 1 }, // h(-> body)
       }
@@ -3374,19 +3376,34 @@ function dispatchPerform(
   }
 
   // Walk the continuation stack looking for AlgebraicHandleFrame handlers.
-  // Stop at ParallelBranchBarrier — it acts as an effect boundary, preserving
-  // effect isolation between branches and the outer scope (same as reaching k: null).
+  // Plain (non-linear) Dvala handlers stop at ParallelBranchBarrier — barriers
+  // act as effect boundaries, preserving isolation between parallel branches
+  // and the outer scope. **Linear handlers cross barriers** by design (same
+  // semantics as host handlers, which already share state across branches);
+  // see design/active/2026-04-29_linear-handler.md. We continue the walk past
+  // a barrier but, after crossing, only consider linear AlgebraicHandle frames.
   let searchNode = k
   let frameIndex = 0
+  let crossedBarrier = false
   while (searchNode !== null) {
     const frame = searchNode.head
     // Effect boundary: BarrierFrame (live execution) and ReRun/ResumeParallelFrame
-    // (serialized checkpoints/suspensions) all act as boundaries, preserving
-    // effect isolation between branches and the outer scope.
-    if (frame.type === 'ParallelBranchBarrier' || frame.type === 'ReRunParallel' || frame.type === 'ResumeParallel')
-      break
+    // (serialized checkpoints/suspensions) all act as boundaries.
+    if (frame.type === 'ParallelBranchBarrier' || frame.type === 'ReRunParallel' || frame.type === 'ResumeParallel') {
+      crossedBarrier = true
+      searchNode = searchNode.tail
+      frameIndex++
+      continue
+    }
     if (frame.type === 'AlgebraicHandle') {
-      // New handler system — try named clause dispatch
+      // After crossing a barrier, only linear handlers are reachable; non-
+      // linear Dvala handlers stay barrier-isolated.
+      if (crossedBarrier && !frame.handler.linear) {
+        searchNode = searchNode.tail
+        frameIndex++
+        continue
+      }
+      // Try named clause dispatch
       const result = dispatchAlgebraicHandler(frame, effect, arg, k, frameIndex, sourceCodeInfo)
       if (result !== null) {
         return result

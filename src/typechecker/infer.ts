@@ -2010,9 +2010,14 @@ export function inferExpr(node: AstNode, ctx: InferenceContext, env: TypeEnv, ty
 
       // --- Handler (handler...end creates a handler value) ---
       case NodeTypes.Handler: {
+        // Payload tuple: [clauses, transform, shallow, linear]. The shallow /
+        // linear flags don't affect type inference (they only change runtime
+        // dispatch); destructuring is positional, so list them so the type
+        // narrowing matches the AST shape.
         const [clauses, transform] = payload as [
           { effectName: string; params: AstNode[]; body: AstNode[] }[],
           [AstNode, AstNode[]] | null,
+          boolean,
           boolean,
         ]
         const bodyType = ctx.freshVar()

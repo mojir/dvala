@@ -91,11 +91,35 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         break
       case 'shallow':
         // `shallow handler ...` — shallow handler expression.
-        // Contextual: only triggers when followed by `handler` + a handler start token.
+        // `shallow linear handler ...` — both modifiers, in either order.
+        // Contextual: only triggers when followed by `handler` (possibly preceded
+        // by `linear`) + a handler start token.
         if (isShallowHandlerStart(ctx)) {
           ctx.builder?.startNode('Handler')
           ctx.advance() // consume 'shallow'
-          left = parseHandler(ctx, true)
+          let linear = false
+          if (isSymbolToken(ctx.tryPeek(), 'linear')) {
+            ctx.advance() // consume 'linear' (when written as `shallow linear handler`)
+            linear = true
+          }
+          left = parseHandler(ctx, true, linear)
+        }
+        break
+      case 'linear':
+        // `linear handler ...` — linear handler expression (host-style dispatch:
+        // single-shot resume, barrier-free; design/active/2026-04-29_linear-handler.md).
+        // `linear shallow handler ...` — both modifiers, in either order.
+        // Contextual: only triggers when followed by `handler` (possibly preceded
+        // by `shallow`) + a handler start token.
+        if (isLinearHandlerStart(ctx)) {
+          ctx.builder?.startNode('Handler')
+          ctx.advance() // consume 'linear'
+          let shallow = false
+          if (isSymbolToken(ctx.tryPeek(), 'shallow')) {
+            ctx.advance() // consume 'shallow' (when written as `linear shallow handler`)
+            shallow = true
+          }
+          left = parseHandler(ctx, shallow, true)
         }
         break
       case 'resume':
@@ -188,14 +212,41 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
  * The lookahead checks the token after `handler`.
  */
 /**
- * Check if `shallow handler` starts a shallow handler expression.
- * Requires: current token = `shallow`, next = `handler`, token after = handler start.
+ * Check if `shallow handler` starts a shallow handler expression. Also
+ * accepts `shallow linear handler` (modifiers in either order).
+ * Requires: current token = `shallow`, then `[linear?] handler @effect|transform`.
  */
 function isShallowHandlerStart(ctx: ParserContext): boolean {
-  // peekAhead(1) is the token after `shallow` (should be `handler`)
-  if (!isSymbolToken(ctx.peekAhead(1), 'handler')) return false
-  // peekAhead(2) is the token after `handler` (should be @effect or `transform`)
-  const afterHandler = ctx.peekAhead(2)
+  // peekAhead(1) is the token after `shallow`. Allow `linear` to appear
+  // between the modifiers, then expect `handler`.
+  let handlerOffset = 1
+  if (isSymbolToken(ctx.peekAhead(1), 'linear')) {
+    handlerOffset = 2
+  }
+  if (!isSymbolToken(ctx.peekAhead(handlerOffset), 'handler')) return false
+  // The token after `handler` must be a handler start (@effect or transform).
+  const afterHandler = ctx.peekAhead(handlerOffset + 1)
+  if (!afterHandler) return false
+  if (isEffectNameToken(afterHandler)) return true
+  if (isSymbolToken(afterHandler, 'transform')) return true
+  return false
+}
+
+/**
+ * Check if `linear handler` starts a linear handler expression. Also
+ * accepts `linear shallow handler` (modifiers in either order).
+ * Requires: current token = `linear`, then `[shallow?] handler @effect|transform`.
+ */
+function isLinearHandlerStart(ctx: ParserContext): boolean {
+  // peekAhead(1) is the token after `linear`. Allow `shallow` to appear
+  // between the modifiers, then expect `handler`.
+  let handlerOffset = 1
+  if (isSymbolToken(ctx.peekAhead(1), 'shallow')) {
+    handlerOffset = 2
+  }
+  if (!isSymbolToken(ctx.peekAhead(handlerOffset), 'handler')) return false
+  // The token after `handler` must be a handler start (@effect or transform).
+  const afterHandler = ctx.peekAhead(handlerOffset + 1)
   if (!afterHandler) return false
   if (isEffectNameToken(afterHandler)) return true
   if (isSymbolToken(afterHandler, 'transform')) return true

@@ -616,6 +616,109 @@ end;
 
 ---
 
+## Linear Handlers
+
+Plain `handler ... end` is multi-shot and **barrier-isolated** — it can fork via `resume` called multiple times, and effects from inside `parallel(...)` / `race(...)` branches do **not** reach a handler installed outside the parallel block. Both properties are usually what you want for general algebraic effects.
+
+For a different shape — single-shot, barrier-free — Dvala has `linear handler ... end`. It's the right choice when you want a "default fallback" handler that catches effects from anywhere in the run (including inside parallel branches), and where multi-shot would be a bug rather than a feature.
+
+```dvala
+let h =
+  linear handler
+    @x(v) -> v * 2
+  end;
+do
+  with h;
+  perform(@x, 21);
+end;
+```
+
+The result is `42` — the perform's return value flows from the handler's clause body straight into the continuation.
+
+### Return-as-resume
+
+Linear handlers don't have a `resume` keyword. The clause body's value **is** the resume value. Writing `resume(...)` inside a linear-handler clause is a **parse error** — the message points at this rule:
+
+> `resume` is not available in linear handler clauses — return the value to resume, or `perform(@dvala.error, msg)` to fail.
+
+The motivation: the body returns at most one value, so the implicit resume happens at most once. Multi-shot is impossible by construction. Compare: a regular handler's clause can call `resume` zero, one, or many times — flexibility you keep with plain `handler` and lose with `linear handler`.
+
+### Failing from inside
+
+Since `resume` isn't available, "abort the computation" is also expressed differently. To fail, perform `@dvala.error` from inside the clause body. The perform short-circuits evaluation before the body's tail expression is reached — so the implicit resume never fires. The error propagates up the stack via standard Dvala semantics: an outer `@dvala.error` handler catches it, or it surfaces as a `UserError`. No special `fail` keyword needed.
+
+```dvala
+linear handler
+  @divide(a) -> if a == 0 then
+    perform(@dvala.error, { message: "zero" })
+  else
+    100 / a
+  end
+end;
+```
+
+### Reaching effects from inside `parallel(...)`
+
+This is the property that distinguishes `linear handler` from plain `handler` at runtime. A regular handler installed outside a `parallel(...)` block doesn't see effects performed by its branches — the parallel barrier isolates them. Switch to `linear handler` and the same shape works: the dispatch logic walks past parallel barriers when looking for linear handlers; plain Dvala handlers stay isolated.
+
+```dvala no-run
+let h =
+  linear handler
+    @x(v) -> v * 2
+  end;
+do
+  with h;
+  parallel([-> perform(@x, 10), -> perform(@x, 20)]);
+end;
+// ⇒ [20, 40]
+```
+
+(`parallel` always requires `runAsync` — see the Concurrency chapter — so this example is `no-run`.)
+
+This matches how host (JS-side) effect handlers work today — they reach every branch — without surfacing them as Dvala-source values.
+
+### Combining with `shallow` and `transform`
+
+`linear` and `shallow` are orthogonal modifiers. Both orderings parse:
+
+```dvala no-run
+linear shallow handler
+  @x(v) -> v
+end;
+```
+
+```dvala no-run
+shallow linear handler
+  @x(v) -> v
+end;
+```
+
+`transform` clauses work on linear handlers the same way they do on plain handlers — the transform receives the body's normal-completion value (i.e. the implicit-resume value, after the continuation completes):
+
+```dvala
+let h =
+  linear handler
+    @x(v) -> v * 2
+    transform r ->  { ok: true, value: r }
+  end;
+do
+  with h;
+  perform(@x, 21);
+end;
+```
+
+The result is `{ ok: true, value: 42 }`.
+
+### When to reach for `linear handler`
+
+- You're building a **boundary** (default fallback) over user-supplied code that may use `parallel` / `race` — and you want a single handler to catch effects from anywhere in the run.
+- You're emulating the runtime contract that JS-registered host handlers have today, but in Dvala source.
+- You want **static rejection of multi-shot** — the parser-level restriction guarantees the clause body resumes at most once, no matter how the user writes the body.
+
+For everything else — logging, counting, error recovery, nondeterminism, mutable state — plain `handler` (or `shallow handler` for state-threading patterns) is the right reach.
+
+---
+
 ## Pure State Threading
 
 The combination of `resume`-returns-value + transform enables **pure state accumulation** without mutation. This is the canonical motivation for the transform clause in the algebraic effects literature.
