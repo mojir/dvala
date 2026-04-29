@@ -20,6 +20,7 @@ import {
 import type { WorkspaceFile } from '../fileStorage'
 import { buildFileTree } from '../fileTree'
 import {
+  ensureHandlersFile,
   getHandlersFile,
   HANDLERS_FILE_PATH,
   isHandlersPath,
@@ -667,10 +668,11 @@ export function toggleFileLock(id: string) {
 
 export function clearAllWorkspaceFiles() {
   clearAllFiles()
-  // Re-create the scratch buffer's backing file (Phase 1.5 step 23c —
-  // scratch is undeletable; "clear everything" wipes its content but the
-  // file itself comes right back, empty).
+  // Re-create the reserved buffers' backing files (Phase 1.5 step 23c+23d —
+  // scratch + handlers are undeletable; "clear everything" wipes their
+  // contents but the files themselves come right back, empty).
   ensureScratchFile()
+  ensureHandlersFile()
   clearAllFileHistories()
   closeTabsForMissingFiles()
   populateWorkspaceFilesList()
@@ -681,10 +683,14 @@ export function clearUnlockedFiles() {
     'Remove unlocked files',
     'This will delete all unlocked files. Locked files will be kept.',
     async () => {
-      const unlocked = getWorkspaceFiles().filter(p => !p.locked)
+      // Reserved buffers (scratch / handlers) are undeletable; treat them
+      // like locked files for the purpose of this sweep, regardless of the
+      // `locked` flag on their record.
+      const isReserved = (path: string) => isScratchPath(path) || isHandlersPath(path)
+      const unlocked = getWorkspaceFiles().filter(p => !p.locked && !isReserved(p.path))
       await Promise.all(unlocked.map(entry => animateFileCardRemoval(entry.id)))
       unlocked.forEach(entry => deleteFileHistory(entry.id))
-      const kept = getWorkspaceFiles().filter(p => p.locked)
+      const kept = getWorkspaceFiles().filter(p => p.locked || isReserved(p.path))
       setWorkspaceFiles(kept)
       closeTabsForMissingFiles()
       populateWorkspaceFilesList()

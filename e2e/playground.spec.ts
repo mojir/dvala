@@ -698,12 +698,14 @@ test.describe('files', () => {
     await page.waitForFunction(
       () => {
         const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-        return items.length > 1
+        // Two pinned virtual entries (<scratch>, <handlers>) plus at least
+        // one user-authored file means the file we just saved has rendered.
+        return items.length > 2
       },
       { timeout: 5000 },
     )
-    // Click the second explorer item (first is scratch)
-    await page.locator('#explorer-file-list .explorer-item').nth(1).click()
+    // Click the third explorer item (after the pinned <scratch> and <handlers>).
+    await page.locator('#explorer-file-list .explorer-item').nth(2).click()
 
     await navigateToPlayground(page)
     const fileValue = await getDvalaCode(page)
@@ -734,12 +736,12 @@ test.describe('files', () => {
     await page.waitForFunction(
       () => {
         const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-        return items.length === 1 // only scratch remains
+        return items.length === 2 // only the pinned <scratch> + <handlers> entries remain
       },
       { timeout: 5000 },
     )
-    // Only scratch remains
-    await expect(page.locator('#explorer-file-list .explorer-item')).toHaveCount(1)
+    // Only the two pinned virtual entries (<scratch>, <handlers>) remain.
+    await expect(page.locator('#explorer-file-list .explorer-item')).toHaveCount(2)
   })
 })
 
@@ -1332,8 +1334,10 @@ test.describe('scratch', () => {
     await saveAsFile(page, 'stats-test')
 
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
-    // click the workspace file (second item)
-    await page.locator('#explorer-file-list .explorer-item').nth(1).click()
+    // Click the workspace file. The first two items are the pinned virtual
+    // entries `<scratch>` (23c) and `<handlers>` (23d); the user-authored
+    // file follows at index 2.
+    await page.locator('#explorer-file-list .explorer-item').nth(2).click()
 
     const stats = page.locator('#explorer-file-stats')
     await expect(stats).toBeVisible({ timeout: 3000 })
