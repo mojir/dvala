@@ -88,12 +88,20 @@ vi.mock('../fileStorage', () => ({
   fileDisplayName: (f: { path: string }) => f.path.split('/').pop() ?? f.path,
 }))
 
-// Phase 1.5 step 23c: scratch is backed by a workspace file at
-// `.dvala-playground/scratch.dvala`. The seed flows through this getter; the
-// test stubs it to whatever the test wants the scratch buffer to start with.
+// After Phase 1.5 step 23h, the tab manager hydrates scratch as a regular
+// workspace file via the reserved `SCRATCH_FILE_ID`; the previous synthetic
+// `kind:'scratch'` shape is gone. The mock therefore exposes the constants
+// the production module imports — the seed flows through `getScratchCode`
+// for tests that want a non-empty scratch buffer.
 let scratchSeed = ''
 vi.mock('../scratchBuffer', () => ({
+  SCRATCH_FILE_ID: '__scratch__',
+  SCRATCH_FILE_PATH: '.dvala-playground/scratch.dvala',
   getScratchCode: () => scratchSeed,
+}))
+
+vi.mock('../handlersBuffer', () => ({
+  HANDLERS_FILE_PATH: '.dvala-playground/handlers.dvala',
 }))
 
 vi.mock('../state', () => ({
@@ -119,17 +127,25 @@ function makeFile(id: string, path: string, code = `code-${id}`) {
   return { id, path, code }
 }
 
+const SCRATCH_FILE_ID = '__scratch__'
+const SCRATCH_FILE_PATH = '.dvala-playground/scratch.dvala'
+
+/** Seed the scratch workspace file so `initTabs` can hydrate it as a regular tab. */
+function withScratchInWorkspace(rest: { id: string; path: string; code: string }[] = []) {
+  return [makeFile(SCRATCH_FILE_ID, SCRATCH_FILE_PATH, ''), ...rest]
+}
+
 beforeEach(() => {
   // Fully reset shared state between tests.
   for (const k of Object.keys(stateStore)) delete stateStore[k]
-  workspaceFiles = []
+  workspaceFiles = withScratchInWorkspace()
   modelCounter = 0
   editor = makeStubEditor()
   tabs.__resetForTesting()
-  // Defaults the production state.ts ships.
-  stateStore['open-tabs'] = [{ kind: 'scratch' }]
-  stateStore['active-tab-key'] = '<scratch>'
-  stateStore['current-file-id'] = null
+  // Defaults the production state.ts ships post-Phase-1.5 step 23h.
+  stateStore['open-tabs'] = [{ kind: 'file', id: SCRATCH_FILE_ID }]
+  stateStore['active-tab-key'] = SCRATCH_FILE_ID
+  stateStore['current-file-id'] = SCRATCH_FILE_ID
   scratchSeed = ''
 })
 
@@ -143,8 +159,8 @@ describe('initTabs', () => {
     // One scratch tab → exactly one createModel call.
     expect(editor.created).toHaveLength(1)
     expect(editor.active).toBe(editor.created[0])
-    expect(stateStore['active-tab-key']).toBe('<scratch>')
-    expect(stateStore['current-file-id']).toBeNull()
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
+    expect(stateStore['current-file-id']).toBe(SCRATCH_FILE_ID)
   })
 
   it('disposes the bootstrap model created by `monaco.editor.create`', () => {
@@ -155,36 +171,40 @@ describe('initTabs', () => {
   })
 
   it('restores persisted file tabs that still have backing files', () => {
-    workspaceFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
-    stateStore['open-tabs'] = [{ kind: 'scratch' }, { kind: 'file', id: 'a' }, { kind: 'file', id: 'b' }]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')])
+    stateStore['open-tabs'] = [
+      { kind: 'file', id: SCRATCH_FILE_ID },
+      { kind: 'file', id: 'a' },
+      { kind: 'file', id: 'b' },
+    ]
     stateStore['active-tab-key'] = 'b'
     tabs.initTabs()
     expect(stateStore['active-tab-key']).toBe('b')
     expect(stateStore['current-file-id']).toBe('b')
   })
 
-  it("drops persisted tabs whose files are gone, falling back to scratch", () => {
-    stateStore['open-tabs'] = [{ kind: 'scratch' }, { kind: 'file', id: 'gone' }]
+  it('drops persisted tabs whose files are gone, falling back to scratch', () => {
+    stateStore['open-tabs'] = [{ kind: 'file', id: SCRATCH_FILE_ID }, { kind: 'file', id: 'gone' }]
     stateStore['active-tab-key'] = 'gone'
     tabs.initTabs()
-    expect(stateStore['active-tab-key']).toBe('<scratch>')
-    expect(stateStore['current-file-id']).toBeNull()
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
+    expect(stateStore['current-file-id']).toBe(SCRATCH_FILE_ID)
   })
 
   it('always inserts a scratch tab even if the persisted list omitted it', () => {
-    workspaceFiles = [makeFile('a', 'a.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala')])
     stateStore['open-tabs'] = [{ kind: 'file', id: 'a' }]
     stateStore['active-tab-key'] = 'a'
     tabs.initTabs()
     // Open-tabs should now lead with scratch + the file.
-    const persisted = stateStore['open-tabs'] as { kind: string }[]
-    expect(persisted[0]).toEqual({ kind: 'scratch' })
+    const persisted = stateStore['open-tabs'] as { kind: string; id: string }[]
+    expect(persisted[0]).toEqual({ kind: 'file', id: SCRATCH_FILE_ID })
     expect(persisted).toHaveLength(2)
   })
 
   it('falls back to current-file-id when active-tab-key is missing', () => {
-    workspaceFiles = [makeFile('a', 'a.dvala')]
-    stateStore['open-tabs'] = [{ kind: 'scratch' }, { kind: 'file', id: 'a' }]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala')])
+    stateStore['open-tabs'] = [{ kind: 'file', id: SCRATCH_FILE_ID }, { kind: 'file', id: 'a' }]
     stateStore['active-tab-key'] = 'unknown'
     stateStore['current-file-id'] = 'a'
     tabs.initTabs()
@@ -199,7 +219,7 @@ describe('initTabs', () => {
 describe('openOrFocusFile', () => {
   beforeEach(() => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala', 'A'), makeFile('b', 'b.dvala', 'B')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala', 'A'), makeFile('b', 'b.dvala', 'B')])
   })
 
   it('creates a new tab + activates it for an unopened file', () => {
@@ -225,20 +245,20 @@ describe('openOrFocusFile', () => {
   it('inserts new tabs after the active one (matches VS Code behavior)', () => {
     tabs.openOrFocusFile('a')
     tabs.openOrFocusFile('b')
-    const persisted = stateStore['open-tabs'] as { kind: string; id?: string }[]
+    const persisted = stateStore['open-tabs'] as { kind: string; id: string }[]
     // [scratch, a, b] — 'a' is the previously-active tab when 'b' opened.
-    expect(persisted.map(t => (t.kind === 'scratch' ? '<s>' : t.id))).toEqual(['<s>', 'a', 'b'])
+    expect(persisted.map(t => t.id)).toEqual([SCRATCH_FILE_ID, 'a', 'b'])
   })
 })
 
 describe('focusScratch', () => {
   it('switches back to scratch from a file tab', () => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala')])
     tabs.openOrFocusFile('a')
     tabs.focusScratch()
-    expect(stateStore['active-tab-key']).toBe('<scratch>')
-    expect(stateStore['current-file-id']).toBeNull()
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
+    expect(stateStore['current-file-id']).toBe(SCRATCH_FILE_ID)
   })
 })
 
@@ -249,11 +269,11 @@ describe('focusScratch', () => {
 describe('closeTab', () => {
   beforeEach(() => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')])
   })
 
   it('refuses to close the scratch tab (it is sticky)', () => {
-    tabs.closeTab('<scratch>')
+    tabs.closeTab(SCRATCH_FILE_ID)
     const persisted = stateStore['open-tabs'] as unknown[]
     expect(persisted).toHaveLength(1)
   })
@@ -269,7 +289,7 @@ describe('closeTab', () => {
   it('falls back to the left neighbor when closing the active tab', () => {
     tabs.openOrFocusFile('a')
     tabs.openOrFocusFile('b')
-    // Tabs: [<scratch>, a, b], active = b.
+    // Tabs: [scratch, a, b], active = b.
     tabs.closeTab('b')
     // Neighbor on the left is 'a'.
     expect(stateStore['active-tab-key']).toBe('a')
@@ -287,7 +307,7 @@ describe('closeTab', () => {
   it('falls back to scratch when closing the only file tab', () => {
     tabs.openOrFocusFile('a')
     tabs.closeTab('a')
-    expect(stateStore['active-tab-key']).toBe('<scratch>')
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
   })
 
   it('does not change active when closing a non-active tab', () => {
@@ -308,41 +328,44 @@ describe('closeTab', () => {
 describe('closeActiveTab', () => {
   it('closes the currently-active file tab', () => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala')])
     tabs.openOrFocusFile('a')
     tabs.closeActiveTab()
-    expect(stateStore['active-tab-key']).toBe('<scratch>')
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
   })
 
   it('is a no-op when scratch is the active tab', () => {
     tabs.initTabs()
     tabs.closeActiveTab()
-    expect(stateStore['active-tab-key']).toBe('<scratch>')
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
   })
 })
 
 describe('closeTabsForMissingFiles', () => {
   it('drops tabs whose backing file is no longer in workspaceFiles', () => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')])
     tabs.openOrFocusFile('a')
     tabs.openOrFocusFile('b')
-    // Simulate deletion of 'a' from workspace files.
+    // Simulate deletion of 'a' from workspace files (scratch stays in the
+    // workspace map — it's the pinned reserved file).
     workspaceFiles = workspaceFiles.filter(f => f.id !== 'a')
     tabs.closeTabsForMissingFiles()
-    const persisted = stateStore['open-tabs'] as { kind: string; id?: string }[]
-    expect(persisted.map(t => (t.kind === 'scratch' ? '<s>' : t.id))).toEqual(['<s>', 'b'])
+    const persisted = stateStore['open-tabs'] as { kind: string; id: string }[]
+    expect(persisted.map(t => t.id)).toEqual([SCRATCH_FILE_ID, 'b'])
     // 'b' was active and still exists, so it stays active.
     expect(stateStore['active-tab-key']).toBe('b')
   })
 
   it('falls back to scratch when the active tab is missing', () => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala')])
     tabs.openOrFocusFile('a')
-    workspaceFiles = []
+    // Drop 'a' but keep scratch in the workspace map (it's the reserved
+    // pinned file; only user files are subject to deletion).
+    workspaceFiles = withScratchInWorkspace()
     tabs.closeTabsForMissingFiles()
-    expect(stateStore['active-tab-key']).toBe('<scratch>')
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
   })
 })
 
@@ -353,7 +376,11 @@ describe('closeTabsForMissingFiles', () => {
 describe('keyboard navigation', () => {
   beforeEach(() => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala'), makeFile('c', 'c.dvala')]
+    workspaceFiles = withScratchInWorkspace([
+      makeFile('a', 'a.dvala'),
+      makeFile('b', 'b.dvala'),
+      makeFile('c', 'c.dvala'),
+    ])
     tabs.openOrFocusFile('a')
     tabs.openOrFocusFile('b')
     tabs.openOrFocusFile('c')
@@ -361,7 +388,7 @@ describe('keyboard navigation', () => {
 
   it('setActiveByIndex(1) selects the leftmost (1-based)', () => {
     tabs.setActiveByIndex(1)
-    expect(stateStore['active-tab-key']).toBe('<scratch>')
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
   })
 
   it('setActiveByIndex selects file tabs by 1-based position', () => {
@@ -382,7 +409,7 @@ describe('keyboard navigation', () => {
   it('cycleActive(+1) wraps from last to first', () => {
     expect(stateStore['active-tab-key']).toBe('c')
     tabs.cycleActive(+1)
-    expect(stateStore['active-tab-key']).toBe('<scratch>')
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
   })
 
   it('cycleActive(-1) wraps from first to last', () => {
@@ -399,7 +426,7 @@ describe('keyboard navigation', () => {
 describe('setTabLifecycleHooks', () => {
   it('beforeSwap fires while the OLD tab id is still current', () => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')])
     tabs.openOrFocusFile('a')
     let observedDuringHook: unknown = 'unset'
     tabs.setTabLifecycleHooks({
@@ -413,7 +440,7 @@ describe('setTabLifecycleHooks', () => {
 
   it('afterSwap fires once current-file-id reflects the NEW tab', () => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')])
     tabs.openOrFocusFile('a')
     let observedDuringHook: unknown = 'unset'
     tabs.setTabLifecycleHooks({
@@ -427,7 +454,7 @@ describe('setTabLifecycleHooks', () => {
 
   it('beforeSwap fires before afterSwap on the same swap', () => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')])
     tabs.openOrFocusFile('a')
     const order: string[] = []
     tabs.setTabLifecycleHooks({
@@ -440,7 +467,7 @@ describe('setTabLifecycleHooks', () => {
 
   it('does not fire hooks when the swap is a no-op (same tab)', () => {
     tabs.initTabs()
-    workspaceFiles = [makeFile('a', 'a.dvala')]
+    workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala')])
     tabs.openOrFocusFile('a')
     let count = 0
     tabs.setTabLifecycleHooks({ beforeSwap: () => (count += 1) })

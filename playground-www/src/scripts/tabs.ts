@@ -5,30 +5,28 @@
 // mounted, but its content + selection are restored to whatever the user
 // had when they last left that tab.
 //
-// One synthetic "scratch" tab represents the unsaved buffer. Its content
-// lives in the tab's model just like any other tab; the persisted backing
-// store is a workspace file at `.dvala-playground/scratch.dvala` (Phase 1.5
-// step 23c) which `getScratchCode` reads. The existing scratch-* state
-// machinery (history keying on `<scratch>`, autosave guards, snapshot
-// links) still keys on the SCRATCH_KEY sentinel; 23h retires that.
+// After Phase 1.5 step 23h, scratch and handlers are regular workspace
+// files keyed by reserved IDs (`__scratch__`, `__handlers__`). The tab
+// strip keeps scratch sticky (no × button) by checking the file ID, not
+// by carrying a separate tab kind. The `<scratch>` / `<handlers>` virtual
+// entries in the file tree are renderer concerns; this module sees them
+// as ordinary file tabs.
 //
 // Persistence: only the *list of open tabs* and which one is active are
 // persisted (localStorage via `state.ts`); models and viewState live in
-// memory and are reconstructed on boot from the underlying WorkspaceFile /
-// scratch file. That keeps localStorage small and avoids serializing
-// Monaco's internal viewState shape (which Monaco doesn't formally guarantee).
+// memory and are reconstructed on boot from the underlying `WorkspaceFile`.
+// That keeps localStorage small and avoids serializing Monaco's internal
+// viewState shape (which Monaco doesn't formally guarantee).
 
 import type * as monacoNs from 'monaco-editor'
 import { KeyCode, KeyMod } from '../codeEditor'
 import { fileDisplayName, getWorkspaceFiles } from '../fileStorage'
 import type { WorkspaceFile } from '../fileStorage'
-import { getScratchCode } from '../scratchBuffer'
+import { HANDLERS_FILE_PATH } from '../handlersBuffer'
+import { SCRATCH_FILE_ID } from '../scratchBuffer'
 import { getState, saveState } from '../state'
 import type { PersistedTab } from '../state'
 import { getCodeEditor, tryGetCodeEditor } from './codeEditorInstance'
-
-/** Sentinel key for the scratch tab — distinct from any UUID Monaco-side. */
-const SCRATCH_KEY = '<scratch>'
 
 interface FileTab {
   kind: 'file'
@@ -39,15 +37,7 @@ interface FileTab {
   /** Content baseline for the modified-dot indicator (= file.code at last sync). */
   lastSyncedCode: string
 }
-interface ScratchTab {
-  kind: 'scratch'
-  key: typeof SCRATCH_KEY
-  model: monacoNs.editor.ITextModel
-  viewState: monacoNs.editor.ICodeEditorViewState | null
-  /** Always treated as clean — scratch has no "saved" state to compare against. */
-  lastSyncedCode: string
-}
-type OpenTab = FileTab | ScratchTab
+type OpenTab = FileTab
 
 let openTabs: OpenTab[] = []
 let activeKey: string | null = null
@@ -111,13 +101,14 @@ function getActiveTab(): OpenTab | null {
 }
 
 /**
- * True iff the active tab's model differs from its baseline. File tabs
- * compare against `lastSyncedCode` (= file.code at open / autosave time);
- * scratch is always reported as clean (its dirty signal lives elsewhere —
- * the existing `dvala-code-edited` flag drives the legacy save indicator).
+ * True iff the active tab's model differs from its baseline. Compares the
+ * model's current text against `lastSyncedCode` (= file.code at open /
+ * autosave time). The scratch buffer is special-cased to always read as
+ * clean — its dirty signal lives elsewhere (the legacy `dvala-code-edited`
+ * flag drives the save-scratch indicator on the toolbar).
  */
 function isTabDirty(tab: OpenTab): boolean {
-  if (tab.kind === 'scratch') return false
+  if (tab.fileId === SCRATCH_FILE_ID) return false
   return tab.model.getValue() !== tab.lastSyncedCode
 }
 
@@ -127,16 +118,17 @@ function isTabDirty(tab: OpenTab): boolean {
  */
 export function markActiveTabSynced(): void {
   const active = getActiveTab()
-  if (!active || active.kind !== 'file') return
+  if (!active) return
   active.lastSyncedCode = active.model.getValue()
   notify()
 }
 
 /**
  * Boot-time hydration. Restores the open-tab list from localStorage,
- * filters out tabs whose files no longer exist, and ensures at least one
- * tab is active (falling back to scratch if needed). Must run AFTER
- * `setCodeEditor(...)` so we have a Monaco instance to attach models to.
+ * filters out tabs whose files no longer exist, and ensures the scratch
+ * tab is always present — it's the implicit "home" tab the close
+ * fallback walks to. Must run AFTER `setCodeEditor(...)` so we have a
+ * Monaco instance to attach models to.
  */
 export function initTabs(): void {
   const editor = getCodeEditor()
@@ -147,12 +139,6 @@ export function initTabs(): void {
   const restored: OpenTab[] = []
 
   for (const entry of persisted) {
-    if (entry.kind === 'scratch') {
-      if (seen.has(SCRATCH_KEY)) continue
-      seen.add(SCRATCH_KEY)
-      restored.push(makeScratchTab(editor))
-      continue
-    }
     const file = files.get(entry.id)
     if (!file || seen.has(entry.id)) continue
     seen.add(entry.id)
@@ -160,9 +146,20 @@ export function initTabs(): void {
   }
 
   // Always keep scratch present — it's the implicit "home" tab the close
-  // shortcut falls back to. Add it if hydration didn't already.
-  if (!seen.has(SCRATCH_KEY)) {
-    restored.unshift(makeScratchTab(editor))
+  // fallback walks to. Phase 1.5 step 23h made scratch a regular workspace
+  // file; if hydration didn't already put it in the list, splice it in at
+  // the front so its tab key (`SCRATCH_FILE_ID`) is always available. When
+  // the scratch workspace record is missing (test setups that bypass
+  // `ensureScratchFile`, or an IDB race) we synthesize a blank tab in place
+  // so `getActiveTab()!` below always has something to attach — without this
+  // the non-null assertion would crash on first paint.
+  if (!seen.has(SCRATCH_FILE_ID)) {
+    const scratchFile = files.get(SCRATCH_FILE_ID)
+    const tab: FileTab = scratchFile
+      ? makeFileTab(editor, scratchFile)
+      : makeSyntheticScratchTab(editor)
+    restored.unshift(tab)
+    seen.add(SCRATCH_FILE_ID)
   }
 
   openTabs = restored
@@ -176,8 +173,8 @@ export function initTabs(): void {
       ? persistedActiveKey
       : (() => {
           const currentFileId = getState('current-file-id')
-          if (currentFileId !== null && openTabs.some(t => t.key === currentFileId)) return currentFileId
-          return SCRATCH_KEY
+          if (openTabs.some(t => t.key === currentFileId)) return currentFileId
+          return SCRATCH_FILE_ID
         })()
   activeKey = fallbackActiveKey
   // Capture the bootstrap model created implicitly by `monaco.editor.create`
@@ -213,18 +210,19 @@ export function openOrFocusFile(fileId: string): void {
   setActive(tab.key)
 }
 
-/** Focus the scratch tab (always present). */
+/** Focus the scratch tab (always present post-23h via initTabs guarantee). */
 export function focusScratch(): void {
-  setActive(SCRATCH_KEY)
+  setActive(SCRATCH_FILE_ID)
 }
 
 /**
  * Close the tab matching `key`. If it was active, focus the neighbor on
  * the left (or right if leftmost), or scratch as a last resort. Scratch
- * itself can't be closed — the close button is hidden in the UI for it.
+ * itself can't be closed — the close button is hidden in the UI for it
+ * by matching the file ID.
  */
 export function closeTab(key: string): void {
-  if (key === SCRATCH_KEY) return // scratch is sticky
+  if (key === SCRATCH_FILE_ID) return // scratch is sticky
   const idx = openTabs.findIndex(t => t.key === key)
   if (idx === -1) return
   const tab = openTabs[idx]!
@@ -324,7 +322,7 @@ function setActive(key: string): void {
 function syncCurrentFileIdState(tab: OpenTab): void {
   saveState(
     {
-      'current-file-id': tab.kind === 'file' ? tab.fileId : null,
+      'current-file-id': tab.fileId,
       'dvala-code': tab.model.getValue(),
     },
     false,
@@ -332,10 +330,8 @@ function syncCurrentFileIdState(tab: OpenTab): void {
 }
 
 function persistTabsState(): void {
-  const persisted: PersistedTab[] = openTabs.map(t =>
-    t.kind === 'scratch' ? { kind: 'scratch' } : { kind: 'file', id: t.fileId },
-  )
-  saveState({ 'open-tabs': persisted, 'active-tab-key': activeKey ?? SCRATCH_KEY }, false)
+  const persisted: PersistedTab[] = openTabs.map(t => ({ kind: 'file', id: t.fileId }))
+  saveState({ 'open-tabs': persisted, 'active-tab-key': activeKey ?? SCRATCH_FILE_ID }, false)
 }
 
 function makeFileTab(editor: ReturnType<typeof getCodeEditor>, file: WorkspaceFile): FileTab {
@@ -349,17 +345,21 @@ function makeFileTab(editor: ReturnType<typeof getCodeEditor>, file: WorkspaceFi
   }
 }
 
-function makeScratchTab(editor: ReturnType<typeof getCodeEditor>): ScratchTab {
-  // Seed scratch's model from its workspace file (.dvala-playground/scratch.dvala,
-  // Phase 1.5 step 23c) so reloads survive. `ensureScratchFile` runs at boot
-  // before this is called, so the file is guaranteed to exist.
-  const seed = getScratchCode()
+/**
+ * Synthesize a blank scratch tab when the scratch workspace file isn't
+ * present yet (only happens in test setups that skip `ensureScratchFile`).
+ * The tab carries `SCRATCH_FILE_ID` so it slots into the same lookups as a
+ * real scratch tab; mirrors the pre-23h `makeScratchTab` behaviour of
+ * starting from an empty model.
+ */
+function makeSyntheticScratchTab(editor: ReturnType<typeof getCodeEditor>): FileTab {
   return {
-    kind: 'scratch',
-    key: SCRATCH_KEY,
-    model: editor.createModel(seed),
+    kind: 'file',
+    key: SCRATCH_FILE_ID,
+    fileId: SCRATCH_FILE_ID,
+    model: editor.createModel(''),
     viewState: null,
-    lastSyncedCode: seed,
+    lastSyncedCode: '',
   }
 }
 
@@ -371,11 +371,21 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-/** Display label for a tab in the strip — filename for files, sentinel for scratch. */
+/**
+ * Display label for a tab in the strip. Scratch and handlers render under
+ * their angle-bracket virtual names (`<scratch>`, `<handlers>`) so the
+ * strip matches the pinned tree entries; everything else uses the file's
+ * basename via `fileDisplayName`. Scratch's label is decided by ID before
+ * the workspace lookup so a transient missing-file race (or the synthetic
+ * fallback above) still labels the sticky tab `<scratch>` rather than
+ * `(missing)`.
+ */
 function tabLabel(tab: OpenTab): string {
-  if (tab.kind === 'scratch') return '<scratch>'
+  if (tab.fileId === SCRATCH_FILE_ID) return '<scratch>'
   const file = getWorkspaceFiles().find(f => f.id === tab.fileId)
-  return file ? fileDisplayName(file) : '(missing)'
+  if (!file) return '(missing)'
+  if (file.path === HANDLERS_FILE_PATH) return '<handlers>'
+  return fileDisplayName(file)
 }
 
 function renderTabStrip(): void {
@@ -395,9 +405,13 @@ function renderTabStrip(): void {
       const isActive = tab.key === activeKey
       const dirty = isTabDirty(tab)
       const label = tabLabel(tab)
+      // Scratch is sticky — its close button is hidden by checking the
+      // reserved file ID rather than a separate tab kind. Handlers stays
+      // closable; users can re-open it from the pinned `<handlers>` entry
+      // in the file tree.
       const closeBtn =
-        tab.kind === 'scratch'
-          ? '' // scratch is sticky — no close button
+        tab.fileId === SCRATCH_FILE_ID
+          ? ''
           : `<button class="editor-tab__close" data-close-key="${escapeHtml(tab.key)}" tabindex="-1" title="Close (Cmd/Ctrl-W)">×</button>`
       const dot = dirty ? '<span class="editor-tab__dot" title="Unsaved changes"></span>' : ''
       return `

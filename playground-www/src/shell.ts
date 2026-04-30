@@ -3,14 +3,13 @@
  * Called once at app startup before scripts.ts accesses DOM elements.
  *
  * Layout: horizontal tab bar at top, tab content fills remaining viewport.
- * The Playground tab contains the three-panel editor (context | code | output).
+ * The Playground tab contains the editor + side panels (files | snapshots).
  * Other tabs render dynamic page content via the router.
  */
 
 import {
   addIcon,
   analyzeIcon,
-  boltIcon,
   cameraIcon,
   codeIcon,
   copyIcon,
@@ -223,7 +222,6 @@ function getPlaygroundPanel(): string {
     <div id="editor-top" class="editor-top">
       <div id="side-panel-icons" class="side-panel__icons">
         <button class="side-panel__icon side-panel__icon--active" id="side-icon-files" onclick="Playground.showSideTab('files')" title="Files">${copyIcon}</button>
-        <button class="side-panel__icon" id="side-icon-context" onclick="Playground.showSideTab('context')" title="Effect Handlers">${boltIcon}</button>
         <button class="side-panel__icon" id="side-icon-snapshots" onclick="Playground.showSideTab('snapshots')" title="Snapshots">${cameraIcon}</button>
       </div>
 
@@ -233,9 +231,6 @@ function getPlaygroundPanel(): string {
         </div>
         <div id="side-header-snapshots" style="display:none;">
           <a href="#" role="button" onclick="event.preventDefault();Playground.showSideTab('snapshots')" class="panel-header__title panel-header__title-link">Snapshots</a>
-        </div>
-        <div id="side-header-context" style="display:none;">
-          <span class="panel-header__title">Context</span>
         </div>
         <div class="panel-header__actions" id="side-header-actions-files">
           <a href="#" role="button" onclick="Playground.newFile()" class="panel-header__icon-btn" aria-label="New file" title="New file">${addIcon}</a>
@@ -250,9 +245,6 @@ function getPlaygroundPanel(): string {
             ${snapshotsHeaderMenu}
           </a>
         </div>
-        <div class="panel-header__actions" id="side-header-actions-context" style="display:none;">
-          <a href="#" role="button" onclick="event.preventDefault();Playground.openContextJsonModal()" class="panel-header__icon-btn" aria-label="Show full context JSON" title="Show full context JSON">${codeIcon}</a>
-        </div>
       </div>
 
       <div id="dvala-panel-header" class="panel-header">
@@ -261,7 +253,6 @@ function getPlaygroundPanel(): string {
             <span id="dvala-code-title-string" class="panel-header__title-string"></span>
             <span id="dvala-code-pending-indicator" class="pending-indicator" style="display:none;" title="Unsaved"></span>
             <span id="dvala-code-locked-indicator" class="locked-indicator" style="display:none;" title="Read-only"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg> Read-only</span>
-            <input id="dvala-code-title-input" type="text" style="display:none;">
           </div>
           <div id="dvala-header-snapshot" class="snapshot-breadcrumbs" style="display:none;"></div>
         </div>
@@ -282,17 +273,6 @@ function getPlaygroundPanel(): string {
           <div id="side-tab-snapshots" class="side-panel__tab" style="display:none;">
             <div id="side-snapshots-list" class="explorer-list fancy-scroll"></div>
           </div>
-          <div id="side-tab-context" class="side-panel__tab" style="display:none;">
-            <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context JSON" style="display:none;"></textarea>
-            <div id="context-entry-list" class="explorer-list fancy-scroll"></div>
-            <a id="context-undo-button" style="display:none;"></a>
-            <a id="context-redo-button" style="display:none;"></a>
-            <div id="add-context-menu" style="display:none;">
-              <input id="new-context-name">
-              <textarea id="new-context-value"></textarea>
-              <span id="new-context-error" style="display:none;"></span>
-            </div>
-          </div>
       </div>
 
       <div id="resize-divider-1"></div>
@@ -304,9 +284,6 @@ function getPlaygroundPanel(): string {
             <button type="button" id="right-panel-toggle-btn" class="right-panel-toggle-btn" aria-label="Toggle right panel (Cmd+Shift+J)" title="Toggle right panel (Cmd+Shift+J)"></button>
           </div>
           <div id="dvala-editor-host" class="dvala-editor-host" aria-label="Dvala code editor"></div>
-        </div>
-        <div id="context-detail-view" style="display:none;">
-          <textarea id="context-detail-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context binding JSON"></textarea>
         </div>
         <div id="dvala-empty-view" class="dvala-empty-view" style="display:none;"></div>
         <div id="dvala-snapshot-view" style="display:none;">

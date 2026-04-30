@@ -1,11 +1,13 @@
 // Scratch buffer — backed by a single workspace file at
 // `.dvala-playground/scratch.dvala`. Phase 1.5 step 23c moved persistence
-// from the legacy `scratch-code` / `scratch-context` localStorage slots
-// onto the same `FileBackend` that holds every other workspace file. The
-// `<scratch>` tab key + `current-file-id === null` sentinel still
-// represent "scratch is active" in the rest of the playground; 23h will
-// retire those sentinels in favour of treating the scratch file as a
-// fully regular workspace file.
+// onto the same `FileBackend` that holds every other workspace file; step
+// 23h then retired the legacy `<scratch>` tab key + `current-file-id ===
+// null` sentinels — both `tabs.ts` and `current-file-id` now use the
+// scratch file's reserved ID `__scratch__` like any regular file. The
+// pinned-to-top entry in the file tree and the buffer-undeletable rule
+// live in the explorer renderer; the tab strip keeps scratch sticky
+// (no × button) by matching on `SCRATCH_FILE_ID` rather than a separate
+// tab kind.
 
 import { getWorkspaceFiles, setWorkspaceFiles } from './fileStorage'
 import type { WorkspaceFile } from './fileStorage'
@@ -13,9 +15,13 @@ import type { WorkspaceFile } from './fileStorage'
 /** Canonical path of the scratch buffer's backing workspace file. */
 export const SCRATCH_FILE_PATH = '.dvala-playground/scratch.dvala'
 
-/** Stable ID for the scratch file. Reserved sentinel; not a UUID — that's fine
- *  because the file is hidden from the UI; only internal lookups see this. */
-const SCRATCH_FILE_ID = '__scratch__'
+/**
+ * Stable ID for the scratch file. Reserved sentinel; not a UUID — that's
+ * fine because the file is hidden from the UI and only internal lookups
+ * see this. After Phase 1.5 step 23h, this ID is also the scratch tab's
+ * key in `open-tabs` / `active-tab-key`.
+ */
+export const SCRATCH_FILE_ID = '__scratch__'
 
 /** True iff `path` is the scratch buffer's canonical path. */
 export function isScratchPath(path: string): boolean {

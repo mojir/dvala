@@ -19,16 +19,17 @@ const DVALA_FILE_SUFFIX = '.dvala'
  * Reserved playground-state folder. Anything under this prefix is
  * playground-only — scratch buffer, handlers buffer, and snapshot JSON files
  * (Phase 1.5 step 23c+). The `FileBackend` stores these like any other
- * workspace file; visibility (file tree, quick open) is a renderer concern,
- * and import asymmetry — workspace files cannot import from this folder —
- * lives in the import resolver. `dvala run` ignores it entirely.
+ * workspace file; visibility (file tree, quick open) is a renderer concern.
+ * The folder is not part of the import graph — Phase 1.5 step 23g rejects
+ * any `import` that resolves into it, regardless of where the import
+ * originates. `dvala run` ignores the folder entirely.
  */
 export const PLAYGROUND_FOLDER = '.dvala-playground'
 
 /**
  * True iff `path` lives under the playground-state folder. Renderers use
- * this to hide playground-internal files; the asymmetric import rule uses
- * the same predicate.
+ * this to hide playground-internal files; the import resolver uses the same
+ * predicate to reject imports that resolve into the folder.
  */
 export function isInPlaygroundFolder(path: string): boolean {
   return path === PLAYGROUND_FOLDER || path.startsWith(`${PLAYGROUND_FOLDER}/`)

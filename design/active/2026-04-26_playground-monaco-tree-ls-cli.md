@@ -188,7 +188,7 @@ Phase 1.5 retires this entirely. The new model:
 - Snapshot files inside `.dvala-playground/snapshots/` are not rendered in the tree; they're exposed via the Snapshots left-panel tab as a curated list.
 
 **Imports.**
-- Workspace files cannot import anything in `.dvala-playground/`. Rejected by the import resolver with a clear error ("playground state is not part of the deployable project").
+- Any `import` that resolves into `.dvala-playground/` is rejected — regardless of where the import originates. Rejected by the import resolver with a clear error ("playground state, not part of the deployable project — move the file outside `.dvala-playground/` to make it importable"). Tightened from the original "outside-only" wording during 23g implementation; see step 23g below for the rationale.
 - Files inside `.dvala-playground/` can import workspace files freely. Scratch and handlers can pull helpers from the project as needed.
 
 **Save As modal (reusable).**
@@ -378,7 +378,7 @@ The handlers buffer is a regular Dvala expression — its **result value** is th
 
 23f. Remove the Bindings UI and the legacy effect-handler authoring UI. Drop the "Context" left-panel tab; remove the `'binding'` and `'effect-handler'` kinds from `state.ts`; silent wipe of any stored bindings + JS handler entries (pre-1.0). After this step the legacy JS-handler authoring surface is gone.
 
-23g. Migrate the import resolver. New rule: imports of `.dvala-playground/*` from outside that folder are rejected with a clear error ("playground state is not part of the deployable project"). Imports from inside the folder out to workspace files are allowed. Implementation lives in the resolver, not in N consumers.
+23g. Migrate the import resolver. New rule: any `import` that resolves into `.dvala-playground/*` is rejected with a clear error ("playground state is not part of the deployable project"), regardless of where the import originates. Imports from inside the folder out to workspace files (e.g. scratch importing `../utils.dvala`) are still allowed — that's the only direction the playground actually exercises. The blanket "not importable" rule is simpler than an asymmetric workspace-vs-playground gate, and inside→inside imports have no real-world use case (handlers is auto-wrapped not imported, scratch is single-instance, snapshots are JSON). Implementation lives in the resolver, not in N consumers. **Tightened during implementation 2026-04-29:** original spec only forbade outside→inside; the inside→inside corner is now also forbidden because no use case allows it and the simpler rule is forward-compatible as the folder grows (snapshots in 23i, future state files).
 
 23h. Migrate consumers off the legacy scratch + handler sentinels. Tabs, tree, history, right panel, code-panel sync — each consumer now treats both pinned buffers as regular files at their reserved paths, with the two UI-only rules (pinned to top, undeletable).
 

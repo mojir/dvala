@@ -3,9 +3,6 @@
 // callers (each `foo` reference becomes `state.foo`, no helper functions needed).
 
 import type { EffectContext, Snapshot } from '../../../src/evaluator/effectTypes'
-import { getState } from '../state'
-
-export type ContextEntryKind = 'binding' | 'effect-handler'
 
 export interface PendingEffect {
   ctx: EffectContext
@@ -37,8 +34,6 @@ export const state: {
   currentCheckpointSnapshot: Snapshot | null
   modalStack: ModalStackEntry[]
   snapshotViewStack: SnapshotBreadcrumb[]
-  activeContextEntryKind: ContextEntryKind
-  activeContextBindingName: string | null
   resolveInfoModal: (() => void) | null
   infoModalOnConfirm: (() => void | Promise<void>) | null
   resolveSnapshotModal: (() => void) | null
@@ -55,8 +50,6 @@ export const state: {
   currentCheckpointSnapshot: null,
   modalStack: [],
   snapshotViewStack: [],
-  activeContextEntryKind: getState('current-context-entry-kind'),
-  activeContextBindingName: getState('current-context-binding-name'),
   resolveInfoModal: null,
   infoModalOnConfirm: null,
   resolveSnapshotModal: null,

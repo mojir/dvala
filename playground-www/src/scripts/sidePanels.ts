@@ -2,27 +2,17 @@
 
 import type { EditorMenuItem } from '../editorMenu'
 import { renderEditorMenu } from '../editorMenu'
-import {
-  ICONS,
-  ensureActiveContextSelection,
-  escapeHtml,
-  getActiveSnapshotDetails,
-  getContextBindingNames,
-  getContextEffectHandlerNames,
-  getParsedContext,
-  replaceSnapshotView,
-  syncContextDetailEditor,
-  updateCSS,
-} from '../scripts'
+import { SCRATCH_FILE_ID } from '../scratchBuffer'
+import { ICONS, escapeHtml, getActiveSnapshotDetails, replaceSnapshotView, updateCSS } from '../scripts'
 import { getSavedSnapshots, getTerminalSnapshots } from '../snapshotStorage'
 import { getState, saveState } from '../state'
 import { state } from './playgroundState'
 
 export const SIDE_SNAPSHOTS_VISIBLE = 5
-type SideTabId = 'files' | 'snapshots' | 'context'
+type SideTabId = 'files' | 'snapshots'
 
 export function normalizeSideTab(tabId: string | null | undefined): SideTabId {
-  if (tabId === 'snapshots' || tabId === 'context') return tabId
+  if (tabId === 'snapshots') return tabId
   return 'files'
 }
 
@@ -46,20 +36,25 @@ export function syncPlaygroundUrlState(tabId: SideTabId) {
   const url = new URL(window.location.href)
   url.searchParams.set('view', tabId)
 
-  if (tabId === 'files' && getState('current-file-id')) url.searchParams.set('fileId', getState('current-file-id')!)
-  else url.searchParams.delete('fileId')
+  // Don't leak the scratch sentinel ID into shareable URLs — recipients open
+  // scratch by default anyway, so omitting `fileId` for scratch is equivalent
+  // and keeps the URL cleaner.
+  const activeFileId = getState('current-file-id')
+  if (tabId === 'files' && activeFileId && activeFileId !== SCRATCH_FILE_ID) {
+    url.searchParams.set('fileId', activeFileId)
+  } else {
+    url.searchParams.delete('fileId')
+  }
 
   const snapshotId = tabId === 'snapshots' ? getActiveSnapshotUrlId() : null
   if (snapshotId) url.searchParams.set('snapshotId', snapshotId)
   else url.searchParams.delete('snapshotId')
 
-  if (tabId === 'context' && state.activeContextBindingName)
-    url.searchParams.set('bindingName', state.activeContextBindingName)
-  else url.searchParams.delete('bindingName')
-
-  if (tabId === 'context' && state.activeContextEntryKind === 'effect-handler')
-    url.searchParams.set('contextEntryKind', 'effect-handler')
-  else url.searchParams.delete('contextEntryKind')
+  // Legacy `bindingName` / `contextEntryKind` URL params (Phase 1.5 step 23f
+  // retired the Context tab) are stripped on every URL sync so old shared
+  // links don't leave stale params hanging around after first navigation.
+  url.searchParams.delete('bindingName')
+  url.searchParams.delete('contextEntryKind')
 
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
 }
@@ -212,10 +207,6 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   if (normalizedTabId === 'snapshots')
     document.getElementById('side-icon-snapshots')?.classList.remove('side-panel__icon--has-new')
 
-  // Clear the "new context" indicator when entering the context view.
-  if (normalizedTabId === 'context')
-    document.getElementById('side-icon-context')?.classList.remove('side-panel__icon--has-new')
-
   document.querySelectorAll('[id^="side-header-"]').forEach(el => {
     if (el.id === 'side-panel-header') return
     if (el.id.startsWith('side-header-actions-') || el.id.startsWith('side-header-')) {
@@ -258,7 +249,6 @@ function setEditorEmptyState(
 export function syncCodePanelView(sideTab?: string) {
   const tab = sideTab ?? getCurrentSideTab()
   const editorView = document.getElementById('dvala-editor-view')
-  const contextDetailView = document.getElementById('context-detail-view')
   const snapshotView = document.getElementById('dvala-snapshot-view')
   const emptyView = document.getElementById('dvala-empty-view')
   const headerEditor = document.getElementById('dvala-header-editor')
@@ -271,7 +261,6 @@ export function syncCodePanelView(sideTab?: string) {
 
   // Hide all views
   editorView.style.display = 'none'
-  if (contextDetailView) contextDetailView.style.display = 'none'
   snapshotView.style.display = 'none'
   emptyView.style.display = 'none'
   if (headerEditor) headerEditor.style.display = 'none'
@@ -286,8 +275,13 @@ export function syncCodePanelView(sideTab?: string) {
     if (headerEditor) headerEditor.style.display = 'flex'
     if (undoBtn) undoBtn.style.display = ''
     if (redoBtn) redoBtn.style.display = ''
-    if (fileCloseBtn && getState('current-file-id')) fileCloseBtn.style.display = ''
-  } else if (tab === 'snapshots') {
+    // Hide the close button for the scratch tab — it's sticky (matches the
+    // tab strip's per-tab close-button rule). Phase 1.5 step 23h made
+    // scratch a regular workspace file, so the check moved from "is
+    // current-file-id null" to "is current-file-id the scratch ID".
+    const activeFileId = getState('current-file-id')
+    if (fileCloseBtn && activeFileId && activeFileId !== SCRATCH_FILE_ID) fileCloseBtn.style.display = ''
+  } else {
     if (state.activeSnapshotKey && state.snapshotViewStack.length === 0) {
       const activeSnapshot = getActiveSnapshotDetails()
       if (activeSnapshot) {
@@ -313,26 +307,6 @@ export function syncCodePanelView(sideTab?: string) {
         'Playground.openImportSnapshotModal()',
       )
     }
-  } else {
-    const context = getParsedContext()
-    const bindingNames = getContextBindingNames(context)
-    const effectHandlerNames = getContextEffectHandlerNames(context)
-    ensureActiveContextSelection(context)
-
-    if (headerEditor) headerEditor.style.display = 'flex'
-    if (bindingNames.length > 0 || effectHandlerNames.length > 0) {
-      if (contextDetailView) contextDetailView.style.display = 'flex'
-      syncContextDetailEditor()
-    } else {
-      emptyView.style.display = 'flex'
-      emptyView.innerHTML = `
-        <div class="dvala-empty-view__content">
-          <div class="dvala-empty-view__title">No effect handlers</div>
-          <div class="dvala-empty-view__description">Add an effect handler to set up the execution context.</div>
-          <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextEffectHandler()">Add effect handler</button>
-        </div>
-      `
-    }
   }
 }
 
@@ -341,6 +315,5 @@ export function getCurrentSideTab(): string {
   if (!active) return getState('active-side-tab')
   const id = active.id
   if (id === 'side-icon-snapshots') return 'snapshots'
-  if (id === 'side-icon-context') return 'context'
   return 'files'
 }

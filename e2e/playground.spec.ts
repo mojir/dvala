@@ -42,18 +42,15 @@ async function setDvalaCode(page: Page, code: string) {
   await page.evaluate(c => (window as any).Playground.setEditorValue(c), code)
 }
 
-/** Set context JSON via localStorage state (the context textarea is not directly visible in the new UI). */
+/**
+ * Set the legacy `state['context']` JSON blob via the playground's test-only
+ * setter. Phase 1.5 step 23f retired the Bindings UI; the `state['context']`
+ * slot remains as a backing store for the `playground.context.*` effect API
+ * and for transient example handler injection.
+ */
 async function setContext(page: Page, json: string) {
-  // The context textarea is a backing element and not shown directly in the new UI.
-  // Set context state directly via localStorage and trigger an applyState cycle.
   await page.evaluate((contextJson: string) => {
-    localStorage.setItem('playground-context', JSON.stringify(contextJson))
-    // Also set the textarea value and fire an input event so the app picks it up
-    const textarea = document.getElementById('context-textarea') as HTMLTextAreaElement | null
-    if (textarea) {
-      textarea.value = contextJson
-      textarea.dispatchEvent(new Event('input', { bubbles: true }))
-    }
+    ;(window as any).Playground.setContextForTesting(contextJson)
   }, json)
 }
 
@@ -236,11 +233,13 @@ test.describe('toolbar actions', () => {
     await page.evaluate(() => (window as any).Playground.resetPlayground())
 
     const dvalaValue = await getDvalaCode(page)
-    const contextValue = await page.locator('#context-textarea').inputValue()
+    const contextValue = await page.evaluate(() => localStorage.getItem('playground-context'))
     const outputHtml = await page.locator('#output-result').innerHTML()
 
     expect(dvalaValue).toBe('')
-    expect(contextValue).toBe('')
+    // resetPlayground writes an empty string to state['context']; localStorage
+    // stores the value JSON-stringified, so the persisted form is `'""'`.
+    expect(contextValue).toBe('""')
     expect(outputHtml).toBe('')
   })
 })
@@ -416,10 +415,12 @@ test.describe('share', () => {
     const dvalaValue = await getDvalaCode(page)
     expect(dvalaValue).toBe(code)
 
-    // The context textarea is a hidden backing element; read its value via evaluate
+    // The Bindings UI was retired in Phase 1.5 step 23f; read the context
+    // backing slot directly via the playground's reactive state singleton
+    // exposed for testing.
     const contextValue = await page.evaluate(() => {
-      const textarea = document.getElementById('context-textarea') as HTMLTextAreaElement | null
-      return textarea?.value ?? ''
+      const stored = localStorage.getItem('playground-context')
+      return stored ? (JSON.parse(stored) as string) : ''
     })
     expect(contextValue).toBe(context)
   })
@@ -2336,33 +2337,9 @@ test.describe('layout panels', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('tab state persistence', () => {
-  test('switching away from editor and back preserves side panel state in URL', async ({ page }) => {
-    await page.goto('')
-    await waitForInit(page)
-    await navigateToPlayground(page)
-
-    // Switch to context side panel
-    await page.evaluate(() => (window as any).Playground.showSideTab('context'))
-    await page.waitForFunction(() => window.location.search.includes('view=context'), { timeout: 3000 })
-    expect(page.url()).toContain('view=context')
-
-    // Navigate away to book tab
-    await page.evaluate(() => (window as any).Playground.navigateToTab('book'))
-    await page.waitForFunction(
-      () => {
-        const dynPage = document.getElementById('dynamic-page')
-        return dynPage !== null && dynPage.innerHTML.length > 0
-      },
-      { timeout: 5000 },
-    )
-
-    // Navigate back to editor tab
-    await page.evaluate(() => (window as any).Playground.navigateToTab('editor'))
-    await page.locator('#tab-editor').waitFor({ state: 'visible', timeout: 3000 })
-
-    // URL should reflect the context panel state
-    expect(page.url()).toContain('view=context')
-  })
+  // The Context-tab variant of this test was removed in Phase 1.5 step 23f
+  // when the Context left-panel tab was retired. The snapshot variant below
+  // exercises the same persistence path against the surviving tabs.
   test('switching away from editor and back preserves snapshot side panel', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
