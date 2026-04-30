@@ -105,6 +105,7 @@ import {
 import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
   focusScratch,
+  getActiveSnapshotTabId,
   initTabs,
   invalidateSnapshotTabLabel,
   notifyTabsChanged,
@@ -1343,6 +1344,30 @@ export function getActiveSnapshotDetails(): { label: string; snapshot: Snapshot 
   return null
 }
 
+/**
+ * Look up snapshot details (snapshot data + display label) by snapshot id.
+ * Used by the tab after-swap hook to populate the snapshot view when the
+ * active tab changes to a snapshot tab — the tab carries a snapshot id, so
+ * we walk the saved + terminal lists to find the matching entry. Returns
+ * `null` if the snapshot id has no matching entry (e.g. raced with a
+ * delete; the tab will get auto-closed by `closeTabsForMissingFiles`).
+ */
+function getSnapshotDetailsById(snapshotId: string): { label: string; snapshot: Snapshot } | null {
+  const savedEntries = getSavedSnapshots()
+  const savedIdx = savedEntries.findIndex(e => e.snapshot.id === snapshotId)
+  if (savedIdx >= 0) {
+    const entry = savedEntries[savedIdx]!
+    return { label: getSavedSnapshotLabel(entry, savedIdx), snapshot: entry.snapshot }
+  }
+  const terminalEntries = getTerminalSnapshots()
+  const terminalIdx = terminalEntries.findIndex(e => e.snapshot.id === snapshotId)
+  if (terminalIdx >= 0) {
+    const entry = terminalEntries[terminalIdx]!
+    return { label: getTerminalSnapshotLabel(terminalIdx), snapshot: entry.snapshot }
+  }
+  return null
+}
+
 function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<void> {
   const card = document.querySelector(`.snapshot-card[data-type="${type}"][data-index="${index}"]`)
   if (!card) return Promise.resolve()
@@ -2066,6 +2091,17 @@ window.onload = async function () {
       // needed. Inactive tools stay stale until the user clicks them
       // (the panel's onChange callback then refreshes the new active tab).
       refreshActiveRightPanelTab(() => getState('dvala-code'))
+      // Phase 1.5 step 23j stage 2: when the new active tab is a snapshot
+      // tab, populate the snapshot view with the right snapshot data and
+      // swap the editor area accordingly. For file tabs `syncCodePanelView`
+      // alone is enough (it shows the editor view); snapshot tabs need a
+      // `replaceSnapshotView` first because the panel is data-driven.
+      const activeSnapshotId = getActiveSnapshotTabId()
+      if (activeSnapshotId !== null) {
+        const details = getSnapshotDetailsById(activeSnapshotId)
+        if (details) replaceSnapshotView(details.snapshot, details.label)
+      }
+      syncCodePanelView()
     },
   })
   initTabs()

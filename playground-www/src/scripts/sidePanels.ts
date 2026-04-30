@@ -6,6 +6,7 @@ import { SCRATCH_FILE_ID } from '../scratchBuffer'
 import { ICONS, escapeHtml, getActiveSnapshotDetails, replaceSnapshotView, updateCSS } from '../scripts'
 import { getSavedSnapshots, getTerminalSnapshots } from '../snapshotStorage'
 import { getState, saveState } from '../state'
+import { getActiveTabKind } from './tabs'
 import { state } from './playgroundState'
 
 export const SIDE_SNAPSHOTS_VISIBLE = 5
@@ -246,8 +247,20 @@ function setEditorEmptyState(
   `
 }
 
-export function syncCodePanelView(sideTab?: string) {
-  const tab = sideTab ?? getCurrentSideTab()
+/**
+ * Render the editor area to match the active editor tab. Phase 1.5 step
+ * 23j stage 2 decoupled this from the side-tab — file tabs show the
+ * editor view, snapshot tabs show the snapshot view, and there's no
+ * "select a snapshot" empty state because the side-tab list is now a
+ * pure left-panel concern (clicking an item opens the corresponding tab,
+ * which drives the editor area through this function).
+ *
+ * The optional `sideTab` argument is preserved for back-compat with
+ * earlier callers (`showSideTab`) but ignored — the function reads the
+ * active tab kind directly. The argument can be dropped once all
+ * callers are audited; flagged for stage-2 cleanup.
+ */
+export function syncCodePanelView(_sideTab?: string) {
   const editorView = document.getElementById('dvala-editor-view')
   const snapshotView = document.getElementById('dvala-snapshot-view')
   const emptyView = document.getElementById('dvala-empty-view')
@@ -270,15 +283,31 @@ export function syncCodePanelView(sideTab?: string) {
   if (fileCloseBtn) fileCloseBtn.style.display = 'none'
   if (closeBtn) closeBtn.style.display = 'none'
 
-  if (tab === 'files') {
-    // Phase 1.5 step 23j stage 2 (TODO): the editor area should be driven
-    // by the active EDITOR-TAB kind (file vs snapshot), not by the side
-    // tab. After Stage 1, a snapshot tab is in the strip but this branch
-    // still renders the file-tab editor view when the side tab is 'files'
-    // — meaning if the user is on the files side tab and activates a
-    // snapshot tab from the strip, they see Monaco attached to the idle
-    // (empty) model. Stage 2 adds an "if active tab is snapshot, force
-    // snapshot view" branch here.
+  const activeKind = getActiveTabKind()
+
+  if (activeKind === 'snapshot') {
+    // Snapshot tab is active. The snapshot view's `#snapshot-content` is
+    // populated by `replaceSnapshotView` (called from the side-panel
+    // click flow and the after-tab-swap hook); we just need to make the
+    // container visible.
+    snapshotView.style.display = 'flex'
+    if (headerSnapshot) headerSnapshot.style.display = 'flex'
+    if (closeBtn) closeBtn.style.display = ''
+    // Fall through if there's no snapshot data to render — show the
+    // empty/import state. Happens transiently between "tab created" and
+    // "snapshot data loaded into the panel".
+    if (!state.activeSnapshotKey || state.snapshotViewStack.length === 0) {
+      const activeSnapshot = getActiveSnapshotDetails()
+      if (activeSnapshot) {
+        replaceSnapshotView(activeSnapshot.snapshot, activeSnapshot.label)
+        updateCSS()
+        return
+      }
+    }
+    return
+  }
+
+  if (activeKind === 'file') {
     editorView.style.display = 'flex'
     if (headerEditor) headerEditor.style.display = 'flex'
     if (undoBtn) undoBtn.style.display = ''
@@ -289,33 +318,18 @@ export function syncCodePanelView(sideTab?: string) {
     // current-file-id null" to "is current-file-id the scratch ID".
     const activeFileId = getState('current-file-id')
     if (fileCloseBtn && activeFileId && activeFileId !== SCRATCH_FILE_ID) fileCloseBtn.style.display = ''
-  } else {
-    if (state.activeSnapshotKey && state.snapshotViewStack.length === 0) {
-      const activeSnapshot = getActiveSnapshotDetails()
-      if (activeSnapshot) {
-        replaceSnapshotView(activeSnapshot.snapshot, activeSnapshot.label)
-        updateCSS()
-        return
-      }
-      state.activeSnapshotKey = null
-      populateSideSnapshotsList()
-    }
-
-    if (state.activeSnapshotKey && state.snapshotViewStack.length > 0) {
-      snapshotView.style.display = 'flex'
-      if (headerSnapshot) headerSnapshot.style.display = 'flex'
-      if (closeBtn) closeBtn.style.display = ''
-    } else {
-      emptyView.style.display = 'flex'
-      setEditorEmptyState(
-        emptyView,
-        'Select a snapshot to view',
-        'Import a snapshot here, or run a file and save a checkpoint to create a new entry.',
-        'Import snapshot',
-        'Playground.openImportSnapshotModal()',
-      )
-    }
+    return
   }
+
+  // No active tab — empty state.
+  emptyView.style.display = 'flex'
+  setEditorEmptyState(
+    emptyView,
+    'No tab open',
+    'Open a file from the Files panel or import a snapshot from the Snapshots panel.',
+    'Open scratch',
+    'Playground.openScratch()',
+  )
 }
 
 export function getCurrentSideTab(): string {

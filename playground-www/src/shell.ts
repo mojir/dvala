@@ -278,11 +278,17 @@ function getPlaygroundPanel(): string {
       <div id="resize-divider-1"></div>
 
       <div id="dvala-panel">
+        <!-- Phase 1.5 step 23j: the tab bar is a sibling of the editor /
+             snapshot / empty views so it stays visible regardless of which
+             content area is currently shown. Pre-23j it lived inside
+             dvala-editor-view, which meant clicking a snapshot in the side
+             panel hid the tab strip alongside the editor host — file tabs
+             "disappeared" while the snapshot was open. -->
+        <div class="editor-tab-bar">
+          <div id="editor-tab-strip" class="editor-tab-strip" role="tablist" aria-label="Open files"></div>
+          <button type="button" id="right-panel-toggle-btn" class="right-panel-toggle-btn" aria-label="Toggle right panel (Cmd+Shift+J)" title="Toggle right panel (Cmd+Shift+J)"></button>
+        </div>
         <div id="dvala-editor-view">
-          <div class="editor-tab-bar">
-            <div id="editor-tab-strip" class="editor-tab-strip" role="tablist" aria-label="Open files"></div>
-            <button type="button" id="right-panel-toggle-btn" class="right-panel-toggle-btn" aria-label="Toggle right panel (Cmd+Shift+J)" title="Toggle right panel (Cmd+Shift+J)"></button>
-          </div>
           <div id="dvala-editor-host" class="dvala-editor-host" aria-label="Dvala code editor"></div>
         </div>
         <div id="dvala-empty-view" class="dvala-empty-view" style="display:none;"></div>

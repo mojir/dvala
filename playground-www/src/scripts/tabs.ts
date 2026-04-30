@@ -99,6 +99,23 @@ export function notifyTabsChanged(): void {
   notify()
 }
 
+/**
+ * Read the kind of the currently-active tab. Used by the editor-area
+ * renderer (`syncCodePanelView`) to decide whether to show the editor
+ * host, the snapshot view, or an empty state — Phase 1.5 step 23j stage 2
+ * decoupled the editor-area swap from the side-tab; it now follows the
+ * active editor tab's kind.
+ */
+export function getActiveTabKind(): 'file' | 'snapshot' | null {
+  return getActiveTab()?.kind ?? null
+}
+
+/** Read the active tab's snapshot id, or null if the active tab isn't a snapshot. */
+export function getActiveSnapshotTabId(): string | null {
+  const active = getActiveTab()
+  return active?.kind === 'snapshot' ? active.snapshotId : null
+}
+
 // Lifecycle hooks fired around every active-tab swap. `beforeSwap` runs
 // while the OLD tab is still current (so callers can flush autosave with
 // the old id + content). `afterSwap` runs after `current-file-id` and
