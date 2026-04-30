@@ -3,12 +3,22 @@ import { reactive } from './lib/reactive'
 import { SCRATCH_FILE_ID } from './scratchBuffer'
 
 // Persisted tab list shape. Models + viewState aren't serializable; only
-// "which files are open" survives reloads. Hydration in
-// `scripts/tabs.ts::initTabs` reconstructs models from `WorkspaceFile.code`.
-// After Phase 1.5 step 23h, scratch and handlers are regular `kind:'file'`
-// entries keyed by their reserved IDs (`__scratch__`, `__handlers__`); the
-// previous synthetic `'scratch'` discriminator was retired.
-export type PersistedTab = { kind: 'file'; id: string }
+// "which tabs are open" survives reloads. Hydration in
+// `scripts/tabs.ts::initTabs` reconstructs the live tab from the underlying
+// workspace file referenced by `id`.
+//
+// **Tab kind discriminator (Phase 1.5 step 23j).** File tabs hold Dvala
+// source in a Monaco model and are editable. Snapshot tabs render a
+// snapshot's JSON payload through one of three views (UI / Tree / Raw) and
+// are read-only — they don't carry a Monaco model by default. Future
+// non-text kinds (image preview, rendered markdown, etc.) plug in alongside
+// without retrofitting the tab manager.
+//
+// The `'scratch'` synthetic kind from earlier in Phase 1.5 was retired in
+// 23h — that was a *lifecycle* discriminator (sticky tab, undeletable
+// buffer); the kinds here are *content-type* discriminators, a different
+// category entirely.
+export type PersistedTab = { kind: 'file'; id: string } | { kind: 'snapshot'; id: string }
 
 export const defaultState = {
   'sidebar-width': 350 as number,

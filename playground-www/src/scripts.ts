@@ -108,6 +108,7 @@ import {
   initTabs,
   notifyTabsChanged,
   openOrFocusFile,
+  openOrFocusSnapshotTab,
   setTabLifecycleHooks,
   wireTabKeyboardShortcuts,
   wireTabStripListeners,
@@ -1369,6 +1370,12 @@ export function openSavedSnapshot(index: number) {
   state.activeSnapshotKey = `saved:${index}`
   populateSideSnapshotsList()
   showSideTab('snapshots')
+  // Phase 1.5 step 23j stage 1: open a snapshot tab in the editor strip so
+  // the snapshot has tab-strip presence. The editor-area rendering still
+  // flows through the legacy `replaceSnapshotView` → snapshot panel path
+  // for now; stage 2 wires the editor area to drive from the active tab's
+  // kind and the modal-based path goes away.
+  openOrFocusSnapshotTab(entry.snapshot.id)
   replaceSnapshotView(entry.snapshot, getSavedSnapshotLabel(entry, index))
   syncPlaygroundUrlState('snapshots')
 }
@@ -1380,6 +1387,7 @@ export function openTerminalSnapshot(index: number) {
   state.activeSnapshotKey = `terminal:${index}`
   populateSideSnapshotsList()
   showSideTab('snapshots')
+  openOrFocusSnapshotTab(entry.snapshot.id)
   replaceSnapshotView(entry.snapshot, getTerminalSnapshotLabel(index))
   syncPlaygroundUrlState('snapshots')
 }

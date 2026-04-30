@@ -37,10 +37,36 @@ interface FileTab {
   /** Content baseline for the modified-dot indicator (= file.code at last sync). */
   lastSyncedCode: string
 }
-type OpenTab = FileTab
+/**
+ * Phase 1.5 step 23j — non-text tab backing a snapshot file at
+ * `.dvala-playground/snapshots/<id>.json`. The tab is read-only: there's no
+ * Monaco model in the default view (the snapshot panel renders a custom
+ * inspector); the Raw view lazily creates a JSON model when first selected.
+ * `key` is the snapshot's id (also the workspace-file id, per 23i's
+ * snapshot.id ↔ file.id bond).
+ */
+interface SnapshotTab {
+  kind: 'snapshot'
+  key: string // == snapshotId
+  snapshotId: string
+}
+type OpenTab = FileTab | SnapshotTab
 
 let openTabs: OpenTab[] = []
 let activeKey: string | null = null
+/**
+ * Empty Monaco model the editor falls back to whenever the active tab is
+ * non-file (snapshot, future image preview, etc.). Monaco needs *some*
+ * model attached to render at all; the editor host is hidden behind the
+ * snapshot panel anyway so the model is invisible. Lazy-allocated on
+ * first switch to a non-file tab; disposed in `__resetForTesting`.
+ */
+let idleModel: monacoNs.editor.ITextModel | null = null
+
+function getIdleModel(): monacoNs.editor.ITextModel {
+  if (idleModel === null) idleModel = getCodeEditor().createModel('')
+  return idleModel
+}
 // Listeners notified after every tab-list / active-tab change. The tab strip
 // renderer subscribes here; the rest of the playground reaches for state via
 // the existing `current-file-id` slot, which we keep in sync below.
@@ -88,6 +114,7 @@ export function setTabLifecycleHooks(opts: { beforeSwap?: () => void; afterSwap?
 export function __resetForTesting(): void {
   openTabs = []
   activeKey = null
+  idleModel = null
   changeListeners.clear()
   beforeSwapHook = null
   afterSwapHook = null
@@ -108,6 +135,8 @@ function getActiveTab(): OpenTab | null {
  * flag drives the save-scratch indicator on the toolbar).
  */
 function isTabDirty(tab: OpenTab): boolean {
+  // Snapshot tabs are read-only — there's no edit surface to diverge from.
+  if (tab.kind !== 'file') return false
   if (tab.fileId === SCRATCH_FILE_ID) return false
   return tab.model.getValue() !== tab.lastSyncedCode
 }
@@ -118,7 +147,7 @@ function isTabDirty(tab: OpenTab): boolean {
  */
 export function markActiveTabSynced(): void {
   const active = getActiveTab()
-  if (!active) return
+  if (!active || active.kind !== 'file') return
   active.lastSyncedCode = active.model.getValue()
   notify()
 }
@@ -142,7 +171,11 @@ export function initTabs(): void {
     const file = files.get(entry.id)
     if (!file || seen.has(entry.id)) continue
     seen.add(entry.id)
-    restored.push(makeFileTab(editor, file))
+    if (entry.kind === 'snapshot') {
+      restored.push(makeSnapshotTab(entry.id))
+    } else {
+      restored.push(makeFileTab(editor, file))
+    }
   }
 
   // Always keep scratch present — it's the implicit "home" tab the close
@@ -181,11 +214,18 @@ export function initTabs(): void {
   // before swapping in the active tab's model. Monaco's `setModel` only
   // detaches the previous model — it does NOT dispose it — so we have to
   // free it ourselves or leak the buffer + tokenization state on every
-  // page load.
+  // page load. Phase 1.5 step 23j: if the active tab is a snapshot (no
+  // Monaco model of its own), the bootstrap model is repurposed as the
+  // module-level idle model — saves a create+dispose round-trip.
   const bootstrapModel = editor.getActiveModel()
   const active = getActiveTab()!
-  editor.setActiveModel(active.model, active.viewState)
-  if (bootstrapModel !== active.model) editor.disposeModel(bootstrapModel)
+  if (active.kind === 'file') {
+    editor.setActiveModel(active.model, active.viewState)
+    if (bootstrapModel !== active.model) editor.disposeModel(bootstrapModel)
+  } else {
+    idleModel = bootstrapModel
+    editor.setActiveModel(idleModel, null)
+  }
   syncCurrentFileIdState(active)
   persistTabsState()
   notify()
@@ -216,6 +256,33 @@ export function focusScratch(): void {
 }
 
 /**
+ * Open a snapshot in an editor-area tab, or focus the existing tab if it's
+ * already open. Phase 1.5 step 23j primary entry point — replaces the
+ * modal-based snapshot inspector for side-panel clicks (the modal stays as
+ * unreachable dead code until 23l). The snapshot is identified by id, which
+ * is also the backing workspace file's id (snapshot.id ↔ file.id bond per
+ * 23i).
+ */
+export function openOrFocusSnapshotTab(snapshotId: string): void {
+  const editor = tryGetCodeEditor()
+  if (!editor) return
+  // The snapshot must already exist as a workspace file under
+  // `.dvala-playground/snapshots/`. If it's missing (e.g. raced with a
+  // delete), there's nothing to open — silently no-op so the caller
+  // doesn't have to gate every click.
+  if (!getWorkspaceFiles().some(f => f.id === snapshotId)) return
+  const existing = openTabs.find(t => t.kind === 'snapshot' && t.snapshotId === snapshotId)
+  if (existing) {
+    setActive(existing.key)
+    return
+  }
+  const insertAt = activeKey === null ? openTabs.length : openTabs.findIndex(t => t.key === activeKey) + 1
+  const tab = makeSnapshotTab(snapshotId)
+  openTabs.splice(insertAt, 0, tab)
+  setActive(tab.key)
+}
+
+/**
  * Close the tab matching `key`. If it was active, focus the neighbor on
  * the left (or right if leftmost), or scratch as a last resort. Scratch
  * itself can't be closed — the close button is hidden in the UI for it
@@ -226,8 +293,11 @@ export function closeTab(key: string): void {
   const idx = openTabs.findIndex(t => t.key === key)
   if (idx === -1) return
   const tab = openTabs[idx]!
-  // Drop view-state + dispose model so Monaco doesn't leak the buffer.
-  getCodeEditor().disposeModel(tab.model)
+  // File tabs own a Monaco model that must be disposed to avoid leaking
+  // the buffer + tokenization state. Snapshot tabs don't carry a Monaco
+  // model (post-23j they render through the snapshot panel), so there's
+  // nothing to dispose for them.
+  if (tab.kind === 'file') getCodeEditor().disposeModel(tab.model)
   openTabs.splice(idx, 1)
   if (activeKey !== key) {
     persistTabsState()
@@ -252,10 +322,14 @@ export function closeActiveTab(): void {
 export function closeTabsForMissingFiles(): void {
   const liveIds = new Set(getWorkspaceFiles().map(f => f.id))
   // Iterate from the end so splice indexes stay valid. Reuse closeTab so
-  // active-tab fallback runs once at the end, not per file.
+  // active-tab fallback runs once at the end, not per file. Both kinds of
+  // tabs (file + snapshot) reference a workspace-file id via `tab.key`;
+  // a snapshot whose underlying workspace file has been removed (via
+  // `setSavedSnapshots` filtering it out, or `clearAllFiles`) gets its
+  // tab auto-closed the same way file tabs do.
   for (let i = openTabs.length - 1; i >= 0; i--) {
     const tab = openTabs[i]!
-    if (tab.kind === 'file' && !liveIds.has(tab.fileId)) {
+    if (!liveIds.has(tab.key)) {
       closeTab(tab.key)
     }
   }
@@ -293,14 +367,24 @@ function setActive(key: string): void {
   // would persist the new tab's content into the old tab's record (and
   // worse, clear the wrong tab's modified-dot via markActiveTabSynced).
   beforeSwapHook?.()
-  // Save the outgoing tab's viewState so coming back restores cursor / scroll.
+  // Save the outgoing file tab's viewState so coming back restores cursor /
+  // scroll. Snapshot tabs don't carry a Monaco viewState (their UI / Tree
+  // views are DOM-rendered; the Raw view's viewState is owned by the
+  // tab-internal raw-model lifecycle, added in stage 2 of 23j).
   const outgoing = getActiveTab()
-  if (outgoing) outgoing.viewState = editor.saveViewState()
+  if (outgoing && outgoing.kind === 'file') outgoing.viewState = editor.saveViewState()
 
   activeKey = key
   const incoming = openTabs.find(t => t.key === key)
   if (!incoming) return
-  editor.setActiveModel(incoming.model, incoming.viewState)
+  if (incoming.kind === 'file') {
+    editor.setActiveModel(incoming.model, incoming.viewState)
+  } else {
+    // Snapshot tabs hide the Monaco editor host behind the snapshot panel
+    // (handled in `syncCodePanelView`); attach the idle model so Monaco
+    // stays in a valid state without painting anything visible.
+    editor.setActiveModel(getIdleModel(), null)
+  }
   syncCurrentFileIdState(incoming)
   // afterSwap runs once the legacy state slots reflect the NEW tab. The
   // `activateCurrentFileHistory` hook reads `current-file-id` to load the
@@ -320,17 +404,29 @@ function setActive(key: string): void {
  * the user types; this function handles the discrete tab-swap moment.
  */
 function syncCurrentFileIdState(tab: OpenTab): void {
-  saveState(
-    {
-      'current-file-id': tab.fileId,
-      'dvala-code': tab.model.getValue(),
-    },
-    false,
-  )
+  // `current-file-id` is the active tab's workspace-file id regardless of
+  // kind — for snapshot tabs that's the snapshot's id (which is also the
+  // backing workspace file's id, per 23i). `dvala-code` only mirrors the
+  // editor buffer for file tabs; snapshot tabs leave it pointing at
+  // whatever the previous file tab had so the run path's "what code to
+  // execute" view doesn't get confused with snapshot JSON.
+  if (tab.kind === 'file') {
+    saveState(
+      {
+        'current-file-id': tab.fileId,
+        'dvala-code': tab.model.getValue(),
+      },
+      false,
+    )
+  } else {
+    saveState({ 'current-file-id': tab.snapshotId }, false)
+  }
 }
 
 function persistTabsState(): void {
-  const persisted: PersistedTab[] = openTabs.map(t => ({ kind: 'file', id: t.fileId }))
+  const persisted: PersistedTab[] = openTabs.map(t =>
+    t.kind === 'file' ? { kind: 'file', id: t.fileId } : { kind: 'snapshot', id: t.snapshotId },
+  )
   saveState({ 'open-tabs': persisted, 'active-tab-key': activeKey ?? SCRATCH_FILE_ID }, false)
 }
 
@@ -343,6 +439,10 @@ function makeFileTab(editor: ReturnType<typeof getCodeEditor>, file: WorkspaceFi
     viewState: null,
     lastSyncedCode: file.code,
   }
+}
+
+function makeSnapshotTab(snapshotId: string): SnapshotTab {
+  return { kind: 'snapshot', key: snapshotId, snapshotId }
 }
 
 /**
@@ -381,6 +481,23 @@ function escapeHtml(s: string): string {
  * `(missing)`.
  */
 function tabLabel(tab: OpenTab): string {
+  if (tab.kind === 'snapshot') {
+    // Snapshot label sources, in priority order: the saved-snapshot
+    // user-supplied name (if any), the snapshot's `message`, or a generic
+    // "Snapshot" fallback. The metadata lives in the workspace file's
+    // `code` field (JSON-encoded entry); we parse it on demand here.
+    const file = getWorkspaceFiles().find(f => f.id === tab.snapshotId)
+    if (!file) return '(missing snapshot)'
+    try {
+      const entry = JSON.parse(file.code) as { name?: string; snapshot?: { message?: string } }
+      if (typeof entry.name === 'string' && entry.name.trim() !== '') return entry.name
+      const message = entry.snapshot?.message
+      if (typeof message === 'string' && message.trim() !== '') return message
+    } catch {
+      // Fall through to the generic label.
+    }
+    return 'Snapshot'
+  }
   if (tab.fileId === SCRATCH_FILE_ID) return '<scratch>'
   const file = getWorkspaceFiles().find(f => f.id === tab.fileId)
   if (!file) return '(missing)'
@@ -406,11 +523,11 @@ function renderTabStrip(): void {
       const dirty = isTabDirty(tab)
       const label = tabLabel(tab)
       // Scratch is sticky — its close button is hidden by checking the
-      // reserved file ID rather than a separate tab kind. Handlers stays
-      // closable; users can re-open it from the pinned `<handlers>` entry
-      // in the file tree.
+      // reserved file ID rather than a separate tab kind. Handlers and
+      // snapshot tabs both stay closable; users re-open them from the
+      // pinned `<handlers>` tree entry / the Snapshots side-panel list.
       const closeBtn =
-        tab.fileId === SCRATCH_FILE_ID
+        tab.kind === 'file' && tab.fileId === SCRATCH_FILE_ID
           ? ''
           : `<button class="editor-tab__close" data-close-key="${escapeHtml(tab.key)}" tabindex="-1" title="Close (Cmd/Ctrl-W)">×</button>`
       const dot = dirty ? '<span class="editor-tab__dot" title="Unsaved changes"></span>' : ''

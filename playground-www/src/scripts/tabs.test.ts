@@ -370,6 +370,109 @@ describe('closeTabsForMissingFiles', () => {
 })
 
 // ----------------------------------------------------------------------
+// openOrFocusSnapshotTab — Phase 1.5 step 23j
+// ----------------------------------------------------------------------
+
+describe('openOrFocusSnapshotTab', () => {
+  // Mimics how snapshotStorage stores entries — workspace file at the
+  // canonical snapshots path, JSON payload in `code`.
+  function makeSnapshotFile(id: string, name?: string) {
+    return {
+      id,
+      path: `.dvala-playground/snapshots/${id}.json`,
+      code: JSON.stringify({
+        kind: 'saved',
+        snapshot: { id, message: 'a checkpoint' },
+        savedAt: 1000,
+        locked: false,
+        ...(name !== undefined ? { name } : {}),
+      }),
+    }
+  }
+
+  beforeEach(() => {
+    tabs.initTabs()
+  })
+
+  it('opens a snapshot tab when one is requested for an unopened snapshot', () => {
+    workspaceFiles = withScratchInWorkspace([makeSnapshotFile('snap-a')])
+    tabs.openOrFocusSnapshotTab('snap-a')
+
+    expect(stateStore['active-tab-key']).toBe('snap-a')
+    const persisted = stateStore['open-tabs'] as { kind: string; id: string }[]
+    expect(persisted).toContainEqual({ kind: 'snapshot', id: 'snap-a' })
+  })
+
+  it('focuses the existing snapshot tab on second open without duplicating', () => {
+    workspaceFiles = withScratchInWorkspace([makeSnapshotFile('snap-a'), makeSnapshotFile('snap-b')])
+    tabs.openOrFocusSnapshotTab('snap-a')
+    tabs.openOrFocusSnapshotTab('snap-b')
+    const beforeRefocusCount = (stateStore['open-tabs'] as unknown[]).length
+
+    tabs.openOrFocusSnapshotTab('snap-a')
+
+    expect(stateStore['active-tab-key']).toBe('snap-a')
+    expect((stateStore['open-tabs'] as unknown[]).length).toBe(beforeRefocusCount)
+  })
+
+  it('is a no-op when the snapshot id has no backing workspace file', () => {
+    workspaceFiles = withScratchInWorkspace()
+    const before = JSON.parse(JSON.stringify(stateStore))
+    tabs.openOrFocusSnapshotTab('nonexistent')
+    // No new tab should have been added; active key unchanged.
+    expect(stateStore['active-tab-key']).toBe(before['active-tab-key'])
+    expect((stateStore['open-tabs'] as unknown[]).length).toBe((before['open-tabs'] as unknown[]).length)
+  })
+
+  it('closes via closeTab like any other tab (snapshot has no Monaco model to dispose)', () => {
+    workspaceFiles = withScratchInWorkspace([makeSnapshotFile('snap-a')])
+    tabs.openOrFocusSnapshotTab('snap-a')
+    const modelsCreatedBeforeClose = editor.created.length
+    const modelsDisposedBeforeClose = editor.disposed.length
+
+    tabs.closeTab('snap-a')
+
+    // Closing a snapshot tab must not dispose any Monaco model — snapshot
+    // tabs don't carry one. The bootstrap model dispose accounting from
+    // initTabs already happened; this close should add nothing on top.
+    expect(editor.created.length).toBe(modelsCreatedBeforeClose)
+    expect(editor.disposed.length).toBe(modelsDisposedBeforeClose)
+    // Active tab fell back to scratch (the only remaining tab).
+    expect(stateStore['active-tab-key']).toBe(SCRATCH_FILE_ID)
+  })
+
+  it('persists snapshot tabs and rehydrates them on next initTabs', () => {
+    // First boot: open a snapshot tab, then re-init from the same persisted
+    // state to simulate a reload.
+    workspaceFiles = withScratchInWorkspace([makeSnapshotFile('snap-a')])
+    tabs.openOrFocusSnapshotTab('snap-a')
+
+    // Reset the tab manager but keep stateStore + workspaceFiles intact.
+    tabs.__resetForTesting()
+    editor = makeStubEditor()
+    tabs.initTabs()
+
+    expect(stateStore['active-tab-key']).toBe('snap-a')
+    const persisted = stateStore['open-tabs'] as { kind: string; id: string }[]
+    expect(persisted).toContainEqual({ kind: 'snapshot', id: 'snap-a' })
+  })
+
+  it('auto-closes the snapshot tab when its backing workspace file is removed', () => {
+    workspaceFiles = withScratchInWorkspace([makeSnapshotFile('snap-a'), makeSnapshotFile('snap-b')])
+    tabs.openOrFocusSnapshotTab('snap-a')
+    tabs.openOrFocusSnapshotTab('snap-b')
+    // Snapshot 'snap-a' is removed (e.g. user deleted via Snapshots side panel).
+    workspaceFiles = workspaceFiles.filter(f => f.id !== 'snap-a')
+
+    tabs.closeTabsForMissingFiles()
+
+    const persisted = stateStore['open-tabs'] as { kind: string; id: string }[]
+    expect(persisted.find(t => t.id === 'snap-a')).toBeUndefined()
+    expect(persisted.find(t => t.id === 'snap-b')).toBeDefined()
+  })
+})
+
+// ----------------------------------------------------------------------
 // setActiveByIndex / cycleActive
 // ----------------------------------------------------------------------
 
