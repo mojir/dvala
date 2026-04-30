@@ -20,18 +20,12 @@ import {
 import type { WorkspaceFile } from '../fileStorage'
 import { isInPlaygroundFolder } from '../filePath'
 import { buildFileTree } from '../fileTree'
-import {
-  ensureHandlersFile,
-  getHandlersFile,
-  HANDLERS_FILE_PATH,
-  isHandlersPath,
-} from '../handlersBuffer'
+import { ensureHandlersFile, getHandlersFile } from '../handlersBuffer'
 import {
   SCRATCH_FILE_ID,
   ensureScratchFile,
   getScratchCode as readScratchCode,
   getScratchContext as readScratchContext,
-  isScratchPath,
   setScratchCodeAndContext,
 } from '../scratchBuffer'
 import type { TreeNode } from '../fileTree'
@@ -305,11 +299,12 @@ function populateExplorerFileList() {
       </div>`
   }
 
-  // The scratch + handlers buffers are always present under
-  // `.dvala-playground/`; the "No workspace files" hint is about
-  // user-authored files only. `buildFileTree` already filters those out
-  // (Phase 1.5 step 23b), so check the resulting tree's length here.
-  if (files.every(f => f.path === HANDLERS_FILE_PATH || isScratchPath(f.path))) {
+  // The "No workspace files" hint is about user-authored files only —
+  // everything under `.dvala-playground/` is playground state (scratch +
+  // handlers buffers, snapshot JSON files added in Phase 1.5 step 23i)
+  // and never counts as a user file. `buildFileTree` already filters the
+  // folder out for the tree itself; this check governs the empty hint.
+  if (files.every(f => isInPlaygroundFolder(f.path))) {
     list.innerHTML = `${renderScratchExplorerItem()}${renderHandlersExplorerItem()}<div class="explorer-empty">No workspace files</div>`
     renderFileStats()
     return
@@ -626,12 +621,15 @@ export function clearScratch() {
 export function deleteWorkspaceFile(id: string) {
   const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
-  // The scratch + handlers buffers are undeletable (Phase 1.5 step 23c/23d).
-  // Their tree entries are pinned virtual items; the UI doesn't expose a
-  // delete affordance for them (they live under the hidden .dvala-playground/
-  // folder), so this guard is defense-in-depth against programmatic callers
-  // (Playground.* API, tests).
-  if (isScratchPath(file.path) || isHandlersPath(file.path)) return
+  // Everything under `.dvala-playground/` is playground-managed state
+  // (scratch + handlers buffers per 23c/23d, snapshot JSON files per 23i).
+  // None of those files are user-deletable through this path — scratch +
+  // handlers are pinned virtual entries with no delete affordance; saved
+  // snapshots go through `deleteSavedSnapshot`, terminal snapshots through
+  // `clearTerminalSnapshot`. This guard is defense-in-depth for
+  // programmatic callers (Playground.* API, tests) that might pass an id
+  // backing a reserved file.
+  if (isInPlaygroundFolder(file.path)) return
   const doDelete = async () => {
     await animateFileCardRemoval(id)
     deleteFileHistory(id)
@@ -685,10 +683,13 @@ export function clearUnlockedFiles() {
     'Remove unlocked files',
     'This will delete all unlocked files. Locked files will be kept.',
     async () => {
-      // Reserved buffers (scratch / handlers) are undeletable; treat them
-      // like locked files for the purpose of this sweep, regardless of the
-      // `locked` flag on their record.
-      const isReserved = (path: string) => isScratchPath(path) || isHandlersPath(path)
+      // Everything under `.dvala-playground/` is playground state (scratch
+      // + handlers buffers, snapshot JSON files added in 23i) — treat the
+      // whole folder as reserved for the purpose of this sweep, regardless
+      // of the per-file `locked` flag. Saved snapshots have their own
+      // user-driven lifecycle ("Clear unlocked snapshots" elsewhere) and
+      // mustn't get caught up in workspace-file cleanup.
+      const isReserved = (path: string) => isInPlaygroundFolder(path)
       const unlocked = getWorkspaceFiles().filter(p => !p.locked && !isReserved(p.path))
       await Promise.all(unlocked.map(entry => animateFileCardRemoval(entry.id)))
       unlocked.forEach(entry => deleteFileHistory(entry.id))

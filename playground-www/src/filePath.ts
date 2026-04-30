@@ -27,12 +27,33 @@ const DVALA_FILE_SUFFIX = '.dvala'
 export const PLAYGROUND_FOLDER = '.dvala-playground'
 
 /**
+ * Reserved snapshots subfolder under the playground folder. Phase 1.5 step
+ * 23i moved snapshot persistence to one workspace file per snapshot at
+ * `.dvala-playground/snapshots/<id>.json`. The Snapshots side-tab list is
+ * a curated view over files in this folder; the file tree + quick open
+ * already skip it via `isInPlaygroundFolder`, but consumers that iterate
+ * workspace files for "user files only" purposes (clear-unlocked, the
+ * "No workspace files" hint, etc.) skip it explicitly.
+ */
+export const SNAPSHOTS_FOLDER = `${PLAYGROUND_FOLDER}/snapshots`
+
+/**
  * True iff `path` lives under the playground-state folder. Renderers use
  * this to hide playground-internal files; the import resolver uses the same
  * predicate to reject imports that resolve into the folder.
  */
 export function isInPlaygroundFolder(path: string): boolean {
   return path === PLAYGROUND_FOLDER || path.startsWith(`${PLAYGROUND_FOLDER}/`)
+}
+
+/**
+ * True iff `path` lives under the snapshots subfolder
+ * (`.dvala-playground/snapshots/`). Consumers that iterate workspace files
+ * for "user files only" semantics use this to keep snapshot persistence
+ * invisible.
+ */
+export function isInSnapshotsFolder(path: string): boolean {
+  return path === SNAPSHOTS_FOLDER || path.startsWith(`${SNAPSHOTS_FOLDER}/`)
 }
 
 /** Last `/`-separated segment of a path (the file's display name). */
