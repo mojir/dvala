@@ -1750,10 +1750,75 @@ test.describe('editor tabs', () => {
     await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
   })
 
-  test('the scratch tab cannot be closed (no × button)', async ({ page }) => {
-    // No file ever opened — only the scratch tab exists.
-    const closeButtons = page.locator('#editor-tab-strip .editor-tab__close')
-    await expect(closeButtons).toHaveCount(0)
+  test('the scratch tab has a × close button (Phase 1.5 step 23j stage 2)', async ({ page }) => {
+    // Pre-23j scratch was sticky; 23j stage 2 made every tab closable.
+    // Just opening the editor with no other tabs should still expose
+    // the close button on the scratch tab.
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
+    await expect(page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })).toBeVisible()
+    // The close button is hidden by CSS until the tab is hovered or
+    // active. Scratch is the only tab and is active by default, so the
+    // button is visible without hover.
+    const scratchClose = page
+      .locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
+      .locator('.editor-tab__close')
+    await expect(scratchClose).toBeVisible()
+  })
+
+  test('clicking the scratch tab × empties the strip and shows the empty state', async ({ page }) => {
+    // Close the scratch tab. With nothing else open, the strip empties
+    // and the editor area renders the "No tab open" empty state with
+    // an "Open scratch" affordance.
+    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
+    await scratchTab.locator('.editor-tab__close').click()
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(0)
+    // Empty view appears in the editor area.
+    await expect(page.locator('#dvala-empty-view')).toBeVisible()
+    // The pinned `<scratch>` entry stays in the file tree as the
+    // re-open affordance.
+    await expect(page.locator('#explorer-file-list .explorer-item', { hasText: '<scratch>' })).toBeVisible()
+  })
+
+  test('after closing scratch, the pinned <scratch> tree entry re-opens it', async ({ page }) => {
+    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
+    await scratchTab.locator('.editor-tab__close').click()
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(0)
+
+    // Click the pinned `<scratch>` entry in the explorer file list.
+    await page.locator('#explorer-file-list .explorer-item', { hasText: '<scratch>' }).click()
+    // Strip is back with scratch as the only tab.
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    // Editor view is visible again, empty state hidden.
+    await expect(page.locator('#dvala-editor-view')).toBeVisible()
+    await expect(page.locator('#dvala-empty-view')).toBeHidden()
+  })
+
+  test('closing scratch when other tabs are open falls back to a neighbor', async ({ page }) => {
+    // Seed a workspace file and open it as a tab alongside scratch.
+    const aId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01'
+    await page.evaluate(
+      ({ aId }) => {
+        const w = window as any
+        w.Playground.setWorkspaceFilesForTesting([
+          { id: aId, path: 'neighbor-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        ])
+      },
+      { aId },
+    )
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
+    // Switch back to scratch so it's the active tab; file 'a' is the
+    // only neighbor.
+    await page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' }).click()
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+
+    // Close scratch via its × button.
+    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
+    await scratchTab.locator('.editor-tab__close').click()
+
+    // Strip drops to one tab (the neighbor); active becomes 'neighbor-a.dvala'.
+    await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('neighbor-a.dvala')
   })
 
   test('open tab list + active tab survives a reload', async ({ page }) => {

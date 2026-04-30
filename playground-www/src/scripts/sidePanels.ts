@@ -307,12 +307,11 @@ export function syncCodePanelView() {
     if (headerEditor) headerEditor.style.display = 'flex'
     if (undoBtn) undoBtn.style.display = ''
     if (redoBtn) redoBtn.style.display = ''
-    // Hide the close button for the scratch tab — it's sticky (matches the
-    // tab strip's per-tab close-button rule). Phase 1.5 step 23h made
-    // scratch a regular workspace file, so the check moved from "is
-    // current-file-id null" to "is current-file-id the scratch ID".
-    const activeFileId = getState('current-file-id')
-    if (fileCloseBtn && activeFileId && activeFileId !== SCRATCH_FILE_ID) fileCloseBtn.style.display = ''
+    // Phase 1.5 step 23j stage 2: every file tab — including scratch —
+    // is closable, so the editor-area close button is shown for any
+    // active file tab. Hidden only when there's no active tab at all
+    // (the empty-state branch handles that case below).
+    if (fileCloseBtn && getState('current-file-id')) fileCloseBtn.style.display = ''
     return
   }
 

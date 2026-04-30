@@ -284,9 +284,15 @@ export function openOrFocusFile(fileId: string): void {
   setActive(tab.key)
 }
 
-/** Focus the scratch tab (always present post-23h via initTabs guarantee). */
+/**
+ * Focus the scratch tab. Phase 1.5 step 23j stage 2 made scratch
+ * closable, so the tab might not be in `openTabs` when this is called
+ * (the user closed it and clicked the pinned `<scratch>` entry to
+ * re-open). Routes through `openOrFocusFile` so the tab is created
+ * lazily if needed; if scratch is already open, this is just a swap.
+ */
 export function focusScratch(): void {
-  setActive(SCRATCH_FILE_ID)
+  openOrFocusFile(SCRATCH_FILE_ID)
 }
 
 /**
@@ -604,14 +610,12 @@ function renderTabStrip(): void {
       const isActive = tab.key === activeKey
       const dirty = isTabDirty(tab)
       const label = tabLabel(tab)
-      // Scratch is sticky — its close button is hidden by checking the
-      // reserved file ID rather than a separate tab kind. Handlers and
-      // snapshot tabs both stay closable; users re-open them from the
-      // pinned `<handlers>` tree entry / the Snapshots side-panel list.
-      const closeBtn =
-        tab.kind === 'file' && tab.fileId === SCRATCH_FILE_ID
-          ? ''
-          : `<button class="editor-tab__close" data-close-key="${escapeHtml(tab.key)}" tabindex="-1" title="Close (Cmd/Ctrl-W)">×</button>`
+      // Phase 1.5 step 23j stage 2: scratch is closable like any other
+      // tab. The × button is shown for every tab kind; users re-open
+      // scratch from the pinned `<scratch>` entry in the file tree,
+      // handlers from the pinned `<handlers>` entry, and snapshots from
+      // the Snapshots side-panel list.
+      const closeBtn = `<button class="editor-tab__close" data-close-key="${escapeHtml(tab.key)}" tabindex="-1" title="Close (Cmd/Ctrl-W)">×</button>`
       const dot = dirty ? '<span class="editor-tab__dot" title="Unsaved changes"></span>' : ''
       return `
         <div

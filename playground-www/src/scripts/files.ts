@@ -579,10 +579,12 @@ export function closeExplorerMenus() {
 }
 
 export function closeActiveFile() {
-  // Close the active tab; the tab manager falls back to a neighbor (or
-  // scratch if it was the last file tab open).
+  // Close the active tab; the tab manager falls back to a neighbor.
+  // After 23j stage 2 every tab is closable (scratch included); the
+  // null-id guard now covers only the "no tab open" state, where
+  // there's nothing to close.
   const currentId = getState('current-file-id')
-  if (currentId === null) return // already on scratch — nothing to close
+  if (currentId === null) return
   closeTab(currentId)
   populateExplorerFileList()
   updateCSS()
