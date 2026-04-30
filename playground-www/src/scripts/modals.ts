@@ -1,11 +1,19 @@
 // Modal stack, snapshot panels, info-dialog flow, and toast notifications.
+// Phase 1.5 step 23l: the legacy modal-based snapshot inspection
+// (pushCheckpointPanel) has been removed — snapshot inspection now lives
+// in the inline code-panel view. The remaining exports serve genuine
+// right-panel-less / tab-less contexts:
+//   - createModalPanel / pushPanel / popModal / closeAllModals (effect
+//     handler modals, import confirmations, feature cards, Save As)
+//   - showInfoModal / closeInfoModal / dismissInfoModal (confirmations)
+//   - showToast (notifications)
+//   - pushSavePanel (Save As form)
 
 import type { Snapshot } from '../../../src/evaluator/effectTypes'
 import { hamburgerIcon } from '../icons'
 import { renderDvalaMarkdown } from '../renderDvalaMarkdown'
 import {
   closeEffectHandlerMenus,
-  createSnapshotPanel,
   getCurrentSideTab,
   hideExecutionControlBar,
   showExecutionControlBarPaused,
@@ -393,15 +401,6 @@ export function closeAllModals() {
   restoreInlineSnapshotContext()
   state.resolveSnapshotModal?.()
   state.resolveSnapshotModal = null
-}
-
-export function pushCheckpointPanel(snapshot: Snapshot) {
-  const panel = createSnapshotPanel(snapshot)
-  pushPanel(panel, snapshotLabel(snapshot), snapshot)
-  // Update control bar label to show new snapshot index
-  if (elements.executionControlBar.style.display === 'flex') {
-    showExecutionControlBarPaused()
-  }
 }
 
 function restoreInlineSnapshotContext() {

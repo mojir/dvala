@@ -88,7 +88,6 @@ import {
 } from './state'
 import type { HistoryEntry, HistoryStatus } from './StateHistory'
 import { StateHistory } from './StateHistory'
-import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
 import { createPanel } from './scripts/panel'
@@ -116,6 +115,7 @@ import {
   wireTabKeyboardShortcuts,
   wireTabStripListeners,
 } from './scripts/tabs'
+import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { throttle } from './utils'
 import { createPlaygroundAPI } from './playgroundAPI'
 import { createEffectHandlers } from './createEffectHandlers'
@@ -140,7 +140,6 @@ import {
   createModalPanel,
   dismissInfoModal,
   popModal,
-  pushCheckpointPanel,
   pushPanel,
   pushSavePanel,
   showInfoModal,
@@ -3387,7 +3386,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
         card.style.borderColor = 'var(--color-scrollbar-track)'
         card.style.background = 'transparent'
       })
-      card.addEventListener('click', () => pushCheckpointPanel(cpSnapshot))
+      card.addEventListener('click', () => replaceSnapshotView(cpSnapshot))
 
       const badge = document.createElement('span')
       badge.textContent = `#${cpSnapshot.index}`
