@@ -168,16 +168,41 @@ function writeKindedEntries<E extends SnapshotEntry>(kind: E['kind'], entries: E
     if (entryKind === kind) existingOfKind.push(file)
   }
 
-  const droppedOfKind = new Set(existingOfKind)
-  const keep = allFiles.filter(file => !droppedOfKind.has(file))
+  // Drop existing snapshot files of two kinds:
+  //   1. Files of the kind being rewritten (the incoming list is the full
+  //      replacement set for that kind).
+  //   2. Files of *any* kind that share a snapshot.id with one of the
+  //      incoming entries. This handles the kind-promotion flow
+  //      (terminal → saved) where the same snapshot.id changes kind:
+  //      without this drop, both files would coexist after the write,
+  //      `setWorkspaceFiles → normalizeFiles` would dedupe the duplicate
+  //      id by re-rolling a fresh UUID for the new file, and consumers
+  //      looking up by snapshot.id would miss the file. The snapshot.id
+  //      is the canonical identifier per 23i — only one workspace file
+  //      per snapshot.id at any time.
+  const incomingIds = new Set(entries.map(e => e.snapshot.id))
+  const droppedFiles = new Set(existingOfKind)
+  for (const file of allFiles) {
+    if (!isInSnapshotsFolder(file.path)) continue
+    try {
+      const parsed = JSON.parse(file.code) as unknown
+      if (isSnapshotEntry(parsed) && incomingIds.has(parsed.snapshot.id)) {
+        droppedFiles.add(file)
+      }
+    } catch {
+      // Malformed; leave untouched.
+    }
+  }
+  const keep = allFiles.filter(file => !droppedFiles.has(file))
   const now = Date.now()
-  // Seed `seenPaths` with paths of surviving snapshot files (the other
-  // kind that we're not rewriting). Without this, a saved snapshot at
-  // savedAt=1000 written while a terminal snapshot already lives at
-  // `1000.json` would collide on path — the disambiguator only knows
-  // about same-batch collisions otherwise. `setWorkspaceFiles` would
-  // silently rename one of them via `uniqueFilePath`, leaving the path
-  // out of step with what `snapshotPath` would compute next time.
+  // Seed `seenPaths` with paths of surviving snapshot files (other kinds
+  // that we're not rewriting and whose snapshot.id isn't in our incoming
+  // batch). Without this, a saved snapshot at savedAt=1000 written while
+  // a terminal snapshot already lives at `1000.json` would collide on
+  // path — the disambiguator only knows about same-batch collisions
+  // otherwise. `setWorkspaceFiles` would silently rename one of them via
+  // `uniqueFilePath`, leaving the path out of step with what
+  // `snapshotPath` would compute next time.
   const seenPaths = new Set<string>()
   for (const file of keep) {
     if (isInSnapshotsFolder(file.path)) seenPaths.add(file.path)

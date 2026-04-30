@@ -241,6 +241,47 @@ describe('clearAll', () => {
   })
 })
 
+describe('kind promotion (terminal → saved)', () => {
+  it('preserves the workspace-file id when an existing terminal snapshot is rewritten as a saved snapshot', () => {
+    // Reproduces the saved-snapshot-tab-not-appearing bug found while
+    // exercising the post-23j flow: `saveTerminalSnapshotToSaved` calls
+    // `setSavedSnapshots` (writing a saved entry with `snapshot.id =
+    // X`) BEFORE `setTerminalSnapshots(...)` removes the terminal entry
+    // with the same `snapshot.id = X`. Pre-fix, both files coexisted
+    // through the saved-write — same `id` field on two records — so
+    // `fileStorage.normalizeFiles` re-rolled a fresh UUID for the new
+    // saved file, and consumers looking up by `snapshot.id` (the tab
+    // manager's `openOrFocusSnapshotTab`) couldn't find the file.
+    const id = 'shared-snapshot-id'
+    setTerminalSnapshots([makeTerminalEntry(id, 1000)])
+    // Simulate the in-flight state during `saveTerminalSnapshotToSaved`:
+    // a saved entry with the same snapshot.id is written before the
+    // terminal entry is removed. The storage layer must drop the
+    // terminal file as part of the saved write so the id↔file bond stays
+    // intact for the saved kind.
+    setSavedSnapshots([makeSavedEntry(id, 2000, { name: 'asd' })])
+
+    const savedFiles = workspaceFiles.filter(f => {
+      try {
+        return JSON.parse(f.code).kind === 'saved'
+      } catch {
+        return false
+      }
+    })
+    expect(savedFiles).toHaveLength(1)
+    expect(savedFiles[0]!.id).toBe(id)
+    // The terminal file with that snapshot.id should be gone.
+    const terminalFiles = workspaceFiles.filter(f => {
+      try {
+        return JSON.parse(f.code).kind === 'terminal'
+      } catch {
+        return false
+      }
+    })
+    expect(terminalFiles).toHaveLength(0)
+  })
+})
+
 describe('cross-kind isolation', () => {
   it("seeds the per-batch path-disambiguator with the surviving kind's paths", () => {
     // Same-millisecond saved + terminal pair. The terminal write claims
