@@ -272,10 +272,13 @@ describe('closeTab', () => {
     workspaceFiles = withScratchInWorkspace([makeFile('a', 'a.dvala'), makeFile('b', 'b.dvala')])
   })
 
-  it('refuses to close the scratch tab (it is sticky)', () => {
+  it('closes the scratch tab like any other tab (no longer sticky post-23j stage 2)', () => {
+    // The pre-23j-stage-2 sticky-scratch invariant was lifted in stage 2:
+    // scratch closes like any other tab, leaves the strip empty, and is
+    // reopenable from the pinned `<scratch>` entry in the file tree.
     tabs.closeTab(SCRATCH_FILE_ID)
     const persisted = stateStore['open-tabs'] as unknown[]
-    expect(persisted).toHaveLength(1)
+    expect(persisted).toHaveLength(0)
   })
 
   it('removes a file tab and disposes its model', () => {

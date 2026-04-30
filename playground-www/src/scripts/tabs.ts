@@ -318,12 +318,14 @@ export function openOrFocusSnapshotTab(snapshotId: string): void {
 
 /**
  * Close the tab matching `key`. If it was active, focus the neighbor on
- * the left (or right if leftmost), or scratch as a last resort. Scratch
- * itself can't be closed — the close button is hidden in the UI for it
- * by matching the file ID.
+ * the left (or right if leftmost). Phase 1.5 step 23j stage 2 made the
+ * scratch tab closable like any other tab; the pinned `<scratch>` entry
+ * in the file tree is the affordance for re-opening it. The "always at
+ * least one tab open" invariant is no longer enforced — closing the last
+ * tab leaves an empty strip and the editor area shows a "No tab open"
+ * empty state via `syncCodePanelView`.
  */
 export function closeTab(key: string): void {
-  if (key === SCRATCH_FILE_ID) return // scratch is sticky
   const idx = openTabs.findIndex(t => t.key === key)
   if (idx === -1) return
   const tab = openTabs[idx]!
@@ -339,9 +341,29 @@ export function closeTab(key: string): void {
     return
   }
   // Pick the neighbor: prefer the tab now at the same index (was idx+1
-  // before splice), else the one before, else scratch.
-  const next = openTabs[idx] ?? openTabs[idx - 1] ?? openTabs[0]!
-  setActive(next.key)
+  // before splice), else the one before. If `openTabs` is empty (the
+  // user just closed their last tab — scratch became closable in 23j
+  // stage 2), drop activeKey and let the editor area render the empty
+  // state via `syncCodePanelView`'s no-active-tab branch.
+  const next = openTabs[idx] ?? openTabs[idx - 1]
+  if (next) {
+    setActive(next.key)
+    return
+  }
+  // No tabs left. Detach from any model so Monaco doesn't keep
+  // re-painting against a stale active tab; afterSwap fires so the
+  // editor area refreshes to the empty state.
+  beforeSwapHook?.()
+  const outgoing = getActiveTab()
+  if (outgoing && outgoing.kind === 'file') outgoing.viewState = getCodeEditor().saveViewState()
+  activeKey = null
+  // Attach the idle model so Monaco stays in a valid state. Editor host
+  // gets hidden by `syncCodePanelView` (no active tab → empty branch).
+  getCodeEditor().setActiveModel(getIdleModel(), null)
+  saveState({ 'current-file-id': null }, false)
+  afterSwapHook?.()
+  persistTabsState()
+  notify()
 }
 
 export function closeActiveTab(): void {

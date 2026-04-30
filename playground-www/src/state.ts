@@ -51,11 +51,14 @@ export const defaultState = {
   'playground-developer': false as boolean,
   'light-mode': null as boolean | null, // null = follow OS preference
   'focused-panel': null as 'dvala-code' | null,
-  // After Phase 1.5 step 23h this is always a workspace-file ID — the
-  // reserved scratch ID when the scratch tab is active, a UUID for any
-  // other workspace file. The old `null` sentinel for "scratch is active"
-  // was retired alongside the `'<scratch>'` tab key.
-  'current-file-id': SCRATCH_FILE_ID as string,
+  // The active workspace-file ID. Phase 1.5 step 23h retired the legacy
+  // `null` sentinel for "scratch is active" (scratch's reserved id is
+  // used directly now). 23j stage 2 made every tab — including scratch
+  // — closable, so `null` is restored as a "no tab open" sentinel: when
+  // the user closes their last tab the strip empties and the editor
+  // area renders an empty state (`syncCodePanelView`'s no-active-tab
+  // branch).
+  'current-file-id': SCRATCH_FILE_ID as string | null,
   'dvala-code-edited': false as boolean,
   // Folder paths currently expanded in the file tree. Defaults to all folders
   // collapsed; users opt in by clicking. Workspace-scoped state — survives

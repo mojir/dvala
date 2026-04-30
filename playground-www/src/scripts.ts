@@ -294,7 +294,12 @@ function pushActiveDvalaCodeHistoryEntry() {
 }
 
 export function activateCurrentFileHistory(reset = false) {
-  switchDvalaCodeHistory(getState('current-file-id'), createDvalaCodeHistoryEntryFromState(), reset)
+  // When no tab is open (scratch closed in 23j stage 2), there's no per-
+  // file history to activate — fall back to the scratch file's history
+  // bucket so any subsequent re-open of scratch picks up where the user
+  // left off.
+  const currentFileId = getState('current-file-id') ?? SCRATCH_FILE_ID
+  switchDvalaCodeHistory(currentFileId, createDvalaCodeHistoryEntryFromState(), reset)
 }
 
 // ---------------------------------------------------------------------------
@@ -2108,6 +2113,12 @@ window.onload = async function () {
         if (details) replaceSnapshotView(details.snapshot, details.label)
       }
       syncCodePanelView()
+      // Refresh editor-area chrome — the toolbar title pill, locked
+      // indicator, save-scratch button visibility — to reflect the new
+      // active tab. Without this, closing a tab via the strip's × leaves
+      // the toolbar title showing the just-closed file's name until some
+      // other interaction triggers `updateCSS`.
+      updateCSS()
     },
   })
   initTabs()
@@ -3592,6 +3603,27 @@ export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
   const label = state.snapshotViewStack.length === 0 ? 'Snapshot' : `Checkpoint ${state.snapshotViewStack.length}`
   state.snapshotViewStack.push({ label, snapshot })
   showSnapshotInPanel(snapshot, true)
+
+  // Phase 1.5 step 23j stage 2: the legacy modal flow (suspension /
+  // halted runs, URL `?snapshot=` blob, snapshot import) opens this view
+  // for snapshots that aren't backed by a workspace file — so they have
+  // no editor-area tab, and `syncCodePanelView`'s active-tab-kind branch
+  // would default to the editor view. Until 23l retires this path
+  // entirely, we force-show the snapshot view here so suspended runs
+  // still render the inspector. The DOM toggling mirrors the snapshot
+  // branch of `syncCodePanelView` exactly.
+  const editorView = document.getElementById('dvala-editor-view')
+  const snapshotView = document.getElementById('dvala-snapshot-view')
+  const emptyView = document.getElementById('dvala-empty-view')
+  const headerEditor = document.getElementById('dvala-header-editor')
+  const headerSnapshot = document.getElementById('dvala-header-snapshot')
+  const closeBtn = document.getElementById('snapshot-close-btn')
+  if (editorView) editorView.style.display = 'none'
+  if (emptyView) emptyView.style.display = 'none'
+  if (headerEditor) headerEditor.style.display = 'none'
+  if (snapshotView) snapshotView.style.display = 'flex'
+  if (headerSnapshot) headerSnapshot.style.display = 'flex'
+  if (closeBtn) closeBtn.style.display = ''
 
   return new Promise<void>(resolve => {
     state.resolveSnapshotModal = resolve

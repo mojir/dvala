@@ -3102,6 +3102,15 @@ button:focus {
   flex: 1;
   min-width: 0; /* allow the strip to shrink below children's intrinsic width */
   user-select: none;
+  /* Phase 1.5 step 23j: hide scrollbars on overflow. The strip still
+     scrolls horizontally (mouse wheel, touch, programmatic) but the
+     visible scrollbar is suppressed so a busy strip doesn't grow a
+     chrome row. Vertical-axis hidden via overflow-x; horizontal axis
+     suppressed via the platform-specific properties below. */
+  scrollbar-width: none; /* Firefox */
+}
+.editor-tab-strip::-webkit-scrollbar {
+  display: none; /* WebKit (Chrome, Safari) */
 }
 
 .editor-tab {
