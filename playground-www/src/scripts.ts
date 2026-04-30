@@ -47,7 +47,6 @@ import type { TocItem } from './components/tocDropdown'
 import { slugifyHeading } from './renderDvalaMarkdown'
 import { playgroundEffectReference } from './playgroundEffects'
 import {
-  clearAll as clearAllSnapshots,
   getSavedSnapshots,
   getTerminalSnapshots,
   init as initSnapshotStorage,
@@ -1409,10 +1408,12 @@ export function saveTerminalSnapshotToSaved(index: number) {
     })
     setSavedSnapshots(deduped)
 
-    // Animate removal from terminal snapshots
+    // Animate removal from terminal snapshots. Phase 1.5 step 23i made
+    // `getTerminalSnapshots()` return a fresh array each call (no shared
+    // cache), so we filter into a new array instead of mutating the
+    // returned one — `setTerminalSnapshots` writes exactly what we pass.
     await animateCardRemoval('terminal', index)
-    entries.splice(index, 1)
-    setTerminalSnapshots(entries)
+    setTerminalSnapshots(entries.filter((_, i) => i !== index))
     populateSnapshotsList({ animateNewSaved: true })
     showToast('Snapshot saved')
   })
@@ -1443,8 +1444,7 @@ export async function deleteSavedSnapshot(index: number) {
 
   const doDelete = async () => {
     await animateCardRemoval('saved', index)
-    entries.splice(index, 1)
-    setSavedSnapshots(entries)
+    setSavedSnapshots(entries.filter((_, i) => i !== index))
     populateSnapshotsList()
     showToast('Snapshot deleted')
   }
@@ -1464,8 +1464,11 @@ export function toggleSnapshotLock(index: number) {
   const entries = getSavedSnapshots()
   const entry = entries[index]
   if (!entry) return
-  entry.locked = !entry.locked
-  setSavedSnapshots(entries)
+  // Phase 1.5 step 23i: don't mutate the returned entry in place — the
+  // entry object is the parsed JSON from the workspace file's `code`,
+  // and an in-place flip would only land in storage by aliasing
+  // coincidence. Build a fresh entry with the toggled flag.
+  setSavedSnapshots(entries.map((e, i) => (i === index ? { ...e, locked: !e.locked } : e)))
   populateSnapshotsList()
 }
 
@@ -1690,11 +1693,11 @@ export function clearIndexedDbData() {
     'Clear IndexedDB',
     'This will delete all saved snapshots, recent snapshots, and workspace files.',
     () => {
-      clearAllSnapshots()
+      // Phase 1.5 step 23i: snapshots are workspace files now, so
+      // `clearAllFiles` already wipes them; the previous separate
+      // `clearAllSnapshots()` call became redundant. The reserved
+      // buffers (scratch + handlers per 23c/23d) get recreated below.
       clearAllFiles()
-      // Phase 1.5 step 23c/23d — scratch + handlers are undeletable;
-      // recreate their backing files (empty) so the editor still has
-      // somewhere to land and boundary handlers stay declarable.
       ensureScratchFile()
       ensureHandlersFile()
       clearAllFileHistories()
@@ -3975,8 +3978,7 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
 export async function clearTerminalSnapshot(index: number): Promise<void> {
   await animateCardRemoval('terminal', index)
   const entries = getTerminalSnapshots()
-  entries.splice(index, 1)
-  setTerminalSnapshots(entries)
+  setTerminalSnapshots(entries.filter((_, i) => i !== index))
   populateSnapshotsList()
 }
 

@@ -241,6 +241,22 @@ describe('clearAll', () => {
   })
 })
 
+describe('cross-kind isolation', () => {
+  it("seeds the per-batch path-disambiguator with the surviving kind's paths", () => {
+    // Same-millisecond saved + terminal pair. The terminal write claims
+    // `1000.json`; a subsequent saved write at the same `savedAt` must
+    // disambiguate to `1000-2.json` instead of stomping over it.
+    setTerminalSnapshots([makeTerminalEntry('t1', 1000)])
+    setSavedSnapshots([makeSavedEntry('s1', 1000)])
+
+    const paths = workspaceFiles.map(f => f.path).sort()
+    expect(paths).toEqual(['.dvala-playground/snapshots/1000-2.json', '.dvala-playground/snapshots/1000.json'])
+    // Both kinds remain readable through the API.
+    expect(getSavedSnapshots().map(e => e.snapshot.id)).toEqual(['s1'])
+    expect(getTerminalSnapshots().map(e => e.snapshot.id)).toEqual(['t1'])
+  })
+})
+
 describe('malformed payload handling', () => {
   it('skips snapshot files whose `code` is not valid JSON', () => {
     workspaceFiles = [

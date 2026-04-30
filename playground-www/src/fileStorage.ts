@@ -1,4 +1,4 @@
-import { ensureDvalaSuffix, filenameFromPath, normalizeFilePath } from './filePath'
+import { ensureDvalaSuffix, filenameFromPath, isInSnapshotsFolder, normalizeFilePath } from './filePath'
 import { getDb, idbClear, idbGet, idbPut, SAVED_FILES_STORE } from './idb'
 
 // Single source of truth for a workspace file. `path` is the canonical
@@ -50,7 +50,18 @@ function normalizeFiles(entries: WorkspaceFile[]): { entries: WorkspaceFile[]; c
     const existingId = typeof entry.id === 'string' ? entry.id.trim() : ''
     const needsNewId = existingId === '' || usedIds.has(existingId)
     const id = needsNewId ? crypto.randomUUID() : existingId
-    const cleaned = normalizeFilePath(entry.path)
+    // Snapshot files (Phase 1.5 step 23i) live at
+    // `.dvala-playground/snapshots/<id>.json` — they're JSON payloads, not
+    // Dvala source, so the `.dvala` suffix the rest of `normalizeFilePath`
+    // enforces would corrupt them into `<id>.json.dvala`. Preserve their
+    // path verbatim after a basic emptiness check; everything else still
+    // routes through `normalizeFilePath`.
+    let cleaned: string | null
+    if (typeof entry.path === 'string' && isInSnapshotsFolder(entry.path)) {
+      cleaned = entry.path.trim() !== '' ? entry.path : null
+    } else {
+      cleaned = normalizeFilePath(entry.path)
+    }
     if (cleaned === null) {
       // Invalid path — drop the entry rather than persist garbage. The
       // schema upgrade below already wipes pre-`path` data, so this branch

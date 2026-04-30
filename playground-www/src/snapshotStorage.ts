@@ -171,7 +171,17 @@ function writeKindedEntries<E extends SnapshotEntry>(kind: E['kind'], entries: E
   const droppedOfKind = new Set(existingOfKind)
   const keep = allFiles.filter(file => !droppedOfKind.has(file))
   const now = Date.now()
+  // Seed `seenPaths` with paths of surviving snapshot files (the other
+  // kind that we're not rewriting). Without this, a saved snapshot at
+  // savedAt=1000 written while a terminal snapshot already lives at
+  // `1000.json` would collide on path — the disambiguator only knows
+  // about same-batch collisions otherwise. `setWorkspaceFiles` would
+  // silently rename one of them via `uniqueFilePath`, leaving the path
+  // out of step with what `snapshotPath` would compute next time.
   const seenPaths = new Set<string>()
+  for (const file of keep) {
+    if (isInSnapshotsFolder(file.path)) seenPaths.add(file.path)
+  }
   const written: WorkspaceFile[] = []
 
   for (const entry of entries) {
