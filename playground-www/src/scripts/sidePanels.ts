@@ -271,6 +271,14 @@ export function syncCodePanelView(sideTab?: string) {
   if (closeBtn) closeBtn.style.display = 'none'
 
   if (tab === 'files') {
+    // Phase 1.5 step 23j stage 2 (TODO): the editor area should be driven
+    // by the active EDITOR-TAB kind (file vs snapshot), not by the side
+    // tab. After Stage 1, a snapshot tab is in the strip but this branch
+    // still renders the file-tab editor view when the side tab is 'files'
+    // — meaning if the user is on the files side tab and activates a
+    // snapshot tab from the strip, they see Monaco attached to the idle
+    // (empty) model. Stage 2 adds an "if active tab is snapshot, force
+    // snapshot view" branch here.
     editorView.style.display = 'flex'
     if (headerEditor) headerEditor.style.display = 'flex'
     if (undoBtn) undoBtn.style.display = ''

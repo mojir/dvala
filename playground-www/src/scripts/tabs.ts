@@ -44,11 +44,19 @@ interface FileTab {
  * inspector); the Raw view lazily creates a JSON model when first selected.
  * `key` is the snapshot's id (also the workspace-file id, per 23i's
  * snapshot.id ↔ file.id bond).
+ *
+ * `cachedLabel` memoizes the tab strip's display label so we don't re-parse
+ * the snapshot file's JSON on every render. The tab strip re-renders on
+ * every keystroke (via `notifyTabsChanged` ← editor onChange), so a
+ * per-render JSON parse times the number of open snapshot tabs would
+ * accumulate. Cleared by `invalidateSnapshotTabLabel(id)` if a snapshot's
+ * metadata is mutated under it (rename, lock toggle).
  */
 interface SnapshotTab {
   kind: 'snapshot'
   key: string // == snapshotId
   snapshotId: string
+  cachedLabel: string | null
 }
 type OpenTab = FileTab | SnapshotTab
 
@@ -114,7 +122,16 @@ export function setTabLifecycleHooks(opts: { beforeSwap?: () => void; afterSwap?
 export function __resetForTesting(): void {
   openTabs = []
   activeKey = null
-  idleModel = null
+  // Dispose the idle model before clearing the reference. In production
+  // the only realistic caller is the test harness (where stub models are
+  // POJOs and disposal is a no-op-on-a-mock), but draining via
+  // `tryGetCodeEditor()?.disposeModel(...)` keeps this honest in case
+  // `__resetForTesting` ever runs against a real editor — e.g. if a future
+  // hot-reload flow calls it after Monaco is up.
+  if (idleModel !== null) {
+    tryGetCodeEditor()?.disposeModel(idleModel)
+    idleModel = null
+  }
   changeListeners.clear()
   beforeSwapHook = null
   afterSwapHook = null
@@ -442,7 +459,21 @@ function makeFileTab(editor: ReturnType<typeof getCodeEditor>, file: WorkspaceFi
 }
 
 function makeSnapshotTab(snapshotId: string): SnapshotTab {
-  return { kind: 'snapshot', key: snapshotId, snapshotId }
+  return { kind: 'snapshot', key: snapshotId, snapshotId, cachedLabel: null }
+}
+
+/**
+ * Drop the cached tab-strip label for the given snapshot id so the next
+ * render re-parses the workspace file. Callers should use this when a
+ * snapshot's metadata changes (saved-snapshot rename, lock toggle); the
+ * tab strip then picks up the new label on its next paint.
+ */
+export function invalidateSnapshotTabLabel(snapshotId: string): void {
+  for (const tab of openTabs) {
+    if (tab.kind === 'snapshot' && tab.snapshotId === snapshotId) {
+      tab.cachedLabel = null
+    }
+  }
 }
 
 /**
@@ -485,18 +516,30 @@ function tabLabel(tab: OpenTab): string {
     // Snapshot label sources, in priority order: the saved-snapshot
     // user-supplied name (if any), the snapshot's `message`, or a generic
     // "Snapshot" fallback. The metadata lives in the workspace file's
-    // `code` field (JSON-encoded entry); we parse it on demand here.
+    // `code` field (JSON-encoded entry); we parse it once and cache the
+    // result on the tab object — `renderTabStrip` is called on every
+    // keystroke, and re-parsing every open snapshot's payload per
+    // keystroke would accumulate. Invalidated via
+    // `invalidateSnapshotTabLabel` when metadata changes.
+    if (tab.cachedLabel !== null) return tab.cachedLabel
     const file = getWorkspaceFiles().find(f => f.id === tab.snapshotId)
-    if (!file) return '(missing snapshot)'
+    if (!file) {
+      tab.cachedLabel = '(missing snapshot)'
+      return tab.cachedLabel
+    }
+    let label = 'Snapshot'
     try {
       const entry = JSON.parse(file.code) as { name?: string; snapshot?: { message?: string } }
-      if (typeof entry.name === 'string' && entry.name.trim() !== '') return entry.name
-      const message = entry.snapshot?.message
-      if (typeof message === 'string' && message.trim() !== '') return message
+      if (typeof entry.name === 'string' && entry.name.trim() !== '') label = entry.name
+      else {
+        const message = entry.snapshot?.message
+        if (typeof message === 'string' && message.trim() !== '') label = message
+      }
     } catch {
       // Fall through to the generic label.
     }
-    return 'Snapshot'
+    tab.cachedLabel = label
+    return label
   }
   if (tab.fileId === SCRATCH_FILE_ID) return '<scratch>'
   const file = getWorkspaceFiles().find(f => f.id === tab.fileId)

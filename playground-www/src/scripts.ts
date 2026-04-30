@@ -106,6 +106,7 @@ import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
   focusScratch,
   initTabs,
+  invalidateSnapshotTabLabel,
   notifyTabsChanged,
   openOrFocusFile,
   openOrFocusSnapshotTab,
@@ -1415,6 +1416,10 @@ export function saveTerminalSnapshotToSaved(index: number) {
       name: name || undefined,
     })
     setSavedSnapshots(deduped)
+    // The snapshot's metadata changed under any open snapshot tab keyed
+    // by `entry.snapshot.id` — drop its cached tab-strip label so the new
+    // user-supplied name picks up on the next render.
+    invalidateSnapshotTabLabel(entry.snapshot.id)
 
     // Animate removal from terminal snapshots. Phase 1.5 step 23i made
     // `getTerminalSnapshots()` return a fresh array each call (no shared

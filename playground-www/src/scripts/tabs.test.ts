@@ -457,6 +457,30 @@ describe('openOrFocusSnapshotTab', () => {
     expect(persisted).toContainEqual({ kind: 'snapshot', id: 'snap-a' })
   })
 
+  it('repurposes the bootstrap model as the idle model when boot-active is a snapshot tab (no dispose)', () => {
+    // Sets up a persisted state where a snapshot tab is the active one at
+    // boot. `initTabs` must NOT dispose the bootstrap model — instead, it
+    // hands it to `idleModel` so Monaco stays attached to a valid model
+    // while the snapshot panel takes over the editor area visually.
+    tabs.__resetForTesting()
+    editor = makeStubEditor()
+    workspaceFiles = withScratchInWorkspace([makeSnapshotFile('snap-a')])
+    stateStore['open-tabs'] = [
+      { kind: 'file', id: SCRATCH_FILE_ID },
+      { kind: 'snapshot', id: 'snap-a' },
+    ]
+    stateStore['active-tab-key'] = 'snap-a'
+    const bootstrap = editor.active
+
+    tabs.initTabs()
+
+    // Bootstrap model is preserved (not in `disposed`); editor is still
+    // attached to it (as the idle model).
+    expect(bootstrap.__disposed).toBe(false)
+    expect(editor.disposed).not.toContain(bootstrap)
+    expect(editor.active).toBe(bootstrap)
+  })
+
   it('auto-closes the snapshot tab when its backing workspace file is removed', () => {
     workspaceFiles = withScratchInWorkspace([makeSnapshotFile('snap-a'), makeSnapshotFile('snap-b')])
     tabs.openOrFocusSnapshotTab('snap-a')
