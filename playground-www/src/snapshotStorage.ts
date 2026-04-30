@@ -182,16 +182,9 @@ function writeKindedEntries<E extends SnapshotEntry>(kind: E['kind'], entries: E
   //      per snapshot.id at any time.
   const incomingIds = new Set(entries.map(e => e.snapshot.id))
   const droppedFiles = new Set(existingOfKind)
-  for (const file of allFiles) {
-    if (!isInSnapshotsFolder(file.path)) continue
-    try {
-      const parsed = JSON.parse(file.code) as unknown
-      if (isSnapshotEntry(parsed) && incomingIds.has(parsed.snapshot.id)) {
-        droppedFiles.add(file)
-      }
-    } catch {
-      // Malformed; leave untouched.
-    }
+  for (const id of incomingIds) {
+    const existing = existingById.get(id)
+    if (existing) droppedFiles.add(existing)
   }
   const keep = allFiles.filter(file => !droppedFiles.has(file))
   const now = Date.now()

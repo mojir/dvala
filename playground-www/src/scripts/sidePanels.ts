@@ -226,7 +226,7 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   if (options.syncUrl !== false) syncPlaygroundUrlState(normalizedTabId)
 
   // Sync the code panel view and header
-  syncCodePanelView(normalizedTabId)
+  syncCodePanelView()
   updateCSS()
 }
 
@@ -254,13 +254,8 @@ function setEditorEmptyState(
  * "select a snapshot" empty state because the side-tab list is now a
  * pure left-panel concern (clicking an item opens the corresponding tab,
  * which drives the editor area through this function).
- *
- * The optional `sideTab` argument is preserved for back-compat with
- * earlier callers (`showSideTab`) but ignored — the function reads the
- * active tab kind directly. The argument can be dropped once all
- * callers are audited; flagged for stage-2 cleanup.
  */
-export function syncCodePanelView(_sideTab?: string) {
+export function syncCodePanelView() {
   const editorView = document.getElementById('dvala-editor-view')
   const snapshotView = document.getElementById('dvala-snapshot-view')
   const emptyView = document.getElementById('dvala-empty-view')

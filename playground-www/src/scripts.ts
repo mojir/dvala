@@ -104,6 +104,7 @@ import {
 } from './scripts/panelInstances'
 import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
+  closeActiveTab,
   focusScratch,
   getActiveSnapshotTabId,
   initTabs,
@@ -1351,6 +1352,15 @@ export function getActiveSnapshotDetails(): { label: string; snapshot: Snapshot 
  * we walk the saved + terminal lists to find the matching entry. Returns
  * `null` if the snapshot id has no matching entry (e.g. raced with a
  * delete; the tab will get auto-closed by `closeTabsForMissingFiles`).
+ *
+ * Saved is checked before terminal. Post-23i + the kind-promotion fix in
+ * `writeKindedEntries`, every snapshot id is unique across both kinds —
+ * only one workspace file exists per snapshot.id. The saved-then-terminal
+ * order is therefore moot under normal operation; it only matters for
+ * pre-fix bad state where a stale terminal file might still co-exist with
+ * a saved file at the same id, in which case the saved version wins
+ * (correct: the user-visible list shows the saved version, so the tab
+ * label should match).
  */
 function getSnapshotDetailsById(snapshotId: string): { label: string; snapshot: Snapshot } | null {
   const savedEntries = getSavedSnapshots()
@@ -1396,13 +1406,10 @@ export function openSavedSnapshot(index: number) {
   state.activeSnapshotKey = `saved:${index}`
   populateSideSnapshotsList()
   showSideTab('snapshots')
-  // Phase 1.5 step 23j stage 1: open a snapshot tab in the editor strip so
-  // the snapshot has tab-strip presence. The editor-area rendering still
-  // flows through the legacy `replaceSnapshotView` → snapshot panel path
-  // for now; stage 2 wires the editor area to drive from the active tab's
-  // kind and the modal-based path goes away.
+  // The afterSwap hook (registered via `setTabLifecycleHooks`) handles
+  // populating the snapshot view via `replaceSnapshotView` once the new
+  // tab activates — no explicit second call needed here.
   openOrFocusSnapshotTab(entry.snapshot.id)
-  replaceSnapshotView(entry.snapshot, getSavedSnapshotLabel(entry, index))
   syncPlaygroundUrlState('snapshots')
 }
 
@@ -1414,7 +1421,6 @@ export function openTerminalSnapshot(index: number) {
   populateSideSnapshotsList()
   showSideTab('snapshots')
   openOrFocusSnapshotTab(entry.snapshot.id)
-  replaceSnapshotView(entry.snapshot, getTerminalSnapshotLabel(index))
   syncPlaygroundUrlState('snapshots')
 }
 
@@ -3564,9 +3570,14 @@ function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = state.s
   if (body) content.appendChild(body)
   if (footer) footerHost.appendChild(footer)
 
-  // Update breadcrumbs and sync the panel view
+  // Update breadcrumbs + execution controls. The editor-area swap (showing
+  // `#dvala-snapshot-view`) is now driven by the afterSwap tab-lifecycle
+  // hook in scripts.ts:2099, so we don't call `syncCodePanelView` here —
+  // it would double-render. For breadcrumb navigation (navigateSnapshot-
+  // Breadcrumb), the snapshot view is already visible (active tab is the
+  // snapshot tab); for the boot-time `openSnapshotModal` URL-blob path,
+  // the legacy modal flow is being retired in 23l anyway.
   renderSnapshotBreadcrumbs()
-  syncCodePanelView('snapshots')
   syncSnapshotExecutionControls()
 }
 
@@ -3597,7 +3608,15 @@ export function navigateSnapshotBreadcrumb(index: number) {
 }
 
 export function closeSnapshotView() {
-  // Clear stack and active snapshot
+  // Phase 1.5 step 23j stage 2: clear the snapshot-view state machinery
+  // first, then close the active snapshot tab. Without the explicit
+  // `closeActiveTab()` call the snapshot view stayed visible because
+  // `syncCodePanelView` reads active tab kind — clearing
+  // `state.activeSnapshotKey` alone doesn't change which TAB is active,
+  // so the snapshot panel kept rendering (blank, since the underlying
+  // state machinery was wiped). Closing the tab triggers the natural
+  // fallback to a neighbor file tab; the afterSwap hook then runs
+  // `syncCodePanelView` and the editor area swaps to the editor view.
   state.snapshotViewStack.splice(0)
   state.activeSnapshotKey = null
   populateSideSnapshotsList()
@@ -3606,9 +3625,7 @@ export function closeSnapshotView() {
   state.resolveSnapshotModal?.()
   state.resolveSnapshotModal = null
   hideExecutionControlBar()
-
-  // Sync view — will show empty or editor depending on side tab
-  syncCodePanelView()
+  closeActiveTab()
   syncPlaygroundUrlState(normalizeSideTab(getCurrentSideTab()))
 }
 

@@ -94,7 +94,7 @@ export function loadWorkspaceFile(id: string) {
   // any tab the user reopens.
   openOrFocusFile(file.id)
   activateCurrentFileHistory(false)
-  syncCodePanelView('files')
+  syncCodePanelView()
   syncPlaygroundUrlState('files')
   updateCSS()
   populateExplorerFileList()
