@@ -23,7 +23,7 @@ import {
   showTokensInRightPanel,
 } from './scripts/rightPanelTools'
 import { renderBenchmarksCharts } from './components/benchmarksPage'
-import { copyIcon, downloadIcon, panelRightIcon, saveIcon, shareIcon } from './icons'
+import { copyIcon, downloadIcon, panelRightIcon, saveIcon } from './icons'
 import { renderCodeBlock } from './renderCodeBlock'
 import { renderShell } from './shell'
 import * as router from './router'
@@ -116,7 +116,6 @@ import {
   wireTabKeyboardShortcuts,
   wireTabStripListeners,
 } from './scripts/tabs'
-import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { throttle } from './utils'
 import { createPlaygroundAPI } from './playgroundAPI'
 import { createEffectHandlers } from './createEffectHandlers'
@@ -2527,19 +2526,6 @@ function getDataFromUrl() {
     }
     return
   }
-
-  const urlSnapshot = urlParams.get('snapshot')
-  if (urlSnapshot) {
-    const snapshot = decodeSnapshot(urlSnapshot)
-    urlParams.delete('snapshot')
-    history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
-    if (snapshot) {
-      showToast('Snapshot loaded from link')
-      void openSnapshotModal(snapshot)
-    } else {
-      showToast('Invalid snapshot link', { severity: 'error' })
-    }
-  }
 }
 
 function pageIdToAppPath(pageId: string): string {
@@ -3316,15 +3302,6 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     resumeBtn.title = ''
   }
 
-  // Mark share menu item if snapshot URL would be too long
-  const shareBtn = ref('share-btn')
-  const encodedLength = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(snapshot)}`.length
-  if (encodedLength > MAX_URL_LENGTH) {
-    shareBtn.style.opacity = '0.4'
-    shareBtn.textContent = 'Share ⚠'
-    shareBtn.title = 'Snapshot is too large to share as a URL'
-  }
-
   // Meta
   const metaContainer = ref('meta-container')
   if (snapshot.meta === undefined) {
@@ -3487,7 +3464,7 @@ export function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON):
   footer.innerHTML = `
     <div class="snapshot-panel__buttons-left">
       <button data-ref="save-btn" class="button">${saveIcon} Save</button>
-      <button data-ref="share-btn" class="button">${shareIcon} Share</button>
+
       <button data-ref="download-btn" class="button">${downloadIcon} Download</button>
       <button data-ref="copy-json-btn" class="button">${copyIcon} Copy JSON</button>
     </div>
@@ -3513,9 +3490,7 @@ export function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON):
       showToast(`Snapshot saved (${existing.length} total)`)
     })
   })
-  q('share-btn').addEventListener('click', () => {
-    shareSnapshot()
-  })
+
   q('download-btn').addEventListener('click', () => {
     downloadSnapshot()
   })
@@ -4025,7 +4000,7 @@ export function closeImportResultModal() {
   }
 }
 
-// Set by checkpoint effect handler; cleared on resolve. Used by saveCheckpoint / downloadCheckpoint / shareCheckpoint.
+// Set by checkpoint effect handler; cleared on resolve. Used by saveCheckpoint / downloadCheckpoint.
 // (state.currentCheckpointSnapshot now lives in scripts/playgroundState.ts)
 
 const MAX_TERMINAL_SNAPSHOTS = 99
@@ -4146,42 +4121,6 @@ export function downloadCheckpoint() {
     JSON.stringify(state.currentCheckpointSnapshot, null, 2),
     `checkpoint-${state.currentCheckpointSnapshot.index}.json`,
   )
-}
-
-export function shareCheckpoint() {
-  if (!state.currentCheckpointSnapshot) return
-  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(state.currentCheckpointSnapshot)}`
-  if (href.length > MAX_URL_LENGTH) {
-    showToast('Checkpoint is too large to share as a URL. Use Download instead.', { severity: 'error' })
-    return
-  }
-  addOutputSeparator()
-  appendOutput('Sharable checkpoint link:', 'comment')
-  const a = document.createElement('a')
-  a.textContent = href
-  a.className = 'share-link'
-  a.href = href
-  addOutputElement(a)
-  void navigator.clipboard.writeText(href)
-  showToast('Link copied to clipboard')
-}
-
-export function shareSnapshot() {
-  if (!state.currentSnapshot) return
-  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(state.currentSnapshot)}`
-  if (href.length > MAX_URL_LENGTH) {
-    showToast('Snapshot is too large to share as a URL. Use Download instead.', { severity: 'error' })
-    return
-  }
-  addOutputSeparator()
-  appendOutput('Sharable snapshot link:', 'comment')
-  const a = document.createElement('a')
-  a.textContent = href
-  a.className = 'share-link'
-  a.href = href
-  addOutputElement(a)
-  void navigator.clipboard.writeText(href)
-  showToast('Link copied to clipboard')
 }
 
 export function downloadSnapshot() {

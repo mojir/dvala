@@ -778,6 +778,188 @@ export function duplicateFile(id: string) {
   showToast(`Created "${fileDisplayName(copy)}"`)
 }
 
+// ─── Save As modal (Phase 1.5 step 23k) ──────────────────────────────────────
+
+/** Collect all unique non-playground folders from the current workspace file set. */
+function workspaceFolders(): string[] {
+  const folders = new Set<string>()
+  for (const f of getWorkspaceFiles()) {
+    const dir = folderFromPath(f.path)
+    if (dir && !isInPlaygroundFolder(dir)) folders.add(dir)
+  }
+  return [...folders].sort()
+}
+
+/**
+ * Reusable Save As modal with filename input, folder picker (existing folders +
+ * "New folder…" with inline name input), and collision check.
+ *
+ * The `onSave` callback receives the chosen full path. Duplicate detection
+ * against existing workspace files is handled inside the modal; when a
+ * collision is found the confirm-on-overwrite prompt is shown before calling
+ * `onSave`.
+ */
+function showSaveAsModal(
+  defaultName: string,
+  defaultFolder: string,
+  onSave: (path: string) => void,
+  onCancel?: () => void,
+) {
+  const dismiss = () => {
+    popModal()
+    onCancel?.()
+  }
+
+  const folders = workspaceFolders()
+
+  // ── modal state ──
+  let selectedFolder = defaultFolder // '' means root
+  let creatingNewFolder = false
+
+  const { panel, body } = createModalPanel({
+    size: 'small',
+    onClose: onCancel,
+    footerActions: [
+      { label: 'Cancel', action: dismiss },
+      {
+        label: 'Save',
+        primary: true,
+        action: () => {
+          const name = nameInput.value.trim()
+          if (!name) return
+          const normalizedFilename = normalizeWorkspaceFileName(name)
+          // When we're creating a new folder, use the user-typed folder name
+          const folder = creatingNewFolder ? (newFolderInput.value.trim() || 'new-folder') : selectedFolder
+          const path = folder === '' ? normalizedFilename : `${folder}/${normalizedFilename}`
+
+          // Collision check
+          const duplicate = getWorkspaceFiles().find(entry => entry.path === path)
+          if (duplicate) {
+            showInfoModal('Replace existing file?', `"${filenameFromPath(path)}" already exists. Replace it?`, () => {
+              popModal()
+              onSave(path)
+            })
+            return
+          }
+          popModal()
+          onSave(path)
+        },
+      },
+    ],
+  })
+
+  // ── Filename input ──
+  const nameRow = document.createElement('div')
+  nameRow.className = 'modal-body-row'
+  nameRow.style.display = 'flex'
+  nameRow.style.flexDirection = 'column'
+  nameRow.style.gap = '0.25rem'
+
+  const nameLabel = document.createElement('label')
+  nameLabel.textContent = 'Filename'
+  nameLabel.style.cssText =
+    'font-size:0.75rem; color:var(--color-text-dim); font-weight:600;'
+  nameRow.appendChild(nameLabel)
+
+  const nameInput = document.createElement('input')
+  nameInput.type = 'text'
+  nameInput.value = defaultName
+  nameInput.spellcheck = false
+  nameInput.style.cssText =
+    'background:var(--color-surface-dim); border:1px solid var(--color-scrollbar-track); border-radius:4px; padding:0.4rem 0.6rem; color:var(--color-text); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;'
+  nameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      // Click the primary Save button
+      const footer = panel.querySelector('.modal-footer') as HTMLElement | null
+      const saveBtn = footer?.querySelector('.modal-footer-btn--primary') as HTMLButtonElement | null
+      if (saveBtn && nameInput.value.trim()) saveBtn.click()
+    }
+  })
+  nameRow.appendChild(nameInput)
+  body.appendChild(nameRow)
+
+  // ── Folder picker ──
+  const folderRow = document.createElement('div')
+  folderRow.className = 'modal-body-row'
+  folderRow.style.display = 'flex'
+  folderRow.style.flexDirection = 'column'
+  folderRow.style.gap = '0.25rem'
+
+  const folderLabel = document.createElement('label')
+  folderLabel.textContent = 'Folder'
+  folderLabel.style.cssText =
+    'font-size:0.75rem; color:var(--color-text-dim); font-weight:600;'
+  folderRow.appendChild(folderLabel)
+
+  const select = document.createElement('select')
+  select.style.cssText =
+    'background:var(--color-surface-dim); border:1px solid var(--color-scrollbar-track); border-radius:4px; padding:0.4rem 0.6rem; color:var(--color-text); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box; cursor:pointer; appearance:auto;'
+
+  // Root option
+  const rootOpt = document.createElement('option')
+  rootOpt.value = ''
+  rootOpt.textContent = '/ (root)'
+  select.appendChild(rootOpt)
+
+  // Existing folders
+  for (const f of folders) {
+    const opt = document.createElement('option')
+    opt.value = f
+    opt.textContent = `📁 ${f}`
+    select.appendChild(opt)
+  }
+
+  // "New folder…" option
+  const newOpt = document.createElement('option')
+  newOpt.value = '__new__'
+  newOpt.textContent = '+ New folder…'
+  select.appendChild(newOpt)
+
+  // Preselect the default folder
+  if (defaultFolder && folders.includes(defaultFolder)) {
+    select.value = defaultFolder
+  }
+
+  select.addEventListener('change', () => {
+    if (select.value === '__new__') {
+      creatingNewFolder = true
+      newFolderInput.style.display = ''
+      newFolderInput.focus()
+    } else {
+      creatingNewFolder = false
+      selectedFolder = select.value
+      newFolderInput.style.display = 'none'
+    }
+  })
+
+  folderRow.appendChild(select)
+
+  // Inline new-folder input (hidden unless "New folder…" is selected)
+  const newFolderInput = document.createElement('input')
+  newFolderInput.type = 'text'
+  newFolderInput.placeholder = 'folder/name'
+  newFolderInput.spellcheck = false
+  newFolderInput.style.cssText =
+    'display:none; margin-top:0.35rem; background:var(--color-surface-dim); border:1px solid var(--color-scrollbar-track); border-radius:4px; padding:0.4rem 0.6rem; color:var(--color-text); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;'
+  newFolderInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const footer = panel.querySelector('.modal-footer') as HTMLElement | null
+      const saveBtn = footer?.querySelector('.modal-footer-btn--primary') as HTMLButtonElement | null
+      if (saveBtn && nameInput.value.trim()) saveBtn.click()
+    }
+  })
+  folderRow.appendChild(newFolderInput)
+  body.appendChild(folderRow)
+
+  pushPanel(panel, 'Save as')
+  setTimeout(() => {
+    nameInput.focus()
+    nameInput.select()
+  }, 0)
+}
+
 export function saveAs() {
   const currentId = getState('current-file-id')
   const currentFile = currentId ? getWorkspaceFiles().find(entry => entry.id === currentId) : null
@@ -791,45 +973,36 @@ export function saveAs() {
   const isReservedSource = !!currentFile && isInPlaygroundFolder(currentFile.path)
   const sourceFolder = currentFile && !isReservedSource ? folderFromPath(currentFile.path) : ''
   const defaultName = currentFile && !isReservedSource ? `Copy of ${filenameFromPath(currentFile.path)}` : ''
-  showNameInputModal('Save as', defaultName, name => {
+  showSaveAsModal(defaultName, sourceFolder, newPath => {
     const files = getWorkspaceFiles()
-    const normalizedFilename = normalizeWorkspaceFileName(name)
-    const newPath = sourceFolder === '' ? normalizedFilename : `${sourceFolder}/${normalizedFilename}`
     const duplicate = files.find(entry => entry.path === newPath)
-    const doSave = () => {
-      const filtered = duplicate ? files.filter(entry => entry.id !== duplicate.id) : files
-      const now = Date.now()
-      // When scratch is the source, flush its in-memory edits to the backing
-      // file before cloning — otherwise the clone captures the previously-
-      // saved snapshot, not the live editor buffer. Handlers writes through
-      // its own listener so this only applies to scratch.
-      if (currentId === SCRATCH_FILE_ID) persistScratchFromCurrentState()
-      const createdFile: WorkspaceFile = {
-        id: crypto.randomUUID(),
-        path: newPath,
-        code: getState('dvala-code'),
-        context: getState('context'),
-        createdAt: now,
-        updatedAt: now,
-        locked: false,
-      }
-      setWorkspaceFiles([createdFile, ...filtered])
-      // Open the new file as a tab so close / switch flows find it. Without
-      // this, saveAs leaves the current tab pointed at scratch (or whatever
-      // was active) while `current-file-id` claims the new file exists.
-      openOrFocusFile(createdFile.id)
-      // openOrFocusFile syncs `current-file-id` already.
-      activateCurrentFileHistory(true)
+    const filtered = duplicate ? files.filter(entry => entry.id !== duplicate.id) : files
+    const now = Date.now()
+    // When scratch is the source, flush its in-memory edits to the backing
+    // file before cloning — otherwise the clone captures the previously-
+    // saved snapshot, not the live editor buffer. Handlers writes through
+    // its own listener so this only applies to scratch.
+    if (currentId === SCRATCH_FILE_ID) persistScratchFromCurrentState()
+    const createdFile: WorkspaceFile = {
+      id: crypto.randomUUID(),
+      path: newPath,
+      code: getState('dvala-code'),
+      context: getState('context'),
+      createdAt: now,
+      updatedAt: now,
+      locked: false,
+    }
+    setWorkspaceFiles([createdFile, ...filtered])
+    // Open the new file as a tab so close / switch flows find it. Without
+    // this, saveAs leaves the current tab pointed at scratch (or whatever
+    // was active) while `current-file-id` claims the new file exists.
+    openOrFocusFile(createdFile.id)
+    // openOrFocusFile syncs `current-file-id` already.
+    activateCurrentFileHistory(true)
 
-      updateCSS()
-      populateWorkspaceFilesList({ animateNewId: createdFile.id })
-      showToast(`Saved as "${normalizedFilename}"`)
-    }
-    if (duplicate) {
-      void showInfoModal('Replace existing file?', `"${normalizedFilename}" already exists. Replace it?`, doSave)
-    } else {
-      doSave()
-    }
+    updateCSS()
+    populateWorkspaceFilesList({ animateNewId: createdFile.id })
+    showToast(`Saved as "${filenameFromPath(newPath)}"`)
   })
 }
 
