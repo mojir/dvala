@@ -645,11 +645,13 @@ test.describe('api reference navigation', () => {
 /** Save current code as a named file via the saveAs modal. */
 async function saveAsFile(page: Page, name: string) {
   await page.evaluate(() => (window as any).Playground.saveAs())
-  // The name input modal is inside #snapshot-panel-container (inside #snapshot-modal)
-  const input = page.locator('#snapshot-modal .modal-panel input[type="text"]')
+  // The save-as modal has two text inputs (filename + optional folder name).
+  // Target the first one (filename) to avoid strict-mode resolution errors.
+  const input = page.locator('#snapshot-modal .modal-panel input[type="text"]').first()
   await input.waitFor({ timeout: 2000 })
   await input.fill(name)
-  await input.press('Enter')
+  // Click the primary Confirm button (Enter won't submit when there are two inputs).
+  await page.locator('#snapshot-modal .modal-panel .button--primary').click()
 }
 
 test.describe('files', () => {
@@ -1382,8 +1384,9 @@ test.describe('file operations', () => {
       ;(window as any).Playground.renameFile(id)
     }, fileId!)
 
-    // Fill in the rename input
-    const input = page.locator('#snapshot-modal .modal-panel input[type="text"]')
+    // Fill in the rename input. The rename modal has a single text input, but
+    // the save-as modal introduced a second input (folder name) — be explicit.
+    const input = page.locator('#snapshot-modal .modal-panel input[type="text"]').first()
     await input.waitFor({ timeout: 2000 })
     await input.fill('renamed-file')
     await input.press('Enter')
@@ -1408,7 +1411,9 @@ test.describe('file operations', () => {
     }, fileId)
 
     await page.evaluate((id: string) => (window as any).Playground.renameFile(id), fileId)
-    const input = page.locator('#snapshot-modal .modal-panel input[type="text"]')
+    // The rename modal has a single text input. Be explicit with .first()
+    // to avoid strict-mode violations if save-as adds more inputs.
+    const input = page.locator('#snapshot-modal .modal-panel input[type="text"]').first()
     await input.waitFor({ timeout: 2000 })
     await input.fill('bar')
     await input.press('Enter')
@@ -2639,8 +2644,10 @@ test.describe('save-copy-to-workspace (Save As)', () => {
     await page.evaluate(() => (window as any).Playground.saveAs())
 
     // Fill in the file name and confirm. The modal is created by showNameInputModal
-    // which renders an input inside a .modal-overlay (not #snapshot-modal).
-    const input = page.locator('.modal-overlay input[type="text"]')
+    // which renders two inputs (filename + optional folder name) inside a
+    // .modal-overlay. Target the first one (filename) to avoid strict-mode
+    // resolution errors.
+    const input = page.locator('.modal-overlay input[type="text"]').first()
     await input.waitFor({ timeout: 2000 })
     await input.fill('my-copy')
 
