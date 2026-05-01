@@ -464,6 +464,13 @@ function setActive(key: string): void {
  * eliminate those slots — too many call sites — they stay as projections of
  * the active tab's model. The onChange listener keeps `dvala-code` fresh as
  * the user types; this function handles the discrete tab-swap moment.
+ *
+ * For file tabs, both `current-file-id` and `dvala-code` are synced. For
+ * snapshot tabs, only `current-file-id` is updated — `dvala-code` is left
+ * pointing at the last file tab's content so the run path (which reads
+ * `dvala-code` to determine "what to execute") always sees Dvala source,
+ * never snapshot JSON. When the user switches back to a file tab, the
+ * onChange listener repopulates `dvala-code` from the fresh model.
  */
 function syncCurrentFileIdState(tab: OpenTab): void {
   // `current-file-id` is the active tab's workspace-file id regardless of
@@ -523,10 +530,16 @@ export function invalidateSnapshotTabLabel(snapshotId: string): void {
 
 /**
  * Synthesize a blank scratch tab when the scratch workspace file isn't
- * present yet (only happens in test setups that skip `ensureScratchFile`).
+ * present yet. This is the defensive fallback for two scenarios:
+ * 1. Test setups that skip `ensureScratchFile`.
+ * 2. Production: an IndexedDB race where `ensureScratchFile` hasn't
+ *    completed before `initTabs` runs (the scratch workspace record was
+ *    created async but the promise hasn't settled yet).
  * The tab carries `SCRATCH_FILE_ID` so it slots into the same lookups as a
  * real scratch tab; mirrors the pre-23h `makeScratchTab` behaviour of
- * starting from an empty model.
+ * starting from an empty model. Once the real scratch file arrives, the
+ * next `openOrFocusFileTab` call will replace this synthetic tab with the
+ * real one because their keys match.
  */
 function makeSyntheticScratchTab(editor: ReturnType<typeof getCodeEditor>): FileTab {
   return {
@@ -548,15 +561,17 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * Display label for a tab in the strip. Scratch and handlers render under
- * their angle-bracket virtual names (`<scratch>`, `<handlers>`) so the
- * strip matches the pinned tree entries; everything else uses the file's
- * basename via `fileDisplayName`. Scratch's label is decided by ID before
- * the workspace lookup so a transient missing-file race (or the synthetic
- * fallback above) still labels the sticky tab `<scratch>` rather than
+ * Display label for a tab in the strip. Accepts a pre-built file lookup
+ * map (keyed by file id, built once in `renderTabStrip`) so we don't
+ * O(n × m) scan `getWorkspaceFiles()` per tab on every keystroke. Scratch
+ * and handlers render under their angle-bracket virtual names (`<scratch>`,
+ * `<handlers>`) so the strip matches the pinned tree entries; everything
+ * else uses the file's basename via `fileDisplayName`. Scratch's label is
+ * decided by ID before the workspace lookup so a transient missing-file
+ * race (or the synthetic fallback) still labels it `<scratch>` rather than
  * `(missing)`.
  */
-function tabLabel(tab: OpenTab): string {
+function tabLabel(tab: OpenTab, filesById: ReadonlyMap<string, WorkspaceFile>): string {
   if (tab.kind === 'snapshot') {
     // Snapshot label sources, in priority order: the saved-snapshot
     // user-supplied name (if any), the snapshot's `message`, or a generic
@@ -567,7 +582,7 @@ function tabLabel(tab: OpenTab): string {
     // keystroke would accumulate. Invalidated via
     // `invalidateSnapshotTabLabel` when metadata changes.
     if (tab.cachedLabel !== null) return tab.cachedLabel
-    const file = getWorkspaceFiles().find(f => f.id === tab.snapshotId)
+    const file = filesById.get(tab.snapshotId)
     if (!file) {
       tab.cachedLabel = '(missing snapshot)'
       return tab.cachedLabel
@@ -587,7 +602,7 @@ function tabLabel(tab: OpenTab): string {
     return label
   }
   if (tab.fileId === SCRATCH_FILE_ID) return '<scratch>'
-  const file = getWorkspaceFiles().find(f => f.id === tab.fileId)
+  const file = filesById.get(tab.fileId)
   if (!file) return '(missing)'
   if (file.path === HANDLERS_FILE_PATH) return '<handlers>'
   return fileDisplayName(file)
@@ -604,12 +619,17 @@ function renderTabStrip(): void {
   // on every change is fine. Click target shape: each tab is a div with
   // `data-tab-key`; the close button has `data-close-key` so a delegated
   // listener can dispatch without per-tab handlers.
+  //
+  // Build a file lookup map once so `tabLabel` doesn't O(n × m) scan
+  // `getWorkspaceFiles()` for every tab on every keystroke — the strip
+  // re-renders on each editor onChange.
+  const filesById = new Map(getWorkspaceFiles().map(f => [f.id, f]))
   const activeKeyAtRender = activeKey
   strip.innerHTML = openTabs
     .map(tab => {
       const isActive = tab.key === activeKey
       const dirty = isTabDirty(tab)
-      const label = tabLabel(tab)
+      const label = tabLabel(tab, filesById)
       // Phase 1.5 step 23j stage 2: scratch is closable like any other
       // tab. The × button is shown for every tab kind; users re-open
       // scratch from the pinned `<scratch>` entry in the file tree,
