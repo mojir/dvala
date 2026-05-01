@@ -16,8 +16,6 @@ import {
   closeEffectHandlerMenus,
   getCurrentSideTab,
   hideExecutionControlBar,
-  showExecutionControlBarPaused,
-  snapshotLabel,
   syncSnapshotExecutionControls,
   updateExecutionControlBarForSnapshot,
 } from '../scripts'
