@@ -104,6 +104,7 @@ import {
 import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
   closeActiveTab,
+  closeTabsForMissingFiles,
   focusScratch,
   getActiveSnapshotTabId,
   initTabs,
@@ -1494,6 +1495,10 @@ export async function deleteSavedSnapshot(index: number) {
     await animateCardRemoval('saved', index)
     setSavedSnapshots(entries.filter((_, i) => i !== index))
     populateSnapshotsList()
+    // Close any open snapshot-view tab whose underlying file was just
+    // removed — openTabs holds a `tab.key` that points at the workspace-
+    // file id, and setSavedSnapshots above removes that file.
+    closeTabsForMissingFiles()
     showToast('Snapshot deleted')
   }
 

@@ -2573,3 +2573,285 @@ test.describe('about route removed', () => {
     await expect(page.locator('#dynamic-page').getByText('Suspend & Resume')).toBeVisible()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Phase 1.5 step 23m — boundary-handler integration e2e coverage
+// ---------------------------------------------------------------------------
+
+test.describe('handlers buffer persistence', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('handlers buffer code survives a page reload', async ({ page }) => {
+    // Stage a handler in the handlers buffer
+    await page.evaluate(() => {
+      ;(window as any).Playground.setHandlersCodeForTesting('linear handler @reload.eff(x) -> x * 3 end')
+    })
+
+    // Reload and verify the handlers buffer code persisted
+    await page.reload()
+    await waitForInit(page)
+
+    // After reload the buffer should still be active — run code that triggers the handler
+    await navigateToPlayground(page)
+    await setDvalaCode(page, 'perform(@reload.eff, 10)')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('30')
+  })
+
+  test('empty handlers buffer produces no extra wrapping on reload', async ({ page }) => {
+    // Clear the handlers buffer
+    await page.evaluate(() => (window as any).Playground.setHandlersCodeForTesting(''))
+
+    await page.reload()
+    await waitForInit(page)
+
+    // Simple arithmetic should still work without a boundary handler
+    await navigateToPlayground(page)
+    await setDvalaCode(page, '40 + 2')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('42')
+  })
+})
+
+test.describe('save-copy-to-workspace (Save As)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
+    await navigateToPlayground(page)
+  })
+
+  test('can Save As scratch to a workspace file', async ({ page }) => {
+    await setDvalaCode(page, 'scratch content here')
+
+    // Trigger Save As — opens the name input modal
+    await page.evaluate(() => (window as any).Playground.saveAs())
+
+    // Fill in the file name and confirm. The modal is created by showNameInputModal
+    // which renders an input inside a .modal-overlay (not #snapshot-modal).
+    const input = page.locator('.modal-overlay input[type="text"]')
+    await input.waitFor({ timeout: 2000 })
+    await input.fill('my-copy')
+
+    // Click the primary confirm button (shows as .button--primary)
+    await page.locator('.modal-overlay .button--primary').click()
+    // Modal should close and a toast confirm appears
+    await expect(page.locator('#toast-container')).toContainText('Saved', { timeout: 3000 })
+
+    // The workspace file list should now have the new file (with scratch pinned)
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    const fileItems = page.locator('#explorer-file-list .explorer-item')
+    await expect(fileItems.filter({ hasText: 'my-copy' })).toBeVisible()
+  })
+})
+
+test.describe('scratch imports workspace files', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
+    await navigateToPlayground(page)
+  })
+
+  test('scratch can import a workspace file at ./', async ({ page }) => {
+    // Seed a workspace file called `data.dvala`
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'seed-data',
+          path: 'data.dvala',
+          code: 'let x = 99; x',
+          context: '',
+          createdAt: 1,
+          updatedAt: 1,
+          locked: false,
+        },
+      ])
+    })
+
+    // Write scratch code that imports the workspace file. Scratch resolves
+    // imports relative to the workspace root, so `./data.dvala` finds the
+    // workspace-level file. `../` would escape the workspace root and fail.
+    await setDvalaCode(page, 'let d = import("./data.dvala"); d.x')
+
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    expect(output).toContain('99')
+  })
+})
+
+test.describe('importing .dvala-playground is rejected', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await page.evaluate(() => (window as any).Playground.clearAllWorkspaceFiles())
+    await navigateToPlayground(page)
+  })
+
+  test('workspace file importing .dvala-playground/ produces a clear error', async ({ page }) => {
+    // Seed a workspace file
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'bad-import',
+          path: 'main.dvala',
+          code: 'let h = import(".dvala-playground/handlers.dvala"); h',
+          context: '',
+          createdAt: 1,
+          updatedAt: 1,
+          locked: false,
+        },
+      ])
+    })
+
+    // Load and run the workspace file
+    const fileId = await firstWorkspaceFileId(page)
+    expect(fileId).toBeTruthy()
+    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), fileId!)
+
+    await clickRun(page)
+    await waitForOutput(page)
+
+    // The output should contain an error about importing from .dvala-playground
+    const output = await getOutputText(page)
+    // The import resolver rejects .dvala-playground paths with a clear message
+    expect(output.toLowerCase()).toMatch(/rejected|not allowed|cannot import|playground/)
+  })
+})
+
+test.describe('boundary handler precedence', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('user-level handler takes precedence over boundary handler', async ({ page }) => {
+    // Stage a boundary handler in the handlers buffer
+    await page.evaluate(() => {
+      ;(window as any).Playground.setHandlersCodeForTesting('linear handler @prec.eff(x) -> x * 2 end')
+    })
+
+    // User code installs its own handler for the same effect — should take precedence
+    await navigateToPlayground(page)
+    await setDvalaCode(page, 'let h = handler @prec.eff(x) -> x * 10 end; do with h; perform(@prec.eff, 5) end')
+
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    // The inner (user) handler should apply: 5 * 10 = 50, not 5 * 2 = 10
+    expect(output).toContain('50')
+  })
+
+  test('boundary handler handles effects not covered by user-level handlers', async ({ page }) => {
+    // Stage a boundary handler for an effect not covered by user code
+    await page.evaluate(() => {
+      ;(window as any).Playground.setHandlersCodeForTesting('linear handler @fallback.eff(x) -> x + 1 end')
+    })
+
+    // User code does NOT handle @fallback.eff — the boundary handler should catch it
+    await navigateToPlayground(page)
+    await setDvalaCode(page, 'perform(@fallback.eff, 41)')
+
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const output = await getOutputText(page)
+    // Boundary handler applies: 41 + 1 = 42
+    expect(output).toContain('42')
+  })
+})
+
+test.describe('snapshot lifecycle', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await navigateToPlayground(page)
+  })
+
+  test('deleting a saved snapshot closes its open tab', async ({ page }) => {
+    // Create and save a terminal snapshot
+    await setDvalaCode(page, '7 * 7')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    // Save the terminal snapshot. saveTerminalSnapshotToSaved opens a name-prompt
+    // modal; fill in the name and click Save to actually complete the save.
+    await page.evaluate(() => (window as any).Playground.showSideTab('snapshots'))
+    await page.evaluate(() => (window as any).Playground.saveTerminalSnapshotToSaved(0))
+    // Wait for the name-prompt modal to appear
+    await page.waitForSelector('.modal-panel input[aria-label="Snapshot name"]', { timeout: 3000 })
+    await page.fill('.modal-panel input[aria-label="Snapshot name"]', 'test-snapshot')
+    await page.click('.modal-panel__footer .button--primary')
+    // Wait for the save to complete and the modal to dismiss
+    await page.waitForFunction(() => document.querySelector('.modal-panel') === null, { timeout: 3000 })
+    await page.evaluate(() => (window as any).Playground.showSideTab('snapshots'))
+
+    // Open the saved snapshot as a tab
+    const snapshotsList = page.locator('#side-snapshots-list')
+    await snapshotsList.locator('.explorer-item').first().click()
+    // Wait for snapshot to open in a tab
+    await page.waitForFunction(() => document.querySelector('#editor-tab-strip .editor-tab[data-tab-key]') !== null, {
+      timeout: 3000,
+    })
+
+    // Delete the saved snapshot
+    await page.evaluate(() => (window as any).Playground.showSideTab('snapshots'))
+    await page.evaluate(() => (window as any).Playground.deleteSavedSnapshot(0))
+
+    // The snapshot view should be hidden (the snapshot tab was closed)
+    await page.waitForFunction(
+      () => {
+        const sv = document.getElementById('dvala-snapshot-view')
+        return sv === null || sv.style.display === 'none' || sv.classList.contains('hidden')
+      },
+      {
+        timeout: 3000,
+      },
+    )
+  })
+
+  test('opening a snapshot tab defaults to the UI (tree) view', async ({ page }) => {
+    // Create and save a terminal snapshot
+    await setDvalaCode(page, 'let a = 1; a')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    // Save the terminal snapshot and dismiss the modal it opens
+    await page.evaluate(() => (window as any).Playground.showSideTab('snapshots'))
+    await page.evaluate(() => (window as any).Playground.saveTerminalSnapshotToSaved(0))
+    await page.evaluate(() => (window as any).Playground.popModal())
+
+    // Open the saved snapshot
+    const snapshotsList = page.locator('#side-snapshots-list')
+    await snapshotsList.locator('.explorer-item').first().click()
+
+    // The snapshot content should be visible (rendered inside #dvala-snapshot-view)
+    await page.waitForFunction(
+      () => {
+        return (
+          document.querySelector('.snapshot-panel__columns') !== null ||
+          document.querySelector('.snapshot-panel__section') !== null
+        )
+      },
+      { timeout: 4000 },
+    )
+  })
+})
