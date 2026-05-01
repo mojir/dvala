@@ -24,30 +24,6 @@ export const elements = {
   get filesHeaderMenu() {
     return document.getElementById('files-header-menu') as HTMLElement
   },
-  get addContextMenu() {
-    return document.getElementById('add-context-menu') as HTMLElement
-  },
-  get newContextName() {
-    return document.getElementById('new-context-name') as HTMLInputElement
-  },
-  get newContextValue() {
-    return document.getElementById('new-context-value') as HTMLTextAreaElement
-  },
-  get newContextError() {
-    return document.getElementById('new-context-error') as HTMLSpanElement
-  },
-  get contextTextArea() {
-    return document.getElementById('context-textarea') as HTMLTextAreaElement
-  },
-  get contextEntryList() {
-    return document.getElementById('context-entry-list') as HTMLDivElement
-  },
-  get contextDetailView() {
-    return document.getElementById('context-detail-view') as HTMLDivElement
-  },
-  get contextDetailTextArea() {
-    return document.getElementById('context-detail-textarea') as HTMLTextAreaElement
-  },
   get outputResult() {
     return document.getElementById('output-result') as HTMLElement
   },
@@ -66,12 +42,6 @@ export const elements = {
   get dvalaPanelDebugInfo() {
     return document.getElementById('dvala-panel-debug-info') as HTMLDivElement
   },
-  get contextUndoButton() {
-    return document.getElementById('context-undo-button') as HTMLAnchorElement
-  },
-  get contextRedoButton() {
-    return document.getElementById('context-redo-button') as HTMLAnchorElement
-  },
   get dvalaCodeUndoButton() {
     return document.getElementById('dvala-code-undo-button') as HTMLAnchorElement
   },
@@ -81,17 +51,11 @@ export const elements = {
   get editorToolbarTitle() {
     return document.getElementById('editor-toolbar-title') as HTMLSpanElement
   },
-  get contextTitle() {
-    return document.getElementById('context-title') as HTMLDivElement
-  },
   get dvalaCodeTitle() {
     return document.getElementById('dvala-code-title') as HTMLDivElement
   },
   get dvalaCodeTitleString() {
     return document.getElementById('dvala-code-title-string') as HTMLSpanElement
-  },
-  get dvalaCodeTitleInput() {
-    return document.getElementById('dvala-code-title-input') as HTMLInputElement
   },
   get dvalaCodePendingIndicator() {
     return document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement

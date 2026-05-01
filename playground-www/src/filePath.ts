@@ -19,19 +19,41 @@ const DVALA_FILE_SUFFIX = '.dvala'
  * Reserved playground-state folder. Anything under this prefix is
  * playground-only — scratch buffer, handlers buffer, and snapshot JSON files
  * (Phase 1.5 step 23c+). The `FileBackend` stores these like any other
- * workspace file; visibility (file tree, quick open) is a renderer concern,
- * and import asymmetry — workspace files cannot import from this folder —
- * lives in the import resolver. `dvala run` ignores it entirely.
+ * workspace file; visibility (file tree, quick open) is a renderer concern.
+ * The folder is not part of the import graph — Phase 1.5 step 23g rejects
+ * any `import` that resolves into it, regardless of where the import
+ * originates. `dvala run` ignores the folder entirely.
  */
 export const PLAYGROUND_FOLDER = '.dvala-playground'
 
 /**
+ * Reserved snapshots subfolder under the playground folder. Phase 1.5 step
+ * 23i moved snapshot persistence to one workspace file per snapshot at
+ * `.dvala-playground/snapshots/<id>.json`. The Snapshots side-tab list is
+ * a curated view over files in this folder; the file tree + quick open
+ * already skip it via `isInPlaygroundFolder`, but consumers that iterate
+ * workspace files for "user files only" purposes (clear-unlocked, the
+ * "No workspace files" hint, etc.) skip it explicitly.
+ */
+export const SNAPSHOTS_FOLDER = `${PLAYGROUND_FOLDER}/snapshots`
+
+/**
  * True iff `path` lives under the playground-state folder. Renderers use
- * this to hide playground-internal files; the asymmetric import rule uses
- * the same predicate.
+ * this to hide playground-internal files; the import resolver uses the same
+ * predicate to reject imports that resolve into the folder.
  */
 export function isInPlaygroundFolder(path: string): boolean {
   return path === PLAYGROUND_FOLDER || path.startsWith(`${PLAYGROUND_FOLDER}/`)
+}
+
+/**
+ * True iff `path` lives under the snapshots subfolder
+ * (`.dvala-playground/snapshots/`). Consumers that iterate workspace files
+ * for "user files only" semantics use this to keep snapshot persistence
+ * invisible.
+ */
+export function isInSnapshotsFolder(path: string): boolean {
+  return path === SNAPSHOTS_FOLDER || path.startsWith(`${SNAPSHOTS_FOLDER}/`)
 }
 
 /** Last `/`-separated segment of a path (the file's display name). */

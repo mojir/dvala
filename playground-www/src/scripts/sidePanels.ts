@@ -2,27 +2,18 @@
 
 import type { EditorMenuItem } from '../editorMenu'
 import { renderEditorMenu } from '../editorMenu'
-import {
-  ICONS,
-  ensureActiveContextSelection,
-  escapeHtml,
-  getActiveSnapshotDetails,
-  getContextBindingNames,
-  getContextEffectHandlerNames,
-  getParsedContext,
-  replaceSnapshotView,
-  syncContextDetailEditor,
-  updateCSS,
-} from '../scripts'
+import { SCRATCH_FILE_ID } from '../scratchBuffer'
+import { ICONS, escapeHtml, getActiveSnapshotDetails, replaceSnapshotView, updateCSS } from '../scripts'
 import { getSavedSnapshots, getTerminalSnapshots } from '../snapshotStorage'
 import { getState, saveState } from '../state'
+import { getActiveTabKind } from './tabs'
 import { state } from './playgroundState'
 
 export const SIDE_SNAPSHOTS_VISIBLE = 5
-type SideTabId = 'files' | 'snapshots' | 'context'
+type SideTabId = 'files' | 'snapshots'
 
 export function normalizeSideTab(tabId: string | null | undefined): SideTabId {
-  if (tabId === 'snapshots' || tabId === 'context') return tabId
+  if (tabId === 'snapshots') return tabId
   return 'files'
 }
 
@@ -46,20 +37,25 @@ export function syncPlaygroundUrlState(tabId: SideTabId) {
   const url = new URL(window.location.href)
   url.searchParams.set('view', tabId)
 
-  if (tabId === 'files' && getState('current-file-id')) url.searchParams.set('fileId', getState('current-file-id')!)
-  else url.searchParams.delete('fileId')
+  // Don't leak the scratch sentinel ID into shareable URLs — recipients open
+  // scratch by default anyway, so omitting `fileId` for scratch is equivalent
+  // and keeps the URL cleaner.
+  const activeFileId = getState('current-file-id')
+  if (tabId === 'files' && activeFileId && activeFileId !== SCRATCH_FILE_ID) {
+    url.searchParams.set('fileId', activeFileId)
+  } else {
+    url.searchParams.delete('fileId')
+  }
 
   const snapshotId = tabId === 'snapshots' ? getActiveSnapshotUrlId() : null
   if (snapshotId) url.searchParams.set('snapshotId', snapshotId)
   else url.searchParams.delete('snapshotId')
 
-  if (tabId === 'context' && state.activeContextBindingName)
-    url.searchParams.set('bindingName', state.activeContextBindingName)
-  else url.searchParams.delete('bindingName')
-
-  if (tabId === 'context' && state.activeContextEntryKind === 'effect-handler')
-    url.searchParams.set('contextEntryKind', 'effect-handler')
-  else url.searchParams.delete('contextEntryKind')
+  // Legacy `bindingName` / `contextEntryKind` URL params (Phase 1.5 step 23f
+  // retired the Context tab) are stripped on every URL sync so old shared
+  // links don't leave stale params hanging around after first navigation.
+  url.searchParams.delete('bindingName')
+  url.searchParams.delete('contextEntryKind')
 
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
 }
@@ -212,10 +208,6 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   if (normalizedTabId === 'snapshots')
     document.getElementById('side-icon-snapshots')?.classList.remove('side-panel__icon--has-new')
 
-  // Clear the "new context" indicator when entering the context view.
-  if (normalizedTabId === 'context')
-    document.getElementById('side-icon-context')?.classList.remove('side-panel__icon--has-new')
-
   document.querySelectorAll('[id^="side-header-"]').forEach(el => {
     if (el.id === 'side-panel-header') return
     if (el.id.startsWith('side-header-actions-') || el.id.startsWith('side-header-')) {
@@ -234,7 +226,7 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   if (options.syncUrl !== false) syncPlaygroundUrlState(normalizedTabId)
 
   // Sync the code panel view and header
-  syncCodePanelView(normalizedTabId)
+  syncCodePanelView()
   updateCSS()
 }
 
@@ -255,10 +247,16 @@ function setEditorEmptyState(
   `
 }
 
-export function syncCodePanelView(sideTab?: string) {
-  const tab = sideTab ?? getCurrentSideTab()
+/**
+ * Render the editor area to match the active editor tab. Phase 1.5 step
+ * 23j stage 2 decoupled this from the side-tab — file tabs show the
+ * editor view, snapshot tabs show the snapshot view, and there's no
+ * "select a snapshot" empty state because the side-tab list is now a
+ * pure left-panel concern (clicking an item opens the corresponding tab,
+ * which drives the editor area through this function).
+ */
+export function syncCodePanelView() {
   const editorView = document.getElementById('dvala-editor-view')
-  const contextDetailView = document.getElementById('context-detail-view')
   const snapshotView = document.getElementById('dvala-snapshot-view')
   const emptyView = document.getElementById('dvala-empty-view')
   const headerEditor = document.getElementById('dvala-header-editor')
@@ -271,7 +269,6 @@ export function syncCodePanelView(sideTab?: string) {
 
   // Hide all views
   editorView.style.display = 'none'
-  if (contextDetailView) contextDetailView.style.display = 'none'
   snapshotView.style.display = 'none'
   emptyView.style.display = 'none'
   if (headerEditor) headerEditor.style.display = 'none'
@@ -281,59 +278,52 @@ export function syncCodePanelView(sideTab?: string) {
   if (fileCloseBtn) fileCloseBtn.style.display = 'none'
   if (closeBtn) closeBtn.style.display = 'none'
 
-  if (tab === 'files') {
-    editorView.style.display = 'flex'
-    if (headerEditor) headerEditor.style.display = 'flex'
-    if (undoBtn) undoBtn.style.display = ''
-    if (redoBtn) redoBtn.style.display = ''
-    if (fileCloseBtn && getState('current-file-id')) fileCloseBtn.style.display = ''
-  } else if (tab === 'snapshots') {
-    if (state.activeSnapshotKey && state.snapshotViewStack.length === 0) {
+  const activeKind = getActiveTabKind()
+
+  if (activeKind === 'snapshot') {
+    // Snapshot tab is active. The snapshot view's `#snapshot-content` is
+    // populated by `replaceSnapshotView` (called from the side-panel
+    // click flow and the after-tab-swap hook); we just need to make the
+    // container visible.
+    snapshotView.style.display = 'flex'
+    if (headerSnapshot) headerSnapshot.style.display = 'flex'
+    if (closeBtn) closeBtn.style.display = ''
+    // Fall through if there's no snapshot data to render — show the
+    // empty/import state. Happens transiently between "tab created" and
+    // "snapshot data loaded into the panel".
+    if (!state.activeSnapshotKey || state.snapshotViewStack.length === 0) {
       const activeSnapshot = getActiveSnapshotDetails()
       if (activeSnapshot) {
         replaceSnapshotView(activeSnapshot.snapshot, activeSnapshot.label)
         updateCSS()
         return
       }
-      state.activeSnapshotKey = null
-      populateSideSnapshotsList()
     }
-
-    if (state.activeSnapshotKey && state.snapshotViewStack.length > 0) {
-      snapshotView.style.display = 'flex'
-      if (headerSnapshot) headerSnapshot.style.display = 'flex'
-      if (closeBtn) closeBtn.style.display = ''
-    } else {
-      emptyView.style.display = 'flex'
-      setEditorEmptyState(
-        emptyView,
-        'Select a snapshot to view',
-        'Import a snapshot here, or run a file and save a checkpoint to create a new entry.',
-        'Import snapshot',
-        'Playground.openImportSnapshotModal()',
-      )
-    }
-  } else {
-    const context = getParsedContext()
-    const bindingNames = getContextBindingNames(context)
-    const effectHandlerNames = getContextEffectHandlerNames(context)
-    ensureActiveContextSelection(context)
-
-    if (headerEditor) headerEditor.style.display = 'flex'
-    if (bindingNames.length > 0 || effectHandlerNames.length > 0) {
-      if (contextDetailView) contextDetailView.style.display = 'flex'
-      syncContextDetailEditor()
-    } else {
-      emptyView.style.display = 'flex'
-      emptyView.innerHTML = `
-        <div class="dvala-empty-view__content">
-          <div class="dvala-empty-view__title">No effect handlers</div>
-          <div class="dvala-empty-view__description">Add an effect handler to set up the execution context.</div>
-          <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextEffectHandler()">Add effect handler</button>
-        </div>
-      `
-    }
+    return
   }
+
+  if (activeKind === 'file') {
+    editorView.style.display = 'flex'
+    if (headerEditor) headerEditor.style.display = 'flex'
+    if (undoBtn) undoBtn.style.display = ''
+    if (redoBtn) redoBtn.style.display = ''
+    // Phase 1.5 step 23j stage 2: every file tab — including scratch —
+    // is closable, so the editor-area close button is shown for any
+    // active file tab. Hidden only when there's no active tab at all
+    // (the empty-state branch handles that case below).
+    if (fileCloseBtn && getState('current-file-id')) fileCloseBtn.style.display = ''
+    return
+  }
+
+  // No active tab — empty state.
+  emptyView.style.display = 'flex'
+  setEditorEmptyState(
+    emptyView,
+    'No tab open',
+    'Open a file from the Files panel or import a snapshot from the Snapshots panel.',
+    'Open scratch',
+    'Playground.openScratch()',
+  )
 }
 
 export function getCurrentSideTab(): string {
@@ -341,6 +331,5 @@ export function getCurrentSideTab(): string {
   if (!active) return getState('active-side-tab')
   const id = active.id
   if (id === 'side-icon-snapshots') return 'snapshots'
-  if (id === 'side-icon-context') return 'context'
   return 'files'
 }

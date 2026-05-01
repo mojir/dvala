@@ -93,6 +93,38 @@ describe('setWorkspaceFiles', () => {
     ])
     expect(getWorkspaceFiles().map(f => f.path)).toEqual(['foo.dvala'])
   })
+
+  it('preserves snapshot file paths under .dvala-playground/snapshots/ verbatim (no .dvala suffix)', () => {
+    // Phase 1.5 step 23i: snapshot files are JSON, not Dvala source. The
+    // normalizer must NOT add `.dvala` to their `.json` basenames — that
+    // would corrupt them into `<id>.json.dvala` and break path-based
+    // lookups (snapshotStorage round-trips on the exact path).
+    setWorkspaceFiles([
+      {
+        id: 'snap-1',
+        path: '.dvala-playground/snapshots/1714502400000.json',
+        code: '{"kind":"saved"}',
+        context: '',
+        createdAt: 1,
+        updatedAt: 1,
+        locked: false,
+      },
+      {
+        id: 'snap-2',
+        path: '.dvala-playground/snapshots/1714502400000-2.json',
+        code: '{"kind":"terminal"}',
+        context: '',
+        createdAt: 2,
+        updatedAt: 2,
+        locked: false,
+      },
+    ])
+    expect(
+      getWorkspaceFiles()
+        .map(f => f.path)
+        .sort(),
+    ).toEqual(['.dvala-playground/snapshots/1714502400000-2.json', '.dvala-playground/snapshots/1714502400000.json'])
+  })
 })
 
 describe('uniqueFilePath', () => {

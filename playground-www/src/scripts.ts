@@ -2,7 +2,7 @@
 import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import { getLinkName } from '../../reference'
-import type { Any, UnknownRecord } from '../../src/interface'
+import type { Any } from '../../src/interface'
 import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from '../../src/evaluator/effectTypes'
 import { extractCheckpointSnapshots } from '../../src/evaluator/suspension'
@@ -11,8 +11,7 @@ import '../../src/initReferenceData'
 import { retrigger } from '../../src/retrigger'
 import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
-import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
-import { formatSource, getAutoCompleter, getUndefinedSymbols } from '../../src/tooling'
+import { formatSource, getUndefinedSymbols } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
 import {
@@ -24,9 +23,7 @@ import {
   showTokensInRightPanel,
 } from './scripts/rightPanelTools'
 import { renderBenchmarksCharts } from './components/benchmarksPage'
-import type { EditorMenuItem } from './editorMenu'
-import { renderEditorMenu } from './editorMenu'
-import { addIcon, copyIcon, downloadIcon, panelRightIcon, saveIcon, shareIcon } from './icons'
+import { copyIcon, downloadIcon, panelRightIcon, saveIcon, shareIcon } from './icons'
 import { renderCodeBlock } from './renderCodeBlock'
 import { renderShell } from './shell'
 import * as router from './router'
@@ -50,7 +47,6 @@ import type { TocItem } from './components/tocDropdown'
 import { slugifyHeading } from './renderDvalaMarkdown'
 import { playgroundEffectReference } from './playgroundEffects'
 import {
-  clearAll as clearAllSnapshots,
   getSavedSnapshots,
   getTerminalSnapshots,
   init as initSnapshotStorage,
@@ -71,7 +67,7 @@ import {
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
 import { ensureHandlersFile, wrapWithBoundaryHandler } from './handlersBuffer'
-import { ensureScratchFile, setScratchCode, setScratchCodeAndContext } from './scratchBuffer'
+import { SCRATCH_FILE_ID, ensureScratchFile, setScratchCode, setScratchCodeAndContext } from './scratchBuffer'
 import type { WorkspaceFile } from './fileStorage'
 import {
   clearAllFileHistories,
@@ -92,7 +88,6 @@ import {
 } from './state'
 import type { HistoryEntry, HistoryStatus } from './StateHistory'
 import { StateHistory } from './StateHistory'
-import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
 import { createPanel } from './scripts/panel'
@@ -108,14 +103,19 @@ import {
 } from './scripts/panelInstances'
 import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
+  closeActiveTab,
   focusScratch,
+  getActiveSnapshotTabId,
   initTabs,
+  invalidateSnapshotTabLabel,
   notifyTabsChanged,
   openOrFocusFile,
+  openOrFocusSnapshotTab,
   setTabLifecycleHooks,
   wireTabKeyboardShortcuts,
   wireTabStripListeners,
 } from './scripts/tabs'
+import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { throttle } from './utils'
 import { createPlaygroundAPI } from './playgroundAPI'
 import { createEffectHandlers } from './createEffectHandlers'
@@ -132,7 +132,6 @@ import {
   populateWorkspaceFilesList,
   scheduleAutoSave,
   scheduleScratchEditedClear,
-  showNameInputModal,
   wireExplorerListeners,
 } from './scripts/files'
 import {
@@ -141,7 +140,6 @@ import {
   createModalPanel,
   dismissInfoModal,
   popModal,
-  pushCheckpointPanel,
   pushPanel,
   pushSavePanel,
   showInfoModal,
@@ -149,7 +147,7 @@ import {
   slideBackSnapshotModal,
 } from './scripts/modals'
 import { state } from './scripts/playgroundState'
-import type { ContextEntryKind, PendingEffect } from './scripts/playgroundState'
+import type { PendingEffect } from './scripts/playgroundState'
 import {
   SIDE_SNAPSHOTS_VISIBLE,
   getActiveSnapshotUrlId,
@@ -218,10 +216,20 @@ function getDvala(opts: { fileResolverBaseDir?: string } = {}) {
   })
 }
 
-/** The path of the active workspace file, or undefined when scratch is active. */
+/**
+ * The path of the active workspace file, or `undefined` when scratch is
+ * active. Phase 1.5 step 23h made scratch a regular workspace file at
+ * `.dvala-playground/scratch.dvala`, but for the run-path's
+ * `fileResolverBaseDir` we keep treating scratch as if it lived at the
+ * workspace root — `import './foo'` from scratch still finds workspace
+ * files. Resolving relative to scratch's actual folder would route every
+ * relative import into `.dvala-playground/`, which step 23g rejects.
+ * Scratch is a playground-only experimentation surface; `dvala run` never
+ * sees it, so there's no compatibility cost to this UX preservation.
+ */
 function getActiveFilePath(): string | undefined {
   const id = getState('current-file-id')
-  if (id === null) return undefined
+  if (id === SCRATCH_FILE_ID) return undefined
   return getWorkspaceFiles().find(f => f.id === id)?.path
 }
 
@@ -231,7 +239,6 @@ function getActiveFileFolder(): string {
   return filePath ? folderFromPath(filePath) : ''
 }
 const MAX_FILE_HISTORY_STEPS = 99
-const CONTEXT_UI_STATE_KEY = '__playground'
 const dvalaCodeHistory = new StateHistory(
   createDvalaCodeHistoryEntryFromState(),
   syncDvalaCodeHistoryButtons,
@@ -250,7 +257,7 @@ function createDvalaCodeHistoryEntryFromState(): HistoryEntry {
 
 function isCurrentFileLocked(): boolean {
   const currentFileId = getState('current-file-id')
-  return currentFileId !== null && getWorkspaceFiles().some(file => file.id === currentFileId && file.locked)
+  return getWorkspaceFiles().some(file => file.id === currentFileId && file.locked)
 }
 
 function syncDvalaCodeHistoryButtons(status: HistoryStatus = dvalaCodeHistory.getStatus()) {
@@ -263,17 +270,15 @@ function persistActiveDvalaCodeHistory() {
   if (activeDvalaCodeHistoryFileId) setFileHistory(activeDvalaCodeHistoryFileId, dvalaCodeHistory.serialize())
 }
 
-function switchDvalaCodeHistory(
-  fileId: string | null,
-  initialEntry = createDvalaCodeHistoryEntryFromState(),
-  reset = false,
-) {
+function switchDvalaCodeHistory(fileId: string, initialEntry = createDvalaCodeHistoryEntryFromState(), reset = false) {
   persistActiveDvalaCodeHistory()
-  // Scratch has no file ID but still gets its history persisted under '<scratch>'
-  const effectiveId = fileId ?? '<scratch>'
-  activeDvalaCodeHistoryFileId = effectiveId
+  // Phase 1.5 step 23h: scratch is keyed by `SCRATCH_FILE_ID` like any other
+  // workspace file, so `fileId` is always a string — the previous "null
+  // means scratch" coupling is gone. History is bucketed by file ID,
+  // including scratch's reserved ID.
+  activeDvalaCodeHistoryFileId = fileId
 
-  const persistedHistory = reset ? undefined : getFileHistory(effectiveId)
+  const persistedHistory = reset ? undefined : getFileHistory(fileId)
   if (persistedHistory) {
     dvalaCodeHistory.hydrate(persistedHistory, initialEntry)
   } else {
@@ -288,7 +293,12 @@ function pushActiveDvalaCodeHistoryEntry() {
 }
 
 export function activateCurrentFileHistory(reset = false) {
-  switchDvalaCodeHistory(getState('current-file-id'), createDvalaCodeHistoryEntryFromState(), reset)
+  // When no tab is open (scratch closed in 23j stage 2), there's no per-
+  // file history to activate — fall back to the scratch file's history
+  // bucket so any subsequent re-open of scratch picks up where the user
+  // left off.
+  const currentFileId = getState('current-file-id') ?? SCRATCH_FILE_ID
+  switchDvalaCodeHistory(currentFileId, createDvalaCodeHistoryEntryFromState(), reset)
 }
 
 // ---------------------------------------------------------------------------
@@ -329,9 +339,13 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
         editor.setCursor(position)
         editor.focus()
       },
-      getContextContent: () => elements.contextTextArea.value,
+      // Public `playground.context.*` API still reads/writes the legacy JSON
+      // context blob in state. The authoring UI was retired in Phase 1.5
+      // step 23f, but the storage slot remains so existing programs that call
+      // `perform(@playground.context.getContent)` keep working.
+      getContextContent: () => getState('context'),
       setContextContent: json => {
-        updateContextState(json, false)
+        saveState({ context: json }, false)
       },
       getWorkspaceFiles: () => getWorkspaceFiles(),
       saveFile: (name, code) => {
@@ -440,24 +454,14 @@ let moveParams: MoveParams | null = null
 
 // The Monaco editor instance — populated during boot below. Most code reaches
 // for it via `getCodeEditor()` from `./scripts/codeEditorInstance`.
-let autoCompleter: AutoCompleter | null = null
 let ignoreSelectionChange = false
 // Refs valid while the unified effect panel is open
 let effectPanelBodyEl: HTMLElement | null = null
 let effectPanelFooterEl: HTMLElement | null = null
 let effectNavEl: HTMLElement | null = null
 let effectNavCounterEl: HTMLSpanElement | null = null
-let isSyncingContextDetail = false
-let contextDetailHasParseError = false
 // Toast hint for effect modals that can't be dismissed with Escape
 const EFFECT_MODAL_ESCAPE_HINT = 'Escape not supported here'
-type ContextUiSectionKey = 'bindings' | 'effectHandlers'
-type StoredContextEffectHandler = { pattern: string; handler: unknown }
-
-const CONTEXT_EFFECT_HANDLERS_KEY = 'effectHandlers'
-const DEFAULT_CONTEXT_EFFECT_HANDLER_SOURCE = `async ({ resume }) => {
-  resume(null);
-}`
 
 function calculateDimensions() {
   return {
@@ -1345,6 +1349,39 @@ export function getActiveSnapshotDetails(): { label: string; snapshot: Snapshot 
   return null
 }
 
+/**
+ * Look up snapshot details (snapshot data + display label) by snapshot id.
+ * Used by the tab after-swap hook to populate the snapshot view when the
+ * active tab changes to a snapshot tab — the tab carries a snapshot id, so
+ * we walk the saved + terminal lists to find the matching entry. Returns
+ * `null` if the snapshot id has no matching entry (e.g. raced with a
+ * delete; the tab will get auto-closed by `closeTabsForMissingFiles`).
+ *
+ * Saved is checked before terminal. Post-23i + the kind-promotion fix in
+ * `writeKindedEntries`, every snapshot id is unique across both kinds —
+ * only one workspace file exists per snapshot.id. The saved-then-terminal
+ * order is therefore moot under normal operation; it only matters for
+ * pre-fix bad state where a stale terminal file might still co-exist with
+ * a saved file at the same id, in which case the saved version wins
+ * (correct: the user-visible list shows the saved version, so the tab
+ * label should match).
+ */
+function getSnapshotDetailsById(snapshotId: string): { label: string; snapshot: Snapshot } | null {
+  const savedEntries = getSavedSnapshots()
+  const savedIdx = savedEntries.findIndex(e => e.snapshot.id === snapshotId)
+  if (savedIdx >= 0) {
+    const entry = savedEntries[savedIdx]!
+    return { label: getSavedSnapshotLabel(entry, savedIdx), snapshot: entry.snapshot }
+  }
+  const terminalEntries = getTerminalSnapshots()
+  const terminalIdx = terminalEntries.findIndex(e => e.snapshot.id === snapshotId)
+  if (terminalIdx >= 0) {
+    const entry = terminalEntries[terminalIdx]!
+    return { label: getTerminalSnapshotLabel(terminalIdx), snapshot: entry.snapshot }
+  }
+  return null
+}
+
 function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<void> {
   const card = document.querySelector(`.snapshot-card[data-type="${type}"][data-index="${index}"]`)
   if (!card) return Promise.resolve()
@@ -1366,60 +1403,6 @@ export function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-export function openContextJsonModal() {
-  const dismiss = () => popModal()
-  let formattedContext: string
-
-  try {
-    const runtimeContext = getRuntimeContextObject(getParsedContext())
-
-    formattedContext = Object.keys(runtimeContext).length > 0 ? JSON.stringify(runtimeContext, null, 2) : '{}'
-  } catch {
-    formattedContext = getState('context')
-  }
-
-  const { panel, body } = createModalPanel({
-    size: 'large',
-    footerActions: [
-      {
-        label: 'Copy',
-        action: () => {
-          void navigator.clipboard.writeText(formattedContext)
-          showToast('Context JSON copied to clipboard')
-        },
-      },
-      { label: 'Close', action: dismiss },
-    ],
-  })
-
-  const copyButton = panel.querySelector<HTMLButtonElement>('.modal-panel__footer .button')
-  if (copyButton) copyButton.innerHTML = `${copyIcon} Copy`
-
-  body.style.padding = '0'
-
-  const pre = document.createElement('pre')
-  pre.className = 'fancy-scroll'
-  pre.textContent = formattedContext
-  pre.setAttribute('aria-label', 'Full context JSON')
-  pre.tabIndex = 0
-  pre.style.margin = '0'
-  pre.style.minHeight = '26rem'
-  pre.style.height = '60vh'
-  pre.style.padding = 'var(--space-2)'
-  pre.style.overflow = 'auto'
-  pre.style.background = 'var(--color-code-bg)'
-  pre.style.color = 'var(--color-text)'
-  pre.style.fontFamily = 'var(--font-mono)'
-  pre.style.fontSize = 'var(--font-size-sm)'
-  pre.style.whiteSpace = 'pre'
-  body.appendChild(pre)
-
-  pushPanel(panel, 'Context JSON')
-  setTimeout(() => {
-    pre.focus()
-  }, 0)
-}
-
 export function openSavedSnapshot(index: number) {
   const entries = getSavedSnapshots()
   const entry = entries[index]
@@ -1427,7 +1410,10 @@ export function openSavedSnapshot(index: number) {
   state.activeSnapshotKey = `saved:${index}`
   populateSideSnapshotsList()
   showSideTab('snapshots')
-  replaceSnapshotView(entry.snapshot, getSavedSnapshotLabel(entry, index))
+  // The afterSwap hook (registered via `setTabLifecycleHooks`) handles
+  // populating the snapshot view via `replaceSnapshotView` once the new
+  // tab activates — no explicit second call needed here.
+  openOrFocusSnapshotTab(entry.snapshot.id)
   syncPlaygroundUrlState('snapshots')
 }
 
@@ -1438,7 +1424,7 @@ export function openTerminalSnapshot(index: number) {
   state.activeSnapshotKey = `terminal:${index}`
   populateSideSnapshotsList()
   showSideTab('snapshots')
-  replaceSnapshotView(entry.snapshot, getTerminalSnapshotLabel(index))
+  openOrFocusSnapshotTab(entry.snapshot.id)
   syncPlaygroundUrlState('snapshots')
 }
 
@@ -1465,11 +1451,17 @@ export function saveTerminalSnapshotToSaved(index: number) {
       name: name || undefined,
     })
     setSavedSnapshots(deduped)
+    // The snapshot's metadata changed under any open snapshot tab keyed
+    // by `entry.snapshot.id` — drop its cached tab-strip label so the new
+    // user-supplied name picks up on the next render.
+    invalidateSnapshotTabLabel(entry.snapshot.id)
 
-    // Animate removal from terminal snapshots
+    // Animate removal from terminal snapshots. Phase 1.5 step 23i made
+    // `getTerminalSnapshots()` return a fresh array each call (no shared
+    // cache), so we filter into a new array instead of mutating the
+    // returned one — `setTerminalSnapshots` writes exactly what we pass.
     await animateCardRemoval('terminal', index)
-    entries.splice(index, 1)
-    setTerminalSnapshots(entries)
+    setTerminalSnapshots(entries.filter((_, i) => i !== index))
     populateSnapshotsList({ animateNewSaved: true })
     showToast('Snapshot saved')
   })
@@ -1500,8 +1492,7 @@ export async function deleteSavedSnapshot(index: number) {
 
   const doDelete = async () => {
     await animateCardRemoval('saved', index)
-    entries.splice(index, 1)
-    setSavedSnapshots(entries)
+    setSavedSnapshots(entries.filter((_, i) => i !== index))
     populateSnapshotsList()
     showToast('Snapshot deleted')
   }
@@ -1521,8 +1512,11 @@ export function toggleSnapshotLock(index: number) {
   const entries = getSavedSnapshots()
   const entry = entries[index]
   if (!entry) return
-  entry.locked = !entry.locked
-  setSavedSnapshots(entries)
+  // Phase 1.5 step 23i: don't mutate the returned entry in place — the
+  // entry object is the parsed JSON from the workspace file's `code`,
+  // and an in-place flip would only land in storage by aliasing
+  // coincidence. Build a fresh entry with the toggled flag.
+  setSavedSnapshots(entries.map((e, i) => (i === index ? { ...e, locked: !e.locked } : e)))
   populateSnapshotsList()
 }
 
@@ -1545,21 +1539,6 @@ export function clearUnlockedSnapshots() {
       showToast('Unlocked snapshots cleared')
     },
   )
-}
-
-export function openAddContextMenu() {
-  elements.newContextName.value = getState('new-context-name')
-  elements.newContextValue.value = getState('new-context-value')
-  elements.addContextMenu.style.display = 'block'
-  elements.newContextName.focus()
-}
-
-export function closeAddContextMenu() {
-  elements.addContextMenu.style.display = 'none'
-  elements.newContextError.style.display = 'none'
-  elements.newContextError.textContent = ''
-  elements.newContextName.value = ''
-  elements.newContextValue.value = ''
 }
 
 export function share() {
@@ -1619,8 +1598,6 @@ function populateSidebarVersion(): void {
 
 function onDocumentClick(event: Event) {
   const target = event.target as HTMLInputElement | undefined
-
-  if (!target?.closest('#add-context-menu') && elements.addContextMenu.style.display === 'block') closeAddContextMenu()
 
   // Close modal more-menus when clicking outside
   if (!target?.closest('.modal-more-menu') && !target?.closest('.modal-header__more-btn')) {
@@ -1764,15 +1741,15 @@ export function clearIndexedDbData() {
     'Clear IndexedDB',
     'This will delete all saved snapshots, recent snapshots, and workspace files.',
     () => {
-      clearAllSnapshots()
+      // Phase 1.5 step 23i: snapshots are workspace files now, so
+      // `clearAllFiles` already wipes them; the previous separate
+      // `clearAllSnapshots()` call became redundant. The reserved
+      // buffers (scratch + handlers per 23c/23d) get recreated below.
       clearAllFiles()
-      // Phase 1.5 step 23c/23d — scratch + handlers are undeletable;
-      // recreate their backing files (empty) so the editor still has
-      // somewhere to land and boundary handlers stay declarable.
       ensureScratchFile()
       ensureHandlersFile()
       clearAllFileHistories()
-      saveState({ 'current-file-id': null }, false)
+      saveState({ 'current-file-id': SCRATCH_FILE_ID }, false)
       activateCurrentFileHistory(true)
       populateSnapshotsList()
       populateWorkspaceFilesList()
@@ -1782,41 +1759,11 @@ export function clearIndexedDbData() {
   )
 }
 
-export function updateContextState(
-  value: string,
-  pushToHistory: boolean,
-  scroll?: 'top' | 'bottom',
-  syncDetail = true,
-) {
-  const previousValue = getState('context')
-  elements.contextTextArea.value = value
-
-  if (pushToHistory && value !== previousValue) {
-    saveState(
-      {
-        context: value,
-        'context-selection-start': elements.contextTextArea.selectionStart,
-        'context-selection-end': elements.contextTextArea.selectionEnd,
-      },
-      true,
-    )
-    scheduleAutoSave()
-  } else if (value !== previousValue) {
-    saveState({ context: value }, false)
-  }
-
-  if (scroll === 'top') elements.contextTextArea.scrollTo(0, 0)
-  else if (scroll === 'bottom')
-    elements.contextTextArea.scrollTo({ top: elements.contextTextArea.scrollHeight, behavior: 'smooth' })
-
-  renderContextEntryList()
-  if (syncDetail && getCurrentSideTab() === 'context') syncCodePanelView('context')
-  else if (syncDetail) syncContextDetailEditor()
-
-  updateCSS()
-}
-
-export function getParsedContext(): Record<string, unknown> {
+// The bindings / effect-handler authoring UI was retired in Phase 1.5 step
+// 23f, but the `state['context']` slot remains as a backing store for the
+// public `playground.context.*` effect API and for transient example handler
+// injection (see `setPlayground`).
+function getParsedContext(): Record<string, unknown> {
   try {
     return asUnknownRecord(JSON.parse(getState('context')))
   } catch (_e) {
@@ -1824,37 +1771,11 @@ export function getParsedContext(): Record<string, unknown> {
   }
 }
 
-function persistActiveContextSelection(syncUrl = getCurrentSideTab() === 'context') {
-  saveState(
-    {
-      'current-context-binding-name': state.activeContextBindingName,
-      'current-context-entry-kind': state.activeContextEntryKind,
-    },
-    false,
-  )
-  if (syncUrl) syncPlaygroundUrlState('context')
-}
-
-function getContextBindings(context: Record<string, unknown>): UnknownRecord {
-  const bindings = context.bindings
-  if (!bindings || typeof bindings !== 'object' || Array.isArray(bindings)) return {}
-
-  return asUnknownRecord(bindings)
-}
-
-function compareContextEntryNames(left: string, right: string): number {
-  return left.toLowerCase().localeCompare(right.toLowerCase())
-}
-
-function sortContextEffectHandlers(handlers: StoredContextEffectHandler[]): StoredContextEffectHandler[] {
-  return [...handlers].sort((left, right) => compareContextEntryNames(left.pattern, right.pattern))
-}
-
-function getContextEffectHandlers(context: Record<string, unknown>): StoredContextEffectHandler[] {
-  const effectHandlers = context[CONTEXT_EFFECT_HANDLERS_KEY]
+function getContextEffectHandlers(context: Record<string, unknown>): { pattern: string; handler: unknown }[] {
+  const effectHandlers = context.effectHandlers
   if (!Array.isArray(effectHandlers)) return []
 
-  return effectHandlers.filter((entry): entry is StoredContextEffectHandler => {
+  return effectHandlers.filter((entry): entry is { pattern: string; handler: unknown } => {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return false
 
     const record = asUnknownRecord(entry)
@@ -1862,784 +1783,11 @@ function getContextEffectHandlers(context: Record<string, unknown>): StoredConte
   })
 }
 
-function getContextEffectHandler(context: Record<string, unknown>, pattern: string): StoredContextEffectHandler | null {
-  return getContextEffectHandlers(context).find(handler => handler.pattern === pattern) ?? null
-}
-
-function getRuntimeContextObject(context: Record<string, unknown>): Record<string, unknown> {
-  const runtimeContext = { ...context }
-  const runtimeEffectHandlers = getContextEffectHandlers(context).filter(({ pattern }) =>
-    isContextEffectHandlerActive(context, pattern),
-  )
-
-  delete runtimeContext.bindings
-
-  if (runtimeEffectHandlers.length > 0) runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY] = runtimeEffectHandlers
-  else delete runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY]
-
-  delete runtimeContext[CONTEXT_UI_STATE_KEY]
-  return runtimeContext
-}
-
-function getContextUiState(context: Record<string, unknown>): UnknownRecord {
-  const uiState = context[CONTEXT_UI_STATE_KEY]
-  if (!uiState || typeof uiState !== 'object' || Array.isArray(uiState)) return {}
-
-  return asUnknownRecord(uiState)
-}
-
-function getContextUiSectionState(context: Record<string, unknown>, key: ContextUiSectionKey): UnknownRecord {
-  const section = getContextUiState(context)[key]
-  if (!section || typeof section !== 'object' || Array.isArray(section)) return {}
-
-  return asUnknownRecord(section)
-}
-
-function getContextBindingUiState(context: Record<string, unknown>): UnknownRecord {
-  return getContextUiSectionState(context, 'bindings')
-}
-
-function getContextEffectHandlerUiState(context: Record<string, unknown>): UnknownRecord {
-  return getContextUiSectionState(context, 'effectHandlers')
-}
-
-function getContextBindingUiEntry(context: Record<string, unknown>, name: string): UnknownRecord {
-  const bindingEntry = getContextBindingUiState(context)[name]
-  if (!bindingEntry || typeof bindingEntry !== 'object' || Array.isArray(bindingEntry)) return {}
-
-  return asUnknownRecord(bindingEntry)
-}
-
-function getContextEffectHandlerUiEntry(context: Record<string, unknown>, pattern: string): UnknownRecord {
-  const handlerEntry = getContextEffectHandlerUiState(context)[pattern]
-  if (!handlerEntry || typeof handlerEntry !== 'object' || Array.isArray(handlerEntry)) return {}
-
-  return asUnknownRecord(handlerEntry)
-}
-
-function getContextBindingInvalidDraft(context: Record<string, unknown>, name: string): string | null {
-  const invalidDraft = getContextBindingUiEntry(context, name).invalidJson
-  return typeof invalidDraft === 'string' ? invalidDraft : null
-}
-
-function getContextEffectHandlerInvalidDraft(context: Record<string, unknown>, pattern: string): string | null {
-  const invalidDraft = getContextEffectHandlerUiEntry(context, pattern).invalidHandler
-  return typeof invalidDraft === 'string' ? invalidDraft : null
-}
-
-export function getContextBindingNames(context: Record<string, unknown>): string[] {
-  const bindingNames = Object.keys(getContextBindings(context))
-  const invalidDraftNames = Object.keys(getContextBindingUiState(context)).filter(
-    name => getContextBindingInvalidDraft(context, name) !== null,
-  )
-
-  return [...new Set([...bindingNames, ...invalidDraftNames])].sort(compareContextEntryNames)
-}
-
-export function getContextEffectHandlerNames(context: Record<string, unknown>): string[] {
-  const handlerNames = getContextEffectHandlers(context).map(({ pattern }) => pattern)
-  const invalidDraftNames = Object.keys(getContextEffectHandlerUiState(context)).filter(
-    name => getContextEffectHandlerInvalidDraft(context, name) !== null,
-  )
-
-  return [...new Set([...handlerNames, ...invalidDraftNames])].sort(compareContextEntryNames)
-}
-
-function updateContextUiSectionEntry(
-  context: Record<string, unknown>,
-  key: ContextUiSectionKey,
-  name: string,
-  updater: (entry: UnknownRecord) => UnknownRecord,
-) {
-  const uiState = { ...getContextUiState(context) }
-  const sectionState = { ...getContextUiSectionState(context, key) }
-  const currentEntry = sectionState[name]
-  const nextEntry = updater(
-    currentEntry && typeof currentEntry === 'object' && !Array.isArray(currentEntry)
-      ? { ...asUnknownRecord(currentEntry) }
-      : {},
-  )
-
-  if (Object.keys(nextEntry).length > 0) sectionState[name] = nextEntry
-  else delete sectionState[name]
-
-  if (Object.keys(sectionState).length > 0) uiState[key] = sectionState
-  else delete uiState[key]
-
-  if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
-  else delete context[CONTEXT_UI_STATE_KEY]
-}
-
-function updateContextBindingUiEntry(
-  context: Record<string, unknown>,
-  name: string,
-  updater: (entry: UnknownRecord) => UnknownRecord,
-) {
-  updateContextUiSectionEntry(context, 'bindings', name, updater)
-}
-
-function updateContextEffectHandlerUiEntry(
-  context: Record<string, unknown>,
-  pattern: string,
-  updater: (entry: UnknownRecord) => UnknownRecord,
-) {
-  updateContextUiSectionEntry(context, 'effectHandlers', pattern, updater)
-}
-
-function isContextBindingActive(context: Record<string, unknown>, name: string): boolean {
-  const bindingState = getContextBindingUiState(context)[name]
-  if (!bindingState || typeof bindingState !== 'object' || Array.isArray(bindingState)) return true
-
-  return asUnknownRecord(bindingState).active !== false
-}
-
-function isContextEffectHandlerActive(context: Record<string, unknown>, pattern: string): boolean {
-  const handlerState = getContextEffectHandlerUiState(context)[pattern]
-  if (!handlerState || typeof handlerState !== 'object' || Array.isArray(handlerState)) return true
-
-  return asUnknownRecord(handlerState).active !== false
-}
-
-function formatContextJson(context: Record<string, unknown>): string {
-  const nextContext = { ...context }
-  const uiState = getContextUiState(nextContext)
-  const bindingUiState = getContextBindingUiState(nextContext)
-  const effectHandlerUiState = getContextEffectHandlerUiState(nextContext)
-
-  if (Object.keys(bindingUiState).length > 0) uiState.bindings = bindingUiState
-  else delete uiState.bindings
-
-  if (Object.keys(effectHandlerUiState).length > 0) uiState.effectHandlers = effectHandlerUiState
-  else delete uiState.effectHandlers
-
-  if (Object.keys(uiState).length > 0) nextContext[CONTEXT_UI_STATE_KEY] = uiState
-  else delete nextContext[CONTEXT_UI_STATE_KEY]
-
-  return JSON.stringify(nextContext, null, 2)
-}
-
-function contextEntryExists(context: Record<string, unknown>, kind: ContextEntryKind, name: string): boolean {
-  if (kind === 'binding') return getContextBindingNames(context).includes(name)
-
-  return getContextEffectHandlerNames(context).includes(name)
-}
-
-export function ensureActiveContextSelection(context: Record<string, unknown>) {
-  const bindingNames = getContextBindingNames(context)
-  const effectHandlerNames = getContextEffectHandlerNames(context)
-  const preferredName = state.activeContextBindingName ?? getState('current-context-binding-name')
-  const preferredKind = state.activeContextEntryKind ?? getState('current-context-entry-kind')
-  if (preferredName && contextEntryExists(context, preferredKind, preferredName)) {
-    if (state.activeContextBindingName !== preferredName || state.activeContextEntryKind !== preferredKind) {
-      state.activeContextBindingName = preferredName
-      state.activeContextEntryKind = preferredKind
-      persistActiveContextSelection()
-    }
-    return
-  }
-
-  const nextSelection =
-    bindingNames.length > 0
-      ? { kind: 'binding' as const, name: bindingNames[0] ?? null }
-      : { kind: 'effect-handler' as const, name: effectHandlerNames[0] ?? null }
-
-  if (state.activeContextBindingName !== nextSelection.name || state.activeContextEntryKind !== nextSelection.kind) {
-    state.activeContextBindingName = nextSelection.name
-    state.activeContextEntryKind = nextSelection.kind
-    persistActiveContextSelection()
-  }
-}
-
-function setContextBindingActive(context: Record<string, unknown>, name: string, active: boolean) {
-  updateContextBindingUiEntry(context, name, entry => {
-    if (active) delete entry.active
-    else entry.active = false
-    return entry
-  })
-}
-
-function setContextEffectHandlerActive(context: Record<string, unknown>, pattern: string, active: boolean) {
-  updateContextEffectHandlerUiEntry(context, pattern, entry => {
-    if (active) delete entry.active
-    else entry.active = false
-    return entry
-  })
-}
-
-function syncContextDetailValidity(isValid: boolean) {
-  elements.contextDetailTextArea.toggleAttribute('aria-invalid', !isValid)
-}
-
 function compileContextEffectHandlerSource(value: string): EffectHandler {
   const fn = eval(`(${value})`) as unknown
   if (typeof fn !== 'function') throw new TypeError('Effect handler must be a JavaScript function')
 
   return fn as EffectHandler
-}
-
-function isStoredContextEffectHandlerValid(value: unknown): boolean {
-  if (typeof value !== 'string') return false
-
-  try {
-    compileContextEffectHandlerSource(value)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function hasContextEffectHandlerParseError(context: Record<string, unknown>, pattern: string): boolean {
-  const handler = getContextEffectHandler(context, pattern)
-  if (getContextEffectHandlerInvalidDraft(context, pattern) !== null) return true
-
-  if (!handler) return false
-
-  if (
-    state.activeContextEntryKind === 'effect-handler' &&
-    state.activeContextBindingName === pattern &&
-    contextDetailHasParseError
-  )
-    return true
-
-  return !isStoredContextEffectHandlerValid(handler.handler)
-}
-
-export function syncContextDetailEditor() {
-  const context = getParsedContext()
-  const bindings = getContextBindings(context)
-  ensureActiveContextSelection(context)
-  const activeName = state.activeContextBindingName
-  const activeHandler = activeName ? getContextEffectHandler(context, activeName) : null
-
-  isSyncingContextDetail = true
-  contextDetailHasParseError = false
-  if (
-    state.activeContextEntryKind === 'binding' &&
-    activeName &&
-    Object.prototype.hasOwnProperty.call(bindings, activeName)
-  ) {
-    elements.contextDetailTextArea.readOnly = false
-    const invalidDraft = getContextBindingInvalidDraft(context, activeName)
-    if (invalidDraft !== null) {
-      elements.contextDetailTextArea.value = invalidDraft
-      contextDetailHasParseError = true
-    } else {
-      elements.contextDetailTextArea.value = JSON.stringify(bindings[activeName], null, 2)
-    }
-  } else if (state.activeContextEntryKind === 'effect-handler' && activeName && activeHandler) {
-    elements.contextDetailTextArea.readOnly = false
-    const invalidDraft = getContextEffectHandlerInvalidDraft(context, activeName)
-    if (invalidDraft !== null) {
-      elements.contextDetailTextArea.value = invalidDraft
-      contextDetailHasParseError = true
-    } else if (typeof activeHandler.handler === 'string') {
-      elements.contextDetailTextArea.value = activeHandler.handler
-      contextDetailHasParseError = !isStoredContextEffectHandlerValid(activeHandler.handler)
-    } else {
-      elements.contextDetailTextArea.value = String(activeHandler.handler)
-      contextDetailHasParseError = true
-    }
-  } else if (activeName) {
-    const invalidBindingDraft = getContextBindingInvalidDraft(context, activeName)
-    const invalidHandlerDraft = getContextEffectHandlerInvalidDraft(context, activeName)
-    if (state.activeContextEntryKind === 'binding' && invalidBindingDraft !== null) {
-      elements.contextDetailTextArea.readOnly = false
-      elements.contextDetailTextArea.value = invalidBindingDraft
-      contextDetailHasParseError = true
-    } else if (state.activeContextEntryKind === 'effect-handler' && invalidHandlerDraft !== null) {
-      elements.contextDetailTextArea.readOnly = false
-      elements.contextDetailTextArea.value = invalidHandlerDraft
-      contextDetailHasParseError = true
-    } else {
-      elements.contextDetailTextArea.readOnly = true
-      elements.contextDetailTextArea.value = ''
-    }
-  } else {
-    elements.contextDetailTextArea.readOnly = true
-    elements.contextDetailTextArea.value = ''
-  }
-  isSyncingContextDetail = false
-  syncContextDetailValidity(!contextDetailHasParseError)
-}
-
-function renderContextEntryList() {
-  const context = getParsedContext()
-  ensureActiveContextSelection(context)
-
-  const items: string[] = [
-    `<div class="explorer-group-label explorer-group-label--with-action">
-      <span>Effect Handlers</span>
-      <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextEffectHandler()" title="Add effect handler" aria-label="Add effect handler">${addIcon}</button>
-    </div>`,
-  ]
-
-  const effectHandlerNames = getContextEffectHandlerNames(context)
-
-  if (effectHandlerNames.length === 0) {
-    items.push('<div class="explorer-empty">No effect handlers yet</div>')
-  }
-
-  effectHandlerNames.forEach((pattern, index) => {
-    const isActive = isContextEffectHandlerActive(context, pattern)
-    const hasParseError = hasContextEffectHandlerParseError(context, pattern)
-    const itemClass = `${state.activeContextEntryKind === 'effect-handler' && state.activeContextBindingName === pattern ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
-    const menuId = `context-effect-handler-menu-${index}`
-    const encodedPattern = encodeURIComponent(pattern)
-    const selectAction = `Playground.selectContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
-    const renameAction = `Playground.renameContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
-    const removeAction = `Playground.removeContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
-    const toggleAction = `Playground.toggleContextEffectHandlerActive(decodeURIComponent('${encodedPattern}'))`
-    const menuItems: EditorMenuItem[] = [
-      { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
-      { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
-    ]
-
-    items.push(`
-      <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(pattern)}">
-        <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(pattern)}">
-        <span class="explorer-item__name">${escapeHtml(pattern)}</span>
-        ${hasParseError ? `<span class="explorer-item__warning" title="Effect handler is invalid">${ICONS.warning}</span>` : ''}
-        <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
-          <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
-          ${renderEditorMenu({ id: menuId, items: menuItems })}
-        </span>
-      </div>`)
-  })
-
-  elements.contextEntryList.innerHTML = items.join('')
-
-  // Show a red dot on the sidebar context icon when any entry has a parse error.
-  const hasAnyError = getContextEffectHandlerNames(context).some(pattern =>
-    hasContextEffectHandlerParseError(context, pattern),
-  )
-  document.getElementById('side-icon-context')?.classList.toggle('side-panel__icon--has-error', hasAnyError)
-}
-
-function commitContextDetailEdits(): boolean {
-  if (isSyncingContextDetail || !state.activeContextBindingName) return true
-
-  if (state.activeContextEntryKind === 'effect-handler') {
-    try {
-      compileContextEffectHandlerSource(elements.contextDetailTextArea.value)
-      const context = getParsedContext()
-      const handlers = getContextEffectHandlers(context).filter(
-        ({ pattern }) => pattern !== state.activeContextBindingName,
-      )
-      handlers.push({ pattern: state.activeContextBindingName, handler: elements.contextDetailTextArea.value })
-      context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
-      updateContextEffectHandlerUiEntry(context, state.activeContextBindingName, entry => {
-        delete entry.invalidHandler
-        return entry
-      })
-      const nextContext = formatContextJson(context)
-      contextDetailHasParseError = false
-      if (nextContext !== getState('context')) updateContextState(nextContext, true, undefined, false)
-      else renderContextEntryList()
-      syncContextDetailValidity(true)
-      return true
-    } catch (_error) {
-      const context = getParsedContext()
-      const handlers = getContextEffectHandlers(context).filter(
-        ({ pattern }) => pattern !== state.activeContextBindingName,
-      )
-      if (handlers.length > 0) context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
-      else delete context[CONTEXT_EFFECT_HANDLERS_KEY]
-      updateContextEffectHandlerUiEntry(context, state.activeContextBindingName, entry => {
-        entry.invalidHandler = elements.contextDetailTextArea.value
-        return entry
-      })
-      const nextContext = formatContextJson(context)
-      contextDetailHasParseError = true
-      if (nextContext !== getState('context')) updateContextState(nextContext, true, undefined, false)
-      else renderContextEntryList()
-      syncContextDetailValidity(false)
-      return false
-    }
-  }
-
-  try {
-    const parsedValue = JSON.parse(elements.contextDetailTextArea.value) as unknown
-    const context = getParsedContext()
-    const bindings = { ...getContextBindings(context) }
-    bindings[state.activeContextBindingName] = parsedValue
-    context.bindings = bindings
-    updateContextBindingUiEntry(context, state.activeContextBindingName, entry => {
-      delete entry.invalidJson
-      return entry
-    })
-    const nextContext = formatContextJson(context)
-    contextDetailHasParseError = false
-    if (nextContext !== getState('context')) updateContextState(nextContext, true, undefined, false)
-    else renderContextEntryList()
-    syncContextDetailValidity(true)
-    return true
-  } catch (_error) {
-    const context = getParsedContext()
-    const bindings = { ...getContextBindings(context) }
-    delete bindings[state.activeContextBindingName]
-    context.bindings = bindings
-    updateContextBindingUiEntry(context, state.activeContextBindingName, entry => {
-      entry.invalidJson = elements.contextDetailTextArea.value
-      return entry
-    })
-    const nextContext = formatContextJson(context)
-    contextDetailHasParseError = true
-    if (nextContext !== getState('context')) updateContextState(nextContext, true, undefined, false)
-    else renderContextEntryList()
-    syncContextDetailValidity(false)
-    return false
-  }
-}
-
-export function selectContextBinding(name: string) {
-  // Early return only if we're already on this exact binding — check both name and kind to avoid
-  // incorrectly short-circuiting when switching from an effect handler with the same name.
-  if (state.activeContextEntryKind === 'binding' && state.activeContextBindingName === name) {
-    focusContext()
-    return
-  }
-
-  // Commit edits using the *current* kind before switching — setting state.activeContextEntryKind
-  // beforehand would cause commitContextDetailEdits to misinterpret the active editor content.
-  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
-
-  state.activeContextEntryKind = 'binding'
-  state.activeContextBindingName = name
-  persistActiveContextSelection()
-  syncContextDetailEditor()
-  renderContextEntryList()
-  syncCodePanelView('context')
-  updateCSS()
-  focusContext()
-}
-
-export function selectContextEffectHandler(pattern: string) {
-  // Early return only if we're already on this exact handler — check both pattern and kind.
-  if (state.activeContextEntryKind === 'effect-handler' && state.activeContextBindingName === pattern) {
-    focusContext()
-    return
-  }
-
-  // Commit edits using the *current* kind before switching — setting state.activeContextEntryKind
-  // beforehand would cause commitContextDetailEdits to misinterpret the active editor content.
-  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
-
-  state.activeContextEntryKind = 'effect-handler'
-  state.activeContextBindingName = pattern
-  persistActiveContextSelection()
-  syncContextDetailEditor()
-  renderContextEntryList()
-  syncCodePanelView('context')
-  updateCSS()
-  focusContext()
-}
-
-export function toggleContextBindingActive(name: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
-
-  const context = getParsedContext()
-  setContextBindingActive(context, name, !isContextBindingActive(context, name))
-  updateContextState(formatContextJson(context), true)
-}
-
-export function toggleContextEffectHandlerActive(pattern: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
-
-  const context = getParsedContext()
-  setContextEffectHandlerActive(context, pattern, !isContextEffectHandlerActive(context, pattern))
-  updateContextState(formatContextJson(context), true)
-}
-
-export function removeContextBinding(name: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
-
-  const context = getParsedContext()
-  const bindings = { ...getContextBindings(context) }
-  delete bindings[name]
-  context.bindings = bindings
-
-  const bindingUiState = { ...getContextBindingUiState(context) }
-  delete bindingUiState[name]
-  const uiState = { ...getContextUiState(context) }
-  if (Object.keys(bindingUiState).length > 0) uiState.bindings = bindingUiState
-  else delete uiState.bindings
-
-  if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
-  else delete context[CONTEXT_UI_STATE_KEY]
-
-  if (state.activeContextBindingName === name) state.activeContextBindingName = null
-
-  updateContextState(formatContextJson(context), true)
-}
-
-export function removeContextEffectHandler(pattern: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits()) return
-
-  const context = getParsedContext()
-  const handlers = getContextEffectHandlers(context).filter(entry => entry.pattern !== pattern)
-  if (handlers.length > 0) context[CONTEXT_EFFECT_HANDLERS_KEY] = handlers
-  else delete context[CONTEXT_EFFECT_HANDLERS_KEY]
-
-  const effectHandlerUiState = { ...getContextEffectHandlerUiState(context) }
-  delete effectHandlerUiState[pattern]
-  const uiState = { ...getContextUiState(context) }
-  if (Object.keys(effectHandlerUiState).length > 0) uiState.effectHandlers = effectHandlerUiState
-  else delete uiState.effectHandlers
-
-  if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
-  else delete context[CONTEXT_UI_STATE_KEY]
-
-  if (state.activeContextBindingName === pattern) state.activeContextBindingName = null
-
-  updateContextState(formatContextJson(context), true)
-}
-
-export function renameContextBinding(name: string) {
-  const hasInvalidActiveBinding = contextDetailHasParseError
-  if (state.activeContextBindingName !== name && !hasInvalidActiveBinding && !commitContextDetailEdits()) return
-
-  showNameInputModal('Rename binding', name, newName => {
-    if (newName === name) return
-
-    const context = getParsedContext()
-    if (getContextBindingNames(context).includes(newName)) {
-      showToast(`Binding "${newName}" already exists`, { severity: 'error' })
-      setTimeout(() => renameContextBinding(name), 0)
-      return
-    }
-
-    const bindings = { ...getContextBindings(context) }
-    if (Object.prototype.hasOwnProperty.call(bindings, name)) {
-      bindings[newName] = bindings[name]
-      delete bindings[name]
-      context.bindings = bindings
-    }
-
-    const bindingUiState = { ...getContextBindingUiState(context) }
-    if (Object.prototype.hasOwnProperty.call(bindingUiState, name)) {
-      bindingUiState[newName] = bindingUiState[name]
-      delete bindingUiState[name]
-    }
-
-    const uiState = { ...getContextUiState(context) }
-    if (Object.keys(bindingUiState).length > 0) uiState.bindings = bindingUiState
-    else delete uiState.bindings
-
-    if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
-    else delete context[CONTEXT_UI_STATE_KEY]
-
-    if (state.activeContextBindingName === name) state.activeContextBindingName = newName
-
-    updateContextState(formatContextJson(context), true)
-    focusContext()
-  })
-}
-
-export function renameContextEffectHandler(pattern: string) {
-  const hasInvalidActiveBinding = contextDetailHasParseError
-  if (state.activeContextBindingName !== pattern && !hasInvalidActiveBinding && !commitContextDetailEdits()) return
-
-  showNameInputModal(
-    'Rename effect handler',
-    pattern,
-    newPattern => {
-      if (newPattern === pattern) return
-
-      const context = getParsedContext()
-      if (getContextEffectHandlerNames(context).includes(newPattern)) {
-        showToast(`Effect handler "${newPattern}" already exists`, { severity: 'error' })
-        setTimeout(() => renameContextEffectHandler(pattern), 0)
-        return
-      }
-
-      const handlers = getContextEffectHandlers(context).map(entry => {
-        if (entry.pattern !== pattern) return entry
-
-        return { ...entry, pattern: newPattern }
-      })
-
-      if (handlers.length > 0) context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
-      else delete context[CONTEXT_EFFECT_HANDLERS_KEY]
-
-      const effectHandlerUiState = { ...getContextEffectHandlerUiState(context) }
-      if (Object.prototype.hasOwnProperty.call(effectHandlerUiState, pattern)) {
-        effectHandlerUiState[newPattern] = effectHandlerUiState[pattern]
-        delete effectHandlerUiState[pattern]
-      }
-
-      const uiState = { ...getContextUiState(context) }
-      if (Object.keys(effectHandlerUiState).length > 0) uiState.effectHandlers = effectHandlerUiState
-      else delete uiState.effectHandlers
-
-      if (Object.keys(uiState).length > 0) context[CONTEXT_UI_STATE_KEY] = uiState
-      else delete context[CONTEXT_UI_STATE_KEY]
-
-      if (state.activeContextBindingName === pattern) state.activeContextBindingName = newPattern
-
-      updateContextState(formatContextJson(context), true)
-      focusContext()
-    },
-    undefined,
-    { prefix: '@' },
-  )
-}
-
-export function promptAddContextBinding() {
-  const hasInvalidActiveBinding = contextDetailHasParseError
-  if (!hasInvalidActiveBinding && !commitContextDetailEdits()) return
-
-  showNameInputModal('Add binding', '', name => {
-    const context = getParsedContext()
-    const bindings = { ...getContextBindings(context) }
-    if (getContextBindingNames(context).includes(name)) {
-      showToast(`Binding "${name}" already exists`, { severity: 'error' })
-      setTimeout(() => promptAddContextBinding(), 0)
-      return
-    }
-
-    bindings[name] = {}
-    context.bindings = bindings
-    if (!hasInvalidActiveBinding) {
-      state.activeContextEntryKind = 'binding'
-      state.activeContextBindingName = name
-    }
-
-    updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveBinding)
-
-    if (hasInvalidActiveBinding) showToast(`Added binding "${name}"`)
-
-    focusContext()
-  })
-}
-
-export function promptAddContextEffectHandler() {
-  const hasInvalidActiveEntry = contextDetailHasParseError
-  if (!hasInvalidActiveEntry && !commitContextDetailEdits()) return
-
-  showNameInputModal(
-    'Add effect handler',
-    '',
-    pattern => {
-      const context = getParsedContext()
-      if (getContextEffectHandlerNames(context).includes(pattern)) {
-        showToast(`Effect handler "${pattern}" already exists`, { severity: 'error' })
-        setTimeout(() => promptAddContextEffectHandler(), 0)
-        return
-      }
-
-      const handlers = getContextEffectHandlers(context)
-      handlers.push({ pattern, handler: DEFAULT_CONTEXT_EFFECT_HANDLER_SOURCE })
-      context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
-
-      if (!hasInvalidActiveEntry) {
-        state.activeContextEntryKind = 'effect-handler'
-        state.activeContextBindingName = pattern
-      }
-
-      updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveEntry)
-
-      if (hasInvalidActiveEntry) showToast(`Added effect handler "${pattern}"`)
-
-      focusContext()
-    },
-    undefined,
-    { prefix: '@' },
-  )
-}
-
-export function addContextEntry() {
-  const name = elements.newContextName.value
-  if (name === '') {
-    elements.newContextError.textContent = 'Name is required'
-    elements.newContextError.style.display = 'block'
-    elements.newContextName.focus()
-    return
-  }
-
-  const value = elements.newContextValue.value
-
-  try {
-    const parsedValue = JSON.parse(value) as unknown
-    const context = getParsedContext()
-    const bindings: UnknownRecord = Object.assign({}, context.bindings)
-    bindings[name] = parsedValue
-    context.bindings = bindings
-    state.activeContextEntryKind = 'binding'
-    state.activeContextBindingName = name
-    updateContextState(formatContextJson(context), true)
-
-    closeAddContextMenu()
-  } catch (_e) {
-    elements.newContextError.textContent = 'Invalid JSON'
-    elements.newContextError.style.display = 'block'
-    elements.newContextValue.focus()
-  }
-
-  clearState('new-context-name')
-  clearState('new-context-value')
-}
-
-export function addSampleContext() {
-  const context = getParsedContext()
-  const sampleBindings = {
-    'a-number': 42,
-    'a-string': 'foo bar',
-    'an-array': ['foo', 'bar', 1, 2, true, false, null],
-    'an-object': {
-      name: 'John Doe',
-      age: 42,
-      married: true,
-      children: ['Alice', 'Bob'],
-      address: {
-        street: '123 Main St',
-        city: 'Springfield',
-        state: 'IL',
-        zip: '62701',
-      },
-    },
-    'matrix-a': [
-      [1, 2, 3],
-      [4, 5, 6],
-    ],
-    'matrix-b': [
-      [7, 8],
-      [9, 10],
-      [11, 12],
-    ],
-    'matrix-c': [
-      [3, 0, 2],
-      [2, 0, -2],
-      [0, 1, 1],
-    ],
-  }
-
-  context.bindings = Object.assign(sampleBindings, context.bindings)
-
-  const sampleEffectHandlers: { pattern: string; handler: string }[] = [
-    {
-      pattern: 'host.greet',
-      handler:
-        'async ({ arg, resume }) => { const [name] = Array.isArray(arg) ? arg : [arg]; resume(`Hello, ${name}!`) }',
-    },
-    {
-      pattern: 'host.add',
-      handler: 'async ({ arg, resume }) => { const [a, b] = Array.isArray(arg) ? arg : [arg]; resume(a + b) }',
-    },
-    {
-      pattern: 'host.delay',
-      handler: `async ({ arg, resume }) => {
-  const [ms] = Array.isArray(arg) ? arg : [arg];
-  await new Promise(resolve => setTimeout(resolve, ms));
-  resume(ms);
-}`,
-    },
-  ]
-
-  const existing = (context.effectHandlers ?? []) as { pattern: string; handler: string }[]
-  const existingPatterns = new Set(existing.map(h => h.pattern))
-  context.effectHandlers = [...existing, ...sampleEffectHandlers.filter(h => !existingPatterns.has(h.pattern))]
-
-  updateContextState(formatContextJson(context), true)
 }
 
 export function newFile() {
@@ -2665,7 +1813,7 @@ export function newFile() {
 function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom', onProceed?: () => void) {
   if (onProceed !== undefined) {
     guardCodeReplacement(() => {
-      saveState({ 'current-file-id': null, 'dvala-code-edited': false }, false)
+      saveState({ 'current-file-id': SCRATCH_FILE_ID, 'dvala-code-edited': false }, false)
       activateCurrentFileHistory(true)
       setDvalaCode(value, pushToHistory, scroll)
       onProceed()
@@ -2682,7 +1830,7 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
   // friends. Same goes for the scratch-buffer mirror — listener-side
   // updates don't run, so we have to do it here.
   notifyTabsChanged()
-  const scratchActive = getState('current-file-id') === null
+  const scratchActive = getState('current-file-id') === SCRATCH_FILE_ID
   if (scratchActive) setScratchCode(value)
 
   if (pushToHistory) {
@@ -2719,7 +1867,7 @@ export function resetPlayground() {
   focusScratch()
   activateCurrentFileHistory(true)
   setDvalaCode('', true)
-  updateContextState('', true)
+  saveState({ context: '' }, true)
   resetOutput()
 }
 
@@ -2857,11 +2005,10 @@ function wireCodeEditorListeners(): void {
   const editor = getCodeEditor()
   editor.onChange(value => {
     setDvalaCode(value, true)
-    if (getState('current-file-id') === null) {
-      // Scratch is its own tab with its own model; the durable storage
-      // lives in the scratch workspace file (`.dvala-playground/scratch.dvala`,
-      // Phase 1.5 step 23c). `initTabs` hydrates the scratch model from
-      // there on reload — mirror every keystroke so reloads survive.
+    if (getState('current-file-id') === SCRATCH_FILE_ID) {
+      // Scratch is the workspace file at `.dvala-playground/scratch.dvala`;
+      // `initTabs` hydrates the scratch model from there on reload, so
+      // mirror every keystroke into the backing file so reloads survive.
       setScratchCode(value)
       scheduleScratchEditedClear()
     } else saveState({ 'dvala-code-edited': true })
@@ -2932,7 +2079,10 @@ window.onload = async function () {
   // handler declarations).
   ensureScratchFile()
   ensureHandlersFile()
-  pruneFileHistories(['<scratch>', ...getWorkspaceFiles().map(file => file.id)])
+  // After Phase 1.5 step 23h, scratch is a regular workspace file with ID
+  // `SCRATCH_FILE_ID` — already in `getWorkspaceFiles()` — so the legacy
+  // `'<scratch>'` extra key is gone.
+  pruneFileHistories(getWorkspaceFiles().map(file => file.id))
   initExecutionControlBar()
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   wireCodeEditorListeners()
@@ -2951,6 +2101,23 @@ window.onload = async function () {
       // needed. Inactive tools stay stale until the user clicks them
       // (the panel's onChange callback then refreshes the new active tab).
       refreshActiveRightPanelTab(() => getState('dvala-code'))
+      // Phase 1.5 step 23j stage 2: when the new active tab is a snapshot
+      // tab, populate the snapshot view with the right snapshot data and
+      // swap the editor area accordingly. For file tabs `syncCodePanelView`
+      // alone is enough (it shows the editor view); snapshot tabs need a
+      // `replaceSnapshotView` first because the panel is data-driven.
+      const activeSnapshotId = getActiveSnapshotTabId()
+      if (activeSnapshotId !== null) {
+        const details = getSnapshotDetailsById(activeSnapshotId)
+        if (details) replaceSnapshotView(details.snapshot, details.label)
+      }
+      syncCodePanelView()
+      // Refresh editor-area chrome — the toolbar title pill, locked
+      // indicator, save-scratch button visibility — to reflect the new
+      // active tab. Without this, closing a tab via the strip's × leaves
+      // the toolbar title showing the just-closed file's name until some
+      // other interaction triggers `updateCSS`.
+      updateCSS()
     },
   })
   initTabs()
@@ -3184,10 +2351,6 @@ window.onload = async function () {
           evt.preventDefault()
           toggleDebug()
           break
-        case '1':
-          evt.preventDefault()
-          focusContext()
-          break
         case '2':
           evt.preventDefault()
           focusDvalaCode()
@@ -3196,7 +2359,6 @@ window.onload = async function () {
     }
     if (evt.key === 'Escape') {
       closeMoreMenu()
-      closeAddContextMenu()
       if (state.resolveInfoModal) {
         dismissInfoModal()
       } else if (state.pendingEffects.length > 0) {
@@ -3225,61 +2387,12 @@ window.onload = async function () {
     // window-level fallback that previously gated on the textarea is gone —
     // the editor command takes precedence within its DOM subtree.
   })
-  elements.contextTextArea.addEventListener('keydown', evt => {
-    keydownHandler(evt, () => updateContextState(elements.contextTextArea.value, true))
-  })
-  elements.contextTextArea.addEventListener('input', () => {
-    updateContextState(elements.contextTextArea.value, true)
-  })
-  elements.contextTextArea.addEventListener('scroll', () => {
-    saveState({ 'context-scroll-top': elements.contextTextArea.scrollTop })
-  })
-  elements.contextTextArea.addEventListener('selectionchange', () => {
-    if (!ignoreSelectionChange) {
-      saveState({
-        'context-selection-start': elements.contextTextArea.selectionStart,
-        'context-selection-end': elements.contextTextArea.selectionEnd,
-      })
-    }
-  })
-  elements.contextTextArea.addEventListener('focusin', () => {
-    saveState({ 'focused-panel': 'context' })
-    updateCSS()
-  })
-  elements.contextTextArea.addEventListener('focusout', () => {
-    saveState({ 'focused-panel': null })
-    updateCSS()
-  })
-  elements.contextDetailTextArea.addEventListener('keydown', evt => {
-    keydownHandler(evt, () => {
-      commitContextDetailEdits()
-    })
-  })
-  elements.contextDetailTextArea.addEventListener('input', () => {
-    commitContextDetailEdits()
-  })
-  elements.contextDetailTextArea.addEventListener('focusin', () => {
-    saveState({ 'focused-panel': 'context' })
-    updateCSS()
-  })
-  elements.contextDetailTextArea.addEventListener('focusout', () => {
-    commitContextDetailEdits()
-    saveState({ 'focused-panel': null })
-    updateCSS()
-  })
 
   // Code-editor listeners are wired in wireCodeEditorListeners() (called once
   // during boot, right after the CodeEditor is constructed).
 
   elements.outputResult.addEventListener('scroll', () => {
     saveState({ 'output-scroll-top': elements.outputResult.scrollTop })
-  })
-
-  elements.newContextName.addEventListener('input', () => {
-    saveState({ 'new-context-name': elements.newContextName.value })
-  })
-  elements.newContextValue.addEventListener('input', () => {
-    saveState({ 'new-context-value': elements.newContextValue.value })
   })
 
   applyState(true)
@@ -3302,20 +2415,6 @@ function getDataFromUrl() {
   const urlParams = new URLSearchParams(window.location.search)
   const activeView = normalizeSideTab(urlParams.get('view'))
   saveState({ 'active-side-tab': activeView }, false)
-
-  const urlBindingName = urlParams.get('bindingName')
-  const urlContextEntryKind = urlParams.get('contextEntryKind') === 'effect-handler' ? 'effect-handler' : 'binding'
-  if (activeView === 'context') {
-    state.activeContextBindingName = urlBindingName ?? getState('current-context-binding-name')
-    state.activeContextEntryKind = urlBindingName ? urlContextEntryKind : getState('current-context-entry-kind')
-    saveState(
-      {
-        'current-context-binding-name': state.activeContextBindingName,
-        'current-context-entry-kind': state.activeContextEntryKind,
-      },
-      false,
-    )
-  }
 
   const urlFileId = urlParams.get('fileId')
   if (activeView === 'files' && urlFileId && getState('current-file-id') !== urlFileId) {
@@ -3366,33 +2465,21 @@ function getDataFromUrl() {
     const incomingContext = typeof incomingState['context'] === 'string' ? incomingState['context'].trim() : ''
     const currentContext = getState('context').trim()
 
-    const applyImport = (contextMode: 'ignore' | 'replace' | 'append') => {
+    const applyImport = (contextMode: 'ignore' | 'replace') => {
       guardCodeReplacement(() => {
-        // Handle context based on user choice
+        // Handle context based on user choice. The legacy "append" merge
+        // (concatenating bindings/effectHandlers from both sides) was retired
+        // in Phase 1.5 step 23f along with the Bindings UI — the only paths
+        // left are "drop the incoming blob" or "overwrite with the incoming
+        // blob".
         if (contextMode === 'ignore') {
           delete incomingState['context']
-        } else if (contextMode === 'append' && currentContext) {
-          // Merge context: parse both as JSON, merge bindings and handlers
-          try {
-            const current = JSON.parse(currentContext) as Record<string, unknown>
-            const incoming = JSON.parse(incomingContext) as Record<string, unknown>
-            const merged: Record<string, unknown> = {}
-            // Merge bindings
-            const currentBindings = (current.bindings ?? {}) as Record<string, unknown>
-            const incomingBindings = (incoming.bindings ?? {}) as Record<string, unknown>
-            merged.bindings = { ...currentBindings, ...incomingBindings }
-            // Merge effect handlers
-            const currentHandlers = (current.effectHandlers ?? []) as unknown[]
-            const incomingHandlers = (incoming.effectHandlers ?? []) as unknown[]
-            merged.effectHandlers = [...currentHandlers, ...incomingHandlers]
-            incomingState['context'] = JSON.stringify(merged, null, 2)
-          } catch {
-            // If merge fails, just replace
-            incomingState['context'] = incomingContext
-          }
         }
-        // Apply the state
-        saveState({ 'current-file-id': null, 'dvala-code-edited': false }, false)
+        // Apply the state. The "imported state always lands on scratch" rule
+        // is intentional — incoming dvala-code is dropped into scratch's tab
+        // rather than overwriting whichever workspace file happened to be
+        // active when the user clicked the share link.
+        saveState({ 'current-file-id': SCRATCH_FILE_ID, 'dvala-code-edited': false }, false)
         activateCurrentFileHistory(true)
         if (applyEncodedState(btoa(encodeURIComponent(JSON.stringify(incomingState)))))
           showToast('State loaded from URL')
@@ -3415,17 +2502,10 @@ function getDataFromUrl() {
           },
           {
             label: 'Replace',
-            action: () => {
-              popModal()
-              applyImport('replace')
-            },
-          },
-          {
-            label: 'Append',
             primary: true,
             action: () => {
               popModal()
-              applyImport('append')
+              applyImport('replace')
             },
           },
         ],
@@ -3454,117 +2534,6 @@ function getDataFromUrl() {
     } else {
       showToast('Invalid snapshot link', { severity: 'error' })
     }
-  }
-}
-
-function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
-  if (state.pendingEffects.length > 0) {
-    // An effect panel is open - prevent the code textarea from handling these keys
-    if (['Escape', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(evt.key)) {
-      evt.preventDefault()
-    }
-    return
-  }
-  const target = evt.target as HTMLTextAreaElement
-  const start = target.selectionStart
-  const end = target.selectionEnd
-  const indexOfReturn = target.value.lastIndexOf('\n', start - 1)
-  const rowLength = start - indexOfReturn - 1
-  const onTabStop = rowLength % 2 === 0
-
-  if (
-    (!['Shift', 'Control', 'Meta', 'Alt', 'Escape', 'Tab'].includes(evt.key) && evt.code !== 'Space') ||
-    (evt.code === 'Space' && !evt.altKey)
-  ) {
-    autoCompleter = null
-  }
-
-  if (evt.code === 'Space' && evt.altKey) {
-    evt.preventDefault()
-    if (!autoCompleter) {
-      autoCompleter = getAutoCompleter(target.value, start, {
-        effectNames: getPlaygroundEffectHandlers().map(h => h.pattern),
-      })
-    }
-    const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
-    if (suggestion) {
-      target.value = suggestion.program
-      target.selectionStart = target.selectionEnd = suggestion.position
-      onChange()
-    }
-    return
-  }
-
-  switch (evt.code) {
-    case 'Tab': {
-      evt.preventDefault()
-      if (autoCompleter) {
-        // Cycle through suggestions with Tab / Shift+Tab
-        const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
-        if (suggestion) {
-          target.value = suggestion.program
-          target.selectionStart = target.selectionEnd = suggestion.position
-          onChange()
-        }
-      } else if (!evt.shiftKey) {
-        // If cursor is directly after non-whitespace, try autocomplete first
-        const charBefore = start > 0 ? target.value[start - 1] : ''
-        if (charBefore && !/\s/.test(charBefore)) {
-          const completer = getAutoCompleter(target.value, start, {
-            effectNames: getPlaygroundEffectHandlers().map(h => h.pattern),
-          })
-          if (completer.getSuggestions().length > 0) {
-            autoCompleter = completer
-            const suggestion = autoCompleter.getNextSuggestion()
-            if (suggestion) {
-              target.value = suggestion.program
-              target.selectionStart = target.selectionEnd = suggestion.position
-              onChange()
-            }
-            break
-          }
-        }
-        // Fall back to indentation
-        target.value = target.value.substring(0, start) + (onTabStop ? '  ' : ' ') + target.value.substring(end)
-        target.selectionStart = target.selectionEnd = start + (onTabStop ? 2 : 1)
-        onChange()
-      }
-      break
-    }
-    case 'Escape':
-      evt.preventDefault()
-      if (autoCompleter) {
-        target.value = autoCompleter.originalProgram
-        target.selectionStart = target.selectionEnd = autoCompleter.originalPosition
-        autoCompleter = null
-        onChange()
-      }
-      break
-    case 'Backspace':
-      if (onTabStop && start === end && target.value.substring(start - 2, start + 2) === '  ') {
-        evt.preventDefault()
-        target.value = target.value.substring(0, start - 2) + target.value.substring(end)
-        target.selectionStart = target.selectionEnd = start - 2
-        onChange()
-      }
-      break
-    case 'Enter': {
-      evt.preventDefault()
-      const spaceCount = target.value.substring(indexOfReturn + 1, start).replace(/^( *).*/, '$1').length
-      target.value = `${target.value.substring(0, start)}\n${' '.repeat(spaceCount)}${target.value.substring(end)}`
-      target.selectionStart = target.selectionEnd = start + 1 + spaceCount
-      onChange()
-      break
-    }
-
-    case 'Delete':
-      if (onTabStop && start === end && target.value.substring(start, start + 2) === '  ') {
-        evt.preventDefault()
-        target.value = target.value.substring(0, start) + target.value.substring(end + 2)
-        target.selectionStart = target.selectionEnd = start
-        onChange()
-      }
-      break
   }
 }
 
@@ -3650,7 +2619,7 @@ function routeToPath(appPath: string): void {
   if (tabButton !== 'editor' && tabButton in lastTabPath) lastTabPath[tabButton] = appPath || '/'
 
   // Editor tab doesn't need dynamic content rendering — just re-sync the URL to reflect
-  // the current side panel state (e.g. ?view=context), which is lost when navigating away.
+  // the current side panel state (e.g. ?view=snapshots), which is lost when navigating away.
   if (path === 'editor') {
     document.title = 'Editor | Dvala'
     syncPlaygroundUrlState(normalizeSideTab(getState('active-side-tab')))
@@ -3904,7 +2873,7 @@ export async function run() {
       notifyTabsChanged()
     }
     if (getState('context') !== uiSnapshot.context) {
-      updateContextState(uiSnapshot.context, false)
+      saveState({ context: uiSnapshot.context }, false)
     }
     editor.setScrollTop(uiSnapshot.scrollTop)
     editor.setScrollLeft(uiSnapshot.scrollLeft)
@@ -4160,10 +3129,6 @@ export function togglePlaygroundDeveloper() {
   updateCSS()
 }
 
-export function focusContext() {
-  elements.contextDetailTextArea.focus()
-}
-
 export function focusDvalaCode() {
   getCodeEditor().focus()
 }
@@ -4184,6 +3149,16 @@ export function setWorkspaceFilesForTesting(files: WorkspaceFile[]): void {
 export { setHandlersCode as setHandlersCodeForTesting } from './handlersBuffer'
 export function setEditorValue(code: string): void {
   setDvalaCode(code, true)
+}
+
+/**
+ * Test-only setter for the legacy `state['context']` JSON blob. The Bindings
+ * UI was retired in Phase 1.5 step 23f; e2e tests that exercise example
+ * handler injection drive the storage slot through this hook instead of the
+ * removed Context-tab textarea.
+ */
+export function setContextForTesting(json: string): void {
+  saveState({ context: json }, false)
 }
 
 export function getEditorValue(): string {
@@ -4411,7 +3386,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
         card.style.borderColor = 'var(--color-scrollbar-track)'
         card.style.background = 'transparent'
       })
-      card.addEventListener('click', () => pushCheckpointPanel(cpSnapshot))
+      card.addEventListener('click', () => replaceSnapshotView(cpSnapshot))
 
       const badge = document.createElement('span')
       badge.textContent = `#${cpSnapshot.index}`
@@ -4605,9 +3580,14 @@ function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = state.s
   if (body) content.appendChild(body)
   if (footer) footerHost.appendChild(footer)
 
-  // Update breadcrumbs and sync the panel view
+  // Update breadcrumbs + execution controls. The editor-area swap (showing
+  // `#dvala-snapshot-view`) is now driven by the afterSwap tab-lifecycle
+  // hook in scripts.ts:2099, so we don't call `syncCodePanelView` here —
+  // it would double-render. For breadcrumb navigation (navigateSnapshot-
+  // Breadcrumb), the snapshot view is already visible (active tab is the
+  // snapshot tab); for the boot-time `openSnapshotModal` URL-blob path,
+  // the legacy modal flow is being retired in 23l anyway.
   renderSnapshotBreadcrumbs()
-  syncCodePanelView('snapshots')
   syncSnapshotExecutionControls()
 }
 
@@ -4622,6 +3602,27 @@ export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
   const label = state.snapshotViewStack.length === 0 ? 'Snapshot' : `Checkpoint ${state.snapshotViewStack.length}`
   state.snapshotViewStack.push({ label, snapshot })
   showSnapshotInPanel(snapshot, true)
+
+  // Phase 1.5 step 23j stage 2: the legacy modal flow (suspension /
+  // halted runs, URL `?snapshot=` blob, snapshot import) opens this view
+  // for snapshots that aren't backed by a workspace file — so they have
+  // no editor-area tab, and `syncCodePanelView`'s active-tab-kind branch
+  // would default to the editor view. Until 23l retires this path
+  // entirely, we force-show the snapshot view here so suspended runs
+  // still render the inspector. The DOM toggling mirrors the snapshot
+  // branch of `syncCodePanelView` exactly.
+  const editorView = document.getElementById('dvala-editor-view')
+  const snapshotView = document.getElementById('dvala-snapshot-view')
+  const emptyView = document.getElementById('dvala-empty-view')
+  const headerEditor = document.getElementById('dvala-header-editor')
+  const headerSnapshot = document.getElementById('dvala-header-snapshot')
+  const closeBtn = document.getElementById('snapshot-close-btn')
+  if (editorView) editorView.style.display = 'none'
+  if (emptyView) emptyView.style.display = 'none'
+  if (headerEditor) headerEditor.style.display = 'none'
+  if (snapshotView) snapshotView.style.display = 'flex'
+  if (headerSnapshot) headerSnapshot.style.display = 'flex'
+  if (closeBtn) closeBtn.style.display = ''
 
   return new Promise<void>(resolve => {
     state.resolveSnapshotModal = resolve
@@ -4638,7 +3639,15 @@ export function navigateSnapshotBreadcrumb(index: number) {
 }
 
 export function closeSnapshotView() {
-  // Clear stack and active snapshot
+  // Phase 1.5 step 23j stage 2: clear the snapshot-view state machinery
+  // first, then close the active snapshot tab. Without the explicit
+  // `closeActiveTab()` call the snapshot view stayed visible because
+  // `syncCodePanelView` reads active tab kind — clearing
+  // `state.activeSnapshotKey` alone doesn't change which TAB is active,
+  // so the snapshot panel kept rendering (blank, since the underlying
+  // state machinery was wiped). Closing the tab triggers the natural
+  // fallback to a neighbor file tab; the afterSwap hook then runs
+  // `syncCodePanelView` and the editor area swaps to the editor view.
   state.snapshotViewStack.splice(0)
   state.activeSnapshotKey = null
   populateSideSnapshotsList()
@@ -4647,9 +3656,7 @@ export function closeSnapshotView() {
   state.resolveSnapshotModal?.()
   state.resolveSnapshotModal = null
   hideExecutionControlBar()
-
-  // Sync view — will show empty or editor depending on side tab
-  syncCodePanelView()
+  closeActiveTab()
   syncPlaygroundUrlState(normalizeSideTab(getCurrentSideTab()))
 }
 
@@ -4711,7 +3718,9 @@ export function doExport() {
     'disable-auto-checkpoint',
   ]
   const codeKeys = ['dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end']
-  const contextKeys = ['context', 'context-scroll-top', 'context-selection-start', 'context-selection-end']
+  // The Bindings UI was retired in Phase 1.5 step 23f; the only context-related
+  // state slot left in `defaultState` is the `'context'` JSON blob itself.
+  const contextKeys = ['context']
   const layoutKeys = [
     'sidebar-width',
     'playground-height',
@@ -4834,7 +3843,9 @@ let importNeedsReload = false
 
 const importCategoryKeys = {
   code: ['dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end'],
-  context: ['context', 'context-scroll-top', 'context-selection-start', 'context-selection-end'],
+  // The Bindings UI was retired in Phase 1.5 step 23f; only the `'context'`
+  // JSON blob slot remains.
+  context: ['context'],
   settings: [
     'debug',
     'pure',
@@ -5020,12 +4031,6 @@ function markSnapshotIconNew() {
     document.getElementById('side-icon-snapshots')?.classList.add('side-panel__icon--has-new')
 }
 
-function markContextIconNew() {
-  // Show a blue dot on the context sidebar icon only when not already viewing context.
-  if (getCurrentSideTab() !== 'context')
-    document.getElementById('side-icon-context')?.classList.add('side-panel__icon--has-new')
-}
-
 function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error' | 'halted', result?: string): void {
   const entry: TerminalSnapshotEntry = {
     kind: 'terminal',
@@ -5070,8 +4075,7 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
 export async function clearTerminalSnapshot(index: number): Promise<void> {
   await animateCardRemoval('terminal', index)
   const entries = getTerminalSnapshots()
-  entries.splice(index, 1)
-  setTerminalSnapshots(entries)
+  setTerminalSnapshots(entries.filter((_, i) => i !== index))
   populateSnapshotsList()
 }
 
@@ -6300,13 +5304,18 @@ function getSyncEffectHandlers(): HandlerRegistration[] {
   ]
 }
 
+/**
+ * Build the effect-handler registration list for a run. The Bindings UI was
+ * retired in Phase 1.5 step 23f, so the only handlers loaded from
+ * `state['context']` now are the transient ones written by `setPlayground`
+ * when an example with `effectHandlers` is loaded. Standard IO handlers,
+ * playground.* handlers and the catch-all fallback are appended on top
+ * unless the corresponding "disable" toggles are set.
+ */
 function getDvalaParamsFromContext(): { effectHandlers: HandlerRegistration[] } {
   const contextString = getState('context')
   try {
-    const parsedContext = contextString.trim().length > 0 ? (JSON.parse(contextString) as UnknownRecord) : {}
-
-    const runtimeContext = getRuntimeContextObject(parsedContext)
-    const parsedHandlers = (runtimeContext.effectHandlers ?? []) as { pattern: string; handler: unknown }[]
+    const parsedHandlers = getContextEffectHandlers(getParsedContext())
 
     const effectHandlers: HandlerRegistration[] = parsedHandlers.map(({ pattern, handler: value }) => {
       if (typeof value !== 'string') {
@@ -6373,22 +5382,16 @@ function getSelectedDvalaCode(): {
 }
 
 export function applyState(scrollToTop = false) {
-  const contextSelectionStart = getState('context-selection-start')
-  const contextSelectionEnd = getState('context-selection-end')
   const dvalaSelectionStart = getState('dvala-code-selection-start')
   const dvalaSelectionEnd = getState('dvala-code-selection-end')
 
   setOutput(getState('output'), false)
   getDataFromUrl()
 
-  updateContextState(getState('context'), false)
-  elements.contextTextArea.selectionStart = contextSelectionStart
-  elements.contextTextArea.selectionEnd = contextSelectionEnd
-
   // Editor-dependent restoration is gated: every live caller fires after the
   // editor exists, but skipping the editor-touching lines keeps the function
   // safe if a future caller wires applyState earlier in boot. The non-editor
-  // restoration above (output, context) still runs in that case.
+  // restoration above (output) still runs in that case.
   const editor = tryGetCodeEditor()
   if (editor) {
     setDvalaCode(getState('dvala-code'), false, scrollToTop ? 'top' : undefined)
@@ -6402,10 +5405,8 @@ export function applyState(scrollToTop = false) {
   layout()
 
   setTimeout(() => {
-    if (getState('focused-panel') === 'context') focusContext()
-    else if (getState('focused-panel') === 'dvala-code') focusDvalaCode()
+    if (getState('focused-panel') === 'dvala-code') focusDvalaCode()
 
-    elements.contextTextArea.scrollTop = getState('context-scroll-top')
     tryGetCodeEditor()?.setScrollTop(getState('dvala-code-scroll-top'))
     elements.outputResult.scrollTop = getState('output-scroll-top')
   }, 0)
@@ -6519,37 +5520,21 @@ export function updateCSS() {
   const currentFileId = getState('current-file-id')
   const currentFile = currentFileId ? getWorkspaceFiles().find(entry => entry.id === currentFileId) : null
   const isLocked = currentFile?.locked ?? false
-  const isContextTab = getCurrentSideTab() === 'context'
-  const context = isContextTab ? getParsedContext() : null
-  const contextBindings = context ? getContextBindings(context) : null
-  const contextEffectHandler =
-    state.activeContextBindingName && context ? getContextEffectHandler(context, state.activeContextBindingName) : null
-  const contextTitle =
-    state.activeContextBindingName &&
-    context &&
-    ((state.activeContextEntryKind === 'binding' &&
-      ((contextBindings && Object.prototype.hasOwnProperty.call(contextBindings, state.activeContextBindingName)) ||
-        getContextBindingInvalidDraft(context, state.activeContextBindingName) !== null)) ||
-      (state.activeContextEntryKind === 'effect-handler' &&
-        (contextEffectHandler !== null ||
-          getContextEffectHandlerInvalidDraft(context, state.activeContextBindingName) !== null)))
-      ? state.activeContextBindingName
-      : ''
-  const currentFileTitle = currentFile ? fileDisplayName(currentFile) : SCRATCH_TITLE
-  const showCodePendingIndicator =
-    !isContextTab &&
-    !isLocked &&
-    (state.autoSaveTimer !== null || (currentFileId === null && state.scratchEditedTimer !== null))
-  const showSaveScratchButton = currentFileId === null && hasScratchContent() && getCurrentSideTab() !== 'snapshots'
-  // Title string: only shown for context tab (shows binding/handler name)
-  elements.dvalaCodeTitleString.textContent = isContextTab ? contextTitle : ''
-  elements.dvalaCodeTitleString.style.display = isContextTab ? '' : 'none'
+  // Phase 1.5 step 23h made scratch a regular workspace file, but we keep
+  // the toolbar title showing `<scratch>` (matching the pinned tree entry +
+  // tab strip label) instead of the underlying basename `scratch.dvala`.
+  const currentFileTitle =
+    currentFileId === SCRATCH_FILE_ID ? SCRATCH_TITLE : currentFile ? fileDisplayName(currentFile) : SCRATCH_TITLE
+  const showSaveScratchButton =
+    currentFileId === SCRATCH_FILE_ID && hasScratchContent() && getCurrentSideTab() !== 'snapshots'
+  // The Bindings UI was retired in Phase 1.5 step 23f, so the editor-area
+  // title element is unconditionally hidden — file titles render via the
+  // editor-toolbar title slot. Pending indicator likewise lives in the
+  // toolbar pill now.
+  elements.dvalaCodeTitleString.textContent = ''
+  elements.dvalaCodeTitleString.style.display = 'none'
   elements.editorToolbarTitle.textContent = currentFileTitle
-  // Context entry names (bindings, effect handlers) also use monospace
-  const fileTitleFontFamily = !isContextTab || contextTitle ? 'var(--font-mono)' : ''
-  elements.dvalaCodeTitleString.style.fontFamily = fileTitleFontFamily
-  elements.dvalaCodeTitleInput.style.fontFamily = fileTitleFontFamily
-  elements.editorToolbarTitle.style.fontFamily = !isContextTab ? 'var(--font-mono)' : ''
+  elements.editorToolbarTitle.style.fontFamily = 'var(--font-mono)'
   // Same boot-order caveat as the theme call above — first updateCSS() runs
   // before the editor exists.
   tryGetCodeEditor()?.setReadOnly(isLocked)
@@ -6557,9 +5542,7 @@ export function updateCSS() {
   elements.dvalaCodeLockedIndicator.style.display = isLocked ? 'inline-flex' : 'none'
   elements.saveScratchButton.style.display = showSaveScratchButton ? 'inline-flex' : 'none'
   syncDvalaCodeHistoryButtons()
-  // Pending indicator: only shown for context tab (file edits tracked via toolbar pill)
-  elements.dvalaCodePendingIndicator.style.display = isContextTab && showCodePendingIndicator ? 'inline-block' : 'none'
-  if (elements.contextTitle) elements.contextTitle.style.color = getState('focused-panel') === 'context' ? 'white' : ''
+  elements.dvalaCodePendingIndicator.style.display = 'none'
 }
 
 export function showPage(
@@ -6668,29 +5651,20 @@ ${code}
     return
   }
 
-  // Example has effect handlers — always confirm before installing
-  const currentContext = getParsedContext()
-  const currentHandlers = getContextEffectHandlers(currentContext)
-  const currentPatterns = new Set(currentHandlers.map(h => h.pattern))
-  const examplePatterns = exampleHandlers.map(h => h.pattern)
-  const conflicts = examplePatterns.filter(p => currentPatterns.has(p))
-
-  let message = 'This example will install effect handlers.'
-  if (conflicts.length > 0) {
-    message += '\nThe following will be replaced:\n'
-    message += conflicts.map(p => `  @${p}`).join('\n')
-  }
-  message += '\n\nInstall and load example?'
-
-  void showInfoModal(`Load "${name}"`, message, () => {
-    // Merge example handlers into current context, replacing conflicts
-    const mergedHandlers = [...currentHandlers.filter(h => !examplePatterns.includes(h.pattern)), ...exampleHandlers]
-    const newContext: Record<string, unknown> = { ...currentContext }
-    newContext[CONTEXT_EFFECT_HANDLERS_KEY] = mergedHandlers
-    const contextJson = formatContextJson(newContext)
-    markContextIconNew()
-    loadExample(contextJson)
-  })
+  // Example has effect handlers — install them transiently into the legacy
+  // `state['context']` blob. Phase 1.5 step 23f retired the Bindings UI plus
+  // any persistent storage of authored handlers; the example flow still
+  // writes to the in-memory context slot so `getDvalaParamsFromContext` can
+  // pick the handlers up at run time. Subsequent steps (23g/23h/23l) will
+  // migrate examples onto the handlers buffer.
+  void showInfoModal(
+    `Load "${name}"`,
+    'This example will install effect handlers.\n\nInstall and load example?',
+    () => {
+      const newContext: Record<string, unknown> = { effectHandlers: [...exampleHandlers] }
+      loadExample(JSON.stringify(newContext, null, 2))
+    },
+  )
 }
 
 export function loadCode(code: string) {

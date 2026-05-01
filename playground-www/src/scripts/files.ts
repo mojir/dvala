@@ -18,18 +18,14 @@ import {
   uniquePathInFolder,
 } from '../fileStorage'
 import type { WorkspaceFile } from '../fileStorage'
+import { isInPlaygroundFolder } from '../filePath'
 import { buildFileTree } from '../fileTree'
+import { ensureHandlersFile, getHandlersFile } from '../handlersBuffer'
 import {
-  ensureHandlersFile,
-  getHandlersFile,
-  HANDLERS_FILE_PATH,
-  isHandlersPath,
-} from '../handlersBuffer'
-import {
+  SCRATCH_FILE_ID,
   ensureScratchFile,
   getScratchCode as readScratchCode,
   getScratchContext as readScratchContext,
-  isScratchPath,
   setScratchCodeAndContext,
 } from '../scratchBuffer'
 import type { TreeNode } from '../fileTree'
@@ -45,7 +41,6 @@ import {
   hideExecutionControlBar,
   saveFile,
   toggleEditorMenu,
-  updateContextState,
   updateCSS,
 } from '../scripts'
 import { getState, saveState } from '../state'
@@ -99,8 +94,7 @@ export function loadWorkspaceFile(id: string) {
   // any tab the user reopens.
   openOrFocusFile(file.id)
   activateCurrentFileHistory(false)
-  updateContextState(file.context, false)
-  syncCodePanelView('files')
+  syncCodePanelView()
   syncPlaygroundUrlState('files')
   updateCSS()
   populateExplorerFileList()
@@ -113,7 +107,10 @@ export const SCRATCH_TITLE = '<scratch>'
 const HANDLERS_TITLE = '<handlers>'
 
 export function isScratchActive(): boolean {
-  return getState('current-file-id') === null
+  // Phase 1.5 step 23h: scratch is a regular workspace file with reserved ID
+  // `SCRATCH_FILE_ID`; the previous `current-file-id === null` "scratch is
+  // active" sentinel was retired alongside the `<scratch>` tab key.
+  return getState('current-file-id') === SCRATCH_FILE_ID
 }
 
 function getScratchCode(): string {
@@ -174,9 +171,6 @@ export function openScratchInEditor(
     {
       'active-side-tab': 'files',
       context,
-      'context-scroll-top': 0,
-      'context-selection-start': 0,
-      'context-selection-end': 0,
       'dvala-code-edited': false,
       'focused-panel': 'dvala-code',
     },
@@ -239,7 +233,7 @@ function populateExplorerFileList() {
   const scratchCode = getScratchCode()
 
   const renderScratchExplorerItem = () => {
-    const activeClass = currentId === null ? ' explorer-item--active' : ''
+    const activeClass = currentId === SCRATCH_FILE_ID ? ' explorer-item--active' : ''
 
     return `
       <div class="explorer-item${activeClass}" onclick="Playground.openScratch()" title="Scratch">
@@ -247,9 +241,9 @@ function populateExplorerFileList() {
       </div>`
   }
 
-  // Phase 1.5 step 23d: handlers buffer pinned second-from-top. Unlike
-  // scratch (still routed via the SCRATCH_KEY sentinel until 23h), this
-  // is a regular workspace file — clicking opens it via openOrFocusFile.
+  // Phase 1.5 step 23d: handlers buffer pinned second-from-top. After 23h,
+  // both scratch and handlers are regular workspace files — clicking opens
+  // them via the standard file-load path.
   const renderHandlersExplorerItem = () => {
     const handlers = getHandlersFile()
     if (!handlers) return ''
@@ -262,8 +256,10 @@ function populateExplorerFileList() {
 
   const renderFileStats = () => {
     if (!stats) return
-    // No stats panel when scratch is active
-    if (currentId === null) {
+    // No stats panel when scratch is active — Phase 1.5 step 23h made
+    // scratch a regular workspace file, but the stats-panel-hidden rule
+    // still keys on the reserved scratch ID.
+    if (currentId === SCRATCH_FILE_ID) {
       stats.style.display = 'none'
       return
     }
@@ -303,11 +299,12 @@ function populateExplorerFileList() {
       </div>`
   }
 
-  // The scratch + handlers buffers are always present under
-  // `.dvala-playground/`; the "No workspace files" hint is about
-  // user-authored files only. `buildFileTree` already filters those out
-  // (Phase 1.5 step 23b), so check the resulting tree's length here.
-  if (files.every(f => f.path === HANDLERS_FILE_PATH || isScratchPath(f.path))) {
+  // The "No workspace files" hint is about user-authored files only —
+  // everything under `.dvala-playground/` is playground state (scratch +
+  // handlers buffers, snapshot JSON files added in Phase 1.5 step 23i)
+  // and never counts as a user file. `buildFileTree` already filters the
+  // folder out for the tree itself; this check governs the empty hint.
+  if (files.every(f => isInPlaygroundFolder(f.path))) {
     list.innerHTML = `${renderScratchExplorerItem()}${renderHandlersExplorerItem()}<div class="explorer-empty">No workspace files</div>`
     renderFileStats()
     return
@@ -582,10 +579,12 @@ export function closeExplorerMenus() {
 }
 
 export function closeActiveFile() {
-  // Close the active tab; the tab manager falls back to a neighbor (or
-  // scratch if it was the last file tab open).
+  // Close the active tab; the tab manager falls back to a neighbor.
+  // After 23j stage 2 every tab is closable (scratch included); the
+  // null-id guard now covers only the "no tab open" state, where
+  // there's nothing to close.
   const currentId = getState('current-file-id')
-  if (currentId === null) return // already on scratch — nothing to close
+  if (currentId === null) return
   closeTab(currentId)
   populateExplorerFileList()
   updateCSS()
@@ -624,12 +623,15 @@ export function clearScratch() {
 export function deleteWorkspaceFile(id: string) {
   const file = getWorkspaceFiles().find(entry => entry.id === id)
   if (!file) return
-  // The scratch + handlers buffers are undeletable (Phase 1.5 step 23c/23d).
-  // Their tree entries are pinned virtual items; the UI doesn't expose a
-  // delete affordance for them (they live under the hidden .dvala-playground/
-  // folder), so this guard is defense-in-depth against programmatic callers
-  // (Playground.* API, tests).
-  if (isScratchPath(file.path) || isHandlersPath(file.path)) return
+  // Everything under `.dvala-playground/` is playground-managed state
+  // (scratch + handlers buffers per 23c/23d, snapshot JSON files per 23i).
+  // None of those files are user-deletable through this path — scratch +
+  // handlers are pinned virtual entries with no delete affordance; saved
+  // snapshots go through `deleteSavedSnapshot`, terminal snapshots through
+  // `clearTerminalSnapshot`. This guard is defense-in-depth for
+  // programmatic callers (Playground.* API, tests) that might pass an id
+  // backing a reserved file.
+  if (isInPlaygroundFolder(file.path)) return
   const doDelete = async () => {
     await animateFileCardRemoval(id)
     deleteFileHistory(id)
@@ -683,10 +685,13 @@ export function clearUnlockedFiles() {
     'Remove unlocked files',
     'This will delete all unlocked files. Locked files will be kept.',
     async () => {
-      // Reserved buffers (scratch / handlers) are undeletable; treat them
-      // like locked files for the purpose of this sweep, regardless of the
-      // `locked` flag on their record.
-      const isReserved = (path: string) => isScratchPath(path) || isHandlersPath(path)
+      // Everything under `.dvala-playground/` is playground state (scratch
+      // + handlers buffers, snapshot JSON files added in 23i) — treat the
+      // whole folder as reserved for the purpose of this sweep, regardless
+      // of the per-file `locked` flag. Saved snapshots have their own
+      // user-driven lifecycle ("Clear unlocked snapshots" elsewhere) and
+      // mustn't get caught up in workspace-file cleanup.
+      const isReserved = (path: string) => isInPlaygroundFolder(path)
       const unlocked = getWorkspaceFiles().filter(p => !p.locked && !isReserved(p.path))
       await Promise.all(unlocked.map(entry => animateFileCardRemoval(entry.id)))
       unlocked.forEach(entry => deleteFileHistory(entry.id))
@@ -768,7 +773,6 @@ export function duplicateFile(id: string) {
   // from copy.code and syncs current-file-id + dvala-code state.
   openOrFocusFile(copy.id)
   activateCurrentFileHistory(true)
-  updateContextState(copy.context, false)
   updateCSS()
   populateWorkspaceFilesList({ animateNewId: copy.id })
   showToast(`Created "${fileDisplayName(copy)}"`)
@@ -777,9 +781,16 @@ export function duplicateFile(id: string) {
 export function saveAs() {
   const currentId = getState('current-file-id')
   const currentFile = currentId ? getWorkspaceFiles().find(entry => entry.id === currentId) : null
-  // saveAs creates the copy in the source's folder (or the root for scratch).
-  const sourceFolder = currentFile ? folderFromPath(currentFile.path) : ''
-  const defaultName = currentFile ? `Copy of ${filenameFromPath(currentFile.path)}` : ''
+  // saveAs creates the copy in the source's folder. Phase 1.5 step 23h made
+  // scratch and handlers regular workspace files under `.dvala-playground/`,
+  // but cloning into the playground folder would put the new file under a
+  // path the import resolver rejects (and the file tree hides). When the
+  // source is anything inside `.dvala-playground/` (currently scratch +
+  // handlers), the clone lands at the workspace root with no default name —
+  // matching the pre-23h UX where these were sentinel buffers.
+  const isReservedSource = !!currentFile && isInPlaygroundFolder(currentFile.path)
+  const sourceFolder = currentFile && !isReservedSource ? folderFromPath(currentFile.path) : ''
+  const defaultName = currentFile && !isReservedSource ? `Copy of ${filenameFromPath(currentFile.path)}` : ''
   showNameInputModal('Save as', defaultName, name => {
     const files = getWorkspaceFiles()
     const normalizedFilename = normalizeWorkspaceFileName(name)
@@ -788,7 +799,11 @@ export function saveAs() {
     const doSave = () => {
       const filtered = duplicate ? files.filter(entry => entry.id !== duplicate.id) : files
       const now = Date.now()
-      if (!currentId) persistScratchFromCurrentState()
+      // When scratch is the source, flush its in-memory edits to the backing
+      // file before cloning — otherwise the clone captures the previously-
+      // saved snapshot, not the live editor buffer. Handlers writes through
+      // its own listener so this only applies to scratch.
+      if (currentId === SCRATCH_FILE_ID) persistScratchFromCurrentState()
       const createdFile: WorkspaceFile = {
         id: crypto.randomUUID(),
         path: newPath,
@@ -818,7 +833,7 @@ export function saveAs() {
   })
 }
 
-export function showNameInputModal(
+function showNameInputModal(
   title: string,
   defaultValue: string,
   onConfirm: (name: string) => void,

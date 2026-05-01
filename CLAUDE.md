@@ -166,7 +166,7 @@ Before suggesting Dvala code to the user, verify it works by running it with `dv
 - **handlers buffer** — `.dvala-playground/handlers.dvala`. Pinned second-from-top in the file tree as a virtual entry labeled `<handlers>`. Holds Dvala-source `let X = handler @tag(...) -> ... end` declarations; the runtime auto-wraps every run with these as outermost effect handlers (boundary handlers). Language-level handlers in user code take precedence within their `do with` scopes.
 - **workspace files** — every file outside `.dvala-playground/`. IndexedDB-backed in web mode; disk-backed via the bridge in CLI mode. Same interface in both.
 - **snapshots** — JSON files in `.dvala-playground/snapshots/<id>.json`. Discovered via the curated **Snapshots left-panel tab** (not the file tree). Click → opens as an editor-area tab with a UI/Tree/Raw view switcher. Read-only.
-- **Imports.** Workspace files cannot import anything in `.dvala-playground/`. Files inside `.dvala-playground/` can import workspace files freely. The import resolver enforces this asymmetry centrally — don't add ad-hoc checks at consumer sites.
+- **Imports.** Any `import` that resolves into `.dvala-playground/` is rejected — the folder is playground state, not part of the import graph. Files inside `.dvala-playground/` can import workspace files freely (e.g. scratch importing `../utils.dvala`). The import resolver enforces this centrally — don't add ad-hoc checks at consumer sites.
 - Avoid the older terms **"saved files"**, **"project files"**, **"bindings"** (the bindings UI was removed in Phase 1.5), and **"context" as a left-panel tab** in code paths.
 
 ### Top-level files

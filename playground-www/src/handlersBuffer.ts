@@ -7,13 +7,14 @@
 // `effectHandler.compose(h1, h2)`, dynamically built, imported — anything
 // evaluating to a handler value works.
 //
-// Unlike the scratch buffer (which still has a synthetic tab kind for back-
-// compat with the SCRATCH_KEY sentinel — retired in 23h), handlers is a
-// regular workspace file: the `<handlers>` virtual tree entry just opens
-// the file via `openOrFocusFile`, and the tab strip shows it like any
-// other file. Visibility under `.dvala-playground/` is filtered out of the
-// tree + Quick Open by 23b's renderer rules; the pinned `<handlers>` entry
-// is added back explicitly by the explorer renderer.
+// After Phase 1.5 step 23h, scratch and handlers are symmetrical: both are
+// regular workspace files keyed by their reserved IDs (`__scratch__`,
+// `__handlers__`). The `<scratch>` / `<handlers>` virtual tree entries
+// open the underlying files via `openOrFocusFile`; the tab strip shows
+// them like any other file. Visibility under `.dvala-playground/` is
+// filtered out of the tree + Quick Open by 23b's renderer rules; the
+// pinned virtual entries are added back explicitly by the explorer
+// renderer.
 
 import { getWorkspaceFiles, setWorkspaceFiles } from './fileStorage'
 import type { WorkspaceFile } from './fileStorage'
@@ -21,8 +22,13 @@ import type { WorkspaceFile } from './fileStorage'
 /** Canonical path of the handlers buffer's backing workspace file. */
 export const HANDLERS_FILE_PATH = '.dvala-playground/handlers.dvala'
 
-/** Stable ID for the handlers file. Reserved sentinel; not a UUID — that's
- *  fine because the file is pinned/virtual; there's only one of them. */
+/**
+ * Stable ID for the handlers file. Reserved sentinel; not a UUID — that's
+ * fine because the file is pinned/virtual; there's only one of them. After
+ * 23h this ID is also the handlers tab's key, but no consumer looks it up
+ * directly — they reach through `getHandlersFile().id` — so it stays
+ * file-local.
+ */
 const HANDLERS_FILE_ID = '__handlers__'
 
 /** True iff `path` is the handlers buffer's canonical path. */
