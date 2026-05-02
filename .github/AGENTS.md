@@ -13,7 +13,20 @@
 
 Run `pnpm run check` after any medium or larger code change. Use the `/check` skill instead of running `pnpm run check` manually — it also runs e2e tests and auto-fixes failures.
 
-When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI escape codes don't pollute the captured output (applies to `vitest`, `eslint`, etc.).
+When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI escape codes don't pollute the captured output (applies to `vitest`, `oxlint`, etc.).
+
+### Tooling stack
+
+| Tool | Used for | Command |
+|------|----------|---------|
+| `oxfmt` | Code formatting (NOT prettier) | `npx oxfmt --write <file>` or `pnpm run lint` |
+| `oxlint` | Linting | `pnpm run lint` (auto-fix) or `pnpm run lint:no-fix` (check-only, CI) |
+| `tsgo` | Type checking | `pnpm run typecheck` |
+| `wireit` | Build orchestration + caching | Runs via `pnpm run build` |
+| `rolldown` | Production bundling | Runs via `pnpm run build` |
+| `knip` | Dead code / unused export detection | `pnpm run knip` |
+
+**When editing TypeScript, always format with `oxfmt`**, not prettier — they use different defaults. Prettier will change quotes and formatting in ways `oxfmt` rejects. If you forget, `pnpm run lint` auto-fixes it.
 
 ## Performance tracking
 
@@ -62,6 +75,7 @@ Single root `pnpm-lock.yaml` covers both members. `pnpm install` at the root ins
 - No side-effect imports for module registration
 - Every built-in function needs a `docs` property with `category`, `description`, `returns`, `args`, `variants`, `examples`
 - Always add descriptive comments in code — explain the *why*, not just the *what*
+- **Formatting is handled by `oxfmt`, not prettier.** Always run `pnpm run lint` (or `npx oxfmt --write <file>`) after editing TypeScript — prettier uses different defaults and will break CI.
 
 ## Demo Convention
 
