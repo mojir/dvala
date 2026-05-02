@@ -3368,7 +3368,10 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
         card.style.borderColor = 'var(--color-scrollbar-track)'
         card.style.background = 'transparent'
       })
-      card.addEventListener('click', () => replaceSnapshotView(cpSnapshot))
+      card.addEventListener('click', () => {
+        const checkpointPanel = createSnapshotPanel(cpSnapshot)
+        pushPanel(checkpointPanel, `Checkpoint #${cpSnapshot.index}`, cpSnapshot)
+      })
 
       const badge = document.createElement('span')
       badge.textContent = `#${cpSnapshot.index}`

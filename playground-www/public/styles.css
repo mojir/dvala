@@ -2222,14 +2222,20 @@ body.bottom-panel-collapsed #resize-divider-2 {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 28px;
+  width: 30px;
   height: 100%;
   font-size: var(--font-size-sm);
-  color: var(--color-text-dim, var(--color-text-secondary));
+  color: var(--color-text-secondary);
   text-decoration: none;
-  border-left: 1px solid var(--color-border-subtle);
-  opacity: 0.7;
+  border: none;
+  /* opacity: 0.7; */
+  background: var(--color-surface-dim, rgba(255, 255, 255, 0.06));
 }
+.right-panel-toggle-btn>svg {
+  width: 1.2em;
+  height: 1.2em;
+}
+
 .right-panel-toggle-btn:hover {
   opacity: 1;
   color: var(--color-text);
