@@ -16,7 +16,7 @@ describe('playground dev port consistency', () => {
     'scripts/demo-link.mjs',
     '.github/AGENTS.md',
     '.vscode/launch.json',
-    '.claude/skills/demo/SKILL.md',
+    '.github/skills/demo/SKILL.md',
   ]
 
   for (const file of dependants) {
