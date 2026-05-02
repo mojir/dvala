@@ -12,7 +12,7 @@ describe('playground dev port consistency', () => {
   if (match === null) throw new Error('playground-www/vite.config.mjs must specify a numeric `port:` setting')
   const expected = `localhost:${match[1]}`
 
-  const dependants = ['scripts/demo-link.mjs', 'CLAUDE.md', '.vscode/launch.json', '.claude/skills/demo/SKILL.md']
+  const dependants = ['scripts/demo-link.mjs', '.github/AGENTS.md', '.vscode/launch.json', '.claude/skills/demo/SKILL.md']
 
   for (const file of dependants) {
     it(`${file} references the canonical dev port`, () => {
