@@ -171,7 +171,7 @@ describe('setSavedSnapshots + getSavedSnapshots', () => {
     setSavedSnapshots([makeSavedEntry('a', 1000)])
     const original = workspaceFiles[0]!.createdAt
 
-    // Re-write the same snapshot (e.g. lock toggle).
+    // Re-write the same snapshot.
     setSavedSnapshots([makeSavedEntry('a', 1000, {})])
     expect(workspaceFiles[0]!.createdAt).toBe(original)
   })

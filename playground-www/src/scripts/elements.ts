@@ -45,6 +45,9 @@ export const elements = {
   get editorToolbarTitle() {
     return document.getElementById('editor-toolbar-title') as HTMLSpanElement
   },
+  get editorToolbarSave() {
+    return document.getElementById('editor-toolbar-save') as HTMLAnchorElement
+  },
   get snapshotModal() {
     return document.getElementById('snapshot-modal') as HTMLDivElement
   },

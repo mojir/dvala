@@ -189,7 +189,7 @@ function getPlaygroundPanel(): string {
     <div id="editor-toolbar">
       <div class="editor-toolbar__left">
         <span id="editor-toolbar-title" class="editor-toolbar__title"></span>
-        <a href="#" role="button" id="editor-toolbar-save" class="editor-toolbar__save" onclick="Playground.saveScratch()" title="Save to file" style="display:none;">${saveIcon} Save to file</a>
+        <a href="#" role="button" id="editor-toolbar-save" class="editor-toolbar__save" onclick="Playground.saveAs()" title="Save to file" style="display:none;">${saveIcon} Save to file</a>
       </div>
       <div class="editor-toolbar__right">
         <a href="#" role="button" id="run-btn" onclick="Playground.run()" title="Run (Ctrl+R)"><span class="run-btn__idle">${playIcon} Run</span><span class="run-btn__busy"><span class="spinner"></span> Running…</span></a>

@@ -574,6 +574,11 @@ function setupDocDir() {
 
 function copyAssets() {
   fs.cpSync(path.join(__dirname, '../../playground-www/public/'), path.join(DOC_DIR), { recursive: true })
+  // styles.css lives under src/ and is imported by scripts.ts; Vite's HMR
+  // handles it in dev mode. For production, rolldown stubs the CSS import
+  // (cssStubPlugin), so we copy the file manually alongside the rest of
+  // the public/ assets.
+  fs.copyFileSync(path.join(__dirname, '../../playground-www/src/styles.css'), path.join(DOC_DIR, 'styles.css'))
   // Monaco's prebuilt stylesheet — production rolldown can't bundle CSS, so we
   // ship it as a separate static asset and `<link>` it from the HTML template.
   fs.copyFileSync(

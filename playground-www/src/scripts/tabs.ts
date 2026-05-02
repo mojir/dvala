@@ -51,7 +51,7 @@ interface FileTab {
  * every keystroke (via `notifyTabsChanged` ← editor onChange), so a
  * per-render JSON parse times the number of open snapshot tabs would
  * accumulate. Cleared by `invalidateSnapshotTabLabel(id)` if a snapshot's
- * metadata is mutated under it (rename, lock toggle).
+ * metadata is mutated under it (rename).
  */
 interface SnapshotTab {
   kind: 'snapshot'
@@ -613,14 +613,19 @@ function tabLabel(tab: OpenTab, filesById: ReadonlyMap<string, WorkspaceFile>): 
  * Tab icon for the strip. `.dvala` files show the favicon, snapshots show
  * the camera icon. Other file types have no icon.
  */
-function tabIcon(tab: OpenTab): string {
+/**
+ * Tab icon for the strip. Accepts the pre-built `filesById` map from
+ * `renderTabStrip` to avoid O(n×m) rescans on every keystroke.
+ * `.dvala` files show the favicon, snapshots show the camera icon.
+ * All other file types get an empty placeholder so tab names stay aligned.
+ */
+function tabIcon(tab: OpenTab, filesById: ReadonlyMap<string, WorkspaceFile>): string {
   if (tab.kind === 'snapshot') return `<span class="editor-tab__icon">${cameraIcon}</span>`
-  // File tabs: .dvala files get the Dvala favicon.
-  const file = getWorkspaceFiles().find(f => f.id === tab.fileId)
+  const file = filesById.get(tab.fileId)
   if (file && file.path.endsWith('.dvala')) {
     return `<span class="editor-tab__icon"><img src="/favicon.png" alt="" width="14" height="14"></span>`
   }
-  return ''
+  return '<span class="editor-tab__icon editor-tab__icon--empty"></span>'
 }
 
 function renderTabStrip(): void {
@@ -650,7 +655,7 @@ function renderTabStrip(): void {
       // scratch from the pinned `<scratch>` entry in the file tree,
       // handlers from the pinned `<handlers>` entry, and snapshots from
       // the Snapshots side-panel list.
-      const icon = tabIcon(tab)
+      const icon = tabIcon(tab, filesById)
       const closeBtn = `<button class="editor-tab__close" data-close-key="${escapeHtml(tab.key)}" tabindex="-1" title="Close (Cmd/Ctrl-W)">×</button>`
       const dot = dirty ? '<span class="editor-tab__dot" title="Unsaved changes"></span>' : ''
       return `

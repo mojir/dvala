@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import './styles.css'
 import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import { getLinkName } from '../../reference'
@@ -66,7 +67,7 @@ import {
   uniqueFilePath,
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
-import { ensureHandlersFile, HANDLERS_FILE_PATH, wrapWithBoundaryHandler } from './handlersBuffer'
+import { ensureHandlersFile, wrapWithBoundaryHandler } from './handlersBuffer'
 import { SCRATCH_FILE_ID, ensureScratchFile, setScratchCode, setScratchCodeAndContext } from './scratchBuffer'
 import type { WorkspaceFile } from './fileStorage'
 import {
@@ -5367,16 +5368,11 @@ export function updateCSS() {
   // tab strip label) instead of the underlying basename `scratch.dvala`.
   const currentFileTitle =
     currentFileId === SCRATCH_FILE_ID ? SCRATCH_TITLE : currentFile ? fileDisplayName(currentFile) : SCRATCH_TITLE
-  // Show "Save to file" CTA when scratch has content or any workspace file
-  // is active (non-scratch, non-handlers) — invites the user to persist
-  // their work as a named file.
-  const showSaveButton =
-    (currentFileId === SCRATCH_FILE_ID && hasScratchContent()) ||
-    (currentFile !== null &&
-      currentFile !== undefined &&
-      currentFile.path !== HANDLERS_FILE_PATH &&
-      currentFileId !== SCRATCH_FILE_ID)
-  const saveBtn = document.getElementById('editor-toolbar-save')
+  // Show "Save to file" CTA only when scratch is active and has content —
+  // promotes the scratch buffer to a named workspace file. Regular files
+  // are already persisted; "Save as..." is in the More menu.
+  const showSaveButton = currentFileId === SCRATCH_FILE_ID && hasScratchContent()
+  const saveBtn = elements.editorToolbarSave
   if (saveBtn) saveBtn.style.display = showSaveButton ? '' : 'none'
   // File titles are rendered in the editor-toolbar title slot.
   elements.editorToolbarTitle.textContent = currentFileTitle
