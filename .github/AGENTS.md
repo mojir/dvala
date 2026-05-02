@@ -118,31 +118,10 @@ node -e "const code = 'let x = 42; x + 1'; console.log('http://localhost:22230/?
 The playground runs on `http://localhost:22230/` (start with `pnpm run dev`).
 
 ## Creating design documents and plans
-I encurage you to structurize bigger tasks by creating .md plans.
-Create .md files inside /design
+
+Structure bigger tasks by creating `.md` plans inside `/design`.
 
 Prefix all design document filenames with the creation date in ISO format: `YYYY-MM-DD_<name>.md` (e.g. `2026-01-02_my-design.md`).
-
-## Skills & Agents
-
-Use the project skills and agents proactively — don't do manually what a skill already handles.
-
-### When to use skills
-
-- **`/dvala`** — Load this before writing, debugging, or reasoning about Dvala language code. Always load when you need syntax reference, AST node format, or macro details.
-- **`/check`** — After any code change, use this instead of running `pnpm run check` manually. It also runs e2e tests and fixes failures.
-- **`/demo`** — Before committing user-facing features. Generates playground links and formats demo blocks for commit messages.
-- **`/design`** — When the user asks to create a design document or plan.
-- **`/fix-issue`** — When the user asks to fix a GitHub issue by number.
-- **`/report-issue`** — When the user reports a bug or asks to file an issue.
-- **`/dvala-run`** — When the user wants to quickly run a Dvala snippet.
-- **`/interview`** — When the user has a list of questions or decisions to work through. Walks them one at a time, with options + a recommendation + confidence (low/medium/high) for each. Use proactively when the user shares a numbered list of open items or says things like "let's decide a few things."
-
-### When to use agents
-
-- **`explorer`** — For deep codebase research ("how does X work?", "where is Y implemented?"). Use this instead of doing many sequential searches yourself — it runs in isolated context with haiku for speed.
-- **`test-fixer`** — When tests are failing after code changes. Delegate diagnosis and repair to this agent.
-- **`reviewer`** — Before committing. Ask it to review staged changes for quality and convention adherence.
 
 ## Dvala Language Reference
 
@@ -225,4 +204,6 @@ createModalPanel({
 
 Sizes: small=480px, medium=800px, large=1200px. If `markdown` is provided, body is auto-rendered. If `footerActions` provided, footer buttons are auto-created. Snapshot panel uses `createModalPanel({ size: 'large' })`.
 
-In general when coding under src/, make sure code coverage is 100% (or near 100% )for new code. Also apply boy scout principle, try to improve code coverage on neighbouring code
+## Code Coverage
+
+When coding under `src/`, aim for 100% (or near 100%) code coverage for new code. Apply the boy scout principle — improve coverage on neighboring code when possible.
