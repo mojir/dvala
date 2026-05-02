@@ -1406,7 +1406,7 @@ test.describe('file operations', () => {
     await page.evaluate((id: string) => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id, path: 'examples/foo.dvala', code: '1', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id, path: 'examples/foo.dvala', code: '1', context: '', createdAt: 1, updatedAt: 1 },
       ])
     }, fileId)
 
@@ -1450,28 +1450,12 @@ test.describe('file operations', () => {
     expect(count).toBeGreaterThanOrEqual(3)
   })
 
-  test('locking a file makes the editor read-only', async ({ page }) => {
-    await setDvalaCode(page, 'locked')
-    await saveAsFile(page, 'lock-me')
-
-    const fileId = await firstWorkspaceFileId(page)
-    await page.evaluate((id: string) => (window as any).Playground.toggleFileLock(id), fileId!)
-
-    // Load the locked file
-    await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), fileId!)
-    await navigateToPlayground(page)
-
-    const isReadOnly = await page.evaluate(() => (window as any).Playground.isEditorReadOnly())
-    expect(isReadOnly).toBe(true)
-  })
-
   test('closing an open file returns to scratch', async ({ page }) => {
     await setDvalaCode(page, '7')
     await saveAsFile(page, 'close-me')
 
-    // The close button is shown when the files side tab is active
-    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
-    const closeBtn = page.locator('#file-close-btn')
+    // Close via the tab strip's × button
+    const closeBtn = page.locator('.editor-tab--active .editor-tab__close')
     await expect(closeBtn).toBeVisible({ timeout: 3000 })
     await closeBtn.click()
 
@@ -1486,9 +1470,9 @@ test.describe('file operations', () => {
     await page.evaluate(() => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id: 'a', path: 'root.dvala', code: '1', context: '', createdAt: 1, updatedAt: 1, locked: false },
-        { id: 'b', path: 'examples/foo.dvala', code: '2', context: '', createdAt: 2, updatedAt: 2, locked: false },
-        { id: 'c', path: 'examples/bar.dvala', code: '3', context: '', createdAt: 3, updatedAt: 3, locked: false },
+        { id: 'a', path: 'root.dvala', code: '1', context: '', createdAt: 1, updatedAt: 1 },
+        { id: 'b', path: 'examples/foo.dvala', code: '2', context: '', createdAt: 2, updatedAt: 2 },
+        { id: 'c', path: 'examples/bar.dvala', code: '3', context: '', createdAt: 3, updatedAt: 3 },
       ])
     })
 
@@ -1514,7 +1498,7 @@ test.describe('file operations', () => {
     await page.evaluate(() => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id: 'a', path: 'examples/foo.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id: 'a', path: 'examples/foo.dvala', code: '', context: '', createdAt: 1, updatedAt: 1 },
       ])
     })
 
@@ -1554,7 +1538,6 @@ test.describe('file operations', () => {
             context: '',
             createdAt: 1,
             updatedAt: 1,
-            locked: false,
           },
           {
             id: mainId,
@@ -1566,7 +1549,6 @@ test.describe('file operations', () => {
             context: '',
             createdAt: 2,
             updatedAt: 2,
-            locked: false,
           },
         ])
       },
@@ -1599,7 +1581,6 @@ test.describe('file operations', () => {
             context: '',
             createdAt: 1,
             updatedAt: 1,
-            locked: false,
           },
           {
             id: mainId,
@@ -1608,7 +1589,6 @@ test.describe('file operations', () => {
             context: '',
             createdAt: 2,
             updatedAt: 2,
-            locked: false,
           },
         ])
       },
@@ -1640,7 +1620,6 @@ test.describe('file operations', () => {
             context: '',
             createdAt: 1,
             updatedAt: 1,
-            locked: false,
           },
           {
             id: mainId,
@@ -1649,7 +1628,6 @@ test.describe('file operations', () => {
             context: '',
             createdAt: 2,
             updatedAt: 2,
-            locked: false,
           },
         ])
       },
@@ -1676,7 +1654,6 @@ test.describe('file operations', () => {
           context: '',
           createdAt: 1,
           updatedAt: 1,
-          locked: false,
         },
       ])
     }, mainId)
@@ -1713,8 +1690,8 @@ test.describe('editor tabs', () => {
       ({ aId, bId }) => {
         const w = window as any
         w.Playground.setWorkspaceFilesForTesting([
-          { id: aId, path: 'a.dvala', code: '111', context: '', createdAt: 1, updatedAt: 1, locked: false },
-          { id: bId, path: 'b.dvala', code: '222', context: '', createdAt: 2, updatedAt: 2, locked: false },
+          { id: aId, path: 'a.dvala', code: '111', context: '', createdAt: 1, updatedAt: 1 },
+          { id: bId, path: 'b.dvala', code: '222', context: '', createdAt: 2, updatedAt: 2 },
         ])
       },
       { aId, bId },
@@ -1741,7 +1718,7 @@ test.describe('editor tabs', () => {
     await page.evaluate((id: string) => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id, path: 'closeable.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id, path: 'closeable.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1 },
       ])
     }, aId)
     await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
@@ -1806,7 +1783,7 @@ test.describe('editor tabs', () => {
       ({ aId }) => {
         const w = window as any
         w.Playground.setWorkspaceFilesForTesting([
-          { id: aId, path: 'neighbor-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
+          { id: aId, path: 'neighbor-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1 },
         ])
       },
       { aId },
@@ -1833,8 +1810,8 @@ test.describe('editor tabs', () => {
       ({ aId, bId }) => {
         const w = window as any
         w.Playground.setWorkspaceFilesForTesting([
-          { id: aId, path: 'persist-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
-          { id: bId, path: 'persist-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
+          { id: aId, path: 'persist-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1 },
+          { id: bId, path: 'persist-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2 },
         ])
       },
       { aId, bId },
@@ -1860,7 +1837,7 @@ test.describe('editor tabs', () => {
     await page.evaluate((id: string) => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id, path: 'dirty-test.dvala', code: 'baseline', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id, path: 'dirty-test.dvala', code: 'baseline', context: '', createdAt: 1, updatedAt: 1 },
       ])
     }, aId)
     await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
@@ -1883,7 +1860,7 @@ test.describe('editor tabs', () => {
     await page.evaluate((id: string) => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id, path: 'closable-via-keybind.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id, path: 'closable-via-keybind.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1 },
       ])
     }, aId)
     await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
@@ -1906,8 +1883,8 @@ test.describe('editor tabs', () => {
       ({ aId, bId }) => {
         const w = window as any
         w.Playground.setWorkspaceFilesForTesting([
-          { id: aId, path: 'cycle-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
-          { id: bId, path: 'cycle-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
+          { id: aId, path: 'cycle-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1 },
+          { id: bId, path: 'cycle-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2 },
         ])
       },
       { aId, bId },
@@ -1935,8 +1912,8 @@ test.describe('editor tabs', () => {
       ({ aId, bId }) => {
         const w = window as any
         w.Playground.setWorkspaceFilesForTesting([
-          { id: aId, path: 'idx-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
-          { id: bId, path: 'idx-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
+          { id: aId, path: 'idx-a.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1 },
+          { id: bId, path: 'idx-b.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2 },
         ])
       },
       { aId, bId },
@@ -1961,7 +1938,7 @@ test.describe('editor tabs', () => {
     await page.evaluate((id: string) => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id, path: 'aux-close.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id, path: 'aux-close.dvala', code: 'X', context: '', createdAt: 1, updatedAt: 1 },
       ])
     }, aId)
     await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
@@ -1997,9 +1974,8 @@ test.describe('editor tabs', () => {
             context: '',
             createdAt: 1,
             updatedAt: 1,
-            locked: false,
           },
-          { id: bId, path: 'view-b.dvala', code: 'B-only', context: '', createdAt: 2, updatedAt: 2, locked: false },
+          { id: bId, path: 'view-b.dvala', code: 'B-only', context: '', createdAt: 2, updatedAt: 2 },
         ])
       },
       { aId, bId },
@@ -2040,8 +2016,8 @@ test.describe('quick open', () => {
       ({ aId, bId }) => {
         const w = window as any
         w.Playground.setWorkspaceFilesForTesting([
-          { id: aId, path: 'main.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
-          { id: bId, path: 'lib/util.dvala', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
+          { id: aId, path: 'main.dvala', code: '', context: '', createdAt: 1, updatedAt: 1 },
+          { id: bId, path: 'lib/util.dvala', code: '', context: '', createdAt: 2, updatedAt: 2 },
         ])
       },
       { aId, bId },
@@ -2057,9 +2033,9 @@ test.describe('quick open', () => {
     await page.evaluate(() => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id: 'a', path: 'main.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
-        { id: 'b', path: 'lib/util.dvala', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
-        { id: 'c', path: 'examples/foo.dvala', code: '', context: '', createdAt: 3, updatedAt: 3, locked: false },
+        { id: 'a', path: 'main.dvala', code: '', context: '', createdAt: 1, updatedAt: 1 },
+        { id: 'b', path: 'lib/util.dvala', code: '', context: '', createdAt: 2, updatedAt: 2 },
+        { id: 'c', path: 'examples/foo.dvala', code: '', context: '', createdAt: 3, updatedAt: 3 },
       ])
     })
     await page.evaluate(() => (window as any).Playground.openQuickOpen())
@@ -2075,7 +2051,7 @@ test.describe('quick open', () => {
     await page.evaluate((id: string) => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id, path: 'target.dvala', code: 'OPENED', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id, path: 'target.dvala', code: 'OPENED', context: '', createdAt: 1, updatedAt: 1 },
       ])
     }, targetId)
 
@@ -2093,7 +2069,7 @@ test.describe('quick open', () => {
     await page.evaluate(() => {
       const w = window as any
       w.Playground.setWorkspaceFilesForTesting([
-        { id: 'x', path: 'x.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
+        { id: 'x', path: 'x.dvala', code: '', context: '', createdAt: 1, updatedAt: 1 },
       ])
     })
     await page.evaluate(() => (window as any).Playground.openQuickOpen())
@@ -2110,8 +2086,8 @@ test.describe('quick open', () => {
         const w = window as any
         // Same insertion order so empty-query ranking preserves it.
         w.Playground.setWorkspaceFilesForTesting([
-          { id: aId, path: 'first.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1, locked: false },
-          { id: bId, path: 'second.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2, locked: false },
+          { id: aId, path: 'first.dvala', code: 'A', context: '', createdAt: 1, updatedAt: 1 },
+          { id: bId, path: 'second.dvala', code: 'B', context: '', createdAt: 2, updatedAt: 2 },
         ])
       },
       { aId, bId },
@@ -2292,7 +2268,7 @@ test.describe('layout panels', () => {
       ({ id }: { id: string }) => {
         const w = window as any
         w.Playground.setWorkspaceFilesForTesting([
-          { id, path: 'letFile.dvala', code: 'let a = 1; a', context: '', createdAt: 1, updatedAt: 1, locked: false },
+          { id, path: 'letFile.dvala', code: 'let a = 1; a', context: '', createdAt: 1, updatedAt: 1 },
         ])
       },
       { id: fileId },
@@ -2683,7 +2659,6 @@ test.describe('scratch imports workspace files', () => {
           context: '',
           createdAt: 1,
           updatedAt: 1,
-          locked: false,
         },
       ])
     })
@@ -2721,7 +2696,6 @@ test.describe('importing .dvala-playground is rejected', () => {
           context: '',
           createdAt: 1,
           updatedAt: 1,
-          locked: false,
         },
       ])
     })

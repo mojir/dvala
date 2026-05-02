@@ -9,7 +9,6 @@ const file = (id: string, path: string): WorkspaceFile => ({
   context: '',
   createdAt: 0,
   updatedAt: 0,
-  locked: false,
 })
 
 describe('buildFileTree', () => {

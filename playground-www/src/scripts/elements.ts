@@ -42,29 +42,8 @@ export const elements = {
   get dvalaPanelDebugInfo() {
     return document.getElementById('dvala-panel-debug-info') as HTMLDivElement
   },
-  get dvalaCodeUndoButton() {
-    return document.getElementById('dvala-code-undo-button') as HTMLAnchorElement
-  },
-  get dvalaCodeRedoButton() {
-    return document.getElementById('dvala-code-redo-button') as HTMLAnchorElement
-  },
   get editorToolbarTitle() {
     return document.getElementById('editor-toolbar-title') as HTMLSpanElement
-  },
-  get dvalaCodeTitle() {
-    return document.getElementById('dvala-code-title') as HTMLDivElement
-  },
-  get dvalaCodeTitleString() {
-    return document.getElementById('dvala-code-title-string') as HTMLSpanElement
-  },
-  get dvalaCodePendingIndicator() {
-    return document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement
-  },
-  get dvalaCodeLockedIndicator() {
-    return document.getElementById('dvala-code-locked-indicator') as HTMLSpanElement
-  },
-  get saveScratchButton() {
-    return document.getElementById('save-scratch-btn') as HTMLAnchorElement
   },
   get snapshotModal() {
     return document.getElementById('snapshot-modal') as HTMLDivElement

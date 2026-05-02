@@ -64,7 +64,6 @@ export function setHandlersCode(code: string): void {
     context: '',
     createdAt: now,
     updatedAt: now,
-    locked: false,
   }
   setWorkspaceFiles([...files, created])
 }
@@ -124,7 +123,6 @@ export function ensureHandlersFile(): boolean {
     context: '',
     createdAt: now,
     updatedAt: now,
-    locked: false,
   }
   setWorkspaceFiles([...getWorkspaceFiles(), created])
   return true

@@ -23,6 +23,7 @@ import { KeyCode, KeyMod } from '../codeEditor'
 import { fileDisplayName, getWorkspaceFiles } from '../fileStorage'
 import type { WorkspaceFile } from '../fileStorage'
 import { HANDLERS_FILE_PATH } from '../handlersBuffer'
+import { cameraIcon } from '../icons'
 import { SCRATCH_FILE_ID } from '../scratchBuffer'
 import { getState, saveState } from '../state'
 import type { PersistedTab } from '../state'
@@ -608,6 +609,20 @@ function tabLabel(tab: OpenTab, filesById: ReadonlyMap<string, WorkspaceFile>): 
   return fileDisplayName(file)
 }
 
+/**
+ * Tab icon for the strip. `.dvala` files show the favicon, snapshots show
+ * the camera icon. Other file types have no icon.
+ */
+function tabIcon(tab: OpenTab): string {
+  if (tab.kind === 'snapshot') return `<span class="editor-tab__icon">${cameraIcon}</span>`
+  // File tabs: .dvala files get the Dvala favicon.
+  const file = getWorkspaceFiles().find(f => f.id === tab.fileId)
+  if (file && file.path.endsWith('.dvala')) {
+    return `<span class="editor-tab__icon"><img src="/favicon.png" alt="" width="14" height="14"></span>`
+  }
+  return ''
+}
+
 function renderTabStrip(): void {
   const strip = document.getElementById('editor-tab-strip')
   if (!strip) return
@@ -635,6 +650,7 @@ function renderTabStrip(): void {
       // scratch from the pinned `<scratch>` entry in the file tree,
       // handlers from the pinned `<handlers>` entry, and snapshots from
       // the Snapshots side-panel list.
+      const icon = tabIcon(tab)
       const closeBtn = `<button class="editor-tab__close" data-close-key="${escapeHtml(tab.key)}" tabindex="-1" title="Close (Cmd/Ctrl-W)">×</button>`
       const dot = dirty ? '<span class="editor-tab__dot" title="Unsaved changes"></span>' : ''
       return `
@@ -645,6 +661,7 @@ function renderTabStrip(): void {
           data-tab-key="${escapeHtml(tab.key)}"
           title="${escapeHtml(label)}"
         >
+          ${icon}
           <span class="editor-tab__name">${escapeHtml(label)}</span>
           ${dot}
           ${closeBtn}

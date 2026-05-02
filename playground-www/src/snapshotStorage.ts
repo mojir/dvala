@@ -35,7 +35,6 @@ export interface SavedSnapshot {
   kind: 'saved'
   snapshot: Snapshot
   savedAt: number
-  locked: boolean
   name?: string
 }
 
@@ -218,11 +217,6 @@ function writeKindedEntries<E extends SnapshotEntry>(kind: E['kind'], entries: E
       context: '',
       createdAt: existing?.createdAt ?? entry.savedAt ?? now,
       updatedAt: now,
-      // Locked at the snapshot-entry level (saved snapshots can be locked
-      // by the user); the workspace-file `locked` flag is decoupled — it
-      // controls editor read-only state, which doesn't apply to snapshot
-      // files since they aren't editable from the playground UI.
-      locked: false,
     })
   }
 

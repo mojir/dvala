@@ -1852,6 +1852,25 @@ a.disabled {
   padding: 0.15em 0.75em;
 }
 
+/* Save-to-file CTA — dynamic button in the toolbar left area, visible
+   when scratch has content or a workspace file is active. */
+.editor-toolbar__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dim);
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.65em;
+  transition: background 0.15s, border-color 0.15s;
+}
+.editor-toolbar__save:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
 .editor-toolbar__right {
   margin-left: auto;
   flex-shrink: 0;
@@ -1925,8 +1944,7 @@ a.disabled {
 #side-panel-header { grid-column: 2; grid-row: 1; }
 #side-panel-content { grid-column: 2; grid-row: 2; overflow: hidden; }
 #resize-divider-1 { grid-column: 3; grid-row: 1 / -1; }
-#dvala-panel-header { grid-column: 4; grid-row: 1; }
-#dvala-panel { grid-column: 4; grid-row: 2; overflow: hidden; }
+#dvala-panel { grid-column: 4; grid-row: 1 / -1; overflow: hidden; }
 #resize-divider-3 { grid-column: 5; grid-row: 1 / -1; }
 #right-panel { grid-column: 6; grid-row: 1 / -1; overflow: hidden; }
 
@@ -2094,36 +2112,6 @@ a.disabled {
   box-sizing: border-box;
 }
 
-.snapshot-breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  overflow: hidden;
-}
-
-.snapshot-breadcrumbs__link {
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  font-size: var(--font-size-sm);
-}
-
-.snapshot-breadcrumbs__link:hover {
-  color: var(--color-text-bright);
-}
-
-.snapshot-breadcrumbs__sep {
-  color: var(--color-text-dim);
-  font-size: var(--font-size-sm);
-}
-
-.snapshot-breadcrumbs__current {
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Layout panels (right + bottom). Both host the Panel component, which
    adds its own .panel-shell wrapper inside. The outer #right-panel /
    #bottom-panel divs are positioning containers only. */
@@ -2287,13 +2275,6 @@ body.bottom-panel-collapsed #resize-divider-2 {
   background: var(--color-surface-dim);
   border-bottom: 1px solid var(--color-border-subtle);
   user-select: none;
-}
-
-#dvala-panel-header-content {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
 }
 
 .panel-header__title {
@@ -2994,17 +2975,9 @@ button:focus {
   align-items: center;
 }
 
-#save-scratch-btn,
 .output-clear-btn {
   font-size: var(--font-size-sm);
   gap: 0.3em;
-}
-
-.panel-header__code-title {
-  display: flex;
-  gap: var(--space-1);
-  align-items: center;
-  overflow: hidden;
 }
 
 .panel-header__debug-icon {
@@ -3053,32 +3026,12 @@ button:focus {
   top: -2px;
 }
 
-/* Locked / read-only indicator */
-.locked-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25em;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-  margin-left: 2px;
-}
-
-.panel-textarea--locked {
-  opacity: 0.7;
-  cursor: default;
-}
-
 /* Monaco editor host. Sized by its grid cell; Monaco's automaticLayout
-   handles internal resizing. The locked variant matches the textarea's
-   read-only treatment so the visual contract carries over. */
+   handles internal resizing. */
 .dvala-editor-host {
   flex: 1;
   min-height: 0;
   width: 100%;
-}
-.dvala-editor-host--locked {
-  opacity: 0.7;
 }
 
 /* ============================================================
@@ -3148,6 +3101,19 @@ button:focus {
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+}
+
+/* Tab icon — favicon for .dvala files, camera for snapshots. */
+.editor-tab__icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 0.85em;
+  margin-right: 0.3em;
+  opacity: 0.7;
+}
+.editor-tab__icon img {
+  display: block;
 }
 
 /* Modified indicator — shown for file tabs whose buffer differs from disk. */
@@ -3364,15 +3330,6 @@ button:focus {
 
 .explorer-item--inactive {
   opacity: 0.65;
-}
-
-.explorer-item__lock {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-primary);
-  font-size: 0.8em;
-  line-height: 1;
-  flex-shrink: 0;
 }
 
 .explorer-item__warning {
@@ -3680,14 +3637,6 @@ button:focus {
   white-space: nowrap;
   font-size: var(--font-size-sm);
   color: var(--color-text);
-}
-
-.file-stats-panel__lock {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-primary);
-  margin-left: auto;
-  flex-shrink: 0;
 }
 
 .file-stats-panel__time,
