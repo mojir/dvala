@@ -21,17 +21,14 @@ import {
   infoIcon,
   pauseIcon,
   playIcon,
-  redoIcon,
   saveIcon,
   searchIcon,
   stopIcon,
   syncIcon,
   trashIcon,
   treeIcon,
-  undoIcon,
 } from './icons'
 import { renderEditorMenu } from './editorMenu'
-
 export function renderShell(): void {
   const wrapper = document.getElementById('wrapper')
   if (!wrapper) return
@@ -174,12 +171,6 @@ function getPlaygroundPanel(): string {
     id: 'files-header-menu',
     items: [
       { action: 'Playground.closeFilesHeaderMenu();Playground.openImportFileModal()', icon: addIcon, label: 'Import' },
-      {
-        action: 'Playground.closeFilesHeaderMenu();Playground.clearUnlockedFiles()',
-        danger: true,
-        icon: trashIcon,
-        label: 'Remove unlocked',
-      },
     ],
   })
 
@@ -191,12 +182,6 @@ function getPlaygroundPanel(): string {
         icon: addIcon,
         label: 'Import',
       },
-      {
-        action: 'Playground.closeSnapshotsHeaderMenu();Playground.clearUnlockedSnapshots()',
-        danger: true,
-        icon: trashIcon,
-        label: 'Remove unlocked',
-      },
     ],
   })
 
@@ -204,6 +189,7 @@ function getPlaygroundPanel(): string {
     <div id="editor-toolbar">
       <div class="editor-toolbar__left">
         <span id="editor-toolbar-title" class="editor-toolbar__title"></span>
+        <a href="#" role="button" id="editor-toolbar-save" class="editor-toolbar__save" onclick="Playground.saveAs()" title="Save to file" style="display:none;">${saveIcon} Save to file</a>
       </div>
       <div class="editor-toolbar__right">
         <a href="#" role="button" id="run-btn" onclick="Playground.run()" title="Run (Ctrl+R)"><span class="run-btn__idle">${playIcon} Run</span><span class="run-btn__busy"><span class="spinner"></span> Running…</span></a>
@@ -244,24 +230,6 @@ function getPlaygroundPanel(): string {
             ${hamburgerIcon}
             ${snapshotsHeaderMenu}
           </a>
-        </div>
-      </div>
-
-      <div id="dvala-panel-header" class="panel-header">
-        <div id="dvala-panel-header-content">
-          <div id="dvala-header-editor" class="panel-header__code-title">
-            <span id="dvala-code-title-string" class="panel-header__title-string"></span>
-            <span id="dvala-code-pending-indicator" class="pending-indicator" style="display:none;" title="Unsaved"></span>
-            <span id="dvala-code-locked-indicator" class="locked-indicator" style="display:none;" title="Read-only"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg> Read-only</span>
-          </div>
-          <div id="dvala-header-snapshot" class="snapshot-breadcrumbs" style="display:none;"></div>
-        </div>
-        <div class="panel-header__actions" id="dvala-panel-header-actions">
-            <a href="#" role="button" id="save-scratch-btn" onclick="event.preventDefault();Playground.saveScratch()" class="panel-header__icon-btn" title="Save scratch" style="display:none;">${saveIcon}<span>Save scratch</span></a>
-          <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code" style="display:none;">${undoIcon}</a>
-          <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code" style="display:none;">${redoIcon}</a>
-          <a href="#" role="button" id="file-close-btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.closeActiveFile()" title="Close file" style="display:none;">✕</a>
-          <a href="#" role="button" id="snapshot-close-btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.closeSnapshotView()" title="Back to editor" style="display:none;">✕</a>
         </div>
       </div>
 

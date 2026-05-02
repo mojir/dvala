@@ -144,7 +144,6 @@ export function populateSideSnapshotsList() {
     items.push('<div class="explorer-group-label">Saved Snapshots</div>')
     savedEntries.forEach((entry, i) => {
       const label = entry.name || `Snapshot ${i + 1}`
-      const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
       const savedActiveClass = state.activeSnapshotKey === `saved:${i}` ? ' explorer-item--active' : ''
       const isSuspended = entry.snapshot.terminal !== true
       const menuId = `side-saved-menu-${i}`
@@ -153,11 +152,6 @@ export function populateSideSnapshotsList() {
           action: `Playground.closeExplorerMenus();Playground.openSavedSnapshot(${i})`,
           icon: ICONS.eye,
           label: 'Open',
-        },
-        {
-          action: `Playground.closeExplorerMenus();Playground.toggleSnapshotLock(${i})`,
-          icon: entry.locked ? ICONS.unlock : ICONS.lock,
-          label: entry.locked ? 'Unlock' : 'Lock',
         },
         {
           action: `Playground.closeExplorerMenus();Playground.downloadSavedSnapshotByIndex(${i})`,
@@ -177,7 +171,6 @@ export function populateSideSnapshotsList() {
       items.push(`
         <div class="explorer-item${savedActiveClass}" onclick="Playground.openSavedSnapshot(${i})" title="${escapeHtml(label)}">
           <span class="explorer-item__name">${escapeHtml(label)}</span>
-          ${lockHtml}
           <span class="explorer-item__actions" onclick="event.stopPropagation()">
             ${runButton}
             ${renderEditorMenu({ id: menuId, items: menuItems })}
@@ -259,24 +252,12 @@ export function syncCodePanelView() {
   const editorView = document.getElementById('dvala-editor-view')
   const snapshotView = document.getElementById('dvala-snapshot-view')
   const emptyView = document.getElementById('dvala-empty-view')
-  const headerEditor = document.getElementById('dvala-header-editor')
-  const headerSnapshot = document.getElementById('dvala-header-snapshot')
-  const undoBtn = document.getElementById('dvala-code-undo-button')
-  const redoBtn = document.getElementById('dvala-code-redo-button')
-  const fileCloseBtn = document.getElementById('file-close-btn')
-  const closeBtn = document.getElementById('snapshot-close-btn')
   if (!editorView || !snapshotView || !emptyView) return
 
   // Hide all views
   editorView.style.display = 'none'
   snapshotView.style.display = 'none'
   emptyView.style.display = 'none'
-  if (headerEditor) headerEditor.style.display = 'none'
-  if (headerSnapshot) headerSnapshot.style.display = 'none'
-  if (undoBtn) undoBtn.style.display = 'none'
-  if (redoBtn) redoBtn.style.display = 'none'
-  if (fileCloseBtn) fileCloseBtn.style.display = 'none'
-  if (closeBtn) closeBtn.style.display = 'none'
 
   const activeKind = getActiveTabKind()
 
@@ -286,8 +267,6 @@ export function syncCodePanelView() {
     // click flow and the after-tab-swap hook); we just need to make the
     // container visible.
     snapshotView.style.display = 'flex'
-    if (headerSnapshot) headerSnapshot.style.display = 'flex'
-    if (closeBtn) closeBtn.style.display = ''
     // Fall through if there's no snapshot data to render — show the
     // empty/import state. Happens transiently between "tab created" and
     // "snapshot data loaded into the panel".
@@ -304,14 +283,6 @@ export function syncCodePanelView() {
 
   if (activeKind === 'file') {
     editorView.style.display = 'flex'
-    if (headerEditor) headerEditor.style.display = 'flex'
-    if (undoBtn) undoBtn.style.display = ''
-    if (redoBtn) redoBtn.style.display = ''
-    // Phase 1.5 step 23j stage 2: every file tab — including scratch —
-    // is closable, so the editor-area close button is shown for any
-    // active file tab. Hidden only when there's no active tab at all
-    // (the empty-state branch handles that case below).
-    if (fileCloseBtn && getState('current-file-id')) fileCloseBtn.style.display = ''
     return
   }
 

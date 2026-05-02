@@ -61,7 +61,6 @@ function writeScratch(patch: Pick<WorkspaceFile, 'code' | 'context'>): void {
     context: patch.context,
     createdAt: now,
     updatedAt: now,
-    locked: false,
   }
   setWorkspaceFiles([...files, created])
 }
@@ -96,7 +95,6 @@ export function ensureScratchFile(): boolean {
     context: '',
     createdAt: now,
     updatedAt: now,
-    locked: false,
   }
   setWorkspaceFiles([...getWorkspaceFiles(), created])
   return true

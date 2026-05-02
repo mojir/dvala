@@ -18,7 +18,6 @@ type Stub = {
   context: string
   createdAt: number
   updatedAt: number
-  locked: boolean
 }
 let workspaceFiles: Stub[] = []
 const idbCleared: string[] = []
@@ -63,12 +62,11 @@ function snap(id: string): StubSnapshot {
   return { id } as unknown as StubSnapshot
 }
 
-function makeSavedEntry(id: string, savedAt: number, opts: { name?: string; locked?: boolean } = {}): SavedSnapshot {
+function makeSavedEntry(id: string, savedAt: number, opts: { name?: string } = {}): SavedSnapshot {
   return {
     kind: 'saved',
     snapshot: snap(id),
     savedAt,
-    locked: opts.locked ?? false,
     name: opts.name,
   }
 }
@@ -122,7 +120,6 @@ describe('setSavedSnapshots + getSavedSnapshots', () => {
     expect(JSON.parse(file.code)).toMatchObject({
       kind: 'saved',
       savedAt: 1000,
-      locked: false,
       name: 'Hello',
       snapshot: { id: 'a' },
     })
@@ -174,8 +171,8 @@ describe('setSavedSnapshots + getSavedSnapshots', () => {
     setSavedSnapshots([makeSavedEntry('a', 1000)])
     const original = workspaceFiles[0]!.createdAt
 
-    // Re-write the same snapshot (e.g. lock toggle).
-    setSavedSnapshots([makeSavedEntry('a', 1000, { locked: true })])
+    // Re-write the same snapshot.
+    setSavedSnapshots([makeSavedEntry('a', 1000, {})])
     expect(workspaceFiles[0]!.createdAt).toBe(original)
   })
 })
@@ -217,7 +214,6 @@ describe('clearAll', () => {
         context: '',
         createdAt: 0,
         updatedAt: 0,
-        locked: false,
       },
       // The scratch buffer (also under .dvala-playground/, but NOT under snapshots/)
       {
@@ -227,7 +223,6 @@ describe('clearAll', () => {
         context: '',
         createdAt: 0,
         updatedAt: 0,
-        locked: false,
       },
     ]
     setSavedSnapshots([makeSavedEntry('s1', 1000)])
@@ -308,7 +303,6 @@ describe('malformed payload handling', () => {
         context: '',
         createdAt: 0,
         updatedAt: 0,
-        locked: false,
       },
     ]
 
@@ -325,7 +319,6 @@ describe('malformed payload handling', () => {
         context: '',
         createdAt: 0,
         updatedAt: 0,
-        locked: false,
       },
     ]
 

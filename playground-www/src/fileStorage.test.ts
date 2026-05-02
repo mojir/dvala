@@ -17,7 +17,6 @@ const file = (id: string, path: string): WorkspaceFile => ({
   context: '',
   createdAt: 0,
   updatedAt: 0,
-  locked: false,
 })
 
 describe('normalizeWorkspaceFileName', () => {
@@ -44,7 +43,6 @@ describe('setWorkspaceFiles', () => {
         context: '',
         createdAt: 1,
         updatedAt: 1,
-        locked: false,
       },
     ])
 
@@ -58,8 +56,8 @@ describe('setWorkspaceFiles', () => {
 
   it('should assign a new id when two entries share the same id', () => {
     setWorkspaceFiles([
-      { id: 'dup-id', path: 'first', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
-      { id: 'dup-id', path: 'second', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
+      { id: 'dup-id', path: 'first', code: '', context: '', createdAt: 1, updatedAt: 1 },
+      { id: 'dup-id', path: 'second', code: '', context: '', createdAt: 2, updatedAt: 2 },
     ])
 
     const files = getWorkspaceFiles()
@@ -69,10 +67,10 @@ describe('setWorkspaceFiles', () => {
 
   it('should disambiguate path collisions by appending a counter to the basename', () => {
     setWorkspaceFiles([
-      { id: 'a', path: 'foo.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
-      { id: 'b', path: 'foo.dvala', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
-      { id: 'c', path: 'examples/bar.dvala', code: '', context: '', createdAt: 3, updatedAt: 3, locked: false },
-      { id: 'd', path: 'examples/bar.dvala', code: '', context: '', createdAt: 4, updatedAt: 4, locked: false },
+      { id: 'a', path: 'foo.dvala', code: '', context: '', createdAt: 1, updatedAt: 1 },
+      { id: 'b', path: 'foo.dvala', code: '', context: '', createdAt: 2, updatedAt: 2 },
+      { id: 'c', path: 'examples/bar.dvala', code: '', context: '', createdAt: 3, updatedAt: 3 },
+      { id: 'd', path: 'examples/bar.dvala', code: '', context: '', createdAt: 4, updatedAt: 4 },
     ])
 
     const paths = getWorkspaceFiles().map(f => f.path)
@@ -80,16 +78,14 @@ describe('setWorkspaceFiles', () => {
   })
 
   it('should preserve folder paths verbatim when valid', () => {
-    setWorkspaceFiles([
-      { id: 'a', path: 'a/b/c.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
-    ])
+    setWorkspaceFiles([{ id: 'a', path: 'a/b/c.dvala', code: '', context: '', createdAt: 1, updatedAt: 1 }])
     expect(getWorkspaceFiles()[0]?.path).toBe('a/b/c.dvala')
   })
 
   it('should drop entries with invalid paths', () => {
     setWorkspaceFiles([
-      { id: 'a', path: 'foo.dvala', code: '', context: '', createdAt: 1, updatedAt: 1, locked: false },
-      { id: 'b', path: '../escape.dvala', code: '', context: '', createdAt: 2, updatedAt: 2, locked: false },
+      { id: 'a', path: 'foo.dvala', code: '', context: '', createdAt: 1, updatedAt: 1 },
+      { id: 'b', path: '../escape.dvala', code: '', context: '', createdAt: 2, updatedAt: 2 },
     ])
     expect(getWorkspaceFiles().map(f => f.path)).toEqual(['foo.dvala'])
   })
@@ -107,7 +103,6 @@ describe('setWorkspaceFiles', () => {
         context: '',
         createdAt: 1,
         updatedAt: 1,
-        locked: false,
       },
       {
         id: 'snap-2',
@@ -116,7 +111,6 @@ describe('setWorkspaceFiles', () => {
         context: '',
         createdAt: 2,
         updatedAt: 2,
-        locked: false,
       },
     ])
     expect(

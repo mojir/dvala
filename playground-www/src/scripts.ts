@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import './styles.css'
 import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import { getLinkName } from '../../reference'
@@ -86,7 +87,7 @@ import {
   saveState,
   updateState,
 } from './state'
-import type { HistoryEntry, HistoryStatus } from './StateHistory'
+import type { HistoryEntry } from './StateHistory'
 import { StateHistory } from './StateHistory'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
@@ -180,7 +181,6 @@ export { openQuickOpen } from './scripts/quickOpen'
 export {
   clearAllWorkspaceFiles,
   clearScratch,
-  clearUnlockedFiles,
   closeActiveFile,
   closeExplorerMenus,
   deleteWorkspaceFile,
@@ -195,7 +195,6 @@ export {
   shareFile,
   toggleExplorerFolder,
   toggleExplorerMenu,
-  toggleFileLock,
 } from './scripts/files'
 
 /**
@@ -239,11 +238,7 @@ function getActiveFileFolder(): string {
   return filePath ? folderFromPath(filePath) : ''
 }
 const MAX_FILE_HISTORY_STEPS = 99
-const dvalaCodeHistory = new StateHistory(
-  createDvalaCodeHistoryEntryFromState(),
-  syncDvalaCodeHistoryButtons,
-  MAX_FILE_HISTORY_STEPS,
-)
+const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntryFromState(), () => {}, MAX_FILE_HISTORY_STEPS)
 let activeDvalaCodeHistoryFileId: string | null = null
 let closeEditorMenuListener: ((event: MouseEvent) => void) | null = null
 
@@ -253,17 +248,6 @@ function createDvalaCodeHistoryEntryFromState(): HistoryEntry {
     selectionStart: getState('dvala-code-selection-start'),
     selectionEnd: getState('dvala-code-selection-end'),
   }
-}
-
-function isCurrentFileLocked(): boolean {
-  const currentFileId = getState('current-file-id')
-  return getWorkspaceFiles().some(file => file.id === currentFileId && file.locked)
-}
-
-function syncDvalaCodeHistoryButtons(status: HistoryStatus = dvalaCodeHistory.getStatus()) {
-  const isLocked = isCurrentFileLocked()
-  elements.dvalaCodeUndoButton.classList.toggle('disabled', isLocked || !status.canUndo)
-  elements.dvalaCodeRedoButton.classList.toggle('disabled', isLocked || !status.canRedo)
 }
 
 function persistActiveDvalaCodeHistory() {
@@ -368,7 +352,6 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
             context: '',
             createdAt: now,
             updatedAt: now,
-            locked: false,
           }
           setWorkspaceFiles([createdFile, ...files])
         }
@@ -1288,9 +1271,6 @@ export const ICONS = {
   trash:
     '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 256 256"><path fill="currentColor" d="M216 48h-36V36a28 28 0 0 0-28-28h-48a28 28 0 0 0-28 28v12H40a12 12 0 0 0 0 24h4v136a20 20 0 0 0 20 20h128a20 20 0 0 0 20-20V72h4a12 12 0 0 0 0-24M100 36a4 4 0 0 1 4-4h48a4 4 0 0 1 4 4v12h-56Zm88 168H68V72h120Zm-72-100v64a12 12 0 0 1-24 0v-64a12 12 0 0 1 24 0m48 0v64a12 12 0 0 1-24 0v-64a12 12 0 0 1 24 0"/></svg>',
   menu: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0 2c-1.1 0-2 .9-2 2s.9 2 2 2s2-.9 2-2s-.9-2-2-2m0 6c-1.1 0-2 .9-2 2s.9 2 2 2s2-.9 2-2s-.9-2-2-2"/></svg>',
-  lock: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg>',
-  unlock:
-    '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 0 1 7.917-.768M12 17v2"/></svg>',
   eye: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 12s4-8 11-8s11 8 11 8s-4 8-11 8s-11-8-11-8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
   download:
     '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5l5 5l5-5m-5 5V3"/></svg>',
@@ -1447,7 +1427,6 @@ export function saveTerminalSnapshotToSaved(index: number) {
       kind: 'saved',
       snapshot: entry.snapshot,
       savedAt: Date.now(),
-      locked: false,
       name: name || undefined,
     })
     setSavedSnapshots(deduped)
@@ -1501,48 +1480,7 @@ export async function deleteSavedSnapshot(index: number) {
     showToast('Snapshot deleted')
   }
 
-  if (entry.locked) {
-    void showInfoModal(
-      'Delete locked snapshot',
-      'This snapshot is locked. Are you sure you want to delete it?',
-      doDelete,
-    )
-  } else {
-    await doDelete()
-  }
-}
-
-export function toggleSnapshotLock(index: number) {
-  const entries = getSavedSnapshots()
-  const entry = entries[index]
-  if (!entry) return
-  // Phase 1.5 step 23i: don't mutate the returned entry in place — the
-  // entry object is the parsed JSON from the workspace file's `code`,
-  // and an in-place flip would only land in storage by aliasing
-  // coincidence. Build a fresh entry with the toggled flag.
-  setSavedSnapshots(entries.map((e, i) => (i === index ? { ...e, locked: !e.locked } : e)))
-  populateSnapshotsList()
-}
-
-export function clearUnlockedSnapshots() {
-  void showInfoModal(
-    'Remove unlocked snapshots',
-    'This will delete all unlocked snapshots. Locked snapshots will be kept.',
-    async () => {
-      const terminalEntries = getTerminalSnapshots()
-      const savedEntries = getSavedSnapshots()
-      const unlockedSavedIndices = savedEntries.map((e, i) => (e.locked ? -1 : i)).filter(i => i >= 0)
-      // Animate all unlocked cards simultaneously
-      await Promise.all([
-        ...terminalEntries.map((_, i) => animateCardRemoval('terminal', i)),
-        ...unlockedSavedIndices.map(i => animateCardRemoval('saved', i)),
-      ])
-      setTerminalSnapshots([])
-      setSavedSnapshots(savedEntries.filter(e => e.locked))
-      populateSnapshotsList()
-      showToast('Unlocked snapshots cleared')
-    },
-  )
+  await doDelete()
 }
 
 export function share() {
@@ -2129,8 +2067,6 @@ window.onload = async function () {
   wireTabKeyboardShortcuts()
   wireQuickOpenShortcut()
   initLayoutPanels()
-
-  syncDvalaCodeHistoryButtons()
 
   document.addEventListener('click', onDocumentClick, true)
 
@@ -3486,7 +3422,7 @@ export function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON):
     if (!snap) return
     pushSavePanel((name: string) => {
       const existing = getSavedSnapshots().filter(s => s.snapshot.id !== snap.id)
-      existing.unshift({ kind: 'saved', snapshot: snap, savedAt: Date.now(), locked: false, name: name || undefined })
+      existing.unshift({ kind: 'saved', snapshot: snap, savedAt: Date.now(), name: name || undefined })
       setSavedSnapshots(existing)
 
       populateSnapshotsList({ animateNewSaved: true })
@@ -3514,21 +3450,6 @@ function getSnapshotError(snapshot: Snapshot): DvalaErrorJSON | undefined {
 }
 
 // ─── Inline snapshot view (in code panel) ────────────────────────────────────
-
-function renderSnapshotBreadcrumbs() {
-  const container = document.getElementById('dvala-header-snapshot')
-  if (!container) return
-
-  container.innerHTML = state.snapshotViewStack
-    .map((bc, i) => {
-      const isLast = i === state.snapshotViewStack.length - 1
-      if (isLast) {
-        return `<span class="snapshot-breadcrumbs__current">${escapeHtml(bc.label)}</span>`
-      }
-      return `<a class="snapshot-breadcrumbs__link" href="#" onclick="event.preventDefault();Playground.navigateSnapshotBreadcrumb(${i})">${escapeHtml(bc.label)}</a><span class="snapshot-breadcrumbs__sep">›</span>`
-    })
-    .join('')
-}
 
 export function syncSnapshotExecutionControls() {
   if (!state.snapshotExecutionControlsVisible || !state.currentSnapshot) {
@@ -3563,14 +3484,6 @@ function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = state.s
   if (body) content.appendChild(body)
   if (footer) footerHost.appendChild(footer)
 
-  // Update breadcrumbs + execution controls. The editor-area swap (showing
-  // `#dvala-snapshot-view`) is now driven by the afterSwap tab-lifecycle
-  // hook in scripts.ts:2099, so we don't call `syncCodePanelView` here —
-  // it would double-render. For breadcrumb navigation (navigateSnapshot-
-  // Breadcrumb), the snapshot view is already visible (active tab is the
-  // snapshot tab); for the boot-time `openSnapshotModal` URL-blob path,
-  // the legacy modal flow is being retired in 23l anyway.
-  renderSnapshotBreadcrumbs()
   syncSnapshotExecutionControls()
 }
 
@@ -3592,33 +3505,17 @@ export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
   // no editor-area tab, and `syncCodePanelView`'s active-tab-kind branch
   // would default to the editor view. Until 23l retires this path
   // entirely, we force-show the snapshot view here so suspended runs
-  // still render the inspector. The DOM toggling mirrors the snapshot
-  // branch of `syncCodePanelView` exactly.
+  // still render the inspector.
   const editorView = document.getElementById('dvala-editor-view')
   const snapshotView = document.getElementById('dvala-snapshot-view')
   const emptyView = document.getElementById('dvala-empty-view')
-  const headerEditor = document.getElementById('dvala-header-editor')
-  const headerSnapshot = document.getElementById('dvala-header-snapshot')
-  const closeBtn = document.getElementById('snapshot-close-btn')
   if (editorView) editorView.style.display = 'none'
   if (emptyView) emptyView.style.display = 'none'
-  if (headerEditor) headerEditor.style.display = 'none'
   if (snapshotView) snapshotView.style.display = 'flex'
-  if (headerSnapshot) headerSnapshot.style.display = 'flex'
-  if (closeBtn) closeBtn.style.display = ''
 
   return new Promise<void>(resolve => {
     state.resolveSnapshotModal = resolve
   })
-}
-
-export function navigateSnapshotBreadcrumb(index: number) {
-  // Pop back to the given breadcrumb level
-  while (state.snapshotViewStack.length > index + 1) {
-    state.snapshotViewStack.pop()
-  }
-  const bc = state.snapshotViewStack[index]
-  if (bc) showSnapshotInPanel(bc.snapshot)
 }
 
 export function closeSnapshotView() {
@@ -4109,7 +4006,7 @@ export function saveCheckpoint() {
   const snapshot = state.currentCheckpointSnapshot
   promptSnapshotName(name => {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
-    existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
+    existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), name: name || undefined })
     setSavedSnapshots(existing)
 
     populateSnapshotsList({ animateNewSaved: true })
@@ -4137,7 +4034,7 @@ export function saveSnapshot() {
   const snapshot = state.currentSnapshot
   promptSnapshotName(name => {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
-    existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
+    existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), name: name || undefined })
     setSavedSnapshots(existing)
 
     populateSnapshotsList({ animateNewSaved: true })
@@ -5466,30 +5363,20 @@ export function updateCSS() {
 
   const currentFileId = getState('current-file-id')
   const currentFile = currentFileId ? getWorkspaceFiles().find(entry => entry.id === currentFileId) : null
-  const isLocked = currentFile?.locked ?? false
   // Phase 1.5 step 23h made scratch a regular workspace file, but we keep
   // the toolbar title showing `<scratch>` (matching the pinned tree entry +
   // tab strip label) instead of the underlying basename `scratch.dvala`.
   const currentFileTitle =
     currentFileId === SCRATCH_FILE_ID ? SCRATCH_TITLE : currentFile ? fileDisplayName(currentFile) : SCRATCH_TITLE
-  const showSaveScratchButton =
-    currentFileId === SCRATCH_FILE_ID && hasScratchContent() && getCurrentSideTab() !== 'snapshots'
-  // The Bindings UI was retired in Phase 1.5 step 23f, so the editor-area
-  // title element is unconditionally hidden — file titles render via the
-  // editor-toolbar title slot. Pending indicator likewise lives in the
-  // toolbar pill now.
-  elements.dvalaCodeTitleString.textContent = ''
-  elements.dvalaCodeTitleString.style.display = 'none'
+  // Show "Save to file" CTA only when scratch is active and has content —
+  // promotes the scratch buffer to a named workspace file. Regular files
+  // are already persisted; "Save as..." is in the More menu.
+  const showSaveButton = currentFileId === SCRATCH_FILE_ID && hasScratchContent()
+  const saveBtn = elements.editorToolbarSave
+  if (saveBtn) saveBtn.style.display = showSaveButton ? '' : 'none'
+  // File titles are rendered in the editor-toolbar title slot.
   elements.editorToolbarTitle.textContent = currentFileTitle
   elements.editorToolbarTitle.style.fontFamily = 'var(--font-mono)'
-  // Same boot-order caveat as the theme call above — first updateCSS() runs
-  // before the editor exists.
-  tryGetCodeEditor()?.setReadOnly(isLocked)
-  elements.dvalaEditorHost?.classList.toggle('dvala-editor-host--locked', isLocked)
-  elements.dvalaCodeLockedIndicator.style.display = isLocked ? 'inline-flex' : 'none'
-  elements.saveScratchButton.style.display = showSaveScratchButton ? 'inline-flex' : 'none'
-  syncDvalaCodeHistoryButtons()
-  elements.dvalaCodePendingIndicator.style.display = 'none'
 }
 
 export function showPage(

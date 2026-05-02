@@ -12,7 +12,6 @@ export interface WorkspaceFile {
   context: string
   createdAt: number
   updatedAt: number
-  locked: boolean
 }
 
 // Re-exported for callers that still talk in terms of "filename" rather than

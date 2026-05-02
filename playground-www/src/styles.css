@@ -3,69 +3,69 @@
    ============================================================ */
 :root {
   /* Surfaces & backgrounds */
-  --color-bg:             #1a1a1a;
-  --color-surface:        #2a2a2a;
-  --color-surface-2:      #333;
-  --color-surface-3:      #444;
-  --color-surface-dim:    #232323;
-  --color-surface-hover:  #414141;
-  --color-code-bg:        #0d0d0d;
+  --color-bg: #1a1a1a;
+  --color-surface: #2a2a2a;
+  --color-surface-2: #333;
+  --color-surface-3: #444;
+  --color-surface-dim: #232323;
+  --color-surface-hover: #414141;
+  --color-code-bg: #0d0d0d;
 
   /* Text */
-  --color-text:           #d4d4d4;
-  --color-text-bright:    #f5f5f5;
+  --color-text: #d4d4d4;
+  --color-text-bright: #f5f5f5;
   --color-text-secondary: #aaa;
-  --color-text-dim:       #8c8c8c;
-  --color-text-faintest:  #737373;
+  --color-text-dim: #8c8c8c;
+  --color-text-faintest: #737373;
 
   /* Accent & semantic */
-  --color-primary:        #e6c07b;
-  --color-accent:         #7c9ef8;
-  --color-error:          #ff8a8a;
-  --color-success:        #98c379;
-  --color-purple:         #b294bb;
-  --color-terminal:       #abb2bf;
+  --color-primary: #e6c07b;
+  --color-accent: #7c9ef8;
+  --color-error: #ff8a8a;
+  --color-success: #98c379;
+  --color-purple: #b294bb;
+  --color-terminal: #abb2bf;
 
   /* Borders */
-  --color-border:         #444;
-  --color-border-dim:     #3c3c3c;
-  --color-border-dark:    #222;
-  --color-border-subtle:  #323232;
+  --color-border: #444;
+  --color-border-dim: #3c3c3c;
+  --color-border-dark: #222;
+  --color-border-subtle: #323232;
 
   /* Scrollbar */
-  --color-scrollbar:       #404040;
+  --color-scrollbar: #404040;
   --color-scrollbar-track: #525252;
 
   /* Overlays & shadows */
-  --color-overlay:        #000000b3;
-  --color-overlay-heavy:  #1e1e1ef2;
-  --color-shadow:         #171717;
-  --color-shadow-deep:    #00000066;
-  --color-selection:      #264f78;
+  --color-overlay: #000000b3;
+  --color-overlay-heavy: #1e1e1ef2;
+  --color-shadow: #171717;
+  --color-shadow-deep: #00000066;
+  --color-selection: #264f78;
 
   /* Toggle */
-  --color-toggle-on:      #3b82f6;
-  --color-toggle-thumb:   var(--color-text-secondary);
+  --color-toggle-on: #3b82f6;
+  --color-toggle-thumb: var(--color-text-secondary);
 
   /* Syntax highlighting — Dark+ (VS Code default dark) */
-  --syntax-keyword:          #569cd6;
-  --syntax-builtin:          #dcdcaa;
-  --syntax-symbol:           #9cdcfe;
-  --syntax-number:           #b5cea8;
-  --syntax-string:           #ce9178;
-  --syntax-punctuation:      #d4d4d4;
-  --syntax-comment:      #6a9955;
-  --syntax-error:            #f44747;
-  --syntax-effect:           #e6b455;
+  --syntax-keyword: #569cd6;
+  --syntax-builtin: #dcdcaa;
+  --syntax-symbol: #9cdcfe;
+  --syntax-number: #b5cea8;
+  --syntax-string: #ce9178;
+  --syntax-punctuation: #d4d4d4;
+  --syntax-comment: #6a9955;
+  --syntax-error: #f44747;
+  --syntax-effect: #e6b455;
   --syntax-effect-construct: #e06c9f;
 
   --font-mono: 'JetBrains Mono', monospace;
   --font-sans: 'Roboto', sans-serif;
-  --font-size-xs:   0.75rem;
-  --font-size-sm:   0.875rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
-  --font-size-lg:   1.25rem;
-  --font-size-xl:   1.75rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.75rem;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -85,70 +85,71 @@
    Light mode overrides  (applied via [data-theme="light"] on <html>)
    Syntax: VS Code Light+ palette; UI chrome: GitHub / Linear
    ============================================================ */
-[data-theme="light"] {
+[data-theme='light'] {
   /* Surfaces & backgrounds */
-  --color-bg:             #f7f7f7;
-  --color-surface:        #ffffff;
-  --color-surface-2:      #f0f0f0;
-  --color-surface-3:      #e4e4e4;
-  --color-surface-dim:    #ebebeb;
-  --color-surface-hover:  #e0e0e0;
-  --color-code-bg:        #f5f5f5;
+  --color-bg: #f7f7f7;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0f0f0;
+  --color-surface-3: #e4e4e4;
+  --color-surface-dim: #ebebeb;
+  --color-surface-hover: #e0e0e0;
+  --color-code-bg: #f5f5f5;
 
   /* Text */
-  --color-text:           #333333;
-  --color-text-bright:    #111111;
+  --color-text: #333333;
+  --color-text-bright: #111111;
   --color-text-secondary: #555555;
-  --color-text-dim:       #777777;
-  --color-text-faintest:  #aaaaaa;
+  --color-text-dim: #777777;
+  --color-text-faintest: #aaaaaa;
 
   /* Accent & semantic */
-  --color-primary:        #b07800;
-  --color-accent:         #2563eb;
-  --color-error:          #cc2222;
-  --color-success:        #1a7f37;
-  --color-purple:         #7c4dbe;
-  --color-terminal:       #444444;
+  --color-primary: #b07800;
+  --color-accent: #2563eb;
+  --color-error: #cc2222;
+  --color-success: #1a7f37;
+  --color-purple: #7c4dbe;
+  --color-terminal: #444444;
 
   /* Borders */
-  --color-border:         #d0d0d0;
-  --color-border-dim:     #e0e0e0;
-  --color-border-dark:    #bbbbbb;
-  --color-border-subtle:  #e8e8e8;
+  --color-border: #d0d0d0;
+  --color-border-dim: #e0e0e0;
+  --color-border-dark: #bbbbbb;
+  --color-border-subtle: #e8e8e8;
 
   /* Scrollbar */
-  --color-scrollbar:       #c0c0c0;
+  --color-scrollbar: #c0c0c0;
   --color-scrollbar-track: #e4e4e4;
 
   /* Overlays & shadows */
-  --color-overlay:        #00000055;
-  --color-overlay-heavy:  #fffffff0;
-  --color-shadow:         #d0d0d0;
-  --color-shadow-deep:    #00000022;
-  --color-selection:      #add6ff;
+  --color-overlay: #00000055;
+  --color-overlay-heavy: #fffffff0;
+  --color-shadow: #d0d0d0;
+  --color-shadow-deep: #00000022;
+  --color-selection: #add6ff;
 
   /* Toggle */
-  --color-toggle-on:      #2563eb;
-  --color-toggle-thumb:   #ffffff;
-
+  --color-toggle-on: #2563eb;
+  --color-toggle-thumb: #ffffff;
 
   /* Syntax highlighting — VS Code Light+ */
-  --syntax-keyword:          #0000ff;
-  --syntax-builtin:          #795e26;
-  --syntax-symbol:           #001080;
-  --syntax-number:           #098658;
-  --syntax-string:           #a31515;
-  --syntax-punctuation:      #333333;
-  --syntax-comment:          #008000;
-  --syntax-error:            #cc2222;
-  --syntax-effect:           #b07800;
+  --syntax-keyword: #0000ff;
+  --syntax-builtin: #795e26;
+  --syntax-symbol: #001080;
+  --syntax-number: #098658;
+  --syntax-string: #a31515;
+  --syntax-punctuation: #333333;
+  --syntax-comment: #008000;
+  --syntax-error: #cc2222;
+  --syntax-effect: #b07800;
   --syntax-effect-construct: #af00db;
 }
 
 /* ============================================================
    Reset / base
    ============================================================ */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -172,7 +173,10 @@ div {
   box-sizing: border-box;
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   margin: 0;
   padding: 0;
 }
@@ -365,7 +369,9 @@ a.disabled {
   white-space: nowrap;
   cursor: pointer;
   font-family: inherit;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .tab-bar__tab:hover {
@@ -462,7 +468,6 @@ a.disabled {
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
-
 
 /* ============================================================
    Content area (legacy — used by settings/saved/snapshot pages)
@@ -623,7 +628,9 @@ a.disabled {
 
 .about-feature-card--clickable {
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .about-feature-card--clickable:hover {
@@ -1098,7 +1105,9 @@ a.disabled {
   color: var(--color-text-secondary);
   font-size: 1.4rem;
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .chapter-header__toc-btn:hover {
@@ -1116,7 +1125,7 @@ a.disabled {
   min-width: 14rem;
   max-height: 70vh;
   overflow-y: auto;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .chapter-toc-dropdown__section {
@@ -1192,7 +1201,6 @@ a.disabled {
   background: var(--color-surface);
 }
 
-
 .chapter-search-dropdown {
   position: fixed;
   z-index: 10000;
@@ -1204,7 +1212,7 @@ a.disabled {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .chapter-search-input {
@@ -1315,7 +1323,9 @@ a.disabled {
   text-decoration: none;
   font-size: 1.4rem;
   flex-shrink: 0;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .chapter-header__nav-btn:hover {
@@ -1356,7 +1366,6 @@ a.disabled {
   margin-bottom: var(--space-3);
   scroll-margin-top: 5rem;
 }
-
 
 .book-page__content h1 {
   font-size: var(--font-size-xl);
@@ -1527,7 +1536,6 @@ a.disabled {
   display: none;
 }
 
-
 /* ============================================================
    Example cards (categorized index page)
    ============================================================ */
@@ -1559,7 +1567,9 @@ a.disabled {
   background: var(--color-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-dim);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
   overflow: hidden;
 }
 
@@ -1612,7 +1622,10 @@ a.disabled {
   color: var(--color-text-secondary);
   font-size: 1.2rem;
   cursor: pointer;
-  transition: color 0.15s, background 0.15s, opacity 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    opacity 0.15s;
   opacity: 0.5;
 }
 
@@ -1661,7 +1674,9 @@ a.disabled {
   padding: var(--space-4);
   text-decoration: none;
   color: inherit;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
   cursor: pointer;
 }
 
@@ -1804,7 +1819,6 @@ a.disabled {
   padding: 0;
 }
 
-
 /* ============================================================
    Playground panel
    ============================================================ */
@@ -1852,6 +1866,27 @@ a.disabled {
   padding: 0.15em 0.75em;
 }
 
+/* Save-to-file CTA — dynamic button in the toolbar left area, visible
+   when scratch has content or a workspace file is active. */
+.editor-toolbar__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dim);
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.65em;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.editor-toolbar__save:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
 .editor-toolbar__right {
   margin-left: auto;
   flex-shrink: 0;
@@ -1895,7 +1930,9 @@ a.disabled {
   padding: var(--space-1);
   cursor: pointer;
   font-size: 1rem;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .exec-btn-inline:hover {
@@ -1921,14 +1958,37 @@ a.disabled {
   white-space: nowrap;
 }
 
-#side-panel-icons { grid-column: 1; grid-row: 1 / -1; }
-#side-panel-header { grid-column: 2; grid-row: 1; }
-#side-panel-content { grid-column: 2; grid-row: 2; overflow: hidden; }
-#resize-divider-1 { grid-column: 3; grid-row: 1 / -1; }
-#dvala-panel-header { grid-column: 4; grid-row: 1; }
-#dvala-panel { grid-column: 4; grid-row: 2; overflow: hidden; }
-#resize-divider-3 { grid-column: 5; grid-row: 1 / -1; }
-#right-panel { grid-column: 6; grid-row: 1 / -1; overflow: hidden; }
+#side-panel-icons {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+#side-panel-header {
+  grid-column: 2;
+  grid-row: 1;
+}
+#side-panel-content {
+  grid-column: 2;
+  grid-row: 2;
+  overflow: hidden;
+}
+#resize-divider-1 {
+  grid-column: 3;
+  grid-row: 1 / -1;
+}
+#dvala-panel {
+  grid-column: 4;
+  grid-row: 1 / -1;
+  overflow: hidden;
+}
+#resize-divider-3 {
+  grid-column: 5;
+  grid-row: 1 / -1;
+}
+#right-panel {
+  grid-column: 6;
+  grid-row: 1 / -1;
+  overflow: hidden;
+}
 
 /* Hide the right-panel + its divider when collapsed — saves the visual
    slot from the editor area. */
@@ -1974,7 +2034,9 @@ a.disabled {
   color: var(--color-text-dim);
   font-size: 1.32rem;
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .side-panel__icon:hover {
@@ -2063,6 +2125,7 @@ a.disabled {
 .dvala-empty-view__description {
   color: var(--color-text-dim);
   line-height: 1.5;
+  white-space: normal;
 }
 
 .dvala-empty-view__button {
@@ -2092,36 +2155,6 @@ a.disabled {
 #snapshot-footer .modal-panel__footer {
   width: 100%;
   box-sizing: border-box;
-}
-
-.snapshot-breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  overflow: hidden;
-}
-
-.snapshot-breadcrumbs__link {
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  font-size: var(--font-size-sm);
-}
-
-.snapshot-breadcrumbs__link:hover {
-  color: var(--color-text-bright);
-}
-
-.snapshot-breadcrumbs__sep {
-  color: var(--color-text-dim);
-  font-size: var(--font-size-sm);
-}
-
-.snapshot-breadcrumbs__current {
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Layout panels (right + bottom). Both host the Panel component, which
@@ -2231,7 +2264,7 @@ body.bottom-panel-collapsed #resize-divider-2 {
   /* opacity: 0.7; */
   background: var(--color-surface-dim, rgba(255, 255, 255, 0.06));
 }
-.right-panel-toggle-btn>svg {
+.right-panel-toggle-btn > svg {
   width: 1.2em;
   height: 1.2em;
 }
@@ -2289,13 +2322,6 @@ body.bottom-panel-collapsed #resize-divider-2 {
   user-select: none;
 }
 
-#dvala-panel-header-content {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-}
-
 .panel-header__title {
   font-size: var(--font-size-sm);
 }
@@ -2334,7 +2360,9 @@ body.bottom-panel-collapsed #resize-divider-2 {
   border-radius: var(--radius-sm);
   padding: 0.2em 0.65em;
   font-size: var(--font-size-sm);
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 #run-btn:hover {
@@ -2368,7 +2396,9 @@ body.bottom-panel-collapsed #resize-divider-2 {
   border-radius: var(--radius-sm);
   padding: 0.2em 0.5em;
   font-size: var(--font-size-sm);
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 #more-btn:hover {
@@ -2383,8 +2413,12 @@ body.bottom-panel-collapsed #resize-divider-2 {
   gap: 0.35em;
 }
 
-.dvala-running .run-btn__idle { display: none; }
-.dvala-running .run-btn__busy { display: inline-flex; }
+.dvala-running .run-btn__idle {
+  display: none;
+}
+.dvala-running .run-btn__busy {
+  display: inline-flex;
+}
 
 .spinner {
   width: 0.9em;
@@ -2396,7 +2430,9 @@ body.bottom-panel-collapsed #resize-divider-2 {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Panel vertical resize dividers */
@@ -2543,13 +2579,25 @@ body.bottom-panel-collapsed #resize-divider-2 {
 }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(-1rem); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes toast-out {
-  from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0; transform: translateY(-1rem); }
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
 }
 
 /* ============================================================
@@ -2572,7 +2620,9 @@ button:focus {
   padding: var(--space-1) var(--space-3);
   font-family: var(--font-sans);
   font-size: var(--font-size-sm);
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .button:hover {
@@ -2758,7 +2808,7 @@ button:focus {
 }
 
 .settings-toggle-slider::before {
-  content: "";
+  content: '';
   position: absolute;
   height: 18px;
   width: 18px;
@@ -2803,8 +2853,12 @@ button:focus {
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 #more-menu {
@@ -2918,7 +2972,6 @@ button:focus {
   background: var(--color-selection);
 }
 
-
 .syntax-overlay-selection {
   color: transparent;
   pointer-events: none;
@@ -2947,7 +3000,6 @@ button:focus {
 /* ============================================================
    Shell structural classes
    ============================================================ */
-
 
 /* search-intro / no-result messages inside the search dialog */
 #search-intro,
@@ -2994,17 +3046,9 @@ button:focus {
   align-items: center;
 }
 
-#save-scratch-btn,
 .output-clear-btn {
   font-size: var(--font-size-sm);
   gap: 0.3em;
-}
-
-.panel-header__code-title {
-  display: flex;
-  gap: var(--space-1);
-  align-items: center;
-  overflow: hidden;
 }
 
 .panel-header__debug-icon {
@@ -3053,32 +3097,12 @@ button:focus {
   top: -2px;
 }
 
-/* Locked / read-only indicator */
-.locked-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25em;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-  margin-left: 2px;
-}
-
-.panel-textarea--locked {
-  opacity: 0.7;
-  cursor: default;
-}
-
 /* Monaco editor host. Sized by its grid cell; Monaco's automaticLayout
-   handles internal resizing. The locked variant matches the textarea's
-   read-only treatment so the visual contract carries over. */
+   handles internal resizing. */
 .dvala-editor-host {
   flex: 1;
   min-height: 0;
   width: 100%;
-}
-.dvala-editor-host--locked {
-  opacity: 0.7;
 }
 
 /* ============================================================
@@ -3132,7 +3156,9 @@ button:focus {
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 200px;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 .editor-tab:hover {
   background: var(--color-surface-hover);
@@ -3148,6 +3174,19 @@ button:focus {
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+}
+
+/* Tab icon — favicon for .dvala files, camera for snapshots. */
+.editor-tab__icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 0.85em;
+  margin-right: 0.3em;
+  opacity: 0.7;
+}
+.editor-tab__icon img {
+  display: block;
 }
 
 /* Modified indicator — shown for file tabs whose buffer differs from disk. */
@@ -3304,7 +3343,9 @@ button:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .explorer-item:hover {
@@ -3331,7 +3372,9 @@ button:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: none;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 .explorer-folder:hover {
   background: var(--color-surface-hover);
@@ -3364,15 +3407,6 @@ button:focus {
 
 .explorer-item--inactive {
   opacity: 0.65;
-}
-
-.explorer-item__lock {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-primary);
-  font-size: 0.8em;
-  line-height: 1;
-  flex-shrink: 0;
 }
 
 .explorer-item__warning {
@@ -3440,7 +3474,6 @@ button:focus {
   gap: var(--space-3);
   cursor: default;
 }
-
 
 .settings-dropdown__label {
   font-size: var(--font-size-xs);
@@ -3682,14 +3715,6 @@ button:focus {
   color: var(--color-text);
 }
 
-.file-stats-panel__lock {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-primary);
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
 .file-stats-panel__time,
 .file-stats-panel__meta {
   display: flex;
@@ -3802,7 +3827,6 @@ button:focus {
   color: var(--color-success);
   border-color: var(--color-success);
 }
-
 
 .modal-box {
   background: var(--color-surface-2);
@@ -3930,7 +3954,6 @@ button:focus {
   font-size: var(--font-size-sm);
 }
 
-
 .effect-modal__field {
   display: flex;
   flex-direction: column;
@@ -3949,7 +3972,6 @@ button:focus {
   font-size: 1rem;
   color: var(--color-purple);
 }
-
 
 .effect-modal__input-label {
   font-size: var(--font-size-sm);
@@ -4157,10 +4179,20 @@ button:focus {
   margin-top: 0;
 }
 
-.modal-panel__body::-webkit-scrollbar-track { background-color: transparent; }
-.modal-panel__body::-webkit-scrollbar { width: 8px; height: 8px; }
-.modal-panel__body::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar); border: none; }
-.modal-panel__body::-webkit-scrollbar-corner { background-color: transparent; }
+.modal-panel__body::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+.modal-panel__body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.modal-panel__body::-webkit-scrollbar-thumb {
+  background-color: var(--color-scrollbar);
+  border: none;
+}
+.modal-panel__body::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
 
 .modal-panel__footer {
   display: flex;
@@ -4187,7 +4219,9 @@ button:focus {
   cursor: pointer;
   color: var(--color-text-dim);
   opacity: 0;
-  transition: opacity 0.15s ease, color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
 }
 
 .println-output:hover .println-copy-btn {
@@ -4283,7 +4317,11 @@ button:focus {
     linear-gradient(45deg, transparent 75%, var(--color-surface-2) 75%),
     linear-gradient(-45deg, transparent 75%, var(--color-surface-2) 75%);
   background-size: 10px 10px;
-  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  background-position:
+    0 0,
+    0 5px,
+    5px -5px,
+    -5px 0;
 }
 .color-palette__name {
   font-size: 0.6rem;
@@ -4395,7 +4433,9 @@ button:focus {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: var(--font-sans);
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .list-page__action-btn:hover {
@@ -4433,7 +4473,6 @@ button:focus {
 h2.discrete {
   color: gray;
 }
-
 
 /* ============================================================
    Mobile overlay
@@ -4653,7 +4692,6 @@ h2.discrete {
   }
 }
 
-
 /* ============================================================
    JSON Tree Viewer (right-panel master-detail viewer)
 
@@ -4760,7 +4798,7 @@ h2.discrete {
   position: relative;
 }
 .json-tree__splitter::before {
-  content: "";
+  content: '';
   position: absolute;
   left: 0;
   right: 0;
@@ -4861,4 +4899,3 @@ body.json-tree-viewer-resizing * {
   white-space: pre-wrap;
   word-break: break-word;
 }
-

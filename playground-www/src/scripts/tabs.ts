@@ -23,6 +23,7 @@ import { KeyCode, KeyMod } from '../codeEditor'
 import { fileDisplayName, getWorkspaceFiles } from '../fileStorage'
 import type { WorkspaceFile } from '../fileStorage'
 import { HANDLERS_FILE_PATH } from '../handlersBuffer'
+import { cameraIcon } from '../icons'
 import { SCRATCH_FILE_ID } from '../scratchBuffer'
 import { getState, saveState } from '../state'
 import type { PersistedTab } from '../state'
@@ -50,7 +51,7 @@ interface FileTab {
  * every keystroke (via `notifyTabsChanged` ← editor onChange), so a
  * per-render JSON parse times the number of open snapshot tabs would
  * accumulate. Cleared by `invalidateSnapshotTabLabel(id)` if a snapshot's
- * metadata is mutated under it (rename, lock toggle).
+ * metadata is mutated under it (rename).
  */
 interface SnapshotTab {
   kind: 'snapshot'
@@ -608,6 +609,25 @@ function tabLabel(tab: OpenTab, filesById: ReadonlyMap<string, WorkspaceFile>): 
   return fileDisplayName(file)
 }
 
+/**
+ * Tab icon for the strip. `.dvala` files show the favicon, snapshots show
+ * the camera icon. Other file types have no icon.
+ */
+/**
+ * Tab icon for the strip. Accepts the pre-built `filesById` map from
+ * `renderTabStrip` to avoid O(n×m) rescans on every keystroke.
+ * `.dvala` files show the favicon, snapshots show the camera icon.
+ * All other file types get an empty placeholder so tab names stay aligned.
+ */
+function tabIcon(tab: OpenTab, filesById: ReadonlyMap<string, WorkspaceFile>): string {
+  if (tab.kind === 'snapshot') return `<span class="editor-tab__icon">${cameraIcon}</span>`
+  const file = filesById.get(tab.fileId)
+  if (file && file.path.endsWith('.dvala')) {
+    return `<span class="editor-tab__icon"><img src="/favicon.png" alt="" width="14" height="14"></span>`
+  }
+  return '<span class="editor-tab__icon editor-tab__icon--empty"></span>'
+}
+
 function renderTabStrip(): void {
   const strip = document.getElementById('editor-tab-strip')
   if (!strip) return
@@ -635,6 +655,7 @@ function renderTabStrip(): void {
       // scratch from the pinned `<scratch>` entry in the file tree,
       // handlers from the pinned `<handlers>` entry, and snapshots from
       // the Snapshots side-panel list.
+      const icon = tabIcon(tab, filesById)
       const closeBtn = `<button class="editor-tab__close" data-close-key="${escapeHtml(tab.key)}" tabindex="-1" title="Close (Cmd/Ctrl-W)">×</button>`
       const dot = dirty ? '<span class="editor-tab__dot" title="Unsaved changes"></span>' : ''
       return `
@@ -645,6 +666,7 @@ function renderTabStrip(): void {
           data-tab-key="${escapeHtml(tab.key)}"
           title="${escapeHtml(label)}"
         >
+          ${icon}
           <span class="editor-tab__name">${escapeHtml(label)}</span>
           ${dot}
           ${closeBtn}

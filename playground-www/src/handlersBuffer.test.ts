@@ -54,7 +54,6 @@ describe('ensureHandlersFile', () => {
         context: '',
         createdAt: 1,
         updatedAt: 1,
-        locked: false,
       },
     ])
     ensureHandlersFile()

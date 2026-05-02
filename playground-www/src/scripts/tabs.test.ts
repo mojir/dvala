@@ -387,7 +387,6 @@ describe('openOrFocusSnapshotTab', () => {
         kind: 'saved',
         snapshot: { id, message: 'a checkpoint' },
         savedAt: 1000,
-        locked: false,
         ...(name !== undefined ? { name } : {}),
       }),
     }
