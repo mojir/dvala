@@ -2571,6 +2571,8 @@ test.describe('handlers buffer persistence', () => {
     await page.evaluate(() => {
       ;(window as any).Playground.setHandlersCodeForTesting('linear handler @reload.eff(x) -> x * 3 end')
     })
+    // Give IndexedDB time to flush the write before reload
+    await page.waitForTimeout(200)
 
     // Reload and verify the handlers buffer code persisted
     await page.reload()
@@ -2589,6 +2591,8 @@ test.describe('handlers buffer persistence', () => {
   test('empty handlers buffer produces no extra wrapping on reload', async ({ page }) => {
     // Clear the handlers buffer
     await page.evaluate(() => (window as any).Playground.setHandlersCodeForTesting(''))
+    // Give IndexedDB time to flush the write before reload
+    await page.waitForTimeout(200)
 
     await page.reload()
     await waitForInit(page)
