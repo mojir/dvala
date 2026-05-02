@@ -11,7 +11,7 @@
 - `pnpm run build` — build all bundles
 - `pnpm run benchmarks:run` — run the Dvala pipeline perf bench (tokenize → parse → typecheck → run + refinement-typechecker scenarios); appends a row to `benchmarks/pipeline-performance.md`
 
-Run `pnpm run check` after any medium or larger code change.
+Run `pnpm run check` after any medium or larger code change. Use the `/check` skill instead of running `pnpm run check` manually — it also runs e2e tests and auto-fixes failures.
 
 When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI escape codes don't pollute the captured output (applies to `vitest`, `eslint`, etc.).
 
@@ -109,11 +109,7 @@ pnpm run demo abc123   # from hash
 
 ### Before committing
 
-Always show the user a playground demo link before committing. Generate it with:
-
-```bash
-node -e "const code = 'let x = 42; x + 1'; console.log('http://localhost:22230/?state=' + btoa(encodeURIComponent(JSON.stringify({'dvala-code': code}))))"
-```
+Always show the user a playground demo link before committing. Use the `/demo` skill to generate it.
 
 The playground runs on `http://localhost:22230/` (start with `pnpm run dev`).
 
@@ -121,7 +117,7 @@ The playground runs on `http://localhost:22230/` (start with `pnpm run dev`).
 
 Structure bigger tasks by creating `.md` plans inside `/design`.
 
-Prefix all design document filenames with the creation date in ISO format: `YYYY-MM-DD_<name>.md` (e.g. `2026-01-02_my-design.md`).
+Prefix all design document filenames with the creation date in ISO format: `YYYY-MM-DD_<name>.md` (e.g. `2026-01-02_my-design.md`). Use the `/design` skill when asked to create a design document or plan.
 
 ## Dvala Language Reference
 
@@ -134,7 +130,7 @@ Use `dvala` CLI subcommands to look up documentation and run code:
 - `dvala tokenize '<code>' [--debug]` / `dvala parse '<code>' [--debug]` — inspect internals (also accept `-f <file>`)
 - `dvala examples` — example programs
 
-Before suggesting Dvala code to the user, verify it works by running it with `dvala run`.
+Before suggesting Dvala code to the user, verify it works by running it with `dvala run`. Use the `/dvala-run` skill for quick REPL-like evaluation.
 
 ## Playground Architecture
 
@@ -203,6 +199,27 @@ createModalPanel({
 ```
 
 Sizes: small=480px, medium=800px, large=1200px. If `markdown` is provided, body is auto-rendered. If `footerActions` provided, footer buttons are auto-created. Snapshot panel uses `createModalPanel({ size: 'large' })`.
+
+## Skills & Agents
+
+Use the project skills and agents proactively — don't do manually what a skill already handles.
+
+### When to use skills
+
+- **`/dvala`** — Load before writing, debugging, or reasoning about Dvala language code. Always load when you need syntax reference, AST node format, or macro details.
+- **`/check`** — After any code change, use this instead of running `pnpm run check` manually. It also runs e2e tests and fixes failures.
+- **`/demo`** — Before committing user-facing features. Generates playground links and formats demo blocks for commit messages.
+- **`/design`** — When the user asks to create a design document or plan.
+- **`/fix-issue`** — When the user asks to fix a GitHub issue by number.
+- **`/report-issue`** — When the user reports a bug or asks to file an issue.
+- **`/dvala-run`** — When the user wants to quickly run a Dvala snippet.
+- **`/interview`** — When the user has a list of questions or decisions to work through. Walks them one at a time, with options + a recommendation + confidence (low/medium/high) for each.
+
+### When to use agents
+
+- **`explorer`** — For deep codebase research ("how does X work?", "where is Y implemented?"). Use instead of doing many sequential searches yourself.
+- **`test-fixer`** — When tests are failing after code changes. Delegate diagnosis and repair to this agent.
+- **`reviewer`** — Before committing. Ask it to review staged changes for quality and convention adherence.
 
 ## Code Coverage
 
