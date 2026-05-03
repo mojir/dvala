@@ -24,10 +24,10 @@ import type { JsonTreeViewerHandle } from '../components/jsonTreeViewer'
 import { createJsonTreeViewer } from '../components/jsonTreeViewer'
 import { getRightPanel } from './panelInstances'
 
-type RightPanelToolId = 'tokens' | 'ast' | 'cst' | 'doc'
+type RightPanelToolId = 'tokens' | 'ast' | 'cst' | 'doc' | 'snapshot-tree'
 
 function isToolId(id: string | null): id is RightPanelToolId {
-  return id === 'tokens' || id === 'ast' || id === 'cst' || id === 'doc'
+  return id === 'tokens' || id === 'ast' || id === 'cst' || id === 'doc' || id === 'snapshot-tree'
 }
 
 // Tab order: pipeline order, left-to-right. Tokens come first because
@@ -35,6 +35,11 @@ function isToolId(id: string | null): id is RightPanelToolId {
 // CST are sibling parses on top; the Wadler-Lindig Doc tree is the
 // formatter's IR, derived from the CST.
 export const RIGHT_PANEL_TOOL_TABS = [
+  {
+    id: 'snapshot-tree' as const,
+    label: 'JSON Tree',
+    title: 'Interactive JSON tree of the active snapshot',
+  },
   {
     id: 'tokens' as const,
     label: 'Tokens',
@@ -57,10 +62,38 @@ export const RIGHT_PANEL_TOOL_TABS = [
   },
 ]
 
+/**
+ * Tabs shown in the right panel when a `.dvala` file tab is active.
+ * Phase 1.5 step 23j: the JSON Tree tab is snapshot-only; file tabs
+ * get Tokens → AST → CST → Doc Tree.
+ */
+export const FILE_RIGHT_PANEL_TABS = RIGHT_PANEL_TOOL_TABS.filter(
+  t => t.id !== 'snapshot-tree',
+)
+
+/**
+ * Tabs shown in the right panel when a snapshot tab is active.
+ * Only JSON Tree — the Tokens/AST/CST/Doc Tree tools operate on
+ * Dvala source, not snapshot JSON payloads.
+ */
+export const SNAPSHOT_RIGHT_PANEL_TABS = RIGHT_PANEL_TOOL_TABS.filter(
+  t => t.id === 'snapshot-tree',
+)
+
 // Cached viewer handles per tab. `update()` keeps the user's expand/collapse
 // state intact when only the data changed (e.g. afterSwap refresh) — much
 // nicer than rebuilding the tree from scratch every time.
 const handles = new Map<RightPanelToolId, JsonTreeViewerHandle>()
+
+/**
+ * Phase 1.5 step 23j: called after `panel.setTabs(...)` destroys old tab
+ * bodies. Clears the cached viewer handles so the next refresh rebuilds
+ * fresh viewers attached to the new bodies rather than updating stale
+ * handles pointing at detached DOM.
+ */
+export function clearToolHandles(): void {
+  handles.clear()
+}
 
 function setBody(toolId: RightPanelToolId, data: unknown): void {
   const panel = getRightPanel()
@@ -96,6 +129,7 @@ function detailOptions(toolId: RightPanelToolId): {
   }
   if (toolId === 'tokens') return { detailTitle: 'Token' }
   if (toolId === 'cst') return { detailTitle: 'CST node' }
+  if (toolId === 'snapshot-tree') return { detailTitle: 'Value' }
   return { detailTitle: 'Doc node' }
 }
 
@@ -174,6 +208,12 @@ function compute(toolId: RightPanelToolId, code: string): unknown {
       return computeCst(code)
     case 'doc':
       return computeDocTree(code)
+    case 'snapshot-tree':
+      // The snapshot tree is populated externally via
+      // `showSnapshotTreeInRightPanel`. The compute path is unreachable
+      // because `refreshActiveRightPanelTab` won't call it for
+      // snapshot-tree (it's driven from the afterSwap hook in scripts.ts).
+      return null
   }
 }
 
@@ -196,6 +236,14 @@ export function showCstInRightPanel(code: string): void {
 /** Compute the Wadler-Lindig Doc tree for `code`, activate the Doc Tree tab. */
 export function showDocTreeInRightPanel(code: string): void {
   showTool('doc', code)
+}
+
+/**
+ * Populate the snapshot-tree tab. Called from the afterSwap hook and
+ * boot block when the active editor tab is a snapshot.
+ */
+export function setSnapshotTreeData(data: unknown): void {
+  setBody('snapshot-tree', data)
 }
 
 function showTool(toolId: RightPanelToolId, code: string): void {
@@ -228,6 +276,9 @@ export function refreshActiveRightPanelTab(getActiveCode: () => string): void {
   if (panel.isCollapsed()) return
   const tabId = panel.getActiveTabId()
   if (!isToolId(tabId)) return
+  // Phase 1.5 step 23j: snapshot-tree is populated externally via
+  // showSnapshotTreeInRightPanel — never refresh it from dvala-code.
+  if (tabId === 'snapshot-tree') return
   const code = getActiveCode()
   try {
     setBody(tabId, compute(tabId, code))

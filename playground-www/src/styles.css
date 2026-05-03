@@ -2147,14 +2147,20 @@ a.disabled {
   background: var(--color-code-bg);
 }
 
-#snapshot-footer {
-  width: 100%;
+/* Phase 1.5 step 23j — snapshot toolbar inside snapshot tabs. */
+.snapshot-view-header {
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
-#snapshot-footer .modal-panel__footer {
-  width: 100%;
-  box-sizing: border-box;
+.snapshot-toolbar {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
 }
 
 /* Layout panels (right + bottom). Both host the Panel component, which

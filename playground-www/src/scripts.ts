@@ -17,10 +17,14 @@ import type { DvalaErrorJSON } from '../../src/errors'
 import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
 import {
   RIGHT_PANEL_TOOL_TABS,
+  FILE_RIGHT_PANEL_TABS,
+  SNAPSHOT_RIGHT_PANEL_TABS,
+  clearToolHandles,
   refreshActiveRightPanelTab,
   showAstInRightPanel,
   showCstInRightPanel,
   showDocTreeInRightPanel,
+  setSnapshotTreeData,
   showTokensInRightPanel,
 } from './scripts/rightPanelTools'
 import { renderBenchmarksCharts } from './components/benchmarksPage'
@@ -99,6 +103,7 @@ import {
   setBottomPanel,
   setRightPanel,
   syncBodyClasses,
+  getRightPanel,
   tryGetBottomPanel,
   tryGetRightPanel,
 } from './scripts/panelInstances'
@@ -1561,79 +1566,60 @@ function onDocumentClick(event: Event) {
  */
 
 /**
- * Sync the left side panel, right panel, and their toggle button to match
- * the active editor tab's kind. File tabs get the file explorer + right
- * panel; snapshot tabs get the snapshot list and no right panel (snapshot
- * tabs have their own UI/Tree/Raw view switcher).
+ * Sync the left side panel and right-panel tab set to match the active
+ * editor tab's kind. File tabs get the file explorer + file-right-panel
+ * tabs; snapshot tabs get the snapshot list + snapshot-right-panel tabs.
+ *
+ * Phase 1.5 step 23j: no CSS manipulation. The right panel's collapsed
+ * state is global (user's preference survives across tab switches) and
+ * is governed by the Panel's own `onChange` → `persistRightPanel` →
+ * `applyLayout` pipeline. This function just swaps the tab set; the Panel
+ * and `applyLayout` handle visibility, grid, and the toggle button.
  */
 function syncChromeForActiveTabKind() {
   const activeKind = getActiveTabKind()
-  const editorTop = document.getElementById('editor-top')
-  const toggleBtn = document.getElementById('right-panel-toggle-btn')
-  const rightPanel = document.getElementById('right-panel')
-  const divider3 = document.getElementById('resize-divider-3')
 
   if (activeKind === 'snapshot') {
-    // Left panel: switch to snapshots tab
-    document.querySelectorAll('.side-panel__tab').forEach(el => ((el as HTMLElement).style.display = 'none'))
-    const snapTab = document.getElementById('side-tab-snapshots')
-    if (snapTab) snapTab.style.display = ''
-    document.querySelectorAll('.side-panel__icon').forEach(el => el.classList.remove('side-panel__icon--active'))
-    document.getElementById('side-icon-snapshots')?.classList.add('side-panel__icon--active')
-    document.querySelectorAll('[id^="side-header-"]').forEach(el => {
-      if (el.id === 'side-panel-header') return
-      ;(el as HTMLElement).style.display = 'none'
-    })
-    const snapHeader = document.getElementById('side-header-snapshots')
-    if (snapHeader) snapHeader.style.display = ''
-    const snapActions = document.getElementById('side-header-actions-snapshots')
-    if (snapActions) snapActions.style.display = ''
-    populateSideSnapshotsList()
-
-    // Right panel: collapse to 0-width columns + hide toggle button.
-    // Snapshot tabs have their own UI/Tree/Raw view switcher in the
-    // editor area, so the right panel's AST/tokens view isn't relevant.
-    if (editorTop) {
-      const sidePercent = getState('resize-divider-1-percent')
-      editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 0 0`
-      editorTop.classList.add('right-panel-collapsed')
+    // Left panel: snapshots tab
+    showLeftPanelTab('snapshots')
+    try {
+      getRightPanel().setTabs(SNAPSHOT_RIGHT_PANEL_TABS)
+      clearToolHandles()
+    } catch {
+      // Panel not yet initialized.
     }
-    if (toggleBtn) toggleBtn.style.display = 'none'
-    if (rightPanel) rightPanel.style.display = 'none'
-    if (divider3) divider3.style.display = 'none'
   } else if (activeKind === 'file') {
-    // Left panel: switch to files tab
-    document.querySelectorAll('.side-panel__tab').forEach(el => ((el as HTMLElement).style.display = 'none'))
-    const fileTab = document.getElementById('side-tab-files')
-    if (fileTab) fileTab.style.display = ''
-    document.querySelectorAll('.side-panel__icon').forEach(el => el.classList.remove('side-panel__icon--active'))
-    document.getElementById('side-icon-files')?.classList.add('side-panel__icon--active')
-    document.querySelectorAll('[id^="side-header-"]').forEach(el => {
-      if (el.id === 'side-panel-header') return
-      ;(el as HTMLElement).style.display = 'none'
-    })
-    const fileHeader = document.getElementById('side-header-files')
-    if (fileHeader) fileHeader.style.display = ''
-    const fileActions = document.getElementById('side-header-actions-files')
-    if (fileActions) fileActions.style.display = ''
-    populateExplorerFileList()
-
-    // Right panel: restore to user's collapsed preference.
-    if (editorTop) {
-      const sidePercent = getState('resize-divider-1-percent')
-      if (getState('right-panel-collapsed')) {
-        editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 0 0`
-        editorTop.classList.add('right-panel-collapsed')
-      } else {
-        const rightPercent = clampRightPercent(getState('right-panel-size-percent'), sidePercent)
-        editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 5px ${rightPercent}%`
-        editorTop.classList.remove('right-panel-collapsed')
-      }
+    // Left panel: files tab
+    showLeftPanelTab('files')
+    try {
+      getRightPanel().setTabs(FILE_RIGHT_PANEL_TABS)
+      clearToolHandles()
+    } catch {
+      // Panel not yet initialized.
     }
-    if (toggleBtn) toggleBtn.style.display = ''
-    if (rightPanel) rightPanel.style.display = ''
-    if (divider3) divider3.style.display = ''
   }
+}
+
+/** Switch the left side panel to `tab` ('files' or 'snapshots'). */
+function showLeftPanelTab(tab: 'files' | 'snapshots') {
+  document.querySelectorAll('.side-panel__tab').forEach(el => ((el as HTMLElement).style.display = 'none'))
+  const targetTab = document.getElementById(`side-tab-${tab}`)
+  if (targetTab) targetTab.style.display = ''
+
+  document.querySelectorAll('.side-panel__icon').forEach(el => el.classList.remove('side-panel__icon--active'))
+  document.getElementById(`side-icon-${tab}`)?.classList.add('side-panel__icon--active')
+
+  document.querySelectorAll('[id^="side-header-"]').forEach(el => {
+    if (el.id === 'side-panel-header') return
+    ;(el as HTMLElement).style.display = 'none'
+  })
+  const targetHeader = document.getElementById(`side-header-${tab}`)
+  if (targetHeader) targetHeader.style.display = ''
+  const targetActions = document.getElementById(`side-header-actions-${tab}`)
+  if (targetActions) targetActions.style.display = ''
+
+  if (tab === 'snapshots') populateSideSnapshotsList()
+  else populateExplorerFileList()
 }
 
 function applyLayout() {
@@ -2015,6 +2001,44 @@ function initLayoutPanels(): void {
   syncBodyClasses()
 }
 
+// Phase 1.5 step 23j: wire the snapshot toolbar buttons (Resume, Save,
+// Download, Copy JSON) that sit in the static #snapshot-view-header HTML.
+// These fire against `state.currentSnapshot`, which is always set by
+// `replaceSnapshotView` before the snapshot view becomes visible.
+function wireSnapshotToolbarListeners(): void {
+  const resumeBtn = document.getElementById('snapshot-resume-btn')
+  const saveBtn = document.getElementById('snapshot-save-btn')
+  const downloadBtn = document.getElementById('snapshot-download-btn')
+  const copyJsonBtn = document.getElementById('snapshot-copy-json-btn')
+
+  resumeBtn?.addEventListener('click', () => {
+    void resumeSnapshot()
+  })
+
+  saveBtn?.addEventListener('click', () => {
+    const snap = state.currentSnapshot
+    if (!snap) return
+    pushSavePanel((name: string) => {
+      const existing = getSavedSnapshots().filter(s => s.snapshot.id !== snap.id)
+      existing.unshift({ kind: 'saved', snapshot: snap, savedAt: Date.now(), name: name || undefined })
+      setSavedSnapshots(existing)
+      populateSnapshotsList({ animateNewSaved: true })
+      showToast(`Snapshot saved (${existing.length} total)`)
+    })
+  })
+
+  downloadBtn?.addEventListener('click', () => {
+    downloadSnapshot()
+  })
+
+  copyJsonBtn?.addEventListener('click', () => {
+    if (state.currentSnapshot) {
+      void navigator.clipboard.writeText(JSON.stringify(state.currentSnapshot, null, 2))
+      showToast('JSON copied to clipboard')
+    }
+  })
+}
+
 // Wire Monaco listeners that mirror the textarea-era event hooks: every model
 // change pushes into playground state + history; selection / scroll / focus
 // updates persist their own slices of state. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z
@@ -2106,6 +2130,7 @@ window.onload = async function () {
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   wireCodeEditorListeners()
   wireExplorerListeners()
+  wireSnapshotToolbarListeners()
   // Wire lifecycle hooks BEFORE initTabs so any future tab switch routes
   // through them. The before-swap hook flushes pending autosave (avoids
   // the next-tick race where the wrong file gets saved); the after-swap
@@ -2114,33 +2139,52 @@ window.onload = async function () {
     beforeSwap: () => flushPendingAutoSave(),
     afterSwap: () => {
       activateCurrentFileHistory(false)
-      // After swapping editor tabs, re-run the active right-panel tool
-      // (AST/Tokens/CST) against the new active file. The right panel
-      // always reflects the file you're looking at — no manual re-trigger
-      // needed. Inactive tools stay stale until the user clicks them
-      // (the panel's onChange callback then refreshes the new active tab).
-      refreshActiveRightPanelTab(() => getState('dvala-code'))
-      // Phase 1.5 step 23j stage 2: when the new active tab is a snapshot
-      // tab, populate the snapshot view with the right snapshot data and
-      // swap the editor area accordingly. For file tabs `syncCodePanelView`
-      // alone is enough (it shows the editor view); snapshot tabs need a
-      // `replaceSnapshotView` first because the panel is data-driven.
+      // Phase 1.5 step 23j: set correct right-panel tabs FIRST so any
+      // subsequent body population writes into valid tab bodies. setTabs
+      // destroys old bodies and creates fresh ones; its onChange may fire
+      // refreshActiveRightPanelTab which writes null into snapshot-tree
+      // — the per-kind data-population below overwrites that.
+      syncChromeForActiveTabKind()
       const activeSnapshotId = getActiveSnapshotTabId()
       if (activeSnapshotId !== null) {
         const details = getSnapshotDetailsById(activeSnapshotId)
-        if (details) replaceSnapshotView(details.snapshot, details.label)
+        if (details) {
+          replaceSnapshotView(details.snapshot, details.label)
+          // Populate the right panel's snapshot-tree tab.
+          setSnapshotTreeData(details.snapshot)
+        }
       }
       syncCodePanelView()
-      syncChromeForActiveTabKind()
       syncPlaygroundUrlState()
       updateCSS()
     },
   })
   initTabs()
+  // Phase 1.5 step 23j: initTabs() sets the active tab directly (not
+  // through setActive), so the afterSwap hook doesn't fire during boot.
+  // Run the pre-panel parts now; panel-sensitive calls are deferred to
+  // after initLayoutPanels() below.
+  activateCurrentFileHistory(false)
+  syncCodePanelView()
+  syncPlaygroundUrlState()
+  updateCSS()
   wireTabStripListeners()
   wireTabKeyboardShortcuts()
   wireQuickOpenShortcut()
   initLayoutPanels()
+  // Phase 1.5 step 23j: panel-dependent boot initialization. initTabs()
+  // set the active tab directly (not through setActive), so the afterSwap
+  // hook didn't fire. Run setTabs FIRST (establishes correct tab list +
+  // fresh bodies), THEN populate content into the now-valid tab bodies.
+  syncChromeForActiveTabKind()
+  const bootSnapshotId = getActiveSnapshotTabId()
+  if (bootSnapshotId !== null) {
+    const details = getSnapshotDetailsById(bootSnapshotId)
+    if (details) {
+      replaceSnapshotView(details.snapshot, details.label)
+      setSnapshotTreeData(details.snapshot)
+    }
+  }
 
   document.addEventListener('click', onDocumentClick, true)
 
@@ -3532,8 +3576,7 @@ export function syncSnapshotExecutionControls() {
 
 function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = state.snapshotExecutionControlsVisible) {
   const content = document.getElementById('snapshot-content')
-  const footerHost = document.getElementById('snapshot-footer')
-  if (!content || !footerHost) return
+  if (!content) return
 
   // Set current snapshot for the control bar and other functions
   state.currentSnapshot = snapshot
@@ -3542,13 +3585,15 @@ function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = state.s
   // Render the snapshot panel content (reuse existing panel builder)
   const error = getSnapshotError(snapshot)
   const panel = createSnapshotPanel(snapshot, error)
-  // Extract just the body content from the panel (skip modal header/footer)
+  // Extract just the body content from the panel (skip modal header/footer).
+  // Phase 1.5 step 23j: the toolbar buttons (Resume, Save, Download, Copy
+  // JSON) live in the static #snapshot-view-header HTML and are wired once
+  // at boot. The modal footer buttons from createSnapshotPanel are skipped
+  // — the static toolbar is the canonical action surface for tab-based
+  // snapshot viewing.
   const body = panel.querySelector('.modal-panel__body')
-  const footer = panel.querySelector('.modal-panel__footer')
   content.innerHTML = ''
-  footerHost.innerHTML = ''
   if (body) content.appendChild(body)
-  if (footer) footerHost.appendChild(footer)
 
   syncSnapshotExecutionControls()
 }

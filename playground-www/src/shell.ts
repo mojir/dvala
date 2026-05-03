@@ -261,8 +261,15 @@ function getPlaygroundPanel(): string {
         </div>
         <div id="dvala-empty-view" class="dvala-empty-view" style="display:none;"></div>
         <div id="dvala-snapshot-view" style="display:none;">
+          <div id="snapshot-view-header" class="snapshot-view-header">
+            <div id="snapshot-toolbar" class="snapshot-toolbar">
+              <button type="button" id="snapshot-resume-btn" class="button button--primary button--small">Run</button>
+              <button type="button" id="snapshot-save-btn" class="button button--small">Save</button>
+              <button type="button" id="snapshot-download-btn" class="button button--small">Download</button>
+              <button type="button" id="snapshot-copy-json-btn" class="button button--small">Copy JSON</button>
+            </div>
+          </div>
           <div id="snapshot-content" class="snapshot-content fancy-scroll"></div>
-          <div id="snapshot-footer"></div>
         </div>
       </div>
       <div id="resize-divider-3"></div>
