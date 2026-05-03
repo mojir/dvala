@@ -42,6 +42,12 @@ interface PanelOptions {
   /** Fires after every state change (active-tab swap, collapse toggle). */
   onChange?: (state: { activeTabId: string | null; collapsed: boolean }) => void
   /**
+   * Fires BEFORE setTabs clears old DOM and rebuilds. Consumers use this
+   * to drop stale caches that hold references to the old body elements
+   * (e.g. JSON tree viewer handles in rightPanelTools.ts).
+   */
+  onTabsChanging?: () => void
+  /**
    * Optional element rendered at the right edge of the tab strip — useful
    * for tab-shell-level actions (e.g. an Output panel's Clear button) so
    * the body doesn't need its own toolbar. The element's children get
@@ -85,6 +91,12 @@ export interface Panel {
   isTabVisible(tabId: string): boolean
   /** Snapshot of currently-visible tab ids in their DOM order. */
   getVisibleTabIds(): string[]
+  /**
+   * Replace the tab set at runtime. Rebuilds the tab strip and bodies.
+   * Preserves the active tab if it appears in the new list; otherwise
+   * activates the first new tab. Old body elements are destroyed.
+   */
+  setTabs(tabs: PanelTabSpec[]): void
 }
 
 /** Build the panel DOM and wire its event handlers. */
@@ -344,6 +356,84 @@ export function createPanel(options: PanelOptions): Panel {
     },
     getVisibleTabIds() {
       return visibleIdsInOrder()
+    },
+    setTabs(tabs) {
+      if (tabs.length === 0) return // can't represent a tab-less panel
+
+      // Phase 1.5 step 23j: clear viewer handles BEFORE firing onChange so
+      // any synchronous refreshActiveRightPanelTab call rebuilds fresh
+      // viewers attached to the new bodies rather than updating stale
+      // handles pointing at the destroyed old DOM.
+      options.onTabsChanging?.()
+
+      const newIds = new Set(tabs.map(t => t.id))
+
+      // Clear old strip and bodies
+      stripEl.innerHTML = ''
+      bodiesEl.innerHTML = ''
+      tabBodies.clear()
+      tabButtons.clear()
+      hiddenFlags.clear()
+      for (const tab of tabs) hiddenFlags.set(tab.id, false)
+
+      // Rebuild
+      for (const tab of tabs) {
+        const tabBtn = document.createElement('button')
+        tabBtn.type = 'button'
+        tabBtn.className = 'panel-shell__tab'
+        tabBtn.dataset['panelTabId'] = tab.id
+        if (tab.title) tabBtn.title = tab.title
+        tabBtn.setAttribute('role', 'tab')
+
+        const labelEl = document.createElement('span')
+        labelEl.className = 'panel-shell__tab-label'
+        labelEl.textContent = tab.label
+        tabBtn.appendChild(labelEl)
+
+        if (tab.closable) {
+          const closeBtn = document.createElement('span')
+          closeBtn.className = 'panel-shell__tab-close'
+          closeBtn.textContent = '×'
+          closeBtn.dataset['panelTabClose'] = tab.id
+          closeBtn.setAttribute('role', 'button')
+          closeBtn.setAttribute('aria-label', `Close ${tab.label} tab`)
+          tabBtn.appendChild(closeBtn)
+        }
+
+        stripEl.appendChild(tabBtn)
+        tabButtons.set(tab.id, tabBtn)
+
+        const body = document.createElement('div')
+        body.className = 'panel-shell__body'
+        body.dataset['panelTabId'] = tab.id
+        body.setAttribute('role', 'tabpanel')
+        bodiesEl.appendChild(body)
+        tabBodies.set(tab.id, body)
+      }
+
+      if (options.trailingActions) stripEl.appendChild(options.trailingActions)
+
+      // Update options.tabs so hideTab's neighbor-finding walks the
+      // correct list. The idempotent-wrapper `visibleIdsInOrder` reads
+      // `options.tabs` — it doesn't capture a local snapshot.
+      options.tabs = tabs
+
+      // Preserve active tab if it still exists, otherwise pick first.
+      if (activeTabId !== null && !newIds.has(activeTabId)) {
+        activeTabId = tabs[0]!.id
+      }
+      // If all tabs are hidden (collapsed), pick first visible tab.
+      if (activeTabId === null) {
+        const firstVisible = tabs.find(t => !hiddenFlags.get(t.id))
+        activeTabId = firstVisible?.id ?? null
+      }
+
+      applyVisibility()
+      applyActive()
+      applyCollapsed()
+      // Notify consumers that the tab set changed. The active tab may
+      // have switched; consumers use this to refresh content.
+      options.onChange?.({ activeTabId, collapsed })
     },
   }
 
