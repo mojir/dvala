@@ -1584,7 +1584,6 @@ function syncChromeForActiveTabKind() {
     showLeftPanelTab('snapshots')
     try {
       getRightPanel().setTabs(SNAPSHOT_RIGHT_PANEL_TABS)
-      clearToolHandles()
     } catch {
       // Panel not yet initialized.
     }
@@ -1593,7 +1592,6 @@ function syncChromeForActiveTabKind() {
     showLeftPanelTab('files')
     try {
       getRightPanel().setTabs(FILE_RIGHT_PANEL_TABS)
-      clearToolHandles()
     } catch {
       // Panel not yet initialized.
     }
@@ -1950,6 +1948,10 @@ function initLayoutPanels(): void {
       // "active tab actually changed" bookkeeping.
       if (!collapsed) refreshActiveRightPanelTab(() => getState('dvala-code'))
     },
+    // Phase 1.5 step 23j: clear viewer handles before setTabs destroys old
+    // bodies, so the onChange → refreshActiveRightPanelTab chain creates
+    // fresh viewers attached to the new bodies.
+    onTabsChanging: () => clearToolHandles(),
   })
   setRightPanel(rightPanel)
   // Wire the toggle button on the editor tab bar. The button lives in

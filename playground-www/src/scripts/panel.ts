@@ -42,6 +42,12 @@ interface PanelOptions {
   /** Fires after every state change (active-tab swap, collapse toggle). */
   onChange?: (state: { activeTabId: string | null; collapsed: boolean }) => void
   /**
+   * Fires BEFORE setTabs clears old DOM and rebuilds. Consumers use this
+   * to drop stale caches that hold references to the old body elements
+   * (e.g. JSON tree viewer handles in rightPanelTools.ts).
+   */
+  onTabsChanging?: () => void
+  /**
    * Optional element rendered at the right edge of the tab strip — useful
    * for tab-shell-level actions (e.g. an Output panel's Clear button) so
    * the body doesn't need its own toolbar. The element's children get
@@ -353,6 +359,12 @@ export function createPanel(options: PanelOptions): Panel {
     },
     setTabs(tabs) {
       if (tabs.length === 0) return // can't represent a tab-less panel
+
+      // Phase 1.5 step 23j: clear viewer handles BEFORE firing onChange so
+      // any synchronous refreshActiveRightPanelTab call rebuilds fresh
+      // viewers attached to the new bodies rather than updating stale
+      // handles pointing at the destroyed old DOM.
+      options.onTabsChanging?.()
 
       const newIds = new Set(tabs.map(t => t.id))
 
