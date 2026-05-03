@@ -109,7 +109,6 @@ import {
 } from './scripts/panelInstances'
 import { wireQuickOpenShortcut } from './scripts/quickOpen'
 import {
-  closeActiveTab,
   closeTabsForMissingFiles,
   focusScratch,
   getActiveSnapshotTabId,
@@ -2881,7 +2880,7 @@ export async function run() {
     }
     if (runResult.type === 'suspended') {
       appendOutput('File suspended', 'comment')
-      void openSnapshotModal(runResult.snapshot)
+      saveAndOpenSnapshotTab(runResult.snapshot, 'halted', 'File suspended')
       return
     }
     if (runResult.type === 'halted') {
@@ -3606,51 +3605,22 @@ export function replaceSnapshotView(snapshot: Snapshot, label = 'Snapshot') {
   showSnapshotInPanel(snapshot, false)
 }
 
-export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
-  // Push onto the breadcrumb stack and render in the code panel
-  const label = state.snapshotViewStack.length === 0 ? 'Snapshot' : `Checkpoint ${state.snapshotViewStack.length}`
-  state.snapshotViewStack.push({ label, snapshot })
-  showSnapshotInPanel(snapshot, true)
-
-  // Phase 1.5 step 23j stage 2: the legacy modal flow (suspension /
-  // halted runs, URL `?snapshot=` blob, snapshot import) opens this view
-  // for snapshots that aren't backed by a workspace file — so they have
-  // no editor-area tab, and `syncCodePanelView`'s active-tab-kind branch
-  // would default to the editor view. Until 23l retires this path
-  // entirely, we force-show the snapshot view here so suspended runs
-  // still render the inspector.
-  const editorView = document.getElementById('dvala-editor-view')
-  const snapshotView = document.getElementById('dvala-snapshot-view')
-  const emptyView = document.getElementById('dvala-empty-view')
-  if (editorView) editorView.style.display = 'none'
-  if (emptyView) emptyView.style.display = 'none'
-  if (snapshotView) snapshotView.style.display = 'flex'
-
-  return new Promise<void>(resolve => {
-    state.resolveSnapshotModal = resolve
-  })
-}
-
-export function closeSnapshotView() {
-  // Phase 1.5 step 23j stage 2: clear the snapshot-view state machinery
-  // first, then close the active snapshot tab. Without the explicit
-  // `closeActiveTab()` call the snapshot view stayed visible because
-  // `syncCodePanelView` reads active tab kind — clearing
-  // `state.activeSnapshotKey` alone doesn't change which TAB is active,
-  // so the snapshot panel kept rendering (blank, since the underlying
-  // state machinery was wiped). Closing the tab triggers the natural
-  // fallback to a neighbor file tab; the afterSwap hook then runs
-  // `syncCodePanelView` and the editor area swaps to the editor view.
-  state.snapshotViewStack.splice(0)
-  state.activeSnapshotKey = null
-  populateSideSnapshotsList()
-  state.currentSnapshot = null
-  state.snapshotExecutionControlsVisible = false
-  state.resolveSnapshotModal?.()
-  state.resolveSnapshotModal = null
-  hideExecutionControlBar()
-  closeActiveTab()
-  syncPlaygroundUrlState()
+/**
+ * Phase 1.5 step 23l: save a snapshot as a workspace file and open it as
+ * an editor-area tab. Replaces the legacy `openSnapshotModal` — snapshots
+ * from suspended runs, halted runs, and imports now open in the tab-based
+ * viewer with the JSON tree in the right panel.
+ */
+function saveAndOpenSnapshotTab(
+  snapshot: Snapshot,
+  resultType: TerminalSnapshotEntry['resultType'],
+  toast?: string,
+): void {
+  const entries = getTerminalSnapshots()
+  entries.unshift({ kind: 'terminal', snapshot, savedAt: Date.now(), resultType })
+  setTerminalSnapshots(entries)
+  openOrFocusSnapshotTab(snapshot.id)
+  if (toast) showToast(toast)
 }
 
 export function openImportSnapshotModal() {
@@ -3683,7 +3653,7 @@ export function openImportSnapshotModal() {
         return
       }
       showToast('Snapshot imported')
-      void openSnapshotModal(parsed as Snapshot)
+      saveAndOpenSnapshotTab(parsed as Snapshot, 'halted', 'Snapshot imported')
     }
     reader.readAsText(file)
   }
@@ -4187,7 +4157,7 @@ export async function resumeSnapshot() {
     }
     if (runResult.type === 'suspended') {
       appendOutput('File suspended', 'comment')
-      void openSnapshotModal(runResult.snapshot)
+      saveAndOpenSnapshotTab(runResult.snapshot, 'halted', 'File suspended')
       return
     }
     if (runResult.type === 'halted') {
