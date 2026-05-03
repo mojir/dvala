@@ -4,6 +4,11 @@
 - Before starting work, check the current branch. If on `main`, create and switch to a new branch.
 - When work is complete, ask the user if they want to create a pull request to `main`.
 
+### Tool discipline
+
+- **Git operations:** Use the `git` CLI directly (`git add`, `git commit`, `git push`, `git branch`, `git checkout`, `git merge`, `git pull`, `git diff`, `git log`). Do NOT use the `mcp__gitkraken_*` tools — they add indirection without benefit.
+- **GitHub operations:** Use the `gh` CLI for issues, pull requests, and repo operations (`gh pr create`, `gh issue view`, `gh repo view`). Do NOT use `mcp__gitkraken_*_create` / `mcp__gitkraken_*_get` tools.
+
 ## Key Commands
 
 - `pnpm run check` — full pipeline: lint + typecheck + test + build
