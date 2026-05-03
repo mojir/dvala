@@ -1,7 +1,8 @@
 # Remove `#dvala-panel-header` — fold into tab strip + toolbar
 
-**Status:** Draft
+**Status:** Complete ✅
 **Created:** 2026-05-02
+**Merged:** #157, plus follow-up fixes in #160
 
 ## Goal
 
