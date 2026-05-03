@@ -7,7 +7,28 @@
 ### Tool discipline
 
 - **Git operations:** Use the `git` CLI directly (`git add`, `git commit`, `git push`, `git branch`, `git checkout`, `git merge`, `git pull`, `git diff`, `git log`). Do NOT use the `mcp__gitkraken_*` tools — they add indirection without benefit.
-- **GitHub operations:** Use the `gh` CLI for issues, pull requests, and repo operations (`gh pr create`, `gh issue view`, `gh repo view`). Do NOT use `mcp__gitkraken_*_create` / `mcp__gitkraken_*_get` tools.
+- **GitHub operations:** Use the `gh` CLI for issues, pull requests, and repo operations. Do NOT use `mcp__gitkraken_*` tools — they add indirection without benefit.
+
+**PR review workflow (ALWAYS use these commands, NEVER the Kraken tools):**
+
+```bash
+# Get PR details (title, body, branch, status, CI checks)
+gh pr view <number> --json number,title,body,state,baseRefName,headRefName,statusCheckRollup,labels,author,url
+
+# Get the full diff
+gh pr diff <number>
+
+# Get review comments on the PR
+gh pr view <number> --comments --json comments
+
+# Get the list of changed files
+gh pr view <number> --json files
+
+# Check out the PR branch locally (if you need to run / build / test)
+gh pr checkout <number>
+```
+
+When the user asks to review a PR, your first action must be `gh pr view <number>` and `gh pr diff <number>`. Never touch `mcp_gitkraken_pull_request_*`.
 
 ## Key Commands
 
