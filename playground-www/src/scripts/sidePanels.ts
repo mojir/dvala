@@ -3,6 +3,7 @@
 import type { EditorMenuItem } from '../editorMenu'
 import { renderEditorMenu } from '../editorMenu'
 import { SCRATCH_FILE_ID } from '../scratchBuffer'
+import { getWorkspaceFiles } from '../fileStorage'
 import { ICONS, escapeHtml, getActiveSnapshotDetails, replaceSnapshotView, updateCSS } from '../scripts'
 import { getSavedSnapshots, getTerminalSnapshots } from '../snapshotStorage'
 import { getState, saveState } from '../state'
@@ -12,48 +13,35 @@ import { state } from './playgroundState'
 export const SIDE_SNAPSHOTS_VISIBLE = 5
 type SideTabId = 'files' | 'snapshots'
 
-export function normalizeSideTab(tabId: string | null | undefined): SideTabId {
+function normalizeSideTab(tabId: string | null | undefined): SideTabId {
   if (tabId === 'snapshots') return tabId
   return 'files'
 }
 
-export function getActiveSnapshotUrlId(): string | null {
-  if (!state.activeSnapshotKey) return null
-
-  if (state.activeSnapshotKey.startsWith('terminal:')) {
-    const index = Number(state.activeSnapshotKey.slice('terminal:'.length))
-    return getTerminalSnapshots()[index]?.snapshot.id ?? null
-  }
-
-  if (state.activeSnapshotKey.startsWith('saved:')) {
-    const index = Number(state.activeSnapshotKey.slice('saved:'.length))
-    return getSavedSnapshots()[index]?.snapshot.id ?? null
-  }
-
-  return null
-}
-
-export function syncPlaygroundUrlState(tabId: SideTabId) {
+/**
+ * Mirror the active editor tab to the URL bar via `path` query param.
+ * The path is the workspace file's `path` field — works for all file types
+ * (workspace files, scratch, handlers, saved snapshots, terminal snapshots).
+ * Scratch is never written to the URL (it's the default).
+ */
+export function syncPlaygroundUrlState() {
   const url = new URL(window.location.href)
-  url.searchParams.set('view', tabId)
-
-  // Don't leak the scratch sentinel ID into shareable URLs — recipients open
-  // scratch by default anyway, so omitting `fileId` for scratch is equivalent
-  // and keeps the URL cleaner.
   const activeFileId = getState('current-file-id')
-  if (tabId === 'files' && activeFileId && activeFileId !== SCRATCH_FILE_ID) {
-    url.searchParams.set('fileId', activeFileId)
+  if (activeFileId && activeFileId !== SCRATCH_FILE_ID) {
+    const file = getWorkspaceFiles().find(f => f.id === activeFileId)
+    if (file) {
+      url.searchParams.set('path', file.path)
+    } else {
+      url.searchParams.delete('path')
+    }
   } else {
-    url.searchParams.delete('fileId')
+    url.searchParams.delete('path')
   }
 
-  const snapshotId = tabId === 'snapshots' ? getActiveSnapshotUrlId() : null
-  if (snapshotId) url.searchParams.set('snapshotId', snapshotId)
-  else url.searchParams.delete('snapshotId')
-
-  // Legacy `bindingName` / `contextEntryKind` URL params (Phase 1.5 step 23f
-  // retired the Context tab) are stripped on every URL sync so old shared
-  // links don't leave stale params hanging around after first navigation.
+  // Strip legacy params that are no longer used.
+  url.searchParams.delete('view')
+  url.searchParams.delete('fileId')
+  url.searchParams.delete('snapshotId')
   url.searchParams.delete('bindingName')
   url.searchParams.delete('contextEntryKind')
 
@@ -216,7 +204,7 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
 
   if (options.persist !== false) saveState({ 'active-side-tab': normalizedTabId }, false)
 
-  if (options.syncUrl !== false) syncPlaygroundUrlState(normalizedTabId)
+  if (options.syncUrl !== false) syncPlaygroundUrlState()
 
   // Sync the code panel view and header
   syncCodePanelView()

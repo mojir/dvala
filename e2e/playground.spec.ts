@@ -2393,7 +2393,7 @@ test.describe('tab state persistence', () => {
 
     // Click the snapshots side panel icon
     await page.locator('#side-icon-snapshots').click()
-    await page.waitForFunction(() => window.location.search.includes('view=snapshots'), { timeout: 3000 })
+    await expect(page.locator('#side-icon-snapshots')).toHaveClass(/side-panel__icon--active/)
 
     // Click the Reference tab
     await page.evaluate(() => (window as any).Playground.navigateToTab('ref'))
@@ -2409,9 +2409,9 @@ test.describe('tab state persistence', () => {
     await page.locator('#tab-btn-editor').click()
     await page.locator('#tab-editor').waitFor({ state: 'visible', timeout: 3000 })
 
-    // Snapshots icon should still be active and URL should reflect snapshots panel
+    // Snapshots icon should still be active and the snapshots side tab should be visible.
     await expect(page.locator('#side-icon-snapshots')).toHaveClass(/side-panel__icon--active/)
-    expect(page.url()).toContain('view=snapshots')
+    await expect(page.locator('#side-tab-snapshots')).toBeVisible()
   })
 
   test('switching tabs preserves position in reference tab', async ({ page }) => {
