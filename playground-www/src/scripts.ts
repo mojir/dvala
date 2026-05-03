@@ -108,6 +108,7 @@ import {
   closeTabsForMissingFiles,
   focusScratch,
   getActiveSnapshotTabId,
+  getActiveTabKind,
   initTabs,
   invalidateSnapshotTabLabel,
   notifyTabsChanged,
@@ -130,6 +131,7 @@ import {
   isScratchActive,
   openScratchInEditor,
   persistScratchFromCurrentState,
+  populateExplorerFileList,
   populateWorkspaceFilesList,
   scheduleAutoSave,
   scheduleScratchEditedClear,
@@ -1559,6 +1561,83 @@ function onDocumentClick(event: Event) {
  * Steady-state mutations route `onChange → persistRightPanel/Bottom →
  * applyLayout`, keeping the state store and Panel instances in sync.
  */
+
+/**
+ * Sync the left side panel, right panel, and their toggle button to match
+ * the active editor tab's kind. File tabs get the file explorer + right
+ * panel; snapshot tabs get the snapshot list and no right panel (snapshot
+ * tabs have their own UI/Tree/Raw view switcher).
+ */
+function syncChromeForActiveTabKind() {
+  const activeKind = getActiveTabKind()
+  const editorTop = document.getElementById('editor-top')
+  const toggleBtn = document.getElementById('right-panel-toggle-btn')
+  const rightPanel = document.getElementById('right-panel')
+  const divider3 = document.getElementById('resize-divider-3')
+
+  if (activeKind === 'snapshot') {
+    // Left panel: switch to snapshots tab
+    document.querySelectorAll('.side-panel__tab').forEach(el => ((el as HTMLElement).style.display = 'none'))
+    const snapTab = document.getElementById('side-tab-snapshots')
+    if (snapTab) snapTab.style.display = ''
+    document.querySelectorAll('.side-panel__icon').forEach(el => el.classList.remove('side-panel__icon--active'))
+    document.getElementById('side-icon-snapshots')?.classList.add('side-panel__icon--active')
+    document.querySelectorAll('[id^="side-header-"]').forEach(el => {
+      if (el.id === 'side-panel-header') return
+      ;(el as HTMLElement).style.display = 'none'
+    })
+    const snapHeader = document.getElementById('side-header-snapshots')
+    if (snapHeader) snapHeader.style.display = ''
+    const snapActions = document.getElementById('side-header-actions-snapshots')
+    if (snapActions) snapActions.style.display = ''
+    populateSideSnapshotsList()
+
+    // Right panel: collapse to 0-width columns + hide toggle button.
+    // Snapshot tabs have their own UI/Tree/Raw view switcher in the
+    // editor area, so the right panel's AST/tokens view isn't relevant.
+    if (editorTop) {
+      const sidePercent = getState('resize-divider-1-percent')
+      editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 0 0`
+      editorTop.classList.add('right-panel-collapsed')
+    }
+    if (toggleBtn) toggleBtn.style.display = 'none'
+    if (rightPanel) rightPanel.style.display = 'none'
+    if (divider3) divider3.style.display = 'none'
+  } else if (activeKind === 'file') {
+    // Left panel: switch to files tab
+    document.querySelectorAll('.side-panel__tab').forEach(el => ((el as HTMLElement).style.display = 'none'))
+    const fileTab = document.getElementById('side-tab-files')
+    if (fileTab) fileTab.style.display = ''
+    document.querySelectorAll('.side-panel__icon').forEach(el => el.classList.remove('side-panel__icon--active'))
+    document.getElementById('side-icon-files')?.classList.add('side-panel__icon--active')
+    document.querySelectorAll('[id^="side-header-"]').forEach(el => {
+      if (el.id === 'side-panel-header') return
+      ;(el as HTMLElement).style.display = 'none'
+    })
+    const fileHeader = document.getElementById('side-header-files')
+    if (fileHeader) fileHeader.style.display = ''
+    const fileActions = document.getElementById('side-header-actions-files')
+    if (fileActions) fileActions.style.display = ''
+    populateExplorerFileList()
+
+    // Right panel: restore to user's collapsed preference.
+    if (editorTop) {
+      const sidePercent = getState('resize-divider-1-percent')
+      if (getState('right-panel-collapsed')) {
+        editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 0 0`
+        editorTop.classList.add('right-panel-collapsed')
+      } else {
+        const rightPercent = clampRightPercent(getState('right-panel-size-percent'), sidePercent)
+        editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr 5px ${rightPercent}%`
+        editorTop.classList.remove('right-panel-collapsed')
+      }
+    }
+    if (toggleBtn) toggleBtn.style.display = ''
+    if (rightPanel) rightPanel.style.display = ''
+    if (divider3) divider3.style.display = ''
+  }
+}
+
 function applyLayout() {
   calculateDimensions()
 
@@ -2054,11 +2133,7 @@ window.onload = async function () {
         if (details) replaceSnapshotView(details.snapshot, details.label)
       }
       syncCodePanelView()
-      // Refresh editor-area chrome — the toolbar title pill, locked
-      // indicator, save-scratch button visibility — to reflect the new
-      // active tab. Without this, closing a tab via the strip's × leaves
-      // the toolbar title showing the just-closed file's name until some
-      // other interaction triggers `updateCSS`.
+      syncChromeForActiveTabKind()
       updateCSS()
     },
   })

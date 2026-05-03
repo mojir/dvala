@@ -222,7 +222,7 @@ export function createUntitledFile(code = '', context = ''): string {
   return createdFile.id
 }
 
-function populateExplorerFileList() {
+export function populateExplorerFileList() {
   const list = document.getElementById('explorer-file-list')
   const stats = document.getElementById('explorer-file-stats')
   if (!list) return
