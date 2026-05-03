@@ -95,7 +95,7 @@ export function loadWorkspaceFile(id: string) {
   openOrFocusFile(file.id)
   activateCurrentFileHistory(false)
   syncCodePanelView()
-  syncPlaygroundUrlState('files')
+  syncPlaygroundUrlState()
   updateCSS()
   populateExplorerFileList()
   populateWorkspaceFilesList()
@@ -188,7 +188,7 @@ export function openScratchInEditor(
 
   if (options.navigateToPlayground) router.navigate('/editor')
 
-  syncPlaygroundUrlState('files')
+  syncPlaygroundUrlState()
   // updateCSS reads `current-file-id` to refresh the title pill + lock state
   // for the now-active scratch tab; without it the pill keeps showing the
   // previously-focused file's name.

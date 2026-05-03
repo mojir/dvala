@@ -153,9 +153,7 @@ import { state } from './scripts/playgroundState'
 import type { PendingEffect } from './scripts/playgroundState'
 import {
   SIDE_SNAPSHOTS_VISIBLE,
-  getActiveSnapshotUrlId,
   getCurrentSideTab,
-  normalizeSideTab,
   populateSideSnapshotsList,
   showSideTab,
   syncCodePanelView,
@@ -1396,7 +1394,7 @@ export function openSavedSnapshot(index: number) {
   // populating the snapshot view via `replaceSnapshotView` once the new
   // tab activates — no explicit second call needed here.
   openOrFocusSnapshotTab(entry.snapshot.id)
-  syncPlaygroundUrlState('snapshots')
+  syncPlaygroundUrlState()
 }
 
 export function openTerminalSnapshot(index: number) {
@@ -1407,7 +1405,7 @@ export function openTerminalSnapshot(index: number) {
   populateSideSnapshotsList()
   showSideTab('snapshots')
   openOrFocusSnapshotTab(entry.snapshot.id)
-  syncPlaygroundUrlState('snapshots')
+  syncPlaygroundUrlState()
 }
 
 export function runSavedSnapshot(index: number) {
@@ -1489,12 +1487,12 @@ export function share() {
   const base = document.querySelector('base')?.href ?? `${location.origin}/`
   const params = new URLSearchParams({
     state: encodeState(),
-    view: getState('active-side-tab'),
   })
   const currentFileId = getState('current-file-id')
-  if (currentFileId) params.set('fileId', currentFileId)
-  const currentSnapshotId = getActiveSnapshotUrlId()
-  if (currentSnapshotId) params.set('snapshotId', currentSnapshotId)
+  if (currentFileId && currentFileId !== SCRATCH_FILE_ID) {
+    const file = getWorkspaceFiles().find(f => f.id === currentFileId)
+    if (file) params.set('path', file.path)
+  }
   const href = `${base}editor?${params.toString()}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Content is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
@@ -2134,6 +2132,7 @@ window.onload = async function () {
       }
       syncCodePanelView()
       syncChromeForActiveTabKind()
+      syncPlaygroundUrlState()
       updateCSS()
     },
   })
@@ -2428,13 +2427,14 @@ window.onload = async function () {
 
 function getDataFromUrl() {
   const urlParams = new URLSearchParams(window.location.search)
-  const activeView = normalizeSideTab(urlParams.get('view'))
-  saveState({ 'active-side-tab': activeView }, false)
 
-  const urlFileId = urlParams.get('fileId')
-  if (activeView === 'files' && urlFileId && getState('current-file-id') !== urlFileId) {
-    const file = getWorkspaceFiles().find(entry => entry.id === urlFileId)
-    if (file) {
+  // `path` identifies the active file/snapshot tab. Works for all file
+  // types: workspace files, scratch, handlers, saved snapshots, terminal
+  // snapshots. Scratch is never in the URL (it's the default).
+  const urlPath = urlParams.get('path')
+  if (urlPath) {
+    const file = getWorkspaceFiles().find(entry => entry.path === urlPath)
+    if (file && file.id !== getState('current-file-id')) {
       if (isScratchActive()) persistScratchFromCurrentState()
       saveState(
         {
@@ -2448,17 +2448,8 @@ function getDataFromUrl() {
         },
         false,
       )
-    }
-  }
-
-  const urlSnapshotId = urlParams.get('snapshotId')
-  if (activeView === 'snapshots' && urlSnapshotId && getActiveSnapshotUrlId() !== urlSnapshotId) {
-    const savedIndex = getSavedSnapshots().findIndex(entry => entry.snapshot.id === urlSnapshotId)
-    if (savedIndex >= 0) {
-      state.activeSnapshotKey = `saved:${savedIndex}`
-    } else {
-      const terminalIndex = getTerminalSnapshots().findIndex(entry => entry.snapshot.id === urlSnapshotId)
-      state.activeSnapshotKey = terminalIndex >= 0 ? `terminal:${terminalIndex}` : null
+      // Open the file as a tab so the editor area reflects the URL.
+      openOrFocusFile(file.id)
     }
   }
 
@@ -2624,7 +2615,7 @@ function routeToPath(appPath: string): void {
   // the current side panel state (e.g. ?view=snapshots), which is lost when navigating away.
   if (path === 'editor') {
     document.title = 'Editor | Dvala'
-    syncPlaygroundUrlState(normalizeSideTab(getState('active-side-tab')))
+    syncPlaygroundUrlState()
     return
   }
 
@@ -3612,7 +3603,7 @@ export function closeSnapshotView() {
   state.resolveSnapshotModal = null
   hideExecutionControlBar()
   closeActiveTab()
-  syncPlaygroundUrlState(normalizeSideTab(getCurrentSideTab()))
+  syncPlaygroundUrlState()
 }
 
 export function openImportSnapshotModal() {
