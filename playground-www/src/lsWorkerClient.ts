@@ -14,12 +14,14 @@ import LsWorker from './lsWorker?worker'
 import type { Diagnostic } from '../../src/shared/types'
 import { referenceToCompletion } from '../../src/shared/completionBuilder'
 import { allReference } from '../../reference/index'
-import { formatSource, tokenizeSource, parseTokenStreamRecoverable } from '../../src/tooling'
+import { formatSource, tokenizeSource } from '../../src/tooling'
 import { typecheck, WorkspaceIndex } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
 import { buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
 import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 import { allBuiltinModules } from '../../src/allModules'
+import { parseToAst } from '../../src/parser'
+import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 
@@ -54,11 +56,19 @@ function kindToMonaco(kind: CompletionItem['kind']): monaco.languages.Completion
  */
 function typecheckForDiagnostics(source: string, path: string): TypecheckResult {
   const tokens = tokenizeSource(source, true, path)
-  const parseResult = parseTokenStreamRecoverable(tokens)
-  const ast = { body: parseResult.body, sourceMap: parseResult.sourceMap }
-  // Keep the workspace index fresh for go-to-def/references.
-  workspaceIndex.updateFile(path, source, () => null)
-  return typecheck(ast, { modules: allBuiltinModules })
+  try {
+    // Use parseToAst (not parseRecoverable) — parseToAst includes
+    // typeAnnotations which the typechecker needs to enforce
+    // annotations like `let n: Number = ""`.
+    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
+    const ast = parseToAst(minified)
+    workspaceIndex.updateFile(path, source, () => null)
+    return typecheck(ast, { modules: allBuiltinModules })
+  } catch {
+    // parseToAst threw on broken code — return empty diagnostics.
+    // Parse errors are already reported by the worker's recover-parse.
+    return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
+  }
 }
 
 // ── Worker lifetime ───────────────────────────────────────────────────────────
