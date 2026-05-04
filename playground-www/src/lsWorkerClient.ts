@@ -19,6 +19,7 @@ import { typecheck, WorkspaceIndex } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
 import { buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
 import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
+import { allBuiltinModules } from '../../src/allModules'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 
@@ -57,7 +58,7 @@ function typecheckForDiagnostics(source: string, path: string): TypecheckResult 
   const ast = { body: parseResult.body, sourceMap: parseResult.sourceMap }
   // Keep the workspace index fresh for go-to-def/references.
   workspaceIndex.updateFile(path, source, () => null)
-  return typecheck(ast)
+  return typecheck(ast, { modules: allBuiltinModules })
 }
 
 // ── Worker lifetime ───────────────────────────────────────────────────────────
