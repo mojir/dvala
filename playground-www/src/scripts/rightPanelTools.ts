@@ -23,11 +23,12 @@ import { prettyPrint } from '../../../src/prettyPrint'
 import type { JsonTreeViewerHandle } from '../components/jsonTreeViewer'
 import { createJsonTreeViewer } from '../components/jsonTreeViewer'
 import { getRightPanel } from './panelInstances'
+import { refreshReplInRightPanel } from './rightPanelRepl'
 
-type RightPanelToolId = 'tokens' | 'ast' | 'cst' | 'doc' | 'snapshot-tree'
+type RightPanelToolId = 'repl' | 'tokens' | 'ast' | 'cst' | 'doc' | 'snapshot-tree'
 
 function isToolId(id: string | null): id is RightPanelToolId {
-  return id === 'tokens' || id === 'ast' || id === 'cst' || id === 'doc' || id === 'snapshot-tree'
+  return id === 'repl' || id === 'tokens' || id === 'ast' || id === 'cst' || id === 'doc' || id === 'snapshot-tree'
 }
 
 // Tab order: pipeline order, left-to-right. Tokens come first because
@@ -35,6 +36,11 @@ function isToolId(id: string | null): id is RightPanelToolId {
 // CST are sibling parses on top; the Wadler-Lindig Doc tree is the
 // formatter's IR, derived from the CST.
 export const RIGHT_PANEL_TOOL_TABS = [
+  {
+    id: 'repl' as const,
+    label: 'REPL',
+    title: 'File-backed REPL for the active file',
+  },
   {
     id: 'snapshot-tree' as const,
     label: 'JSON Tree',
@@ -127,6 +133,7 @@ function detailOptions(toolId: RightPanelToolId): {
       detailTitle: 'Dvala source',
     }
   }
+  if (toolId === 'repl') return { detailTitle: 'Value' }
   if (toolId === 'tokens') return { detailTitle: 'Token' }
   if (toolId === 'cst') return { detailTitle: 'CST node' }
   if (toolId === 'snapshot-tree') return { detailTitle: 'Value' }
@@ -208,6 +215,8 @@ function compute(toolId: RightPanelToolId, code: string): unknown {
       return computeCst(code)
     case 'doc':
       return computeDocTree(code)
+    case 'repl':
+      return null
     case 'snapshot-tree':
       // The snapshot tree is populated externally via
       // `showSnapshotTreeInRightPanel`. The compute path is unreachable
@@ -276,6 +285,10 @@ export function refreshActiveRightPanelTab(getActiveCode: () => string): void {
   if (panel.isCollapsed()) return
   const tabId = panel.getActiveTabId()
   if (!isToolId(tabId)) return
+  if (tabId === 'repl') {
+    refreshReplInRightPanel()
+    return
+  }
   // Phase 1.5 step 23j: snapshot-tree is populated externally via
   // showSnapshotTreeInRightPanel — never refresh it from dvala-code.
   if (tabId === 'snapshot-tree') return

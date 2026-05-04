@@ -40,6 +40,7 @@ import { formatTap } from '../../src/testFramework/formatTap'
 import { formatConsole } from '../../src/testFramework/formatConsole'
 import { formatHtml } from '../../src/testFramework/formatHtml'
 import { formatJunit } from '../../src/testFramework/formatJunit'
+import { executeReplLine, loadReplSourceIntoScope } from '../../src/shared/replCore'
 import { parseTokenStream, tokenizeSource } from '../../src/tooling'
 import { getCliDocumentation } from './cliDocumentation/getCliDocumentation'
 import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
@@ -248,12 +249,12 @@ function loadFileIntoContext(filename: string, context: Record<string, unknown>)
   const resolvedFilename = path.resolve(filename)
   const dvala = makeDvala(context, false, false, path.dirname(resolvedFilename))
   const content = fs.readFileSync(resolvedFilename, { encoding: 'utf-8' })
-  const result = dvala.run(content, resolvedFilename)
-  if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
-    for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
-      context[key] = value
-    }
-  }
+  loadReplSourceIntoScope({
+    scope: context,
+    source: content,
+    filePath: resolvedFilename,
+    run: (source, filePath) => dvala.run(source, filePath),
+  })
 }
 
 switch (config.subcommand) {
@@ -936,20 +937,20 @@ async function execute(
 ): Promise<Record<string, unknown>> {
   const _dvala = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
   try {
-    const runResult = await _dvala.runAsync(expression, {
+    const outcome = await executeReplLine({
+      expression,
       scope,
-      effectHandlers: getCliIoEffectHandlers(readLine),
+      historyResults,
+      run: (nextExpression, nextScope) =>
+        _dvala.runAsync(nextExpression, {
+          scope: nextScope,
+          effectHandlers: getCliIoEffectHandlers(readLine),
+        }),
     })
-    if (runResult.type === 'error') throw runResult.error
-    const result = runResult.type === 'completed' ? runResult.value : null
-    historyResults.unshift(result)
-    if (historyResults.length > 9) {
-      historyResults.length = 9
-    }
-    const newScope = { ...scope, ...(runResult.type === 'completed' ? runResult.scope : {}) }
-    setReplHistoryVariables(newScope)
-    console.log(stringifyValue(result, false))
-    return newScope
+    if (!outcome.ok) throw outcome.error
+    historyResults.splice(0, historyResults.length, ...outcome.historyResults)
+    console.log(stringifyValue(outcome.value, false))
+    return outcome.scope
   } catch (error) {
     printErrorMessage(`${error}`)
     return { ...scope, '*e*': getErrorMessage(error) }
@@ -1066,13 +1067,6 @@ function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message
 
   return 'Unknown error'
-}
-
-function setReplHistoryVariables(bindings: Record<string, unknown>): void {
-  for (let i = 1; i <= 9; i++) delete bindings[`*${i}*`]
-  historyResults.forEach((value, i) => {
-    bindings[`*${i + 1}*`] = value
-  })
 }
 
 function parseOption(args: string[], i: number): { option: string; argument: Maybe<string>; count: number } | null {
@@ -1561,7 +1555,8 @@ function processArguments(args: string[]): Config {
 }
 
 function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<string>, loadFilename: Maybe<string>) {
-  const prompt = projectName ? fmt.bright.gray(`${projectName}> `) : PROMPT
+  const promptLabel = loadFilename ? path.basename(loadFilename, path.extname(loadFilename)) : projectName
+  const prompt = promptLabel ? fmt.bright.gray(`${promptLabel} > `) : PROMPT
 
   if (projectName) {
     console.log(`Welcome to Dvala v${version} — ${fmt.bright.white(projectName)}`)

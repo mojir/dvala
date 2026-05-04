@@ -1937,6 +1937,7 @@ function initLayoutPanels(): void {
     tabs: RIGHT_PANEL_TOOL_TABS,
     initialTabId: getState('right-panel-active-tab'),
     initialCollapsed: getState('right-panel-collapsed'),
+    collapseOnActiveTabClick: false,
     onChange: ({ collapsed }) => {
       persistRightPanel()
       applyLayout()
@@ -5287,6 +5288,10 @@ function getDvalaParamsFromContext(): { effectHandlers: HandlerRegistration[] } 
     const fallback = getState('disable-standard-handlers') ? disabledHandlersFallback : defaultEffectHandler
     return { effectHandlers: [{ pattern: '*', handler: fallback }] }
   }
+}
+
+export function getPlaygroundReplHandlers(): HandlerRegistration[] {
+  return getDvalaParamsFromContext().effectHandlers
 }
 function getSelectedDvalaCode(): {
   code: string

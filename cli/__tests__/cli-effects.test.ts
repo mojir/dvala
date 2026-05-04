@@ -83,7 +83,48 @@ function replEval(code: string, answers: string[] = [], cliArgs: string[] = []):
   })
 }
 
+function expectInitialPrompt(cliArgs: string[], expectedPrompt: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child: ChildProcessWithoutNullStreams = spawn('node', [dvalaCliPath, ...cliArgs], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
+    })
+
+    let stdout = ''
+    let promptSeen = false
+
+    child.stdout.on('data', (data: Buffer) => {
+      stdout += data.toString()
+
+      if (!promptSeen && stdout.includes(expectedPrompt)) {
+        promptSeen = true
+        child.stdin.write(':quit\n')
+      }
+    })
+
+    child.on('close', () => {
+      if (promptSeen) {
+        resolve()
+        return
+      }
+      reject(new Error(`Prompt ${JSON.stringify(expectedPrompt)} not found in stdout:\n${stdout}`))
+    })
+
+    setTimeout(() => {
+      child.kill()
+      reject(new Error(`Timeout waiting for prompt ${JSON.stringify(expectedPrompt)}. stdout so far:\n${stdout}`))
+    }, 10000)
+  })
+}
+
 describe('CLI IO effect handlers', () => {
+  it('shows the loaded filename stem in the initial prompt', async () => {
+    const mainFile = path.join(exampleProjectDir, 'main.dvala')
+    expect(fs.existsSync(mainFile)).toBe(true)
+
+    await expectInitialPrompt(['repl', '-l', mainFile], 'main > ')
+  })
+
   it('loads a file into the REPL with relative imports resolved from that file', async () => {
     const mainFile = path.join(exampleProjectDir, 'main.dvala')
     expect(fs.existsSync(mainFile)).toBe(true)

@@ -2130,7 +2130,7 @@ test.describe('layout panels', () => {
     await navigateToPlayground(page)
   })
 
-  test('right panel shows all four tool tabs (Tokens / AST / CST / Doc Tree) in pipeline order', async ({ page }) => {
+  test('right panel shows all tool tabs (REPL / Tokens / AST / CST / Doc Tree) in pipeline order', async ({ page }) => {
     // Open the panel via parse(); all four tabs should be present in the
     // strip in pipeline order — the user switches between them by clicking,
     // no summon-on-demand mechanism.
@@ -2141,7 +2141,7 @@ test.describe('layout panels', () => {
     const tabIds = await strip
       .locator('[data-panel-tab-id]')
       .evaluateAll(els => els.map(el => (el as HTMLElement).dataset['panelTabId']))
-    expect(tabIds).toEqual(['tokens', 'ast', 'cst', 'doc'])
+    expect(tabIds).toEqual(['repl', 'tokens', 'ast', 'cst', 'doc'])
     // No close-X buttons on right-panel tabs (the panel is toggled as a
     // whole via the editor-bar icon / Cmd+Shift+J).
     await expect(strip.locator('.panel-shell__tab-close')).toHaveCount(0)

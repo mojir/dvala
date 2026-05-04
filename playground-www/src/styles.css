@@ -4905,3 +4905,227 @@ body.json-tree-viewer-resizing * {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.repl-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.repl-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.repl-panel__status {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+}
+
+.repl-panel__actions {
+  display: flex;
+  gap: var(--space-1);
+  position: relative;
+}
+
+.repl-panel__main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-surface) 55%, black);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.repl-panel__context-menu {
+  position: relative;
+}
+
+.repl-panel__context-button {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.repl-panel__context-button::-webkit-details-marker {
+  display: none;
+}
+
+.repl-panel__context-popup {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 20rem;
+  max-height: 18rem;
+  overflow: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-surface) 88%, black);
+  box-shadow: 0 8px 24px var(--color-shadow-deep);
+  z-index: 10050;
+}
+
+.repl-panel__context-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.repl-panel__context-item,
+.repl-panel__context-empty {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.repl-panel__context-item {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
+}
+
+.repl-panel__context-key {
+  color: var(--color-primary);
+}
+
+.repl-panel__context-separator {
+  color: var(--color-text-dim);
+}
+
+.repl-panel__context-value {
+  color: var(--color-text-secondary);
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.repl-panel__context-empty {
+  color: var(--color-text-dim);
+}
+
+.repl-panel__output {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.repl-panel__row {
+  display: grid;
+  grid-template-columns: var(--repl-prompt-width, 1ch) minmax(0, 1fr);
+  column-gap: var(--space-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.35;
+  align-items: start;
+}
+
+.repl-panel__row--input {
+  color: var(--color-text-dim);
+}
+
+.repl-panel__row--result {
+  color: var(--color-text-bright);
+}
+
+.repl-panel__row--comment {
+  color: var(--color-text-secondary);
+}
+
+.repl-panel__row--error {
+  color: var(--syntax-error, var(--color-error, var(--color-text)));
+}
+
+.repl-panel__row-prompt {
+  color: var(--color-primary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.repl-panel__row-content {
+  min-width: 0;
+}
+
+.repl-panel__row--input .repl-panel__row-content {
+  display: block;
+  width: 100%;
+}
+
+.repl-panel__row--result .repl-panel__row-content,
+.repl-panel__row--comment .repl-panel__row-content,
+.repl-panel__row--error .repl-panel__row-content {
+  grid-column: 1 / -1;
+}
+
+.repl-panel__snapshot-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-link);
+  cursor: pointer;
+  font: inherit;
+}
+
+.repl-panel__snapshot-link:hover {
+  text-decoration: underline;
+}
+
+.repl-panel__empty {
+  color: var(--color-text-dim, var(--color-text-secondary));
+  font-size: var(--font-size-sm);
+}
+
+.repl-panel__row--active {
+  cursor: text;
+  margin-top: var(--space-1);
+}
+
+.repl-panel__input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 1lh;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  caret-color: var(--color-text-dim);
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  outline: none;
+}
+
+.repl-panel__input:empty::before {
+  content: '\00a0';
+  white-space: pre;
+}
+
+.repl-panel__input[contenteditable='false'] {
+  cursor: default;
+  opacity: 0.7;
+}

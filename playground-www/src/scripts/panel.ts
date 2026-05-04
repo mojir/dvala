@@ -39,6 +39,8 @@ interface PanelOptions {
   /** If absent, the first visible tab is active. */
   initialTabId?: string
   initialCollapsed?: boolean
+  /** Whether clicking the already-active tab toggles collapsed state. */
+  collapseOnActiveTabClick?: boolean
   /** Fires after every state change (active-tab swap, collapse toggle). */
   onChange?: (state: { activeTabId: string | null; collapsed: boolean }) => void
   /**
@@ -236,9 +238,7 @@ export function createPanel(options: PanelOptions): Panel {
     const id = tabEl.dataset['panelTabId']
     if (!id) return
     if (id === activeTabId) {
-      // Clicking the already-active tab toggles collapsed — matches VS Code's
-      // "click activity bar icon to hide pane" behavior. Without this, a
-      // panel with one tab would have no way to toggle from the strip.
+      if (options.collapseOnActiveTabClick === false) return
       collapsed = !collapsed
       applyCollapsed()
       options.onChange?.({ activeTabId, collapsed })

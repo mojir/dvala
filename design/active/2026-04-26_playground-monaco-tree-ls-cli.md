@@ -220,23 +220,33 @@ Phase 1's right-panel multi-tool (Tokens / AST / CST / Doc Tree) replaced most m
 
 ### Phase 1.6 — Right-panel REPL
 
-A REPL tool added as the first tab in the right panel for `.dvala` files. Mirrors `dvala repl` semantics exactly — same load contract, same evaluation model — so a user gets identical bindings whether they invoke `dvala repl -l <file>` from the terminal or open the REPL on the same file in the playground. Lands after Phase 1.5 so the REPL is built against the uniform "current file → right panel" surface (scratch buffer included).
+A REPL tool added as the first tab in the right panel for `.dvala` files. Architecturally, the REPL is one shared shell — history, output, input box, reload/reset chrome — with room for multiple future session-source adapters underneath. **Phase 1.6 ships only the first adapter: `dvala-file`.** That adapter mirrors `dvala repl` semantics exactly, so a user gets identical bindings whether they invoke `dvala repl -l <file>` from the terminal or open the REPL on the same file in the playground. Lands after Phase 1.5 so the REPL is built against the uniform "current file → right panel" surface (scratch buffer included).
 
-**Load contract.** When the REPL opens (or `:reload` fires), the current file is executed via the same evaluator as the run path. If the file's return value is a dict, those entries become the initial scope. Otherwise, scope starts empty. Top-level `let` bindings inside the file are NOT exposed unless the file explicitly returns them — same as `loadFileIntoContext` in [cli/src/cli.ts:247](../../cli/src/cli.ts#L247). Divergence from CLI semantics is rejected by design: a user running the same file two ways must get the same bindings.
+**`dvala-file` load contract.** When the REPL opens (or `:reload` fires), the current file is executed via the same evaluator as the run path. If the file's return value is a dict, those entries become the initial scope. Otherwise, scope starts empty. Top-level `let` bindings inside the file are NOT exposed unless the file explicitly returns them — same as `loadFileIntoContext` in [cli/src/cli.ts:247](../../cli/src/cli.ts#L247). Divergence from CLI semantics is rejected by design: a user running the same file two ways must get the same bindings.
+
+**Shared-shell session model.** The REPL shell owns session history, rendered output, input state, staleness indicators, and persisted per-tab state. In Phase 1.6 those capabilities are exercised only by the `dvala-file` adapter, but the shell boundary is intentional so later session sources can plug into the same UI without rewriting the panel.
 
 **Reload trigger.** Manual only — `:reload` command + a "Reload" button that appears in the panel header *only when the loaded file, its transitive import closure, or the handlers buffer has drifted from what the REPL last loaded*. Staleness is computed from a hash of the **live editor model** of every file in the closure (queried via `WorkspaceIndex`), plus `.dvala-playground/handlers.dvala` (boundary handlers are part of the runtime context — changing them means the REPL's accumulated bindings would behave differently going forward). Hashes are taken against live editor content, not last-saved. When in-sync, no button is shown. Mirrors the CLI's "frozen until reload" contract while solving the playground's "the file is right there on the left and easy to forget I edited it" problem.
 
-**State lifecycle.** REPL state (accumulated bindings + history) is per-tab and persisted in localStorage so browser refresh survives. Closing the tab discards state. Different file = different REPL session. Pattern: REPL is for ephemeral exploration; durable bindings graduate into code.
+**State lifecycle.** REPL state (accumulated bindings + history + rendered output) is per-tab and persisted in localStorage so browser refresh survives. Closing the tab discards state. Different file = different REPL session. In Phase 1.6, reset means returning the current `dvala-file` session to its last loaded baseline rather than inventing generic cross-source reset semantics too early.
+
+**Visibility.** In the first iteration, the REPL tab is shown only for `.dvala` editor tabs. That includes the scratch and handlers buffers because, post-Phase 1.5, they are regular Dvala files at reserved paths under `.dvala-playground/`.
 
 **Effects.** Same handler set as the playground's run path. No interactive `read-line` shim in v1 — code that performs `@io.readLine` behaves the same way it does when run from the editor. Add later if there's demand.
 
-**Suspended evaluation.** A REPL line that suspends (deferred effect, time travel checkpoint) routes the snapshot through the same path as editor runs — the snapshot is saved to `.dvala-playground/snapshots/<id>.json` and surfaces in the Snapshots left-panel list. The originating REPL output line shows a clickable "↪ snapshot" link that opens the JSON file as a tab (with the UI/Tree/Raw view switcher from Phase 1.5).
+**Suspended evaluation.** A REPL line that suspends (deferred effect, time travel checkpoint) routes the snapshot through the same path as editor runs — the snapshot is saved to `.dvala-playground/snapshots/<id>.json` and surfaces in the Snapshots left-panel list. The originating REPL output line shows a clickable "↪ snapshot" link that opens the JSON file as a tab (with the UI/Tree/Raw view switcher from Phase 1.5). Snapshot-backed REPL sessions are explicitly out of scope for Phase 1.6; this is only the persistence path for suspended file-backed REPL commands.
 
 **Output rendering.** Plain rendering for scalars; rich expandable tree-viewer for objects, dicts, and lists (reuses the right-panel multi-tool's tree component). Errors print formatted, matching the run path's error shape.
 
 **History.** Up/down arrow keys recall prior input; persisted alongside bindings per-tab.
 
-**Scratch + handlers buffers.** Post-Phase 1.5 the scratch and handlers buffers are regular workspace files at reserved paths under `.dvala-playground/`, so the REPL tab applies uniformly when one of them is the active editor tab. The import rule (`.dvala-playground/*` not importable from outside that folder) is enforced by the import resolver, so REPL-loading scratch works exactly the same as REPL-loading any workspace file.
+**Scratch + handlers buffers.** Post-Phase 1.5 the scratch and handlers buffers are regular workspace files at reserved paths under `.dvala-playground/`, so the `dvala-file` adapter applies uniformly when one of them is the active editor tab. The import rule (`.dvala-playground/*` not importable from outside that folder) is enforced by the import resolver, so REPL-loading scratch works exactly the same as REPL-loading any workspace file.
+
+**Snapshot-backed adapters (TBD).** Not part of Phase 1.6 scope; listed here to preserve the architecture direction.
+1. Add a `snapshot-resume` adapter for the shared REPL shell.
+2. Define snapshot-specific reset / reload / resume semantics.
+3. Decide whether snapshot sessions are resume-only first or also support arbitrary expression evaluation.
+4. Validate what runtime support is needed beyond `resume()` before implementing snapshot-backed sessions.
 
 ### Phase 2 — Language service parity
 

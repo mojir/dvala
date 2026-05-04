@@ -1,0 +1,161 @@
+// @vitest-environment happy-dom
+
+import { describe, expect, it } from 'vitest'
+import { getReplPromptText, getReplPromptWidth } from './rightPanelReplPrompt'
+import {
+  isReplSessionStale,
+  moveReplHistoryCursor,
+  shouldShowReloadButton,
+  toPersistedReplSession,
+} from './rightPanelReplState'
+
+describe('getReplPromptText', () => {
+  it('uses the current filename for the REPL prompt', () => {
+    expect(getReplPromptText('x.dvala')).toBe('x.dvala >')
+    expect(getReplPromptText('examples/email-workflow.dvala')).toBe('email-workflow.dvala >')
+  })
+
+  it('falls back to the bare prompt when no file path is available', () => {
+    expect(getReplPromptText('')).toBe('>')
+  })
+})
+
+describe('getReplPromptWidth', () => {
+  it('allocates a stable width from the full prompt text', () => {
+    expect(getReplPromptWidth('x.dvala >')).toBe('9ch')
+    expect(getReplPromptWidth('email-workflow.dvala >')).toBe('22ch')
+  })
+
+  it('keeps a minimum width for empty or fallback prompts', () => {
+    expect(getReplPromptWidth('>')).toBe('1ch')
+  })
+})
+
+describe('isReplSessionStale', () => {
+  it('returns false when both file and handlers content match the loaded baseline', () => {
+    expect(
+      isReplSessionStale(
+        { loadedFileSource: 'let x = 1', loadedHandlersSource: 'handler @x -> 1 end' },
+        'let x = 1',
+        'handler @x -> 1 end',
+      ),
+    ).toBe(false)
+  })
+
+  it('returns true when either file content or handlers content changed', () => {
+    expect(
+      isReplSessionStale(
+        { loadedFileSource: 'let x = 1', loadedHandlersSource: '' },
+        'let x = 2',
+        '',
+      ),
+    ).toBe(true)
+    expect(
+      isReplSessionStale(
+        { loadedFileSource: 'let x = 1', loadedHandlersSource: '' },
+        'let x = 1',
+        'handler @x -> 1 end',
+      ),
+    ).toBe(true)
+  })
+})
+
+describe('shouldShowReloadButton', () => {
+  it('shows reload only when the session is idle, errored, or stale', () => {
+    expect(shouldShowReloadButton('idle', false)).toBe(true)
+    expect(shouldShowReloadButton('error', false)).toBe(true)
+    expect(shouldShowReloadButton('ready', true)).toBe(true)
+    expect(shouldShowReloadButton('ready', false)).toBe(false)
+    expect(shouldShowReloadButton('loading', true)).toBe(false)
+  })
+})
+
+describe('moveReplHistoryCursor', () => {
+  it('captures the current draft and moves back through history on ArrowUp', () => {
+    expect(
+      moveReplHistoryCursor({
+        direction: 'up',
+        inputHistory: ['three', 'two', 'one'],
+        historyIndex: -1,
+        draftInput: '',
+        currentInput: 'dra',
+      }),
+    ).toEqual({ historyIndex: 0, draftInput: 'dra', value: 'three' })
+
+    expect(
+      moveReplHistoryCursor({
+        direction: 'up',
+        inputHistory: ['three', 'two', 'one'],
+        historyIndex: 0,
+        draftInput: 'dra',
+        currentInput: 'three',
+      }),
+    ).toEqual({ historyIndex: 1, draftInput: 'dra', value: 'two' })
+  })
+
+  it('restores the draft when moving back down past the newest history item', () => {
+    expect(
+      moveReplHistoryCursor({
+        direction: 'down',
+        inputHistory: ['three', 'two', 'one'],
+        historyIndex: 1,
+        draftInput: 'dra',
+        currentInput: 'two',
+      }),
+    ).toEqual({ historyIndex: 0, draftInput: 'dra', value: 'three' })
+
+    expect(
+      moveReplHistoryCursor({
+        direction: 'down',
+        inputHistory: ['three', 'two', 'one'],
+        historyIndex: 0,
+        draftInput: 'dra',
+        currentInput: 'three',
+      }),
+    ).toEqual({ historyIndex: -1, draftInput: 'dra', value: 'dra' })
+  })
+})
+
+describe('toPersistedReplSession', () => {
+  it('serializes JSON-safe REPL state', () => {
+    expect(
+      toPersistedReplSession({
+        scope: { answer: 42, items: [1, 2] },
+        baseScope: { answer: 41 },
+        historyResults: [42, { ok: true }],
+        inputHistory: ['answer', 'items'],
+        outputs: [{ kind: 'result', text: '42' }],
+        loadedFileSource: 'let answer = 42',
+        loadedHandlersSource: '',
+        status: 'ready',
+        error: null,
+      }),
+    ).toEqual({
+      scope: { answer: 42, items: [1, 2] },
+      baseScope: { answer: 41 },
+      historyResults: [42, { ok: true }],
+      inputHistory: ['answer', 'items'],
+      outputs: [{ kind: 'result', text: '42' }],
+      loadedFileSource: 'let answer = 42',
+      loadedHandlersSource: '',
+      status: 'ready',
+      error: null,
+    })
+  })
+
+  it('drops sessions with non-JSON-safe bindings', () => {
+    expect(
+      toPersistedReplSession({
+        scope: { fn: () => null },
+        baseScope: {},
+        historyResults: [],
+        inputHistory: [],
+        outputs: [],
+        loadedFileSource: '',
+        loadedHandlersSource: '',
+        status: 'ready',
+        error: null,
+      }),
+    ).toBeNull()
+  })
+})
