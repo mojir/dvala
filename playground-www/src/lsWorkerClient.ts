@@ -376,6 +376,55 @@ export function initLspWorker(): void {
       })
     },
   })
+
+  // ── Rename provider ──────────────────────────────────────────────────────
+
+  monaco.languages.registerRenameProvider('dvala', {
+    provideRenameEdits: (model, position, newName) => {
+      return new Promise<monaco.languages.WorkspaceEdit | null>(resolve => {
+        let path: string | undefined
+        for (const [p, m] of registeredModels) {
+          if (m === model) {
+            path = p
+            break
+          }
+        }
+        if (!path) {
+          resolve(null)
+          return
+        }
+
+        const requestId = nextRequestId++
+        pendingRefs.set(requestId, locations => {
+          if (locations.length === 0) {
+            resolve(null)
+            return
+          }
+          const edits: monaco.languages.IWorkspaceTextEdit[] = locations.map(loc => ({
+            resource: monaco.Uri.parse(`dvala:///${loc.file}`),
+            textEdit: {
+              range: {
+                startLineNumber: loc.line,
+                startColumn: loc.column,
+                endLineNumber: loc.line,
+                endColumn: loc.column + loc.nameLength,
+              },
+              text: newName,
+            },
+            versionId: undefined,
+          }))
+          resolve({ edits })
+        })
+
+        getWorker().postMessage({
+          type: 'requestReferences',
+          requestId,
+          path,
+          position: { line: position.lineNumber, column: position.column } satisfies Position,
+        })
+      })
+    },
+  })
 }
 
 /**
