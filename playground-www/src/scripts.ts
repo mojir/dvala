@@ -72,7 +72,13 @@ import {
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
 import { ensureHandlersFile, wrapWithBoundaryHandler } from './handlersBuffer'
-import { SCRATCH_FILE_ID, ensureScratchFile, setScratchCode, setScratchCodeAndContext } from './scratchBuffer'
+import {
+  SCRATCH_FILE_ID,
+  SCRATCH_FILE_PATH,
+  ensureScratchFile,
+  setScratchCode,
+  setScratchCodeAndContext,
+} from './scratchBuffer'
 import type { WorkspaceFile } from './fileStorage'
 import {
   clearAllFileHistories,
@@ -95,6 +101,7 @@ import type { HistoryEntry } from './StateHistory'
 import { StateHistory } from './StateHistory'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
+import { initLspWorker, registerModel, updateDocument as updateLspDocument } from './lsWorkerClient'
 import { createPanel } from './scripts/panel'
 import { clampRightPercent, computeRightPanelPercent } from './scripts/layoutMath'
 import {
@@ -2050,6 +2057,15 @@ function wireCodeEditorListeners(): void {
   const editor = getCodeEditor()
   editor.onChange(value => {
     setDvalaCode(value, true)
+    // Push edit delta to the LS worker for background diagnostics.
+    // The active file path comes from the current tab; scratch is at its
+    // reserved path under `.dvala-playground/`.
+    const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+    const activeModel = editor.getActiveModel()
+    if (activeModel) {
+      registerModel(activePath, activeModel)
+      updateLspDocument(activePath, value, activeModel.getVersionId())
+    }
     if (getState('current-file-id') === SCRATCH_FILE_ID) {
       // Scratch is the workspace file at `.dvala-playground/scratch.dvala`;
       // `initTabs` hydrates the scratch model from there on reload, so
@@ -2130,6 +2146,7 @@ window.onload = async function () {
   pruneFileHistories(getWorkspaceFiles().map(file => file.id))
   initExecutionControlBar()
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
+  initLspWorker()
   wireCodeEditorListeners()
   wireExplorerListeners()
   wireSnapshotToolbarListeners()
