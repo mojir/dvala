@@ -2438,7 +2438,8 @@ window.onload = async function () {
       evt.preventDefault()
       closeInfoModal()
     }
-    if (evt.key === 'Enter' && state.currentSnapshot) {
+    const snapshotViewVisible = document.getElementById('dvala-snapshot-view')?.style.display === 'flex'
+    if (evt.key === 'Enter' && state.currentSnapshot && (state.modalStack.length > 0 || snapshotViewVisible)) {
       evt.preventDefault()
       void resumeSnapshot()
     }
