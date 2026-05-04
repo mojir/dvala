@@ -134,7 +134,7 @@ export function initLspWorker(): void {
         try {
           const source = model.getValue()
           const tc = typecheckForDiagnostics(source, path)
-          typeCheckCache.set(path, tc)
+          typecheckCache.set(path, tc)
           allDiagnostics.push(...buildTypeDiagnostics(tc))
         } catch {}
 
