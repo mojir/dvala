@@ -478,7 +478,7 @@ export function unregisterModel(path: string): void {
 
 /**
  * Push an edit delta to the worker. Called on every Monaco model change.
- * Debounces diagnostics by ~200ms.
+ * Debounces diagnostics by ~150ms.
  */
 export function updateDocument(path: string, source: string, sourceVersion: number): void {
   const w = getWorker()
@@ -498,7 +498,7 @@ export function updateDocument(path: string, source: string, sourceVersion: numb
     setTimeout(() => {
       debounceTimers.delete(path)
       requestDiagnostics(path, sourceVersion)
-    }, 200),
+    }, 150),
   )
 }
 
