@@ -11,7 +11,7 @@
 import * as monaco from 'monaco-editor'
 // eslint-disable-next-line import/default
 import LsWorker from './lsWorker?worker'
-import type { Diagnostic } from '../../src/shared/types'
+import type { Diagnostic, Position } from '../../src/shared/types'
 
 // ── Worker lifetime ───────────────────────────────────────────────────────────
 
@@ -23,6 +23,9 @@ const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 /** Pending request IDs keyed by path for cancellation. */
 const pendingRequests = new Map<string, number>()
+
+/** Pending hover requests keyed by requestId. */
+const pendingHovers = new Map<number, (contents: string | null) => void>()
 
 /** Registered Monaco models keyed by path. */
 const registeredModels = new Map<string, monaco.editor.ITextModel>()
@@ -87,8 +90,67 @@ export function initLspWorker(): void {
         pendingRequests.delete(path)
         return
       }
+
+      case 'hoverResult': {
+        const { requestId, contents } = msg as {
+          type: 'hoverResult'
+          requestId: number
+          path: string
+          contents: string | null
+        }
+        const resolve = pendingHovers.get(requestId)
+        if (resolve) {
+          pendingHovers.delete(requestId)
+          resolve(contents)
+        }
+        return
+      }
     }
   }
+
+  // Register Monaco hover provider for Dvala.
+  monaco.languages.registerHoverProvider('dvala', {
+    provideHover: (model, position) => {
+      return new Promise<monaco.languages.Hover | null>(resolve => {
+        // Find the workspace path for this model.
+        let path: string | undefined
+        for (const [p, m] of registeredModels) {
+          if (m === model) {
+            path = p
+            break
+          }
+        }
+        if (!path) {
+          resolve(null)
+          return
+        }
+
+        const requestId = nextRequestId++
+        pendingHovers.set(requestId, contents => {
+          if (contents === null) {
+            resolve(null)
+          } else {
+            resolve({
+              contents: [{ value: contents }],
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
+              },
+            })
+          }
+        })
+
+        getWorker().postMessage({
+          type: 'requestHover',
+          requestId,
+          path,
+          position: { line: position.lineNumber, column: position.column } satisfies Position,
+        })
+      })
+    },
+  })
 }
 
 /**

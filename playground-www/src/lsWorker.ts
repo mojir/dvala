@@ -52,7 +52,8 @@ import { parseTokenStreamRecoverable } from '../../src/tooling'
 import { typecheck } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
 import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
-import type { Diagnostic } from '../../src/shared/types'
+import type { Diagnostic, Position } from '../../src/shared/types'
+import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 
 import type { Ast } from '../../src/parser/types'
 
@@ -77,7 +78,14 @@ interface CancelRequestMessage {
   requestId: number
 }
 
-type WorkerInMessage = UpdateDocumentMessage | RequestDiagnosticsMessage | CancelRequestMessage
+interface RequestHoverMessage {
+  type: 'requestHover'
+  requestId: number
+  path: string
+  position: Position
+}
+
+type WorkerInMessage = UpdateDocumentMessage | RequestDiagnosticsMessage | CancelRequestMessage | RequestHoverMessage
 
 interface DiagnosticsResultMessage {
   type: 'diagnosticsResult'
@@ -95,12 +103,21 @@ interface DiagnosticsErrorMessage {
   message: string
 }
 
+interface HoverResultMessage {
+  type: 'hoverResult'
+  requestId: number
+  path: string
+  contents: string | null
+}
+
 // ── Worker state ──────────────────────────────────────────────────────────────
 
 /** Per-file mirror buffer. */
 interface FileState {
   source: string
   sourceVersion: number
+  /** Cached typecheck result for hover queries (cleared on edit). */
+  typecheckCache: TypecheckResult | null
 }
 
 const files = new Map<string, FileState>()
@@ -155,6 +172,11 @@ function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   }
   checkCancelled(input.requestId)
 
+  // Cache the typecheck result on the file state so hover queries can
+  // use findTypeAtPosition without re-typechecking.
+  const file = files.get(input.path)
+  if (file) file.typecheckCache = typeResult
+
   // ── Build diagnostics ──
   diagnostics.push(...buildTypeDiagnostics(typeResult))
   diagnostics.push(
@@ -177,7 +199,9 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
 
   switch (msg.type) {
     case 'updateDocument': {
-      files.set(msg.path, { source: msg.source, sourceVersion: msg.sourceVersion })
+      // Invalidate the typecheck cache on every edit — the next diagnostics
+      // pass will re-typecheck and refresh it for hover queries.
+      files.set(msg.path, { source: msg.source, sourceVersion: msg.sourceVersion, typecheckCache: null })
       return
     }
 
@@ -231,6 +255,36 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
 
     case 'cancelRequest': {
       cancelledRequests.set(msg.requestId, true)
+      return
+    }
+
+    case 'requestHover': {
+      const file = files.get(msg.path)
+      const out: HoverResultMessage = {
+        type: 'hoverResult',
+        requestId: msg.requestId,
+        path: msg.path,
+        contents: null,
+      }
+
+      if (!file || !file.typecheckCache) {
+        self.postMessage(out)
+        return
+      }
+
+      try {
+        const tc = file.typecheckCache
+        const type = findTypeAtPosition(tc.typeMap, tc.sourceMap, msg.position)
+        if (!type) {
+          self.postMessage(out)
+          return
+        }
+        out.contents = formatHoverType(type)
+      } catch {
+        // findTypeAtPosition or formatHoverType threw — nothing to show.
+      }
+
+      self.postMessage(out)
       return
     }
   }
