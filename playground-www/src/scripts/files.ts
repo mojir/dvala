@@ -103,8 +103,8 @@ export function loadWorkspaceFile(id: string) {
 
 // ─── Explorer panel (compact file list in editor tab) ────────────────────────
 
-export const SCRATCH_TITLE = '<scratch>'
-const HANDLERS_TITLE = '<handlers>'
+export const SCRATCH_TITLE = '[scratch]'
+const HANDLERS_TITLE = '[handlers]'
 
 export function isScratchActive(): boolean {
   // Phase 1.5 step 23h: scratch is a regular workspace file with reserved ID

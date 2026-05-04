@@ -2,8 +2,8 @@ import { HANDLERS_FILE_PATH } from '../handlersBuffer'
 import { SCRATCH_FILE_PATH } from '../scratchBuffer'
 
 const PLAYGROUND_PATH_LABELS: Record<string, string> = {
-  [SCRATCH_FILE_PATH]: '<scratch>',
-  [HANDLERS_FILE_PATH]: '<handlers>',
+  [SCRATCH_FILE_PATH]: '[scratch]',
+  [HANDLERS_FILE_PATH]: '[handlers]',
 }
 
 export function getReplPromptText(filePath: string): string {

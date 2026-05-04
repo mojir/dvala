@@ -701,13 +701,13 @@ test.describe('files', () => {
     await page.waitForFunction(
       () => {
         const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-        // Two pinned virtual entries (<scratch>, <handlers>) plus at least
+        // Two pinned virtual entries ([scratch], [handlers]) plus at least
         // one user-authored file means the file we just saved has rendered.
         return items.length > 2
       },
       { timeout: 5000 },
     )
-    // Click the third explorer item (after the pinned <scratch> and <handlers>).
+    // Click the third explorer item (after the pinned [scratch] and [handlers]).
     await page.locator('#explorer-file-list .explorer-item').nth(2).click()
 
     await navigateToPlayground(page)
@@ -739,11 +739,11 @@ test.describe('files', () => {
     await page.waitForFunction(
       () => {
         const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-        return items.length === 2 // only the pinned <scratch> + <handlers> entries remain
+        return items.length === 2 // only the pinned [scratch] + [handlers] entries remain
       },
       { timeout: 5000 },
     )
-    // Only the two pinned virtual entries (<scratch>, <handlers>) remain.
+    // Only the two pinned virtual entries ([scratch], [handlers]) remain.
     await expect(page.locator('#explorer-file-list .explorer-item')).toHaveCount(2)
   })
 })
@@ -1262,7 +1262,7 @@ test.describe('editor toolbar', () => {
   test('filename pill displays scratch title', async ({ page }) => {
     const pill = page.locator('#editor-toolbar .editor-toolbar__title')
     await expect(pill).toBeVisible()
-    await expect(pill).toContainText('<scratch>')
+    await expect(pill).toContainText('[scratch]')
   })
 
   test('filename pill updates when a file is loaded', async ({ page }) => {
@@ -1319,7 +1319,7 @@ test.describe('scratch', () => {
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
     const scratchItem = page.locator('#explorer-file-list .explorer-item').first()
     await expect(scratchItem).toBeVisible()
-    await expect(scratchItem).toContainText('<scratch>')
+    await expect(scratchItem).toContainText('[scratch]')
     // no context menu button inside scratch item
     await expect(scratchItem.locator('button')).toHaveCount(0)
   })
@@ -1338,7 +1338,7 @@ test.describe('scratch', () => {
 
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
     // Click the workspace file. The first two items are the pinned virtual
-    // entries `<scratch>` (23c) and `<handlers>` (23d); the user-authored
+    // entries `[scratch]` (23c) and `[handlers]` (23d); the user-authored
     // file follows at index 2.
     await page.locator('#explorer-file-list .explorer-item').nth(2).click()
 
@@ -1355,7 +1355,7 @@ test.describe('scratch', () => {
     await page.locator('#explorer-file-list .explorer-item').first().click()
 
     const pill = page.locator('#editor-toolbar .editor-toolbar__title')
-    await expect(pill).toContainText('<scratch>')
+    await expect(pill).toContainText('[scratch]')
   })
 })
 
@@ -1460,7 +1460,7 @@ test.describe('file operations', () => {
     await closeBtn.click()
 
     const pill = page.locator('#editor-toolbar .editor-toolbar__title')
-    await expect(pill).toContainText('<scratch>')
+    await expect(pill).toContainText('[scratch]')
   })
 
   test('files with `/` in the path render as a folder tree', async ({ page }) => {
@@ -1729,7 +1729,7 @@ test.describe('editor tabs', () => {
 
     // After close, only the scratch tab remains.
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
   })
 
   test('the scratch tab has a × close button (Phase 1.5 step 23j stage 2)', async ({ page }) => {
@@ -1737,12 +1737,12 @@ test.describe('editor tabs', () => {
     // Just opening the editor with no other tabs should still expose
     // the close button on the scratch tab.
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })).toBeVisible()
+    await expect(page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })).toBeVisible()
     // The close button is hidden by CSS until the tab is hovered or
     // active. Scratch is the only tab and is active by default, so the
     // button is visible without hover.
     const scratchClose = page
-      .locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
+      .locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })
       .locator('.editor-tab__close')
     await expect(scratchClose).toBeVisible()
   })
@@ -1751,26 +1751,26 @@ test.describe('editor tabs', () => {
     // Close the scratch tab. With nothing else open, the strip empties
     // and the editor area renders the "No tab open" empty state with
     // an "Open scratch" affordance.
-    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
+    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })
     await scratchTab.locator('.editor-tab__close').click()
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(0)
     // Empty view appears in the editor area.
     await expect(page.locator('#dvala-empty-view')).toBeVisible()
-    // The pinned `<scratch>` entry stays in the file tree as the
+    // The pinned `[scratch]` entry stays in the file tree as the
     // re-open affordance.
-    await expect(page.locator('#explorer-file-list .explorer-item', { hasText: '<scratch>' })).toBeVisible()
+    await expect(page.locator('#explorer-file-list .explorer-item', { hasText: '[scratch]' })).toBeVisible()
   })
 
-  test('after closing scratch, the pinned <scratch> tree entry re-opens it', async ({ page }) => {
-    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
+  test('after closing scratch, the pinned [scratch] tree entry re-opens it', async ({ page }) => {
+    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })
     await scratchTab.locator('.editor-tab__close').click()
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(0)
 
-    // Click the pinned `<scratch>` entry in the explorer file list.
-    await page.locator('#explorer-file-list .explorer-item', { hasText: '<scratch>' }).click()
+    // Click the pinned `[scratch]` entry in the explorer file list.
+    await page.locator('#explorer-file-list .explorer-item', { hasText: '[scratch]' }).click()
     // Strip is back with scratch as the only tab.
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
     // Editor view is visible again, empty state hidden.
     await expect(page.locator('#dvala-editor-view')).toBeVisible()
     await expect(page.locator('#dvala-empty-view')).toBeHidden()
@@ -1791,11 +1791,11 @@ test.describe('editor tabs', () => {
     await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
     // Switch back to scratch so it's the active tab; file 'a' is the
     // only neighbor.
-    await page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' }).click()
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    await page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' }).click()
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
 
     // Close scratch via its × button.
-    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
+    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })
     await scratchTab.locator('.editor-tab__close').click()
 
     // Strip drops to one tab (the neighbor); active becomes 'neighbor-a.dvala'.
@@ -1855,7 +1855,7 @@ test.describe('editor tabs', () => {
   })
 
   test('Cmd/Ctrl-W closes the active tab (Monaco-bound shortcut)', async ({ page }) => {
-    // Open one file so a closeable tab exists in addition to <scratch>.
+    // Open one file so a closeable tab exists in addition to [scratch].
     const aId = '10101010-1010-1010-1010-101010101010'
     await page.evaluate((id: string) => {
       const w = window as any
@@ -1872,7 +1872,7 @@ test.describe('editor tabs', () => {
 
     // After close, only the scratch tab remains and is active.
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
   })
 
   test('Cmd/Ctrl-PageDown / -PageUp cycle through open tabs (wrapping)', async ({ page }) => {
@@ -1895,13 +1895,13 @@ test.describe('editor tabs', () => {
     await page.evaluate(() => (window as any).Playground.focusDvalaCode())
     // From B, PageDown wraps to scratch (next-with-wrap on a 3-tab strip).
     await page.keyboard.press(`${MONACO_CMD_MOD}+PageDown`)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
     // PageDown again → A.
     await page.keyboard.press(`${MONACO_CMD_MOD}+PageDown`)
     await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('cycle-a.dvala')
     // PageUp → back to scratch.
     await page.keyboard.press(`${MONACO_CMD_MOD}+PageUp`)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
   })
 
   test('Cmd/Ctrl-1..9 jumps to the Nth open tab', async ({ page }) => {
@@ -1924,7 +1924,7 @@ test.describe('editor tabs', () => {
     await page.evaluate(() => (window as any).Playground.focusDvalaCode())
     // Cmd-1 → scratch.
     await page.keyboard.press(`${MONACO_CMD_MOD}+1`)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
     // Cmd-2 → A.
     await page.keyboard.press(`${MONACO_CMD_MOD}+2`)
     await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('idx-a.dvala')
@@ -1952,7 +1952,7 @@ test.describe('editor tabs', () => {
       .click({ button: 'middle' })
 
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
   })
 
   test('switching tabs and back preserves cursor position (per-tab viewState)', async ({ page }) => {
@@ -2849,8 +2849,8 @@ test.describe('snapshot lifecycle', () => {
     await page.locator('#side-snapshots-list .explorer-item').first().click()
     await page.waitForFunction(() => document.querySelector('.snapshot-panel__section') !== null, { timeout: 4000 })
 
-    await page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' }).click()
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+    await page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' }).click()
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
 
     await page.evaluate(() =>
       (window as any).Playground.setEditorCursor((window as any).Playground.getEditorValue().length),
