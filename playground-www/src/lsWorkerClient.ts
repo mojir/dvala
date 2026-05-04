@@ -14,6 +14,7 @@ import LsWorker from './lsWorker?worker'
 import type { Diagnostic, Position } from '../../src/shared/types'
 import { referenceToCompletion } from '../../src/shared/completionBuilder'
 import { allReference } from '../../reference/index'
+import { formatSource } from '../../src/tooling'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 
@@ -423,6 +424,25 @@ export function initLspWorker(): void {
           position: { line: position.lineNumber, column: position.column } satisfies Position,
         })
       })
+    },
+  })
+
+  // ── Document formatter ───────────────────────────────────────────────────
+
+  monaco.languages.registerDocumentFormattingEditProvider('dvala', {
+    provideDocumentFormattingEdits: model => {
+      try {
+        const formatted = formatSource(model.getValue())
+        return [
+          {
+            range: model.getFullModelRange(),
+            text: formatted,
+          },
+        ]
+      } catch {
+        // formatSource threw (e.g. parse error). Return no edits.
+        return []
+      }
     },
   })
 }
