@@ -2852,7 +2852,9 @@ test.describe('snapshot lifecycle', () => {
     await page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' }).click()
     await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
 
-    await page.evaluate(() => (window as any).Playground.setEditorCursor((window as any).Playground.getEditorValue().length))
+    await page.evaluate(() =>
+      (window as any).Playground.setEditorCursor((window as any).Playground.getEditorValue().length),
+    )
     await page.evaluate(() => (window as any).Playground.focusDvalaCode())
     await page.keyboard.press('Enter')
 
