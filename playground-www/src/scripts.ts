@@ -2063,6 +2063,7 @@ function wireCodeEditorListeners(): void {
     const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
     const activeModel = editor.getActiveModel()
     if (activeModel) {
+      console.log('[LSP] onChange ->', activePath, 'v', activeModel.getVersionId())
       registerModel(activePath, activeModel)
       updateLspDocument(activePath, value, activeModel.getVersionId())
     }

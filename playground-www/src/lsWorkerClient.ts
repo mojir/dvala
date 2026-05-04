@@ -145,6 +145,7 @@ export function initLspWorker(): void {
         }))
 
         monaco.editor.setModelMarkers(model, 'dvala', markers)
+        console.log('[LSP] markers set for', path, ':', allDiagnostics.length, 'diagnostics')
         pendingRequests.delete(path)
         return
       }
@@ -166,7 +167,10 @@ export function initLspWorker(): void {
       // Find the workspace path for this model.
       let path: string | undefined
       for (const [p, m] of registeredModels) {
-        if (m === model) { path = p; break }
+        if (m === model) {
+          path = p
+          break
+        }
       }
       if (!path) return null
 
@@ -249,21 +253,26 @@ export function initLspWorker(): void {
     provideDefinition: (model, position) => {
       let path: string | undefined
       for (const [p, m] of registeredModels) {
-        if (m === model) { path = p; break }
+        if (m === model) {
+          path = p
+          break
+        }
       }
       if (!path) return null
 
       const def = workspaceIndex.findDefinition(path, position.lineNumber, position.column)
       if (!def) return null
-      return [{
-        uri: monaco.Uri.parse(`dvala:///${def.location.file}`),
-        range: {
-          startLineNumber: def.location.line,
-          startColumn: def.location.column,
-          endLineNumber: def.location.line,
-          endColumn: def.location.column + def.name.length,
+      return [
+        {
+          uri: monaco.Uri.parse(`dvala:///${def.location.file}`),
+          range: {
+            startLineNumber: def.location.line,
+            startColumn: def.location.column,
+            endLineNumber: def.location.line,
+            endColumn: def.location.column + def.name.length,
+          },
         },
-      }]
+      ]
     },
   })
 
@@ -273,7 +282,10 @@ export function initLspWorker(): void {
     provideReferences: (model, position) => {
       let path: string | undefined
       for (const [p, m] of registeredModels) {
-        if (m === model) { path = p; break }
+        if (m === model) {
+          path = p
+          break
+        }
       }
       if (!path) return null
 
@@ -299,7 +311,10 @@ export function initLspWorker(): void {
     provideRenameEdits: (model, position, newName) => {
       let path: string | undefined
       for (const [p, m] of registeredModels) {
-        if (m === model) { path = p; break }
+        if (m === model) {
+          path = p
+          break
+        }
       }
       if (!path) return null
 
