@@ -39,7 +39,7 @@ export const RIGHT_PANEL_TOOL_TABS = [
   {
     id: 'repl' as const,
     label: 'REPL',
-    title: 'File-backed REPL for the active file',
+    title: 'Interactive REPL for the active file or snapshot',
   },
   {
     id: 'snapshot-tree' as const,
@@ -79,11 +79,12 @@ export const FILE_RIGHT_PANEL_TABS = RIGHT_PANEL_TOOL_TABS.filter(
 
 /**
  * Tabs shown in the right panel when a snapshot tab is active.
- * Only JSON Tree — the Tokens/AST/CST/Doc Tree tools operate on
- * Dvala source, not snapshot JSON payloads.
+ * JSON Tree plus REPL — the REPL evaluates against the snapshot's
+ * flattened visible scope, while the Tokens/AST/CST/Doc Tree tools still
+ * only apply to Dvala source.
  */
 export const SNAPSHOT_RIGHT_PANEL_TABS = RIGHT_PANEL_TOOL_TABS.filter(
-  t => t.id === 'snapshot-tree',
+  t => t.id === 'snapshot-tree' || t.id === 'repl',
 )
 
 // Cached viewer handles per tab. `update()` keeps the user's expand/collapse

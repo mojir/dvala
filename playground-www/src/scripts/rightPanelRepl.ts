@@ -8,12 +8,13 @@ import { getHandlersCode, wrapWithBoundaryHandler } from '../handlersBuffer'
 import { getWorkspaceFiles } from '../fileStorage'
 import { playgroundFileResolver } from '../playgroundFileResolver'
 import { getState } from '../state'
-import { openOrFocusSnapshotTab } from './tabs'
+import { getActiveTabKind, openOrFocusSnapshotTab } from './tabs'
 import type { TerminalSnapshotEntry } from '../snapshotStorage'
 import { getTerminalSnapshots, setTerminalSnapshots } from '../snapshotStorage'
 import { getRightPanel } from './panelInstances'
 import { SCRATCH_FILE_ID } from '../scratchBuffer'
-import { getPlaygroundReplHandlers } from '../scripts'
+import { getActiveSnapshotDetails, getPlaygroundReplHandlers } from '../scripts'
+import { extractSnapshotBindings } from './rightPanelReplBaseline'
 import { getReplPromptText, getReplPromptWidth } from './rightPanelReplPrompt'
 import {
   isReplSessionStale,
@@ -48,6 +49,24 @@ const MAX_INPUT_HISTORY = 100
 const REPL_SESSIONS_STORAGE_KEY = 'playground-repl-sessions-v1'
 let didHydrateSessions = false
 let shouldFocusInputOnRender = false
+
+type ReplTarget =
+  | {
+      kind: 'file'
+      sessionKey: string
+      displayLabel: string
+      promptSource: string
+      file: { id: string; path: string }
+      fileSource: string
+      handlersSource: string
+    }
+  | {
+      kind: 'snapshot'
+      sessionKey: string
+      displayLabel: string
+      promptSource: string
+      snapshot: Snapshot
+    }
 
 function hydrateSessions(): void {
   if (didHydrateSessions) return
@@ -107,6 +126,32 @@ function getActiveWorkspaceFile() {
   return getWorkspaceFiles().find(file => file.id === fileId) ?? null
 }
 
+function getActiveReplTarget(): ReplTarget | null {
+  if (getActiveTabKind() === 'snapshot') {
+    const activeSnapshot = getActiveSnapshotDetails()
+    if (!activeSnapshot) return null
+    return {
+      kind: 'snapshot',
+      sessionKey: `snapshot:${activeSnapshot.snapshot.id}`,
+      displayLabel: activeSnapshot.label,
+      promptSource: activeSnapshot.label,
+      snapshot: activeSnapshot.snapshot,
+    }
+  }
+
+  const file = getActiveWorkspaceFile()
+  if (!file) return null
+  return {
+    kind: 'file',
+    sessionKey: file.id,
+    displayLabel: file.path,
+    promptSource: file.path,
+    file,
+    fileSource: getState('dvala-code'),
+    handlersSource: getHandlersCode(),
+  }
+}
+
 function getReplRunLocation(file: { id: string; path: string }): { filePath?: string; fileResolverBaseDir: string } {
   if (file.id === SCRATCH_FILE_ID) {
     return { filePath: undefined, fileResolverBaseDir: '' }
@@ -155,10 +200,10 @@ function saveAndOpenSnapshotTab(snapshot: Snapshot, resultType: TerminalSnapshot
 async function runPlaygroundReplCode(params: {
   expression: string
   scope: Record<string, unknown>
-  file: { id: string; path: string }
+  runLocation: { filePath?: string; fileResolverBaseDir: string }
   addOutput: (entry: ReplOutputEntry) => void
 }): Promise<RunResult> {
-  const { filePath, fileResolverBaseDir } = getReplRunLocation(params.file)
+  const { filePath, fileResolverBaseDir } = params.runLocation
   const dvala = createDvala({
     debug: getState('debug'),
     modules: allBuiltinModules,
@@ -174,38 +219,46 @@ async function runPlaygroundReplCode(params: {
   })
 }
 
-async function loadBaseline(file: { id: string; path: string }, session: ReplSessionState, fileSource: string): Promise<void> {
+function resetSessionToBaseline(session: ReplSessionState, baseScope: Record<string, unknown>): void {
+  session.baseScope = { ...baseScope }
+  session.scope = { ...baseScope }
+  session.historyResults = []
+  session.historyIndex = -1
+  session.draftInput = ''
+}
+
+async function loadBaseline(target: ReplTarget, session: ReplSessionState): Promise<void> {
   session.status = 'loading'
   session.error = null
   renderReplForActiveFile()
-  const handlersSource = getHandlersCode()
+  const handlersSource = target.kind === 'file' ? target.handlersSource : ''
   const nextBaseScope: Record<string, unknown> = {}
   try {
-    const result = await runPlaygroundReplCode({
-      expression: fileSource,
-      scope: nextBaseScope,
-      file,
-      addOutput: entry => session.outputs.push(entry),
-    })
-    if (result.type === 'error') throw result.error
-    if (result.type === 'suspended') {
-      saveAndOpenSnapshotTab(result.snapshot, 'halted')
-      throw new Error('Loaded file suspended. Snapshot-backed REPL sessions are not implemented yet.')
+    if (target.kind === 'file') {
+      const result = await runPlaygroundReplCode({
+        expression: target.fileSource,
+        scope: nextBaseScope,
+        runLocation: getReplRunLocation(target.file),
+        addOutput: entry => session.outputs.push(entry),
+      })
+      if (result.type === 'error') throw result.error
+      if (result.type === 'suspended') {
+        saveAndOpenSnapshotTab(result.snapshot, 'halted')
+        throw new Error('Loaded file suspended. Open the snapshot tab and use the snapshot-backed REPL there.')
+      }
+      if (result.type === 'halted') {
+        throw new Error('Loaded file halted. Reload after adjusting the file.')
+      }
+      mergeReplResultIntoScope(nextBaseScope, result.value)
+    } else {
+      Object.assign(nextBaseScope, extractSnapshotBindings(target.snapshot))
     }
-    if (result.type === 'halted') {
-      throw new Error('Loaded file halted. Reset or reload after adjusting the file.')
-    }
-    mergeReplResultIntoScope(nextBaseScope, result.value)
-    session.baseScope = { ...nextBaseScope }
-    session.scope = { ...nextBaseScope }
-    session.historyResults = []
-    session.historyIndex = -1
-    session.draftInput = ''
-    session.loadedFileSource = fileSource
+    resetSessionToBaseline(session, nextBaseScope)
+    session.loadedFileSource = target.kind === 'file' ? target.fileSource : target.snapshot.id
     session.loadedHandlersSource = handlersSource
     session.status = 'ready'
     session.error = null
-    session.outputs = [{ kind: 'comment', text: `Loaded ${file.path}` }]
+    session.outputs = [{ kind: 'comment', text: `Loaded ${target.displayLabel}` }]
     persistSessions()
   } catch (error) {
     session.baseScope = {}
@@ -213,7 +266,7 @@ async function loadBaseline(file: { id: string; path: string }, session: ReplSes
     session.historyResults = []
     session.historyIndex = -1
     session.draftInput = ''
-    session.loadedFileSource = fileSource
+    session.loadedFileSource = target.kind === 'file' ? target.fileSource : target.snapshot.id
     session.loadedHandlersSource = handlersSource
     session.status = 'error'
     session.error = error instanceof Error ? error.message : String(error)
@@ -235,7 +288,7 @@ function setInputValue(input: HTMLElement, value: string): void {
   input.textContent = value
 }
 
-async function submitLine(file: { id: string; path: string }, session: ReplSessionState, inputEl: HTMLElement): Promise<void> {
+async function submitLine(target: ReplTarget, session: ReplSessionState, inputEl: HTMLElement): Promise<void> {
   const expression = getInputValue(inputEl).trim()
   if (expression === '' || session.status === 'loading') return
   setInputValue(inputEl, '')
@@ -254,7 +307,7 @@ async function submitLine(file: { id: string; path: string }, session: ReplSessi
       runPlaygroundReplCode({
         expression: nextExpression,
         scope: nextScope,
-        file,
+        runLocation: target.kind === 'file' ? getReplRunLocation(target.file) : { fileResolverBaseDir: '' },
         addOutput: entry => session.outputs.push(entry),
       }),
   })
@@ -475,19 +528,19 @@ function handleHistoryNavigation(
 }
 
 function renderReplForActiveFile(): void {
-  const file = getActiveWorkspaceFile()
-  if (!file) return
-  const session = getOrCreateSession(file.id)
-  const promptText = getReplPromptText(file.path)
+  const target = getActiveReplTarget()
+  if (!target) return
+  const session = getOrCreateSession(target.sessionKey)
+  const promptText = getReplPromptText(target.promptSource)
   const promptWidth = getReplPromptWidth(promptText)
   const panel = document.createElement('div')
   panel.className = 'repl-panel'
   panel.style.setProperty('--repl-prompt-width', promptWidth)
 
-  const liveFileSource = getState('dvala-code')
-  const liveHandlersSource = getHandlersCode()
+  const liveFileSource = target.kind === 'file' ? target.fileSource : target.snapshot.id
+  const liveHandlersSource = target.kind === 'file' ? target.handlersSource : ''
   const stale =
-    session.status !== 'idle' && isReplSessionStale(session, liveFileSource, liveHandlersSource)
+    target.kind === 'file' && session.status !== 'idle' && isReplSessionStale(session, liveFileSource, liveHandlersSource)
 
   const header = document.createElement('div')
   header.className = 'repl-panel__header'
@@ -502,23 +555,9 @@ function renderReplForActiveFile(): void {
   reloadBtn.disabled = session.status === 'loading'
   reloadBtn.hidden = !shouldShowReloadButton(session.status, stale)
   reloadBtn.addEventListener('click', () => {
-    void loadBaseline(file, session, getState('dvala-code'))
+    void loadBaseline(target, session)
   })
-  const resetBtn = document.createElement('button')
-  resetBtn.type = 'button'
-  resetBtn.className = 'button button--small'
-  resetBtn.textContent = 'Reset'
-  resetBtn.disabled = session.status !== 'ready'
-  resetBtn.addEventListener('click', () => {
-    session.scope = { ...session.baseScope }
-    session.historyResults = []
-    session.historyIndex = -1
-    session.draftInput = ''
-    session.outputs = []
-    persistSessions()
-    renderReplForActiveFile()
-  })
-  actions.append(renderContextMenu(session), reloadBtn, resetBtn)
+  actions.append(renderContextMenu(session), reloadBtn)
   header.appendChild(actions)
   panel.appendChild(header)
 
@@ -530,7 +569,7 @@ function renderReplForActiveFile(): void {
   if (session.outputs.length === 0) {
     const empty = document.createElement('div')
     empty.className = 'repl-panel__empty'
-    empty.textContent = 'Load a file to start a REPL session.'
+    empty.textContent = target.kind === 'file' ? 'Load a file to start a REPL session.' : 'Load a snapshot to start a REPL session.'
     output.appendChild(empty)
   } else {
     session.outputs.forEach(entry => {
@@ -548,8 +587,8 @@ function renderReplForActiveFile(): void {
   input.disabled = session.status !== 'ready'
   input.setAttribute('aria-label', 'REPL input')
   input.autocomplete = 'off'
-  input.autocapitalize = 'off'
-  input.autocorrect = 'off'
+  input.setAttribute('autocapitalize', 'off')
+  input.setAttribute('autocorrect', 'off')
   input.spellcheck = false
   input.value = session.historyIndex === -1 ? session.draftInput : ''
   input.addEventListener('input', () => {
@@ -559,7 +598,7 @@ function renderReplForActiveFile(): void {
     handleHistoryNavigation(event, session, input)
     if (event.key === 'Enter') {
       event.preventDefault()
-      void submitLine(file, session, input)
+      void submitLine(target, session, input)
     }
   })
   main.addEventListener('click', event => {
@@ -587,12 +626,12 @@ function renderReplForActiveFile(): void {
 }
 
 export function refreshReplInRightPanel(): void {
-  const file = getActiveWorkspaceFile()
-  if (!file) return
+  const target = getActiveReplTarget()
+  if (!target) return
   shouldFocusInputOnRender = true
-  const session = getOrCreateSession(file.id)
+  const session = getOrCreateSession(target.sessionKey)
   if (session.status === 'idle') {
-    void loadBaseline(file, session, getState('dvala-code'))
+    void loadBaseline(target, session)
     return
   }
   renderReplForActiveFile()

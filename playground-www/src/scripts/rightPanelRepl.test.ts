@@ -1,6 +1,11 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from 'vitest'
+import { createContextStack } from '../../../src/evaluator/ContextStack'
+import { createSnapshot } from '../../../src/evaluator/effectTypes'
+import { serializeTerminalSnapshot, serializeToObject } from '../../../src/evaluator/suspension'
+import { cons } from '../../../src/utils/persistent/PersistentList'
+import { extractSnapshotBindings } from './rightPanelReplBaseline'
 import { getReplPromptText, getReplPromptWidth } from './rightPanelReplPrompt'
 import {
   isReplSessionStale,
@@ -8,6 +13,36 @@ import {
   shouldShowReloadButton,
   toPersistedReplSession,
 } from './rightPanelReplState'
+
+function makeSnapshot(continuation: unknown) {
+  return createSnapshot({
+    continuation,
+    timestamp: 1,
+    index: 0,
+    executionId: 'run-1',
+    message: 'snapshot',
+  })
+}
+
+describe('extractSnapshotBindings', () => {
+  it('flattens the visible snapshot scope with inner bindings shadowing outer ones', () => {
+    const env = createContextStack({ globalContext: { outer: { value: 1 }, self: { value: 'skip' } } })
+      .create({ answer: { value: 41 } })
+      .create({ answer: { value: 42 }, local: { value: 'ok' } })
+
+    const continuation = serializeToObject(cons({ type: 'Sequence', nodes: [], index: 0, env }, null))
+
+    expect(extractSnapshotBindings(makeSnapshot(continuation))).toEqual({
+      answer: 42,
+      local: 'ok',
+      outer: 1,
+    })
+  })
+
+  it('returns an empty scope for terminal snapshots without an active environment', () => {
+    expect(extractSnapshotBindings(makeSnapshot(serializeTerminalSnapshot([], 0)))).toEqual({})
+  })
+})
 
 describe('getReplPromptText', () => {
   it('uses the current filename for the REPL prompt', () => {
@@ -61,11 +96,11 @@ describe('isReplSessionStale', () => {
 })
 
 describe('shouldShowReloadButton', () => {
-  it('shows reload only when the session is idle, errored, or stale', () => {
+  it('shows reload whenever the session is not loading', () => {
     expect(shouldShowReloadButton('idle', false)).toBe(true)
     expect(shouldShowReloadButton('error', false)).toBe(true)
     expect(shouldShowReloadButton('ready', true)).toBe(true)
-    expect(shouldShowReloadButton('ready', false)).toBe(false)
+    expect(shouldShowReloadButton('ready', false)).toBe(true)
     expect(shouldShowReloadButton('loading', true)).toBe(false)
   })
 })

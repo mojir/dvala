@@ -44,7 +44,7 @@ export function isReplSessionStale(
 
 export function shouldShowReloadButton(status: 'idle' | 'loading' | 'ready' | 'error', stale: boolean): boolean {
   if (status === 'loading') return false
-  return status === 'idle' || status === 'error' || stale
+  return status === 'idle' || status === 'ready' || status === 'error' || stale
 }
 
 export function moveReplHistoryCursor(params: {
