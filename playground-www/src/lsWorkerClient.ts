@@ -85,6 +85,17 @@ function getWorker(): Worker {
 export function initLspWorker(): void {
   const w = getWorker()
 
+  w.onerror = () => {
+    // Worker crashed (e.g. OOM during typecheck). Discard the dead worker
+    // so the next call to getWorker() spawns a fresh one. Pending requests
+    // are abandoned — their promises will never resolve, which is acceptable
+    // for short-lived interactions like hover/completions/definitions.
+    worker = null
+    pendingHovers.clear()
+    pendingDefs.clear()
+    pendingRefs.clear()
+  }
+
   w.onmessage = (event: MessageEvent) => {
     const msg = event.data
 
@@ -314,12 +325,6 @@ export function initLspWorker(): void {
             },
           ])
         }
-        // Reuse the pendingHovers map since the protocol is identical
-        // (requestId → callback).
-        pendingHovers.set(requestId, (_contents: string | null) => {
-          // Unused for definitions — they bypass the hoverResult path.
-        })
-        // Store the definition callback under a separate map.
         pendingDefs.set(requestId, onResult)
 
         getWorker().postMessage({
@@ -429,21 +434,21 @@ export function initLspWorker(): void {
 
   // ── Document formatter ───────────────────────────────────────────────────
 
+  const formatModel = (model: monaco.editor.ITextModel): monaco.languages.TextEdit[] => {
+    try {
+      const formatted = formatSource(model.getValue())
+      return [{ range: model.getFullModelRange(), text: formatted }]
+    } catch {
+      return []
+    }
+  }
+
   monaco.languages.registerDocumentFormattingEditProvider('dvala', {
-    provideDocumentFormattingEdits: model => {
-      try {
-        const formatted = formatSource(model.getValue())
-        return [
-          {
-            range: model.getFullModelRange(),
-            text: formatted,
-          },
-        ]
-      } catch {
-        // formatSource threw (e.g. parse error). Return no edits.
-        return []
-      }
-    },
+    provideDocumentFormattingEdits: formatModel,
+  })
+
+  monaco.languages.registerDocumentRangeFormattingEditProvider('dvala', {
+    provideDocumentRangeFormattingEdits: model => formatModel(model),
   })
 }
 

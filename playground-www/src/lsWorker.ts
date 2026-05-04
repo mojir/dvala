@@ -225,10 +225,11 @@ function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   diagnostics.push(...buildTypeDiagnostics(typeResult))
   diagnostics.push(
     ...buildSymbolDiagnostics(
-      // Unresolved references come from tokenScan, but the full symbol
-      // pass requires WorkspaceIndex — not yet worker-safe (tracked in
-      // Phase 2 step 29). For now, unresolved-ref diagnostics are best-
-      // effort and will be populated when WorkspaceIndex lands.
+      // Symbol-level diagnostics (unresolved refs) need the full
+      // WorkspaceIndex cross-file analysis. The index is populated on
+      // every diagnostics pass but the `findUnresolvedRefs` walk isn't
+      // wired yet — tracked as follow-up. For now, diagnostics only
+      // cover parse errors and type mismatches.
       [],
     ),
   )
@@ -318,6 +319,14 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
 
     case 'cancelRequest': {
       cancelledRequests.set(msg.requestId, true)
+      // Prune stale cancelled entries periodically (every ~20 cancels).
+      // Entries set to `true` that are never matched by a subsequent
+      // requestDiagnostics would otherwise accumulate forever.
+      if (cancelledRequests.size > 20) {
+        for (const [id, cancelled] of cancelledRequests) {
+          if (cancelled) cancelledRequests.delete(id)
+        }
+      }
       return
     }
 
