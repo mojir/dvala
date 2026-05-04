@@ -21,3 +21,9 @@
 // (typecheck-and-report).
 export { typecheck, typecheckExpr } from './typechecker/typecheck'
 export type { TypeDiagnostic, TypecheckResult } from './typechecker/typecheck'
+
+// ── Language service ─────────────────────────────────────────────────────
+// WorkspaceIndex is pure data manipulation (zero filesystem/path access)
+// and is safe to import from a Web Worker.
+export { WorkspaceIndex } from './languageService/WorkspaceIndex'
+export type { ResolveImport } from './languageService/WorkspaceIndex'

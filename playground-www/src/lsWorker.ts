@@ -49,7 +49,7 @@
 
 import { tokenizeSource } from '../../src/tooling'
 import { parseTokenStreamRecoverable } from '../../src/tooling'
-import { typecheck } from '../../src/internal'
+import { typecheck, WorkspaceIndex } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
 import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
 import type { Diagnostic, Position } from '../../src/shared/types'
@@ -85,7 +85,27 @@ interface RequestHoverMessage {
   position: Position
 }
 
-type WorkerInMessage = UpdateDocumentMessage | RequestDiagnosticsMessage | CancelRequestMessage | RequestHoverMessage
+interface RequestDefinitionMessage {
+  type: 'requestDefinition'
+  requestId: number
+  path: string
+  position: Position
+}
+
+interface RequestReferencesMessage {
+  type: 'requestReferences'
+  requestId: number
+  path: string
+  position: Position
+}
+
+type WorkerInMessage =
+  | UpdateDocumentMessage
+  | RequestDiagnosticsMessage
+  | CancelRequestMessage
+  | RequestHoverMessage
+  | RequestDefinitionMessage
+  | RequestReferencesMessage
 
 interface DiagnosticsResultMessage {
   type: 'diagnosticsResult'
@@ -110,6 +130,27 @@ interface HoverResultMessage {
   contents: string | null
 }
 
+interface LocationResult {
+  file: string
+  line: number
+  column: number
+  nameLength: number
+}
+
+interface DefinitionResultMessage {
+  type: 'definitionResult'
+  requestId: number
+  path: string
+  location: LocationResult | null
+}
+
+interface ReferencesResultMessage {
+  type: 'referencesResult'
+  requestId: number
+  path: string
+  locations: LocationResult[]
+}
+
 // ── Worker state ──────────────────────────────────────────────────────────────
 
 /** Per-file mirror buffer. */
@@ -121,6 +162,9 @@ interface FileState {
 }
 
 const files = new Map<string, FileState>()
+
+/** Workspace-level symbol index for cross-file go-to-def / find-references. */
+const workspaceIndex = new WorkspaceIndex()
 
 /** Active request cancellation flags, keyed by requestId. */
 const cancelledRequests = new Map<number, boolean>()
@@ -222,6 +266,25 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
         return
       }
 
+      // Update the workspace index with this file's content so go-to-def
+      // and find-references can resolve symbols across the workspace.
+      workspaceIndex.updateFile(msg.path, file.source, (importPath: string) => {
+        const dir = msg.path.includes('/') ? msg.path.slice(0, msg.path.lastIndexOf('/')) : ''
+        const segments = dir ? dir.split('/').filter(s => s !== '') : []
+        for (const seg of importPath.split('/')) {
+          if (seg === '' || seg === '.') continue
+          if (seg === '..') {
+            segments.pop()
+            continue
+          }
+          segments.push(seg)
+        }
+        const resolved = segments.join('/')
+        if (files.has(resolved)) return resolved
+        if (files.has(`${resolved}.dvala`)) return `${resolved}.dvala`
+        return null
+      })
+
       try {
         const diagnostics = computeDiagnostics({
           path: msg.path,
@@ -284,6 +347,44 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
         // findTypeAtPosition or formatHoverType threw — nothing to show.
       }
 
+      self.postMessage(out)
+      return
+    }
+
+    case 'requestDefinition': {
+      const def = workspaceIndex.findDefinition(msg.path, msg.position.line, msg.position.column)
+      const out: DefinitionResultMessage = {
+        type: 'definitionResult',
+        requestId: msg.requestId,
+        path: msg.path,
+        location: def
+          ? {
+              file: def.location.file,
+              line: def.location.line,
+              column: def.location.column,
+              nameLength: def.name.length,
+            }
+          : null,
+      }
+      self.postMessage(out)
+      return
+    }
+
+    case 'requestReferences': {
+      const canonical = workspaceIndex.resolveCanonicalFile(msg.path, msg.position.line, msg.position.column)
+      const locations: LocationResult[] = []
+      if (canonical) {
+        const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
+        for (const occ of occurrences) {
+          locations.push(occ)
+        }
+      }
+      const out: ReferencesResultMessage = {
+        type: 'referencesResult',
+        requestId: msg.requestId,
+        path: msg.path,
+        locations,
+      }
       self.postMessage(out)
       return
     }

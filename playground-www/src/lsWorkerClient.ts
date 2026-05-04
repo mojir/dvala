@@ -17,6 +17,13 @@ import { allReference } from '../../reference/index'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 
+interface LocationResult {
+  file: string
+  line: number
+  column: number
+  nameLength: number
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Map portable CompletionItem.kind to Monaco's CompletionItemKind enum. */
@@ -54,6 +61,12 @@ const pendingRequests = new Map<string, number>()
 
 /** Pending hover requests keyed by requestId. */
 const pendingHovers = new Map<number, (contents: string | null) => void>()
+
+/** Pending definition requests keyed by requestId. */
+const pendingDefs = new Map<number, (location: LocationResult | null) => void>()
+
+/** Pending references requests keyed by requestId. */
+const pendingRefs = new Map<number, (locations: LocationResult[]) => void>()
 
 /** Registered Monaco models keyed by path. */
 const registeredModels = new Map<string, monaco.editor.ITextModel>()
@@ -130,6 +143,36 @@ export function initLspWorker(): void {
         if (resolve) {
           pendingHovers.delete(requestId)
           resolve(contents)
+        }
+        return
+      }
+
+      case 'definitionResult': {
+        const { requestId, location } = msg as {
+          type: 'definitionResult'
+          requestId: number
+          path: string
+          location: LocationResult | null
+        }
+        const resolve = pendingDefs.get(requestId)
+        if (resolve) {
+          pendingDefs.delete(requestId)
+          resolve(location)
+        }
+        return
+      }
+
+      case 'referencesResult': {
+        const { requestId, locations } = msg as {
+          type: 'referencesResult'
+          requestId: number
+          path: string
+          locations: LocationResult[]
+        }
+        const resolve = pendingRefs.get(requestId)
+        if (resolve) {
+          pendingRefs.delete(requestId)
+          resolve(locations)
         }
         return
       }
@@ -232,6 +275,105 @@ export function initLspWorker(): void {
       }
 
       return { suggestions }
+    },
+  })
+
+  // ── Go-to-definition provider ────────────────────────────────────────────
+
+  monaco.languages.registerDefinitionProvider('dvala', {
+    provideDefinition: (model, position) => {
+      return new Promise<monaco.languages.Location[] | null>(resolve => {
+        let path: string | undefined
+        for (const [p, m] of registeredModels) {
+          if (m === model) {
+            path = p
+            break
+          }
+        }
+        if (!path) {
+          resolve(null)
+          return
+        }
+
+        const requestId = nextRequestId++
+        const onResult = (location: LocationResult | null) => {
+          if (!location) {
+            resolve(null)
+            return
+          }
+          resolve([
+            {
+              uri: monaco.Uri.parse(`dvala:///${location.file}`),
+              range: {
+                startLineNumber: location.line,
+                startColumn: location.column,
+                endLineNumber: location.line,
+                endColumn: location.column + location.nameLength,
+              },
+            },
+          ])
+        }
+        // Reuse the pendingHovers map since the protocol is identical
+        // (requestId → callback).
+        pendingHovers.set(requestId, (_contents: string | null) => {
+          // Unused for definitions — they bypass the hoverResult path.
+        })
+        // Store the definition callback under a separate map.
+        pendingDefs.set(requestId, onResult)
+
+        getWorker().postMessage({
+          type: 'requestDefinition',
+          requestId,
+          path,
+          position: { line: position.lineNumber, column: position.column } satisfies Position,
+        })
+      })
+    },
+  })
+
+  // ── Find-references provider ─────────────────────────────────────────────
+
+  monaco.languages.registerReferenceProvider('dvala', {
+    provideReferences: (model, position) => {
+      return new Promise<monaco.languages.Location[] | null>(resolve => {
+        let path: string | undefined
+        for (const [p, m] of registeredModels) {
+          if (m === model) {
+            path = p
+            break
+          }
+        }
+        if (!path) {
+          resolve(null)
+          return
+        }
+
+        const requestId = nextRequestId++
+        pendingRefs.set(requestId, locations => {
+          if (locations.length === 0) {
+            resolve(null)
+            return
+          }
+          resolve(
+            locations.map(loc => ({
+              uri: monaco.Uri.parse(`dvala:///${loc.file}`),
+              range: {
+                startLineNumber: loc.line,
+                startColumn: loc.column,
+                endLineNumber: loc.line,
+                endColumn: loc.column + loc.nameLength,
+              },
+            })),
+          )
+        })
+
+        getWorker().postMessage({
+          type: 'requestReferences',
+          requestId,
+          path,
+          position: { line: position.lineNumber, column: position.column } satisfies Position,
+        })
+      })
     },
   })
 }
