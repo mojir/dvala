@@ -2130,7 +2130,7 @@ test.describe('layout panels', () => {
     await navigateToPlayground(page)
   })
 
-  test('right panel shows all four tool tabs (Tokens / AST / CST / Doc Tree) in pipeline order', async ({ page }) => {
+  test('right panel shows all tool tabs (REPL / Tokens / AST / CST / Doc Tree) in pipeline order', async ({ page }) => {
     // Open the panel via parse(); all four tabs should be present in the
     // strip in pipeline order — the user switches between them by clicking,
     // no summon-on-demand mechanism.
@@ -2141,7 +2141,7 @@ test.describe('layout panels', () => {
     const tabIds = await strip
       .locator('[data-panel-tab-id]')
       .evaluateAll(els => els.map(el => (el as HTMLElement).dataset['panelTabId']))
-    expect(tabIds).toEqual(['tokens', 'ast', 'cst', 'doc'])
+    expect(tabIds).toEqual(['repl', 'tokens', 'ast', 'cst', 'doc'])
     // No close-X buttons on right-panel tabs (the panel is toggled as a
     // whole via the editor-bar icon / Cmd+Shift+J).
     await expect(strip.locator('.panel-shell__tab-close')).toHaveCount(0)
@@ -2838,5 +2838,27 @@ test.describe('snapshot lifecycle', () => {
       },
       { timeout: 4000 },
     )
+  })
+
+  test('pressing Enter in Monaco after switching back from a snapshot tab inserts a newline', async ({ page }) => {
+    await setDvalaCode(page, '1 + 1')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    await page.evaluate(() => (window as any).Playground.showSideTab('snapshots'))
+    await page.locator('#side-snapshots-list .explorer-item').first().click()
+    await page.waitForFunction(() => document.querySelector('.snapshot-panel__section') !== null, { timeout: 4000 })
+
+    await page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' }).click()
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
+
+    await page.evaluate(() =>
+      (window as any).Playground.setEditorCursor((window as any).Playground.getEditorValue().length),
+    )
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    await page.keyboard.press('Enter')
+
+    await expect.poll(async () => await getDvalaCode(page)).toBe('1 + 1\n')
+    await expect.poll(async () => await getOutputText(page)).not.toContain('Resume snapshot')
   })
 })

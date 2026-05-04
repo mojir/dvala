@@ -164,17 +164,21 @@ describe('examples — run', () => {
 
     testFn(`${example.name} (${example.id})`, async () => {
       const handlers = getMockHandlers()
-      // Compile the example's own effect handlers (if any) and prepend them so
-      // they take priority over the generic mock handlers.
-      const exampleHandlers: HandlerRegistration[] = (example.effectHandlers ?? []).map(
-        ({ pattern, handler: source }) => ({
+      const mockPatterns = new Set(handlers.map(handler => handler.pattern))
+      // Compile the example's own effect handlers (if any). When a deterministic
+      // mock already exists for the same pattern, prefer the mock so examples
+      // stay stable in CI and don't depend on network or timer delays.
+      const exampleHandlers: HandlerRegistration[] = (example.effectHandlers ?? [])
+        .map(({ pattern, handler: source }) => ({
           pattern,
           handler: eval(`(${source})`) as HandlerRegistration['handler'],
-        }),
-      )
+        }))
+        .filter(({ pattern }) => !mockPatterns.has(pattern))
+
+      const effectHandlers = [...exampleHandlers, ...handlers]
 
       const result = await dvala.runAsync(example.code, {
-        effectHandlers: [...exampleHandlers, ...handlers],
+        effectHandlers,
       })
 
       expect(

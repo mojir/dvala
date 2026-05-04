@@ -142,6 +142,8 @@ dvala run script.dvala
 dvala test tests.test.dvala
 ```
 
+When the CLI REPL or the playground REPL preloads a file, Dvala uses that file's completed top-level scope as the starting scope. The file's final evaluated value is exposed separately under `REPL.result`, the latest error under `REPL.error`, and recent results or errors under `REPL.history`.
+
 ## Links
 
 - [Playground](https://mojir.github.io/dvala/) — interactive editor with live execution, snapshots, and reference docs

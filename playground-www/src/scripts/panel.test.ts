@@ -225,7 +225,7 @@ describe('strip click behavior', () => {
     expect(p.getActiveTabId()).toBe('b')
   })
 
-  it('clicking the already-active tab toggles collapsed', () => {
+  it('clicking the already-active tab toggles collapsed by default', () => {
     const c = makeContainer()
     const p = createPanel({
       containerEl: c,
@@ -235,6 +235,17 @@ describe('strip click behavior', () => {
     const tabA = c.querySelector('[data-panel-tab-id="a"]') as HTMLButtonElement
     tabA.click()
     expect(p.isCollapsed()).toBe(true)
+  })
+
+  it('clicking the already-active tab can be configured as a no-op', () => {
+    const c = makeContainer()
+    const p = createPanel({
+      containerEl: c,
+      tabs: [{ id: 'a', label: 'A' }],
+      collapseOnActiveTabClick: false,
+    })
+    expect(p.isCollapsed()).toBe(false)
+    const tabA = c.querySelector('[data-panel-tab-id="a"]') as HTMLButtonElement
     tabA.click()
     expect(p.isCollapsed()).toBe(false)
   })

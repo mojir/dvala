@@ -1937,6 +1937,7 @@ function initLayoutPanels(): void {
     tabs: RIGHT_PANEL_TOOL_TABS,
     initialTabId: getState('right-panel-active-tab'),
     initialCollapsed: getState('right-panel-collapsed'),
+    collapseOnActiveTabClick: false,
     onChange: ({ collapsed }) => {
       persistRightPanel()
       applyLayout()
@@ -2437,7 +2438,8 @@ window.onload = async function () {
       evt.preventDefault()
       closeInfoModal()
     }
-    if (evt.key === 'Enter' && state.currentSnapshot) {
+    const snapshotViewVisible = document.getElementById('dvala-snapshot-view')?.style.display === 'flex'
+    if (evt.key === 'Enter' && state.currentSnapshot && (state.modalStack.length > 0 || snapshotViewVisible)) {
       evt.preventDefault()
       void resumeSnapshot()
     }
@@ -5287,6 +5289,10 @@ function getDvalaParamsFromContext(): { effectHandlers: HandlerRegistration[] } 
     const fallback = getState('disable-standard-handlers') ? disabledHandlersFallback : defaultEffectHandler
     return { effectHandlers: [{ pattern: '*', handler: fallback }] }
   }
+}
+
+export function getPlaygroundReplHandlers(): HandlerRegistration[] {
+  return getDvalaParamsFromContext().effectHandlers
 }
 function getSelectedDvalaCode(): {
   code: string

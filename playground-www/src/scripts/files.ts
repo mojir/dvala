@@ -170,6 +170,7 @@ export function openScratchInEditor(
   saveState(
     {
       'active-side-tab': 'files',
+      'dvala-code': code,
       context,
       'dvala-code-edited': false,
       'focused-panel': 'dvala-code',

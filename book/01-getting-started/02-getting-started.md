@@ -97,7 +97,9 @@ Start an interactive session by running `dvala` with no arguments:
 $ dvala
 ```
 
-Inside the REPL, type `:help` to see available commands. In a project directory with a `repl` field in `dvala.json`, the REPL automatically loads that file and makes its bindings available.
+Inside the REPL, type `:help` to see available commands. In a project directory with a `repl` field in `dvala.json`, the REPL automatically executes that file and uses its completed top-level scope as the starting scope.
+
+The file's final evaluated value is available as `REPL.result`. The shared `REPL` record also exposes `REPL.error` for the latest error and `REPL.history` for recent results or errors. The playground REPL uses the same metadata surface.
 
 ### Run Code
 

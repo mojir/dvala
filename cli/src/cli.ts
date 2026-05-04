@@ -40,6 +40,7 @@ import { formatTap } from '../../src/testFramework/formatTap'
 import { formatConsole } from '../../src/testFramework/formatConsole'
 import { formatHtml } from '../../src/testFramework/formatHtml'
 import { formatJunit } from '../../src/testFramework/formatJunit'
+import { applyReplBinding, executeReplLine, type ReplBinding } from '../../src/shared/replCore'
 import { parseTokenStream, tokenizeSource } from '../../src/tooling'
 import { getCliDocumentation } from './cliDocumentation/getCliDocumentation'
 import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
@@ -177,7 +178,6 @@ type Config =
   | HelpConfig
   | VersionConfig
 
-const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
 const booleanFlags = new Set([
   '-s',
@@ -240,20 +240,50 @@ function makeDvala(
   return {
     run: (program: string | DvalaBundle, filePath?: string) =>
       runner.run(program, pure ? { scope: context, pure: true, filePath } : { scope: context, filePath }),
+    runAsync: (
+      program: string | DvalaBundle,
+      filePath?: string,
+      effectHandlers = getCliIoEffectHandlers(async () => ''),
+    ) =>
+      runner.runAsync(
+        program,
+        pure ? { scope: context, pure: true, filePath } : { scope: context, filePath, effectHandlers },
+      ),
   }
 }
 
-// Evaluate a file and merge its result (if object) into the context bindings
-function loadFileIntoContext(filename: string, context: Record<string, unknown>) {
+function createEmptyReplBinding(): ReplBinding {
+  return {
+    result: null,
+    error: null,
+    history: [],
+  }
+}
+
+async function loadFileIntoContext(
+  filename: string,
+  context: Record<string, unknown>,
+  readLine: (msg: string) => Promise<string>,
+): Promise<{ scope: Record<string, unknown>; repl: ReplBinding }> {
   const resolvedFilename = path.resolve(filename)
   const dvala = makeDvala(context, false, false, path.dirname(resolvedFilename))
   const content = fs.readFileSync(resolvedFilename, { encoding: 'utf-8' })
-  const result = dvala.run(content, resolvedFilename)
-  if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
-    for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
-      context[key] = value
-    }
+  const result = await dvala.runAsync(content, resolvedFilename, getCliIoEffectHandlers(readLine))
+  if (result.type === 'error') throw result.error
+  if (result.type === 'suspended') {
+    throw new Error('Loaded file suspended. Use a file that completes before starting the CLI REPL.')
   }
+  if (result.type === 'halted') {
+    throw new Error('Loaded file halted. Fix the file and try :reload again.')
+  }
+  const scope = { ...result.scope }
+  const repl: ReplBinding = {
+    result: result.value,
+    error: null,
+    history: [{ type: 'result', value: result.value }],
+  }
+  applyReplBinding(scope, repl)
+  return { scope, repl }
 }
 
 switch (config.subcommand) {
@@ -334,10 +364,7 @@ switch (config.subcommand) {
     break
   }
   case 'repl': {
-    if (config.loadFilename) {
-      loadFileIntoContext(config.loadFilename, config.context)
-    }
-    runREPL(config.context, config.projectName, config.loadFilename)
+    void runREPL(config.context, config.projectName, config.loadFilename)
     break
   }
   case 'doc': {
@@ -932,27 +959,37 @@ function getCliIoEffectHandlers(readLine: (msg: string) => Promise<string>) {
 async function execute(
   expression: string,
   scope: Record<string, unknown>,
+  repl: ReplBinding,
   readLine: (msg: string) => Promise<string>,
-): Promise<Record<string, unknown>> {
+): Promise<{ scope: Record<string, unknown>; repl: ReplBinding }> {
   const _dvala = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
   try {
-    const runResult = await _dvala.runAsync(expression, {
+    const outcome = await executeReplLine({
+      expression,
       scope,
-      effectHandlers: getCliIoEffectHandlers(readLine),
+      repl,
+      formatError: getErrorMessage,
+      run: (nextExpression, nextScope) =>
+        _dvala.runAsync(nextExpression, {
+          scope: nextScope,
+          effectHandlers: getCliIoEffectHandlers(readLine),
+        }),
     })
-    if (runResult.type === 'error') throw runResult.error
-    const result = runResult.type === 'completed' ? runResult.value : null
-    historyResults.unshift(result)
-    if (historyResults.length > 9) {
-      historyResults.length = 9
-    }
-    const newScope = { ...scope, ...(runResult.type === 'completed' ? runResult.scope : {}) }
-    setReplHistoryVariables(newScope)
-    console.log(stringifyValue(result, false))
-    return newScope
+    if (!outcome.ok) throw outcome.error
+    console.log(stringifyValue(outcome.value, false))
+    return { scope: outcome.scope, repl: outcome.repl }
   } catch (error) {
     printErrorMessage(`${error}`)
-    return { ...scope, '*e*': getErrorMessage(error) }
+    const message = getErrorMessage(error)
+    const errorEntry = { type: 'error', error: message } as const
+    const nextRepl: ReplBinding = {
+      result: repl.result,
+      error: message,
+      history: [errorEntry, ...repl.history].slice(0, 9),
+    }
+    const nextScope = { ...scope }
+    applyReplBinding(nextScope, nextRepl)
+    return { scope: nextScope, repl: nextRepl }
   }
 }
 
@@ -1066,13 +1103,6 @@ function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message
 
   return 'Unknown error'
-}
-
-function setReplHistoryVariables(bindings: Record<string, unknown>): void {
-  for (let i = 1; i <= 9; i++) delete bindings[`*${i}*`]
-  historyResults.forEach((value, i) => {
-    bindings[`*${i + 1}*`] = value
-  })
 }
 
 function parseOption(args: string[], i: number): { option: string; argument: Maybe<string>; count: number } | null {
@@ -1560,8 +1590,13 @@ function processArguments(args: string[]): Config {
   }
 }
 
-function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<string>, loadFilename: Maybe<string>) {
-  const prompt = projectName ? fmt.bright.gray(`${projectName}> `) : PROMPT
+async function runREPL(
+  initialBindings: Record<string, unknown>,
+  projectName: Maybe<string>,
+  loadFilename: Maybe<string>,
+) {
+  const promptLabel = loadFilename ? path.basename(loadFilename, path.extname(loadFilename)) : projectName
+  const prompt = promptLabel ? fmt.bright.gray(`${promptLabel} > `) : PROMPT
 
   if (projectName) {
     console.log(`Welcome to Dvala v${version} — ${fmt.bright.white(projectName)}`)
@@ -1570,12 +1605,8 @@ function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<st
   }
   console.log(`Type ${fmt.italic(':help')} for more information.`)
 
-  let bindings = initialBindings
-
-  if (Object.keys(bindings).length > 0) {
-    console.log()
-    printContext(bindings)
-  }
+  let bindings = { ...initialBindings }
+  let repl = createEmptyReplBinding()
 
   const rl = createReadlineInterface({
     completer,
@@ -1585,6 +1616,26 @@ function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<st
 
   async function readLine(message: string): Promise<string> {
     return new Promise<string>(resolve => rl.question(message, answer => resolve(answer)))
+  }
+
+  if (loadFilename) {
+    try {
+      const loaded = await loadFileIntoContext(loadFilename, bindings, readLine)
+      bindings = loaded.scope
+      repl = loaded.repl
+    } catch (error) {
+      printErrorMessage(`${error}`)
+      bindings = { ...initialBindings }
+      repl = createEmptyReplBinding()
+      applyReplBinding(bindings, repl)
+    }
+  } else {
+    applyReplBinding(bindings, repl)
+  }
+
+  if (Object.keys(bindings).length > 0) {
+    console.log()
+    printContext(bindings)
   }
 
   rl.prompt()
@@ -1611,8 +1662,9 @@ function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<st
         case ':reload':
           if (loadFilename) {
             try {
-              bindings = {}
-              loadFileIntoContext(loadFilename, bindings)
+              const loaded = await loadFileIntoContext(loadFilename, {}, readLine)
+              bindings = loaded.scope
+              repl = loaded.repl
               console.log(`Reloaded ${fmt.bright.white(path.basename(loadFilename))}`)
             } catch (error) {
               printErrorMessage(`${error}`)
@@ -1630,7 +1682,9 @@ function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<st
           )
       }
     } else if (line) {
-      bindings = await execute(line, bindings, readLine)
+      const outcome = await execute(line, bindings, repl, readLine)
+      bindings = outcome.scope
+      repl = outcome.repl
     }
     rl.prompt()
   }).on('close', () => {
