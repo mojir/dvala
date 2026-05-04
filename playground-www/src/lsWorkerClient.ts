@@ -125,9 +125,13 @@ export function initLspWorker(): void {
           const source = model.getValue()
           const tc = typecheckForDiagnostics(source, path)
           typecheckCache.set(path, tc)
-          allDiagnostics.push(...buildTypeDiagnostics(tc))
-        } catch {
-          // typecheck threw — use parse diagnostics only.
+          const typeDiags = buildTypeDiagnostics(tc)
+          console.log('[LSP] typecheck raw:', tc.diagnostics.length, 'filtered:', typeDiags.length)
+          for (const d of tc.diagnostics)
+            console.log('[LSP]   diag:', d.severity, d.message, 'pos:', !!d.sourceCodeInfo)
+          allDiagnostics.push(...typeDiags)
+        } catch (e) {
+          console.error('[LSP] typecheck threw:', e)
         }
 
         const markers: monaco.editor.IMarkerData[] = allDiagnostics.map(d => ({
