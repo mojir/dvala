@@ -2063,7 +2063,6 @@ function wireCodeEditorListeners(): void {
     const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
     const activeModel = editor.getActiveModel()
     if (activeModel) {
-      console.log('[LSP] onChange ->', activePath, 'v', activeModel.getVersionId())
       registerModel(activePath, activeModel)
       updateLspDocument(activePath, value, activeModel.getVersionId())
     }
@@ -2149,6 +2148,18 @@ window.onload = async function () {
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   initLspWorker()
   wireCodeEditorListeners()
+  // Seed diagnostics for the initial editor content (onChange only fires
+  // on keystrokes, not on boot). Debounce is avoided by calling
+  // updateLspDocument directly — the 150ms timer is fine for boot.
+  {
+    const editor = getCodeEditor()
+    const path = getActiveFilePath() ?? SCRATCH_FILE_PATH
+    const model = editor.getActiveModel()
+    if (model) {
+      registerModel(path, model)
+      updateLspDocument(path, model.getValue(), model.getVersionId())
+    }
+  }
   wireExplorerListeners()
   wireSnapshotToolbarListeners()
   // Wire lifecycle hooks BEFORE initTabs so any future tab switch routes

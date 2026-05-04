@@ -134,15 +134,9 @@ export function initLspWorker(): void {
         try {
           const source = model.getValue()
           const tc = typecheckForDiagnostics(source, path)
-          typecheckCache.set(path, tc)
-          const typeDiags = buildTypeDiagnostics(tc)
-          console.log('[LSP] typecheck raw:', tc.diagnostics.length, 'filtered:', typeDiags.length)
-          for (const d of tc.diagnostics)
-            console.log('[LSP]   diag:', d.severity, d.message, 'pos:', !!d.sourceCodeInfo)
-          allDiagnostics.push(...typeDiags)
-        } catch (e) {
-          console.error('[LSP] typecheck threw:', e)
-        }
+          typeCheckCache.set(path, tc)
+          allDiagnostics.push(...buildTypeDiagnostics(tc))
+        } catch {}
 
         const markers: monaco.editor.IMarkerData[] = allDiagnostics.map(d => ({
           message: d.message,
@@ -160,7 +154,6 @@ export function initLspWorker(): void {
         }))
 
         monaco.editor.setModelMarkers(model, 'dvala', markers)
-        console.log('[LSP] markers set for', path, ':', allDiagnostics.length, 'diagnostics')
         pendingRequests.delete(path)
         return
       }
