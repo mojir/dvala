@@ -12,6 +12,34 @@ import * as monaco from 'monaco-editor'
 // eslint-disable-next-line import/default
 import LsWorker from './lsWorker?worker'
 import type { Diagnostic, Position } from '../../src/shared/types'
+import { referenceToCompletion } from '../../src/shared/completionBuilder'
+import { allReference } from '../../reference/index'
+
+import type { CompletionItem } from '../../src/shared/completionBuilder'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Map portable CompletionItem.kind to Monaco's CompletionItemKind enum. */
+function kindToMonaco(kind: CompletionItem['kind']): monaco.languages.CompletionItemKind {
+  switch (kind) {
+    case 'function':
+      return monaco.languages.CompletionItemKind.Function
+    case 'method':
+      return monaco.languages.CompletionItemKind.Method
+    case 'event':
+      return monaco.languages.CompletionItemKind.Event
+    case 'module':
+      return monaco.languages.CompletionItemKind.Module
+    case 'class':
+      return monaco.languages.CompletionItemKind.Class
+    case 'keyword':
+      return monaco.languages.CompletionItemKind.Keyword
+    case 'operator':
+      return monaco.languages.CompletionItemKind.Operator
+    case 'variable':
+      return monaco.languages.CompletionItemKind.Variable
+  }
+}
 
 // ── Worker lifetime ───────────────────────────────────────────────────────────
 
@@ -149,6 +177,61 @@ export function initLspWorker(): void {
           position: { line: position.lineNumber, column: position.column } satisfies Position,
         })
       })
+    },
+  })
+
+  // Register Monaco completion provider for Dvala (builtins only for now;
+  // user-defined symbols need WorkspaceIndex, tracked in step 29).
+  const builtinCompletions: {
+    label: string
+    kind: monaco.languages.CompletionItemKind
+    detail?: string
+    insertText?: string
+    insertTextRules?: monaco.languages.CompletionItemInsertTextRule
+    sortText: string
+  }[] = Object.entries(allReference).map(([name, ref]) => {
+    const item = referenceToCompletion(name, ref)
+    return {
+      label: item.label,
+      kind: kindToMonaco(item.kind),
+      detail: item.detail,
+      insertText: item.insertText,
+      insertTextRules: item.insertText ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet : undefined,
+      sortText: item.sortText ?? `0_${item.label}`,
+    }
+  })
+
+  monaco.languages.registerCompletionItemProvider('dvala', {
+    provideCompletionItems: (model, position) => {
+      const range: monaco.IRange = {
+        startLineNumber: position.lineNumber,
+        startColumn: position.column,
+        endLineNumber: position.lineNumber,
+        endColumn: position.column,
+      }
+      const word = model.getWordUntilPosition(position)
+      const prefix = String(word.word).toLowerCase()
+
+      // Filter builtins by prefix; return all if no prefix (empty).
+      const suggestions: monaco.languages.CompletionItem[] = []
+      for (const item of builtinCompletions) {
+        if (!prefix || item.label.toLowerCase().startsWith(prefix)) {
+          const completion: monaco.languages.CompletionItem = {
+            label: item.label,
+            kind: item.kind,
+            detail: item.detail,
+            sortText: item.sortText,
+            insertText: item.insertText ?? item.label,
+            range: { ...range, startColumn: word.startColumn },
+          }
+          if (item.insertText && item.insertTextRules) {
+            completion.insertTextRules = item.insertTextRules
+          }
+          suggestions.push(completion)
+        }
+      }
+
+      return { suggestions }
     },
   })
 }
