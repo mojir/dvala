@@ -2148,18 +2148,6 @@ window.onload = async function () {
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
   initLspWorker()
   wireCodeEditorListeners()
-  // Seed diagnostics for the initial editor content (onChange only fires
-  // on keystrokes, not on boot). Debounce is avoided by calling
-  // updateLspDocument directly — the 150ms timer is fine for boot.
-  {
-    const editor = getCodeEditor()
-    const path = getActiveFilePath() ?? SCRATCH_FILE_PATH
-    const model = editor.getActiveModel()
-    if (model) {
-      registerModel(path, model)
-      updateLspDocument(path, model.getValue(), model.getVersionId())
-    }
-  }
   wireExplorerListeners()
   wireSnapshotToolbarListeners()
   // Wire lifecycle hooks BEFORE initTabs so any future tab switch routes
@@ -2488,6 +2476,19 @@ window.onload = async function () {
   applyState(true)
   populateSnapshotsList()
   populateWorkspaceFilesList()
+
+  // Seed diagnostics for the final editor content after full boot.
+  // Must run after initTabs/applyState/syncCodePanelView so the active
+  // model reflects the correct file content.
+  {
+    const editor = getCodeEditor()
+    const path = getActiveFilePath() ?? SCRATCH_FILE_PATH
+    const model = editor.getActiveModel()
+    if (model) {
+      registerModel(path, model)
+      updateLspDocument(path, model.getValue(), model.getVersionId())
+    }
+  }
 
   // Reveal the page now that the editor + state are fully wired. e2e's
   // `waitForInit` uses `wrapper.style.display === 'block'` as the "fully
