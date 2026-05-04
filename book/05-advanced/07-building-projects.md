@@ -61,7 +61,7 @@ When you run commands like `dvala run`, `dvala tokenize`, or `dvala parse` with 
 
 ## The Interactive REPL
 
-When you start `dvala` (or `dvala repl`) in a project directory with a `repl` field, the REPL automatically loads that file and makes its exported bindings available:
+When you start `dvala` (or `dvala repl`) in a project directory with a `repl` field, the REPL automatically executes that file and uses its completed top-level scope as the starting scope:
 
 ```sh
 $ cd my-project
@@ -76,7 +76,24 @@ my-project> greet("World")
 "Hello, World!"
 ```
 
-The project name appears in the prompt, and all bindings from the loaded file are ready to use. This is ideal for library projects where you want to explore your API interactively.
+The project name appears in the prompt, and the loaded file's top-level bindings are ready to use. The file's final evaluated value is kept separately under `REPL.result` instead of being merged into the top-level scope.
+
+The shared `REPL` record is available in both the CLI REPL and the playground REPL:
+
+```sh
+my-project> REPL.result
+{ ... }
+
+my-project> REPL.error
+null
+
+my-project> REPL.history
+[{ type: "result", value: { ... } }]
+```
+
+- `REPL.result` is the last successful result.
+- `REPL.error` is the latest error message, or `null`.
+- `REPL.history` keeps recent results and errors in newest-first order.
 
 Use `:reload` to re-evaluate the REPL file after editing — no need to restart:
 

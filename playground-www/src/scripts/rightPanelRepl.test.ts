@@ -10,6 +10,7 @@ import { getReplPromptText, getReplPromptWidth } from './rightPanelReplPrompt'
 import {
   isReplSessionStale,
   moveReplHistoryCursor,
+  shouldShowReplContextBinding,
   shouldShowReloadButton,
   toPersistedReplSession,
 } from './rightPanelReplState'
@@ -63,6 +64,13 @@ describe('getReplPromptWidth', () => {
 
   it('keeps a minimum width for empty or fallback prompts', () => {
     expect(getReplPromptWidth('>')).toBe('1ch')
+  })
+})
+
+describe('shouldShowReplContextBinding', () => {
+  it('filters the REPL metadata record from the Context dropdown', () => {
+    expect(shouldShowReplContextBinding('answer')).toBe(true)
+    expect(shouldShowReplContextBinding('REPL')).toBe(false)
   })
 })
 
@@ -157,7 +165,14 @@ describe('toPersistedReplSession', () => {
       toPersistedReplSession({
         scope: { answer: 42, items: [1, 2] },
         baseScope: { answer: 41 },
-        historyResults: [42, { ok: true }],
+        repl: {
+          result: 42,
+          error: null,
+          history: [
+            { type: 'result', value: 42 },
+            { type: 'error', error: 'boom' },
+          ],
+        },
         inputHistory: ['answer', 'items'],
         outputs: [{ kind: 'result', text: '42' }],
         loadedFileSource: 'let answer = 42',
@@ -168,7 +183,14 @@ describe('toPersistedReplSession', () => {
     ).toEqual({
       scope: { answer: 42, items: [1, 2] },
       baseScope: { answer: 41 },
-      historyResults: [42, { ok: true }],
+      repl: {
+        result: 42,
+        error: null,
+        history: [
+          { type: 'result', value: 42 },
+          { type: 'error', error: 'boom' },
+        ],
+      },
       inputHistory: ['answer', 'items'],
       outputs: [{ kind: 'result', text: '42' }],
       loadedFileSource: 'let answer = 42',
@@ -183,7 +205,11 @@ describe('toPersistedReplSession', () => {
       toPersistedReplSession({
         scope: { fn: () => null },
         baseScope: {},
-        historyResults: [],
+        repl: {
+          result: null,
+          error: null,
+          history: [],
+        },
         inputHistory: [],
         outputs: [],
         loadedFileSource: '',

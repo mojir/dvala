@@ -1,87 +1,71 @@
 import { describe, expect, it } from 'vitest'
 import type { RunResult, Snapshot } from '../evaluator/effectTypes'
-import {
-  applyReplHistoryVariables,
-  executeReplLine,
-  loadReplSourceIntoScope,
-  mergeReplResultIntoScope,
-} from './replCore'
+import { applyReplBinding, executeReplLine } from './replCore'
 
-describe('mergeReplResultIntoScope', () => {
-  it('merges returned dict entries into the target scope', () => {
-    const scope = { existing: 1 }
-    mergeReplResultIntoScope(scope, { added: 2 })
-    expect(scope).toEqual({ existing: 1, added: 2 })
-  })
-
-  it('ignores non-dict results', () => {
-    const scope = { existing: 1 }
-    mergeReplResultIntoScope(scope, ['x'])
-    mergeReplResultIntoScope(scope, 42)
-    mergeReplResultIntoScope(scope, null)
-    expect(scope).toEqual({ existing: 1 })
-  })
-})
-
-describe('loadReplSourceIntoScope', () => {
-  it('runs the source and merges its returned dict into scope', () => {
-    const scope = { seed: true }
-    const out = loadReplSourceIntoScope({
-      scope,
-      source: 'let x = 1',
-      filePath: 'main.dvala',
-      run: (_source, filePath) => ({ filePath, value: 1 }),
+describe('applyReplBinding', () => {
+  it('writes a host-controlled REPL record', () => {
+    const bindings: Record<string, unknown> = { existing: 1, REPL: 'stale' }
+    applyReplBinding(bindings, {
+      result: 2,
+      error: null,
+      history: [{ type: 'result', value: 2 }],
     })
-    expect(out).toBe(scope)
-    expect(scope).toEqual({ seed: true, filePath: 'main.dvala', value: 1 })
-  })
-})
-
-describe('applyReplHistoryVariables', () => {
-  it('replaces stale history slots before writing new ones', () => {
-    const bindings: Record<string, unknown> = {
-      keep: true,
-      '*1*': 'old-1',
-      '*2*': 'old-2',
-      '*9*': 'old-9',
-    }
-    applyReplHistoryVariables(bindings, ['new-1', 'new-2'])
     expect(bindings).toEqual({
-      keep: true,
-      '*1*': 'new-1',
-      '*2*': 'new-2',
+      existing: 1,
+      REPL: {
+        result: 2,
+        error: null,
+        history: [{ type: 'result', value: 2 }],
+      },
     })
   })
 })
 
 describe('executeReplLine', () => {
-  it('merges completed scope updates and injects history variables', async () => {
+  it('merges completed scope updates and refreshes the REPL record', async () => {
     const result = await executeReplLine({
       expression: 'x + 1',
-      scope: { x: 1, '*1*': 'stale' },
-      historyResults: ['older'],
+      scope: { x: 1, REPL: 'stale' },
+      repl: {
+        result: 'older-result',
+        error: 'old error',
+        history: [{ type: 'result', value: 'older' }],
+      },
       run: async (): Promise<RunResult> => ({
         type: 'completed',
         value: 2,
-        scope: { y: 2 },
+        scope: { y: 2, REPL: 'user-mutation' },
       }),
     })
 
     expect(result).toEqual({
       ok: true,
-      runResult: { type: 'completed', value: 2, scope: { y: 2 } },
+      runResult: { type: 'completed', value: 2, scope: { y: 2, REPL: 'user-mutation' } },
       value: 2,
-      historyResults: [2, 'older'],
       scope: {
         x: 1,
         y: 2,
-        '*1*': 2,
-        '*2*': 'older',
+        REPL: {
+          result: 2,
+          error: null,
+          history: [
+            { type: 'result', value: 2 },
+            { type: 'result', value: 'older' },
+          ],
+        },
+      },
+      repl: {
+        result: 2,
+        error: null,
+        history: [
+          { type: 'result', value: 2 },
+          { type: 'result', value: 'older' },
+        ],
       },
     })
   })
 
-  it('keeps scope unchanged for suspended runs and records a null history value', async () => {
+  it('keeps scope unchanged for suspended runs and records a null REPL result', async () => {
     const suspendedSnapshot: Snapshot = {
       id: 'snap-1',
       continuation: null,
@@ -97,7 +81,7 @@ describe('executeReplLine', () => {
     const result = await executeReplLine({
       expression: 'perform(@x)',
       scope: { x: 1 },
-      historyResults: [],
+      repl: { result: 'older', error: 'old error', history: [] },
       run: async () => suspendedRunResult,
     })
 
@@ -105,17 +89,33 @@ describe('executeReplLine', () => {
     if (result.ok) {
       expect(result.runResult).toBe(suspendedRunResult)
       expect(result.value).toBeNull()
-      expect(result.historyResults).toEqual([null])
-      expect(result.scope).toEqual({ x: 1, '*1*': null })
+      expect(result.repl).toEqual({
+        result: null,
+        error: null,
+        history: [{ type: 'result', value: null }],
+      })
+      expect(result.scope).toEqual({
+        x: 1,
+        REPL: {
+          result: null,
+          error: null,
+          history: [{ type: 'result', value: null }],
+        },
+      })
     }
   })
 
-  it('returns the error without mutating scope or history', async () => {
+  it('records the error in the REPL record without losing the last result', async () => {
     const error = new Error('boom')
     const result = await executeReplLine({
       expression: 'bad()',
       scope: { x: 1 },
-      historyResults: ['older'],
+      repl: {
+        result: 41,
+        error: null,
+        history: [{ type: 'result', value: 'older' }],
+      },
+      formatError: err => (err instanceof Error ? err.message : String(err)),
       run: async (): Promise<RunResult> => ({
         type: 'error',
         error: error as never,
@@ -125,8 +125,25 @@ describe('executeReplLine', () => {
     expect(result).toEqual({
       ok: false,
       error,
-      scope: { x: 1 },
-      historyResults: ['older'],
+      scope: {
+        x: 1,
+        REPL: {
+          result: 41,
+          error: 'boom',
+          history: [
+            { type: 'error', error: 'boom' },
+            { type: 'result', value: 'older' },
+          ],
+        },
+      },
+      repl: {
+        result: 41,
+        error: 'boom',
+        history: [
+          { type: 'error', error: 'boom' },
+          { type: 'result', value: 'older' },
+        ],
+      },
     })
   })
 })

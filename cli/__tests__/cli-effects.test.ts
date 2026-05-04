@@ -129,7 +129,7 @@ describe('CLI IO effect handlers', () => {
     const mainFile = path.join(exampleProjectDir, 'main.dvala')
     expect(fs.existsSync(mainFile)).toBe(true)
 
-    const result = await replEval('result.avg', [], ['repl', '-l', mainFile])
+    const result = await replEval('REPL.result.result.avg', [], ['repl', '-l', mainFile])
 
     expect(result).toBe('5')
   })

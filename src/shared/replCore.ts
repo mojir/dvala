@@ -1,31 +1,22 @@
 import type { RunResult } from '../evaluator/effectTypes'
 
-export function mergeReplResultIntoScope(scope: Record<string, unknown>, value: unknown): void {
-  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-    Object.assign(scope, value as Record<string, unknown>)
-  }
+type ReplHistoryEntry = { type: 'result'; value: unknown } | { type: 'error'; error: string }
+
+export interface ReplBinding {
+  result: unknown
+  error: string | null
+  history: ReplHistoryEntry[]
 }
 
-export function loadReplSourceIntoScope(params: {
-  scope: Record<string, unknown>
-  source: string
-  filePath?: string
-  run: (source: string, filePath?: string) => unknown
-}): Record<string, unknown> {
-  const result = params.run(params.source, params.filePath)
-  mergeReplResultIntoScope(params.scope, result)
-  return params.scope
-}
-
-export function applyReplHistoryVariables(
+export function applyReplBinding(
   bindings: Record<string, unknown>,
-  historyResults: readonly unknown[],
-  historySlots = 9,
+  repl: { result: unknown; error: string | null; history: readonly ReplHistoryEntry[] },
 ): void {
-  for (let i = 1; i <= historySlots; i++) delete bindings[`*${i}*`]
-  historyResults.slice(0, historySlots).forEach((value, i) => {
-    bindings[`*${i + 1}*`] = value
-  })
+  bindings.REPL = {
+    result: repl.result,
+    error: repl.error,
+    history: [...repl.history],
+  } satisfies ReplBinding
 }
 
 type ReplLineSuccess = {
@@ -33,47 +24,66 @@ type ReplLineSuccess = {
   runResult: Exclude<RunResult, { type: 'error' }>
   value: unknown
   scope: Record<string, unknown>
-  historyResults: unknown[]
+  repl: ReplBinding
 }
 
 type ReplLineError = {
   ok: false
   error: unknown
   scope: Record<string, unknown>
-  historyResults: unknown[]
+  repl: ReplBinding
 }
 
 export async function executeReplLine(params: {
   expression: string
   scope: Record<string, unknown>
-  historyResults: readonly unknown[]
+  repl: { result: unknown; error: string | null; history: readonly ReplHistoryEntry[] }
   historySlots?: number
+  formatError?: (error: unknown) => string
   run: (expression: string, scope: Record<string, unknown>) => Promise<RunResult>
 }): Promise<ReplLineSuccess | ReplLineError> {
-  const runResult = await params.run(params.expression, params.scope)
+  const runScope = { ...params.scope }
+  applyReplBinding(runScope, params.repl)
+
+  const runResult = await params.run(params.expression, runScope)
+  const historySlots = params.historySlots ?? 9
+  const formatError = params.formatError ?? (error => String(error))
+
   if (runResult.type === 'error') {
+    const errorEntry = { type: 'error', error: formatError(runResult.error) } as const
+    const repl: ReplBinding = {
+      result: params.repl.result,
+      error: errorEntry.error,
+      history: [errorEntry, ...params.repl.history].slice(0, historySlots),
+    }
+    const scope = { ...params.scope }
+    applyReplBinding(scope, repl)
     return {
       ok: false,
       error: runResult.error,
-      scope: { ...params.scope },
-      historyResults: [...params.historyResults],
+      scope,
+      repl,
     }
   }
 
   const value = runResult.type === 'completed' ? runResult.value : null
-  const historySlots = params.historySlots ?? 9
-  const historyResults = [value, ...params.historyResults].slice(0, historySlots)
+  const resultEntry = { type: 'result', value } as const
+  const repl: ReplBinding = {
+    result: value,
+    error: null,
+    history: [resultEntry, ...params.repl.history].slice(0, historySlots),
+  }
   const scope = {
-    ...params.scope,
+    ...runScope,
     ...(runResult.type === 'completed' ? (runResult.scope ?? {}) : {}),
   }
-  applyReplHistoryVariables(scope, historyResults, historySlots)
+  applyReplBinding(scope, repl)
 
   return {
     ok: true,
     runResult,
     value,
     scope,
-    historyResults,
+    repl,
   }
 }

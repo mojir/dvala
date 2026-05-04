@@ -1,6 +1,7 @@
 import { toJS } from '../../../src/utils/interop'
 import { isAtom, isEffect, isRegularExpression } from '../../../src/typeGuards/dvala'
 import { isDvalaFunction } from '../../../src/typeGuards/dvalaFunction'
+import type { ReplBinding } from '../../../src/shared/replCore'
 
 interface ReplSessionFingerprint {
   loadedFileSource: string
@@ -25,7 +26,7 @@ interface PersistedReplOutputEntry {
 export interface PersistedReplSession {
   scope: Record<string, unknown>
   baseScope: Record<string, unknown>
-  historyResults: unknown[]
+  repl: ReplBinding
   inputHistory: string[]
   outputs: PersistedReplOutputEntry[]
   loadedFileSource: string
@@ -45,6 +46,10 @@ export function isReplSessionStale(
 export function shouldShowReloadButton(status: 'idle' | 'loading' | 'ready' | 'error', stale: boolean): boolean {
   if (status === 'loading') return false
   return status === 'idle' || status === 'ready' || status === 'error' || stale
+}
+
+export function shouldShowReplContextBinding(name: string): boolean {
+  return name !== 'REPL'
 }
 
 export function moveReplHistoryCursor(params: {
@@ -118,27 +123,40 @@ function isJsonSafeValue(value: unknown, seen = new Set<unknown>()): boolean {
 function toPersistableRecord(scope: Record<string, unknown>): Record<string, unknown> | null {
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(scope)) {
-    const jsValue = toJS(value as never)
-    if (!isJsonSafeValue(jsValue)) return null
+    const jsValue = toPersistableValue(value)
+    if (jsValue === null) return null
     out[key] = jsValue
   }
   return out
 }
 
-function toPersistableArray(values: readonly unknown[]): unknown[] | null {
-  const out: unknown[] = []
-  for (const value of values) {
-    const jsValue = toJS(value as never)
-    if (!isJsonSafeValue(jsValue)) return null
-    out.push(jsValue)
+function toPersistableValue(value: unknown): unknown | null {
+  const jsValue = toJS(value as never)
+  if (!isJsonSafeValue(jsValue)) return null
+  return jsValue
+}
+
+function toPersistableReplBinding(repl: ReplBinding): ReplBinding | null {
+  const result = toPersistableValue(repl.result)
+  if (result === null) return null
+  const history = repl.history.map(entry => {
+    if (entry.type === 'error') return entry
+    const value = toPersistableValue(entry.value)
+    if (value === null) return null
+    return { type: 'result', value } as const
+  })
+  if (history.some(entry => entry === null)) return null
+  return {
+    result,
+    error: repl.error,
+    history: history as ReplBinding['history'],
   }
-  return out
 }
 
 export function toPersistedReplSession(session: {
   scope: Record<string, unknown>
   baseScope: Record<string, unknown>
-  historyResults: readonly unknown[]
+  repl: ReplBinding
   inputHistory: readonly string[]
   outputs: readonly PersistedReplOutputEntry[]
   loadedFileSource: string
@@ -149,12 +167,12 @@ export function toPersistedReplSession(session: {
   if (session.status !== 'ready' && session.status !== 'error') return null
   const scope = toPersistableRecord(session.scope)
   const baseScope = toPersistableRecord(session.baseScope)
-  const historyResults = toPersistableArray(session.historyResults)
-  if (scope === null || baseScope === null || historyResults === null) return null
+  const repl = toPersistableReplBinding(session.repl)
+  if (scope === null || baseScope === null || repl === null) return null
   return {
     scope,
     baseScope,
-    historyResults,
+    repl,
     inputHistory: [...session.inputHistory],
     outputs: [...session.outputs],
     loadedFileSource: session.loadedFileSource,

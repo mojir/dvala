@@ -1,5 +1,5 @@
 import { stringifyValue } from '../../../common/utils'
-import { executeReplLine, mergeReplResultIntoScope } from '../../../src/shared/replCore'
+import { applyReplBinding, executeReplLine, type ReplBinding } from '../../../src/shared/replCore'
 import { createDvala } from '../../../src/createDvala'
 import type { HandlerRegistration, RunResult, Snapshot } from '../../../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../../../src/allModules'
@@ -19,6 +19,7 @@ import { getReplPromptText, getReplPromptWidth } from './rightPanelReplPrompt'
 import {
   isReplSessionStale,
   moveReplHistoryCursor,
+  shouldShowReplContextBinding,
   shouldShowReloadButton,
   toPersistedReplSession,
   type PersistedReplSession,
@@ -27,7 +28,7 @@ import {
 interface ReplSessionState {
   scope: Record<string, unknown>
   baseScope: Record<string, unknown>
-  historyResults: unknown[]
+  repl: ReplBinding
   inputHistory: string[]
   outputs: ReplOutputEntry[]
   loadedFileSource: string
@@ -46,9 +47,17 @@ interface ReplOutputEntry {
 
 const sessions = new Map<string, ReplSessionState>()
 const MAX_INPUT_HISTORY = 100
-const REPL_SESSIONS_STORAGE_KEY = 'playground-repl-sessions-v1'
+const REPL_SESSIONS_STORAGE_KEY = 'playground-repl-sessions-v2'
 let didHydrateSessions = false
 let shouldFocusInputOnRender = false
+
+function createEmptyReplBinding(): ReplBinding {
+  return {
+    result: null,
+    error: null,
+    history: [],
+  }
+}
 
 type ReplTarget =
   | {
@@ -105,7 +114,7 @@ function getOrCreateSession(fileId: string): ReplSessionState {
     session = {
       scope: {},
       baseScope: {},
-      historyResults: [],
+      repl: createEmptyReplBinding(),
       inputHistory: [],
       outputs: [],
       loadedFileSource: '',
@@ -219,10 +228,12 @@ async function runPlaygroundReplCode(params: {
   })
 }
 
-function resetSessionToBaseline(session: ReplSessionState, baseScope: Record<string, unknown>): void {
+function resetSessionToBaseline(session: ReplSessionState, baseScope: Record<string, unknown>, repl: ReplBinding): void {
   session.baseScope = { ...baseScope }
   session.scope = { ...baseScope }
-  session.historyResults = []
+  session.repl = repl
+  applyReplBinding(session.baseScope, repl)
+  applyReplBinding(session.scope, repl)
   session.historyIndex = -1
   session.draftInput = ''
 }
@@ -232,7 +243,8 @@ async function loadBaseline(target: ReplTarget, session: ReplSessionState): Prom
   session.error = null
   renderReplForActiveFile()
   const handlersSource = target.kind === 'file' ? target.handlersSource : ''
-  const nextBaseScope: Record<string, unknown> = {}
+  let nextBaseScope: Record<string, unknown> = {}
+  let repl = createEmptyReplBinding()
   try {
     if (target.kind === 'file') {
       const result = await runPlaygroundReplCode({
@@ -249,11 +261,16 @@ async function loadBaseline(target: ReplTarget, session: ReplSessionState): Prom
       if (result.type === 'halted') {
         throw new Error('Loaded file halted. Reload after adjusting the file.')
       }
-      mergeReplResultIntoScope(nextBaseScope, result.value)
+      nextBaseScope = { ...result.scope }
+      repl = {
+        result: result.value,
+        error: null,
+        history: [{ type: 'result', value: result.value }],
+      }
     } else {
-      Object.assign(nextBaseScope, extractSnapshotBindings(target.snapshot))
+      nextBaseScope = extractSnapshotBindings(target.snapshot)
     }
-    resetSessionToBaseline(session, nextBaseScope)
+    resetSessionToBaseline(session, nextBaseScope, repl)
     session.loadedFileSource = target.kind === 'file' ? target.fileSource : target.snapshot.id
     session.loadedHandlersSource = handlersSource
     session.status = 'ready'
@@ -263,7 +280,9 @@ async function loadBaseline(target: ReplTarget, session: ReplSessionState): Prom
   } catch (error) {
     session.baseScope = {}
     session.scope = {}
-    session.historyResults = []
+    session.repl = createEmptyReplBinding()
+    applyReplBinding(session.baseScope, session.repl)
+    applyReplBinding(session.scope, session.repl)
     session.historyIndex = -1
     session.draftInput = ''
     session.loadedFileSource = target.kind === 'file' ? target.fileSource : target.snapshot.id
@@ -302,7 +321,7 @@ async function submitLine(target: ReplTarget, session: ReplSessionState, inputEl
   const outcome = await executeReplLine({
     expression,
     scope: session.scope,
-    historyResults: session.historyResults,
+    repl: session.repl,
     run: (nextExpression, nextScope) =>
       runPlaygroundReplCode({
         expression: nextExpression,
@@ -313,8 +332,9 @@ async function submitLine(target: ReplTarget, session: ReplSessionState, inputEl
   })
 
   if (!outcome.ok) {
-    const message = outcome.error instanceof Error ? outcome.error.message : String(outcome.error)
-    session.scope = { ...session.scope, '*e*': message }
+    const message = outcome.repl.error ?? (outcome.error instanceof Error ? outcome.error.message : String(outcome.error))
+    session.scope = outcome.scope
+    session.repl = outcome.repl
     session.outputs.push({ kind: 'error', text: message })
     persistSessions()
     shouldFocusInputOnRender = true
@@ -323,7 +343,7 @@ async function submitLine(target: ReplTarget, session: ReplSessionState, inputEl
   }
 
   session.scope = outcome.scope
-  session.historyResults = outcome.historyResults
+  session.repl = outcome.repl
   if (outcome.runResult.type === 'suspended') {
     saveAndOpenSnapshotTab(outcome.runResult.snapshot, 'halted')
     session.outputs.push({
@@ -440,7 +460,7 @@ function renderContextMenu(session: ReplSessionState): HTMLElement {
   })
 
   const bindings = Object.entries(session.scope)
-    .filter(([name]) => !/^\*.*\*$/.test(name))
+    .filter(([name]) => shouldShowReplContextBinding(name))
     .sort(([left], [right]) => left.localeCompare(right))
   if (bindings.length === 0) {
     const empty = document.createElement('div')
