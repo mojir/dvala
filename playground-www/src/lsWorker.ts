@@ -49,13 +49,8 @@
 
 import { tokenizeSource } from '../../src/tooling'
 import { parseTokenStreamRecoverable } from '../../src/tooling'
-import { typecheck, WorkspaceIndex } from '../../src/internal'
-import type { TypecheckResult } from '../../src/internal'
-import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
-import type { Diagnostic, Position } from '../../src/shared/types'
-import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
-
-import type { Ast } from '../../src/parser/types'
+import { buildParseDiagnostics } from '../../src/shared/diagnosticBuilder'
+import type { Diagnostic } from '../../src/shared/types'
 
 // ── Message types ─────────────────────────────────────────────────────────────
 
@@ -78,34 +73,7 @@ interface CancelRequestMessage {
   requestId: number
 }
 
-interface RequestHoverMessage {
-  type: 'requestHover'
-  requestId: number
-  path: string
-  position: Position
-}
-
-interface RequestDefinitionMessage {
-  type: 'requestDefinition'
-  requestId: number
-  path: string
-  position: Position
-}
-
-interface RequestReferencesMessage {
-  type: 'requestReferences'
-  requestId: number
-  path: string
-  position: Position
-}
-
-type WorkerInMessage =
-  | UpdateDocumentMessage
-  | RequestDiagnosticsMessage
-  | CancelRequestMessage
-  | RequestHoverMessage
-  | RequestDefinitionMessage
-  | RequestReferencesMessage
+type WorkerInMessage = UpdateDocumentMessage | RequestDiagnosticsMessage | CancelRequestMessage
 
 interface DiagnosticsResultMessage {
   type: 'diagnosticsResult'
@@ -123,48 +91,15 @@ interface DiagnosticsErrorMessage {
   message: string
 }
 
-interface HoverResultMessage {
-  type: 'hoverResult'
-  requestId: number
-  path: string
-  contents: string | null
-}
-
-interface LocationResult {
-  file: string
-  line: number
-  column: number
-  nameLength: number
-}
-
-interface DefinitionResultMessage {
-  type: 'definitionResult'
-  requestId: number
-  path: string
-  location: LocationResult | null
-}
-
-interface ReferencesResultMessage {
-  type: 'referencesResult'
-  requestId: number
-  path: string
-  locations: LocationResult[]
-}
-
 // ── Worker state ──────────────────────────────────────────────────────────────
 
 /** Per-file mirror buffer. */
 interface FileState {
   source: string
   sourceVersion: number
-  /** Cached typecheck result for hover queries (cleared on edit). */
-  typecheckCache: TypecheckResult | null
 }
 
 const files = new Map<string, FileState>()
-
-/** Workspace-level symbol index for cross-file go-to-def / find-references. */
-const workspaceIndex = new WorkspaceIndex()
 
 /** Active request cancellation flags, keyed by requestId. */
 const cancelledRequests = new Map<number, boolean>()
@@ -199,41 +134,8 @@ function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   diagnostics.push(...buildParseDiagnostics(parseResult.errors))
   checkCancelled(input.requestId)
 
-  // Only typecheck if we have at least one statement to analyse.
-  if (parseResult.body.length === 0) return diagnostics
-
-  // Build an Ast from the recoverable parse result so typecheck can consume it.
-  const ast: Ast = { body: parseResult.body, sourceMap: parseResult.sourceMap }
-
-  // ── Typecheck ──
-  let typeResult: TypecheckResult
-  try {
-    typeResult = typecheck(ast)
-  } catch {
-    // Typechecker threw (e.g. internal assertion). Don't block marker
-    // updates — return whatever parse diagnostics we already collected.
-    return diagnostics
-  }
-  checkCancelled(input.requestId)
-
-  // Cache the typecheck result on the file state so hover queries can
-  // use findTypeAtPosition without re-typechecking.
-  const file = files.get(input.path)
-  if (file) file.typecheckCache = typeResult
-
-  // ── Build diagnostics ──
-  diagnostics.push(...buildTypeDiagnostics(typeResult))
-  diagnostics.push(
-    ...buildSymbolDiagnostics(
-      // Symbol-level diagnostics (unresolved refs) need the full
-      // WorkspaceIndex cross-file analysis. The index is populated on
-      // every diagnostics pass but the `findUnresolvedRefs` walk isn't
-      // wired yet — tracked as follow-up. For now, diagnostics only
-      // cover parse errors and type mismatches.
-      [],
-    ),
-  )
-
+  // Worker handles tokenize + parse only. Typecheck runs on the main
+  // thread to avoid pulling builtin (.dvala files) into the worker bundle.
   return diagnostics
 }
 
@@ -244,9 +146,7 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
 
   switch (msg.type) {
     case 'updateDocument': {
-      // Invalidate the typecheck cache on every edit — the next diagnostics
-      // pass will re-typecheck and refresh it for hover queries.
-      files.set(msg.path, { source: msg.source, sourceVersion: msg.sourceVersion, typecheckCache: null })
+      files.set(msg.path, { source: msg.source, sourceVersion: msg.sourceVersion })
       return
     }
 
@@ -266,25 +166,6 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
         self.postMessage(out)
         return
       }
-
-      // Update the workspace index with this file's content so go-to-def
-      // and find-references can resolve symbols across the workspace.
-      workspaceIndex.updateFile(msg.path, file.source, (importPath: string) => {
-        const dir = msg.path.includes('/') ? msg.path.slice(0, msg.path.lastIndexOf('/')) : ''
-        const segments = dir ? dir.split('/').filter(s => s !== '') : []
-        for (const seg of importPath.split('/')) {
-          if (seg === '' || seg === '.') continue
-          if (seg === '..') {
-            segments.pop()
-            continue
-          }
-          segments.push(seg)
-        }
-        const resolved = segments.join('/')
-        if (files.has(resolved)) return resolved
-        if (files.has(`${resolved}.dvala`)) return `${resolved}.dvala`
-        return null
-      })
 
       try {
         const diagnostics = computeDiagnostics({
@@ -330,72 +211,5 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
       return
     }
 
-    case 'requestHover': {
-      const file = files.get(msg.path)
-      const out: HoverResultMessage = {
-        type: 'hoverResult',
-        requestId: msg.requestId,
-        path: msg.path,
-        contents: null,
-      }
-
-      if (!file || !file.typecheckCache) {
-        self.postMessage(out)
-        return
-      }
-
-      try {
-        const tc = file.typecheckCache
-        const type = findTypeAtPosition(tc.typeMap, tc.sourceMap, msg.position)
-        if (!type) {
-          self.postMessage(out)
-          return
-        }
-        out.contents = formatHoverType(type)
-      } catch {
-        // findTypeAtPosition or formatHoverType threw — nothing to show.
-      }
-
-      self.postMessage(out)
-      return
-    }
-
-    case 'requestDefinition': {
-      const def = workspaceIndex.findDefinition(msg.path, msg.position.line, msg.position.column)
-      const out: DefinitionResultMessage = {
-        type: 'definitionResult',
-        requestId: msg.requestId,
-        path: msg.path,
-        location: def
-          ? {
-              file: def.location.file,
-              line: def.location.line,
-              column: def.location.column,
-              nameLength: def.name.length,
-            }
-          : null,
-      }
-      self.postMessage(out)
-      return
-    }
-
-    case 'requestReferences': {
-      const canonical = workspaceIndex.resolveCanonicalFile(msg.path, msg.position.line, msg.position.column)
-      const locations: LocationResult[] = []
-      if (canonical) {
-        const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
-        for (const occ of occurrences) {
-          locations.push(occ)
-        }
-      }
-      const out: ReferencesResultMessage = {
-        type: 'referencesResult',
-        requestId: msg.requestId,
-        path: msg.path,
-        locations,
-      }
-      self.postMessage(out)
-      return
-    }
   }
 }
