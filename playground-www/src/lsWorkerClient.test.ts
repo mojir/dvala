@@ -71,6 +71,12 @@ vi.mock('./lsWorker?worker', () => ({
 type StubModel = {
   getValue: () => string
   getVersionId: () => number
+  getFullModelRange: () => {
+    startLineNumber: number
+    startColumn: number
+    endLineNumber: number
+    endColumn: number
+  }
   uri: { toString: () => string }
 }
 
@@ -78,6 +84,12 @@ function makeModel(source: string, version: number, uri = `inmemory://${version}
   return {
     getValue: () => source,
     getVersionId: () => version,
+    getFullModelRange: () => ({
+      startLineNumber: 1,
+      startColumn: 1,
+      endLineNumber: 1,
+      endColumn: Math.max(1, source.length + 1),
+    }),
     uri: { toString: () => uri },
   }
 }
@@ -362,5 +374,67 @@ describe('lsWorkerClient lifecycle', () => {
         }),
       ]),
     )
+  })
+
+  it('formats through the worker and resolves a full-document edit', async () => {
+    const model = makeModel('let   x', 3)
+
+    client.registerModel('main.dvala', model as never)
+    const editsPromise = client.getFormattingEditsForTesting(model as never)
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'requestFormatting',
+      requestId: 1,
+      path: 'main.dvala',
+      source: 'let   x',
+      sourceVersion: 3,
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'formattingResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      formatted: 'let x',
+    })
+
+    await expect(editsPromise).resolves.toEqual([
+      {
+        range: model.getFullModelRange(),
+        text: 'let x',
+      },
+    ])
+  })
+
+  it('drops stale formatting results whose requestId is no longer pending for the path', async () => {
+    const model = makeModel('let   x', 3)
+
+    client.registerModel('main.dvala', model as never)
+    const firstPromise = client.getFormattingEditsForTesting(model as never)
+    const secondPromise = client.getFormattingEditsForTesting(model as never)
+
+    dispatchWorkerMessage(0, {
+      type: 'formattingResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      formatted: 'stale',
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'formattingResult',
+      requestId: 2,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      formatted: 'fresh',
+    })
+
+    await expect(firstPromise).resolves.toEqual([])
+    await expect(secondPromise).resolves.toEqual([
+      {
+        range: model.getFullModelRange(),
+        text: 'fresh',
+      },
+    ])
   })
 })

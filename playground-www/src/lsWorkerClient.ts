@@ -15,7 +15,7 @@ import LsWorker from './lsWorker?worker'
 import { allReference, isCustomReference, isFunctionReference } from '../../reference/index'
 import type { Reference } from '../../reference/index'
 import type { Diagnostic } from '../../src/shared/types'
-import { formatSource, tokenizeSource } from '../../src/tooling'
+import { tokenizeSource } from '../../src/tooling'
 import { typecheck, WorkspaceIndex } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
 import { findCallContext } from '../../src/shared/callContext'
@@ -122,11 +122,19 @@ function typecheckForHover(source: string, path: string): TypecheckResult {
 let worker: Worker | null = null
 let nextRequestId = 1
 
+type PendingRequestMap = Map<string, number>
+
 /** Debounce timers keyed by path. */
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 /** Pending request IDs keyed by path for cancellation. */
 const pendingRequests = new Map<string, number>()
+
+/** Pending formatting request IDs keyed by path. */
+const pendingFormattingRequests = new Map<string, number>()
+
+/** Pending formatting resolvers keyed by path. */
+const pendingFormattingResolvers = new Map<string, (edits: monaco.languages.TextEdit[]) => void>()
 
 /** Last source version mirrored to the worker for each open path. */
 const lastSentSourceVersions = new Map<string, number>()
@@ -174,37 +182,62 @@ function getWorker(): Worker {
   return worker
 }
 
-function getPendingRequestId(path: string): number | undefined {
-  return pendingRequests.get(path)
+function getPendingRequestId(requests: PendingRequestMap, path: string): number | undefined {
+  return requests.get(path)
 }
 
-function matchesPendingRequest(path: string, requestId: number): boolean {
-  return getPendingRequestId(path) === requestId
+function matchesPendingRequest(requests: PendingRequestMap, path: string, requestId: number): boolean {
+  return getPendingRequestId(requests, path) === requestId
 }
 
-function clearPendingRequest(path: string): void {
-  pendingRequests.delete(path)
-  lastResyncFingerprints.delete(path)
+function clearPendingRequest(requests: PendingRequestMap, path: string): void {
+  requests.delete(path)
 }
 
-function cancelPendingRequest(path: string, w = getWorker()): void {
-  const requestId = getPendingRequestId(path)
+function cancelPendingRequest(requests: PendingRequestMap, path: string, w = getWorker()): void {
+  const requestId = getPendingRequestId(requests, path)
   if (requestId === undefined) return
   w.postMessage({ type: 'cancelRequest', requestId })
-  pendingRequests.delete(path)
+  requests.delete(path)
 }
 
-function startTrackedRequest(path: string, w: Worker, buildMessage: (requestId: number) => object): number {
-  cancelPendingRequest(path, w)
+function startTrackedRequest(
+  requests: PendingRequestMap,
+  path: string,
+  w: Worker,
+  buildMessage: (requestId: number) => object,
+): number {
+  cancelPendingRequest(requests, path, w)
 
   const requestId = nextRequestId++
-  pendingRequests.set(path, requestId)
+  requests.set(path, requestId)
   w.postMessage(buildMessage(requestId))
   return requestId
 }
 
+function clearDiagnosticsPendingRequest(path: string): void {
+  clearPendingRequest(pendingRequests, path)
+  lastResyncFingerprints.delete(path)
+}
+
+function cancelPendingDiagnosticsRequest(path: string, w = getWorker()): void {
+  cancelPendingRequest(pendingRequests, path, w)
+}
+
+function clearPendingFormattingRequest(path: string, edits: monaco.languages.TextEdit[]): void {
+  pendingFormattingResolvers.get(path)?.(edits)
+  pendingFormattingResolvers.delete(path)
+  clearPendingRequest(pendingFormattingRequests, path)
+}
+
+function cancelPendingFormattingRequest(path: string, w = getWorker()): void {
+  pendingFormattingResolvers.get(path)?.([])
+  pendingFormattingResolvers.delete(path)
+  cancelPendingRequest(pendingFormattingRequests, path, w)
+}
+
 function getResyncFingerprint(path: string, sourceVersion: number): string {
-  const pendingRequestId = getPendingRequestId(path)
+  const pendingRequestId = getPendingRequestId(pendingRequests, path)
   return `${sourceVersion}:${pendingRequestId ?? 'none'}`
 }
 
@@ -226,8 +259,17 @@ function syncRegisteredModelsToWorker(w: Worker): void {
 }
 
 function handleWorkerError(): void {
+  for (const resolve of pendingFormattingResolvers.values()) {
+    resolve([])
+  }
+  pendingFormattingResolvers.clear()
+  pendingFormattingRequests.clear()
   lastResyncFingerprints.clear()
   worker = null
+}
+
+function buildFormattingEdits(model: monaco.editor.ITextModel, formatted: string): monaco.languages.TextEdit[] {
+  return [{ range: model.getFullModelRange(), text: formatted }]
 }
 
 function handleWorkerMessage(event: MessageEvent): void {
@@ -246,7 +288,7 @@ function handleWorkerMessage(event: MessageEvent): void {
       const model = registeredModels.get(path)
       if (!model) return
 
-      if (!matchesPendingRequest(path, msg.requestId)) return
+      if (!matchesPendingRequest(pendingRequests, path, msg.requestId)) return
 
       const currentVersion = model.getVersionId()
       if (sourceVersion < currentVersion) return
@@ -267,16 +309,43 @@ function handleWorkerMessage(event: MessageEvent): void {
       }))
 
       monaco.editor.setModelMarkers(model, 'dvala', markers)
-      clearPendingRequest(path)
+      clearDiagnosticsPendingRequest(path)
       return
     }
 
     case 'diagnosticsError': {
       const { path, requestId } = msg as { type: 'diagnosticsError'; path: string; requestId: number }
-      if (!matchesPendingRequest(path, requestId)) return
+      if (!matchesPendingRequest(pendingRequests, path, requestId)) return
       const model = registeredModels.get(path)
       if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
-      clearPendingRequest(path)
+      clearDiagnosticsPendingRequest(path)
+      return
+    }
+
+    case 'formattingResult': {
+      const { path, requestId, sourceVersion, formatted } = msg as {
+        type: 'formattingResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        formatted: string
+      }
+      if (!matchesPendingRequest(pendingFormattingRequests, path, requestId)) return
+
+      const model = registeredModels.get(path)
+      if (!model || sourceVersion < model.getVersionId()) {
+        clearPendingFormattingRequest(path, [])
+        return
+      }
+
+      clearPendingFormattingRequest(path, buildFormattingEdits(model, formatted))
+      return
+    }
+
+    case 'formattingError': {
+      const { path, requestId } = msg as { type: 'formattingError'; path: string; requestId: number }
+      if (!matchesPendingRequest(pendingFormattingRequests, path, requestId)) return
+      clearPendingFormattingRequest(path, [])
       return
     }
 
@@ -287,7 +356,7 @@ function handleWorkerMessage(event: MessageEvent): void {
       const fingerprint = getResyncFingerprint(path, model.getVersionId())
       if (lastResyncFingerprints.get(path) === fingerprint) return
       syncModelToWorker(worker, path, model)
-      if (getPendingRequestId(path) !== undefined) {
+      if (getPendingRequestId(pendingRequests, path) !== undefined) {
         requestDiagnostics(path, model.getVersionId())
       }
       lastResyncFingerprints.set(path, getResyncFingerprint(path, model.getVersionId()))
@@ -428,13 +497,23 @@ function getRenameEditsAtPosition(
   return { edits }
 }
 
-function formatModel(model: monaco.editor.ITextModel): monaco.languages.TextEdit[] {
-  try {
-    const formatted = formatSource(model.getValue())
-    return [{ range: model.getFullModelRange(), text: formatted }]
-  } catch {
-    return []
-  }
+function requestFormattingEdits(model: monaco.editor.ITextModel): Promise<monaco.languages.TextEdit[]> {
+  const path = getPathForModel(model)
+  if (!path) return Promise.resolve([])
+
+  const w = getWorker()
+  cancelPendingFormattingRequest(path, w)
+
+  return new Promise(resolve => {
+    pendingFormattingResolvers.set(path, resolve)
+    startTrackedRequest(pendingFormattingRequests, path, w, requestId => ({
+      type: 'requestFormatting',
+      requestId,
+      path,
+      source: model.getValue(),
+      sourceVersion: model.getVersionId(),
+    }))
+  })
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -658,11 +737,11 @@ export function initLspWorker(): void {
   // ── Document formatter ───────────────────────────────────────────────────
 
   monaco.languages.registerDocumentFormattingEditProvider('dvala', {
-    provideDocumentFormattingEdits: formatModel,
+    provideDocumentFormattingEdits: model => requestFormattingEdits(model),
   })
 
   monaco.languages.registerDocumentRangeFormattingEditProvider('dvala', {
-    provideDocumentRangeFormattingEdits: model => formatModel(model),
+    provideDocumentRangeFormattingEdits: model => requestFormattingEdits(model),
   })
 }
 
@@ -689,7 +768,8 @@ export function unregisterModel(path: string): void {
   if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
   if (worker) worker.postMessage({ type: 'closeDocument', path })
   // Cancel any pending diagnostics for this path.
-  cancelPendingRequest(path)
+  cancelPendingDiagnosticsRequest(path)
+  cancelPendingFormattingRequest(path)
   const timer = debounceTimers.get(path)
   if (timer) {
     clearTimeout(timer)
@@ -760,8 +840,8 @@ export function getRenameEditsForTesting(
   return getRenameEditsAtPosition(path, position, newName)
 }
 
-export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): monaco.languages.TextEdit[] {
-  return formatModel(model)
+export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): Promise<monaco.languages.TextEdit[]> {
+  return requestFormattingEdits(model)
 }
 
 /**
@@ -770,7 +850,7 @@ export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): m
  */
 function requestDiagnostics(path: string, sourceVersion: number): void {
   const w = getWorker()
-  startTrackedRequest(path, w, requestId => ({
+  startTrackedRequest(pendingRequests, path, w, requestId => ({
     type: 'requestDiagnostics',
     requestId,
     path,

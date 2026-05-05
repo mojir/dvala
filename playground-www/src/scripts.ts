@@ -103,7 +103,6 @@ import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
 import {
   getDefinitionsForTesting,
-  getFormattingEditsForTesting,
   getReferencesForTesting,
   getRenameEditsForTesting,
   initLspWorker,
@@ -3374,8 +3373,11 @@ export function getRenameEditsAtCursorForTesting(position: number, newName: stri
 export function getFormattedEditorValueForTesting(): string | null {
   const activeModel = getCodeEditor().getActiveModel()
   if (!activeModel) return null
-  const edits = getFormattingEditsForTesting(activeModel)
-  return edits[0]?.text ?? activeModel.getValue()
+  try {
+    return formatSource(activeModel.getValue())
+  } catch {
+    return activeModel.getValue()
+  }
 }
 
 export function goToDefinitionAtCursorForTesting(): boolean {

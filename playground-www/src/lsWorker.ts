@@ -31,6 +31,11 @@
  *   diagnostics for the file at `path`. The worker tokenizes, parses, and
  *   typechecks the stored mirror; if no mirror is available it requests an
  *   explicit resync instead of silently fabricating an empty result.
+ * - `requestFormatting(path, source, sourceVersion)`: format the supplied
+ *   source snapshot and post back `formattingResult` or `formattingError`.
+ *   This does not depend on the mirrored file state, but still uses
+ *   `requestId` correlation so stale replies can be dropped on the main
+ *   thread.
  * - `cancelRequest(requestId)`: cancel an in-flight request. The worker
  *   checks a `cancelled` flag at well-known yield points (after parse,
  *   after typecheck) and drops the result if set.
@@ -43,6 +48,11 @@
  * - `diagnosticsError(path, sourceVersion, message)`: the worker hit an
  *   unrecoverable error during tokenize/parse/typecheck. The main thread
  *   clears markers (best-effort) and may log.
+ * - `formattingResult(path, sourceVersion, formatted)`: successful format
+ *   response for a source snapshot. The main thread applies it only when
+ *   the path still has the same pending formatting request.
+ * - `formattingError(path, sourceVersion, message)`: formatting failed.
+ *   The main thread resolves the request with no edits.
  * - `resyncDocument(path)`: the worker detected a missing mirror or a
  *   version gap while processing `updateDocument`, so the main thread
  *   should resend the canonical full document via `openDocument`.
@@ -58,6 +68,7 @@
 
 import { tokenizeSource } from '../../src/tooling'
 import { parseTokenStreamRecoverable } from '../../src/tooling'
+import { formatSource } from '../../src/tooling'
 import { buildParseDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
 import type { Diagnostic } from '../../src/shared/types'
 import { allBuiltinModules } from '../../src/allModules'
@@ -95,6 +106,14 @@ interface RequestDiagnosticsMessage {
   sourceVersion: number
 }
 
+interface RequestFormattingMessage {
+  type: 'requestFormatting'
+  requestId: number
+  path: string
+  source: string
+  sourceVersion: number
+}
+
 interface CancelRequestMessage {
   type: 'cancelRequest'
   requestId: number
@@ -105,6 +124,7 @@ type WorkerInMessage =
   | UpdateDocumentMessage
   | CloseDocumentMessage
   | RequestDiagnosticsMessage
+  | RequestFormattingMessage
   | CancelRequestMessage
 
 interface DiagnosticsResultMessage {
@@ -117,6 +137,22 @@ interface DiagnosticsResultMessage {
 
 interface DiagnosticsErrorMessage {
   type: 'diagnosticsError'
+  requestId: number
+  path: string
+  sourceVersion: number
+  message: string
+}
+
+interface FormattingResultMessage {
+  type: 'formattingResult'
+  requestId: number
+  path: string
+  sourceVersion: number
+  formatted: string
+}
+
+interface FormattingErrorMessage {
+  type: 'formattingError'
   requestId: number
   path: string
   sourceVersion: number
@@ -277,6 +313,31 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
 
         const out: DiagnosticsErrorMessage = {
           type: 'diagnosticsError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: error instanceof Error ? error.message : String(error),
+        }
+        self.postMessage(out)
+      }
+      return
+    }
+
+    case 'requestFormatting': {
+      cancelledRequests.delete(msg.requestId)
+
+      try {
+        const out: FormattingResultMessage = {
+          type: 'formattingResult',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          formatted: formatSource(msg.source),
+        }
+        self.postMessage(out)
+      } catch (error) {
+        const out: FormattingErrorMessage = {
+          type: 'formattingError',
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,

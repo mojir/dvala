@@ -122,4 +122,26 @@ describe('lsWorker document sync', () => {
     )
     expect(worker.postMessage).not.toHaveBeenCalledWith({ type: 'resyncDocument', path: 'main.dvala' })
   })
+
+  it('formats a source snapshot and returns a formatting result', async () => {
+    const worker = await loadWorker()
+
+    dispatch(worker, {
+      type: 'requestFormatting',
+      requestId: 1,
+      path: 'main.dvala',
+      source: '1',
+      sourceVersion: 3,
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'formattingResult',
+        requestId: 1,
+        path: 'main.dvala',
+        sourceVersion: 3,
+        formatted: expect.any(String),
+      }),
+    )
+  })
 })
