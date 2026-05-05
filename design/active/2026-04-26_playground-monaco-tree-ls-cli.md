@@ -441,6 +441,20 @@ Lands after Phase 1.5. New first tab in the right-panel multi-tool, shown for `.
 31. Document formatter (backed by `prettyPrint`).
 32. Performance pass: profile on a 50-file workspace; tune debouncing and message-batching as needed.
 
+### Phase 2 follow-up — Worker delta / protocol hardening
+
+This is a **follow-up track, not part of the user-facing Phase 2 parity checklist**. Phase 2's definition of done is Monaco feature parity for diagnostics, hover, completions, definition / references / rename, and formatting. The work below is infrastructure hardening that reduces correctness and performance risk as the playground moves toward larger workspaces and the CLI-backed local-mode surface in Phase 3.
+
+32a. Make the worker the canonical owner of mirrored document state for all LS-backed features, not just diagnostics. Eliminate remaining main-thread-only fallbacks where they would create parity gaps or divergent cache behavior.
+
+32b. Tighten the edit-delta protocol: document open / close events, ordered versioned edits, explicit resync on gap or version mismatch, and a small recovery path after worker restart so stale mirrors cannot survive silently.
+
+32c. Harden request / response sequencing: correlation IDs on all LS requests, per-path cancellation rules, and late-result dropping validated across hover / completion / diagnostics / navigation providers rather than diagnostics alone.
+
+32d. Add regression coverage for incremental multi-file edits and worker lifecycle edges: rapid typing, cross-file rename after unsaved edits, worker restart / re-init, and stale-result suppression under overlapping requests.
+
+32e. Re-profile on a medium workspace after the protocol changes. Revisit debounce windows, batching strategy, and any remaining full-document resend paths before starting Phase 3 local-project work.
+
 ### Phase 3 — CLI
 
 33. New `dvala playground` subcommand: arg parsing, default path, port selection.

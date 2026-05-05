@@ -91,6 +91,26 @@ async function waitForSignatureHelp(page: Page) {
   await page.locator('.parameter-hints-widget').waitFor({ state: 'visible', timeout: 3000 })
 }
 
+/** Wait for Monaco hover to appear. */
+async function waitForHover(page: Page, position?: number) {
+  if (position === undefined) {
+    await page.locator('.monaco-hover').waitFor({ state: 'visible', timeout: 3000 })
+    return
+  }
+
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(offset => (window as any).Playground.triggerHoverForTesting(offset), position)
+        const hover = page.locator('.monaco-hover')
+        if (!(await hover.isVisible())) return ''
+        return ((await hover.textContent()) ?? '').trim()
+      },
+      { timeout: 3000 },
+    )
+    .not.toBe('')
+}
+
 /** Read the first workspace file's id from its `data-file-id` attribute. */
 async function firstWorkspaceFileId(page: Page): Promise<string | null> {
   return page.evaluate(() => {
@@ -327,6 +347,40 @@ test.describe('editor completions', () => {
     await expect(page.locator('.suggest-widget')).toContainText('./utils')
   })
 
+  test('shows import completions immediately after opening the import string', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'math-file',
+          path: 'lib/math.dvala',
+          code: 'let add = (a, b) => a + b; { add }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let math = import("'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('functional')
+    await expect(page.locator('.suggest-widget')).toContainText('./lib/')
+    await expect(page.locator('.suggest-widget')).not.toContainText('!=')
+  })
+
   test('shows folder completions for nested workspace imports', async ({ page }) => {
     await page.evaluate(() => {
       ;(window as any).Playground.setWorkspaceFilesForTesting([
@@ -458,6 +512,92 @@ test.describe('signature help', () => {
     await waitForSignatureHelp(page)
 
     await expect(page.locator('.parameter-hints-widget')).toContainText('map(colls: collection, fun: function)')
+  })
+})
+
+test.describe('hover', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('shows builtin docs in hover', async ({ page }) => {
+    const code = 'map'
+    await setDvalaCode(page, code)
+
+    const position = 1
+    const shown = await page.evaluate(offset => (window as any).Playground.triggerHoverForTesting(offset), position)
+    expect(shown).toBe(true)
+
+    await waitForHover(page, position)
+
+    await expect(page.locator('.monaco-hover')).toContainText('map')
+    await expect(page.locator('.monaco-hover')).toContainText('Creates a new collection populated')
+  })
+
+  test('shows inferred type for local symbols in hover', async ({ page }) => {
+    const code = 'let localValue = 1;\nlocalValue'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+    const primed = await page.evaluate(() => (window as any).Playground.primeActiveEditorTypecheckForTesting())
+    expect(primed).toBe(true)
+
+    const position = 'let localValue = 1;\n'.length + 1
+    const shown = await page.evaluate(offset => (window as any).Playground.triggerHoverForTesting(offset), position)
+    expect(shown).toBe(true)
+
+    await waitForHover(page, position)
+
+    await expect(page.locator('.monaco-hover')).toContainText('1 : Number')
+    await expect(page.locator('.monaco-hover')).toContainText('Defined at <scratch>:1:5')
+  })
+})
+
+test.describe('language service navigation', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('resolves go-to-definition for a local symbol', async ({ page }) => {
+    await setDvalaCode(page, 'let value = 1; value + value')
+
+    const defs = await page.evaluate(() =>
+      (window as any).Playground.getDefinitionsAtCursorForTesting('let value = 1; '.length),
+    )
+    expect(defs).toHaveLength(1)
+    expect(defs[0].uri).toContain('/.dvala-playground/scratch.dvala')
+    expect(defs[0].range.startLineNumber).toBe(1)
+    expect(defs[0].range.startColumn).toBe(5)
+  })
+
+  test('finds references and rename edits for a local symbol', async ({ page }) => {
+    await setDvalaCode(page, 'let value = 1; value + value')
+
+    const position = 'let value = 1; '.length
+    const refs = await page.evaluate(
+      offset => (window as any).Playground.getReferencesAtCursorForTesting(offset),
+      position,
+    )
+    expect(refs).toHaveLength(3)
+    expect(refs.every((ref: { uri: string }) => ref.uri.endsWith('scratch.dvala'))).toBe(true)
+
+    const edits = await page.evaluate(
+      ({ offset }) => (window as any).Playground.getRenameEditsAtCursorForTesting(offset, 'renamedAnswer'),
+      { offset: position },
+    )
+    expect(edits).toHaveLength(3)
+    expect(edits.every((edit: { text: string }) => edit.text === 'renamedAnswer')).toBe(true)
+    expect(edits.every((edit: { resource: string }) => edit.resource.endsWith('scratch.dvala'))).toBe(true)
+  })
+
+  test('formats the active editor through the document formatting provider', async ({ page }) => {
+    await setDvalaCode(page, '1+2')
+
+    const formatted = await page.evaluate(() => (window as any).Playground.getFormattedEditorValueForTesting())
+    expect(formatted).toBe('1 + 2;\n')
   })
 })
 
@@ -1946,7 +2086,7 @@ test.describe('editor tabs', () => {
 
     // After close, only the scratch tab remains.
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
   })
 
   test('the scratch tab has a × close button (Phase 1.5 step 23j stage 2)', async ({ page }) => {
@@ -1954,12 +2094,12 @@ test.describe('editor tabs', () => {
     // Just opening the editor with no other tabs should still expose
     // the close button on the scratch tab.
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })).toBeVisible()
+    await expect(page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })).toBeVisible()
     // The close button is hidden by CSS until the tab is hovered or
     // active. Scratch is the only tab and is active by default, so the
     // button is visible without hover.
     const scratchClose = page
-      .locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })
+      .locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
       .locator('.editor-tab__close')
     await expect(scratchClose).toBeVisible()
   })
@@ -1968,7 +2108,7 @@ test.describe('editor tabs', () => {
     // Close the scratch tab. With nothing else open, the strip empties
     // and the editor area renders the "No tab open" empty state with
     // an "Open scratch" affordance.
-    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })
+    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
     await scratchTab.locator('.editor-tab__close').click()
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(0)
     // Empty view appears in the editor area.
@@ -1979,7 +2119,7 @@ test.describe('editor tabs', () => {
   })
 
   test('after closing scratch, the pinned [scratch] tree entry re-opens it', async ({ page }) => {
-    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })
+    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
     await scratchTab.locator('.editor-tab__close').click()
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(0)
 
@@ -1987,7 +2127,7 @@ test.describe('editor tabs', () => {
     await page.locator('#explorer-file-list .explorer-item', { hasText: '[scratch]' }).click()
     // Strip is back with scratch as the only tab.
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
     // Editor view is visible again, empty state hidden.
     await expect(page.locator('#dvala-editor-view')).toBeVisible()
     await expect(page.locator('#dvala-empty-view')).toBeHidden()
@@ -2008,11 +2148,11 @@ test.describe('editor tabs', () => {
     await page.evaluate((id: string) => (window as any).Playground.loadWorkspaceFile(id), aId)
     // Switch back to scratch so it's the active tab; file 'a' is the
     // only neighbor.
-    await page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' }).click()
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
+    await page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' }).click()
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
 
     // Close scratch via its × button.
-    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' })
+    const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
     await scratchTab.locator('.editor-tab__close').click()
 
     // Strip drops to one tab (the neighbor); active becomes 'neighbor-a.dvala'.
@@ -2072,7 +2212,7 @@ test.describe('editor tabs', () => {
   })
 
   test('Cmd/Ctrl-W closes the active tab (Monaco-bound shortcut)', async ({ page }) => {
-    // Open one file so a closeable tab exists in addition to [scratch].
+    // Open one file so a closeable tab exists in addition to <scratch>.
     const aId = '10101010-1010-1010-1010-101010101010'
     await page.evaluate((id: string) => {
       const w = window as any
@@ -2089,7 +2229,7 @@ test.describe('editor tabs', () => {
 
     // After close, only the scratch tab remains and is active.
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
   })
 
   test('Cmd/Ctrl-PageDown / -PageUp cycle through open tabs (wrapping)', async ({ page }) => {
@@ -2112,17 +2252,17 @@ test.describe('editor tabs', () => {
     await page.evaluate(() => (window as any).Playground.focusDvalaCode())
     // From B, PageDown wraps to scratch (next-with-wrap on a 3-tab strip).
     await page.keyboard.press(`${MONACO_CMD_MOD}+PageDown`)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
     // PageDown again → A.
     await page.keyboard.press(`${MONACO_CMD_MOD}+PageDown`)
     await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('cycle-a.dvala')
     // PageUp → back to scratch.
     await page.keyboard.press(`${MONACO_CMD_MOD}+PageUp`)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
   })
 
   test('Cmd/Ctrl-1..9 jumps to the Nth open tab', async ({ page }) => {
-    // Strip: [scratch (1), A (2), B (3)] with B active.
+    // Strip: <scratch> (1), A (2), B (3) with B active.
     const aId = '30303030-3030-3030-3030-303030303030'
     const bId = '31313131-3131-3131-3131-313131313131'
     await page.evaluate(
@@ -2141,7 +2281,7 @@ test.describe('editor tabs', () => {
     await page.evaluate(() => (window as any).Playground.focusDvalaCode())
     // Cmd-1 → scratch.
     await page.keyboard.press(`${MONACO_CMD_MOD}+1`)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
     // Cmd-2 → A.
     await page.keyboard.press(`${MONACO_CMD_MOD}+2`)
     await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('idx-a.dvala')
@@ -2169,7 +2309,7 @@ test.describe('editor tabs', () => {
       .click({ button: 'middle' })
 
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
   })
 
   test('switching tabs and back preserves cursor position (per-tab viewState)', async ({ page }) => {
@@ -3066,8 +3206,8 @@ test.describe('snapshot lifecycle', () => {
     await page.locator('#side-snapshots-list .explorer-item').first().click()
     await page.waitForFunction(() => document.querySelector('.snapshot-panel__section') !== null, { timeout: 4000 })
 
-    await page.locator('#editor-tab-strip .editor-tab', { hasText: '[scratch]' }).click()
-    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('[scratch]')
+    await page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' }).click()
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
 
     await page.evaluate(() =>
       (window as any).Playground.setEditorCursor((window as any).Playground.getEditorValue().length),

@@ -11,25 +11,75 @@
 import * as monaco from 'monaco-editor'
 // eslint-disable-next-line import/default
 import LsWorker from './lsWorker?worker'
-import { allReference, isFunctionReference } from '../../reference/index'
+import { allReference, isCustomReference, isFunctionReference } from '../../reference/index'
+import type { Reference } from '../../reference/index'
 import type { Diagnostic } from '../../src/shared/types'
 import { formatSource, tokenizeSource } from '../../src/tooling'
 import { typecheck, WorkspaceIndex } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
 import { findCallContext } from '../../src/shared/callContext'
 import { buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
-import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
+import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 import { allBuiltinModules } from '../../src/allModules'
 import { parseToAst } from '../../src/parser'
 import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
 import { getWorkspaceFiles } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
+import { HANDLERS_FILE_PATH } from './handlersBuffer'
 import { resolvePlaygroundPath } from './playgroundFileResolver'
-import { getImportCompletionItems, getImportCompletionPrefix, getImportedExportCompletionItems, getScopedCompletionItems } from './lsCompletions'
+import { SCRATCH_FILE_PATH } from './scratchBuffer'
+import {
+  getImportCompletionItems,
+  getImportCompletionPrefix,
+  getImportedExportCompletionItems,
+  getScopedCompletionItems,
+} from './lsCompletions'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 
 const referenceByTitle = new Map(Object.values(allReference).map(ref => [ref.title, ref]))
+
+function buildHoverMarkdown(name: string, ref: Reference): string {
+  const parts: string[] = [`**${name}**`, '', ref.description]
+
+  if (isFunctionReference(ref)) {
+    parts.push('')
+    for (const variant of ref.variants) {
+      parts.push(`\`${name}(${variant.argumentNames.join(', ')})\``)
+    }
+    const argEntries = Object.entries(ref.args)
+    if (argEntries.length > 0) {
+      parts.push('')
+      for (const [argName, arg] of argEntries) {
+        const typeStr = Array.isArray(arg.type) ? arg.type.join(' | ') : arg.type
+        parts.push(`- \`${argName}\`: *${typeStr}*${arg.description ? ` - ${arg.description}` : ''}`)
+      }
+    }
+  } else if (isCustomReference(ref)) {
+    parts.push('')
+    for (const variant of ref.customVariants) {
+      parts.push(`\`${variant}\``)
+    }
+  }
+
+  if (ref.examples.length > 0) {
+    const ex0 = ref.examples[0]
+    if (!ex0) return parts.join('\n')
+    parts.push('', '**Example:**', typeof ex0 === 'string' ? `\`${ex0}\`` : `\`${ex0.code}\``)
+  }
+
+  return parts.join('\n')
+}
+
+function formatHoverFileLabel(path: string): string {
+  if (path === SCRATCH_FILE_PATH) return '<scratch>'
+  if (path === HANDLERS_FILE_PATH) return '<handlers>'
+  return path
+}
+
+function buildSourceLocationMarkdown(file: string, line: number, column: number): string {
+  return `Defined at \`${formatHoverFileLabel(file)}:${line}:${column}\``
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -91,6 +141,9 @@ const pendingRequests = new Map<string, number>()
 /** Latest typecheck result per path, for hover queries. */
 const typecheckCache = new Map<string, TypecheckResult>()
 
+/** Source version associated with the latest cached typecheck result. */
+const typecheckVersions = new Map<string, number>()
+
 /** Workspace symbol index for go-to-def / find-references. */
 const workspaceIndex = new WorkspaceIndex()
 
@@ -142,6 +195,73 @@ function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
   return deduped
 }
 
+function getDefinitionsAtPosition(path: string, position: monaco.Position): monaco.languages.Location[] | null {
+  const def = workspaceIndex.findDefinition(path, position.lineNumber, position.column)
+  if (!def) return null
+  return [
+    {
+      uri: monaco.Uri.parse(`dvala:///${def.location.file}`),
+      range: {
+        startLineNumber: def.location.line,
+        startColumn: def.location.column,
+        endLineNumber: def.location.line,
+        endColumn: def.location.column + def.name.length,
+      },
+    },
+  ]
+}
+
+function getReferencesAtPosition(path: string, position: monaco.Position): monaco.languages.Location[] | null {
+  const canonical = workspaceIndex.resolveCanonicalFile(path, position.lineNumber, position.column)
+  if (!canonical) return null
+  const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
+  if (occurrences.length === 0) return null
+  return occurrences.map(loc => ({
+    uri: monaco.Uri.parse(`dvala:///${loc.file}`),
+    range: {
+      startLineNumber: loc.line,
+      startColumn: loc.column,
+      endLineNumber: loc.line,
+      endColumn: loc.column + loc.nameLength,
+    },
+  }))
+}
+
+function getRenameEditsAtPosition(
+  path: string,
+  position: monaco.Position,
+  newName: string,
+): monaco.languages.WorkspaceEdit | null {
+  const canonical = workspaceIndex.resolveCanonicalFile(path, position.lineNumber, position.column)
+  if (!canonical) return null
+  const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
+  if (occurrences.length === 0) return null
+
+  const edits: monaco.languages.IWorkspaceTextEdit[] = occurrences.map(loc => ({
+    resource: monaco.Uri.parse(`dvala:///${loc.file}`),
+    textEdit: {
+      range: {
+        startLineNumber: loc.line,
+        startColumn: loc.column,
+        endLineNumber: loc.line,
+        endColumn: loc.column + loc.nameLength,
+      },
+      text: newName,
+    },
+    versionId: undefined,
+  }))
+  return { edits }
+}
+
+function formatModel(model: monaco.editor.ITextModel): monaco.languages.TextEdit[] {
+  try {
+    const formatted = formatSource(model.getValue())
+    return [{ range: model.getFullModelRange(), text: formatted }]
+  } catch {
+    return []
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -181,6 +301,7 @@ export function initLspWorker(): void {
           const source = model.getValue()
           const tc = typecheckForDiagnostics(source, path)
           typecheckCache.set(path, tc)
+          typecheckVersions.set(path, sourceVersion)
           allDiagnostics.push(...buildTypeDiagnostics(tc))
         } catch {}
 
@@ -229,27 +350,73 @@ export function initLspWorker(): void {
       if (!path) return null
 
       const tc = typecheckCache.get(path)
-      if (!tc) return null
+      const word = model.getWordAtPosition(position)
+      const wordRange =
+        word && word.word.length > 0
+          ? {
+              startLineNumber: position.lineNumber,
+              startColumn: word.startColumn,
+              endLineNumber: position.lineNumber,
+              endColumn: word.endColumn,
+            }
+          : undefined
+      const wordText = wordRange ? model.getValueInRange(wordRange) : undefined
+      const symbol = workspaceIndex.getSymbolAtPosition(path, position.lineNumber, position.column)
+      const ref = wordText && !symbol ? (allReference[wordText] ?? referenceByTitle.get(wordText)) : undefined
+
+      let inferredType: string | undefined
+      if (tc && symbol?.def && symbol.def.location.file === path) {
+        const typeAtDef = findTypeAtDefinition(tc.typeMap, tc.sourceMap, symbol.def)
+        if (typeAtDef) inferredType = formatHoverType(typeAtDef)
+      }
 
       try {
-        // Pass the word at cursor as preferredRange so we bias toward
-        // the identifier under the cursor rather than an enclosing
-        // expression. Structural nodes (let/do/block) whose start
-        // aligns with the keyword will still show their result type —
-        // same as TypeScript's hover on `const`.
-        const word = model.getWordUntilPosition(position)
-        const type = findTypeAtPosition(
-          tc.typeMap,
-          tc.sourceMap,
-          { line: position.lineNumber, column: position.column },
-          {
-            start: { line: position.lineNumber, column: word.startColumn },
-            end: { line: position.lineNumber, column: word.endColumn },
-          },
-        )
-        if (!type) return null
+        if (!inferredType && tc) {
+          const type = findTypeAtPosition(
+            tc.typeMap,
+            tc.sourceMap,
+            { line: position.lineNumber, column: position.column },
+            wordRange
+              ? {
+                  start: { line: position.lineNumber, column: wordRange.startColumn },
+                  end: { line: position.lineNumber, column: wordRange.endColumn },
+                }
+              : undefined,
+          )
+          if (type) inferredType = formatHoverType(type)
+        }
+
+        if (!inferredType && tc && wordText) {
+          const visibleDefs = workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column)
+          const matchingDef = visibleDefs.find(def => def.name === wordText && def.location.file === path)
+          if (matchingDef) {
+            const typeAtDef = findTypeAtDefinition(tc.typeMap, tc.sourceMap, matchingDef)
+            if (typeAtDef) inferredType = formatHoverType(typeAtDef)
+          }
+        }
+
+        const sourceLocation = symbol?.def
+          ? buildSourceLocationMarkdown(symbol.def.location.file, symbol.def.location.line, symbol.def.location.column)
+          : undefined
+
+        if (!inferredType && !ref && !sourceLocation) return null
+
+        const contents: monaco.IMarkdownString[] = []
+        if (inferredType) {
+          contents.push({ value: `\`\`\`dvala\n${inferredType}\n\`\`\`` })
+        }
+        if (sourceLocation) {
+          if (contents.length > 0) contents.push({ value: '---' })
+          contents.push({ value: sourceLocation })
+        }
+        if (ref) {
+          if (contents.length > 0) contents.push({ value: '---' })
+          contents.push({ value: buildHoverMarkdown(wordText!, ref) })
+        }
+
         return {
-          contents: [{ value: formatHoverType(type) }],
+          contents,
+          ...(wordRange ? { range: wordRange } : {}),
         }
       } catch {
         return null
@@ -277,12 +444,18 @@ export function initLspWorker(): void {
       const word = model.getWordUntilPosition(position)
       const prefix = String(word.word).toLowerCase()
       const importPrefix = getImportCompletionPrefix(model.getLineContent(position.lineNumber), position.column)
+      const isInsideImportString = importPrefix !== null
       const currentFileSymbols = path ? workspaceIndex.getFileSymbols(path) : null
-      const completionItems = importPrefix
+      const completionItems = isInsideImportString
         ? getImportCompletionItems(importPrefix, path, getWorkspaceFiles())
         : dedupeCompletionItems([
-            ...getScopedCompletionItems(prefix, path ? workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column) : []),
-            ...getImportedExportCompletionItems(prefix, currentFileSymbols, filePath => workspaceIndex.getFileSymbols(filePath)),
+            ...getScopedCompletionItems(
+              prefix,
+              path ? workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column) : [],
+            ),
+            ...getImportedExportCompletionItems(prefix, currentFileSymbols, filePath =>
+              workspaceIndex.getFileSymbols(filePath),
+            ),
           ])
 
       const suggestions: monaco.languages.CompletionItem[] = []
@@ -371,19 +544,7 @@ export function initLspWorker(): void {
       }
       if (!path) return null
 
-      const def = workspaceIndex.findDefinition(path, position.lineNumber, position.column)
-      if (!def) return null
-      return [
-        {
-          uri: monaco.Uri.parse(`dvala:///${def.location.file}`),
-          range: {
-            startLineNumber: def.location.line,
-            startColumn: def.location.column,
-            endLineNumber: def.location.line,
-            endColumn: def.location.column + def.name.length,
-          },
-        },
-      ]
+      return getDefinitionsAtPosition(path, position)
     },
   })
 
@@ -400,19 +561,7 @@ export function initLspWorker(): void {
       }
       if (!path) return null
 
-      const canonical = workspaceIndex.resolveCanonicalFile(path, position.lineNumber, position.column)
-      if (!canonical) return null
-      const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
-      if (occurrences.length === 0) return null
-      return occurrences.map(loc => ({
-        uri: monaco.Uri.parse(`dvala:///${loc.file}`),
-        range: {
-          startLineNumber: loc.line,
-          startColumn: loc.column,
-          endLineNumber: loc.line,
-          endColumn: loc.column + loc.nameLength,
-        },
-      }))
+      return getReferencesAtPosition(path, position)
     },
   })
 
@@ -429,38 +578,11 @@ export function initLspWorker(): void {
       }
       if (!path) return null
 
-      const canonical = workspaceIndex.resolveCanonicalFile(path, position.lineNumber, position.column)
-      if (!canonical) return null
-      const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
-      if (occurrences.length === 0) return null
-
-      const edits: monaco.languages.IWorkspaceTextEdit[] = occurrences.map(loc => ({
-        resource: monaco.Uri.parse(`dvala:///${loc.file}`),
-        textEdit: {
-          range: {
-            startLineNumber: loc.line,
-            startColumn: loc.column,
-            endLineNumber: loc.line,
-            endColumn: loc.column + loc.nameLength,
-          },
-          text: newName,
-        },
-        versionId: undefined,
-      }))
-      return { edits }
+      return getRenameEditsAtPosition(path, position, newName)
     },
   })
 
   // ── Document formatter ───────────────────────────────────────────────────
-
-  const formatModel = (model: monaco.editor.ITextModel): monaco.languages.TextEdit[] => {
-    try {
-      const formatted = formatSource(model.getValue())
-      return [{ range: model.getFullModelRange(), text: formatted }]
-    } catch {
-      return []
-    }
-  }
 
   monaco.languages.registerDocumentFormattingEditProvider('dvala', {
     provideDocumentFormattingEdits: formatModel,
@@ -486,6 +608,8 @@ export function unregisterModel(path: string): void {
   // Grab the model before deleting from the registry.
   const model = registeredModels.get(path)
   registeredModels.delete(path)
+  typecheckCache.delete(path)
+  typecheckVersions.delete(path)
   if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
   // Cancel any pending diagnostics for this path.
   const pendingId = pendingRequests.get(path)
@@ -528,6 +652,32 @@ export function updateDocument(path: string, source: string, sourceVersion: numb
   )
 }
 
+export function primeTypecheckForTesting(path: string, source: string, sourceVersion: number): void {
+  const tc = typecheckForDiagnostics(source, path)
+  typecheckCache.set(path, tc)
+  typecheckVersions.set(path, sourceVersion)
+}
+
+export function getDefinitionsForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {
+  return getDefinitionsAtPosition(path, position)
+}
+
+export function getReferencesForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {
+  return getReferencesAtPosition(path, position)
+}
+
+export function getRenameEditsForTesting(
+  path: string,
+  position: monaco.Position,
+  newName: string,
+): monaco.languages.WorkspaceEdit | null {
+  return getRenameEditsAtPosition(path, position, newName)
+}
+
+export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): monaco.languages.TextEdit[] {
+  return formatModel(model)
+}
+
 /**
  * Request diagnostics from the worker for the given path.
  * Cancels any in-flight request for the same path.
@@ -549,18 +699,4 @@ function requestDiagnostics(path: string, sourceVersion: number): void {
     path,
     sourceVersion,
   })
-}
-
-/**
- * Dispose the worker (for tests / hot-reload).
- */
-export function disposeLspWorker(): void {
-  if (worker) {
-    worker.terminate()
-    worker = null
-  }
-  for (const timer of debounceTimers.values()) clearTimeout(timer)
-  debounceTimers.clear()
-  pendingRequests.clear()
-  registeredModels.clear()
 }

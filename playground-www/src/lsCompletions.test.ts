@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type { FileSymbols, SymbolDef } from '../../src/languageService/types'
-import { getImportCompletionItems, getImportCompletionPrefix, getImportedExportCompletionItems, getScopedCompletionItems } from './lsCompletions'
+import {
+  getImportCompletionItems,
+  getImportCompletionPrefix,
+  getImportedExportCompletionItems,
+  getScopedCompletionItems,
+} from './lsCompletions'
 
 function def(overrides: Partial<SymbolDef> = {}): SymbolDef {
   return {
@@ -54,6 +59,11 @@ describe('getImportCompletionPrefix', () => {
     expect(getImportCompletionPrefix(line, line.indexOf('")') + 1)).toBe('./ut')
   })
 
+  it('returns an empty string immediately after the opening quote', () => {
+    const line = 'let x = import("'
+    expect(getImportCompletionPrefix(line, line.length + 1)).toBe('')
+  })
+
   it('returns null outside import string context', () => {
     expect(getImportCompletionPrefix('let x = "./ut"', 15)).toBeNull()
   })
@@ -103,13 +113,20 @@ describe('getImportedExportCompletionItems', () => {
       exports: [def({ name: 'value', kind: 'variable', location: { file: 'utils.dvala', line: 1, column: 1 } })],
     })
 
-    const items = getImportedExportCompletionItems('va', current, filePath => (filePath === 'utils.dvala' ? imported : null))
+    const items = getImportedExportCompletionItems('va', current, filePath =>
+      filePath === 'utils.dvala' ? imported : null,
+    )
     expect(items.map(item => item.label)).toContain('value')
     expect(items.find(item => item.label === 'value')?.detail).toBe('imported export')
   })
 
   it('deduplicates exports across imported files', () => {
-    const current = fileSymbols({ imports: new Map([['./a', 'a.dvala'], ['./b', 'b.dvala']]) })
+    const current = fileSymbols({
+      imports: new Map([
+        ['./a', 'a.dvala'],
+        ['./b', 'b.dvala'],
+      ]),
+    })
     const imported = fileSymbols({
       exports: [def({ name: 'shared', kind: 'function', params: ['x'] })],
     })

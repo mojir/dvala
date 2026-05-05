@@ -314,6 +314,8 @@ export class CodeEditor {
       lightbulb: { enabled: monaco.editor.ShowLightbulbIconMode.Off },
       parameterHints: { enabled: true },
       inlineSuggest: { enabled: false },
+      fixedOverflowWidgets: true,
+      hover: { above: false },
     })
     this.model = this.editor.getModel()!
   }
@@ -472,11 +474,19 @@ export class CodeEditor {
   }
 
   triggerSignatureHelp(): boolean {
-    const controller = this.editor.getContribution('editor.controller.parameterHints') as
-      | { trigger?: (context: { triggerKind: monaco.languages.SignatureHelpTriggerKind }) => void }
-      | null
+    const controller = this.editor.getContribution('editor.controller.parameterHints') as {
+      trigger?: (context: { triggerKind: monaco.languages.SignatureHelpTriggerKind }) => void
+    } | null
     if (!controller?.trigger) return false
     controller.trigger({ triggerKind: monaco.languages.SignatureHelpTriggerKind.Invoke })
+    return true
+  }
+
+  triggerHover(offset: number): boolean {
+    const pos = this.model.getPositionAt(offset)
+    this.editor.setPosition(pos)
+    this.editor.focus()
+    this.editor.trigger('playground.hover', 'editor.action.showHover', { focus: true })
     return true
   }
 

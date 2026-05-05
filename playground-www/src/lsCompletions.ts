@@ -112,7 +112,11 @@ function relativeFolderImportPath(fromFilePath: string | undefined, folderPath: 
   return folderImport.replace(/\/index$/, '')
 }
 
-function getImportFolderLabels(currentFilePath: string | undefined, workspaceFiles: WorkspaceFile[], importPrefix: string): string[] {
+function getImportFolderLabels(
+  currentFilePath: string | undefined,
+  workspaceFiles: WorkspaceFile[],
+  importPrefix: string,
+): string[] {
   const labels = new Set<string>()
 
   for (const file of workspaceFiles) {
@@ -156,7 +160,9 @@ export function getImportCompletionItems(
   for (const file of workspaceFiles) {
     if (isInPlaygroundFolder(file.path)) continue
     if (file.path === currentFilePath) continue
-    const label = importPrefix.startsWith('/') ? `/${stripDvalaSuffix(file.path)}` : relativeImportPath(currentFilePath, file.path)
+    const label = importPrefix.startsWith('/')
+      ? `/${stripDvalaSuffix(file.path)}`
+      : relativeImportPath(currentFilePath, file.path)
     if (!matchesPrefix(label, importPrefix)) continue
     addImportCompletion(items, seen, label, 'workspace file')
   }

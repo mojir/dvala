@@ -101,7 +101,16 @@ import type { HistoryEntry } from './StateHistory'
 import { StateHistory } from './StateHistory'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
-import { initLspWorker, registerModel, updateDocument as updateLspDocument } from './lsWorkerClient'
+import {
+  getDefinitionsForTesting,
+  getFormattingEditsForTesting,
+  getReferencesForTesting,
+  getRenameEditsForTesting,
+  initLspWorker,
+  primeTypecheckForTesting,
+  registerModel,
+  updateDocument as updateLspDocument,
+} from './lsWorkerClient'
 import { createPanel } from './scripts/panel'
 import { clampRightPercent, computeRightPanelPercent } from './scripts/layoutMath'
 import {
@@ -3257,6 +3266,67 @@ export function setEditorCursor(position: number): void {
 
 export function triggerSignatureHelpForTesting(): boolean {
   return getCodeEditor().triggerSignatureHelp()
+}
+
+export function triggerHoverForTesting(position: number): boolean {
+  return getCodeEditor().triggerHover(position)
+}
+
+export function primeActiveEditorTypecheckForTesting(): boolean {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return false
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  primeTypecheckForTesting(activePath, activeModel.getValue(), activeModel.getVersionId())
+  return true
+}
+
+export function getDefinitionsAtCursorForTesting(position: number) {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return null
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const locations = getDefinitionsForTesting(activePath, activeModel.getPositionAt(position))
+  return (
+    locations?.map(location => ({
+      uri: location.uri.toString(),
+      range: location.range,
+    })) ?? null
+  )
+}
+
+export function getReferencesAtCursorForTesting(position: number) {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return null
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const locations = getReferencesForTesting(activePath, activeModel.getPositionAt(position))
+  return (
+    locations?.map(location => ({
+      uri: location.uri.toString(),
+      range: location.range,
+    })) ?? null
+  )
+}
+
+export function getRenameEditsAtCursorForTesting(position: number, newName: string) {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return null
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const edit = getRenameEditsForTesting(activePath, activeModel.getPositionAt(position), newName)
+  return (
+    edit?.edits
+      ?.filter(item => 'resource' in item && 'textEdit' in item)
+      .map(item => ({
+        resource: item.resource.toString(),
+        text: item.textEdit.text,
+        range: item.textEdit.range,
+      })) ?? null
+  )
+}
+
+export function getFormattedEditorValueForTesting(): string | null {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return null
+  const edits = getFormattingEditsForTesting(activeModel)
+  return edits[0]?.text ?? activeModel.getValue()
 }
 
 function makeArgRow(content: string, index?: number, copyContent?: string): HTMLElement {
