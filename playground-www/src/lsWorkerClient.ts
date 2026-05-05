@@ -15,14 +15,8 @@ import LsWorker from './lsWorker?worker'
 import { allReference, isCustomReference, isFunctionReference } from '../../reference/index'
 import type { Reference } from '../../reference/index'
 import type { Diagnostic } from '../../src/shared/types'
-import { tokenizeSource } from '../../src/tooling'
-import { typecheck, WorkspaceIndex } from '../../src/internal'
-import type { TypecheckResult } from '../../src/internal'
+import { WorkspaceIndex } from '../../src/internal'
 import { findCallContext } from '../../src/shared/callContext'
-import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
-import { allBuiltinModules } from '../../src/allModules'
-import { parseToAst } from '../../src/parser'
-import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
 import { getWorkspaceFiles } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
 import { HANDLERS_FILE_PATH } from './handlersBuffer'
@@ -105,18 +99,6 @@ function kindToMonaco(kind: CompletionItem['kind']): monaco.languages.Completion
   }
 }
 
-function typecheckForHover(source: string, path: string): TypecheckResult {
-  const tokens = tokenizeSource(source, true, path)
-  try {
-    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
-    const ast = parseToAst(minified)
-    indexWorkspaceFile(path, source)
-    return typecheck(ast, { modules: allBuiltinModules })
-  } catch {
-    return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
-  }
-}
-
 // ── Worker lifetime ───────────────────────────────────────────────────────────
 
 let worker: Worker | null = null
@@ -136,6 +118,15 @@ const pendingFormattingRequests = new Map<string, number>()
 
 /** Pending formatting resolvers keyed by path. */
 const pendingFormattingResolvers = new Map<string, (edits: monaco.languages.TextEdit[]) => void>()
+
+/** Pending hover request IDs keyed by path. */
+const pendingHoverRequests = new Map<string, number>()
+
+/** Pending hover request fingerprints keyed by path. */
+const pendingHoverRequestKeys = new Map<string, string>()
+
+/** Pending hover resolvers keyed by path. */
+const pendingHoverResolvers = new Map<string, (inferredType: string | undefined) => void>()
 
 /** Pending navigation request IDs keyed by request kind + path. */
 const pendingNavigationRequests = new Map<string, number>()
@@ -243,6 +234,36 @@ function cancelPendingFormattingRequest(path: string, w = getWorker()): void {
   cancelPendingRequest(pendingFormattingRequests, path, w)
 }
 
+function clearPendingHoverRequest(path: string, inferredType: string | undefined): void {
+  pendingHoverResolvers.get(path)?.(inferredType)
+  pendingHoverResolvers.delete(path)
+  pendingHoverRequestKeys.delete(path)
+  clearPendingRequest(pendingHoverRequests, path)
+}
+
+function cancelPendingHoverRequest(path: string, w = getWorker()): void {
+  pendingHoverResolvers.get(path)?.(undefined)
+  pendingHoverResolvers.delete(path)
+  pendingHoverRequestKeys.delete(path)
+  cancelPendingRequest(pendingHoverRequests, path, w)
+}
+
+function getHoverRequestKey(
+  path: string,
+  sourceVersion: number,
+  position: monaco.Position,
+  wordRange?: monaco.IRange,
+): string {
+  return [
+    path,
+    sourceVersion,
+    position.lineNumber,
+    position.column,
+    wordRange?.startColumn ?? '',
+    wordRange?.endColumn ?? '',
+  ].join(':')
+}
+
 function getNavigationRequestKey(kind: NavigationRequestKind, path: string): string {
   return `${kind}:${path}`
 }
@@ -294,11 +315,17 @@ function handleWorkerError(): void {
   for (const resolve of pendingFormattingResolvers.values()) {
     resolve([])
   }
+  for (const resolve of pendingHoverResolvers.values()) {
+    resolve(undefined)
+  }
   for (const resolve of pendingNavigationResolvers.values()) {
     resolve(null)
   }
   pendingFormattingResolvers.clear()
   pendingFormattingRequests.clear()
+  pendingHoverResolvers.clear()
+  pendingHoverRequests.clear()
+  pendingHoverRequestKeys.clear()
   pendingNavigationResolvers.clear()
   pendingNavigationRequests.clear()
   lastResyncFingerprints.clear()
@@ -417,6 +444,33 @@ function handleWorkerMessage(event: MessageEvent): void {
       const { path, requestId } = msg as { type: 'formattingError'; path: string; requestId: number }
       if (!matchesPendingRequest(pendingFormattingRequests, path, requestId)) return
       clearPendingFormattingRequest(path, [])
+      return
+    }
+
+    case 'hoverResult': {
+      const { path, requestId, sourceVersion, inferredType } = msg as {
+        type: 'hoverResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        inferredType?: string
+      }
+      if (!matchesPendingRequest(pendingHoverRequests, path, requestId)) return
+
+      const model = registeredModels.get(path)
+      if (!model || sourceVersion < model.getVersionId()) {
+        clearPendingHoverRequest(path, undefined)
+        return
+      }
+
+      clearPendingHoverRequest(path, inferredType)
+      return
+    }
+
+    case 'hoverError': {
+      const { path, requestId } = msg as { type: 'hoverError'; path: string; requestId: number }
+      if (!matchesPendingRequest(pendingHoverRequests, path, requestId)) return
+      clearPendingHoverRequest(path, undefined)
       return
     }
 
@@ -695,6 +749,50 @@ function requestFormattingEdits(model: monaco.editor.ITextModel): Promise<monaco
   })
 }
 
+function requestHoverType(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  wordRange?: monaco.IRange,
+): Promise<string | undefined> {
+  const w = getWorker()
+  const requestKey = getHoverRequestKey(path, model.getVersionId(), position, wordRange)
+
+  if (pendingHoverRequestKeys.get(path) === requestKey) {
+    const existingResolve = pendingHoverResolvers.get(path)
+    if (existingResolve) {
+      return new Promise(resolve => {
+        pendingHoverResolvers.set(path, inferredType => {
+          existingResolve(inferredType)
+          resolve(inferredType)
+        })
+      })
+    }
+  }
+
+  cancelPendingHoverRequest(path, w)
+
+  return new Promise(resolve => {
+    pendingHoverRequestKeys.set(path, requestKey)
+    pendingHoverResolvers.set(path, resolve)
+    startTrackedRequest(pendingHoverRequests, path, w, requestId => ({
+      type: 'requestHover',
+      requestId,
+      path,
+      source: model.getValue(),
+      sourceVersion: model.getVersionId(),
+      line: position.lineNumber,
+      column: position.column,
+      ...(wordRange
+        ? {
+            startColumn: wordRange.startColumn,
+            endColumn: wordRange.endColumn,
+          }
+        : {}),
+    }))
+  })
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -703,10 +801,11 @@ function requestFormattingEdits(model: monaco.editor.ITextModel): Promise<monaco
 export function initLspWorker(): void {
   void getWorker()
 
-  // Register Monaco hover provider for Dvala — uses the typecheck cache
-  // owned by the current model value, not a persistent main-thread cache.
+  // Register Monaco hover provider for Dvala. Built-in docs and source
+  // locations stay local; inferred type computation round-trips through the
+  // worker from the current source snapshot.
   monaco.languages.registerHoverProvider('dvala', {
-    provideHover: (model, position) => {
+    provideHover: async (model, position) => {
       const path = getPathForModel(model)
       if (!path) return null
 
@@ -725,36 +824,7 @@ export function initLspWorker(): void {
       const ref = wordText && !symbol ? (allReference[wordText] ?? referenceByTitle.get(wordText)) : undefined
 
       try {
-        const tc = typecheckForHover(model.getValue(), path)
-        let inferredType: string | undefined
-        if (symbol?.def && symbol.def.location.file === path) {
-          const typeAtDef = findTypeAtDefinition(tc.typeMap, tc.sourceMap, symbol.def)
-          if (typeAtDef) inferredType = formatHoverType(typeAtDef)
-        }
-
-        if (!inferredType) {
-          const type = findTypeAtPosition(
-            tc.typeMap,
-            tc.sourceMap,
-            { line: position.lineNumber, column: position.column },
-            wordRange
-              ? {
-                  start: { line: position.lineNumber, column: wordRange.startColumn },
-                  end: { line: position.lineNumber, column: wordRange.endColumn },
-                }
-              : undefined,
-          )
-          if (type) inferredType = formatHoverType(type)
-        }
-
-        if (!inferredType && wordText) {
-          const visibleDefs = workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column)
-          const matchingDef = visibleDefs.find(def => def.name === wordText && def.location.file === path)
-          if (matchingDef) {
-            const typeAtDef = findTypeAtDefinition(tc.typeMap, tc.sourceMap, matchingDef)
-            if (typeAtDef) inferredType = formatHoverType(typeAtDef)
-          }
-        }
+        const inferredType = await requestHoverType(model, path, position, wordRange)
 
         const sourceLocation = symbol?.def
           ? buildSourceLocationMarkdown(symbol.def.location.file, symbol.def.location.line, symbol.def.location.column)
@@ -949,6 +1019,7 @@ export function unregisterModel(path: string): void {
   // Cancel any pending diagnostics for this path.
   cancelPendingDiagnosticsRequest(path)
   cancelPendingFormattingRequest(path)
+  cancelPendingHoverRequest(path)
   cancelPendingNavigationRequest('definition', path, null)
   cancelPendingNavigationRequest('references', path, null)
   cancelPendingNavigationRequest('rename', path, null)

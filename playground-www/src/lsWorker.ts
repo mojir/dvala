@@ -78,6 +78,7 @@ import { tokenizeSource } from '../../src/tooling'
 import { parseTokenStreamRecoverable } from '../../src/tooling'
 import { formatSource } from '../../src/tooling'
 import { buildParseDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
+import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 import type { Diagnostic } from '../../src/shared/types'
 import { allBuiltinModules } from '../../src/allModules'
 import { parseToAst } from '../../src/parser'
@@ -124,6 +125,18 @@ interface RequestFormattingMessage {
   sourceVersion: number
 }
 
+interface RequestHoverMessage {
+  type: 'requestHover'
+  requestId: number
+  path: string
+  source: string
+  sourceVersion: number
+  line: number
+  column: number
+  startColumn?: number
+  endColumn?: number
+}
+
 type NavigationRequestKind = 'definition' | 'references' | 'rename'
 
 interface WorkspaceSnapshotFile {
@@ -155,6 +168,7 @@ type WorkerInMessage =
   | CloseDocumentMessage
   | RequestDiagnosticsMessage
   | RequestFormattingMessage
+  | RequestHoverMessage
   | RequestNavigationMessage
   | CancelRequestMessage
 
@@ -184,6 +198,22 @@ interface FormattingResultMessage {
 
 interface FormattingErrorMessage {
   type: 'formattingError'
+  requestId: number
+  path: string
+  sourceVersion: number
+  message: string
+}
+
+interface HoverResultMessage {
+  type: 'hoverResult'
+  requestId: number
+  path: string
+  sourceVersion: number
+  inferredType?: string
+}
+
+interface HoverErrorMessage {
+  type: 'hoverError'
   requestId: number
   path: string
   sourceVersion: number
@@ -307,6 +337,26 @@ function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   checkCancelled(input.requestId)
 
   return diagnostics
+}
+
+function computeHover(message: RequestHoverMessage): string | undefined {
+  const typecheckResult = computeTypecheckResult(message.source, message.path)
+  const wordRange =
+    message.startColumn !== undefined && message.endColumn !== undefined
+      ? {
+          start: { line: message.line, column: message.startColumn },
+          end: { line: message.line, column: message.endColumn },
+        }
+      : undefined
+
+  const type = findTypeAtPosition(
+    typecheckResult.typeMap,
+    typecheckResult.sourceMap,
+    { line: message.line, column: message.column },
+    wordRange,
+  )
+
+  return type ? formatHoverType(type) : undefined
 }
 
 function resolveWorkspaceImportPathForSnapshot(
@@ -518,6 +568,34 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
       } catch (error) {
         const out: FormattingErrorMessage = {
           type: 'formattingError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: error instanceof Error ? error.message : String(error),
+        }
+        self.postMessage(out)
+      }
+      return
+    }
+
+    case 'requestHover': {
+      cancelledRequests.delete(msg.requestId)
+
+      try {
+        const inferredType = computeHover(msg)
+        checkCancelled(msg.requestId)
+        const out: HoverResultMessage = {
+          type: 'hoverResult',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          ...(inferredType ? { inferredType } : {}),
+        }
+        self.postMessage(out)
+      } catch (error) {
+        if (error instanceof CancellationError) return
+        const out: HoverErrorMessage = {
+          type: 'hoverError',
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,

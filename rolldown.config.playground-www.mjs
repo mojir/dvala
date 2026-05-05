@@ -24,4 +24,16 @@ export default defineConfig([
     ],
     plugins: [bookChaptersPlugin(), cssStubPlugin(), dvalaSourcePlugin(), markdownSourcePlugin()],
   },
+  {
+    input: 'playground-www/src/lsWorker.ts',
+    output: [
+      {
+        file: 'playground-www/build/lsWorker.js',
+        format: 'esm',
+        minify: isCI,
+        sourcemap: true,
+      },
+    ],
+    plugins: [bookChaptersPlugin(), cssStubPlugin(), dvalaSourcePlugin(), markdownSourcePlugin()],
+  },
 ])

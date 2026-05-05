@@ -587,6 +587,8 @@ function copyAssets() {
   )
   const jsFile = path.join(__dirname, '../../playground-www/build/playground.js')
   const mapFile = path.join(__dirname, '../../playground-www/build/playground.js.map')
+  const lsWorkerFile = path.join(__dirname, '../../playground-www/build/lsWorker.js')
+  const lsWorkerMapFile = path.join(__dirname, '../../playground-www/build/lsWorker.js.map')
   let jsContent = fs.readFileSync(jsFile, 'utf8')
   if (fs.existsSync(mapFile)) {
     const map = JSON.parse(fs.readFileSync(mapFile, 'utf8'))
@@ -603,6 +605,13 @@ function copyAssets() {
     }
   }
   fs.writeFileSync(path.join(DOC_DIR, 'playground.js'), jsContent)
+
+  if (fs.existsSync(lsWorkerFile)) {
+    fs.copyFileSync(lsWorkerFile, path.join(DOC_DIR, 'lsWorker.js'))
+  }
+  if (fs.existsSync(lsWorkerMapFile)) {
+    fs.copyFileSync(lsWorkerMapFile, path.join(DOC_DIR, 'lsWorker.js.map'))
+  }
 }
 
 function writeSitemap() {
