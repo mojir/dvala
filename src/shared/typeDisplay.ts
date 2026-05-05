@@ -45,8 +45,6 @@ export function findTypeAtPosition(
   const preferredStartCol = preferredRange ? preferredRange.start.column - 1 : 0
 
   let bestPreferredType: Type | undefined
-  let bestPreferredStartDistance = Infinity
-  let bestPreferredSize = Infinity
   let bestType: Type | undefined
   let bestSize = Infinity
 
@@ -65,20 +63,12 @@ export function findTypeAtPosition(
 
     const size = (endLine - startLine) * 1000 + (endCol - startCol)
     if (preferredRange) {
-      const lineDistance = Math.abs(startLine - preferredStartLine)
-      const colDistance =
-        lineDistance === 0
-          ? Math.abs(startCol - preferredStartCol)
-          : Math.abs(startCol - preferredStartCol) + lineDistance * 1000
-
-      if (
-        colDistance < bestPreferredStartDistance ||
-        (colDistance === bestPreferredStartDistance && size < bestPreferredSize)
-      ) {
-        bestPreferredStartDistance = colDistance
-        bestPreferredSize = size
-        bestPreferredType = type
-      }
+      // Require exact start alignment — the node's start must be within
+      // the preferred range. This prevents matching enclosing expressions
+      // (e.g. hovering on `let` shouldn't show the `let` statement's type).
+      if (startLine !== preferredStartLine || startCol < preferredStartCol || startCol > preferredRange.end.column - 1)
+        continue
+      bestPreferredType = type
     }
 
     if (size < bestSize) {

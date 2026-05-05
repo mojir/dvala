@@ -187,18 +187,10 @@ export function initLspWorker(): void {
 
       try {
         const word = model.getWordUntilPosition(position)
-        // Don't show hover for Dvala keywords or operators — they always
-        // fall back to the enclosing expression's type, which is noisy.
-        const text = String(word.word)
-        if (/^(let|do|end|if|then|else|for|in|while|with|perform|resume|import|type|case|when|match)$/.test(text)) {
-          return null
-        }
         const type = findTypeAtPosition(
           tc.typeMap,
           tc.sourceMap,
           { line: position.lineNumber, column: position.column },
-          // Bias toward the word under the cursor so e.g. hovering on
-          // the `a` in `let a: Number = 54` shows `Number`, not `54`.
           {
             start: { line: position.lineNumber, column: word.startColumn },
             end: { line: position.lineNumber, column: word.endColumn },
