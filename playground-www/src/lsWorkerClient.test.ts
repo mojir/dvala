@@ -648,6 +648,18 @@ describe('lsWorkerClient lifecycle', () => {
     ])
   })
 
+  it('resolves pending formatting requests safely when the worker errors', async () => {
+    const model = makeModel('let   x', 3)
+
+    client.registerModel('main.dvala', model as never)
+    const editsPromise = client.getFormattingEditsForTesting(model as never)
+
+    workerInstances[0]!.onerror?.(new Event('error'))
+
+    await expect(editsPromise).resolves.toEqual([])
+    expect(workerInstances[0]!.terminate).not.toHaveBeenCalled()
+  })
+
   it('resolves definition requests through the worker', async () => {
     const model = makeModel('let answer = 42; answer', 3)
     const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 19 }
@@ -687,6 +699,19 @@ describe('lsWorkerClient lifecycle', () => {
         },
       },
     ])
+  })
+
+  it('resolves pending navigation requests safely when the worker errors', async () => {
+    const model = makeModel('let answer = 42; answer', 3)
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 19 }
+
+    client.registerModel('main.dvala', model as never)
+    const defsPromise = client.getDefinitionsForTesting('main.dvala', position as never)
+
+    workerInstances[0]!.onerror?.(new Event('error'))
+
+    await expect(defsPromise).resolves.toBeNull()
+    expect(workerInstances[0]!.terminate).not.toHaveBeenCalled()
   })
 
   it('drops stale rename results whose requestId is no longer pending for the path', async () => {
