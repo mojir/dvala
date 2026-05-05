@@ -17,9 +17,24 @@ import { expandTypeForDisplay, sanitizeDisplayType, simplify, typeToString } fro
 import type { Type } from '../typechecker/types'
 import type { Position, Range } from './types'
 
-/** Format a Type for hover display: expand → sanitize → simplify → stringify. */
+/** Format a Type for hover display: expand → sanitize → simplify → stringify.
+ * For literal types, appends the base type (e.g. '54 : Number'). */
 export function formatHoverType(type: Type): string {
-  return typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(type))))
+  const display = typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(type))))
+  if (type.tag === 'Literal') {
+    const base = typeof type.value === 'number' ? 'Number' : typeof type.value === 'string' ? 'String' : 'Boolean'
+    return `${display} : ${base}`
+  }
+  // Also handle intersection types that contain a literal (e.g. Number & {n | ...})
+  if (type.tag === 'Inter') {
+    for (const part of type.members) {
+      if (part.tag === 'Literal') {
+        const base = typeof part.value === 'number' ? 'Number' : typeof part.value === 'string' ? 'String' : 'Boolean'
+        return `${display} : ${base}`
+      }
+    }
+  }
+  return display
 }
 
 /**
