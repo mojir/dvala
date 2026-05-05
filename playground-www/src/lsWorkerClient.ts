@@ -186,15 +186,12 @@ export function initLspWorker(): void {
       if (!tc) return null
 
       try {
+        // Pass the word at cursor as preferredRange so we bias toward
+        // the identifier under the cursor rather than an enclosing
+        // expression. Structural nodes (let/do/block) whose start
+        // aligns with the keyword will still show their result type —
+        // same as TypeScript's hover on `const`.
         const word = model.getWordUntilPosition(position)
-        // Suppress hover for Dvala keywords — their type is the enclosing
-        // expression's result, not useful identifier-level info.
-        if (
-          /^(let|do|end|if|then|else|for|in|while|with|perform|resume|import|type|case|when|match)$/.test(
-            String(word.word),
-          )
-        )
-          return null
         const type = findTypeAtPosition(
           tc.typeMap,
           tc.sourceMap,
