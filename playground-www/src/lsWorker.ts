@@ -22,11 +22,11 @@
  * - `closeDocument(path)`: drop the mirrored state for a closed Monaco
  *   model. Prevents stale worker-only buffers from surviving after tabs are
  *   disposed.
- * - `updateDocument(path, source, sourceVersion)`: edit delta. The worker
- *   stores the latest source for the given path. `sourceVersion` is a
- *   monotonically increasing counter from the main thread that the worker
- *   stamps onto diagnostics responses so the main thread can discard stale
- *   replies.
+ * - `updateDocument(path, source, sourceVersion, previousSourceVersion)`:
+ *   ordered edit delta. The worker accepts it only when
+ *   `previousSourceVersion` matches the mirrored version it already has for
+ *   that path; otherwise it requests an explicit resync from the main
+ *   thread instead of silently drifting.
  * - `requestDiagnostics(path, sourceVersion)`: compute parse + typecheck
  *   diagnostics for the file at `path`. The worker tokenizes, parses, and
  *   typechecks the stored mirror; posts back `diagnosticsResult` or
@@ -43,6 +43,9 @@
  * - `diagnosticsError(path, sourceVersion, message)`: the worker hit an
  *   unrecoverable error during tokenize/parse/typecheck. The main thread
  *   clears markers (best-effort) and may log.
+ * - `resyncDocument(path)`: the worker detected a missing mirror or a
+ *   version gap while processing `updateDocument`, so the main thread
+ *   should resend the canonical full document via `openDocument`.
  * ## Cooperative cancellation
  *
  * Long-running typecheck passes on real projects can overlap with fresh
@@ -65,11 +68,19 @@ import type { TypecheckResult } from '../../src/internal'
 
 // ── Message types ─────────────────────────────────────────────────────────────
 
-interface UpdateDocumentMessage {
-  type: 'openDocument' | 'updateDocument'
+interface OpenDocumentMessage {
+  type: 'openDocument'
   path: string
   source: string
   sourceVersion: number
+}
+
+interface UpdateDocumentMessage {
+  type: 'updateDocument'
+  path: string
+  source: string
+  sourceVersion: number
+  previousSourceVersion: number
 }
 
 interface CloseDocumentMessage {
@@ -89,7 +100,12 @@ interface CancelRequestMessage {
   requestId: number
 }
 
-type WorkerInMessage = UpdateDocumentMessage | CloseDocumentMessage | RequestDiagnosticsMessage | CancelRequestMessage
+type WorkerInMessage =
+  | OpenDocumentMessage
+  | UpdateDocumentMessage
+  | CloseDocumentMessage
+  | RequestDiagnosticsMessage
+  | CancelRequestMessage
 
 interface DiagnosticsResultMessage {
   type: 'diagnosticsResult'
@@ -105,6 +121,11 @@ interface DiagnosticsErrorMessage {
   path: string
   sourceVersion: number
   message: string
+}
+
+interface ResyncDocumentMessage {
+  type: 'resyncDocument'
+  path: string
 }
 
 // ── Worker state ──────────────────────────────────────────────────────────────
@@ -191,14 +212,32 @@ function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   return diagnostics
 }
 
+function requestDocumentResync(path: string): void {
+  const out: ResyncDocumentMessage = {
+    type: 'resyncDocument',
+    path,
+  }
+  self.postMessage(out)
+}
+
 // ── Message handler ───────────────────────────────────────────────────────────
 
 self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
   const msg = event.data
 
   switch (msg.type) {
-    case 'openDocument':
+    case 'openDocument': {
+      setFileState(msg.path, msg.source, msg.sourceVersion)
+      return
+    }
+
     case 'updateDocument': {
+      const current = files.get(msg.path)
+      if (!current || current.sourceVersion !== msg.previousSourceVersion) {
+        requestDocumentResync(msg.path)
+        return
+      }
+
       setFileState(msg.path, msg.source, msg.sourceVersion)
       return
     }

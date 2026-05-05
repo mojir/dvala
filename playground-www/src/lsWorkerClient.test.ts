@@ -91,6 +91,10 @@ beforeEach(async () => {
   client = await import('./lsWorkerClient')
 })
 
+function dispatchWorkerMessage(index: number, message: WorkerMessage): void {
+  workerInstances[index]?.onmessage?.(new MessageEvent<WorkerMessage>('message', { data: message }))
+}
+
 describe('lsWorkerClient lifecycle', () => {
   it('registerModel opens the document mirror in the worker immediately', () => {
     const model = makeModel('let x = 1', 3)
@@ -142,6 +146,39 @@ describe('lsWorkerClient lifecycle', () => {
         requestId: 1,
         path: 'main.dvala',
         sourceVersion: 5,
+      },
+    ])
+  })
+
+  it('sends ordered updates with the previously mirrored source version', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    client.updateDocument('main.dvala', 'let x = 2', 4)
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'updateDocument',
+      path: 'main.dvala',
+      source: 'let x = 2',
+      sourceVersion: 4,
+      previousSourceVersion: 3,
+    })
+  })
+
+  it('resends the full model when the worker requests a resync', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 3,
       },
     ])
   })

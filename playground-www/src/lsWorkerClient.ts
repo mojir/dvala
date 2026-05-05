@@ -128,6 +128,9 @@ const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
 /** Pending request IDs keyed by path for cancellation. */
 const pendingRequests = new Map<string, number>()
 
+/** Last source version mirrored to the worker for each open path. */
+const lastSentSourceVersions = new Map<string, number>()
+
 /** Workspace symbol index for go-to-def / find-references. */
 const workspaceIndex = new WorkspaceIndex()
 
@@ -169,12 +172,14 @@ function getWorker(): Worker {
 }
 
 function syncModelToWorker(w: Worker, path: string, model: monaco.editor.ITextModel): void {
+  const sourceVersion = model.getVersionId()
   w.postMessage({
     type: 'openDocument',
     path,
     source: model.getValue(),
-    sourceVersion: model.getVersionId(),
+    sourceVersion,
   })
+  lastSentSourceVersions.set(path, sourceVersion)
 }
 
 function syncRegisteredModelsToWorker(w: Worker): void {
@@ -231,6 +236,14 @@ function handleWorkerMessage(event: MessageEvent): void {
       const model = registeredModels.get(path)
       if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
       pendingRequests.delete(path)
+      return
+    }
+
+    case 'resyncDocument': {
+      const { path } = msg as { type: 'resyncDocument'; path: string }
+      const model = registeredModels.get(path)
+      if (!model || !worker) return
+      syncModelToWorker(worker, path, model)
       return
     }
   }
@@ -623,6 +636,7 @@ export function unregisterModel(path: string): void {
   // Grab the model before deleting from the registry.
   const model = registeredModels.get(path)
   registeredModels.delete(path)
+  lastSentSourceVersions.delete(path)
   if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
   if (worker) worker.postMessage({ type: 'closeDocument', path })
   // Cancel any pending diagnostics for this path.
@@ -644,6 +658,7 @@ export function unregisterModel(path: string): void {
  */
 export function updateDocument(path: string, source: string, sourceVersion: number): void {
   const w = getWorker()
+  const previousSourceVersion = lastSentSourceVersions.get(path)
 
   indexWorkspaceFile(path, source)
 
@@ -652,7 +667,9 @@ export function updateDocument(path: string, source: string, sourceVersion: numb
     path,
     source,
     sourceVersion,
+    previousSourceVersion: previousSourceVersion ?? sourceVersion - 1,
   })
+  lastSentSourceVersions.set(path, sourceVersion)
 
   const existing = debounceTimers.get(path)
   if (existing) clearTimeout(existing)

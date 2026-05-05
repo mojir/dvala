@@ -455,6 +455,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
 32b. Tighten the edit-delta protocol: document open / close events, ordered versioned edits, explicit resync on gap or version mismatch, and a small recovery path after worker restart so stale mirrors cannot survive silently.
 
+  2026-05-05 first slice: `updateDocument` now carries the previously mirrored source version, the worker rejects out-of-order or missing-mirror updates by posting `resyncDocument(path)`, and the main thread answers that with a fresh `openDocument` resend from the registered Monaco model. The payload is still a full-document snapshot for now, but version ordering and recovery are explicit instead of implicit.
+
 32c. Harden request / response sequencing: correlation IDs on all LS requests, per-path cancellation rules, and late-result dropping validated across hover / completion / diagnostics / navigation providers rather than diagnostics alone.
 
 32d. Add regression coverage for incremental multi-file edits and worker lifecycle edges: rapid typing, cross-file rename after unsaved edits, worker restart / re-init, and stale-result suppression under overlapping requests.
