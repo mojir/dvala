@@ -72,7 +72,13 @@ import {
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
 import { ensureHandlersFile, wrapWithBoundaryHandler } from './handlersBuffer'
-import { SCRATCH_FILE_ID, ensureScratchFile, setScratchCode, setScratchCodeAndContext } from './scratchBuffer'
+import {
+  SCRATCH_FILE_ID,
+  SCRATCH_FILE_PATH,
+  ensureScratchFile,
+  setScratchCode,
+  setScratchCodeAndContext,
+} from './scratchBuffer'
 import type { WorkspaceFile } from './fileStorage'
 import {
   clearAllFileHistories,
@@ -95,6 +101,16 @@ import type { HistoryEntry } from './StateHistory'
 import { StateHistory } from './StateHistory'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
+import {
+  getDefinitionsForTesting,
+  getFormattingEditsForTesting,
+  getReferencesForTesting,
+  getRenameEditsForTesting,
+  initLspWorker,
+  primeTypecheckForTesting,
+  registerModel,
+  updateDocument as updateLspDocument,
+} from './lsWorkerClient'
 import { createPanel } from './scripts/panel'
 import { clampRightPercent, computeRightPanelPercent } from './scripts/layoutMath'
 import {
@@ -133,6 +149,7 @@ import {
   guardCodeReplacement,
   hasScratchContent,
   isScratchActive,
+  loadWorkspaceFile,
   openScratchInEditor,
   persistScratchFromCurrentState,
   populateExplorerFileList,
@@ -1824,7 +1841,9 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
   }
 
   const editor = getCodeEditor()
+  const changed = editor.getValue() !== value
   editor.setValue(value)
+  if (changed) syncActiveEditorToLsp(value)
   // setValue suppresses the onChange event (avoids double history pushes
   // for programmatic writes). The tab strip's modified-dot is normally
   // refreshed by that listener, so trigger a manual repaint here for the
@@ -1853,6 +1872,59 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
 
   if (scroll === 'top') editor.scrollToTop()
   else if (scroll === 'bottom') editor.scrollToBottom()
+}
+
+function syncActiveEditorToLsp(value: string): void {
+  if (getActiveTabKind() !== 'file') return
+  const editor = getCodeEditor()
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const activeModel = editor.getActiveModel()
+  if (!activeModel) return
+  registerModel(activePath, activeModel)
+  updateLspDocument(activePath, value, activeModel.getVersionId())
+}
+
+function pathFromDefinitionUri(uri: string): string | null {
+  const match = /^dvala:\/+(.*)$/.exec(uri)
+  return match?.[1] ? decodeURIComponent(match[1]) : null
+}
+
+function goToDefinitionAtOffset(offset: number): void {
+  const editor = getCodeEditor()
+  const activeModel = editor.getActiveModel()
+  if (!activeModel) return
+
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const defs = getDefinitionsForTesting(activePath, activeModel.getPositionAt(offset))
+  const target = defs?.[0]
+  if (!target) return
+
+  const targetPath = pathFromDefinitionUri(target.uri.toString())
+  if (!targetPath) return
+
+  if (targetPath === SCRATCH_FILE_PATH) {
+    focusScratch()
+  } else if (targetPath !== activePath) {
+    const file = getWorkspaceFiles().find(entry => entry.path === targetPath)
+    if (!file) return
+    loadWorkspaceFile(file.id)
+  }
+
+  const targetModel = editor.getActiveModel()
+  const targetOffset = targetModel.getOffsetAt({
+    lineNumber: target.range.startLineNumber,
+    column: target.range.startColumn,
+  })
+  editor.setCursor(targetOffset)
+  focusDvalaCode()
+}
+
+function goToDefinitionAtCursor(): void {
+  goToDefinitionAtOffset(getCodeEditor().getSelectionRange().start)
+}
+
+export function goToDefinition(): void {
+  goToDefinitionAtCursor()
 }
 
 export function resetOutput() {
@@ -2050,6 +2122,8 @@ function wireCodeEditorListeners(): void {
   const editor = getCodeEditor()
   editor.onChange(value => {
     setDvalaCode(value, true)
+    // Push edit delta to the LS worker for background diagnostics.
+    syncActiveEditorToLsp(value)
     if (getState('current-file-id') === SCRATCH_FILE_ID) {
       // Scratch is the workspace file at `.dvala-playground/scratch.dvala`;
       // `initTabs` hydrates the scratch model from there on reload, so
@@ -2081,10 +2155,16 @@ function wireCodeEditorListeners(): void {
     saveState({ 'focused-panel': null })
     updateCSS()
   })
+  editor.onGoToDefinitionGesture(offset => {
+    editor.setCursor(offset)
+    goToDefinitionAtOffset(offset)
+  })
   // Route Cmd/Ctrl-Z and Cmd/Ctrl-Shift-Z to the playground's history rather
   // than Monaco's built-in undo stack.
   editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyZ, () => undoDvalaCodeHistory())
   editor.addCommand(KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyZ, () => redoDvalaCodeHistory())
+  editor.addCommand(KeyCode.F12, () => goToDefinition())
+  editor.addCommand(KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyD, () => goToDefinition())
 }
 
 window.onload = async function () {
@@ -2130,6 +2210,7 @@ window.onload = async function () {
   pruneFileHistories(getWorkspaceFiles().map(file => file.id))
   initExecutionControlBar()
   setCodeEditor(new CodeEditor(elements.dvalaEditorHost, { initialValue: getState('dvala-code') }))
+  initLspWorker()
   wireCodeEditorListeners()
   wireExplorerListeners()
   wireSnapshotToolbarListeners()
@@ -2141,6 +2222,7 @@ window.onload = async function () {
     beforeSwap: () => flushPendingAutoSave(),
     afterSwap: () => {
       activateCurrentFileHistory(false)
+      syncActiveEditorToLsp(getCodeEditor().getValue())
       // Phase 1.5 step 23j: set correct right-panel tabs FIRST so any
       // subsequent body population writes into valid tab bodies. setTabs
       // destroys old bodies and creates fresh ones; its onChange may fire
@@ -2361,6 +2443,12 @@ window.onload = async function () {
       if (entry?.onKeyDown?.(evt)) return
     }
 
+    if (evt.key === 'F12' && tryGetCodeEditor()?.hasFocus()) {
+      evt.preventDefault()
+      goToDefinition()
+      return
+    }
+
     if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
       evt.preventDefault()
       document.getElementById('tab-btn-search')?.click()
@@ -2459,6 +2547,19 @@ window.onload = async function () {
   applyState(true)
   populateSnapshotsList()
   populateWorkspaceFilesList()
+
+  // Seed diagnostics for the final editor content after full boot.
+  // Must run after initTabs/applyState/syncCodePanelView so the active
+  // model reflects the correct file content.
+  {
+    const editor = getCodeEditor()
+    const path = getActiveFilePath() ?? SCRATCH_FILE_PATH
+    const model = editor.getActiveModel()
+    if (model) {
+      registerModel(path, model)
+      updateLspDocument(path, model.getValue(), model.getVersionId())
+    }
+  }
 
   // Reveal the page now that the editor + state are fully wired. e2e's
   // `waitForInit` uses `wrapper.style.display === 'block'` as the "fully
@@ -3219,6 +3320,81 @@ export function getEditorCursor(): number {
 
 export function setEditorCursor(position: number): void {
   getCodeEditor().setCursor(position)
+}
+
+export function triggerSignatureHelpForTesting(): boolean {
+  return getCodeEditor().triggerSignatureHelp()
+}
+
+export function triggerHoverForTesting(position: number): boolean {
+  return getCodeEditor().triggerHover(position)
+}
+
+export function primeActiveEditorTypecheckForTesting(): boolean {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return false
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  primeTypecheckForTesting(activePath, activeModel.getValue(), activeModel.getVersionId())
+  return true
+}
+
+export function getDefinitionsAtCursorForTesting(position: number) {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return null
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const locations = getDefinitionsForTesting(activePath, activeModel.getPositionAt(position))
+  return (
+    locations?.map(location => ({
+      uri: location.uri.toString(),
+      range: location.range,
+    })) ?? null
+  )
+}
+
+export function getReferencesAtCursorForTesting(position: number) {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return null
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const locations = getReferencesForTesting(activePath, activeModel.getPositionAt(position))
+  return (
+    locations?.map(location => ({
+      uri: location.uri.toString(),
+      range: location.range,
+    })) ?? null
+  )
+}
+
+export function getRenameEditsAtCursorForTesting(position: number, newName: string) {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return null
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const edit = getRenameEditsForTesting(activePath, activeModel.getPositionAt(position), newName)
+  return (
+    edit?.edits
+      ?.filter(item => 'resource' in item && 'textEdit' in item)
+      .map(item => ({
+        resource: item.resource.toString(),
+        text: item.textEdit.text,
+        range: item.textEdit.range,
+      })) ?? null
+  )
+}
+
+export function getFormattedEditorValueForTesting(): string | null {
+  const activeModel = getCodeEditor().getActiveModel()
+  if (!activeModel) return null
+  const edits = getFormattingEditsForTesting(activeModel)
+  return edits[0]?.text ?? activeModel.getValue()
+}
+
+export function goToDefinitionAtCursorForTesting(): boolean {
+  goToDefinitionAtCursor()
+  return true
+}
+
+export function goToDefinitionAtOffsetForTesting(position: number): boolean {
+  goToDefinitionAtOffset(position)
+  return true
 }
 
 function makeArgRow(content: string, index?: number, copyContent?: string): HTMLElement {

@@ -26,6 +26,7 @@ import { HANDLERS_FILE_PATH } from '../handlersBuffer'
 import { cameraIcon } from '../icons'
 import { SCRATCH_FILE_ID } from '../scratchBuffer'
 import { getState, saveState } from '../state'
+import { unregisterModel } from '../lsWorkerClient'
 import type { PersistedTab } from '../state'
 import { getCodeEditor, tryGetCodeEditor } from './codeEditorInstance'
 
@@ -340,7 +341,11 @@ export function closeTab(key: string): void {
   // the buffer + tokenization state. Snapshot tabs don't carry a Monaco
   // model (post-23j they render through the snapshot panel), so there's
   // nothing to dispose for them.
-  if (tab.kind === 'file') getCodeEditor().disposeModel(tab.model)
+  if (tab.kind === 'file') {
+    const filePath = getWorkspaceFiles().find(f => f.id === tab.fileId)?.path
+    if (filePath) unregisterModel(filePath)
+    getCodeEditor().disposeModel(tab.model)
+  }
   openTabs.splice(idx, 1)
   if (activeKey !== key) {
     persistTabsState()

@@ -47,18 +47,24 @@ import {
   isEffectSubset,
   subtractEffects,
 } from './types'
-import type { AliasParam, AstNode, ObjectBindingEntry } from '../parser/types'
+import type { AliasParam, AstNode, ObjectBindingEntry, SourceMap } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
 import { FOLD_ENABLED } from './foldToggle'
-import { parseTypeAnnotation, TypeParseError } from './parseType'
+import { parseUserTypeAnnotation, TypeParseError } from './parseType'
 import { fragmentCheckPredicate } from './refinementFragmentCheck'
 import { mergeRefinementPredicates } from './refinementMerge'
 import { prettyPrint } from '../prettyPrint'
 import { getEffectDeclaration } from './effectTypes'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
+import type { SourceCodeInfo } from '../tokenizer/token'
+
+interface DiagnosticRange {
+  start: { line: number; column: number }
+  end: { line: number; column: number }
+}
 
 // Adapt an object-binding-target's new `ObjectBindingEntry[]` payload into
 // the legacy `Record<string, AstNode>` shape the typechecker was originally
@@ -72,6 +78,101 @@ function objectBindingFieldsAsRecord(entries: ObjectBindingEntry[]): Record<stri
     record[key] = target as unknown as AstNode
   }
   return record
+}
+
+function lineColumnToOffset(source: string, line: number, column: number): number {
+  const lines = source.split('\n')
+  let offset = 0
+  for (let index = 0; index < line; index++) {
+    offset += (lines[index] ?? '').length + 1
+  }
+  return offset + column
+}
+
+function offsetToLineColumn(source: string, offset: number): { line: number; column: number } {
+  const clamped = Math.max(0, Math.min(offset, source.length))
+  const lines = source.split('\n')
+  let consumed = 0
+  for (let index = 0; index < lines.length; index++) {
+    const lineLength = (lines[index] ?? '').length
+    if (clamped <= consumed + lineLength) {
+      return { line: index, column: clamped - consumed }
+    }
+    consumed += lineLength + 1
+  }
+  const lastLine = Math.max(0, lines.length - 1)
+  return { line: lastLine, column: (lines[lastLine] ?? '').length }
+}
+
+function resolveAnnotationDiagnosticLocation(
+  nodeId: number,
+  annotation: string,
+  error: TypeParseError,
+  sourceMap?: SourceMap,
+): { sourceCodeInfo: SourceCodeInfo; sourceRange: DiagnosticRange } | undefined {
+  if (!sourceMap) return undefined
+  const ownerPos = sourceMap.positions.get(nodeId)
+  if (!ownerPos) return undefined
+  const source = sourceMap.sources[ownerPos.source]
+  if (!source) return undefined
+
+  const nodeStartOffset = lineColumnToOffset(source.content, ownerPos.start[0], ownerPos.start[1])
+  const nodeEndOffset = lineColumnToOffset(source.content, ownerPos.end[0], ownerPos.end[1])
+  const searchWindow = source.content.slice(
+    nodeStartOffset,
+    Math.max(nodeStartOffset, nodeEndOffset) + annotation.length + 1,
+  )
+  const annotationStartInWindow = searchWindow.indexOf(annotation)
+  if (annotationStartInWindow < 0) return undefined
+
+  let tokenStartInAnnotation = Math.max(0, Math.min(error.position, annotation.length))
+  let tokenText = annotation[tokenStartInAnnotation] ?? annotation
+
+  const unknownTypeMatch = /^Unknown type name '([^']+)'$/.exec(error.cleanMessage)
+  if (unknownTypeMatch) {
+    tokenText = unknownTypeMatch[1]!
+    const candidateStart = annotation.lastIndexOf(tokenText, Math.max(0, error.position - 1))
+    if (candidateStart >= 0) {
+      tokenStartInAnnotation = candidateStart
+    }
+  }
+
+  const absoluteOffset = nodeStartOffset + annotationStartInWindow + tokenStartInAnnotation
+  const position = offsetToLineColumn(source.content, absoluteOffset)
+  const lineText = source.content.split('\n')[position.line] ?? ''
+
+  return {
+    sourceCodeInfo: {
+      position: {
+        line: position.line + 1,
+        column: position.column + 1,
+      },
+      code: lineText,
+      filePath: source.path === '<anonymous>' ? undefined : source.path,
+    },
+    sourceRange: {
+      start: {
+        line: position.line + 1,
+        column: position.column + 1,
+      },
+      end: {
+        line: position.line + 1,
+        column: position.column + 1 + tokenText.length,
+      },
+    },
+  }
+}
+
+function typeAnnotationParseError(
+  message: string,
+  ownerNodeId: number,
+  annotation: string,
+  error: TypeParseError,
+  ctx: InferenceContext,
+  fallbackNodeId?: number,
+): TypeInferenceError {
+  const location = resolveAnnotationDiagnosticLocation(ownerNodeId, annotation, error, ctx.sourceMap)
+  return new TypeInferenceError(message, fallbackNodeId, 'error', location?.sourceCodeInfo, location?.sourceRange)
 }
 
 interface ResumeContext {
@@ -150,6 +251,8 @@ export class InferenceContext {
   activeTypeParams = new Map<string, Type>()
   /** Resolves file imports for cross-file type checking. */
   resolveFileType?: (importPath: string) => Type
+  /** Source map for turning annotation parse errors into exact editor ranges. */
+  sourceMap?: SourceMap
   /**
    * Whether constant folding runs during this inference pass. Defaults to
    * the `FOLD_ENABLED` env-var value; callers (typecheck entry points)
@@ -1300,7 +1403,7 @@ export function inferExpr(node: AstNode, ctx: InferenceContext, env: TypeEnv, ty
                 // Parse the bound against the current outer scope — a
                 // later param's bound can reference earlier params, but
                 // bounds cannot reference themselves or later params.
-                const boundType = parseTypeAnnotation(param.bound, ctx.activeTypeParams)
+                const boundType = parseUserTypeAnnotation(param.bound, ctx.activeTypeParams)
                 fresh.upperBounds.push(boundType)
               } catch (error) {
                 if (error instanceof TypeParseError) {
@@ -1363,10 +1466,10 @@ export function inferExpr(node: AstNode, ctx: InferenceContext, env: TypeEnv, ty
             // surfaces as a diagnostic instead of aborting the pass.
             let declaredType: Type
             try {
-              declaredType = simplify(parseTypeAnnotation(annotation, ctx.activeTypeParams))
+              declaredType = simplify(parseUserTypeAnnotation(annotation, ctx.activeTypeParams))
             } catch (error) {
               if (error instanceof TypeParseError) {
-                throw new TypeInferenceError(error.cleanMessage, valueNode[2])
+                throw typeAnnotationParseError(error.cleanMessage, bindingNodeId, annotation, error, ctx, valueNode[2])
               }
               throw error
             }
@@ -2051,10 +2154,10 @@ export function inferExpr(node: AstNode, ctx: InferenceContext, env: TypeEnv, ty
             if (paramAnnotation) {
               let annotatedType: Type
               try {
-                annotatedType = simplify(parseTypeAnnotation(paramAnnotation, ctx.activeTypeParams))
+                annotatedType = simplify(parseUserTypeAnnotation(paramAnnotation, ctx.activeTypeParams))
               } catch (error) {
                 if (error instanceof TypeParseError) {
-                  throw new TypeInferenceError(error.cleanMessage, param[2])
+                  throw typeAnnotationParseError(error.cleanMessage, param[2], paramAnnotation, error, ctx, param[2])
                 }
                 throw error
               }
@@ -3102,10 +3205,10 @@ function inferFunctionNode(
       if (paramAnnotation) {
         let declaredType: Type
         try {
-          declaredType = simplify(parseTypeAnnotation(paramAnnotation, ctx.activeTypeParams))
+          declaredType = simplify(parseUserTypeAnnotation(paramAnnotation, ctx.activeTypeParams))
         } catch (error) {
           if (error instanceof TypeParseError) {
-            throw new TypeInferenceError(error.cleanMessage, param[2])
+            throw typeAnnotationParseError(error.cleanMessage, param[2], paramAnnotation, error, ctx, param[2])
           }
           throw error
         }
@@ -3142,10 +3245,17 @@ function inferFunctionNode(
     if (rawAnnotation?.startsWith('return:')) {
       let declaredType: Type
       try {
-        declaredType = parseTypeAnnotation(rawAnnotation.slice('return:'.length), ctx.activeTypeParams)
+        declaredType = parseUserTypeAnnotation(rawAnnotation.slice('return:'.length), ctx.activeTypeParams)
       } catch (error) {
         if (error instanceof TypeParseError) {
-          throw new TypeInferenceError(error.cleanMessage, node[2])
+          throw typeAnnotationParseError(
+            error.cleanMessage,
+            node[2],
+            rawAnnotation.slice('return:'.length),
+            error,
+            ctx,
+            node[2],
+          )
         }
         throw error
       }
@@ -5967,11 +6077,21 @@ function intersectDisplayCandidates(candidates: Type[]): Type {
 export class TypeInferenceError extends Error {
   nodeId?: number
   severity: 'error' | 'warning'
+  sourceCodeInfo?: SourceCodeInfo
+  sourceRange?: DiagnosticRange
 
-  constructor(message: string, nodeId?: number, severity: 'error' | 'warning' = 'error') {
+  constructor(
+    message: string,
+    nodeId?: number,
+    severity: 'error' | 'warning' = 'error',
+    sourceCodeInfo?: SourceCodeInfo,
+    sourceRange?: DiagnosticRange,
+  ) {
     super(message)
     this.name = 'TypeInferenceError'
     this.nodeId = nodeId
     this.severity = severity
+    this.sourceCodeInfo = sourceCodeInfo
+    this.sourceRange = sourceRange
   }
 }

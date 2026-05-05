@@ -189,7 +189,7 @@ Phase 1.5 retires this entirely. The new model:
 
 **Imports.**
 - Any `import` that resolves into `.dvala-playground/` is rejected — regardless of where the import originates. Rejected by the import resolver with a clear error ("playground state, not part of the deployable project — move the file outside `.dvala-playground/` to make it importable"). Tightened from the original "outside-only" wording during 23g implementation; see step 23g below for the rationale.
-- Files inside `.dvala-playground/` can import workspace files freely. Scratch and handlers can pull helpers from the project as needed.
+- Files inside `.dvala-playground/` can import workspace files freely, but they resolve relative paths as if they lived at the workspace root. In practice, scratch and handlers should use `./foo` or `/foo`, not `../foo`.
 
 **Save As modal (reusable).**
 
@@ -388,7 +388,7 @@ The handlers buffer is a regular Dvala expression — its **result value** is th
 
 23f. Remove the Bindings UI and the legacy effect-handler authoring UI. Drop the "Context" left-panel tab; remove the `'binding'` and `'effect-handler'` kinds from `state.ts`; silent wipe of any stored bindings + JS handler entries (pre-1.0). After this step the legacy JS-handler authoring surface is gone.
 
-23g. Migrate the import resolver. New rule: any `import` that resolves into `.dvala-playground/*` is rejected with a clear error ("playground state is not part of the deployable project"), regardless of where the import originates. Imports from inside the folder out to workspace files (e.g. scratch importing `../utils.dvala`) are still allowed — that's the only direction the playground actually exercises. The blanket "not importable" rule is simpler than an asymmetric workspace-vs-playground gate, and inside→inside imports have no real-world use case (handlers is auto-wrapped not imported, scratch is single-instance, snapshots are JSON). Implementation lives in the resolver, not in N consumers. **Tightened during implementation 2026-04-29:** original spec only forbade outside→inside; the inside→inside corner is now also forbidden because no use case allows it and the simpler rule is forward-compatible as the folder grows (snapshots in 23i, future state files).
+23g. Migrate the import resolver. New rule: any `import` that resolves into `.dvala-playground/*` is rejected with a clear error ("playground state is not part of the deployable project"), regardless of where the import originates. Imports from inside the folder out to workspace files are still allowed, but scratch and handlers resolve relative imports from a virtual workspace-root base, so user-facing paths are `./foo` or `/foo` rather than `../foo`. The blanket "not importable" rule is simpler than an asymmetric workspace-vs-playground gate, and inside→inside imports have no real-world use case (handlers is auto-wrapped not imported, scratch is single-instance, snapshots are JSON). Implementation lives in the resolver, not in N consumers. **Tightened during implementation 2026-04-29:** original spec only forbade outside→inside; the inside→inside corner is now also forbidden because no use case allows it and the simpler rule is forward-compatible as the folder grows (snapshots in 23i, future state files).
 
 23h. Migrate consumers off the legacy scratch + handler sentinels. Tabs, tree, history, right panel, code-panel sync — each consumer now treats both pinned buffers as regular files at their reserved paths, with the two UI-only rules (pinned to top, undeletable).
 
@@ -440,6 +440,22 @@ Lands after Phase 1.5. New first tab in the right-panel multi-tool, shown for `.
 30. Rename provider (depends on LS-next cross-file rename).
 31. Document formatter (backed by `prettyPrint`).
 32. Performance pass: profile on a 50-file workspace; tune debouncing and message-batching as needed.
+
+### Phase 2 follow-up — Worker delta / protocol hardening
+
+This is a **follow-up track, not part of the user-facing Phase 2 parity checklist**. Phase 2's definition of done is Monaco feature parity for diagnostics, hover, completions, definition / references / rename, and formatting. The work below is infrastructure hardening that reduces correctness and performance risk as the playground moves toward larger workspaces and the CLI-backed local-mode surface in Phase 3.
+
+Current next-step recommendation: the next PR after Phase 2 parity should start at 32a and make the worker the canonical owner of LS-backed document state before widening the protocol surface further. That is the highest-leverage remaining gap because the current mixed worker/main-thread state model is where stale-result and divergent-cache risk still lives.
+
+32a. Make the worker the canonical owner of mirrored document state for all LS-backed features, not just diagnostics. Eliminate remaining main-thread-only fallbacks where they would create parity gaps or divergent cache behavior.
+
+32b. Tighten the edit-delta protocol: document open / close events, ordered versioned edits, explicit resync on gap or version mismatch, and a small recovery path after worker restart so stale mirrors cannot survive silently.
+
+32c. Harden request / response sequencing: correlation IDs on all LS requests, per-path cancellation rules, and late-result dropping validated across hover / completion / diagnostics / navigation providers rather than diagnostics alone.
+
+32d. Add regression coverage for incremental multi-file edits and worker lifecycle edges: rapid typing, cross-file rename after unsaved edits, worker restart / re-init, and stale-result suppression under overlapping requests.
+
+32e. Re-profile on a medium workspace after the protocol changes. Revisit debounce windows, batching strategy, and any remaining full-document resend paths before starting Phase 3 local-project work.
 
 ### Phase 3 — CLI
 

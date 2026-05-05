@@ -97,6 +97,14 @@ describe('WorkspaceIndex', () => {
     })
   })
 
+  describe('getDefinitions', () => {
+    it('falls back to token-scanned definitions when broken code has parse errors', () => {
+      index.updateFile('test.dvala', 'let add = (a, b) => a + b;\nadd(')
+      const defs = index.getDefinitions('test.dvala')
+      expect(defs.map(def => def.name)).toContain('add')
+    })
+  })
+
   describe('getSymbolAtPosition', () => {
     it('finds symbol name at a definition site', () => {
       index.updateFile('test.dvala', 'let x = 1; x + 1')

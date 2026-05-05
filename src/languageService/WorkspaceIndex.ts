@@ -148,7 +148,10 @@ export class WorkspaceIndex {
   getDefinitions(filePath: string): SymbolDef[] {
     const cached = this.cache.get(filePath)
     if (!cached) return []
-    return cached.symbols?.definitions ?? cached.tokenDefs
+    if (!cached.symbols) return cached.tokenDefs
+    if (cached.symbols.definitions.length > 0) return cached.symbols.definitions
+    if (cached.symbols.parseErrors.length > 0) return cached.tokenDefs
+    return cached.symbols.definitions
   }
 
   /**

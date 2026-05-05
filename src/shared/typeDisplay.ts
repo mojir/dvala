@@ -17,9 +17,24 @@ import { expandTypeForDisplay, sanitizeDisplayType, simplify, typeToString } fro
 import type { Type } from '../typechecker/types'
 import type { Position, Range } from './types'
 
-/** Format a Type for hover display: expand → sanitize → simplify → stringify. */
+/** Format a Type for hover display: expand → sanitize → simplify → stringify.
+ * For literal types, appends the base type (e.g. '54 : Number'). */
 export function formatHoverType(type: Type): string {
-  return typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(type))))
+  const display = typeToString(simplify(sanitizeDisplayType(expandTypeForDisplay(type))))
+  if (type.tag === 'Literal') {
+    const base = typeof type.value === 'number' ? 'Number' : typeof type.value === 'string' ? 'String' : 'Boolean'
+    return `${display} : ${base}`
+  }
+  // Also handle intersection types that contain a literal (e.g. Number & {n | ...})
+  if (type.tag === 'Inter') {
+    for (const part of type.members) {
+      if (part.tag === 'Literal') {
+        const base = typeof part.value === 'number' ? 'Number' : typeof part.value === 'string' ? 'String' : 'Boolean'
+        return `${display} : ${base}`
+      }
+    }
+  }
+  return display
 }
 
 /**
@@ -45,8 +60,6 @@ export function findTypeAtPosition(
   const preferredStartCol = preferredRange ? preferredRange.start.column - 1 : 0
 
   let bestPreferredType: Type | undefined
-  let bestPreferredStartDistance = Infinity
-  let bestPreferredSize = Infinity
   let bestType: Type | undefined
   let bestSize = Infinity
 
@@ -65,20 +78,12 @@ export function findTypeAtPosition(
 
     const size = (endLine - startLine) * 1000 + (endCol - startCol)
     if (preferredRange) {
-      const lineDistance = Math.abs(startLine - preferredStartLine)
-      const colDistance =
-        lineDistance === 0
-          ? Math.abs(startCol - preferredStartCol)
-          : Math.abs(startCol - preferredStartCol) + lineDistance * 1000
-
-      if (
-        colDistance < bestPreferredStartDistance ||
-        (colDistance === bestPreferredStartDistance && size < bestPreferredSize)
-      ) {
-        bestPreferredStartDistance = colDistance
-        bestPreferredSize = size
-        bestPreferredType = type
-      }
+      // Require exact start alignment — the node's start must be within
+      // the preferred range. This prevents matching enclosing expressions
+      // (e.g. hovering on `let` shouldn't show the `let` statement's type).
+      if (startLine !== preferredStartLine || startCol < preferredStartCol || startCol > preferredRange.end.column - 1)
+        continue
+      bestPreferredType = type
     }
 
     if (size < bestSize) {

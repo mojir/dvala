@@ -176,6 +176,20 @@ Before suggesting Dvala code to the user, verify it works by running it with `dv
 
 Detailed playground conventions — naming, file layout, per-concern modules, reactive primitives, modal system — live in [`.github/instructions/playground.instructions.md`](.github/instructions/playground.instructions.md). Copilot auto-loads it when editing `playground-www/**` files.
 
+### Two-surface API discipline
+
+The engine exposes two consumer surfaces:
+
+- **Public API** (`src/index.ts` / `src/full.ts`): for end users running Dvala. Stable shape, small and curated.
+- **Introspection API** (`src/internal.ts`): for tooling (playground, LS worker, future LSP servers). **Expected to be large** — AST types, walkers, type-system internals, snapshot machinery. Breaking changes allowed (consumers are us). All exports must be DOM-free (the LS worker imports from here).
+
+When the playground or worker needs an engine symbol not in the public API:
+1. First choice: add it to the public API.
+2. Second choice: add it to `src/internal.ts` (tooling-only).
+3. Last resort: deep import with a `// FIXME: deep import` comment (track as debt).
+
+**Do not** deep-import past `src/index.ts` / `src/full.ts` / `src/internal.ts` from `playground-www/` or worker bundles without a FIXME comment.
+
 ## Skills & Agents
 
 Use the project skills and agents proactively — don't do manually what a skill already handles.

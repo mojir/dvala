@@ -42,6 +42,11 @@ async function setDvalaCode(page: Page, code: string) {
   await page.evaluate(c => (window as any).Playground.setEditorValue(c), code)
 }
 
+/** Move the editor cursor to the given absolute character offset. */
+async function setEditorCursor(page: Page, position: number) {
+  await page.evaluate(offset => (window as any).Playground.setEditorCursor(offset), position)
+}
+
 /**
  * Set the legacy `state['context']` JSON blob via the playground's test-only
  * setter. Phase 1.5 step 23f retired the Bindings UI; the `state['context']`
@@ -67,6 +72,43 @@ async function waitForOutput(page: Page, timeout = 5000) {
 /** Get all text content of the output panel. */
 async function getOutputText(page: Page): Promise<string> {
   return (await page.locator('#output-result').textContent()) ?? ''
+}
+
+/** Trigger Monaco suggestions and wait for the suggest widget to appear. */
+async function openEditorSuggestions(page: Page) {
+  await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+  await page.keyboard.press('Control+Space')
+  await page.locator('.suggest-widget').waitFor({ state: 'visible', timeout: 3000 })
+}
+
+/** Wait for Monaco suggestions to appear without manual invocation. */
+async function waitForEditorSuggestions(page: Page) {
+  await page.locator('.suggest-widget').waitFor({ state: 'visible', timeout: 3000 })
+}
+
+/** Wait for Monaco parameter hints to appear. */
+async function waitForSignatureHelp(page: Page) {
+  await page.locator('.parameter-hints-widget').waitFor({ state: 'visible', timeout: 3000 })
+}
+
+/** Wait for Monaco hover to appear. */
+async function waitForHover(page: Page, position?: number) {
+  if (position === undefined) {
+    await page.locator('.monaco-hover').waitFor({ state: 'visible', timeout: 3000 })
+    return
+  }
+
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(offset => (window as any).Playground.triggerHoverForTesting(offset), position)
+        const hover = page.locator('.monaco-hover')
+        if (!(await hover.isVisible())) return ''
+        return ((await hover.textContent()) ?? '').trim()
+      },
+      { timeout: 3000 },
+    )
+    .not.toBe('')
 }
 
 /** Read the first workspace file's id from its `data-file-id` attribute. */
@@ -241,6 +283,431 @@ test.describe('toolbar actions', () => {
     // stores the value JSON-stringified, so the persisted form is `'""'`.
     expect(contextValue).toBe('""')
     expect(outputHtml).toBe('')
+  })
+})
+
+test.describe('editor completions', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('shows completions for in-scope user-defined symbols', async ({ page }) => {
+    const code = 'let localValue = 1;\nloc'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('localValue')
+  })
+
+  test('shows completions automatically while typing in code', async ({ page }) => {
+    await setDvalaCode(page, 'let localValue = 1;\n')
+    await setEditorCursor(page, 'let localValue = 1;\n'.length)
+
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    await page.keyboard.type('loc')
+
+    await waitForEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('localValue')
+  })
+
+  test('shows workspace import path completions inside import strings', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'utils-file',
+          path: 'utils.dvala',
+          code: 'let value = 1; { value }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let { value } = import("./ut'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('./utils')
+  })
+
+  test('shows import completions immediately after opening the import string', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'math-file',
+          path: 'lib/math.dvala',
+          code: 'let add = (a, b) => a + b; { add }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let math = import("'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('functional')
+    await expect(page.locator('.suggest-widget')).toContainText('./lib/')
+    await expect(page.locator('.suggest-widget')).not.toContainText('!=')
+  })
+
+  test('shows folder completions for nested workspace imports', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'math-file',
+          path: 'lib/math.dvala',
+          code: 'let add = (a, b) => a + b; { add }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let math = import("./l'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('./lib/')
+  })
+
+  test('shows import completions automatically while typing in strings', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'math-file',
+          path: 'lib/math.dvala',
+          code: 'let add = (a, b) => a + b; { add }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let math = import("'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    await page.keyboard.type('./l')
+
+    await waitForEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('./lib/')
+  })
+
+  test('shows exported symbols from already imported workspace files', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'utils-file',
+          path: 'utils.dvala',
+          code: 'let value = 1; { value }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let utils = import("./utils");\nvalu'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('value')
+  })
+})
+
+test.describe('signature help', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('shows parameter hints for user-defined functions', async ({ page }) => {
+    const code = 'let add = (a, b) => a + b;\nadd('
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    const triggered = await page.evaluate(() => (window as any).Playground.triggerSignatureHelpForTesting())
+    expect(triggered).toBe(true)
+
+    await waitForSignatureHelp(page)
+
+    await expect(page.locator('.parameter-hints-widget')).toContainText('add(a, b)')
+  })
+
+  test('shows parameter hints for builtin functions', async ({ page }) => {
+    const code = 'map('
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    const triggered = await page.evaluate(() => (window as any).Playground.triggerSignatureHelpForTesting())
+    expect(triggered).toBe(true)
+
+    await waitForSignatureHelp(page)
+
+    await expect(page.locator('.parameter-hints-widget')).toContainText('map(colls: collection, fun: function)')
+  })
+})
+
+test.describe('hover', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('shows builtin docs in hover', async ({ page }) => {
+    const code = 'map'
+    await setDvalaCode(page, code)
+
+    const position = 1
+    const shown = await page.evaluate(offset => (window as any).Playground.triggerHoverForTesting(offset), position)
+    expect(shown).toBe(true)
+
+    await waitForHover(page, position)
+
+    await expect(page.locator('.monaco-hover')).toContainText('map')
+    await expect(page.locator('.monaco-hover')).toContainText('Creates a new collection populated')
+  })
+
+  test('shows inferred type for local symbols in hover', async ({ page }) => {
+    const code = 'let localValue = 1;\nlocalValue'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+    const primed = await page.evaluate(() => (window as any).Playground.primeActiveEditorTypecheckForTesting())
+    expect(primed).toBe(true)
+
+    const position = 'let localValue = 1;\n'.length + 1
+    const shown = await page.evaluate(offset => (window as any).Playground.triggerHoverForTesting(offset), position)
+    expect(shown).toBe(true)
+
+    await waitForHover(page, position)
+
+    await expect(page.locator('.monaco-hover')).toContainText('1 : Number')
+    await expect(page.locator('.monaco-hover')).toContainText('Defined at <scratch>:1:5')
+  })
+})
+
+test.describe('language service navigation', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('resolves go-to-definition for a local symbol', async ({ page }) => {
+    await setDvalaCode(page, 'let value = 1; value + value')
+
+    const defs = await page.evaluate(() =>
+      (window as any).Playground.getDefinitionsAtCursorForTesting('let value = 1; '.length),
+    )
+    expect(defs).toHaveLength(1)
+    expect(defs[0].uri).toContain('/.dvala-playground/scratch.dvala')
+    expect(defs[0].range.startLineNumber).toBe(1)
+    expect(defs[0].range.startColumn).toBe(5)
+  })
+
+  test('resolves go-to-definition for an import path string', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'data-file',
+          path: 'data.dvala',
+          code: 'let x = 99; { x }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+    })
+
+    const code = 'let d = import("./data"); d.x'
+    await setDvalaCode(page, code)
+
+    const defs = await page.evaluate(() =>
+      (window as any).Playground.getDefinitionsAtCursorForTesting('let d = import("./d'.length),
+    )
+    expect(defs).toHaveLength(1)
+    expect(defs[0].uri).toContain('/data.dvala')
+    expect(defs[0].range.startLineNumber).toBe(1)
+    expect(defs[0].range.startColumn).toBe(1)
+  })
+
+  test('go-to-definition command on an import path opens the target file', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'data-file',
+          path: 'data.dvala',
+          code: 'let x = 99; { x }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+    })
+
+    const code = 'let d = import("./data"); d.x'
+    await setDvalaCode(page, code)
+    await page.evaluate(
+      offset => (window as any).Playground.goToDefinitionAtOffsetForTesting(offset),
+      'let d = import("./d'.length,
+    )
+
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('data.dvala')
+    await expect.poll(() => page.evaluate(() => (window as any).Playground.getEditorValue())).toBe('let x = 99; { x }')
+  })
+
+  test('browser-safe go-to-definition shortcut opens the target file', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'data-file',
+          path: 'data.dvala',
+          code: 'let x = 99; { x }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+    })
+
+    const code = 'let d = import("./data"); d.x'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, 'let d = import("./d'.length)
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+
+    const modifier = await page.evaluate(() => (/Mac|iPhone|iPad/.test(navigator.platform) ? 'Meta' : 'Control'))
+    await page.keyboard.press(`${modifier}+Alt+D`)
+
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('data.dvala')
+    await expect.poll(() => page.evaluate(() => (window as any).Playground.getEditorValue())).toBe('let x = 99; { x }')
+  })
+
+  test('switching to a same-content file rebinds go-to-definition to the active file', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'a-file',
+          path: 'a.dvala',
+          code: 'let value = 1; value',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'b-file',
+          path: 'b.dvala',
+          code: 'let value = 1; value',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('a-file')
+      ;(window as any).Playground.loadWorkspaceFile('b-file')
+    })
+
+    const defs = await page.evaluate(() =>
+      (window as any).Playground.getDefinitionsAtCursorForTesting('let value = 1; '.length),
+    )
+    expect(defs).toHaveLength(1)
+    expect(defs[0].uri).toContain('/b.dvala')
+    expect(defs[0].range.startLineNumber).toBe(1)
+    expect(defs[0].range.startColumn).toBe(5)
+  })
+
+  test('finds references and rename edits for a local symbol', async ({ page }) => {
+    await setDvalaCode(page, 'let value = 1; value + value')
+
+    const position = 'let value = 1; '.length
+    const refs = await page.evaluate(
+      offset => (window as any).Playground.getReferencesAtCursorForTesting(offset),
+      position,
+    )
+    expect(refs).toHaveLength(3)
+    expect(refs.every((ref: { uri: string }) => ref.uri.endsWith('scratch.dvala'))).toBe(true)
+
+    const edits = await page.evaluate(
+      ({ offset }) => (window as any).Playground.getRenameEditsAtCursorForTesting(offset, 'renamedAnswer'),
+      { offset: position },
+    )
+    expect(edits).toHaveLength(3)
+    expect(edits.every((edit: { text: string }) => edit.text === 'renamedAnswer')).toBe(true)
+    expect(edits.every((edit: { resource: string }) => edit.resource.endsWith('scratch.dvala'))).toBe(true)
+  })
+
+  test('formats the active editor through the document formatting provider', async ({ page }) => {
+    await setDvalaCode(page, '1+2')
+
+    const formatted = await page.evaluate(() => (window as any).Playground.getFormattedEditorValueForTesting())
+    expect(formatted).toBe('1 + 2;\n')
   })
 })
 
@@ -701,13 +1168,13 @@ test.describe('files', () => {
     await page.waitForFunction(
       () => {
         const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-        // Two pinned virtual entries (<scratch>, <handlers>) plus at least
+        // Two pinned virtual entries ([scratch], [handlers]) plus at least
         // one user-authored file means the file we just saved has rendered.
         return items.length > 2
       },
       { timeout: 5000 },
     )
-    // Click the third explorer item (after the pinned <scratch> and <handlers>).
+    // Click the third explorer item (after the pinned [scratch] and [handlers]).
     await page.locator('#explorer-file-list .explorer-item').nth(2).click()
 
     await navigateToPlayground(page)
@@ -739,11 +1206,11 @@ test.describe('files', () => {
     await page.waitForFunction(
       () => {
         const items = document.querySelectorAll('#explorer-file-list .explorer-item')
-        return items.length === 2 // only the pinned <scratch> + <handlers> entries remain
+        return items.length === 2 // only the pinned [scratch] + [handlers] entries remain
       },
       { timeout: 5000 },
     )
-    // Only the two pinned virtual entries (<scratch>, <handlers>) remain.
+    // Only the two pinned virtual entries ([scratch], [handlers]) remain.
     await expect(page.locator('#explorer-file-list .explorer-item')).toHaveCount(2)
   })
 })
@@ -1262,7 +1729,7 @@ test.describe('editor toolbar', () => {
   test('filename pill displays scratch title', async ({ page }) => {
     const pill = page.locator('#editor-toolbar .editor-toolbar__title')
     await expect(pill).toBeVisible()
-    await expect(pill).toContainText('<scratch>')
+    await expect(pill).toContainText('[scratch]')
   })
 
   test('filename pill updates when a file is loaded', async ({ page }) => {
@@ -1319,7 +1786,7 @@ test.describe('scratch', () => {
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
     const scratchItem = page.locator('#explorer-file-list .explorer-item').first()
     await expect(scratchItem).toBeVisible()
-    await expect(scratchItem).toContainText('<scratch>')
+    await expect(scratchItem).toContainText('[scratch]')
     // no context menu button inside scratch item
     await expect(scratchItem.locator('button')).toHaveCount(0)
   })
@@ -1338,7 +1805,7 @@ test.describe('scratch', () => {
 
     await page.evaluate(() => (window as any).Playground.showSideTab('files'))
     // Click the workspace file. The first two items are the pinned virtual
-    // entries `<scratch>` (23c) and `<handlers>` (23d); the user-authored
+    // entries `[scratch]` (23c) and `[handlers]` (23d); the user-authored
     // file follows at index 2.
     await page.locator('#explorer-file-list .explorer-item').nth(2).click()
 
@@ -1355,7 +1822,7 @@ test.describe('scratch', () => {
     await page.locator('#explorer-file-list .explorer-item').first().click()
 
     const pill = page.locator('#editor-toolbar .editor-toolbar__title')
-    await expect(pill).toContainText('<scratch>')
+    await expect(pill).toContainText('[scratch]')
   })
 })
 
@@ -1460,7 +1927,7 @@ test.describe('file operations', () => {
     await closeBtn.click()
 
     const pill = page.locator('#editor-toolbar .editor-toolbar__title')
-    await expect(pill).toContainText('<scratch>')
+    await expect(pill).toContainText('[scratch]')
   })
 
   test('files with `/` in the path render as a folder tree', async ({ page }) => {
@@ -1756,18 +2223,18 @@ test.describe('editor tabs', () => {
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(0)
     // Empty view appears in the editor area.
     await expect(page.locator('#dvala-empty-view')).toBeVisible()
-    // The pinned `<scratch>` entry stays in the file tree as the
+    // The pinned `[scratch]` entry stays in the file tree as the
     // re-open affordance.
-    await expect(page.locator('#explorer-file-list .explorer-item', { hasText: '<scratch>' })).toBeVisible()
+    await expect(page.locator('#explorer-file-list .explorer-item', { hasText: '[scratch]' })).toBeVisible()
   })
 
-  test('after closing scratch, the pinned <scratch> tree entry re-opens it', async ({ page }) => {
+  test('after closing scratch, the pinned [scratch] tree entry re-opens it', async ({ page }) => {
     const scratchTab = page.locator('#editor-tab-strip .editor-tab', { hasText: '<scratch>' })
     await scratchTab.locator('.editor-tab__close').click()
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(0)
 
-    // Click the pinned `<scratch>` entry in the explorer file list.
-    await page.locator('#explorer-file-list .explorer-item', { hasText: '<scratch>' }).click()
+    // Click the pinned `[scratch]` entry in the explorer file list.
+    await page.locator('#explorer-file-list .explorer-item', { hasText: '[scratch]' }).click()
     // Strip is back with scratch as the only tab.
     await expect(page.locator('#editor-tab-strip .editor-tab')).toHaveCount(1)
     await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('<scratch>')
@@ -1905,7 +2372,7 @@ test.describe('editor tabs', () => {
   })
 
   test('Cmd/Ctrl-1..9 jumps to the Nth open tab', async ({ page }) => {
-    // Strip: [scratch (1), A (2), B (3)] with B active.
+    // Strip: <scratch> (1), A (2), B (3) with B active.
     const aId = '30303030-3030-3030-3030-303030303030'
     const bId = '31313131-3131-3131-3131-313131313131'
     await page.evaluate(

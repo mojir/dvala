@@ -100,24 +100,28 @@ describe('playgroundFileResolver', () => {
       )
     })
 
-    it('rejects scratch importing handlers (inside-to-inside)', () => {
-      // No real-world use case allows this — handlers is auto-wrapped, not
-      // imported, and scratch is single-instance. The blanket rule keeps
-      // the namespace import-free.
+    it('treats `./handlers` from scratch as a workspace-root relative lookup, not a hidden-buffer import', () => {
+      // Under the virtual-root contract, scratch / handlers no longer leak
+      // their backing `.dvala-playground/` path into user-facing imports.
+      // `./handlers` means a workspace-root file named `handlers.dvala`, not
+      // the hidden `<handlers>` buffer.
       withFiles([file('.dvala-playground/scratch.dvala', 'S'), file('.dvala-playground/handlers.dvala', 'H')])
-      expect(() => playgroundFileResolver('./handlers', '.dvala-playground')).toThrow(
-        /playground state, not part of the deployable project/,
-      )
+      expect(() => playgroundFileResolver('./handlers', '.dvala-playground')).toThrow(/File not found/)
     })
 
-    it('allows scratch to import a workspace file via `..`', () => {
+    it('allows scratch to import a workspace file via `./`', () => {
       withFiles([file('.dvala-playground/scratch.dvala', 'S'), file('utils.dvala', 'UTILS')])
-      expect(playgroundFileResolver('../utils', '.dvala-playground')).toBe('UTILS')
+      expect(playgroundFileResolver('./utils', '.dvala-playground')).toBe('UTILS')
     })
 
-    it('allows scratch to import a workspace file in a sibling folder', () => {
+    it('allows scratch to import a workspace file in a root-level folder via `./`', () => {
       withFiles([file('.dvala-playground/scratch.dvala', 'S'), file('lib/math.dvala', 'MATH')])
-      expect(playgroundFileResolver('../lib/math', '.dvala-playground')).toBe('MATH')
+      expect(playgroundFileResolver('./lib/math', '.dvala-playground')).toBe('MATH')
+    })
+
+    it('rejects `..` from scratch because scratch resolves from the virtual workspace root', () => {
+      withFiles([file('.dvala-playground/scratch.dvala', 'S'), file('utils.dvala', 'UTILS')])
+      expect(() => playgroundFileResolver('../utils', '.dvala-playground')).toThrow(/escapes workspace root/)
     })
 
     it('mentions the offending source in the rejection message', () => {

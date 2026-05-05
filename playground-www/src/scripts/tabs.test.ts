@@ -118,6 +118,12 @@ vi.mock('../codeEditor', () => ({
   KeyMod: new Proxy({}, { get: () => 0 }),
 }))
 
+// `tabs.ts` calls `unregisterModel` when closing file tabs to clean up
+// LS worker markers. Stub it as a no-op — the worker isn't running in tests.
+vi.mock('../lsWorkerClient', () => ({
+  unregisterModel: () => {},
+}))
+
 // Pull in the module under test. `vi.mock` calls are hoisted by vitest so
 // they execute before this import resolves — equivalent to top-level await
 // without the unsupported syntax.

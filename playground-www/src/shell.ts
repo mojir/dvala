@@ -160,6 +160,12 @@ function getPlaygroundPanel(): string {
         label: 'Parse AST',
         shortcut: 'Ctrl+P',
       },
+      {
+        action: 'Playground.closeMoreMenu();Playground.goToDefinition()',
+        icon: infoIcon,
+        label: 'Go to definition',
+        shortcut: '⌥Ctrl+D',
+      },
       { action: 'Playground.closeMoreMenu();Playground.parseCst()', icon: treeIcon, label: 'Parse CST' },
       { action: 'Playground.closeMoreMenu();Playground.docTree()', icon: formatIcon, label: 'Doc tree' },
       { action: 'Playground.closeMoreMenu();Playground.saveAs()', icon: saveIcon, label: 'Save as…' },

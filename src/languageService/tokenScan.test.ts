@@ -18,6 +18,12 @@ describe('scanTokensForDefinitions', () => {
   it('classifies functions', () => {
     const defs = scan('let f = (x) -> x + 1')
     expect(defs[0]!.kind).toBe('function')
+    expect(defs[0]!.params).toEqual(['x'])
+  })
+
+  it('captures simple function params for token-scanned definitions', () => {
+    const defs = scan('let add = (a, b) -> a + b; add(')
+    expect(defs[0]!.params).toEqual(['a', 'b'])
   })
 
   it('classifies macros', () => {

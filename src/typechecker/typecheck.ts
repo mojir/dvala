@@ -28,7 +28,7 @@ import {
   snapshotEffectRegistry,
 } from './effectTypes'
 import {
-  parseTypeAnnotation,
+  parseUserTypeAnnotation,
   registerTypeAlias,
   resetTypeAliases,
   restoreTypeAliases,
@@ -49,6 +49,11 @@ export interface TypeDiagnostic {
   severity: 'error' | 'warning'
   /** Source location, if available. */
   sourceCodeInfo?: SourceCodeInfo
+  /** Exact editor range, when it differs from the display snippet width. */
+  sourceRange?: {
+    start: { line: number; column: number }
+    end: { line: number; column: number }
+  }
 }
 
 export interface TypecheckResult {
@@ -124,6 +129,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   const fileTypeCache = new Map<string, CachedFileTypeResult>()
 
   const ctx = new InferenceContext()
+  ctx.sourceMap = sourceMap
   // Per-call fold override. Omitted → use env-var default (FOLD_ENABLED).
   if (options?.fold !== undefined) ctx.foldEnabled = options.fold
   // Wire file import resolution if a file resolver is provided
@@ -154,6 +160,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
           const nestedDir = resolveImportedFileDir(fromDir, importPath)
           const importedAst = expandMacros(rawAst, { fileResolver: resolver, fileResolverBaseDir: nestedDir })
           const importCtx = new InferenceContext()
+          importCtx.sourceMap = importedAst.sourceMap ?? rawAst.sourceMap
           importCtx.resolveFileType = makeResolveFileType(nestedDir)
           if (importedAst.typeAnnotations) {
             importCtx.typeAnnotations = importedAst.typeAnnotations
@@ -183,7 +190,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
                 // diagnostic on the imported-file side rather than aborting
                 // the outer typecheck.
                 try {
-                  declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
+                  declareEffect(name, parseUserTypeAnnotation(argType), parseUserTypeAnnotation(retType))
                 } catch (error) {
                   if (error instanceof TypeParseError) {
                     importDiagnostics.push({
@@ -267,7 +274,7 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
       // handling — bounded aliases in effect types can produce these
       // during parse.
       try {
-        declareEffect(name, parseTypeAnnotation(argType), parseTypeAnnotation(retType))
+        declareEffect(name, parseUserTypeAnnotation(argType), parseUserTypeAnnotation(retType))
       } catch (error) {
         if (error instanceof TypeParseError) {
           // Effect declarations live in the parser's side-table keyed by
@@ -306,6 +313,7 @@ export function typecheckExpr(
   initTypeSystem()
 
   const ctx = new InferenceContext()
+  ctx.sourceMap = sourceMap
   if (options?.fold !== undefined) ctx.foldEnabled = options.fold
   resetUserEffects()
   resetTypeAliases()
@@ -341,6 +349,10 @@ function resolveErrorSourceInfo(
   fallbackNode: AstNode,
   sourceMap?: SourceMap,
 ): SourceCodeInfo | undefined {
+  if (error.sourceCodeInfo) {
+    return error.sourceCodeInfo
+  }
+
   if (sourceMap && error.nodeId && error.nodeId > 0) {
     const resolved = resolveSourceCodeInfo(error.nodeId, sourceMap)
     if (resolved) return resolved
@@ -408,6 +420,7 @@ function inferNodesRecoveringErrors(
         message: error.message,
         severity: error.severity,
         sourceCodeInfo: resolveErrorSourceInfo(error, node, sourceMap),
+        sourceRange: error.sourceRange,
       })
       resultType = Unknown
     }
@@ -427,6 +440,7 @@ function drainDeferredDiagnostics(
       message: error.message,
       severity: error.severity,
       sourceCodeInfo: resolveErrorSourceInfo(error, fallbackNode, sourceMap),
+      sourceRange: error.sourceRange,
     })
   }
 }

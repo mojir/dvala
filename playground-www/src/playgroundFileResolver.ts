@@ -47,18 +47,21 @@ export function resolvePlaygroundPath(fromDir: string, importPath: string): stri
  * playground; allowing scratch / handlers to import each other would
  * couple two pinned virtual buffers that have no `import` use case
  * (handlers is auto-wrapped, not imported; scratch is single-instance).
- * Imports from inside the folder out to workspace files (e.g. scratch
- * importing `../utils.dvala`) are still allowed — that's the one direction
+ * Imports from inside the folder out to workspace files are still allowed,
+ * but they resolve as if scratch / handlers lived at the workspace root:
+ * `import("./utils")` and `import("/utils")` work; `../utils` is treated
+ * as escaping the virtual root and fails. That's the one direction
  * the playground actually exercises. Centralising the rule here keeps
  * consumers (tabs, tree, history, run path) from needing their own checks.
  */
 export function playgroundFileResolver(importPath: string, fromDir: string): string {
+  const effectiveFromDir = isInPlaygroundFolder(fromDir) ? '' : fromDir
   // `resolvePlaygroundPath` has already thrown if the path climbed past the
   // workspace root via `..`, so anything reaching the playground-folder gate
   // below is a syntactically valid resolved path. Order: escape-root error
   // (path-shape problem) takes precedence over the playground-folder error
   // (semantic / boundary problem) which takes precedence over file-not-found.
-  const resolved = resolvePlaygroundPath(fromDir, importPath)
+  const resolved = resolvePlaygroundPath(effectiveFromDir, importPath)
   if (isInPlaygroundFolder(resolved)) {
     throw new Error(
       `Cannot import '${importPath}' from '${fromDir || '<root>'}': ${PLAYGROUND_FOLDER}/ is playground state, not part of the deployable project — move the file outside ${PLAYGROUND_FOLDER}/ to make it importable`,
