@@ -304,6 +304,70 @@ test.describe('editor completions', () => {
 
     await expect(page.locator('.suggest-widget')).toContainText('./utils')
   })
+
+  test('shows folder completions for nested workspace imports', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'math-file',
+          path: 'lib/math.dvala',
+          code: 'let add = (a, b) => a + b; { add }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let math = import("./l'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('./lib/')
+  })
+
+  test('shows exported symbols from already imported workspace files', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'utils-file',
+          path: 'utils.dvala',
+          code: 'let value = 1; { value }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let utils = import("./utils");\nvalu'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('value')
+  })
 })
 
 test.describe('navigation', () => {

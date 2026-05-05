@@ -1,6 +1,6 @@
 import { buildBuiltinCompletions, symbolDefToCompletion } from '../../src/shared/completionBuilder'
 import type { CompletionItem } from '../../src/shared/completionBuilder'
-import type { SymbolDef } from '../../src/languageService/types'
+import type { FileSymbols, SymbolDef } from '../../src/languageService/types'
 import { allBuiltinModules } from '../../src/allModules'
 import type { WorkspaceFile } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder, stripDvalaSuffix } from './filePath'
@@ -39,10 +39,49 @@ export function getScopedCompletionItems(prefix: string, visibleSymbols: SymbolD
   return items
 }
 
+export function getImportedExportCompletionItems(
+  prefix: string,
+  currentFileSymbols: FileSymbols | null,
+  getFileSymbols: (filePath: string) => FileSymbols | null,
+): CompletionItem[] {
+  if (!currentFileSymbols) return []
+
+  const items: CompletionItem[] = []
+  const seen = new Set<string>()
+
+  for (const importedPath of currentFileSymbols.imports.values()) {
+    const importedSymbols = getFileSymbols(importedPath)
+    if (!importedSymbols) continue
+    for (const exp of importedSymbols.exports) {
+      if (!matchesPrefix(exp.name, prefix)) continue
+      if (seen.has(exp.name)) continue
+      seen.add(exp.name)
+      items.push({
+        ...symbolDefToCompletion(exp),
+        detail: 'imported export',
+        sortText: `2_${exp.name}`,
+      })
+    }
+  }
+
+  return items
+}
+
 export function getImportCompletionPrefix(lineText: string, column: number): string | null {
   const beforeCursor = lineText.slice(0, Math.max(0, column - 1))
   const match = /import\(\s*"([^"]*)$/.exec(beforeCursor)
   return match?.[1] ?? null
+}
+
+function addImportCompletion(items: CompletionItem[], seen: Set<string>, label: string, detail: string): void {
+  if (seen.has(label)) return
+  seen.add(label)
+  items.push({
+    label,
+    kind: 'module',
+    detail,
+    sortText: detail === 'folder' ? `1_${label}` : `2_${label}`,
+  })
 }
 
 function relativeImportPath(fromFilePath: string | undefined, targetPath: string): string {
@@ -68,6 +107,31 @@ function relativeImportPath(fromFilePath: string | undefined, targetPath: string
   return `./${parts.join('/')}`
 }
 
+function relativeFolderImportPath(fromFilePath: string | undefined, folderPath: string): string {
+  const folderImport = relativeImportPath(fromFilePath, `${folderPath}/index.dvala`)
+  return folderImport.replace(/\/index$/, '')
+}
+
+function getImportFolderLabels(currentFilePath: string | undefined, workspaceFiles: WorkspaceFile[], importPrefix: string): string[] {
+  const labels = new Set<string>()
+
+  for (const file of workspaceFiles) {
+    if (isInPlaygroundFolder(file.path)) continue
+    const segments = file.path.split('/')
+    segments.pop()
+    let folderPath = ''
+    for (const segment of segments) {
+      folderPath = folderPath === '' ? segment : `${folderPath}/${segment}`
+      const label = importPrefix.startsWith('/')
+        ? `/${folderPath}/`
+        : `${relativeFolderImportPath(currentFilePath, folderPath)}/`
+      labels.add(label)
+    }
+  }
+
+  return [...labels]
+}
+
 export function getImportCompletionItems(
   importPrefix: string,
   currentFilePath: string | undefined,
@@ -80,10 +144,13 @@ export function getImportCompletionItems(
   if (!wantsPathCompletions) {
     for (const item of builtinModuleCompletions) {
       if (!matchesPrefix(item.label, importPrefix)) continue
-      if (seen.has(item.label)) continue
-      seen.add(item.label)
-      items.push(item)
+      addImportCompletion(items, seen, item.label, 'module')
     }
+  }
+
+  for (const label of getImportFolderLabels(currentFilePath, workspaceFiles, importPrefix)) {
+    if (!matchesPrefix(label, importPrefix)) continue
+    addImportCompletion(items, seen, label, 'folder')
   }
 
   for (const file of workspaceFiles) {
@@ -91,14 +158,7 @@ export function getImportCompletionItems(
     if (file.path === currentFilePath) continue
     const label = importPrefix.startsWith('/') ? `/${stripDvalaSuffix(file.path)}` : relativeImportPath(currentFilePath, file.path)
     if (!matchesPrefix(label, importPrefix)) continue
-    if (seen.has(label)) continue
-    seen.add(label)
-    items.push({
-      label,
-      kind: 'module',
-      detail: 'workspace file',
-      sortText: `1_${label}`,
-    })
+    addImportCompletion(items, seen, label, 'workspace file')
   }
 
   return items

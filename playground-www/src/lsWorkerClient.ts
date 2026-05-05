@@ -21,7 +21,9 @@ import { allBuiltinModules } from '../../src/allModules'
 import { parseToAst } from '../../src/parser'
 import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
 import { getWorkspaceFiles } from './fileStorage'
-import { getImportCompletionItems, getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
+import { folderFromPath, isInPlaygroundFolder } from './filePath'
+import { resolvePlaygroundPath } from './playgroundFileResolver'
+import { getImportCompletionItems, getImportCompletionPrefix, getImportedExportCompletionItems, getScopedCompletionItems } from './lsCompletions'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 
@@ -62,7 +64,7 @@ function typecheckForDiagnostics(source: string, path: string): TypecheckResult 
     // annotations like `let n: Number = ""`.
     const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
     const ast = parseToAst(minified)
-    workspaceIndex.updateFile(path, source, () => null)
+    indexWorkspaceFile(path, source)
     return typecheck(ast, { modules: allBuiltinModules })
   } catch {
     // parseToAst threw on broken code — return empty diagnostics.
@@ -91,9 +93,49 @@ const workspaceIndex = new WorkspaceIndex()
 /** Registered Monaco models keyed by path. */
 const registeredModels = new Map<string, monaco.editor.ITextModel>()
 
+function resolveWorkspaceImportPath(rawPath: string, fromFile: string): string | null {
+  if (!(rawPath.startsWith('.') || rawPath.startsWith('/'))) return null
+  let resolved: string
+  try {
+    resolved = resolvePlaygroundPath(folderFromPath(fromFile), rawPath)
+  } catch {
+    return null
+  }
+  if (isInPlaygroundFolder(resolved)) return null
+  const files = getWorkspaceFiles()
+  if (files.some(file => file.path === resolved)) return resolved
+  if (files.some(file => file.path === `${resolved}.dvala`)) return `${resolved}.dvala`
+  return null
+}
+
+function indexWorkspaceFile(path: string, source: string, seen = new Set<string>()): void {
+  if (seen.has(path)) return
+  seen.add(path)
+
+  const fileSymbols = workspaceIndex.updateFile(path, source, resolveWorkspaceImportPath)
+  const files = getWorkspaceFiles()
+  for (const importedPath of fileSymbols.imports.values()) {
+    if (seen.has(importedPath)) continue
+    const importedFile = files.find(file => file.path === importedPath)
+    if (!importedFile) continue
+    indexWorkspaceFile(importedFile.path, importedFile.code, seen)
+  }
+}
+
 function getWorker(): Worker {
   if (!worker) worker = new LsWorker()
   return worker
+}
+
+function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
+  const seen = new Set<string>()
+  const deduped: CompletionItem[] = []
+  for (const item of items) {
+    if (seen.has(item.label)) continue
+    seen.add(item.label)
+    deduped.push(item)
+  }
+  return deduped
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -230,9 +272,13 @@ export function initLspWorker(): void {
       const word = model.getWordUntilPosition(position)
       const prefix = String(word.word).toLowerCase()
       const importPrefix = getImportCompletionPrefix(model.getLineContent(position.lineNumber), position.column)
+      const currentFileSymbols = path ? workspaceIndex.getFileSymbols(path) : null
       const completionItems = importPrefix
         ? getImportCompletionItems(importPrefix, path, getWorkspaceFiles())
-        : getScopedCompletionItems(prefix, path ? workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column) : [])
+        : dedupeCompletionItems([
+            ...getScopedCompletionItems(prefix, path ? workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column) : []),
+            ...getImportedExportCompletionItems(prefix, currentFileSymbols, filePath => workspaceIndex.getFileSymbols(filePath)),
+          ])
 
       const suggestions: monaco.languages.CompletionItem[] = []
       for (const item of completionItems) {
@@ -403,7 +449,7 @@ export function unregisterModel(path: string): void {
 export function updateDocument(path: string, source: string, sourceVersion: number): void {
   const w = getWorker()
 
-  workspaceIndex.updateFile(path, source, () => null)
+  indexWorkspaceFile(path, source)
 
   w.postMessage({
     type: 'updateDocument',

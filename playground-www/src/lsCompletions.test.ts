@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import type { SymbolDef } from '../../src/languageService/types'
-import { getImportCompletionItems, getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
+import type { FileSymbols, SymbolDef } from '../../src/languageService/types'
+import { getImportCompletionItems, getImportCompletionPrefix, getImportedExportCompletionItems, getScopedCompletionItems } from './lsCompletions'
 
 function def(overrides: Partial<SymbolDef> = {}): SymbolDef {
   return {
@@ -10,6 +10,19 @@ function def(overrides: Partial<SymbolDef> = {}): SymbolDef {
     nodeId: 1,
     location: { file: 'test.dvala', line: 1, column: 1 },
     scope: 0,
+    ...overrides,
+  }
+}
+
+function fileSymbols(overrides: Partial<FileSymbols> = {}): FileSymbols {
+  return {
+    filePath: 'test.dvala',
+    definitions: [],
+    references: [],
+    imports: new Map(),
+    exports: [],
+    parseErrors: [],
+    scopeRanges: [],
     ...overrides,
   }
 }
@@ -63,8 +76,15 @@ describe('getImportCompletionItems', () => {
     expect(items.map(item => item.label)).toContain('./utils')
   })
 
+  it('suggests folder prefixes before nested files', () => {
+    const items = getImportCompletionItems('./l', 'main.dvala', workspaceFiles)
+    expect(items.map(item => item.label)).toContain('./lib/')
+    expect(items.find(item => item.label === './lib/')?.detail).toBe('folder')
+  })
+
   it('suggests parent-relative workspace file imports from nested files', () => {
     const items = getImportCompletionItems('../l', 'examples/main.dvala', workspaceFiles)
+    expect(items.map(item => item.label)).toContain('../lib/')
     expect(items.map(item => item.label)).toContain('../lib/math')
   })
 
@@ -72,5 +92,39 @@ describe('getImportCompletionItems', () => {
     const items = getImportCompletionItems('./', 'utils.dvala', workspaceFiles)
     expect(items.map(item => item.label)).not.toContain('./utils')
     expect(items.map(item => item.label).some(label => label.includes('.dvala-playground'))).toBe(false)
+  })
+})
+
+describe('getImportedExportCompletionItems', () => {
+  it('includes exports from directly imported files', () => {
+    const current = fileSymbols({ imports: new Map([['./utils', 'utils.dvala']]) })
+    const imported = fileSymbols({
+      filePath: 'utils.dvala',
+      exports: [def({ name: 'value', kind: 'variable', location: { file: 'utils.dvala', line: 1, column: 1 } })],
+    })
+
+    const items = getImportedExportCompletionItems('va', current, filePath => (filePath === 'utils.dvala' ? imported : null))
+    expect(items.map(item => item.label)).toContain('value')
+    expect(items.find(item => item.label === 'value')?.detail).toBe('imported export')
+  })
+
+  it('deduplicates exports across imported files', () => {
+    const current = fileSymbols({ imports: new Map([['./a', 'a.dvala'], ['./b', 'b.dvala']]) })
+    const imported = fileSymbols({
+      exports: [def({ name: 'shared', kind: 'function', params: ['x'] })],
+    })
+
+    const items = getImportedExportCompletionItems('sh', current, () => imported)
+    expect(items.filter(item => item.label === 'shared')).toHaveLength(1)
+  })
+
+  it('preserves callable insertText for imported exports', () => {
+    const current = fileSymbols({ imports: new Map([['./utils', 'utils.dvala']]) })
+    const imported = fileSymbols({
+      exports: [def({ name: 'shared', kind: 'function', params: ['x'] })],
+    })
+
+    const items = getImportedExportCompletionItems('sh', current, () => imported)
+    expect(items.find(item => item.label === 'shared')?.insertText).toBe('shared(${1:x})')
   })
 })

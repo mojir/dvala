@@ -1831,7 +1831,9 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
   }
 
   const editor = getCodeEditor()
+  const changed = editor.getValue() !== value
   editor.setValue(value)
+  if (changed) syncActiveEditorToLsp(value)
   // setValue suppresses the onChange event (avoids double history pushes
   // for programmatic writes). The tab strip's modified-dot is normally
   // refreshed by that listener, so trigger a manual repaint here for the
@@ -1860,6 +1862,15 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
 
   if (scroll === 'top') editor.scrollToTop()
   else if (scroll === 'bottom') editor.scrollToBottom()
+}
+
+function syncActiveEditorToLsp(value: string): void {
+  const editor = getCodeEditor()
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const activeModel = editor.getActiveModel()
+  if (!activeModel) return
+  registerModel(activePath, activeModel)
+  updateLspDocument(activePath, value, activeModel.getVersionId())
 }
 
 export function resetOutput() {
@@ -2058,14 +2069,7 @@ function wireCodeEditorListeners(): void {
   editor.onChange(value => {
     setDvalaCode(value, true)
     // Push edit delta to the LS worker for background diagnostics.
-    // The active file path comes from the current tab; scratch is at its
-    // reserved path under `.dvala-playground/`.
-    const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
-    const activeModel = editor.getActiveModel()
-    if (activeModel) {
-      registerModel(activePath, activeModel)
-      updateLspDocument(activePath, value, activeModel.getVersionId())
-    }
+    syncActiveEditorToLsp(value)
     if (getState('current-file-id') === SCRATCH_FILE_ID) {
       // Scratch is the workspace file at `.dvala-playground/scratch.dvala`;
       // `initTabs` hydrates the scratch model from there on reload, so
