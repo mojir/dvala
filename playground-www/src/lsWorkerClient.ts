@@ -186,10 +186,18 @@ export function initLspWorker(): void {
       if (!tc) return null
 
       try {
-        const type = findTypeAtPosition(tc.typeMap, tc.sourceMap, {
-          line: position.lineNumber,
-          column: position.column,
-        })
+        const word = model.getWordUntilPosition(position)
+        const type = findTypeAtPosition(
+          tc.typeMap,
+          tc.sourceMap,
+          { line: position.lineNumber, column: position.column },
+          // Bias toward the word under the cursor so e.g. hovering on
+          // the `a` in `let a: Number = 54` shows `Number`, not `54`.
+          {
+            start: { line: position.lineNumber, column: word.startColumn },
+            end: { line: position.lineNumber, column: word.endColumn },
+          },
+        )
         if (!type) return null
         return {
           contents: [{ value: formatHoverType(type) }],
