@@ -81,6 +81,11 @@ async function openEditorSuggestions(page: Page) {
   await page.locator('.suggest-widget').waitFor({ state: 'visible', timeout: 3000 })
 }
 
+/** Wait for Monaco suggestions to appear without manual invocation. */
+async function waitForEditorSuggestions(page: Page) {
+  await page.locator('.suggest-widget').waitFor({ state: 'visible', timeout: 3000 })
+}
+
 /** Read the first workspace file's id from its `data-file-id` attribute. */
 async function firstWorkspaceFileId(page: Page): Promise<string | null> {
   return page.evaluate(() => {
@@ -273,6 +278,18 @@ test.describe('editor completions', () => {
     await expect(page.locator('.suggest-widget')).toContainText('localValue')
   })
 
+  test('shows completions automatically while typing in code', async ({ page }) => {
+    await setDvalaCode(page, 'let localValue = 1;\n')
+    await setEditorCursor(page, 'let localValue = 1;\n'.length)
+
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    await page.keyboard.type('loc')
+
+    await waitForEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('localValue')
+  })
+
   test('shows workspace import path completions inside import strings', async ({ page }) => {
     await page.evaluate(() => {
       ;(window as any).Playground.setWorkspaceFilesForTesting([
@@ -333,6 +350,41 @@ test.describe('editor completions', () => {
     await setEditorCursor(page, code.length)
 
     await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('./lib/')
+  })
+
+  test('shows import completions automatically while typing in strings', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'math-file',
+          path: 'lib/math.dvala',
+          code: 'let add = (a, b) => a + b; { add }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let math = import("'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    await page.keyboard.type('./l')
+
+    await waitForEditorSuggestions(page)
 
     await expect(page.locator('.suggest-widget')).toContainText('./lib/')
   })

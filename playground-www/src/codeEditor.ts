@@ -307,11 +307,10 @@ export class CodeEditor {
       tabSize: 2,
       insertSpaces: true,
       wordWrap: 'off',
-      // Strip Monaco's ambient features that don't fit the playground:
-      // suggestion popups (Phase 2 will provide its own LSP completions),
-      // light bulb actions, parameter hints, and inline suggestions.
-      quickSuggestions: false,
-      suggestOnTriggerCharacters: false,
+      // Keep Monaco's suggestion surface minimal, but allow the Dvala
+      // completion provider to appear while typing.
+      quickSuggestions: { other: true, comments: false, strings: true },
+      suggestOnTriggerCharacters: true,
       lightbulb: { enabled: monaco.editor.ShowLightbulbIconMode.Off },
       parameterHints: { enabled: false },
       inlineSuggest: { enabled: false },

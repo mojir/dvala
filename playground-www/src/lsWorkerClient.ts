@@ -254,6 +254,7 @@ export function initLspWorker(): void {
   })
 
   monaco.languages.registerCompletionItemProvider('dvala', {
+    triggerCharacters: ['"', '.', '/'],
     provideCompletionItems: (model, position) => {
       let path: string | undefined
       for (const [p, m] of registeredModels) {
