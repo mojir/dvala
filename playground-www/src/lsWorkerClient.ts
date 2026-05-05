@@ -217,6 +217,8 @@ function handleWorkerMessage(event: MessageEvent): void {
       const model = registeredModels.get(path)
       if (!model) return
 
+      if (pendingRequests.get(path) !== msg.requestId) return
+
       const currentVersion = model.getVersionId()
       if (sourceVersion < currentVersion) return
 
@@ -242,7 +244,8 @@ function handleWorkerMessage(event: MessageEvent): void {
     }
 
     case 'diagnosticsError': {
-      const { path } = msg as { type: 'diagnosticsError'; path: string }
+      const { path, requestId } = msg as { type: 'diagnosticsError'; path: string; requestId: number }
+      if (pendingRequests.get(path) !== requestId) return
       const model = registeredModels.get(path)
       if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
       pendingRequests.delete(path)

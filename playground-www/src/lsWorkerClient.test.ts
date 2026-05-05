@@ -305,4 +305,62 @@ describe('lsWorkerClient lifecycle', () => {
       },
     ])
   })
+
+  it('drops stale diagnostics results whose requestId is no longer pending for the path', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    client.requestDiagnosticsForTesting('main.dvala', 3)
+    client.requestDiagnosticsForTesting('main.dvala', 3)
+
+    dispatchWorkerMessage(0, {
+      type: 'diagnosticsResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      diagnostics: [
+        {
+          message: 'stale result',
+          severity: 'error',
+          source: 'dvala',
+          range: {
+            start: { line: 1, column: 1 },
+            end: { line: 1, column: 2 },
+          },
+        },
+      ],
+    })
+
+    expect(setModelMarkers).not.toHaveBeenCalled()
+
+    dispatchWorkerMessage(0, {
+      type: 'diagnosticsResult',
+      requestId: 2,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      diagnostics: [
+        {
+          message: 'fresh result',
+          severity: 'warning',
+          source: 'dvala',
+          range: {
+            start: { line: 1, column: 1 },
+            end: { line: 1, column: 2 },
+          },
+        },
+      ],
+    })
+
+    expect(setModelMarkers).toHaveBeenCalledTimes(1)
+    expect(setModelMarkers).toHaveBeenCalledWith(
+      model,
+      'dvala',
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'fresh result',
+          severity: 4,
+        }),
+      ]),
+    )
+  })
 })

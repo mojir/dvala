@@ -459,6 +459,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
 32c. Harden request / response sequencing: correlation IDs on all LS requests, per-path cancellation rules, and late-result dropping validated across hover / completion / diagnostics / navigation providers rather than diagnostics alone.
 
+  2026-05-05 first slice: diagnostics replies now have to match the still-pending `requestId` for their path on the main thread, not just the model version. That closes the race where a cancelled older diagnostics request for the same source version could still arrive late and overwrite the newer result.
+
 32d. Add regression coverage for incremental multi-file edits and worker lifecycle edges: rapid typing, cross-file rename after unsaved edits, worker restart / re-init, and stale-result suppression under overlapping requests.
 
   2026-05-05 first slice: added focused client coverage for a local edit arriving during an in-flight resync cycle. When the model version changes mid-recovery, a subsequent `resyncDocument` starts a fresh reseed + diagnostics retry instead of being incorrectly coalesced with the older recovery fingerprint.
