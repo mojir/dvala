@@ -477,6 +477,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
   2026-05-05 third slice: extended the same worker-error lifecycle coverage to the remaining async provider families. Pending formatting requests now stay covered as empty edit lists and pending navigation requests now stay covered as `null` results when the LS worker errors mid-request, so the client-side recovery contract is exercised consistently across formatting, navigation, completion, and hover.
 
+  2026-05-05 fourth slice: worker-backed request snapshots for navigation and symbol completion now overlay other registered open Monaco models on top of persisted workspace files, excluding the active request path which still travels as the primary `source` payload. That closes the cross-file unsaved-edit gap where rename / definition / reference and imported-export completion logic could otherwise read stale disk-backed content from another open file.
+
 32e. Re-profile on a medium workspace after the protocol changes. Revisit debounce windows, batching strategy, and any remaining full-document resend paths before starting Phase 3 local-project work.
 
 ### Phase 3 — CLI

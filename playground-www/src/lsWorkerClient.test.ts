@@ -5,6 +5,14 @@ type WorkerMessage = Record<string, unknown>
 
 const workerInstances: FakeWorker[] = []
 const setModelMarkers = vi.fn()
+let workspaceFiles: {
+  id: string
+  path: string
+  code: string
+  context: string
+  createdAt: number
+  updatedAt: number
+}[] = []
 
 class FakeWorker {
   public messages: WorkerMessage[] = []
@@ -69,7 +77,7 @@ vi.mock('./lsWorker?worker', () => ({
 }))
 
 vi.mock('./fileStorage', () => ({
-  getWorkspaceFiles: () => [],
+  getWorkspaceFiles: () => workspaceFiles,
 }))
 
 type StubModel = {
@@ -104,6 +112,7 @@ beforeEach(async () => {
   vi.resetModules()
   workerInstances.length = 0
   setModelMarkers.mockReset()
+  workspaceFiles = []
   client = await import('./lsWorkerClient')
 })
 
@@ -712,6 +721,40 @@ describe('lsWorkerClient lifecycle', () => {
 
     await expect(defsPromise).resolves.toBeNull()
     expect(workerInstances[0]!.terminate).not.toHaveBeenCalled()
+  })
+
+  it('uses unsaved registered model contents in navigation workspace snapshots', async () => {
+    workspaceFiles = [
+      {
+        id: 'lib-file',
+        path: 'lib.dvala',
+        code: 'let stale = 1\n{ stale }',
+        context: '',
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ]
+
+    const mainModel = makeModel('let lib = import("./lib"); stale', 3)
+    const libModel = makeModel('let fresh = 1\n{ fresh }', 4, 'inmemory://lib')
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 28 }
+
+    client.registerModel('main.dvala', mainModel as never)
+    client.registerModel('lib.dvala', libModel as never)
+
+    void client.getDefinitionsForTesting('main.dvala', position as never)
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'requestNavigation',
+      requestId: 1,
+      kind: 'definition',
+      path: 'main.dvala',
+      source: 'let lib = import("./lib"); stale',
+      sourceVersion: 3,
+      line: 1,
+      column: 28,
+      workspaceFiles: [{ path: 'lib.dvala', code: 'let fresh = 1\n{ fresh }' }],
+    })
   })
 
   it('drops stale rename results whose requestId is no longer pending for the path', async () => {

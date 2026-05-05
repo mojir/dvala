@@ -25,6 +25,7 @@ import { SCRATCH_FILE_PATH } from './scratchBuffer'
 import { getImportCompletionItems, getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
+import type { WorkspaceFile } from './fileStorage'
 
 const referenceByTitle = new Map(Object.values(allReference).map(ref => [ref.title, ref]))
 
@@ -174,6 +175,23 @@ function indexWorkspaceFile(path: string, source: string, seen = new Set<string>
     if (!importedFile) continue
     indexWorkspaceFile(importedFile.path, importedFile.code, seen)
   }
+}
+
+function getWorkspaceSnapshotFiles(excludePath?: string): { path: string; code: string }[] {
+  const snapshot = new Map<string, { path: string; code: string }>()
+
+  for (const file of getWorkspaceFiles() as WorkspaceFile[]) {
+    if (file.path === excludePath) continue
+    snapshot.set(file.path, { path: file.path, code: file.code })
+  }
+
+  for (const [path, model] of registeredModels) {
+    if (isInPlaygroundFolder(path)) continue
+    if (path === excludePath) continue
+    snapshot.set(path, { path, code: model.getValue() })
+  }
+
+  return [...snapshot.values()]
 }
 
 function getWorker(): Worker {
@@ -770,7 +788,7 @@ function requestNavigation<T>(
       line: position.lineNumber,
       column: position.column,
       ...(newName ? { newName } : {}),
-      workspaceFiles: getWorkspaceFiles().map(file => ({ path: file.path, code: file.code })),
+      workspaceFiles: getWorkspaceSnapshotFiles(path),
     }))
   })
 }
@@ -816,7 +834,7 @@ function requestCompletionItems(
       column: position.column,
       prefix,
       importPrefix,
-      workspaceFiles: getWorkspaceFiles().map(file => ({ path: file.path, code: file.code })),
+      workspaceFiles: getWorkspaceSnapshotFiles(path),
     }))
   })
 }
