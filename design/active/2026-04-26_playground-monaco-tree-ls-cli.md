@@ -461,6 +461,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
 32d. Add regression coverage for incremental multi-file edits and worker lifecycle edges: rapid typing, cross-file rename after unsaved edits, worker restart / re-init, and stale-result suppression under overlapping requests.
 
+  2026-05-05 first slice: added focused client coverage for a local edit arriving during an in-flight resync cycle. When the model version changes mid-recovery, a subsequent `resyncDocument` starts a fresh reseed + diagnostics retry instead of being incorrectly coalesced with the older recovery fingerprint.
+
 32e. Re-profile on a medium workspace after the protocol changes. Revisit debounce windows, batching strategy, and any remaining full-document resend paths before starting Phase 3 local-project work.
 
 ### Phase 3 — CLI

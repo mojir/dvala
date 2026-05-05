@@ -241,4 +241,68 @@ describe('lsWorkerClient lifecycle', () => {
       },
     ])
   })
+
+  it('starts a fresh resync cycle after a local edit changes the model version mid-recovery', () => {
+    let currentSource = 'let x = 1'
+    let currentVersion = 3
+    const model = {
+      getValue: () => currentSource,
+      getVersionId: () => currentVersion,
+      uri: { toString: () => 'inmemory://resync-overlap' },
+    }
+
+    client.registerModel('main.dvala', model as never)
+    client.requestDiagnosticsForTesting('main.dvala', 3)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    currentSource = 'let x = 2'
+    currentVersion = 4
+    client.updateDocument('main.dvala', currentSource, currentVersion)
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 3,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 1,
+      },
+      {
+        type: 'requestDiagnostics',
+        requestId: 2,
+        path: 'main.dvala',
+        sourceVersion: 3,
+      },
+      {
+        type: 'updateDocument',
+        path: 'main.dvala',
+        source: 'let x = 2',
+        sourceVersion: 4,
+        previousSourceVersion: 3,
+      },
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 2',
+        sourceVersion: 4,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 2,
+      },
+      {
+        type: 'requestDiagnostics',
+        requestId: 3,
+        path: 'main.dvala',
+        sourceVersion: 4,
+      },
+    ])
+  })
 })
