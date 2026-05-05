@@ -446,6 +446,19 @@ test.describe('signature help', () => {
 
     await expect(page.locator('.parameter-hints-widget')).toContainText('add(a, b)')
   })
+
+  test('shows parameter hints for builtin functions', async ({ page }) => {
+    const code = 'map('
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    const triggered = await page.evaluate(() => (window as any).Playground.triggerSignatureHelpForTesting())
+    expect(triggered).toBe(true)
+
+    await waitForSignatureHelp(page)
+
+    await expect(page.locator('.parameter-hints-widget')).toContainText('map(colls: collection, fun: function)')
+  })
 })
 
 test.describe('navigation', () => {
