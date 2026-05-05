@@ -621,6 +621,32 @@ test.describe('language service navigation', () => {
     await expect.poll(() => page.evaluate(() => (window as any).Playground.getEditorValue())).toBe('let x = 99; { x }')
   })
 
+  test('browser-safe go-to-definition shortcut opens the target file', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'data-file',
+          path: 'data.dvala',
+          code: 'let x = 99; { x }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+    })
+
+    const code = 'let d = import("./data"); d.x'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, 'let d = import("./d'.length)
+    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+
+    const modifier = await page.evaluate(() => (/Mac|iPhone|iPad/.test(navigator.platform) ? 'Meta' : 'Control'))
+    await page.keyboard.press(`${modifier}+Alt+D`)
+
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('data.dvala')
+    await expect.poll(() => page.evaluate(() => (window as any).Playground.getEditorValue())).toBe('let x = 99; { x }')
+  })
+
   test('finds references and rename edits for a local symbol', async ({ page }) => {
     await setDvalaCode(page, 'let value = 1; value + value')
 

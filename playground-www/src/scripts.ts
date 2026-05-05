@@ -1922,6 +1922,10 @@ function goToDefinitionAtCursor(): void {
   goToDefinitionAtOffset(getCodeEditor().getSelectionRange().start)
 }
 
+export function goToDefinition(): void {
+  goToDefinitionAtCursor()
+}
+
 export function resetOutput() {
   elements.outputResult.innerHTML = ''
   clearState('output')
@@ -2158,7 +2162,8 @@ function wireCodeEditorListeners(): void {
   // than Monaco's built-in undo stack.
   editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyZ, () => undoDvalaCodeHistory())
   editor.addCommand(KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyZ, () => redoDvalaCodeHistory())
-  editor.addCommand(KeyCode.F12, () => goToDefinitionAtCursor())
+  editor.addCommand(KeyCode.F12, () => goToDefinition())
+  editor.addCommand(KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyD, () => goToDefinition())
 }
 
 window.onload = async function () {
@@ -2438,7 +2443,7 @@ window.onload = async function () {
 
     if (evt.key === 'F12' && tryGetCodeEditor()?.hasFocus()) {
       evt.preventDefault()
-      goToDefinitionAtCursor()
+      goToDefinition()
       return
     }
 
