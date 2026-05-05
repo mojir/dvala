@@ -126,4 +126,36 @@ describe('buildTypeDiagnostics', () => {
     expect(diags[0]!.source).toBe('dvala-types')
     expect(diags[1]!.severity).toBe('info')
   })
+
+  it('prefers explicit type diagnostic ranges over snippet width', () => {
+    const result: TypecheckResult = {
+      diagnostics: [
+        {
+          message: 'bad annotation',
+          severity: 'error',
+          sourceCodeInfo: {
+            position: { line: 1, column: 8 },
+            code: 'let x: NoTypeName = 42;',
+          },
+          sourceRange: {
+            start: { line: 1, column: 8 },
+            end: { line: 1, column: 18 },
+          },
+        },
+      ],
+      typeMap: new Map(),
+    }
+
+    expect(buildTypeDiagnostics(result)).toEqual([
+      {
+        message: 'bad annotation',
+        range: {
+          start: { line: 1, column: 8 },
+          end: { line: 1, column: 18 },
+        },
+        severity: 'warning',
+        source: 'dvala-types',
+      },
+    ])
+  })
 })

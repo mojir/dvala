@@ -129,6 +129,21 @@ export function parseTypeAnnotation(input: string, scopedTypeRefs?: Map<string, 
 }
 
 /**
+ * Parse a source-level type annotation.
+ *
+ * Unknown named types are rejected here so editor diagnostics can report the
+ * typo instead of silently degrading the annotation to `Unknown`.
+ */
+export function parseUserTypeAnnotation(input: string, scopedTypeRefs?: Map<string, Type>): Type {
+  const parser = new TypeParser(input, scopedTypeRefs, true)
+  const result = parser.parseType()
+  if (!parser.isAtEnd()) {
+    throw new TypeParseError(`Unexpected token: '${parser.remaining()}'`, input, parser.pos)
+  }
+  return result
+}
+
+/**
  * Parse a function type annotation string. Returns the parsed type
  * plus any type guard info (parameter name and narrowed type).
  */
@@ -187,11 +202,13 @@ class TypeParser {
   private rowVarMap = new Map<string, RowVarTail>()
   private nextRowVarId = 0
   private scopedTypeRefs: Map<string, Type>
+  private strictUnknownTypeNames: boolean
 
-  constructor(input: string, scopedTypeRefs = new Map<string, Type>()) {
+  constructor(input: string, scopedTypeRefs = new Map<string, Type>(), strictUnknownTypeNames = false) {
     this.input = input
     this.pos = 0
     this.scopedTypeRefs = scopedTypeRefs
+    this.strictUnknownTypeNames = strictUnknownTypeNames
   }
 
   // --- Core parsing ---
@@ -1227,7 +1244,7 @@ class TypeParser {
       for (let i = 0; i < alias.params.length; i++) {
         const param = alias.params[i]!
         if (param.bound === undefined) continue
-        const boundParser = new TypeParser(param.bound, this.scopedTypeRefs)
+        const boundParser = new TypeParser(param.bound, this.scopedTypeRefs, this.strictUnknownTypeNames)
         const boundType = boundParser.parseType()
         if (!boundParser.isAtEnd()) {
           throw this.error(
@@ -1243,13 +1260,17 @@ class TypeParser {
       }
 
       const scopedTypeRefs = new Map(alias.params.map((param, index) => [param.name, args[index]!]))
-      const parser = new TypeParser(alias.body, scopedTypeRefs)
+      const parser = new TypeParser(alias.body, scopedTypeRefs, this.strictUnknownTypeNames)
       const expanded = parser.parseType()
       if (!parser.isAtEnd()) {
         throw this.error(`Unexpected token in type alias '${name}': '${parser.remaining()}'`)
       }
       return { tag: 'Alias', name, args, expanded }
     }
+    if (this.strictUnknownTypeNames) {
+      throw this.error(`Unknown type name '${name}'`)
+    }
+
     // Unknown named type
     return Unknown
   }

@@ -3,7 +3,7 @@ import { resolveSourceCodeInfo } from '../parser/types'
 import type { Ast, AstNode, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 import { prettyPrint } from '../prettyPrint'
-import { parseTypeAnnotation, TypeParseError } from './parseType'
+import { parseUserTypeAnnotation, TypeParseError } from './parseType'
 import { simplify } from './simplify'
 import type { AssertsInfo } from './types'
 import type { TypeDiagnostic } from './typecheck'
@@ -56,7 +56,7 @@ function collectAssertionFunctions(nodes: AstNode[], ast: Ast): AssertionFunctio
     if (!annotation) continue
 
     try {
-      const declaredType = simplify(parseTypeAnnotation(annotation))
+      const declaredType = simplify(parseUserTypeAnnotation(annotation))
       if (declaredType.tag !== 'Function' || !declaredType.asserts) continue
       const [, bodyNodes] = valueNode[1] as [AstNode[], AstNode[]]
       out.push({

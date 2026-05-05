@@ -77,6 +77,15 @@ export function buildTypeDiagnostics(typeResult: TypecheckResult): Diagnostic[] 
   const diagnostics: Diagnostic[] = []
   for (const diag of typeResult.diagnostics) {
     if (!diag.sourceCodeInfo) continue
+    if (diag.sourceRange) {
+      diagnostics.push({
+        message: diag.message,
+        range: diag.sourceRange,
+        severity: diag.severity === 'error' ? 'warning' : 'info',
+        source: 'dvala-types',
+      })
+      continue
+    }
     const line = Math.max(1, diag.sourceCodeInfo.position.line)
     const col = Math.max(1, diag.sourceCodeInfo.position.column)
     // Use the source text length for the range width so the squiggle

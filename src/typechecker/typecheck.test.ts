@@ -2730,6 +2730,18 @@ describe('typecheck — type annotations', () => {
     expect(result.diagnostics[0]!.message).toContain('not a subtype of String')
   })
 
+  it('unknown annotation type name reports a diagnostic', () => {
+    const result = dvala.typecheck('let x: NoTypeName = 42; x')
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]!.message).toContain("Unknown type name 'NoTypeName'")
+    expect(result.diagnostics[0]?.sourceCodeInfo?.code).toBe('let x: NoTypeName = 42; x')
+    expect(result.diagnostics[0]?.sourceCodeInfo?.position.column).toBe(8)
+    expect(result.diagnostics[0]?.sourceRange).toEqual({
+      start: { line: 1, column: 8 },
+      end: { line: 1, column: 18 },
+    })
+  })
+
   it('invalid closed record annotation rejects extra fields', () => {
     const result = dvala.typecheck('let x: {name: String} = {name: "Alice", age: 42}; x')
     expect(result.diagnostics.length).toBeGreaterThan(0)
@@ -3386,6 +3398,29 @@ describe('typecheck — imported diagnostics', () => {
     expect(result.diagnostics[0]?.message).toContain('not a subtype of String')
     expect(result.diagnostics[0]?.sourceCodeInfo?.filePath).toBe('bad.dvala')
     expect(result.diagnostics[0]?.sourceCodeInfo?.code.trim()).toBe('let value: String = 42; { value }')
+  })
+
+  it('anchors imported unknown annotation type diagnostics to the type token', () => {
+    const files = new Map([['./bad.dvala', 'let value: NoTypeName = 42; { value }']])
+
+    const dvala = createDvala({
+      fileResolver: (importPath: string) => {
+        const source = files.get(importPath)
+        if (!source) throw new Error(`File not found: ${importPath}`)
+        return source
+      },
+    })
+
+    const result = dvala.typecheck('let { value } = import("./bad.dvala"); value', { fileResolverBaseDir: '.' })
+
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics[0]?.message).toContain("Unknown type name 'NoTypeName'")
+    expect(result.diagnostics[0]?.sourceCodeInfo?.filePath).toBe('bad.dvala')
+    expect(result.diagnostics[0]?.sourceCodeInfo?.code.trim()).toBe('let value: NoTypeName = 42; { value }')
+    expect(result.diagnostics[0]?.sourceRange).toEqual({
+      start: { line: 1, column: 12 },
+      end: { line: 1, column: 22 },
+    })
   })
 
   it('rechecks imported files after their source changes', () => {
