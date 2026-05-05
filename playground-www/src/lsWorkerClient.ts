@@ -187,6 +187,14 @@ export function initLspWorker(): void {
 
       try {
         const word = model.getWordUntilPosition(position)
+        // Suppress hover for Dvala keywords — their type is the enclosing
+        // expression's result, not useful identifier-level info.
+        if (
+          /^(let|do|end|if|then|else|for|in|while|with|perform|resume|import|type|case|when|match)$/.test(
+            String(word.word),
+          )
+        )
+          return null
         const type = findTypeAtPosition(
           tc.typeMap,
           tc.sourceMap,
