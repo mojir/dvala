@@ -131,6 +131,9 @@ const pendingRequests = new Map<string, number>()
 /** Last source version mirrored to the worker for each open path. */
 const lastSentSourceVersions = new Map<string, number>()
 
+/** Last handled resync fingerprint keyed by path to suppress duplicates. */
+const lastResyncFingerprints = new Map<string, string>()
+
 /** Workspace symbol index for go-to-def / find-references. */
 const workspaceIndex = new WorkspaceIndex()
 
@@ -171,6 +174,11 @@ function getWorker(): Worker {
   return worker
 }
 
+function getResyncFingerprint(path: string, sourceVersion: number): string {
+  const pendingRequestId = pendingRequests.get(path)
+  return `${sourceVersion}:${pendingRequestId ?? 'none'}`
+}
+
 function syncModelToWorker(w: Worker, path: string, model: monaco.editor.ITextModel): void {
   const sourceVersion = model.getVersionId()
   w.postMessage({
@@ -189,6 +197,7 @@ function syncRegisteredModelsToWorker(w: Worker): void {
 }
 
 function handleWorkerError(): void {
+  lastResyncFingerprints.clear()
   worker = null
 }
 
@@ -228,6 +237,7 @@ function handleWorkerMessage(event: MessageEvent): void {
 
       monaco.editor.setModelMarkers(model, 'dvala', markers)
       pendingRequests.delete(path)
+      lastResyncFingerprints.delete(path)
       return
     }
 
@@ -236,6 +246,7 @@ function handleWorkerMessage(event: MessageEvent): void {
       const model = registeredModels.get(path)
       if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
       pendingRequests.delete(path)
+      lastResyncFingerprints.delete(path)
       return
     }
 
@@ -243,10 +254,13 @@ function handleWorkerMessage(event: MessageEvent): void {
       const { path } = msg as { type: 'resyncDocument'; path: string }
       const model = registeredModels.get(path)
       if (!model || !worker) return
+      const fingerprint = getResyncFingerprint(path, model.getVersionId())
+      if (lastResyncFingerprints.get(path) === fingerprint) return
       syncModelToWorker(worker, path, model)
       if (pendingRequests.has(path)) {
         requestDiagnostics(path, model.getVersionId())
       }
+      lastResyncFingerprints.set(path, getResyncFingerprint(path, model.getVersionId()))
       return
     }
   }
@@ -628,6 +642,7 @@ export function initLspWorker(): void {
  */
 export function registerModel(path: string, model: monaco.editor.ITextModel): void {
   registeredModels.set(path, model)
+  lastResyncFingerprints.delete(path)
   if (worker) syncModelToWorker(worker, path, model)
   else void getWorker()
 }
@@ -639,6 +654,7 @@ export function unregisterModel(path: string): void {
   // Grab the model before deleting from the registry.
   const model = registeredModels.get(path)
   registeredModels.delete(path)
+  lastResyncFingerprints.delete(path)
   lastSentSourceVersions.delete(path)
   if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
   if (worker) worker.postMessage({ type: 'closeDocument', path })
@@ -662,6 +678,7 @@ export function unregisterModel(path: string): void {
 export function updateDocument(path: string, source: string, sourceVersion: number): void {
   const w = getWorker()
   const previousSourceVersion = lastSentSourceVersions.get(path)
+  lastResyncFingerprints.delete(path)
 
   indexWorkspaceFile(path, source)
 

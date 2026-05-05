@@ -211,4 +211,34 @@ describe('lsWorkerClient lifecycle', () => {
       },
     ])
   })
+
+  it('coalesces duplicate resync requests for the same model version and pending diagnostics state', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    client.requestDiagnosticsForTesting('main.dvala', 3)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 3,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 1,
+      },
+      {
+        type: 'requestDiagnostics',
+        requestId: 2,
+        path: 'main.dvala',
+        sourceVersion: 3,
+      },
+    ])
+  })
 })
