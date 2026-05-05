@@ -12,8 +12,6 @@ import * as monaco from 'monaco-editor'
 // eslint-disable-next-line import/default
 import LsWorker from './lsWorker?worker'
 import type { Diagnostic } from '../../src/shared/types'
-import { referenceToCompletion } from '../../src/shared/completionBuilder'
-import { allReference } from '../../reference/index'
 import { formatSource, tokenizeSource } from '../../src/tooling'
 import { typecheck, WorkspaceIndex } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
@@ -22,6 +20,8 @@ import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDispla
 import { allBuiltinModules } from '../../src/allModules'
 import { parseToAst } from '../../src/parser'
 import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
+import { getWorkspaceFiles } from './fileStorage'
+import { getImportCompletionItems, getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 
@@ -211,29 +211,16 @@ export function initLspWorker(): void {
     },
   })
 
-  // Register Monaco completion provider for Dvala (builtins only for now;
-  // user-defined symbols need WorkspaceIndex, tracked in step 29).
-  const builtinCompletions: {
-    label: string
-    kind: monaco.languages.CompletionItemKind
-    detail?: string
-    insertText?: string
-    insertTextRules?: monaco.languages.CompletionItemInsertTextRule
-    sortText: string
-  }[] = Object.entries(allReference).map(([name, ref]) => {
-    const item = referenceToCompletion(name, ref)
-    return {
-      label: item.label,
-      kind: kindToMonaco(item.kind),
-      detail: item.detail,
-      insertText: item.insertText,
-      insertTextRules: item.insertText ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet : undefined,
-      sortText: item.sortText ?? `0_${item.label}`,
-    }
-  })
-
   monaco.languages.registerCompletionItemProvider('dvala', {
     provideCompletionItems: (model, position) => {
+      let path: string | undefined
+      for (const [p, m] of registeredModels) {
+        if (m === model) {
+          path = p
+          break
+        }
+      }
+
       const range: monaco.IRange = {
         startLineNumber: position.lineNumber,
         startColumn: position.column,
@@ -242,24 +229,25 @@ export function initLspWorker(): void {
       }
       const word = model.getWordUntilPosition(position)
       const prefix = String(word.word).toLowerCase()
+      const importPrefix = getImportCompletionPrefix(model.getLineContent(position.lineNumber), position.column)
+      const completionItems = importPrefix
+        ? getImportCompletionItems(importPrefix, path, getWorkspaceFiles())
+        : getScopedCompletionItems(prefix, path ? workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column) : [])
 
-      // Filter builtins by prefix; return all if no prefix (empty).
       const suggestions: monaco.languages.CompletionItem[] = []
-      for (const item of builtinCompletions) {
-        if (!prefix || item.label.toLowerCase().startsWith(prefix)) {
-          const completion: monaco.languages.CompletionItem = {
-            label: item.label,
-            kind: item.kind,
-            detail: item.detail,
-            sortText: item.sortText,
-            insertText: item.insertText ?? item.label,
-            range: { ...range, startColumn: word.startColumn },
-          }
-          if (item.insertText && item.insertTextRules) {
-            completion.insertTextRules = item.insertTextRules
-          }
-          suggestions.push(completion)
+      for (const item of completionItems) {
+        const completion: monaco.languages.CompletionItem = {
+          label: item.label,
+          kind: kindToMonaco(item.kind),
+          detail: item.detail,
+          sortText: item.sortText,
+          insertText: item.insertText ?? item.label,
+          range: { ...range, startColumn: word.startColumn },
         }
+        if (item.insertText) {
+          completion.insertTextRules = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
+        }
+        suggestions.push(completion)
       }
 
       return { suggestions }
@@ -414,6 +402,8 @@ export function unregisterModel(path: string): void {
  */
 export function updateDocument(path: string, source: string, sourceVersion: number): void {
   const w = getWorker()
+
+  workspaceIndex.updateFile(path, source, () => null)
 
   w.postMessage({
     type: 'updateDocument',

@@ -42,6 +42,11 @@ async function setDvalaCode(page: Page, code: string) {
   await page.evaluate(c => (window as any).Playground.setEditorValue(c), code)
 }
 
+/** Move the editor cursor to the given absolute character offset. */
+async function setEditorCursor(page: Page, position: number) {
+  await page.evaluate(offset => (window as any).Playground.setEditorCursor(offset), position)
+}
+
 /**
  * Set the legacy `state['context']` JSON blob via the playground's test-only
  * setter. Phase 1.5 step 23f retired the Bindings UI; the `state['context']`
@@ -67,6 +72,13 @@ async function waitForOutput(page: Page, timeout = 5000) {
 /** Get all text content of the output panel. */
 async function getOutputText(page: Page): Promise<string> {
   return (await page.locator('#output-result').textContent()) ?? ''
+}
+
+/** Trigger Monaco suggestions and wait for the suggest widget to appear. */
+async function openEditorSuggestions(page: Page) {
+  await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+  await page.keyboard.press('Control+Space')
+  await page.locator('.suggest-widget').waitFor({ state: 'visible', timeout: 3000 })
 }
 
 /** Read the first workspace file's id from its `data-file-id` attribute. */
@@ -241,6 +253,56 @@ test.describe('toolbar actions', () => {
     // stores the value JSON-stringified, so the persisted form is `'""'`.
     expect(contextValue).toBe('""')
     expect(outputHtml).toBe('')
+  })
+})
+
+test.describe('editor completions', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('shows completions for in-scope user-defined symbols', async ({ page }) => {
+    const code = 'let localValue = 1;\nloc'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('localValue')
+  })
+
+  test('shows workspace import path completions inside import strings', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'utils-file',
+          path: 'utils.dvala',
+          code: 'let value = 1; { value }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'main-file',
+          path: 'main.dvala',
+          code: '',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('main-file')
+    })
+
+    const code = 'let { value } = import("./ut'
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    await openEditorSuggestions(page)
+
+    await expect(page.locator('.suggest-widget')).toContainText('./utils')
   })
 })
 
