@@ -465,6 +465,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
   2026-05-05 third slice: document formatting now round-trips through the worker with its own `requestId`-correlated request / result / error messages. Stale formatting replies are dropped by pending request ID just like diagnostics, and the existing full-document edit behavior is preserved behind an async Monaco formatting provider.
 
+  2026-05-05 fourth slice: definition / references / rename now share one worker-backed `requestNavigation` path that builds a request-scoped `WorkspaceIndex` from the active source snapshot plus current workspace file snapshots, and stale replies are dropped per `kind:path` request key on the main thread. The browser-safe go-to-definition helper and test hooks stay local/deterministic for now because that built-docs path hung when routed through the async worker request directly, while the Monaco providers themselves now use the worker-backed path.
+
 32d. Add regression coverage for incremental multi-file edits and worker lifecycle edges: rapid typing, cross-file rename after unsaved edits, worker restart / re-init, and stale-result suppression under overlapping requests.
 
   2026-05-05 first slice: added focused client coverage for a local edit arriving during an in-flight resync cycle. When the model version changes mid-recovery, a subsequent `resyncDocument` starts a fresh reseed + diagnostics retry instead of being incorrectly coalesced with the older recovery fingerprint.

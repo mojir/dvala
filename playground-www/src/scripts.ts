@@ -102,9 +102,9 @@ import { StateHistory } from './StateHistory'
 import { CodeEditor, KeyCode, KeyMod } from './codeEditor'
 import { getCodeEditor, setCodeEditor, tryGetCodeEditor } from './scripts/codeEditorInstance'
 import {
-  getDefinitionsForTesting,
-  getReferencesForTesting,
-  getRenameEditsForTesting,
+  getDefinitionsLocallyForTesting,
+  getReferencesLocallyForTesting,
+  getRenameEditsLocallyForTesting,
   initLspWorker,
   registerModel,
   updateDocument as updateLspDocument,
@@ -1893,7 +1893,7 @@ function goToDefinitionAtOffset(offset: number): void {
   if (!activeModel) return
 
   const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
-  const defs = getDefinitionsForTesting(activePath, activeModel.getPositionAt(offset))
+  const defs = getDefinitionsLocallyForTesting(activePath, activeModel.getPositionAt(offset))
   const target = defs?.[0]
   if (!target) return
 
@@ -3332,7 +3332,7 @@ export function getDefinitionsAtCursorForTesting(position: number) {
   const activeModel = getCodeEditor().getActiveModel()
   if (!activeModel) return null
   const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
-  const locations = getDefinitionsForTesting(activePath, activeModel.getPositionAt(position))
+  const locations = getDefinitionsLocallyForTesting(activePath, activeModel.getPositionAt(position))
   return (
     locations?.map(location => ({
       uri: location.uri.toString(),
@@ -3345,7 +3345,7 @@ export function getReferencesAtCursorForTesting(position: number) {
   const activeModel = getCodeEditor().getActiveModel()
   if (!activeModel) return null
   const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
-  const locations = getReferencesForTesting(activePath, activeModel.getPositionAt(position))
+  const locations = getReferencesLocallyForTesting(activePath, activeModel.getPositionAt(position))
   return (
     locations?.map(location => ({
       uri: location.uri.toString(),
@@ -3358,7 +3358,7 @@ export function getRenameEditsAtCursorForTesting(position: number, newName: stri
   const activeModel = getCodeEditor().getActiveModel()
   if (!activeModel) return null
   const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
-  const edit = getRenameEditsForTesting(activePath, activeModel.getPositionAt(position), newName)
+  const edit = getRenameEditsLocallyForTesting(activePath, activeModel.getPositionAt(position), newName)
   return (
     edit?.edits
       ?.filter(item => 'resource' in item && 'textEdit' in item)

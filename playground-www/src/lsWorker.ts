@@ -36,6 +36,10 @@
  *   This does not depend on the mirrored file state, but still uses
  *   `requestId` correlation so stale replies can be dropped on the main
  *   thread.
+ * - `requestNavigation(path, source, sourceVersion, position, workspaceFiles)`:
+ *   resolve definition / references / rename queries from a source snapshot
+ *   plus a workspace file snapshot. This lets navigation move onto the
+ *   worker before the worker owns a long-lived workspace index.
  * - `cancelRequest(requestId)`: cancel an in-flight request. The worker
  *   checks a `cancelled` flag at well-known yield points (after parse,
  *   after typecheck) and drops the result if set.
@@ -53,6 +57,10 @@
  *   the path still has the same pending formatting request.
  * - `formattingError(path, sourceVersion, message)`: formatting failed.
  *   The main thread resolves the request with no edits.
+ * - `navigationResult(path, sourceVersion, kind, payload)`: successful
+ *   definition / references / rename response for a source snapshot.
+ * - `navigationError(path, sourceVersion, kind, message)`: navigation
+ *   computation failed. The main thread resolves the request with no result.
  * - `resyncDocument(path)`: the worker detected a missing mirror or a
  *   version gap while processing `updateDocument`, so the main thread
  *   should resend the canonical full document via `openDocument`.
@@ -74,8 +82,10 @@ import type { Diagnostic } from '../../src/shared/types'
 import { allBuiltinModules } from '../../src/allModules'
 import { parseToAst } from '../../src/parser'
 import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
-import { typecheck } from '../../src/internal'
+import { WorkspaceIndex, type ResolveImport, typecheck } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
+import { folderFromPath, isInPlaygroundFolder } from './filePath'
+import { resolvePlaygroundPath } from './playgroundFileResolver'
 
 // ── Message types ─────────────────────────────────────────────────────────────
 
@@ -114,6 +124,26 @@ interface RequestFormattingMessage {
   sourceVersion: number
 }
 
+type NavigationRequestKind = 'definition' | 'references' | 'rename'
+
+interface WorkspaceSnapshotFile {
+  path: string
+  code: string
+}
+
+interface RequestNavigationMessage {
+  type: 'requestNavigation'
+  requestId: number
+  path: string
+  source: string
+  sourceVersion: number
+  kind: NavigationRequestKind
+  line: number
+  column: number
+  newName?: string
+  workspaceFiles: WorkspaceSnapshotFile[]
+}
+
 interface CancelRequestMessage {
   type: 'cancelRequest'
   requestId: number
@@ -125,6 +155,7 @@ type WorkerInMessage =
   | CloseDocumentMessage
   | RequestDiagnosticsMessage
   | RequestFormattingMessage
+  | RequestNavigationMessage
   | CancelRequestMessage
 
 interface DiagnosticsResultMessage {
@@ -156,6 +187,36 @@ interface FormattingErrorMessage {
   requestId: number
   path: string
   sourceVersion: number
+  message: string
+}
+
+interface NavigationLocationPayload {
+  file: string
+  line: number
+  column: number
+  endColumn: number
+}
+
+interface NavigationRenameEditPayload extends NavigationLocationPayload {
+  text: string
+}
+
+interface NavigationResultMessage {
+  type: 'navigationResult'
+  requestId: number
+  path: string
+  sourceVersion: number
+  kind: NavigationRequestKind
+  locations?: NavigationLocationPayload[]
+  edits?: NavigationRenameEditPayload[]
+}
+
+interface NavigationErrorMessage {
+  type: 'navigationError'
+  requestId: number
+  path: string
+  sourceVersion: number
+  kind: NavigationRequestKind
   message: string
 }
 
@@ -246,6 +307,125 @@ function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   checkCancelled(input.requestId)
 
   return diagnostics
+}
+
+function resolveWorkspaceImportPathForSnapshot(
+  snapshotFiles: Map<string, string>,
+  rawPath: string,
+  fromFile: string,
+): string | null {
+  if (!(rawPath.startsWith('.') || rawPath.startsWith('/'))) return null
+  let resolved: string
+  try {
+    resolved = resolvePlaygroundPath(isInPlaygroundFolder(fromFile) ? '' : folderFromPath(fromFile), rawPath)
+  } catch {
+    return null
+  }
+  if (isInPlaygroundFolder(resolved)) return null
+  if (snapshotFiles.has(resolved)) return resolved
+  if (snapshotFiles.has(`${resolved}.dvala`)) return `${resolved}.dvala`
+  return null
+}
+
+function indexWorkspaceSnapshot(
+  path: string,
+  source: string,
+  snapshotFiles: Map<string, string>,
+  index: WorkspaceIndex,
+  seen = new Set<string>(),
+): void {
+  if (seen.has(path)) return
+  seen.add(path)
+
+  const resolveImport: ResolveImport = (rawPath, fromFile) =>
+    resolveWorkspaceImportPathForSnapshot(snapshotFiles, rawPath, fromFile)
+  const fileSymbols = index.updateFile(path, source, resolveImport)
+  for (const importedPath of fileSymbols.imports.values()) {
+    if (seen.has(importedPath)) continue
+    const importedSource = snapshotFiles.get(importedPath)
+    if (importedSource === undefined) continue
+    indexWorkspaceSnapshot(importedPath, importedSource, snapshotFiles, index, seen)
+  }
+}
+
+function getImportPathAtSourcePosition(source: string, line: number, column: number): string | null {
+  const lineText = source.split('\n')[line - 1]
+  if (lineText === undefined) return null
+
+  const beforeCursor = lineText.slice(0, Math.max(0, column - 1))
+  const prefixMatch = /import\(\s*"([^"]*)$/.exec(beforeCursor)
+  if (!prefixMatch) return null
+
+  const afterCursor = lineText.slice(Math.max(0, column - 1))
+  const suffixMatch = /^([^"]*)"/.exec(afterCursor)
+  const rawPath = `${prefixMatch[1] ?? ''}${suffixMatch?.[1] ?? ''}`
+  return rawPath.length > 0 ? rawPath : ''
+}
+
+function computeNavigation(message: RequestNavigationMessage): Pick<NavigationResultMessage, 'locations' | 'edits'> {
+  const snapshotFiles = new Map(message.workspaceFiles.map(file => [file.path, file.code]))
+  snapshotFiles.set(message.path, message.source)
+
+  const index = new WorkspaceIndex()
+  indexWorkspaceSnapshot(message.path, message.source, snapshotFiles, index)
+
+  if (message.kind === 'definition') {
+    const importPath = getImportPathAtSourcePosition(message.source, message.line, message.column)
+    if (importPath !== null) {
+      const resolved = resolveWorkspaceImportPathForSnapshot(snapshotFiles, importPath, message.path)
+      if (resolved) {
+        return {
+          locations: [
+            {
+              file: resolved,
+              line: 1,
+              column: 1,
+              endColumn: 1,
+            },
+          ],
+        }
+      }
+    }
+
+    const def = index.findDefinition(message.path, message.line, message.column)
+    return {
+      locations: def
+        ? [
+            {
+              file: def.location.file,
+              line: def.location.line,
+              column: def.location.column,
+              endColumn: def.location.column + def.name.length,
+            },
+          ]
+        : [],
+    }
+  }
+
+  const canonical = index.resolveCanonicalFile(message.path, message.line, message.column)
+  if (!canonical) return message.kind === 'rename' ? { edits: [] } : { locations: [] }
+
+  const occurrences = index.findAllOccurrences(canonical.file, canonical.name)
+  if (message.kind === 'references') {
+    return {
+      locations: occurrences.map(loc => ({
+        file: loc.file,
+        line: loc.line,
+        column: loc.column,
+        endColumn: loc.column + loc.nameLength,
+      })),
+    }
+  }
+
+  return {
+    edits: occurrences.map(loc => ({
+      file: loc.file,
+      line: loc.line,
+      column: loc.column,
+      endColumn: loc.column + loc.nameLength,
+      text: message.newName ?? canonical.name,
+    })),
+  }
 }
 
 function requestDocumentResync(path: string): void {
@@ -341,6 +521,34 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,
+          message: error instanceof Error ? error.message : String(error),
+        }
+        self.postMessage(out)
+      }
+      return
+    }
+
+    case 'requestNavigation': {
+      cancelledRequests.delete(msg.requestId)
+
+      try {
+        const result = computeNavigation(msg)
+        const out: NavigationResultMessage = {
+          type: 'navigationResult',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          kind: msg.kind,
+          ...result,
+        }
+        self.postMessage(out)
+      } catch (error) {
+        const out: NavigationErrorMessage = {
+          type: 'navigationError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          kind: msg.kind,
           message: error instanceof Error ? error.message : String(error),
         }
         self.postMessage(out)

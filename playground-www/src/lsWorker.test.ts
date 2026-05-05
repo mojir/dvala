@@ -144,4 +144,59 @@ describe('lsWorker document sync', () => {
       }),
     )
   })
+
+  it('resolves definition and rename navigation from a workspace snapshot', async () => {
+    const worker = await loadWorker()
+
+    dispatch(worker, {
+      type: 'requestNavigation',
+      requestId: 2,
+      kind: 'definition',
+      path: 'main.dvala',
+      source: 'let answer = 42; answer',
+      sourceVersion: 3,
+      line: 1,
+      column: 19,
+      workspaceFiles: [],
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'navigationResult',
+        requestId: 2,
+        kind: 'definition',
+        locations: [
+          expect.objectContaining({
+            file: 'main.dvala',
+            line: 1,
+            column: 5,
+          }),
+        ],
+      }),
+    )
+
+    worker.postMessage.mockClear()
+
+    dispatch(worker, {
+      type: 'requestNavigation',
+      requestId: 3,
+      kind: 'rename',
+      path: 'main.dvala',
+      source: 'let answer = 42; answer',
+      sourceVersion: 3,
+      line: 1,
+      column: 19,
+      newName: 'result',
+      workspaceFiles: [],
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'navigationResult',
+        requestId: 3,
+        kind: 'rename',
+        edits: expect.arrayContaining([expect.objectContaining({ file: 'main.dvala', text: 'result' })]),
+      }),
+    )
+  })
 })

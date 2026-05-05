@@ -123,6 +123,7 @@ let worker: Worker | null = null
 let nextRequestId = 1
 
 type PendingRequestMap = Map<string, number>
+type NavigationRequestKind = 'definition' | 'references' | 'rename'
 
 /** Debounce timers keyed by path. */
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -135,6 +136,12 @@ const pendingFormattingRequests = new Map<string, number>()
 
 /** Pending formatting resolvers keyed by path. */
 const pendingFormattingResolvers = new Map<string, (edits: monaco.languages.TextEdit[]) => void>()
+
+/** Pending navigation request IDs keyed by request kind + path. */
+const pendingNavigationRequests = new Map<string, number>()
+
+/** Pending navigation resolvers keyed by request kind + path. */
+const pendingNavigationResolvers = new Map<string, (result: unknown) => void>()
 
 /** Last source version mirrored to the worker for each open path. */
 const lastSentSourceVersions = new Map<string, number>()
@@ -236,6 +243,31 @@ function cancelPendingFormattingRequest(path: string, w = getWorker()): void {
   cancelPendingRequest(pendingFormattingRequests, path, w)
 }
 
+function getNavigationRequestKey(kind: NavigationRequestKind, path: string): string {
+  return `${kind}:${path}`
+}
+
+function clearPendingNavigationRequest<T>(kind: NavigationRequestKind, path: string, result: T): void {
+  const key = getNavigationRequestKey(kind, path)
+  const resolve = pendingNavigationResolvers.get(key) as ((value: T) => void) | undefined
+  resolve?.(result)
+  pendingNavigationResolvers.delete(key)
+  clearPendingRequest(pendingNavigationRequests, key)
+}
+
+function cancelPendingNavigationRequest<T>(
+  kind: NavigationRequestKind,
+  path: string,
+  result: T,
+  w = getWorker(),
+): void {
+  const key = getNavigationRequestKey(kind, path)
+  const resolve = pendingNavigationResolvers.get(key) as ((value: T) => void) | undefined
+  resolve?.(result)
+  pendingNavigationResolvers.delete(key)
+  cancelPendingRequest(pendingNavigationRequests, key, w)
+}
+
 function getResyncFingerprint(path: string, sourceVersion: number): string {
   const pendingRequestId = getPendingRequestId(pendingRequests, path)
   return `${sourceVersion}:${pendingRequestId ?? 'none'}`
@@ -262,14 +294,53 @@ function handleWorkerError(): void {
   for (const resolve of pendingFormattingResolvers.values()) {
     resolve([])
   }
+  for (const resolve of pendingNavigationResolvers.values()) {
+    resolve(null)
+  }
   pendingFormattingResolvers.clear()
   pendingFormattingRequests.clear()
+  pendingNavigationResolvers.clear()
+  pendingNavigationRequests.clear()
   lastResyncFingerprints.clear()
   worker = null
 }
 
 function buildFormattingEdits(model: monaco.editor.ITextModel, formatted: string): monaco.languages.TextEdit[] {
   return [{ range: model.getFullModelRange(), text: formatted }]
+}
+
+function buildNavigationLocations(
+  locations: { file: string; line: number; column: number; endColumn: number }[],
+): monaco.languages.Location[] {
+  return locations.map(location => ({
+    uri: monaco.Uri.parse(`dvala:///${location.file}`),
+    range: {
+      startLineNumber: location.line,
+      startColumn: location.column,
+      endLineNumber: location.line,
+      endColumn: location.endColumn,
+    },
+  }))
+}
+
+function buildNavigationRenameEdit(
+  edits: { file: string; line: number; column: number; endColumn: number; text: string }[],
+): monaco.languages.WorkspaceEdit {
+  return {
+    edits: edits.map(edit => ({
+      resource: monaco.Uri.parse(`dvala:///${edit.file}`),
+      textEdit: {
+        range: {
+          startLineNumber: edit.line,
+          startColumn: edit.column,
+          endLineNumber: edit.line,
+          endColumn: edit.endColumn,
+        },
+        text: edit.text,
+      },
+      versionId: undefined,
+    })),
+  }
 }
 
 function handleWorkerMessage(event: MessageEvent): void {
@@ -349,6 +420,47 @@ function handleWorkerMessage(event: MessageEvent): void {
       return
     }
 
+    case 'navigationResult': {
+      const { path, requestId, sourceVersion, kind, locations, edits } = msg as {
+        type: 'navigationResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        kind: NavigationRequestKind
+        locations?: { file: string; line: number; column: number; endColumn: number }[]
+        edits?: { file: string; line: number; column: number; endColumn: number; text: string }[]
+      }
+      const key = getNavigationRequestKey(kind, path)
+      if (!matchesPendingRequest(pendingNavigationRequests, key, requestId)) return
+
+      const model = registeredModels.get(path)
+      if (!model || sourceVersion < model.getVersionId()) {
+        clearPendingNavigationRequest(kind, path, kind === 'rename' ? null : null)
+        return
+      }
+
+      if (kind === 'rename') {
+        clearPendingNavigationRequest(kind, path, edits?.length ? buildNavigationRenameEdit(edits) : null)
+        return
+      }
+
+      clearPendingNavigationRequest(kind, path, locations?.length ? buildNavigationLocations(locations) : null)
+      return
+    }
+
+    case 'navigationError': {
+      const { path, requestId, kind } = msg as {
+        type: 'navigationError'
+        path: string
+        requestId: number
+        kind: NavigationRequestKind
+      }
+      const key = getNavigationRequestKey(kind, path)
+      if (!matchesPendingRequest(pendingNavigationRequests, key, requestId)) return
+      clearPendingNavigationRequest(kind, path, null)
+      return
+    }
+
     case 'resyncDocument': {
       const { path } = msg as { type: 'resyncDocument'; path: string }
       const model = registeredModels.get(path)
@@ -421,6 +533,14 @@ function getDefinitionsAtPosition(
   model: monaco.editor.ITextModel,
   path: string,
   position: monaco.Position,
+): Promise<monaco.languages.Location[] | null> {
+  return requestNavigation(model, path, position, 'definition')
+}
+
+function getDefinitionsAtPositionLocal(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
 ): monaco.languages.Location[] | null {
   const importPath = getImportPathAtPosition(model, position)
   if (importPath) {
@@ -455,7 +575,15 @@ function getDefinitionsAtPosition(
   ]
 }
 
-function getReferencesAtPosition(path: string, position: monaco.Position): monaco.languages.Location[] | null {
+function getReferencesAtPosition(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+): Promise<monaco.languages.Location[] | null> {
+  return requestNavigation(model, path, position, 'references')
+}
+
+function getReferencesAtPositionLocal(path: string, position: monaco.Position): monaco.languages.Location[] | null {
   const canonical = workspaceIndex.resolveCanonicalFile(path, position.lineNumber, position.column)
   if (!canonical) return null
   const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
@@ -472,6 +600,15 @@ function getReferencesAtPosition(path: string, position: monaco.Position): monac
 }
 
 function getRenameEditsAtPosition(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  newName: string,
+): Promise<monaco.languages.WorkspaceEdit | null> {
+  return requestNavigation(model, path, position, 'rename', newName)
+}
+
+function getRenameEditsAtPositionLocal(
   path: string,
   position: monaco.Position,
   newName: string,
@@ -481,20 +618,62 @@ function getRenameEditsAtPosition(
   const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
   if (occurrences.length === 0) return null
 
-  const edits: monaco.languages.IWorkspaceTextEdit[] = occurrences.map(loc => ({
-    resource: monaco.Uri.parse(`dvala:///${loc.file}`),
-    textEdit: {
-      range: {
-        startLineNumber: loc.line,
-        startColumn: loc.column,
-        endLineNumber: loc.line,
-        endColumn: loc.column + loc.nameLength,
+  return {
+    edits: occurrences.map(loc => ({
+      resource: monaco.Uri.parse(`dvala:///${loc.file}`),
+      textEdit: {
+        range: {
+          startLineNumber: loc.line,
+          startColumn: loc.column,
+          endLineNumber: loc.line,
+          endColumn: loc.column + loc.nameLength,
+        },
+        text: newName,
       },
-      text: newName,
-    },
-    versionId: undefined,
-  }))
-  return { edits }
+      versionId: undefined,
+    })),
+  }
+}
+
+function requestNavigation<T>(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  kind: 'definition' | 'references',
+): Promise<T | null>
+function requestNavigation<T>(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  kind: 'rename',
+  newName: string,
+): Promise<T | null>
+function requestNavigation<T>(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  kind: NavigationRequestKind,
+  newName?: string,
+): Promise<T | null> {
+  const w = getWorker()
+  const key = getNavigationRequestKey(kind, path)
+  cancelPendingNavigationRequest(kind, path, null, w)
+
+  return new Promise(resolve => {
+    pendingNavigationResolvers.set(key, resolve as (result: unknown) => void)
+    startTrackedRequest(pendingNavigationRequests, key, w, requestId => ({
+      type: 'requestNavigation',
+      requestId,
+      kind,
+      path,
+      source: model.getValue(),
+      sourceVersion: model.getVersionId(),
+      line: position.lineNumber,
+      column: position.column,
+      ...(newName ? { newName } : {}),
+      workspaceFiles: getWorkspaceFiles().map(file => ({ path: file.path, code: file.code })),
+    }))
+  })
 }
 
 function requestFormattingEdits(model: monaco.editor.ITextModel): Promise<monaco.languages.TextEdit[]> {
@@ -719,7 +898,7 @@ export function initLspWorker(): void {
       const path = getPathForModel(model)
       if (!path) return null
 
-      return getReferencesAtPosition(path, position)
+      return getReferencesAtPosition(model, path, position)
     },
   })
 
@@ -730,7 +909,7 @@ export function initLspWorker(): void {
       const path = getPathForModel(model)
       if (!path) return null
 
-      return getRenameEditsAtPosition(path, position, newName)
+      return getRenameEditsAtPosition(model, path, position, newName)
     },
   })
 
@@ -770,6 +949,9 @@ export function unregisterModel(path: string): void {
   // Cancel any pending diagnostics for this path.
   cancelPendingDiagnosticsRequest(path)
   cancelPendingFormattingRequest(path)
+  cancelPendingNavigationRequest('definition', path, null)
+  cancelPendingNavigationRequest('references', path, null)
+  cancelPendingNavigationRequest('rename', path, null)
   const timer = debounceTimers.get(path)
   if (timer) {
     clearTimeout(timer)
@@ -822,22 +1004,56 @@ export function requestDiagnosticsForTesting(path: string, sourceVersion: number
   requestDiagnostics(path, sourceVersion)
 }
 
-export function getDefinitionsForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {
+export function getDefinitionsForTesting(
+  path: string,
+  position: monaco.Position,
+): Promise<monaco.languages.Location[] | null> {
   const model = registeredModels.get(path)
-  if (!model) return null
+  if (!model) return Promise.resolve(null)
   return getDefinitionsAtPosition(model, path, position)
 }
 
-export function getReferencesForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {
-  return getReferencesAtPosition(path, position)
+export function getDefinitionsLocallyForTesting(
+  path: string,
+  position: monaco.Position,
+): monaco.languages.Location[] | null {
+  const model = registeredModels.get(path)
+  if (!model) return null
+  return getDefinitionsAtPositionLocal(model, path, position)
+}
+
+export function getReferencesForTesting(
+  path: string,
+  position: monaco.Position,
+): Promise<monaco.languages.Location[] | null> {
+  const model = registeredModels.get(path)
+  if (!model) return Promise.resolve(null)
+  return getReferencesAtPosition(model, path, position)
+}
+
+export function getReferencesLocallyForTesting(
+  path: string,
+  position: monaco.Position,
+): monaco.languages.Location[] | null {
+  return getReferencesAtPositionLocal(path, position)
 }
 
 export function getRenameEditsForTesting(
   path: string,
   position: monaco.Position,
   newName: string,
+): Promise<monaco.languages.WorkspaceEdit | null> {
+  const model = registeredModels.get(path)
+  if (!model) return Promise.resolve(null)
+  return getRenameEditsAtPosition(model, path, position, newName)
+}
+
+export function getRenameEditsLocallyForTesting(
+  path: string,
+  position: monaco.Position,
+  newName: string,
 ): monaco.languages.WorkspaceEdit | null {
-  return getRenameEditsAtPosition(path, position, newName)
+  return getRenameEditsAtPositionLocal(path, position, newName)
 }
 
 export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): Promise<monaco.languages.TextEdit[]> {

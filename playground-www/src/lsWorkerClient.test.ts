@@ -68,6 +68,10 @@ vi.mock('./lsWorker?worker', () => ({
   default: FakeWorker,
 }))
 
+vi.mock('./fileStorage', () => ({
+  getWorkspaceFiles: () => [],
+}))
+
 type StubModel = {
   getValue: () => string
   getVersionId: () => number
@@ -436,5 +440,92 @@ describe('lsWorkerClient lifecycle', () => {
         text: 'fresh',
       },
     ])
+  })
+
+  it('resolves definition requests through the worker', async () => {
+    const model = makeModel('let answer = 42; answer', 3)
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 19 }
+
+    client.registerModel('main.dvala', model as never)
+    const defsPromise = client.getDefinitionsForTesting('main.dvala', position as never)
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'requestNavigation',
+      requestId: 1,
+      kind: 'definition',
+      path: 'main.dvala',
+      source: 'let answer = 42; answer',
+      sourceVersion: 3,
+      line: 1,
+      column: 19,
+      workspaceFiles: [],
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'navigationResult',
+      requestId: 1,
+      kind: 'definition',
+      path: 'main.dvala',
+      sourceVersion: 3,
+      locations: [{ file: 'main.dvala', line: 1, column: 5, endColumn: 11 }],
+    })
+
+    await expect(defsPromise).resolves.toEqual([
+      {
+        uri: { toString: expect.any(Function) },
+        range: {
+          startLineNumber: 1,
+          startColumn: 5,
+          endLineNumber: 1,
+          endColumn: 11,
+        },
+      },
+    ])
+  })
+
+  it('drops stale rename results whose requestId is no longer pending for the path', async () => {
+    const model = makeModel('let answer = 42; answer', 3)
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 19 }
+
+    client.registerModel('main.dvala', model as never)
+    const firstPromise = client.getRenameEditsForTesting('main.dvala', position as never, 'old')
+    const secondPromise = client.getRenameEditsForTesting('main.dvala', position as never, 'fresh')
+
+    dispatchWorkerMessage(0, {
+      type: 'navigationResult',
+      requestId: 1,
+      kind: 'rename',
+      path: 'main.dvala',
+      sourceVersion: 3,
+      edits: [{ file: 'main.dvala', line: 1, column: 5, endColumn: 11, text: 'old' }],
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'navigationResult',
+      requestId: 2,
+      kind: 'rename',
+      path: 'main.dvala',
+      sourceVersion: 3,
+      edits: [{ file: 'main.dvala', line: 1, column: 5, endColumn: 11, text: 'fresh' }],
+    })
+
+    await expect(firstPromise).resolves.toBeNull()
+    await expect(secondPromise).resolves.toEqual({
+      edits: [
+        {
+          resource: { toString: expect.any(Function) },
+          textEdit: {
+            range: {
+              startLineNumber: 1,
+              startColumn: 5,
+              endLineNumber: 1,
+              endColumn: 11,
+            },
+            text: 'fresh',
+          },
+          versionId: undefined,
+        },
+      ],
+    })
   })
 })
