@@ -540,8 +540,6 @@ test.describe('hover', () => {
     const code = 'let localValue = 1;\nlocalValue'
     await setDvalaCode(page, code)
     await setEditorCursor(page, code.length)
-    const primed = await page.evaluate(() => (window as any).Playground.primeActiveEditorTypecheckForTesting())
-    expect(primed).toBe(true)
 
     const position = 'let localValue = 1;\n'.length + 1
     const shown = await page.evaluate(offset => (window as any).Playground.triggerHoverForTesting(offset), position)
@@ -551,6 +549,20 @@ test.describe('hover', () => {
 
     await expect(page.locator('.monaco-hover')).toContainText('1 : Number')
     await expect(page.locator('.monaco-hover')).toContainText('Defined at <scratch>:1:5')
+  })
+
+  test('hover uses the latest editor version after an immediate edit', async ({ page }) => {
+    await setDvalaCode(page, 'let localValue = 1;\nlocalValue')
+    await setDvalaCode(page, 'let localValue = "x";\nlocalValue')
+
+    const position = 'let localValue = "x";\n'.length + 1
+    const shown = await page.evaluate(offset => (window as any).Playground.triggerHoverForTesting(offset), position)
+    expect(shown).toBe(true)
+
+    await waitForHover(page, position)
+
+    await expect(page.locator('.monaco-hover')).toContainText('"x" : String')
+    await expect(page.locator('.monaco-hover')).not.toContainText('1 : Number')
   })
 })
 

@@ -107,7 +107,6 @@ import {
   getReferencesForTesting,
   getRenameEditsForTesting,
   initLspWorker,
-  primeTypecheckForTesting,
   registerModel,
   updateDocument as updateLspDocument,
 } from './lsWorkerClient'
@@ -3328,14 +3327,6 @@ export function triggerSignatureHelpForTesting(): boolean {
 
 export function triggerHoverForTesting(position: number): boolean {
   return getCodeEditor().triggerHover(position)
-}
-
-export function primeActiveEditorTypecheckForTesting(): boolean {
-  const activeModel = getCodeEditor().getActiveModel()
-  if (!activeModel) return false
-  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
-  primeTypecheckForTesting(activePath, activeModel.getValue(), activeModel.getVersionId())
-  return true
 }
 
 export function getDefinitionsAtCursorForTesting(position: number) {

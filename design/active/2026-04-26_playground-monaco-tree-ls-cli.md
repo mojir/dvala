@@ -449,6 +449,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
 32a. Make the worker the canonical owner of mirrored document state for all LS-backed features, not just diagnostics. Eliminate remaining main-thread-only fallbacks where they would create parity gaps or divergent cache behavior.
 
+  2026-05-05 first slice: move cached typecheck ownership under the worker for diagnostics and remove the persistent main-thread hover/typecheck cache from `lsWorkerClient.ts`. Hover keeps the already-stable synchronous Monaco provider path for now and recomputes from the active model on demand, because the first async worker-hover attempt broke the playground's hover trigger path. That still eliminates the stale shared cache and keeps file-switch rebinding, version-correct hover content, import-path navigation, and browser-safe go-to-definition behavior unchanged.
+
 32b. Tighten the edit-delta protocol: document open / close events, ordered versioned edits, explicit resync on gap or version mismatch, and a small recovery path after worker restart so stale mirrors cannot survive silently.
 
 32c. Harden request / response sequencing: correlation IDs on all LS requests, per-path cancellation rules, and late-result dropping validated across hover / completion / diagnostics / navigation providers rather than diagnostics alone.

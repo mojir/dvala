@@ -1,11 +1,11 @@
 /**
  * Dvala Language Service Web Worker.
  *
- * Runs in a separate thread so typechecking + parse work never blocks the
+ * Runs in a separate thread so parse and LS-typecheck work never blocks the
  * editor UI. The main thread streams edit deltas via `updateDocument`
- * messages and requests diagnostics on a debounced schedule; the worker
- * holds a stateful per-file mirror and responds with portable `Diagnostic[]`
- * arrays that the main thread pushes into Monaco's marker API.
+ * messages and requests diagnostics on demand; the worker holds a stateful
+ * per-file mirror and caches typecheck results for diagnostics against that
+ * mirrored state.
  *
  * ## Protocol
  *
@@ -36,7 +36,6 @@
  * - `diagnosticsError(path, sourceVersion, message)`: the worker hit an
  *   unrecoverable error during tokenize/parse/typecheck. The main thread
  *   clears markers (best-effort) and may log.
- *
  * ## Cooperative cancellation
  *
  * Long-running typecheck passes on real projects can overlap with fresh
@@ -49,8 +48,13 @@
 
 import { tokenizeSource } from '../../src/tooling'
 import { parseTokenStreamRecoverable } from '../../src/tooling'
-import { buildParseDiagnostics } from '../../src/shared/diagnosticBuilder'
+import { buildParseDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
 import type { Diagnostic } from '../../src/shared/types'
+import { allBuiltinModules } from '../../src/allModules'
+import { parseToAst } from '../../src/parser'
+import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
+import { typecheck } from '../../src/internal'
+import type { TypecheckResult } from '../../src/internal'
 
 // ── Message types ─────────────────────────────────────────────────────────────
 
@@ -97,6 +101,8 @@ interface DiagnosticsErrorMessage {
 interface FileState {
   source: string
   sourceVersion: number
+  typecheckResult?: TypecheckResult
+  typecheckVersion?: number
 }
 
 const files = new Map<string, FileState>()
@@ -125,6 +131,26 @@ interface DiagnosticsInput {
   requestId: number
 }
 
+function computeTypecheckResult(source: string, path: string): TypecheckResult {
+  const tokens = tokenizeSource(source, true, path)
+  try {
+    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
+    const ast = parseToAst(minified)
+    return typecheck(ast, { modules: allBuiltinModules })
+  } catch {
+    return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
+  }
+}
+
+function getOrComputeTypecheckResult(path: string, file: FileState): TypecheckResult {
+  if (file.typecheckResult && file.typecheckVersion === file.sourceVersion) return file.typecheckResult
+
+  const result = computeTypecheckResult(file.source, path)
+  file.typecheckResult = result
+  file.typecheckVersion = file.sourceVersion
+  return result
+}
+
 function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   const diagnostics: Diagnostic[] = []
 
@@ -134,8 +160,13 @@ function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   diagnostics.push(...buildParseDiagnostics(parseResult.errors))
   checkCancelled(input.requestId)
 
-  // Worker handles tokenize + parse only. Typecheck runs on the main
-  // thread to avoid pulling builtin (.dvala files) into the worker bundle.
+  const file = files.get(input.path)
+  if (file) {
+    const typecheckResult = getOrComputeTypecheckResult(input.path, file)
+    diagnostics.push(...buildTypeDiagnostics(typecheckResult))
+  }
+  checkCancelled(input.requestId)
+
   return diagnostics
 }
 
@@ -146,7 +177,10 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
 
   switch (msg.type) {
     case 'updateDocument': {
-      files.set(msg.path, { source: msg.source, sourceVersion: msg.sourceVersion })
+      files.set(msg.path, {
+        source: msg.source,
+        sourceVersion: msg.sourceVersion,
+      })
       return
     }
 

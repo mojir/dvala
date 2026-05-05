@@ -18,7 +18,6 @@ import { formatSource, tokenizeSource } from '../../src/tooling'
 import { typecheck, WorkspaceIndex } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
 import { findCallContext } from '../../src/shared/callContext'
-import { buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
 import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 import { allBuiltinModules } from '../../src/allModules'
 import { parseToAst } from '../../src/parser'
@@ -105,24 +104,14 @@ function kindToMonaco(kind: CompletionItem['kind']): monaco.languages.Completion
   }
 }
 
-/**
- * Tokenize, parse, and typecheck source on the main thread. Typecheck lives
- * here (not in the worker) because its dependency chain hits .dvala files
- * through builtin, which Vite's worker bundler can't handle.
- */
-function typecheckForDiagnostics(source: string, path: string): TypecheckResult {
+function typecheckForHover(source: string, path: string): TypecheckResult {
   const tokens = tokenizeSource(source, true, path)
   try {
-    // Use parseToAst (not parseRecoverable) — parseToAst includes
-    // typeAnnotations which the typechecker needs to enforce
-    // annotations like `let n: Number = ""`.
     const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
     const ast = parseToAst(minified)
     indexWorkspaceFile(path, source)
     return typecheck(ast, { modules: allBuiltinModules })
   } catch {
-    // parseToAst threw on broken code — return empty diagnostics.
-    // Parse errors are already reported by the worker's recover-parse.
     return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
   }
 }
@@ -137,12 +126,6 @@ const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 /** Pending request IDs keyed by path for cancellation. */
 const pendingRequests = new Map<string, number>()
-
-/** Latest typecheck result per path, for hover queries. */
-const typecheckCache = new Map<string, TypecheckResult>()
-
-/** Source version associated with the latest cached typecheck result. */
-const typecheckVersions = new Map<string, number>()
 
 /** Workspace symbol index for go-to-def / find-references. */
 const workspaceIndex = new WorkspaceIndex()
@@ -182,6 +165,13 @@ function indexWorkspaceFile(path: string, source: string, seen = new Set<string>
 function getWorker(): Worker {
   if (!worker) worker = new LsWorker()
   return worker
+}
+
+function getPathForModel(model: monaco.editor.ITextModel): string | undefined {
+  for (const [path, registeredModel] of registeredModels) {
+    if (registeredModel === model) return path
+  }
+  return undefined
 }
 
 function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
@@ -342,18 +332,7 @@ export function initLspWorker(): void {
         const currentVersion = model.getVersionId()
         if (sourceVersion < currentVersion) return
 
-        // Run typecheck on the main thread (avoids .dvala import issues in
-        // the worker bundle) and append type diagnostics.
-        const allDiagnostics = [...diagnostics]
-        try {
-          const source = model.getValue()
-          const tc = typecheckForDiagnostics(source, path)
-          typecheckCache.set(path, tc)
-          typecheckVersions.set(path, sourceVersion)
-          allDiagnostics.push(...buildTypeDiagnostics(tc))
-        } catch {}
-
-        const markers: monaco.editor.IMarkerData[] = allDiagnostics.map(d => ({
+        const markers: monaco.editor.IMarkerData[] = diagnostics.map(d => ({
           message: d.message,
           severity:
             d.severity === 'error'
@@ -384,20 +363,12 @@ export function initLspWorker(): void {
   }
 
   // Register Monaco hover provider for Dvala — uses the typecheck cache
-  // populated during diagnostics (typecheck runs on main thread).
+  // owned by the current model value, not a persistent main-thread cache.
   monaco.languages.registerHoverProvider('dvala', {
     provideHover: (model, position) => {
-      // Find the workspace path for this model.
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
       if (!path) return null
 
-      const tc = typecheckVersions.get(path) === model.getVersionId() ? typecheckCache.get(path) : undefined
       const word = model.getWordAtPosition(position)
       const wordRange =
         word && word.word.length > 0
@@ -412,14 +383,15 @@ export function initLspWorker(): void {
       const symbol = workspaceIndex.getSymbolAtPosition(path, position.lineNumber, position.column)
       const ref = wordText && !symbol ? (allReference[wordText] ?? referenceByTitle.get(wordText)) : undefined
 
-      let inferredType: string | undefined
-      if (tc && symbol?.def && symbol.def.location.file === path) {
-        const typeAtDef = findTypeAtDefinition(tc.typeMap, tc.sourceMap, symbol.def)
-        if (typeAtDef) inferredType = formatHoverType(typeAtDef)
-      }
-
       try {
-        if (!inferredType && tc) {
+        const tc = typecheckForHover(model.getValue(), path)
+        let inferredType: string | undefined
+        if (symbol?.def && symbol.def.location.file === path) {
+          const typeAtDef = findTypeAtDefinition(tc.typeMap, tc.sourceMap, symbol.def)
+          if (typeAtDef) inferredType = formatHoverType(typeAtDef)
+        }
+
+        if (!inferredType) {
           const type = findTypeAtPosition(
             tc.typeMap,
             tc.sourceMap,
@@ -434,7 +406,7 @@ export function initLspWorker(): void {
           if (type) inferredType = formatHoverType(type)
         }
 
-        if (!inferredType && tc && wordText) {
+        if (!inferredType && wordText) {
           const visibleDefs = workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column)
           const matchingDef = visibleDefs.find(def => def.name === wordText && def.location.file === path)
           if (matchingDef) {
@@ -475,13 +447,7 @@ export function initLspWorker(): void {
   monaco.languages.registerCompletionItemProvider('dvala', {
     triggerCharacters: ['"', '.', '/'],
     provideCompletionItems: (model, position) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
 
       const range: monaco.IRange = {
         startLineNumber: position.lineNumber,
@@ -530,13 +496,7 @@ export function initLspWorker(): void {
     signatureHelpTriggerCharacters: ['(', ','],
     signatureHelpRetriggerCharacters: [','],
     provideSignatureHelp: (model, position) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
 
       const callCtx = findCallContext(model.getValue(), { line: position.lineNumber, column: position.column })
       if (!path || !callCtx) return null
@@ -583,13 +543,7 @@ export function initLspWorker(): void {
 
   monaco.languages.registerDefinitionProvider('dvala', {
     provideDefinition: (model, position) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
       if (!path) return null
 
       return getDefinitionsAtPosition(model, path, position)
@@ -600,13 +554,7 @@ export function initLspWorker(): void {
 
   monaco.languages.registerReferenceProvider('dvala', {
     provideReferences: (model, position) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
       if (!path) return null
 
       return getReferencesAtPosition(path, position)
@@ -617,13 +565,7 @@ export function initLspWorker(): void {
 
   monaco.languages.registerRenameProvider('dvala', {
     provideRenameEdits: (model, position, newName) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
       if (!path) return null
 
       return getRenameEditsAtPosition(path, position, newName)
@@ -656,8 +598,6 @@ export function unregisterModel(path: string): void {
   // Grab the model before deleting from the registry.
   const model = registeredModels.get(path)
   registeredModels.delete(path)
-  typecheckCache.delete(path)
-  typecheckVersions.delete(path)
   if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
   // Cancel any pending diagnostics for this path.
   const pendingId = pendingRequests.get(path)
@@ -698,12 +638,6 @@ export function updateDocument(path: string, source: string, sourceVersion: numb
       requestDiagnostics(path, sourceVersion)
     }, 150),
   )
-}
-
-export function primeTypecheckForTesting(path: string, source: string, sourceVersion: number): void {
-  const tc = typecheckForDiagnostics(source, path)
-  typecheckCache.set(path, tc)
-  typecheckVersions.set(path, sourceVersion)
 }
 
 export function getDefinitionsForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {
