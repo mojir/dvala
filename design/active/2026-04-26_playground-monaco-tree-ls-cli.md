@@ -473,6 +473,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
   2026-05-05 first slice: added focused client coverage for a local edit arriving during an in-flight resync cycle. When the model version changes mid-recovery, a subsequent `resyncDocument` starts a fresh reseed + diagnostics retry instead of being incorrectly coalesced with the older recovery fingerprint.
 
+  2026-05-05 second slice: added client coverage for the newer async Monaco providers when the LS worker dies mid-request. Pending worker-backed completion requests now stay covered as safe empty suggestions and pending hover requests stay covered as `null` results through the existing `handleWorkerError()` path, so the worker-lifecycle edge is exercised beyond diagnostics alone.
+
 32e. Re-profile on a medium workspace after the protocol changes. Revisit debounce windows, batching strategy, and any remaining full-document resend paths before starting Phase 3 local-project work.
 
 ### Phase 3 — CLI

@@ -284,6 +284,56 @@ describe('lsWorkerClient lifecycle', () => {
     })
   })
 
+  it('resolves pending completion requests safely when the worker errors', async () => {
+    const model = {
+      ...makeModel('let localValue = 1;\nlocal', 3),
+      getLineContent: () => 'local',
+      getWordUntilPosition: () => ({ word: 'local', startColumn: 1, endColumn: 6 }),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi
+      .mocked((await import('monaco-editor')).languages.registerCompletionItemProvider)
+      .mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 2, column: 6 }
+    const context: Record<string, never> = {}
+    const token: Record<string, never> = {}
+    const completionsPromise = provider?.provideCompletionItems(
+      model as never,
+      position as never,
+      context as never,
+      token as never,
+    )
+
+    workerInstances[0]!.onerror?.(new Event('error'))
+
+    await expect(completionsPromise).resolves.toEqual({ suggestions: [] })
+    expect(workerInstances[0]!.terminate).not.toHaveBeenCalled()
+  })
+
+  it('resolves pending hover requests safely when the worker errors', async () => {
+    const model = {
+      ...makeModel('', 3),
+      getWordAtPosition: () => ({ word: 'x', startColumn: 1, endColumn: 2 }),
+      getValueInRange: () => 'x',
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi.mocked((await import('monaco-editor')).languages.registerHoverProvider).mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 1 }
+    const token: Record<string, never> = {}
+    const hoverPromise = provider?.provideHover(model as never, position as never, token as never)
+
+    workerInstances[0]!.onerror?.(new Event('error'))
+
+    await expect(hoverPromise).resolves.toBeNull()
+    expect(workerInstances[0]!.terminate).not.toHaveBeenCalled()
+  })
+
   it('unregisterModel sends closeDocument to the active worker', () => {
     const model = makeModel('let x = 1', 1)
 
