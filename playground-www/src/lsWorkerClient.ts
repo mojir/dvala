@@ -22,12 +22,7 @@ import { folderFromPath, isInPlaygroundFolder } from './filePath'
 import { HANDLERS_FILE_PATH } from './handlersBuffer'
 import { resolvePlaygroundPath } from './playgroundFileResolver'
 import { SCRATCH_FILE_PATH } from './scratchBuffer'
-import {
-  getImportCompletionItems,
-  getImportCompletionPrefix,
-  getImportedExportCompletionItems,
-  getScopedCompletionItems,
-} from './lsCompletions'
+import { getImportCompletionItems, getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 
@@ -118,6 +113,12 @@ const pendingFormattingRequests = new Map<string, number>()
 
 /** Pending formatting resolvers keyed by path. */
 const pendingFormattingResolvers = new Map<string, (edits: monaco.languages.TextEdit[]) => void>()
+
+/** Pending completion request IDs keyed by path. */
+const pendingCompletionRequests = new Map<string, number>()
+
+/** Pending completion resolvers keyed by path. */
+const pendingCompletionResolvers = new Map<string, (items: CompletionItem[] | null) => void>()
 
 /** Pending hover request IDs keyed by path. */
 const pendingHoverRequests = new Map<string, number>()
@@ -234,6 +235,18 @@ function cancelPendingFormattingRequest(path: string, w = getWorker()): void {
   cancelPendingRequest(pendingFormattingRequests, path, w)
 }
 
+function clearPendingCompletionRequest(path: string, items: CompletionItem[] | null): void {
+  pendingCompletionResolvers.get(path)?.(items)
+  pendingCompletionResolvers.delete(path)
+  clearPendingRequest(pendingCompletionRequests, path)
+}
+
+function cancelPendingCompletionRequest(path: string, w = getWorker()): void {
+  pendingCompletionResolvers.get(path)?.(null)
+  pendingCompletionResolvers.delete(path)
+  cancelPendingRequest(pendingCompletionRequests, path, w)
+}
+
 function clearPendingHoverRequest(path: string, inferredType: string | undefined): void {
   pendingHoverResolvers.get(path)?.(inferredType)
   pendingHoverResolvers.delete(path)
@@ -315,6 +328,9 @@ function handleWorkerError(): void {
   for (const resolve of pendingFormattingResolvers.values()) {
     resolve([])
   }
+  for (const resolve of pendingCompletionResolvers.values()) {
+    resolve(null)
+  }
   for (const resolve of pendingHoverResolvers.values()) {
     resolve(undefined)
   }
@@ -323,6 +339,8 @@ function handleWorkerError(): void {
   }
   pendingFormattingResolvers.clear()
   pendingFormattingRequests.clear()
+  pendingCompletionResolvers.clear()
+  pendingCompletionRequests.clear()
   pendingHoverResolvers.clear()
   pendingHoverRequests.clear()
   pendingHoverRequestKeys.clear()
@@ -444,6 +462,33 @@ function handleWorkerMessage(event: MessageEvent): void {
       const { path, requestId } = msg as { type: 'formattingError'; path: string; requestId: number }
       if (!matchesPendingRequest(pendingFormattingRequests, path, requestId)) return
       clearPendingFormattingRequest(path, [])
+      return
+    }
+
+    case 'completionResult': {
+      const { path, requestId, sourceVersion, items } = msg as {
+        type: 'completionResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        items: CompletionItem[]
+      }
+      if (!matchesPendingRequest(pendingCompletionRequests, path, requestId)) return
+
+      const model = registeredModels.get(path)
+      if (!model || sourceVersion < model.getVersionId()) {
+        clearPendingCompletionRequest(path, null)
+        return
+      }
+
+      clearPendingCompletionRequest(path, items)
+      return
+    }
+
+    case 'completionError': {
+      const { path, requestId } = msg as { type: 'completionError'; path: string; requestId: number }
+      if (!matchesPendingRequest(pendingCompletionRequests, path, requestId)) return
+      clearPendingCompletionRequest(path, null)
       return
     }
 
@@ -749,6 +794,57 @@ function requestFormattingEdits(model: monaco.editor.ITextModel): Promise<monaco
   })
 }
 
+function requestCompletionItems(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  prefix: string,
+  importPrefix: string | null,
+): Promise<CompletionItem[] | null> {
+  const w = getWorker()
+  cancelPendingCompletionRequest(path, w)
+
+  return new Promise(resolve => {
+    pendingCompletionResolvers.set(path, resolve)
+    startTrackedRequest(pendingCompletionRequests, path, w, requestId => ({
+      type: 'requestCompletion',
+      requestId,
+      path,
+      source: model.getValue(),
+      sourceVersion: model.getVersionId(),
+      line: position.lineNumber,
+      column: position.column,
+      prefix,
+      importPrefix,
+      workspaceFiles: getWorkspaceFiles().map(file => ({ path: file.path, code: file.code })),
+    }))
+  })
+}
+
+function toMonacoCompletionList(
+  completionItems: CompletionItem[] | null,
+  range: monaco.IRange,
+  wordStartColumn: number,
+): monaco.languages.CompletionList {
+  const suggestions: monaco.languages.CompletionItem[] = []
+  for (const item of completionItems ?? []) {
+    const completion: monaco.languages.CompletionItem = {
+      label: item.label,
+      kind: kindToMonaco(item.kind),
+      detail: item.detail,
+      sortText: item.sortText,
+      insertText: item.insertText ?? item.label,
+      range: { ...range, startColumn: wordStartColumn },
+    }
+    if (item.insertText) {
+      completion.insertTextRules = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
+    }
+    suggestions.push(completion)
+  }
+
+  return { suggestions }
+}
+
 function requestHoverType(
   model: monaco.editor.ITextModel,
   path: string,
@@ -869,37 +965,25 @@ export function initLspWorker(): void {
       const word = model.getWordUntilPosition(position)
       const prefix = String(word.word).toLowerCase()
       const importPrefix = getImportCompletionPrefix(model.getLineContent(position.lineNumber), position.column)
-      const isInsideImportString = importPrefix !== null
-      const currentFileSymbols = path ? workspaceIndex.getFileSymbols(path) : null
-      const completionItems = isInsideImportString
-        ? getImportCompletionItems(importPrefix, path, getWorkspaceFiles())
-        : dedupeCompletionItems([
-            ...getScopedCompletionItems(
-              prefix,
-              path ? workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column) : [],
-            ),
-            ...getImportedExportCompletionItems(prefix, currentFileSymbols, filePath =>
-              workspaceIndex.getFileSymbols(filePath),
-            ),
-          ])
-
-      const suggestions: monaco.languages.CompletionItem[] = []
-      for (const item of completionItems) {
-        const completion: monaco.languages.CompletionItem = {
-          label: item.label,
-          kind: kindToMonaco(item.kind),
-          detail: item.detail,
-          sortText: item.sortText,
-          insertText: item.insertText ?? item.label,
-          range: { ...range, startColumn: word.startColumn },
-        }
-        if (item.insertText) {
-          completion.insertTextRules = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
-        }
-        suggestions.push(completion)
+      if (importPrefix !== null) {
+        return toMonacoCompletionList(
+          getImportCompletionItems(importPrefix, path, getWorkspaceFiles()),
+          range,
+          word.startColumn,
+        )
       }
 
-      return { suggestions }
+      if (!path) {
+        return toMonacoCompletionList(
+          dedupeCompletionItems([...getScopedCompletionItems(prefix, [])]),
+          range,
+          word.startColumn,
+        )
+      }
+
+      return requestCompletionItems(model, path, position, prefix, importPrefix).then(completionItems =>
+        toMonacoCompletionList(completionItems, range, word.startColumn),
+      )
     },
   })
 
@@ -1019,6 +1103,7 @@ export function unregisterModel(path: string): void {
   // Cancel any pending diagnostics for this path.
   cancelPendingDiagnosticsRequest(path)
   cancelPendingFormattingRequest(path)
+  cancelPendingCompletionRequest(path)
   cancelPendingHoverRequest(path)
   cancelPendingNavigationRequest('definition', path, null)
   cancelPendingNavigationRequest('references', path, null)

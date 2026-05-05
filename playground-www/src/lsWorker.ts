@@ -78,6 +78,7 @@ import { tokenizeSource } from '../../src/tooling'
 import { parseTokenStreamRecoverable } from '../../src/tooling'
 import { formatSource } from '../../src/tooling'
 import { buildParseDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
+import type { CompletionItem } from '../../src/shared/completionBuilder'
 import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 import type { Diagnostic } from '../../src/shared/types'
 import { allBuiltinModules } from '../../src/allModules'
@@ -86,6 +87,7 @@ import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
 import { WorkspaceIndex, type ResolveImport, typecheck } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
+import { getImportCompletionItems, getImportedExportCompletionItems, getScopedCompletionItems } from './lsCompletions'
 import { resolvePlaygroundPath } from './playgroundFileResolver'
 
 // ── Message types ─────────────────────────────────────────────────────────────
@@ -137,6 +139,19 @@ interface RequestHoverMessage {
   endColumn?: number
 }
 
+interface RequestCompletionMessage {
+  type: 'requestCompletion'
+  requestId: number
+  path: string
+  source: string
+  sourceVersion: number
+  line: number
+  column: number
+  prefix: string
+  importPrefix: string | null
+  workspaceFiles: WorkspaceSnapshotFile[]
+}
+
 type NavigationRequestKind = 'definition' | 'references' | 'rename'
 
 interface WorkspaceSnapshotFile {
@@ -169,6 +184,7 @@ type WorkerInMessage =
   | RequestDiagnosticsMessage
   | RequestFormattingMessage
   | RequestHoverMessage
+  | RequestCompletionMessage
   | RequestNavigationMessage
   | CancelRequestMessage
 
@@ -214,6 +230,22 @@ interface HoverResultMessage {
 
 interface HoverErrorMessage {
   type: 'hoverError'
+  requestId: number
+  path: string
+  sourceVersion: number
+  message: string
+}
+
+interface CompletionResultMessage {
+  type: 'completionResult'
+  requestId: number
+  path: string
+  sourceVersion: number
+  items: CompletionItem[]
+}
+
+interface CompletionErrorMessage {
+  type: 'completionError'
   requestId: number
   path: string
   sourceVersion: number
@@ -357,6 +389,35 @@ function computeHover(message: RequestHoverMessage): string | undefined {
   )
 
   return type ? formatHoverType(type) : undefined
+}
+
+function computeCompletion(message: RequestCompletionMessage): CompletionItem[] {
+  const snapshotFiles = new Map(message.workspaceFiles.map(file => [file.path, file.code]))
+  snapshotFiles.set(message.path, message.source)
+
+  const index = new WorkspaceIndex()
+  indexWorkspaceSnapshot(message.path, message.source, snapshotFiles, index)
+
+  if (message.importPrefix !== null) {
+    return getImportCompletionItems(
+      message.importPrefix,
+      message.path,
+      message.workspaceFiles.map(file => ({
+        id: file.path,
+        path: file.path,
+        code: file.code,
+        context: '',
+        createdAt: 0,
+        updatedAt: 0,
+      })),
+    )
+  }
+
+  const currentFileSymbols = index.getFileSymbols(message.path)
+  return [
+    ...getScopedCompletionItems(message.prefix, index.getSymbolsInScope(message.path, message.line, message.column)),
+    ...getImportedExportCompletionItems(message.prefix, currentFileSymbols, filePath => index.getFileSymbols(filePath)),
+  ]
 }
 
 function resolveWorkspaceImportPathForSnapshot(
@@ -596,6 +657,34 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
         if (error instanceof CancellationError) return
         const out: HoverErrorMessage = {
           type: 'hoverError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: error instanceof Error ? error.message : String(error),
+        }
+        self.postMessage(out)
+      }
+      return
+    }
+
+    case 'requestCompletion': {
+      cancelledRequests.delete(msg.requestId)
+
+      try {
+        const items = computeCompletion(msg)
+        checkCancelled(msg.requestId)
+        const out: CompletionResultMessage = {
+          type: 'completionResult',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          items,
+        }
+        self.postMessage(out)
+      } catch (error) {
+        if (error instanceof CancellationError) return
+        const out: CompletionErrorMessage = {
+          type: 'completionError',
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,

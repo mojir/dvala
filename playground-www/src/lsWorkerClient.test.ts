@@ -128,6 +128,60 @@ describe('lsWorkerClient lifecycle', () => {
     ])
   })
 
+  it('resolves completion requests through the worker', async () => {
+    const model = {
+      ...makeModel('let localValue = 1;\nlocal', 3),
+      getLineContent: () => 'local',
+      getWordUntilPosition: () => ({ word: 'local', startColumn: 1, endColumn: 6 }),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi.mocked((await import('monaco-editor')).languages.registerCompletionItemProvider).mock
+      .calls[0]?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 2, column: 6 }
+    const context: Record<string, never> = {}
+    const token: Record<string, never> = {}
+    const completionsPromise = provider?.provideCompletionItems(
+      model as never,
+      position as never,
+      context as never,
+      token as never,
+    )
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'requestCompletion',
+      requestId: 1,
+      path: 'main.dvala',
+      source: 'let localValue = 1;\nlocal',
+      sourceVersion: 3,
+      line: 2,
+      column: 6,
+      prefix: 'local',
+      importPrefix: null,
+      workspaceFiles: [],
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'completionResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      items: [{ label: 'localValue', kind: 'variable', detail: 'let', sortText: '1_localValue' }],
+    })
+
+    await expect(completionsPromise).resolves.toEqual({
+      suggestions: [
+        expect.objectContaining({
+          label: 'localValue',
+          detail: 'let',
+          sortText: '1_localValue',
+        }),
+      ],
+    })
+  })
+
   it('unregisterModel sends closeDocument to the active worker', () => {
     const model = makeModel('let x = 1', 1)
 

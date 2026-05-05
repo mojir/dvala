@@ -78,12 +78,28 @@ async function getOutputText(page: Page): Promise<string> {
 async function openEditorSuggestions(page: Page) {
   await page.evaluate(() => (window as any).Playground.focusDvalaCode())
   await page.keyboard.press('Control+Space')
-  await page.locator('.suggest-widget').waitFor({ state: 'visible', timeout: 3000 })
+  await waitForEditorSuggestions(page)
 }
 
 /** Wait for Monaco suggestions to appear without manual invocation. */
 async function waitForEditorSuggestions(page: Page) {
-  await page.locator('.suggest-widget').waitFor({ state: 'visible', timeout: 3000 })
+  await expect
+    .poll(
+      async () => {
+        const widgets = page.locator('.suggest-widget')
+        const count = await widgets.count()
+        for (let i = 0; i < count; i++) {
+          if (await widgets.nth(i).isVisible()) return true
+        }
+        return false
+      },
+      { timeout: 5000 },
+    )
+    .toBe(true)
+}
+
+function visibleSuggestionWidget(page: Page) {
+  return page.locator('.suggest-widget:visible').last()
 }
 
 /** Wait for Monaco parameter hints to appear. */
@@ -300,7 +316,7 @@ test.describe('editor completions', () => {
 
     await openEditorSuggestions(page)
 
-    await expect(page.locator('.suggest-widget')).toContainText('localValue')
+    await expect(visibleSuggestionWidget(page)).toContainText('localValue')
   })
 
   test('shows completions automatically while typing in code', async ({ page }) => {
@@ -312,7 +328,7 @@ test.describe('editor completions', () => {
 
     await waitForEditorSuggestions(page)
 
-    await expect(page.locator('.suggest-widget')).toContainText('localValue')
+    await expect(visibleSuggestionWidget(page)).toContainText('localValue')
   })
 
   test('shows workspace import path completions inside import strings', async ({ page }) => {
@@ -344,7 +360,7 @@ test.describe('editor completions', () => {
 
     await openEditorSuggestions(page)
 
-    await expect(page.locator('.suggest-widget')).toContainText('./utils')
+    await expect(visibleSuggestionWidget(page)).toContainText('./utils')
   })
 
   test('shows import completions immediately after opening the import string', async ({ page }) => {
@@ -376,9 +392,9 @@ test.describe('editor completions', () => {
 
     await openEditorSuggestions(page)
 
-    await expect(page.locator('.suggest-widget')).toContainText('functional')
-    await expect(page.locator('.suggest-widget')).toContainText('./lib/')
-    await expect(page.locator('.suggest-widget')).not.toContainText('!=')
+    await expect(visibleSuggestionWidget(page)).toContainText('functional')
+    await expect(visibleSuggestionWidget(page)).toContainText('./lib/')
+    await expect(visibleSuggestionWidget(page)).not.toContainText('!=')
   })
 
   test('shows folder completions for nested workspace imports', async ({ page }) => {
@@ -410,7 +426,7 @@ test.describe('editor completions', () => {
 
     await openEditorSuggestions(page)
 
-    await expect(page.locator('.suggest-widget')).toContainText('./lib/')
+    await expect(visibleSuggestionWidget(page)).toContainText('./lib/')
   })
 
   test('shows import completions automatically while typing in strings', async ({ page }) => {
@@ -445,7 +461,7 @@ test.describe('editor completions', () => {
 
     await waitForEditorSuggestions(page)
 
-    await expect(page.locator('.suggest-widget')).toContainText('./lib/')
+    await expect(visibleSuggestionWidget(page)).toContainText('./lib/')
   })
 
   test('shows exported symbols from already imported workspace files', async ({ page }) => {
@@ -477,7 +493,7 @@ test.describe('editor completions', () => {
 
     await openEditorSuggestions(page)
 
-    await expect(page.locator('.suggest-widget')).toContainText('value')
+    await expect(visibleSuggestionWidget(page)).toContainText('value')
   })
 })
 
