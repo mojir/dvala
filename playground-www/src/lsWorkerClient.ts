@@ -154,7 +154,7 @@ function resolveWorkspaceImportPath(rawPath: string, fromFile: string): string |
   if (!(rawPath.startsWith('.') || rawPath.startsWith('/'))) return null
   let resolved: string
   try {
-    resolved = resolvePlaygroundPath(folderFromPath(fromFile), rawPath)
+    resolved = resolvePlaygroundPath(isInPlaygroundFolder(fromFile) ? '' : folderFromPath(fromFile), rawPath)
   } catch {
     return null
   }
@@ -195,7 +195,55 @@ function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
   return deduped
 }
 
-function getDefinitionsAtPosition(path: string, position: monaco.Position): monaco.languages.Location[] | null {
+function getImportPathAtPosition(
+  model: monaco.editor.ITextModel,
+  position: monaco.Position,
+): { rawPath: string; range: monaco.IRange } | null {
+  const lineText = model.getLineContent(position.lineNumber)
+  const beforeCursor = lineText.slice(0, Math.max(0, position.column))
+  const prefixMatch = /import\(\s*"([^"]*)$/.exec(beforeCursor)
+  if (!prefixMatch) return null
+
+  const afterCursor = lineText.slice(Math.max(0, position.column))
+  const suffixMatch = /^([^"]*)"/.exec(afterCursor)
+  const quoteOffset = beforeCursor.lastIndexOf('"')
+  if (quoteOffset === -1) return null
+
+  const rawPath = `${prefixMatch[1] ?? ''}${suffixMatch?.[1] ?? ''}`
+  return {
+    rawPath,
+    range: {
+      startLineNumber: position.lineNumber,
+      startColumn: quoteOffset + 2,
+      endLineNumber: position.lineNumber,
+      endColumn: quoteOffset + 2 + rawPath.length,
+    },
+  }
+}
+
+function getDefinitionsAtPosition(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+): monaco.languages.Location[] | null {
+  const importPath = getImportPathAtPosition(model, position)
+  if (importPath) {
+    const resolved = resolveWorkspaceImportPath(importPath.rawPath, path)
+    if (resolved) {
+      return [
+        {
+          uri: monaco.Uri.parse(`dvala:///${resolved}`),
+          range: {
+            startLineNumber: 1,
+            startColumn: 1,
+            endLineNumber: 1,
+            endColumn: 1,
+          },
+        },
+      ]
+    }
+  }
+
   const def = workspaceIndex.findDefinition(path, position.lineNumber, position.column)
   if (!def) return null
   return [
@@ -544,7 +592,7 @@ export function initLspWorker(): void {
       }
       if (!path) return null
 
-      return getDefinitionsAtPosition(path, position)
+      return getDefinitionsAtPosition(model, path, position)
     },
   })
 
@@ -659,7 +707,9 @@ export function primeTypecheckForTesting(path: string, source: string, sourceVer
 }
 
 export function getDefinitionsForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {
-  return getDefinitionsAtPosition(path, position)
+  const model = registeredModels.get(path)
+  if (!model) return null
+  return getDefinitionsAtPosition(model, path, position)
 }
 
 export function getReferencesForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {

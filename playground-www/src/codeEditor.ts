@@ -467,6 +467,16 @@ export class CodeEditor {
   onBlur(cb: () => void): monaco.IDisposable {
     return this.editor.onDidBlurEditorWidget(() => cb())
   }
+  onGoToDefinitionGesture(cb: (offset: number) => void): monaco.IDisposable {
+    return this.editor.onMouseDown(event => {
+      const position = event.target.position
+      if (!position) return
+      if (!event.event.leftButton) return
+      const browserEvent = event.event.browserEvent
+      if (!(browserEvent.metaKey || browserEvent.ctrlKey)) return
+      cb(this.model.getOffsetAt(position))
+    })
+  }
 
   // --- commands (host-defined keyboard shortcuts, mirroring the old textarea handlers) ---
   addCommand(keyCode: number, handler: () => void): void {

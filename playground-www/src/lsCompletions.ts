@@ -112,6 +112,11 @@ function relativeFolderImportPath(fromFilePath: string | undefined, folderPath: 
   return folderImport.replace(/\/index$/, '')
 }
 
+function importBasePath(currentFilePath: string | undefined): string | undefined {
+  if (!currentFilePath) return undefined
+  return isInPlaygroundFolder(currentFilePath) ? undefined : currentFilePath
+}
+
 function getImportFolderLabels(
   currentFilePath: string | undefined,
   workspaceFiles: WorkspaceFile[],
@@ -144,6 +149,7 @@ export function getImportCompletionItems(
   const items: CompletionItem[] = []
   const seen = new Set<string>()
   const wantsPathCompletions = importPrefix.startsWith('.') || importPrefix.startsWith('/')
+  const basePath = importBasePath(currentFilePath)
 
   if (!wantsPathCompletions) {
     for (const item of builtinModuleCompletions) {
@@ -152,7 +158,7 @@ export function getImportCompletionItems(
     }
   }
 
-  for (const label of getImportFolderLabels(currentFilePath, workspaceFiles, importPrefix)) {
+  for (const label of getImportFolderLabels(basePath, workspaceFiles, importPrefix)) {
     if (!matchesPrefix(label, importPrefix)) continue
     addImportCompletion(items, seen, label, 'folder')
   }
@@ -162,7 +168,7 @@ export function getImportCompletionItems(
     if (file.path === currentFilePath) continue
     const label = importPrefix.startsWith('/')
       ? `/${stripDvalaSuffix(file.path)}`
-      : relativeImportPath(currentFilePath, file.path)
+      : relativeImportPath(basePath, file.path)
     if (!matchesPrefix(label, importPrefix)) continue
     addImportCompletion(items, seen, label, 'workspace file')
   }

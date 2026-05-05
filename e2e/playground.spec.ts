@@ -573,6 +573,54 @@ test.describe('language service navigation', () => {
     expect(defs[0].range.startColumn).toBe(5)
   })
 
+  test('resolves go-to-definition for an import path string', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'data-file',
+          path: 'data.dvala',
+          code: 'let x = 99; { x }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+    })
+
+    const code = 'let d = import("./data"); d.x'
+    await setDvalaCode(page, code)
+
+    const defs = await page.evaluate(() =>
+      (window as any).Playground.getDefinitionsAtCursorForTesting('let d = import("./d'.length),
+    )
+    expect(defs).toHaveLength(1)
+    expect(defs[0].uri).toContain('/data.dvala')
+    expect(defs[0].range.startLineNumber).toBe(1)
+    expect(defs[0].range.startColumn).toBe(1)
+  })
+
+  test('go-to-definition command on an import path opens the target file', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'data-file',
+          path: 'data.dvala',
+          code: 'let x = 99; { x }',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+    })
+
+    const code = 'let d = import("./data"); d.x'
+    await setDvalaCode(page, code)
+    await page.evaluate(offset => (window as any).Playground.goToDefinitionAtOffsetForTesting(offset), 'let d = import("./d'.length)
+
+    await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('data.dvala')
+    await expect.poll(() => page.evaluate(() => (window as any).Playground.getEditorValue())).toBe('let x = 99; { x }')
+  })
+
   test('finds references and rename edits for a local symbol', async ({ page }) => {
     await setDvalaCode(page, 'let value = 1; value + value')
 

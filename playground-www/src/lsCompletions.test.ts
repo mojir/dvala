@@ -103,6 +103,13 @@ describe('getImportCompletionItems', () => {
     expect(items.map(item => item.label)).not.toContain('./utils')
     expect(items.map(item => item.label).some(label => label.includes('.dvala-playground'))).toBe(false)
   })
+
+  it('treats scratch as a virtual workspace-root file for relative suggestions', () => {
+    const items = getImportCompletionItems('./', '.dvala-playground/scratch.dvala', workspaceFiles)
+    expect(items.map(item => item.label)).toContain('./utils')
+    expect(items.map(item => item.label)).toContain('./lib/')
+    expect(items.map(item => item.label)).not.toContain('../utils')
+  })
 })
 
 describe('getImportedExportCompletionItems', () => {

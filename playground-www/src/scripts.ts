@@ -149,6 +149,7 @@ import {
   guardCodeReplacement,
   hasScratchContent,
   isScratchActive,
+  loadWorkspaceFile,
   openScratchInEditor,
   persistScratchFromCurrentState,
   populateExplorerFileList,
@@ -1882,6 +1883,45 @@ function syncActiveEditorToLsp(value: string): void {
   updateLspDocument(activePath, value, activeModel.getVersionId())
 }
 
+function pathFromDefinitionUri(uri: string): string | null {
+  const match = /^dvala:\/+(.*)$/.exec(uri)
+  return match?.[1] ? decodeURIComponent(match[1]) : null
+}
+
+function goToDefinitionAtOffset(offset: number): void {
+  const editor = getCodeEditor()
+  const activeModel = editor.getActiveModel()
+  if (!activeModel) return
+
+  const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
+  const defs = getDefinitionsForTesting(activePath, activeModel.getPositionAt(offset))
+  const target = defs?.[0]
+  if (!target) return
+
+  const targetPath = pathFromDefinitionUri(target.uri.toString())
+  if (!targetPath) return
+
+  if (targetPath === SCRATCH_FILE_PATH) {
+    focusScratch()
+  } else if (targetPath !== activePath) {
+    const file = getWorkspaceFiles().find(entry => entry.path === targetPath)
+    if (!file) return
+    loadWorkspaceFile(file.id)
+  }
+
+  const targetModel = editor.getActiveModel()
+  const targetOffset = targetModel.getOffsetAt({
+    lineNumber: target.range.startLineNumber,
+    column: target.range.startColumn,
+  })
+  editor.setCursor(targetOffset)
+  focusDvalaCode()
+}
+
+function goToDefinitionAtCursor(): void {
+  goToDefinitionAtOffset(getCodeEditor().getSelectionRange().start)
+}
+
 export function resetOutput() {
   elements.outputResult.innerHTML = ''
   clearState('output')
@@ -2110,10 +2150,15 @@ function wireCodeEditorListeners(): void {
     saveState({ 'focused-panel': null })
     updateCSS()
   })
+  editor.onGoToDefinitionGesture(offset => {
+    editor.setCursor(offset)
+    goToDefinitionAtOffset(offset)
+  })
   // Route Cmd/Ctrl-Z and Cmd/Ctrl-Shift-Z to the playground's history rather
   // than Monaco's built-in undo stack.
   editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyZ, () => undoDvalaCodeHistory())
   editor.addCommand(KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyZ, () => redoDvalaCodeHistory())
+  editor.addCommand(KeyCode.F12, () => goToDefinitionAtCursor())
 }
 
 window.onload = async function () {
@@ -2389,6 +2434,12 @@ window.onload = async function () {
     if (state.pendingEffects.length > 0) {
       const entry = state.pendingEffects[state.currentEffectIndex]
       if (entry?.onKeyDown?.(evt)) return
+    }
+
+    if (evt.key === 'F12' && tryGetCodeEditor()?.hasFocus()) {
+      evt.preventDefault()
+      goToDefinitionAtCursor()
+      return
     }
 
     if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
@@ -3327,6 +3378,16 @@ export function getFormattedEditorValueForTesting(): string | null {
   if (!activeModel) return null
   const edits = getFormattingEditsForTesting(activeModel)
   return edits[0]?.text ?? activeModel.getValue()
+}
+
+export function goToDefinitionAtCursorForTesting(): boolean {
+  goToDefinitionAtCursor()
+  return true
+}
+
+export function goToDefinitionAtOffsetForTesting(position: number): boolean {
+  goToDefinitionAtOffset(position)
+  return true
 }
 
 function makeArgRow(content: string, index?: number, copyContent?: string): HTMLElement {
