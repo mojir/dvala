@@ -174,8 +174,37 @@ function getWorker(): Worker {
   return worker
 }
 
+function getPendingRequestId(path: string): number | undefined {
+  return pendingRequests.get(path)
+}
+
+function matchesPendingRequest(path: string, requestId: number): boolean {
+  return getPendingRequestId(path) === requestId
+}
+
+function clearPendingRequest(path: string): void {
+  pendingRequests.delete(path)
+  lastResyncFingerprints.delete(path)
+}
+
+function cancelPendingRequest(path: string, w = getWorker()): void {
+  const requestId = getPendingRequestId(path)
+  if (requestId === undefined) return
+  w.postMessage({ type: 'cancelRequest', requestId })
+  pendingRequests.delete(path)
+}
+
+function startTrackedRequest(path: string, w: Worker, buildMessage: (requestId: number) => object): number {
+  cancelPendingRequest(path, w)
+
+  const requestId = nextRequestId++
+  pendingRequests.set(path, requestId)
+  w.postMessage(buildMessage(requestId))
+  return requestId
+}
+
 function getResyncFingerprint(path: string, sourceVersion: number): string {
-  const pendingRequestId = pendingRequests.get(path)
+  const pendingRequestId = getPendingRequestId(path)
   return `${sourceVersion}:${pendingRequestId ?? 'none'}`
 }
 
@@ -217,7 +246,7 @@ function handleWorkerMessage(event: MessageEvent): void {
       const model = registeredModels.get(path)
       if (!model) return
 
-      if (pendingRequests.get(path) !== msg.requestId) return
+      if (!matchesPendingRequest(path, msg.requestId)) return
 
       const currentVersion = model.getVersionId()
       if (sourceVersion < currentVersion) return
@@ -238,18 +267,16 @@ function handleWorkerMessage(event: MessageEvent): void {
       }))
 
       monaco.editor.setModelMarkers(model, 'dvala', markers)
-      pendingRequests.delete(path)
-      lastResyncFingerprints.delete(path)
+      clearPendingRequest(path)
       return
     }
 
     case 'diagnosticsError': {
       const { path, requestId } = msg as { type: 'diagnosticsError'; path: string; requestId: number }
-      if (pendingRequests.get(path) !== requestId) return
+      if (!matchesPendingRequest(path, requestId)) return
       const model = registeredModels.get(path)
       if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
-      pendingRequests.delete(path)
-      lastResyncFingerprints.delete(path)
+      clearPendingRequest(path)
       return
     }
 
@@ -260,7 +287,7 @@ function handleWorkerMessage(event: MessageEvent): void {
       const fingerprint = getResyncFingerprint(path, model.getVersionId())
       if (lastResyncFingerprints.get(path) === fingerprint) return
       syncModelToWorker(worker, path, model)
-      if (pendingRequests.has(path)) {
+      if (getPendingRequestId(path) !== undefined) {
         requestDiagnostics(path, model.getVersionId())
       }
       lastResyncFingerprints.set(path, getResyncFingerprint(path, model.getVersionId()))
@@ -662,11 +689,7 @@ export function unregisterModel(path: string): void {
   if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
   if (worker) worker.postMessage({ type: 'closeDocument', path })
   // Cancel any pending diagnostics for this path.
-  const pendingId = pendingRequests.get(path)
-  if (pendingId !== undefined) {
-    getWorker().postMessage({ type: 'cancelRequest', requestId: pendingId })
-    pendingRequests.delete(path)
-  }
+  cancelPendingRequest(path)
   const timer = debounceTimers.get(path)
   if (timer) {
     clearTimeout(timer)
@@ -747,19 +770,10 @@ export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): m
  */
 function requestDiagnostics(path: string, sourceVersion: number): void {
   const w = getWorker()
-
-  const prevId = pendingRequests.get(path)
-  if (prevId !== undefined) {
-    w.postMessage({ type: 'cancelRequest', requestId: prevId })
-  }
-
-  const requestId = nextRequestId++
-  pendingRequests.set(path, requestId)
-
-  w.postMessage({
+  startTrackedRequest(path, w, requestId => ({
     type: 'requestDiagnostics',
     requestId,
     path,
     sourceVersion,
-  })
+  }))
 }

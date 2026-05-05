@@ -461,6 +461,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
   2026-05-05 first slice: diagnostics replies now have to match the still-pending `requestId` for their path on the main thread, not just the model version. That closes the race where a cancelled older diagnostics request for the same source version could still arrive late and overwrite the newer result.
 
+  2026-05-05 second slice: diagnostics request issuance, cancellation, pending-request matching, and completion now flow through one local helper layer in `lsWorkerClient.ts` instead of being split across multiple call sites. That keeps the live diagnostics path behavior the same while making the next worker-backed LS surface easier to put under the same request-correlation rules.
+
 32d. Add regression coverage for incremental multi-file edits and worker lifecycle edges: rapid typing, cross-file rename after unsaved edits, worker restart / re-init, and stale-result suppression under overlapping requests.
 
   2026-05-05 first slice: added focused client coverage for a local edit arriving during an in-flight resync cycle. When the model version changes mid-recovery, a subsequent `resyncDocument` starts a fresh reseed + diagnostics retry instead of being incorrectly coalesced with the older recovery fingerprint.
