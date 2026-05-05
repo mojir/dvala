@@ -63,7 +63,7 @@ function typecheckForDiagnostics(source: string, path: string): TypecheckResult 
     const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
     const ast = parseToAst(minified)
     workspaceIndex.updateFile(path, source, () => null)
-    return typecheck(ast, { modules: allBuiltinModules })
+    return typecheck(ast, { modules: allBuiltinModules, fold: false })
   } catch {
     // parseToAst threw on broken code — return empty diagnostics.
     // Parse errors are already reported by the worker's recover-parse.
