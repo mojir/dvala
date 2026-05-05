@@ -118,7 +118,10 @@ function resolveAnnotationDiagnosticLocation(
 
   const nodeStartOffset = lineColumnToOffset(source.content, ownerPos.start[0], ownerPos.start[1])
   const nodeEndOffset = lineColumnToOffset(source.content, ownerPos.end[0], ownerPos.end[1])
-  const searchWindow = source.content.slice(nodeStartOffset, Math.max(nodeStartOffset, nodeEndOffset) + annotation.length + 1)
+  const searchWindow = source.content.slice(
+    nodeStartOffset,
+    Math.max(nodeStartOffset, nodeEndOffset) + annotation.length + 1,
+  )
   const annotationStartInWindow = searchWindow.indexOf(annotation)
   if (annotationStartInWindow < 0) return undefined
 
@@ -169,13 +172,7 @@ function typeAnnotationParseError(
   fallbackNodeId?: number,
 ): TypeInferenceError {
   const location = resolveAnnotationDiagnosticLocation(ownerNodeId, annotation, error, ctx.sourceMap)
-  return new TypeInferenceError(
-    message,
-    fallbackNodeId,
-    'error',
-    location?.sourceCodeInfo,
-    location?.sourceRange,
-  )
+  return new TypeInferenceError(message, fallbackNodeId, 'error', location?.sourceCodeInfo, location?.sourceRange)
 }
 
 interface ResumeContext {
@@ -3251,7 +3248,14 @@ function inferFunctionNode(
         declaredType = parseUserTypeAnnotation(rawAnnotation.slice('return:'.length), ctx.activeTypeParams)
       } catch (error) {
         if (error instanceof TypeParseError) {
-          throw typeAnnotationParseError(error.cleanMessage, node[2], rawAnnotation.slice('return:'.length), error, ctx, node[2])
+          throw typeAnnotationParseError(
+            error.cleanMessage,
+            node[2],
+            rawAnnotation.slice('return:'.length),
+            error,
+            ctx,
+            node[2],
+          )
         }
         throw error
       }
