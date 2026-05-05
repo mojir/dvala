@@ -29,8 +29,8 @@
  *   thread instead of silently drifting.
  * - `requestDiagnostics(path, sourceVersion)`: compute parse + typecheck
  *   diagnostics for the file at `path`. The worker tokenizes, parses, and
- *   typechecks the stored mirror; posts back `diagnosticsResult` or
- *   `diagnosticsError`.
+ *   typechecks the stored mirror; if no mirror is available it requests an
+ *   explicit resync instead of silently fabricating an empty result.
  * - `cancelRequest(requestId)`: cancel an in-flight request. The worker
  *   checks a `cancelled` flag at well-known yield points (after parse,
  *   after typecheck) and drops the result if set.
@@ -252,15 +252,7 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
       cancelledRequests.delete(msg.requestId)
 
       if (!file) {
-        // No mirror yet — reply with empty diagnostics.
-        const out: DiagnosticsResultMessage = {
-          type: 'diagnosticsResult',
-          requestId: msg.requestId,
-          path: msg.path,
-          sourceVersion: msg.sourceVersion,
-          diagnostics: [],
-        }
-        self.postMessage(out)
+        requestDocumentResync(msg.path)
         return
       }
 

@@ -244,6 +244,9 @@ function handleWorkerMessage(event: MessageEvent): void {
       const model = registeredModels.get(path)
       if (!model || !worker) return
       syncModelToWorker(worker, path, model)
+      if (pendingRequests.has(path)) {
+        requestDiagnostics(path, model.getVersionId())
+      }
       return
     }
   }

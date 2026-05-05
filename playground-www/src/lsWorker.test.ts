@@ -67,6 +67,25 @@ describe('lsWorker document sync', () => {
     expect(worker.postMessage).toHaveBeenCalledWith({ type: 'resyncDocument', path: 'main.dvala' })
   })
 
+  it('requests resync instead of empty diagnostics when no mirror exists', async () => {
+    const worker = await loadWorker()
+
+    dispatch(worker, {
+      type: 'requestDiagnostics',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 1,
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith({ type: 'resyncDocument', path: 'main.dvala' })
+    expect(worker.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'diagnosticsResult',
+        path: 'main.dvala',
+      }),
+    )
+  })
+
   it('accepts an ordered update and serves diagnostics from the latest mirror', async () => {
     const worker = await loadWorker()
 
