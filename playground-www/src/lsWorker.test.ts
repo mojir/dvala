@@ -227,4 +227,33 @@ describe('lsWorker document sync', () => {
     )
     expect(completionMessage.items.filter(item => item.label === 'value')).toHaveLength(1)
   })
+
+  it('resolves cross-file rename from the imported file content in the request snapshot', async () => {
+    const worker = await loadWorker()
+
+    dispatch(worker, {
+      type: 'requestNavigation',
+      requestId: 5,
+      kind: 'rename',
+      path: 'main.dvala',
+      source: 'let { fresh } = import("./lib"); fresh',
+      sourceVersion: 3,
+      line: 1,
+      column: 7,
+      newName: 'renamed',
+      workspaceFiles: [{ path: 'lib.dvala', code: 'let fresh = 1\n{ fresh }' }],
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'navigationResult',
+        requestId: 5,
+        kind: 'rename',
+        edits: expect.arrayContaining([
+          expect.objectContaining({ file: 'lib.dvala', text: 'renamed' }),
+          expect.objectContaining({ file: 'main.dvala', text: 'renamed' }),
+        ]),
+      }),
+    )
+  })
 })

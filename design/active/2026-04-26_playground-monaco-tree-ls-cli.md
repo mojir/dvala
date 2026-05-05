@@ -479,6 +479,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
   2026-05-05 fourth slice: worker-backed request snapshots for navigation and symbol completion now overlay other registered open Monaco models on top of persisted workspace files, excluding the active request path which still travels as the primary `source` payload. That closes the cross-file unsaved-edit gap where rename / definition / reference and imported-export completion logic could otherwise read stale disk-backed content from another open file.
 
+  2026-05-05 fifth slice: added a worker-level behavior regression for cross-file rename through an imported file supplied only via the request snapshot. That keeps 32d coverage anchored to observable LS behavior as well as client request-payload shape, so the unsaved-edit fix is exercised at the rename result boundary too.
+
 32e. Re-profile on a medium workspace after the protocol changes. Revisit debounce windows, batching strategy, and any remaining full-document resend paths before starting Phase 3 local-project work.
 
 ### Phase 3 — CLI
