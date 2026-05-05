@@ -1875,6 +1875,7 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
 }
 
 function syncActiveEditorToLsp(value: string): void {
+  if (getActiveTabKind() !== 'file') return
   const editor = getCodeEditor()
   const activePath = getActiveFilePath() ?? SCRATCH_FILE_PATH
   const activeModel = editor.getActiveModel()
@@ -2221,6 +2222,7 @@ window.onload = async function () {
     beforeSwap: () => flushPendingAutoSave(),
     afterSwap: () => {
       activateCurrentFileHistory(false)
+      syncActiveEditorToLsp(getCodeEditor().getValue())
       // Phase 1.5 step 23j: set correct right-panel tabs FIRST so any
       // subsequent body population writes into valid tab bodies. setTabs
       // destroys old bodies and creates fresh ones; its onChange may fire

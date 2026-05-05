@@ -445,6 +445,8 @@ Lands after Phase 1.5. New first tab in the right-panel multi-tool, shown for `.
 
 This is a **follow-up track, not part of the user-facing Phase 2 parity checklist**. Phase 2's definition of done is Monaco feature parity for diagnostics, hover, completions, definition / references / rename, and formatting. The work below is infrastructure hardening that reduces correctness and performance risk as the playground moves toward larger workspaces and the CLI-backed local-mode surface in Phase 3.
 
+Current next-step recommendation: the next PR after Phase 2 parity should start at 32a and make the worker the canonical owner of LS-backed document state before widening the protocol surface further. That is the highest-leverage remaining gap because the current mixed worker/main-thread state model is where stale-result and divergent-cache risk still lives.
+
 32a. Make the worker the canonical owner of mirrored document state for all LS-backed features, not just diagnostics. Eliminate remaining main-thread-only fallbacks where they would create parity gaps or divergent cache behavior.
 
 32b. Tighten the edit-delta protocol: document open / close events, ordered versioned edits, explicit resync on gap or version mismatch, and a small recovery path after worker restart so stale mirrors cannot survive silently.

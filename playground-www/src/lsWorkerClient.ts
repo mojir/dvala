@@ -397,7 +397,7 @@ export function initLspWorker(): void {
       }
       if (!path) return null
 
-      const tc = typecheckCache.get(path)
+      const tc = typecheckVersions.get(path) === model.getVersionId() ? typecheckCache.get(path) : undefined
       const word = model.getWordAtPosition(position)
       const wordRange =
         word && word.word.length > 0

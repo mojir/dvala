@@ -615,7 +615,10 @@ test.describe('language service navigation', () => {
 
     const code = 'let d = import("./data"); d.x'
     await setDvalaCode(page, code)
-    await page.evaluate(offset => (window as any).Playground.goToDefinitionAtOffsetForTesting(offset), 'let d = import("./d'.length)
+    await page.evaluate(
+      offset => (window as any).Playground.goToDefinitionAtOffsetForTesting(offset),
+      'let d = import("./d'.length,
+    )
 
     await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('data.dvala')
     await expect.poll(() => page.evaluate(() => (window as any).Playground.getEditorValue())).toBe('let x = 99; { x }')
@@ -645,6 +648,39 @@ test.describe('language service navigation', () => {
 
     await expect(page.locator('#editor-tab-strip .editor-tab--active')).toContainText('data.dvala')
     await expect.poll(() => page.evaluate(() => (window as any).Playground.getEditorValue())).toBe('let x = 99; { x }')
+  })
+
+  test('switching to a same-content file rebinds go-to-definition to the active file', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as any).Playground.setWorkspaceFilesForTesting([
+        {
+          id: 'a-file',
+          path: 'a.dvala',
+          code: 'let value = 1; value',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: 'b-file',
+          path: 'b.dvala',
+          code: 'let value = 1; value',
+          context: '',
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ])
+      ;(window as any).Playground.loadWorkspaceFile('a-file')
+      ;(window as any).Playground.loadWorkspaceFile('b-file')
+    })
+
+    const defs = await page.evaluate(() =>
+      (window as any).Playground.getDefinitionsAtCursorForTesting('let value = 1; '.length),
+    )
+    expect(defs).toHaveLength(1)
+    expect(defs[0].uri).toContain('/b.dvala')
+    expect(defs[0].range.startLineNumber).toBe(1)
+    expect(defs[0].range.startColumn).toBe(5)
   })
 
   test('finds references and rename edits for a local symbol', async ({ page }) => {
