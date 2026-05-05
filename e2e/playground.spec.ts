@@ -86,6 +86,11 @@ async function waitForEditorSuggestions(page: Page) {
   await page.locator('.suggest-widget').waitFor({ state: 'visible', timeout: 3000 })
 }
 
+/** Wait for Monaco parameter hints to appear. */
+async function waitForSignatureHelp(page: Page) {
+  await page.locator('.parameter-hints-widget').waitFor({ state: 'visible', timeout: 3000 })
+}
+
 /** Read the first workspace file's id from its `data-file-id` attribute. */
 async function firstWorkspaceFileId(page: Page): Promise<string | null> {
   return page.evaluate(() => {
@@ -419,6 +424,27 @@ test.describe('editor completions', () => {
     await openEditorSuggestions(page)
 
     await expect(page.locator('.suggest-widget')).toContainText('value')
+  })
+})
+
+test.describe('signature help', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('shows parameter hints for user-defined functions', async ({ page }) => {
+    const code = 'let add = (a, b) => a + b;\nadd('
+    await setDvalaCode(page, code)
+    await setEditorCursor(page, code.length)
+
+    const triggered = await page.evaluate(() => (window as any).Playground.triggerSignatureHelpForTesting())
+    expect(triggered).toBe(true)
+
+    await waitForSignatureHelp(page)
+
+    await expect(page.locator('.parameter-hints-widget')).toContainText('add(a, b)')
   })
 })
 

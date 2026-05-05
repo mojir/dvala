@@ -11,10 +11,12 @@
 import * as monaco from 'monaco-editor'
 // eslint-disable-next-line import/default
 import LsWorker from './lsWorker?worker'
+import { allReference, isFunctionReference } from '../../reference/index'
 import type { Diagnostic } from '../../src/shared/types'
 import { formatSource, tokenizeSource } from '../../src/tooling'
 import { typecheck, WorkspaceIndex } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
+import { findCallContext } from '../../src/shared/callContext'
 import { buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
 import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 import { allBuiltinModules } from '../../src/allModules'
@@ -26,6 +28,8 @@ import { resolvePlaygroundPath } from './playgroundFileResolver'
 import { getImportCompletionItems, getImportCompletionPrefix, getImportedExportCompletionItems, getScopedCompletionItems } from './lsCompletions'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
+
+const referenceByTitle = new Map(Object.values(allReference).map(ref => [ref.title, ref]))
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -298,6 +302,59 @@ export function initLspWorker(): void {
       }
 
       return { suggestions }
+    },
+  })
+
+  monaco.languages.registerSignatureHelpProvider('dvala', {
+    signatureHelpTriggerCharacters: ['(', ','],
+    signatureHelpRetriggerCharacters: [','],
+    provideSignatureHelp: (model, position) => {
+      let path: string | undefined
+      for (const [p, m] of registeredModels) {
+        if (m === model) {
+          path = p
+          break
+        }
+      }
+
+      const callCtx = findCallContext(model.getValue(), { line: position.lineNumber, column: position.column })
+      if (!path || !callCtx) return null
+
+      const signatures: monaco.languages.SignatureInformation[] = []
+      const definitions = workspaceIndex.getDefinitions(path)
+      const ref = allReference[callCtx.functionName] ?? referenceByTitle.get(callCtx.functionName)
+      if (ref && isFunctionReference(ref)) {
+        for (const variant of ref.variants) {
+          const paramLabels = variant.argumentNames.map(name => {
+            const argInfo = ref.args[name]
+            const typeStr = argInfo ? (Array.isArray(argInfo.type) ? argInfo.type.join(' | ') : argInfo.type) : ''
+            return typeStr ? `${name}: ${typeStr}` : name
+          })
+          signatures.push({
+            label: `${callCtx.functionName}(${paramLabels.join(', ')})`,
+            parameters: paramLabels.map(label => ({ label })),
+          })
+        }
+      } else {
+        const funcDef = definitions.find(def => def.name === callCtx.functionName && def.params)
+        if (funcDef?.params) {
+          signatures.push({
+            label: `${callCtx.functionName}(${funcDef.params.join(', ')})`,
+            parameters: funcDef.params.map(label => ({ label })),
+          })
+        }
+      }
+
+      if (signatures.length === 0) return null
+
+      return {
+        value: {
+          signatures,
+          activeSignature: 0,
+          activeParameter: callCtx.activeParam,
+        },
+        dispose: () => {},
+      }
     },
   })
 

@@ -312,7 +312,7 @@ export class CodeEditor {
       quickSuggestions: { other: true, comments: false, strings: true },
       suggestOnTriggerCharacters: true,
       lightbulb: { enabled: monaco.editor.ShowLightbulbIconMode.Off },
-      parameterHints: { enabled: false },
+      parameterHints: { enabled: true },
       inlineSuggest: { enabled: false },
     })
     this.model = this.editor.getModel()!
@@ -469,6 +469,15 @@ export class CodeEditor {
   // --- commands (host-defined keyboard shortcuts, mirroring the old textarea handlers) ---
   addCommand(keyCode: number, handler: () => void): void {
     this.editor.addCommand(keyCode, handler)
+  }
+
+  triggerSignatureHelp(): boolean {
+    const controller = this.editor.getContribution('editor.controller.parameterHints') as
+      | { trigger?: (context: { triggerKind: monaco.languages.SignatureHelpTriggerKind }) => void }
+      | null
+    if (!controller?.trigger) return false
+    controller.trigger({ triggerKind: monaco.languages.SignatureHelpTriggerKind.Invoke })
+    return true
   }
 
   // --- theme ---

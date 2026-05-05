@@ -3255,6 +3255,10 @@ export function setEditorCursor(position: number): void {
   getCodeEditor().setCursor(position)
 }
 
+export function triggerSignatureHelpForTesting(): boolean {
+  return getCodeEditor().triggerSignatureHelp()
+}
+
 function makeArgRow(content: string, index?: number, copyContent?: string): HTMLElement {
   const row = document.createElement('div')
   row.style.cssText = `display:flex; flex-direction:row; gap:3px; align-items:center; min-width:0; padding-right:0.5rem;${index !== undefined ? ' height:1.4rem;' : ''}`

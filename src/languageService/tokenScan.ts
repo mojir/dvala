@@ -36,6 +36,7 @@ export function scanTokensForDefinitions(tokens: Token[], filePath: string): Sym
 
     // Determine kind by looking ahead past `=` for function/macro/handler keywords
     const kind = classifyLetBinding(meaningful, i + 2)
+    const params = kind === 'function' ? scanFunctionParams(meaningful, i + 3) : undefined
 
     defs.push({
       name,
@@ -43,6 +44,7 @@ export function scanTokensForDefinitions(tokens: Token[], filePath: string): Sym
       nodeId: -1, // no AST node for token-scanned definitions
       location: { file: filePath, line, column },
       scope: 0, // token scan only finds top-level bindings
+      ...(params ? { params } : {}),
     })
   }
 
@@ -76,4 +78,34 @@ function classifyLetBinding(tokens: Token[], startIndex: number): SymbolDef['kin
   if (rhs[0] === 'Symbol' && rhs[1] === 'import') return 'import'
 
   return 'variable'
+}
+
+function scanFunctionParams(tokens: Token[], startIndex: number): string[] | undefined {
+  const first = tokens[startIndex]
+  if (!first || first[0] !== 'LParen') return undefined
+
+  const params: string[] = []
+  let depth = 0
+
+  for (let i = startIndex; i < tokens.length; i++) {
+    const token = tokens[i]!
+    if (token[0] === 'LParen') {
+      depth++
+      continue
+    }
+    if (token[0] === 'RParen') {
+      depth--
+      if (depth === 0) return params
+      continue
+    }
+    if (depth !== 1) continue
+    if (token[0] === 'Symbol') {
+      params.push(token[1])
+      continue
+    }
+    if (token[0] === 'Operator' && token[1] === ',') continue
+    return undefined
+  }
+
+  return undefined
 }
