@@ -138,8 +138,9 @@ describe('lsWorkerClient lifecycle', () => {
     client.initLspWorker()
     client.registerModel('main.dvala', model as never)
 
-    const provider = vi.mocked((await import('monaco-editor')).languages.registerCompletionItemProvider).mock
-      .calls[0]?.[1]
+    const provider = vi
+      .mocked((await import('monaco-editor')).languages.registerCompletionItemProvider)
+      .mock.calls.at(-1)?.[1]
     const position: { lineNumber: number; column: number } = { lineNumber: 2, column: 6 }
     const context: Record<string, never> = {}
     const token: Record<string, never> = {}
@@ -179,6 +180,107 @@ describe('lsWorkerClient lifecycle', () => {
           sortText: '1_localValue',
         }),
       ],
+    })
+  })
+
+  it('drops stale completion results whose requestId is no longer pending for the path', async () => {
+    const model = {
+      ...makeModel('let localValue = 1;\nlocal', 3),
+      getLineContent: () => 'local',
+      getWordUntilPosition: () => ({ word: 'local', startColumn: 1, endColumn: 6 }),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi
+      .mocked((await import('monaco-editor')).languages.registerCompletionItemProvider)
+      .mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 2, column: 6 }
+    const nextPosition: { lineNumber: number; column: number } = { lineNumber: 2, column: 5 }
+    const context: Record<string, never> = {}
+    const token: Record<string, never> = {}
+
+    const firstPromise = provider?.provideCompletionItems(
+      model as never,
+      position as never,
+      context as never,
+      token as never,
+    )
+    const secondPromise = provider?.provideCompletionItems(
+      model as never,
+      nextPosition as never,
+      context as never,
+      token as never,
+    )
+
+    dispatchWorkerMessage(0, {
+      type: 'completionResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      items: [{ label: 'stale', kind: 'variable', detail: 'let', sortText: '1_stale' }],
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'completionResult',
+      requestId: 2,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      items: [{ label: 'fresh', kind: 'variable', detail: 'let', sortText: '1_fresh' }],
+    })
+
+    await expect(firstPromise).resolves.toEqual({ suggestions: [] })
+    await expect(secondPromise).resolves.toEqual({
+      suggestions: [expect.objectContaining({ label: 'fresh' })],
+    })
+  })
+
+  it('drops stale hover results whose requestId is no longer pending for the path', async () => {
+    const model = {
+      ...makeModel('', 3),
+      getWordAtPosition: (position: { column: number }) =>
+        position.column === 1
+          ? { word: 'x', startColumn: 1, endColumn: 2 }
+          : { word: 'y', startColumn: 2, endColumn: 3 },
+      getValueInRange: (range: { startColumn: number }) => (range.startColumn === 1 ? 'x' : 'y'),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi.mocked((await import('monaco-editor')).languages.registerHoverProvider).mock.calls.at(-1)?.[1]
+    const firstPosition: { lineNumber: number; column: number } = { lineNumber: 1, column: 1 }
+    const secondPosition: { lineNumber: number; column: number } = { lineNumber: 1, column: 2 }
+    const token: Record<string, never> = {}
+    const firstPromise = provider?.provideHover(model as never, firstPosition as never, token as never)
+    const secondPromise = provider?.provideHover(model as never, secondPosition as never, token as never)
+
+    dispatchWorkerMessage(0, {
+      type: 'hoverResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      inferredType: 'Stale',
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'hoverResult',
+      requestId: 2,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      inferredType: 'Fresh',
+    })
+
+    await expect(firstPromise).resolves.toBeNull()
+    await expect(secondPromise).resolves.toEqual({
+      contents: [{ value: '```dvala\nFresh\n```' }],
+      range: {
+        startLineNumber: 1,
+        startColumn: 2,
+        endLineNumber: 1,
+        endColumn: 3,
+      },
     })
   })
 

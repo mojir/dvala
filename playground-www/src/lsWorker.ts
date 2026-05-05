@@ -414,10 +414,27 @@ function computeCompletion(message: RequestCompletionMessage): CompletionItem[] 
   }
 
   const currentFileSymbols = index.getFileSymbols(message.path)
-  return [
-    ...getScopedCompletionItems(message.prefix, index.getSymbolsInScope(message.path, message.line, message.column)),
-    ...getImportedExportCompletionItems(message.prefix, currentFileSymbols, filePath => index.getFileSymbols(filePath)),
-  ]
+  const seen = new Set<string>()
+  const items: CompletionItem[] = []
+
+  for (const item of getScopedCompletionItems(
+    message.prefix,
+    index.getSymbolsInScope(message.path, message.line, message.column),
+  )) {
+    if (seen.has(item.label)) continue
+    seen.add(item.label)
+    items.push(item)
+  }
+
+  for (const item of getImportedExportCompletionItems(message.prefix, currentFileSymbols, filePath =>
+    index.getFileSymbols(filePath),
+  )) {
+    if (seen.has(item.label)) continue
+    seen.add(item.label)
+    items.push(item)
+  }
+
+  return items
 }
 
 function resolveWorkspaceImportPathForSnapshot(

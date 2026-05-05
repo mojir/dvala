@@ -199,4 +199,32 @@ describe('lsWorker document sync', () => {
       }),
     )
   })
+
+  it('deduplicates completion labels across local scope and imported exports', async () => {
+    const worker = await loadWorker()
+
+    dispatch(worker, {
+      type: 'requestCompletion',
+      requestId: 4,
+      path: 'main.dvala',
+      source: 'let value = 1\nlet lib = import("./lib")\nval',
+      sourceVersion: 2,
+      line: 3,
+      column: 4,
+      prefix: 'val',
+      importPrefix: null,
+      workspaceFiles: [{ path: 'lib.dvala', code: 'let value = 2\n{ value }' }],
+    })
+
+    const completionMessage = worker.postMessage.mock.calls.find(call => call[0]?.type === 'completionResult')?.[0] as {
+      items: { label: string }[]
+    }
+    expect(completionMessage).toEqual(
+      expect.objectContaining({
+        type: 'completionResult',
+        requestId: 4,
+      }),
+    )
+    expect(completionMessage.items.filter(item => item.label === 'value')).toHaveLength(1)
+  })
 })
