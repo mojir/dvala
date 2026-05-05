@@ -4,8 +4,9 @@
  * Owns the worker lifecycle, streams edit deltas, and debounces diagnostics
  * requests. Consumers call `initLspWorker()` once during boot, then
  * `registerModel(path, model)` whenever a Monaco model is created or
- * `unregisterModel(path)` when one is disposed. Edit deltas are pushed via
- * `updateDocument(path, source, sourceVersion)`.
+ * `unregisterModel(path)` when one is disposed. Registration maps to an
+ * explicit worker `openDocument` / `closeDocument` lifecycle so worker
+ * mirrors can be reseeded after restart without relying on fresh edits.
  */
 
 import * as monaco from 'monaco-editor'
@@ -163,8 +164,84 @@ function indexWorkspaceFile(path: string, source: string, seen = new Set<string>
 }
 
 function getWorker(): Worker {
-  if (!worker) worker = new LsWorker()
+  if (!worker) worker = createWorker()
   return worker
+}
+
+function syncModelToWorker(w: Worker, path: string, model: monaco.editor.ITextModel): void {
+  w.postMessage({
+    type: 'openDocument',
+    path,
+    source: model.getValue(),
+    sourceVersion: model.getVersionId(),
+  })
+}
+
+function syncRegisteredModelsToWorker(w: Worker): void {
+  for (const [path, model] of registeredModels) {
+    syncModelToWorker(w, path, model)
+  }
+}
+
+function handleWorkerError(): void {
+  worker = null
+}
+
+function handleWorkerMessage(event: MessageEvent): void {
+  const msg = event.data
+
+  switch (msg.type) {
+    case 'diagnosticsResult': {
+      const { path, sourceVersion, diagnostics } = msg as {
+        type: 'diagnosticsResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        diagnostics: Diagnostic[]
+      }
+
+      const model = registeredModels.get(path)
+      if (!model) return
+
+      const currentVersion = model.getVersionId()
+      if (sourceVersion < currentVersion) return
+
+      const markers: monaco.editor.IMarkerData[] = diagnostics.map(d => ({
+        message: d.message,
+        severity:
+          d.severity === 'error'
+            ? monaco.MarkerSeverity.Error
+            : d.severity === 'warning'
+              ? monaco.MarkerSeverity.Warning
+              : monaco.MarkerSeverity.Info,
+        startLineNumber: d.range.start.line,
+        startColumn: d.range.start.column,
+        endLineNumber: d.range.end.line,
+        endColumn: d.range.end.column,
+        source: d.source,
+      }))
+
+      monaco.editor.setModelMarkers(model, 'dvala', markers)
+      pendingRequests.delete(path)
+      return
+    }
+
+    case 'diagnosticsError': {
+      const { path } = msg as { type: 'diagnosticsError'; path: string }
+      const model = registeredModels.get(path)
+      if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
+      pendingRequests.delete(path)
+      return
+    }
+  }
+}
+
+function createWorker(): Worker {
+  const nextWorker = new LsWorker()
+  nextWorker.onerror = () => handleWorkerError()
+  nextWorker.onmessage = event => handleWorkerMessage(event)
+  syncRegisteredModelsToWorker(nextWorker)
+  return nextWorker
 }
 
 function getPathForModel(model: monaco.editor.ITextModel): string | undefined {
@@ -306,61 +383,7 @@ function formatModel(model: monaco.editor.ITextModel): monaco.languages.TextEdit
  * Initialize the LS worker. Call once during playground boot.
  */
 export function initLspWorker(): void {
-  const w = getWorker()
-
-  w.onerror = () => {
-    worker = null
-  }
-
-  w.onmessage = (event: MessageEvent) => {
-    const msg = event.data
-
-    switch (msg.type) {
-      case 'diagnosticsResult': {
-        const { path, sourceVersion, diagnostics } = msg as {
-          type: 'diagnosticsResult'
-          requestId: number
-          path: string
-          sourceVersion: number
-          diagnostics: Diagnostic[]
-        }
-
-        const model = registeredModels.get(path)
-        if (!model) return
-
-        // Discard stale results — the model has moved on since the request.
-        const currentVersion = model.getVersionId()
-        if (sourceVersion < currentVersion) return
-
-        const markers: monaco.editor.IMarkerData[] = diagnostics.map(d => ({
-          message: d.message,
-          severity:
-            d.severity === 'error'
-              ? monaco.MarkerSeverity.Error
-              : d.severity === 'warning'
-                ? monaco.MarkerSeverity.Warning
-                : monaco.MarkerSeverity.Info,
-          startLineNumber: d.range.start.line,
-          startColumn: d.range.start.column,
-          endLineNumber: d.range.end.line,
-          endColumn: d.range.end.column,
-          source: d.source,
-        }))
-
-        monaco.editor.setModelMarkers(model, 'dvala', markers)
-        pendingRequests.delete(path)
-        return
-      }
-
-      case 'diagnosticsError': {
-        const { path } = msg as { type: 'diagnosticsError'; path: string }
-        const model = registeredModels.get(path)
-        if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
-        pendingRequests.delete(path)
-        return
-      }
-    }
-  }
+  void getWorker()
 
   // Register Monaco hover provider for Dvala — uses the typecheck cache
   // owned by the current model value, not a persistent main-thread cache.
@@ -589,6 +612,8 @@ export function initLspWorker(): void {
  */
 export function registerModel(path: string, model: monaco.editor.ITextModel): void {
   registeredModels.set(path, model)
+  if (worker) syncModelToWorker(worker, path, model)
+  else void getWorker()
 }
 
 /**
@@ -599,6 +624,7 @@ export function unregisterModel(path: string): void {
   const model = registeredModels.get(path)
   registeredModels.delete(path)
   if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
+  if (worker) worker.postMessage({ type: 'closeDocument', path })
   // Cancel any pending diagnostics for this path.
   const pendingId = pendingRequests.get(path)
   if (pendingId !== undefined) {
@@ -638,6 +664,19 @@ export function updateDocument(path: string, source: string, sourceVersion: numb
       requestDiagnostics(path, sourceVersion)
     }, 150),
   )
+}
+
+export function restartWorkerForTesting(clearMarkers = false): void {
+  worker?.terminate()
+  worker = null
+  if (!clearMarkers) return
+  for (const model of registeredModels.values()) {
+    monaco.editor.setModelMarkers(model, 'dvala', [])
+  }
+}
+
+export function requestDiagnosticsForTesting(path: string, sourceVersion: number): void {
+  requestDiagnostics(path, sourceVersion)
 }
 
 export function getDefinitionsForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {

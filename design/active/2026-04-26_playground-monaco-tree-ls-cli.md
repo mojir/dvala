@@ -451,6 +451,8 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
   2026-05-05 first slice: move cached typecheck ownership under the worker for diagnostics and remove the persistent main-thread hover/typecheck cache from `lsWorkerClient.ts`. Hover keeps the already-stable synchronous Monaco provider path for now and recomputes from the active model on demand, because the first async worker-hover attempt broke the playground's hover trigger path. That still eliminates the stale shared cache and keeps file-switch rebinding, version-correct hover content, import-path navigation, and browser-safe go-to-definition behavior unchanged.
 
+  2026-05-05 second slice: make document lifecycle explicit in the worker protocol. `registerModel` / `unregisterModel` now map to worker `openDocument` / `closeDocument`, worker recreation reseeds all still-registered models before new diagnostics requests, and stale older source versions are ignored at the worker mirror boundary. This hardens the mirror contract without yet moving `WorkspaceIndex` or workspace-file indexing into the worker.
+
 32b. Tighten the edit-delta protocol: document open / close events, ordered versioned edits, explicit resync on gap or version mismatch, and a small recovery path after worker restart so stale mirrors cannot survive silently.
 
 32c. Harden request / response sequencing: correlation IDs on all LS requests, per-path cancellation rules, and late-result dropping validated across hover / completion / diagnostics / navigation providers rather than diagnostics alone.

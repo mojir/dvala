@@ -15,6 +15,13 @@
  *
  * ### Main → Worker
  *
+ * - `openDocument(path, source, sourceVersion)`: register or resync a full
+ *   document mirror. Used when a Monaco model is first bound to a path and
+ *   again after worker recreation so the worker owns the current set of open
+ *   LS documents.
+ * - `closeDocument(path)`: drop the mirrored state for a closed Monaco
+ *   model. Prevents stale worker-only buffers from surviving after tabs are
+ *   disposed.
  * - `updateDocument(path, source, sourceVersion)`: edit delta. The worker
  *   stores the latest source for the given path. `sourceVersion` is a
  *   monotonically increasing counter from the main thread that the worker
@@ -59,10 +66,15 @@ import type { TypecheckResult } from '../../src/internal'
 // ── Message types ─────────────────────────────────────────────────────────────
 
 interface UpdateDocumentMessage {
-  type: 'updateDocument'
+  type: 'openDocument' | 'updateDocument'
   path: string
   source: string
   sourceVersion: number
+}
+
+interface CloseDocumentMessage {
+  type: 'closeDocument'
+  path: string
 }
 
 interface RequestDiagnosticsMessage {
@@ -77,7 +89,7 @@ interface CancelRequestMessage {
   requestId: number
 }
 
-type WorkerInMessage = UpdateDocumentMessage | RequestDiagnosticsMessage | CancelRequestMessage
+type WorkerInMessage = UpdateDocumentMessage | CloseDocumentMessage | RequestDiagnosticsMessage | CancelRequestMessage
 
 interface DiagnosticsResultMessage {
   type: 'diagnosticsResult'
@@ -120,6 +132,15 @@ class CancellationError extends Error {
 /** Throw if the given request has been cancelled. */
 function checkCancelled(requestId: number): void {
   if (cancelledRequests.get(requestId)) throw new CancellationError()
+}
+
+function setFileState(path: string, source: string, sourceVersion: number): void {
+  const current = files.get(path)
+  if (current && sourceVersion < current.sourceVersion) return
+  files.set(path, {
+    source,
+    sourceVersion,
+  })
 }
 
 // ── Core pipeline ─────────────────────────────────────────────────────────────
@@ -176,11 +197,14 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
   const msg = event.data
 
   switch (msg.type) {
+    case 'openDocument':
     case 'updateDocument': {
-      files.set(msg.path, {
-        source: msg.source,
-        sourceVersion: msg.sourceVersion,
-      })
+      setFileState(msg.path, msg.source, msg.sourceVersion)
+      return
+    }
+
+    case 'closeDocument': {
+      files.delete(msg.path)
       return
     }
 
