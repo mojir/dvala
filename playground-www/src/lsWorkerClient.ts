@@ -4,8 +4,9 @@
  * Owns the worker lifecycle, streams edit deltas, and debounces diagnostics
  * requests. Consumers call `initLspWorker()` once during boot, then
  * `registerModel(path, model)` whenever a Monaco model is created or
- * `unregisterModel(path)` when one is disposed. Edit deltas are pushed via
- * `updateDocument(path, source, sourceVersion)`.
+ * `unregisterModel(path)` when one is disposed. Registration maps to an
+ * explicit worker `openDocument` / `closeDocument` lifecycle so worker
+ * mirrors can be reseeded after restart without relying on fresh edits.
  */
 
 import * as monaco from 'monaco-editor'
@@ -14,28 +15,17 @@ import LsWorker from './lsWorker?worker'
 import { allReference, isCustomReference, isFunctionReference } from '../../reference/index'
 import type { Reference } from '../../reference/index'
 import type { Diagnostic } from '../../src/shared/types'
-import { formatSource, tokenizeSource } from '../../src/tooling'
-import { typecheck, WorkspaceIndex } from '../../src/internal'
-import type { TypecheckResult } from '../../src/internal'
+import { WorkspaceIndex } from '../../src/internal'
 import { findCallContext } from '../../src/shared/callContext'
-import { buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
-import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
-import { allBuiltinModules } from '../../src/allModules'
-import { parseToAst } from '../../src/parser'
-import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
 import { getWorkspaceFiles } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
 import { HANDLERS_FILE_PATH } from './handlersBuffer'
 import { resolvePlaygroundPath } from './playgroundFileResolver'
 import { SCRATCH_FILE_PATH } from './scratchBuffer'
-import {
-  getImportCompletionItems,
-  getImportCompletionPrefix,
-  getImportedExportCompletionItems,
-  getScopedCompletionItems,
-} from './lsCompletions'
+import { getImportCompletionItems, getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
+import type { WorkspaceFile } from './fileStorage'
 
 const referenceByTitle = new Map(Object.values(allReference).map(ref => [ref.title, ref]))
 
@@ -105,32 +95,13 @@ function kindToMonaco(kind: CompletionItem['kind']): monaco.languages.Completion
   }
 }
 
-/**
- * Tokenize, parse, and typecheck source on the main thread. Typecheck lives
- * here (not in the worker) because its dependency chain hits .dvala files
- * through builtin, which Vite's worker bundler can't handle.
- */
-function typecheckForDiagnostics(source: string, path: string): TypecheckResult {
-  const tokens = tokenizeSource(source, true, path)
-  try {
-    // Use parseToAst (not parseRecoverable) — parseToAst includes
-    // typeAnnotations which the typechecker needs to enforce
-    // annotations like `let n: Number = ""`.
-    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
-    const ast = parseToAst(minified)
-    indexWorkspaceFile(path, source)
-    return typecheck(ast, { modules: allBuiltinModules })
-  } catch {
-    // parseToAst threw on broken code — return empty diagnostics.
-    // Parse errors are already reported by the worker's recover-parse.
-    return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
-  }
-}
-
 // ── Worker lifetime ───────────────────────────────────────────────────────────
 
 let worker: Worker | null = null
 let nextRequestId = 1
+
+type PendingRequestMap = Map<string, number>
+type NavigationRequestKind = 'definition' | 'references' | 'rename'
 
 /** Debounce timers keyed by path. */
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -138,11 +109,38 @@ const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
 /** Pending request IDs keyed by path for cancellation. */
 const pendingRequests = new Map<string, number>()
 
-/** Latest typecheck result per path, for hover queries. */
-const typecheckCache = new Map<string, TypecheckResult>()
+/** Pending formatting request IDs keyed by path. */
+const pendingFormattingRequests = new Map<string, number>()
 
-/** Source version associated with the latest cached typecheck result. */
-const typecheckVersions = new Map<string, number>()
+/** Pending formatting resolvers keyed by path. */
+const pendingFormattingResolvers = new Map<string, (edits: monaco.languages.TextEdit[]) => void>()
+
+/** Pending completion request IDs keyed by path. */
+const pendingCompletionRequests = new Map<string, number>()
+
+/** Pending completion resolvers keyed by path. */
+const pendingCompletionResolvers = new Map<string, (items: CompletionItem[] | null) => void>()
+
+/** Pending hover request IDs keyed by path. */
+const pendingHoverRequests = new Map<string, number>()
+
+/** Pending hover request fingerprints keyed by path. */
+const pendingHoverRequestKeys = new Map<string, string>()
+
+/** Pending hover resolvers keyed by path. */
+const pendingHoverResolvers = new Map<string, (inferredType: string | undefined) => void>()
+
+/** Pending navigation request IDs keyed by request kind + path. */
+const pendingNavigationRequests = new Map<string, number>()
+
+/** Pending navigation resolvers keyed by request kind + path. */
+const pendingNavigationResolvers = new Map<string, (result: unknown) => void>()
+
+/** Last source version mirrored to the worker for each open path. */
+const lastSentSourceVersions = new Map<string, number>()
+
+/** Last handled resync fingerprint keyed by path to suppress duplicates. */
+const lastResyncFingerprints = new Map<string, string>()
 
 /** Workspace symbol index for go-to-def / find-references. */
 const workspaceIndex = new WorkspaceIndex()
@@ -179,9 +177,436 @@ function indexWorkspaceFile(path: string, source: string, seen = new Set<string>
   }
 }
 
+function getWorkspaceSnapshotFiles(excludePath?: string): { path: string; code: string }[] {
+  const snapshot = new Map<string, { path: string; code: string }>()
+
+  for (const file of getWorkspaceFiles() as WorkspaceFile[]) {
+    if (file.path === excludePath) continue
+    snapshot.set(file.path, { path: file.path, code: file.code })
+  }
+
+  for (const [path, model] of registeredModels) {
+    if (isInPlaygroundFolder(path)) continue
+    if (path === excludePath) continue
+    snapshot.set(path, { path, code: model.getValue() })
+  }
+
+  return [...snapshot.values()]
+}
+
 function getWorker(): Worker {
-  if (!worker) worker = new LsWorker()
+  if (!worker) worker = createWorker()
   return worker
+}
+
+function getPendingRequestId(requests: PendingRequestMap, path: string): number | undefined {
+  return requests.get(path)
+}
+
+function matchesPendingRequest(requests: PendingRequestMap, path: string, requestId: number): boolean {
+  return getPendingRequestId(requests, path) === requestId
+}
+
+function clearPendingRequest(requests: PendingRequestMap, path: string): void {
+  requests.delete(path)
+}
+
+function cancelPendingRequest(requests: PendingRequestMap, path: string, w = getWorker()): void {
+  const requestId = getPendingRequestId(requests, path)
+  if (requestId === undefined) return
+  w.postMessage({ type: 'cancelRequest', requestId })
+  requests.delete(path)
+}
+
+function startTrackedRequest(
+  requests: PendingRequestMap,
+  path: string,
+  w: Worker,
+  buildMessage: (requestId: number) => object,
+): number {
+  cancelPendingRequest(requests, path, w)
+
+  const requestId = nextRequestId++
+  requests.set(path, requestId)
+  w.postMessage(buildMessage(requestId))
+  return requestId
+}
+
+function clearDiagnosticsPendingRequest(path: string): void {
+  clearPendingRequest(pendingRequests, path)
+  lastResyncFingerprints.delete(path)
+}
+
+function cancelPendingDiagnosticsRequest(path: string, w = getWorker()): void {
+  cancelPendingRequest(pendingRequests, path, w)
+}
+
+function clearPendingFormattingRequest(path: string, edits: monaco.languages.TextEdit[]): void {
+  pendingFormattingResolvers.get(path)?.(edits)
+  pendingFormattingResolvers.delete(path)
+  clearPendingRequest(pendingFormattingRequests, path)
+}
+
+function cancelPendingFormattingRequest(path: string, w = getWorker()): void {
+  pendingFormattingResolvers.get(path)?.([])
+  pendingFormattingResolvers.delete(path)
+  cancelPendingRequest(pendingFormattingRequests, path, w)
+}
+
+function clearPendingCompletionRequest(path: string, items: CompletionItem[] | null): void {
+  pendingCompletionResolvers.get(path)?.(items)
+  pendingCompletionResolvers.delete(path)
+  clearPendingRequest(pendingCompletionRequests, path)
+}
+
+function cancelPendingCompletionRequest(path: string, w = getWorker()): void {
+  pendingCompletionResolvers.get(path)?.(null)
+  pendingCompletionResolvers.delete(path)
+  cancelPendingRequest(pendingCompletionRequests, path, w)
+}
+
+function clearPendingHoverRequest(path: string, inferredType: string | undefined): void {
+  pendingHoverResolvers.get(path)?.(inferredType)
+  pendingHoverResolvers.delete(path)
+  pendingHoverRequestKeys.delete(path)
+  clearPendingRequest(pendingHoverRequests, path)
+}
+
+function cancelPendingHoverRequest(path: string, w = getWorker()): void {
+  pendingHoverResolvers.get(path)?.(undefined)
+  pendingHoverResolvers.delete(path)
+  pendingHoverRequestKeys.delete(path)
+  cancelPendingRequest(pendingHoverRequests, path, w)
+}
+
+function getHoverRequestKey(
+  path: string,
+  sourceVersion: number,
+  position: monaco.Position,
+  wordRange?: monaco.IRange,
+): string {
+  return [
+    path,
+    sourceVersion,
+    position.lineNumber,
+    position.column,
+    wordRange?.startColumn ?? '',
+    wordRange?.endColumn ?? '',
+  ].join(':')
+}
+
+function getNavigationRequestKey(kind: NavigationRequestKind, path: string): string {
+  return `${kind}:${path}`
+}
+
+function clearPendingNavigationRequest<T>(kind: NavigationRequestKind, path: string, result: T): void {
+  const key = getNavigationRequestKey(kind, path)
+  const resolve = pendingNavigationResolvers.get(key) as ((value: T) => void) | undefined
+  resolve?.(result)
+  pendingNavigationResolvers.delete(key)
+  clearPendingRequest(pendingNavigationRequests, key)
+}
+
+function cancelPendingNavigationRequest<T>(
+  kind: NavigationRequestKind,
+  path: string,
+  result: T,
+  w = getWorker(),
+): void {
+  const key = getNavigationRequestKey(kind, path)
+  const resolve = pendingNavigationResolvers.get(key) as ((value: T) => void) | undefined
+  resolve?.(result)
+  pendingNavigationResolvers.delete(key)
+  cancelPendingRequest(pendingNavigationRequests, key, w)
+}
+
+function getResyncFingerprint(path: string, sourceVersion: number): string {
+  const pendingRequestId = getPendingRequestId(pendingRequests, path)
+  return `${sourceVersion}:${pendingRequestId ?? 'none'}`
+}
+
+function syncModelToWorker(w: Worker, path: string, model: monaco.editor.ITextModel): void {
+  const sourceVersion = model.getVersionId()
+  w.postMessage({
+    type: 'openDocument',
+    path,
+    source: model.getValue(),
+    sourceVersion,
+  })
+  lastSentSourceVersions.set(path, sourceVersion)
+}
+
+function syncRegisteredModelsToWorker(w: Worker): void {
+  for (const [path, model] of registeredModels) {
+    syncModelToWorker(w, path, model)
+  }
+}
+
+function handleWorkerError(): void {
+  for (const resolve of pendingFormattingResolvers.values()) {
+    resolve([])
+  }
+  for (const resolve of pendingCompletionResolvers.values()) {
+    resolve(null)
+  }
+  for (const resolve of pendingHoverResolvers.values()) {
+    resolve(undefined)
+  }
+  for (const resolve of pendingNavigationResolvers.values()) {
+    resolve(null)
+  }
+  pendingFormattingResolvers.clear()
+  pendingFormattingRequests.clear()
+  pendingCompletionResolvers.clear()
+  pendingCompletionRequests.clear()
+  pendingHoverResolvers.clear()
+  pendingHoverRequests.clear()
+  pendingHoverRequestKeys.clear()
+  pendingNavigationResolvers.clear()
+  pendingNavigationRequests.clear()
+  lastResyncFingerprints.clear()
+  worker = null
+}
+
+function buildFormattingEdits(model: monaco.editor.ITextModel, formatted: string): monaco.languages.TextEdit[] {
+  return [{ range: model.getFullModelRange(), text: formatted }]
+}
+
+function buildNavigationLocations(
+  locations: { file: string; line: number; column: number; endColumn: number }[],
+): monaco.languages.Location[] {
+  return locations.map(location => ({
+    uri: monaco.Uri.parse(`dvala:///${location.file}`),
+    range: {
+      startLineNumber: location.line,
+      startColumn: location.column,
+      endLineNumber: location.line,
+      endColumn: location.endColumn,
+    },
+  }))
+}
+
+function buildNavigationRenameEdit(
+  edits: { file: string; line: number; column: number; endColumn: number; text: string }[],
+): monaco.languages.WorkspaceEdit {
+  return {
+    edits: edits.map(edit => ({
+      resource: monaco.Uri.parse(`dvala:///${edit.file}`),
+      textEdit: {
+        range: {
+          startLineNumber: edit.line,
+          startColumn: edit.column,
+          endLineNumber: edit.line,
+          endColumn: edit.endColumn,
+        },
+        text: edit.text,
+      },
+      versionId: undefined,
+    })),
+  }
+}
+
+function handleWorkerMessage(event: MessageEvent): void {
+  const msg = event.data
+
+  switch (msg.type) {
+    case 'diagnosticsResult': {
+      const { path, sourceVersion, diagnostics } = msg as {
+        type: 'diagnosticsResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        diagnostics: Diagnostic[]
+      }
+
+      const model = registeredModels.get(path)
+      if (!model) return
+
+      if (!matchesPendingRequest(pendingRequests, path, msg.requestId)) return
+
+      const currentVersion = model.getVersionId()
+      if (sourceVersion < currentVersion) return
+
+      const markers: monaco.editor.IMarkerData[] = diagnostics.map(d => ({
+        message: d.message,
+        severity:
+          d.severity === 'error'
+            ? monaco.MarkerSeverity.Error
+            : d.severity === 'warning'
+              ? monaco.MarkerSeverity.Warning
+              : monaco.MarkerSeverity.Info,
+        startLineNumber: d.range.start.line,
+        startColumn: d.range.start.column,
+        endLineNumber: d.range.end.line,
+        endColumn: d.range.end.column,
+        source: d.source,
+      }))
+
+      monaco.editor.setModelMarkers(model, 'dvala', markers)
+      clearDiagnosticsPendingRequest(path)
+      return
+    }
+
+    case 'diagnosticsError': {
+      const { path, requestId } = msg as { type: 'diagnosticsError'; path: string; requestId: number }
+      if (!matchesPendingRequest(pendingRequests, path, requestId)) return
+      const model = registeredModels.get(path)
+      if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
+      clearDiagnosticsPendingRequest(path)
+      return
+    }
+
+    case 'formattingResult': {
+      const { path, requestId, sourceVersion, formatted } = msg as {
+        type: 'formattingResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        formatted: string
+      }
+      if (!matchesPendingRequest(pendingFormattingRequests, path, requestId)) return
+
+      const model = registeredModels.get(path)
+      if (!model || sourceVersion < model.getVersionId()) {
+        clearPendingFormattingRequest(path, [])
+        return
+      }
+
+      clearPendingFormattingRequest(path, buildFormattingEdits(model, formatted))
+      return
+    }
+
+    case 'formattingError': {
+      const { path, requestId } = msg as { type: 'formattingError'; path: string; requestId: number }
+      if (!matchesPendingRequest(pendingFormattingRequests, path, requestId)) return
+      clearPendingFormattingRequest(path, [])
+      return
+    }
+
+    case 'completionResult': {
+      const { path, requestId, sourceVersion, items } = msg as {
+        type: 'completionResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        items: CompletionItem[]
+      }
+      if (!matchesPendingRequest(pendingCompletionRequests, path, requestId)) return
+
+      const model = registeredModels.get(path)
+      if (!model || sourceVersion < model.getVersionId()) {
+        clearPendingCompletionRequest(path, null)
+        return
+      }
+
+      clearPendingCompletionRequest(path, items)
+      return
+    }
+
+    case 'completionError': {
+      const { path, requestId } = msg as { type: 'completionError'; path: string; requestId: number }
+      if (!matchesPendingRequest(pendingCompletionRequests, path, requestId)) return
+      clearPendingCompletionRequest(path, null)
+      return
+    }
+
+    case 'hoverResult': {
+      const { path, requestId, sourceVersion, inferredType } = msg as {
+        type: 'hoverResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        inferredType?: string
+      }
+      if (!matchesPendingRequest(pendingHoverRequests, path, requestId)) return
+
+      const model = registeredModels.get(path)
+      if (!model || sourceVersion < model.getVersionId()) {
+        clearPendingHoverRequest(path, undefined)
+        return
+      }
+
+      clearPendingHoverRequest(path, inferredType)
+      return
+    }
+
+    case 'hoverError': {
+      const { path, requestId } = msg as { type: 'hoverError'; path: string; requestId: number }
+      if (!matchesPendingRequest(pendingHoverRequests, path, requestId)) return
+      clearPendingHoverRequest(path, undefined)
+      return
+    }
+
+    case 'navigationResult': {
+      const { path, requestId, sourceVersion, kind, locations, edits } = msg as {
+        type: 'navigationResult'
+        requestId: number
+        path: string
+        sourceVersion: number
+        kind: NavigationRequestKind
+        locations?: { file: string; line: number; column: number; endColumn: number }[]
+        edits?: { file: string; line: number; column: number; endColumn: number; text: string }[]
+      }
+      const key = getNavigationRequestKey(kind, path)
+      if (!matchesPendingRequest(pendingNavigationRequests, key, requestId)) return
+
+      const model = registeredModels.get(path)
+      if (!model || sourceVersion < model.getVersionId()) {
+        clearPendingNavigationRequest(kind, path, kind === 'rename' ? null : null)
+        return
+      }
+
+      if (kind === 'rename') {
+        clearPendingNavigationRequest(kind, path, edits?.length ? buildNavigationRenameEdit(edits) : null)
+        return
+      }
+
+      clearPendingNavigationRequest(kind, path, locations?.length ? buildNavigationLocations(locations) : null)
+      return
+    }
+
+    case 'navigationError': {
+      const { path, requestId, kind } = msg as {
+        type: 'navigationError'
+        path: string
+        requestId: number
+        kind: NavigationRequestKind
+      }
+      const key = getNavigationRequestKey(kind, path)
+      if (!matchesPendingRequest(pendingNavigationRequests, key, requestId)) return
+      clearPendingNavigationRequest(kind, path, null)
+      return
+    }
+
+    case 'resyncDocument': {
+      const { path } = msg as { type: 'resyncDocument'; path: string }
+      const model = registeredModels.get(path)
+      if (!model || !worker) return
+      const fingerprint = getResyncFingerprint(path, model.getVersionId())
+      if (lastResyncFingerprints.get(path) === fingerprint) return
+      syncModelToWorker(worker, path, model)
+      if (getPendingRequestId(pendingRequests, path) !== undefined) {
+        requestDiagnostics(path, model.getVersionId())
+      }
+      lastResyncFingerprints.set(path, getResyncFingerprint(path, model.getVersionId()))
+      return
+    }
+  }
+}
+
+function createWorker(): Worker {
+  const nextWorker = new LsWorker()
+  nextWorker.onerror = () => handleWorkerError()
+  nextWorker.onmessage = event => handleWorkerMessage(event)
+  syncRegisteredModelsToWorker(nextWorker)
+  return nextWorker
+}
+
+function getPathForModel(model: monaco.editor.ITextModel): string | undefined {
+  for (const [path, registeredModel] of registeredModels) {
+    if (registeredModel === model) return path
+  }
+  return undefined
 }
 
 function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
@@ -225,6 +650,14 @@ function getDefinitionsAtPosition(
   model: monaco.editor.ITextModel,
   path: string,
   position: monaco.Position,
+): Promise<monaco.languages.Location[] | null> {
+  return requestNavigation(model, path, position, 'definition')
+}
+
+function getDefinitionsAtPositionLocal(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
 ): monaco.languages.Location[] | null {
   const importPath = getImportPathAtPosition(model, position)
   if (importPath) {
@@ -259,7 +692,15 @@ function getDefinitionsAtPosition(
   ]
 }
 
-function getReferencesAtPosition(path: string, position: monaco.Position): monaco.languages.Location[] | null {
+function getReferencesAtPosition(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+): Promise<monaco.languages.Location[] | null> {
+  return requestNavigation(model, path, position, 'references')
+}
+
+function getReferencesAtPositionLocal(path: string, position: monaco.Position): monaco.languages.Location[] | null {
   const canonical = workspaceIndex.resolveCanonicalFile(path, position.lineNumber, position.column)
   if (!canonical) return null
   const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
@@ -276,6 +717,15 @@ function getReferencesAtPosition(path: string, position: monaco.Position): monac
 }
 
 function getRenameEditsAtPosition(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  newName: string,
+): Promise<monaco.languages.WorkspaceEdit | null> {
+  return requestNavigation(model, path, position, 'rename', newName)
+}
+
+function getRenameEditsAtPositionLocal(
   path: string,
   position: monaco.Position,
   newName: string,
@@ -285,29 +735,176 @@ function getRenameEditsAtPosition(
   const occurrences = workspaceIndex.findAllOccurrences(canonical.file, canonical.name)
   if (occurrences.length === 0) return null
 
-  const edits: monaco.languages.IWorkspaceTextEdit[] = occurrences.map(loc => ({
-    resource: monaco.Uri.parse(`dvala:///${loc.file}`),
-    textEdit: {
-      range: {
-        startLineNumber: loc.line,
-        startColumn: loc.column,
-        endLineNumber: loc.line,
-        endColumn: loc.column + loc.nameLength,
+  return {
+    edits: occurrences.map(loc => ({
+      resource: monaco.Uri.parse(`dvala:///${loc.file}`),
+      textEdit: {
+        range: {
+          startLineNumber: loc.line,
+          startColumn: loc.column,
+          endLineNumber: loc.line,
+          endColumn: loc.column + loc.nameLength,
+        },
+        text: newName,
       },
-      text: newName,
-    },
-    versionId: undefined,
-  }))
-  return { edits }
+      versionId: undefined,
+    })),
+  }
 }
 
-function formatModel(model: monaco.editor.ITextModel): monaco.languages.TextEdit[] {
-  try {
-    const formatted = formatSource(model.getValue())
-    return [{ range: model.getFullModelRange(), text: formatted }]
-  } catch {
-    return []
+function requestNavigation<T>(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  kind: 'definition' | 'references',
+): Promise<T | null>
+function requestNavigation<T>(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  kind: 'rename',
+  newName: string,
+): Promise<T | null>
+function requestNavigation<T>(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  kind: NavigationRequestKind,
+  newName?: string,
+): Promise<T | null> {
+  const w = getWorker()
+  const key = getNavigationRequestKey(kind, path)
+  cancelPendingNavigationRequest(kind, path, null, w)
+
+  return new Promise(resolve => {
+    pendingNavigationResolvers.set(key, resolve as (result: unknown) => void)
+    startTrackedRequest(pendingNavigationRequests, key, w, requestId => ({
+      type: 'requestNavigation',
+      requestId,
+      kind,
+      path,
+      source: model.getValue(),
+      sourceVersion: model.getVersionId(),
+      line: position.lineNumber,
+      column: position.column,
+      ...(newName ? { newName } : {}),
+      workspaceFiles: getWorkspaceSnapshotFiles(path),
+    }))
+  })
+}
+
+function requestFormattingEdits(model: monaco.editor.ITextModel): Promise<monaco.languages.TextEdit[]> {
+  const path = getPathForModel(model)
+  if (!path) return Promise.resolve([])
+
+  const w = getWorker()
+  cancelPendingFormattingRequest(path, w)
+
+  return new Promise(resolve => {
+    pendingFormattingResolvers.set(path, resolve)
+    startTrackedRequest(pendingFormattingRequests, path, w, requestId => ({
+      type: 'requestFormatting',
+      requestId,
+      path,
+      source: model.getValue(),
+      sourceVersion: model.getVersionId(),
+    }))
+  })
+}
+
+function requestCompletionItems(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  prefix: string,
+  importPrefix: string | null,
+): Promise<CompletionItem[] | null> {
+  const w = getWorker()
+  cancelPendingCompletionRequest(path, w)
+
+  return new Promise(resolve => {
+    pendingCompletionResolvers.set(path, resolve)
+    startTrackedRequest(pendingCompletionRequests, path, w, requestId => ({
+      type: 'requestCompletion',
+      requestId,
+      path,
+      source: model.getValue(),
+      sourceVersion: model.getVersionId(),
+      line: position.lineNumber,
+      column: position.column,
+      prefix,
+      importPrefix,
+      workspaceFiles: getWorkspaceSnapshotFiles(path),
+    }))
+  })
+}
+
+function toMonacoCompletionList(
+  completionItems: CompletionItem[] | null,
+  range: monaco.IRange,
+  wordStartColumn: number,
+): monaco.languages.CompletionList {
+  const suggestions: monaco.languages.CompletionItem[] = []
+  for (const item of completionItems ?? []) {
+    const completion: monaco.languages.CompletionItem = {
+      label: item.label,
+      kind: kindToMonaco(item.kind),
+      detail: item.detail,
+      sortText: item.sortText,
+      insertText: item.insertText ?? item.label,
+      range: { ...range, startColumn: wordStartColumn },
+    }
+    if (item.insertText) {
+      completion.insertTextRules = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
+    }
+    suggestions.push(completion)
   }
+
+  return { suggestions }
+}
+
+function requestHoverType(
+  model: monaco.editor.ITextModel,
+  path: string,
+  position: monaco.Position,
+  wordRange?: monaco.IRange,
+): Promise<string | undefined> {
+  const w = getWorker()
+  const requestKey = getHoverRequestKey(path, model.getVersionId(), position, wordRange)
+
+  if (pendingHoverRequestKeys.get(path) === requestKey) {
+    const existingResolve = pendingHoverResolvers.get(path)
+    if (existingResolve) {
+      return new Promise(resolve => {
+        pendingHoverResolvers.set(path, inferredType => {
+          existingResolve(inferredType)
+          resolve(inferredType)
+        })
+      })
+    }
+  }
+
+  cancelPendingHoverRequest(path, w)
+
+  return new Promise(resolve => {
+    pendingHoverRequestKeys.set(path, requestKey)
+    pendingHoverResolvers.set(path, resolve)
+    startTrackedRequest(pendingHoverRequests, path, w, requestId => ({
+      type: 'requestHover',
+      requestId,
+      path,
+      source: model.getValue(),
+      sourceVersion: model.getVersionId(),
+      line: position.lineNumber,
+      column: position.column,
+      ...(wordRange
+        ? {
+            startColumn: wordRange.startColumn,
+            endColumn: wordRange.endColumn,
+          }
+        : {}),
+    }))
+  })
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -316,88 +913,16 @@ function formatModel(model: monaco.editor.ITextModel): monaco.languages.TextEdit
  * Initialize the LS worker. Call once during playground boot.
  */
 export function initLspWorker(): void {
-  const w = getWorker()
+  void getWorker()
 
-  w.onerror = () => {
-    worker = null
-  }
-
-  w.onmessage = (event: MessageEvent) => {
-    const msg = event.data
-
-    switch (msg.type) {
-      case 'diagnosticsResult': {
-        const { path, sourceVersion, diagnostics } = msg as {
-          type: 'diagnosticsResult'
-          requestId: number
-          path: string
-          sourceVersion: number
-          diagnostics: Diagnostic[]
-        }
-
-        const model = registeredModels.get(path)
-        if (!model) return
-
-        // Discard stale results — the model has moved on since the request.
-        const currentVersion = model.getVersionId()
-        if (sourceVersion < currentVersion) return
-
-        // Run typecheck on the main thread (avoids .dvala import issues in
-        // the worker bundle) and append type diagnostics.
-        const allDiagnostics = [...diagnostics]
-        try {
-          const source = model.getValue()
-          const tc = typecheckForDiagnostics(source, path)
-          typecheckCache.set(path, tc)
-          typecheckVersions.set(path, sourceVersion)
-          allDiagnostics.push(...buildTypeDiagnostics(tc))
-        } catch {}
-
-        const markers: monaco.editor.IMarkerData[] = allDiagnostics.map(d => ({
-          message: d.message,
-          severity:
-            d.severity === 'error'
-              ? monaco.MarkerSeverity.Error
-              : d.severity === 'warning'
-                ? monaco.MarkerSeverity.Warning
-                : monaco.MarkerSeverity.Info,
-          startLineNumber: d.range.start.line,
-          startColumn: d.range.start.column,
-          endLineNumber: d.range.end.line,
-          endColumn: d.range.end.column,
-          source: d.source,
-        }))
-
-        monaco.editor.setModelMarkers(model, 'dvala', markers)
-        pendingRequests.delete(path)
-        return
-      }
-
-      case 'diagnosticsError': {
-        const { path } = msg as { type: 'diagnosticsError'; path: string }
-        const model = registeredModels.get(path)
-        if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
-        pendingRequests.delete(path)
-        return
-      }
-    }
-  }
-
-  // Register Monaco hover provider for Dvala — uses the typecheck cache
-  // populated during diagnostics (typecheck runs on main thread).
+  // Register Monaco hover provider for Dvala. Built-in docs and source
+  // locations stay local; inferred type computation round-trips through the
+  // worker from the current source snapshot.
   monaco.languages.registerHoverProvider('dvala', {
-    provideHover: (model, position) => {
-      // Find the workspace path for this model.
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+    provideHover: async (model, position) => {
+      const path = getPathForModel(model)
       if (!path) return null
 
-      const tc = typecheckVersions.get(path) === model.getVersionId() ? typecheckCache.get(path) : undefined
       const word = model.getWordAtPosition(position)
       const wordRange =
         word && word.word.length > 0
@@ -412,36 +937,8 @@ export function initLspWorker(): void {
       const symbol = workspaceIndex.getSymbolAtPosition(path, position.lineNumber, position.column)
       const ref = wordText && !symbol ? (allReference[wordText] ?? referenceByTitle.get(wordText)) : undefined
 
-      let inferredType: string | undefined
-      if (tc && symbol?.def && symbol.def.location.file === path) {
-        const typeAtDef = findTypeAtDefinition(tc.typeMap, tc.sourceMap, symbol.def)
-        if (typeAtDef) inferredType = formatHoverType(typeAtDef)
-      }
-
       try {
-        if (!inferredType && tc) {
-          const type = findTypeAtPosition(
-            tc.typeMap,
-            tc.sourceMap,
-            { line: position.lineNumber, column: position.column },
-            wordRange
-              ? {
-                  start: { line: position.lineNumber, column: wordRange.startColumn },
-                  end: { line: position.lineNumber, column: wordRange.endColumn },
-                }
-              : undefined,
-          )
-          if (type) inferredType = formatHoverType(type)
-        }
-
-        if (!inferredType && tc && wordText) {
-          const visibleDefs = workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column)
-          const matchingDef = visibleDefs.find(def => def.name === wordText && def.location.file === path)
-          if (matchingDef) {
-            const typeAtDef = findTypeAtDefinition(tc.typeMap, tc.sourceMap, matchingDef)
-            if (typeAtDef) inferredType = formatHoverType(typeAtDef)
-          }
-        }
+        const inferredType = await requestHoverType(model, path, position, wordRange)
 
         const sourceLocation = symbol?.def
           ? buildSourceLocationMarkdown(symbol.def.location.file, symbol.def.location.line, symbol.def.location.column)
@@ -475,13 +972,7 @@ export function initLspWorker(): void {
   monaco.languages.registerCompletionItemProvider('dvala', {
     triggerCharacters: ['"', '.', '/'],
     provideCompletionItems: (model, position) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
 
       const range: monaco.IRange = {
         startLineNumber: position.lineNumber,
@@ -492,37 +983,25 @@ export function initLspWorker(): void {
       const word = model.getWordUntilPosition(position)
       const prefix = String(word.word).toLowerCase()
       const importPrefix = getImportCompletionPrefix(model.getLineContent(position.lineNumber), position.column)
-      const isInsideImportString = importPrefix !== null
-      const currentFileSymbols = path ? workspaceIndex.getFileSymbols(path) : null
-      const completionItems = isInsideImportString
-        ? getImportCompletionItems(importPrefix, path, getWorkspaceFiles())
-        : dedupeCompletionItems([
-            ...getScopedCompletionItems(
-              prefix,
-              path ? workspaceIndex.getSymbolsInScope(path, position.lineNumber, position.column) : [],
-            ),
-            ...getImportedExportCompletionItems(prefix, currentFileSymbols, filePath =>
-              workspaceIndex.getFileSymbols(filePath),
-            ),
-          ])
-
-      const suggestions: monaco.languages.CompletionItem[] = []
-      for (const item of completionItems) {
-        const completion: monaco.languages.CompletionItem = {
-          label: item.label,
-          kind: kindToMonaco(item.kind),
-          detail: item.detail,
-          sortText: item.sortText,
-          insertText: item.insertText ?? item.label,
-          range: { ...range, startColumn: word.startColumn },
-        }
-        if (item.insertText) {
-          completion.insertTextRules = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
-        }
-        suggestions.push(completion)
+      if (importPrefix !== null) {
+        return toMonacoCompletionList(
+          getImportCompletionItems(importPrefix, path, getWorkspaceFiles()),
+          range,
+          word.startColumn,
+        )
       }
 
-      return { suggestions }
+      if (!path) {
+        return toMonacoCompletionList(
+          dedupeCompletionItems([...getScopedCompletionItems(prefix, [])]),
+          range,
+          word.startColumn,
+        )
+      }
+
+      return requestCompletionItems(model, path, position, prefix, importPrefix).then(completionItems =>
+        toMonacoCompletionList(completionItems, range, word.startColumn),
+      )
     },
   })
 
@@ -530,13 +1009,7 @@ export function initLspWorker(): void {
     signatureHelpTriggerCharacters: ['(', ','],
     signatureHelpRetriggerCharacters: [','],
     provideSignatureHelp: (model, position) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
 
       const callCtx = findCallContext(model.getValue(), { line: position.lineNumber, column: position.column })
       if (!path || !callCtx) return null
@@ -583,13 +1056,7 @@ export function initLspWorker(): void {
 
   monaco.languages.registerDefinitionProvider('dvala', {
     provideDefinition: (model, position) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
       if (!path) return null
 
       return getDefinitionsAtPosition(model, path, position)
@@ -600,16 +1067,10 @@ export function initLspWorker(): void {
 
   monaco.languages.registerReferenceProvider('dvala', {
     provideReferences: (model, position) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
       if (!path) return null
 
-      return getReferencesAtPosition(path, position)
+      return getReferencesAtPosition(model, path, position)
     },
   })
 
@@ -617,27 +1078,21 @@ export function initLspWorker(): void {
 
   monaco.languages.registerRenameProvider('dvala', {
     provideRenameEdits: (model, position, newName) => {
-      let path: string | undefined
-      for (const [p, m] of registeredModels) {
-        if (m === model) {
-          path = p
-          break
-        }
-      }
+      const path = getPathForModel(model)
       if (!path) return null
 
-      return getRenameEditsAtPosition(path, position, newName)
+      return getRenameEditsAtPosition(model, path, position, newName)
     },
   })
 
   // ── Document formatter ───────────────────────────────────────────────────
 
   monaco.languages.registerDocumentFormattingEditProvider('dvala', {
-    provideDocumentFormattingEdits: formatModel,
+    provideDocumentFormattingEdits: model => requestFormattingEdits(model),
   })
 
   monaco.languages.registerDocumentRangeFormattingEditProvider('dvala', {
-    provideDocumentRangeFormattingEdits: model => formatModel(model),
+    provideDocumentRangeFormattingEdits: model => requestFormattingEdits(model),
   })
 }
 
@@ -647,6 +1102,9 @@ export function initLspWorker(): void {
  */
 export function registerModel(path: string, model: monaco.editor.ITextModel): void {
   registeredModels.set(path, model)
+  lastResyncFingerprints.delete(path)
+  if (worker) syncModelToWorker(worker, path, model)
+  else void getWorker()
 }
 
 /**
@@ -656,15 +1114,18 @@ export function unregisterModel(path: string): void {
   // Grab the model before deleting from the registry.
   const model = registeredModels.get(path)
   registeredModels.delete(path)
-  typecheckCache.delete(path)
-  typecheckVersions.delete(path)
+  lastResyncFingerprints.delete(path)
+  lastSentSourceVersions.delete(path)
   if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
+  if (worker) worker.postMessage({ type: 'closeDocument', path })
   // Cancel any pending diagnostics for this path.
-  const pendingId = pendingRequests.get(path)
-  if (pendingId !== undefined) {
-    getWorker().postMessage({ type: 'cancelRequest', requestId: pendingId })
-    pendingRequests.delete(path)
-  }
+  cancelPendingDiagnosticsRequest(path)
+  cancelPendingFormattingRequest(path)
+  cancelPendingCompletionRequest(path)
+  cancelPendingHoverRequest(path)
+  cancelPendingNavigationRequest('definition', path, null)
+  cancelPendingNavigationRequest('references', path, null)
+  cancelPendingNavigationRequest('rename', path, null)
   const timer = debounceTimers.get(path)
   if (timer) {
     clearTimeout(timer)
@@ -678,6 +1139,8 @@ export function unregisterModel(path: string): void {
  */
 export function updateDocument(path: string, source: string, sourceVersion: number): void {
   const w = getWorker()
+  const previousSourceVersion = lastSentSourceVersions.get(path)
+  lastResyncFingerprints.delete(path)
 
   indexWorkspaceFile(path, source)
 
@@ -686,7 +1149,9 @@ export function updateDocument(path: string, source: string, sourceVersion: numb
     path,
     source,
     sourceVersion,
+    previousSourceVersion: previousSourceVersion ?? sourceVersion - 1,
   })
+  lastSentSourceVersions.set(path, sourceVersion)
 
   const existing = debounceTimers.get(path)
   if (existing) clearTimeout(existing)
@@ -700,32 +1165,73 @@ export function updateDocument(path: string, source: string, sourceVersion: numb
   )
 }
 
-export function primeTypecheckForTesting(path: string, source: string, sourceVersion: number): void {
-  const tc = typecheckForDiagnostics(source, path)
-  typecheckCache.set(path, tc)
-  typecheckVersions.set(path, sourceVersion)
+export function restartWorkerForTesting(clearMarkers = false): void {
+  worker?.terminate()
+  worker = null
+  if (!clearMarkers) return
+  for (const model of registeredModels.values()) {
+    monaco.editor.setModelMarkers(model, 'dvala', [])
+  }
 }
 
-export function getDefinitionsForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {
+export function requestDiagnosticsForTesting(path: string, sourceVersion: number): void {
+  requestDiagnostics(path, sourceVersion)
+}
+
+export function getDefinitionsForTesting(
+  path: string,
+  position: monaco.Position,
+): Promise<monaco.languages.Location[] | null> {
   const model = registeredModels.get(path)
-  if (!model) return null
+  if (!model) return Promise.resolve(null)
   return getDefinitionsAtPosition(model, path, position)
 }
 
-export function getReferencesForTesting(path: string, position: monaco.Position): monaco.languages.Location[] | null {
-  return getReferencesAtPosition(path, position)
+export function getDefinitionsLocallyForTesting(
+  path: string,
+  position: monaco.Position,
+): monaco.languages.Location[] | null {
+  const model = registeredModels.get(path)
+  if (!model) return null
+  return getDefinitionsAtPositionLocal(model, path, position)
+}
+
+export function getReferencesForTesting(
+  path: string,
+  position: monaco.Position,
+): Promise<monaco.languages.Location[] | null> {
+  const model = registeredModels.get(path)
+  if (!model) return Promise.resolve(null)
+  return getReferencesAtPosition(model, path, position)
+}
+
+export function getReferencesLocallyForTesting(
+  path: string,
+  position: monaco.Position,
+): monaco.languages.Location[] | null {
+  return getReferencesAtPositionLocal(path, position)
 }
 
 export function getRenameEditsForTesting(
   path: string,
   position: monaco.Position,
   newName: string,
-): monaco.languages.WorkspaceEdit | null {
-  return getRenameEditsAtPosition(path, position, newName)
+): Promise<monaco.languages.WorkspaceEdit | null> {
+  const model = registeredModels.get(path)
+  if (!model) return Promise.resolve(null)
+  return getRenameEditsAtPosition(model, path, position, newName)
 }
 
-export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): monaco.languages.TextEdit[] {
-  return formatModel(model)
+export function getRenameEditsLocallyForTesting(
+  path: string,
+  position: monaco.Position,
+  newName: string,
+): monaco.languages.WorkspaceEdit | null {
+  return getRenameEditsAtPositionLocal(path, position, newName)
+}
+
+export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): Promise<monaco.languages.TextEdit[]> {
+  return requestFormattingEdits(model)
 }
 
 /**
@@ -734,19 +1240,10 @@ export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): m
  */
 function requestDiagnostics(path: string, sourceVersion: number): void {
   const w = getWorker()
-
-  const prevId = pendingRequests.get(path)
-  if (prevId !== undefined) {
-    w.postMessage({ type: 'cancelRequest', requestId: prevId })
-  }
-
-  const requestId = nextRequestId++
-  pendingRequests.set(path, requestId)
-
-  w.postMessage({
+  startTrackedRequest(pendingRequests, path, w, requestId => ({
     type: 'requestDiagnostics',
     requestId,
     path,
     sourceVersion,
-  })
+  }))
 }

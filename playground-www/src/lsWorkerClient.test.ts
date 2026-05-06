@@ -1,0 +1,805 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as LsWorkerClientModule from './lsWorkerClient'
+
+type WorkerMessage = Record<string, unknown>
+
+const workerInstances: FakeWorker[] = []
+const setModelMarkers = vi.fn()
+let workspaceFiles: {
+  id: string
+  path: string
+  code: string
+  context: string
+  createdAt: number
+  updatedAt: number
+}[] = []
+
+class FakeWorker {
+  public messages: WorkerMessage[] = []
+  public onerror: ((event: Event) => void) | null = null
+  public onmessage: ((event: MessageEvent) => void) | null = null
+  public terminate = vi.fn()
+
+  constructor() {
+    workerInstances.push(this)
+  }
+
+  postMessage(message: WorkerMessage): void {
+    this.messages.push(message)
+  }
+}
+
+vi.mock('monaco-editor', () => {
+  const monaco = {
+    MarkerSeverity: { Error: 8, Warning: 4, Info: 2 },
+    Uri: {
+      parse: (value: string) => ({
+        toString: () => value,
+      }),
+    },
+    editor: {
+      setModelMarkers,
+      getModelMarkers: () => [],
+    },
+    languages: {
+      registerHoverProvider: vi.fn(),
+      registerCompletionItemProvider: vi.fn(),
+      registerSignatureHelpProvider: vi.fn(),
+      registerDefinitionProvider: vi.fn(),
+      registerReferenceProvider: vi.fn(),
+      registerRenameProvider: vi.fn(),
+      registerDocumentFormattingEditProvider: vi.fn(),
+      registerDocumentRangeFormattingEditProvider: vi.fn(),
+      CompletionItemKind: {
+        Function: 1,
+        Method: 2,
+        Event: 3,
+        Module: 4,
+        Class: 5,
+        Keyword: 6,
+        Operator: 7,
+        Variable: 8,
+      },
+      CompletionItemInsertTextRule: {
+        InsertAsSnippet: 4,
+      },
+    },
+  }
+
+  return {
+    ...monaco,
+    default: monaco,
+  }
+})
+
+vi.mock('./lsWorker?worker', () => ({
+  default: FakeWorker,
+}))
+
+vi.mock('./fileStorage', () => ({
+  getWorkspaceFiles: () => workspaceFiles,
+}))
+
+type StubModel = {
+  getValue: () => string
+  getVersionId: () => number
+  getFullModelRange: () => {
+    startLineNumber: number
+    startColumn: number
+    endLineNumber: number
+    endColumn: number
+  }
+  uri: { toString: () => string }
+}
+
+function makeModel(source: string, version: number, uri = `inmemory://${version}`): StubModel {
+  return {
+    getValue: () => source,
+    getVersionId: () => version,
+    getFullModelRange: () => ({
+      startLineNumber: 1,
+      startColumn: 1,
+      endLineNumber: 1,
+      endColumn: Math.max(1, source.length + 1),
+    }),
+    uri: { toString: () => uri },
+  }
+}
+
+let client: typeof LsWorkerClientModule
+
+beforeEach(async () => {
+  vi.resetModules()
+  workerInstances.length = 0
+  setModelMarkers.mockReset()
+  workspaceFiles = []
+  client = await import('./lsWorkerClient')
+})
+
+function dispatchWorkerMessage(index: number, message: WorkerMessage): void {
+  workerInstances[index]?.onmessage?.(new MessageEvent<WorkerMessage>('message', { data: message }))
+}
+
+describe('lsWorkerClient lifecycle', () => {
+  it('registerModel opens the document mirror in the worker immediately', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+
+    expect(workerInstances).toHaveLength(1)
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 3,
+      },
+    ])
+  })
+
+  it('resolves completion requests through the worker', async () => {
+    const model = {
+      ...makeModel('let localValue = 1;\nlocal', 3),
+      getLineContent: () => 'local',
+      getWordUntilPosition: () => ({ word: 'local', startColumn: 1, endColumn: 6 }),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi
+      .mocked((await import('monaco-editor')).languages.registerCompletionItemProvider)
+      .mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 2, column: 6 }
+    const context: Record<string, never> = {}
+    const token: Record<string, never> = {}
+    const completionsPromise = provider?.provideCompletionItems(
+      model as never,
+      position as never,
+      context as never,
+      token as never,
+    )
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'requestCompletion',
+      requestId: 1,
+      path: 'main.dvala',
+      source: 'let localValue = 1;\nlocal',
+      sourceVersion: 3,
+      line: 2,
+      column: 6,
+      prefix: 'local',
+      importPrefix: null,
+      workspaceFiles: [],
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'completionResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      items: [{ label: 'localValue', kind: 'variable', detail: 'let', sortText: '1_localValue' }],
+    })
+
+    await expect(completionsPromise).resolves.toEqual({
+      suggestions: [
+        expect.objectContaining({
+          label: 'localValue',
+          detail: 'let',
+          sortText: '1_localValue',
+        }),
+      ],
+    })
+  })
+
+  it('drops stale completion results whose requestId is no longer pending for the path', async () => {
+    const model = {
+      ...makeModel('let localValue = 1;\nlocal', 3),
+      getLineContent: () => 'local',
+      getWordUntilPosition: () => ({ word: 'local', startColumn: 1, endColumn: 6 }),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi
+      .mocked((await import('monaco-editor')).languages.registerCompletionItemProvider)
+      .mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 2, column: 6 }
+    const nextPosition: { lineNumber: number; column: number } = { lineNumber: 2, column: 5 }
+    const context: Record<string, never> = {}
+    const token: Record<string, never> = {}
+
+    const firstPromise = provider?.provideCompletionItems(
+      model as never,
+      position as never,
+      context as never,
+      token as never,
+    )
+    const secondPromise = provider?.provideCompletionItems(
+      model as never,
+      nextPosition as never,
+      context as never,
+      token as never,
+    )
+
+    dispatchWorkerMessage(0, {
+      type: 'completionResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      items: [{ label: 'stale', kind: 'variable', detail: 'let', sortText: '1_stale' }],
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'completionResult',
+      requestId: 2,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      items: [{ label: 'fresh', kind: 'variable', detail: 'let', sortText: '1_fresh' }],
+    })
+
+    await expect(firstPromise).resolves.toEqual({ suggestions: [] })
+    await expect(secondPromise).resolves.toEqual({
+      suggestions: [expect.objectContaining({ label: 'fresh' })],
+    })
+  })
+
+  it('drops stale hover results whose requestId is no longer pending for the path', async () => {
+    const model = {
+      ...makeModel('', 3),
+      getWordAtPosition: (position: { column: number }) =>
+        position.column === 1
+          ? { word: 'x', startColumn: 1, endColumn: 2 }
+          : { word: 'y', startColumn: 2, endColumn: 3 },
+      getValueInRange: (range: { startColumn: number }) => (range.startColumn === 1 ? 'x' : 'y'),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi.mocked((await import('monaco-editor')).languages.registerHoverProvider).mock.calls.at(-1)?.[1]
+    const firstPosition: { lineNumber: number; column: number } = { lineNumber: 1, column: 1 }
+    const secondPosition: { lineNumber: number; column: number } = { lineNumber: 1, column: 2 }
+    const token: Record<string, never> = {}
+    const firstPromise = provider?.provideHover(model as never, firstPosition as never, token as never)
+    const secondPromise = provider?.provideHover(model as never, secondPosition as never, token as never)
+
+    dispatchWorkerMessage(0, {
+      type: 'hoverResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      inferredType: 'Stale',
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'hoverResult',
+      requestId: 2,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      inferredType: 'Fresh',
+    })
+
+    await expect(firstPromise).resolves.toBeNull()
+    await expect(secondPromise).resolves.toEqual({
+      contents: [{ value: '```dvala\nFresh\n```' }],
+      range: {
+        startLineNumber: 1,
+        startColumn: 2,
+        endLineNumber: 1,
+        endColumn: 3,
+      },
+    })
+  })
+
+  it('resolves pending completion requests safely when the worker errors', async () => {
+    const model = {
+      ...makeModel('let localValue = 1;\nlocal', 3),
+      getLineContent: () => 'local',
+      getWordUntilPosition: () => ({ word: 'local', startColumn: 1, endColumn: 6 }),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi
+      .mocked((await import('monaco-editor')).languages.registerCompletionItemProvider)
+      .mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 2, column: 6 }
+    const context: Record<string, never> = {}
+    const token: Record<string, never> = {}
+    const completionsPromise = provider?.provideCompletionItems(
+      model as never,
+      position as never,
+      context as never,
+      token as never,
+    )
+
+    workerInstances[0]!.onerror?.(new Event('error'))
+
+    await expect(completionsPromise).resolves.toEqual({ suggestions: [] })
+    expect(workerInstances[0]!.terminate).not.toHaveBeenCalled()
+  })
+
+  it('resolves pending hover requests safely when the worker errors', async () => {
+    const model = {
+      ...makeModel('', 3),
+      getWordAtPosition: () => ({ word: 'x', startColumn: 1, endColumn: 2 }),
+      getValueInRange: () => 'x',
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi.mocked((await import('monaco-editor')).languages.registerHoverProvider).mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 1 }
+    const token: Record<string, never> = {}
+    const hoverPromise = provider?.provideHover(model as never, position as never, token as never)
+
+    workerInstances[0]!.onerror?.(new Event('error'))
+
+    await expect(hoverPromise).resolves.toBeNull()
+    expect(workerInstances[0]!.terminate).not.toHaveBeenCalled()
+  })
+
+  it('unregisterModel sends closeDocument to the active worker', () => {
+    const model = makeModel('let x = 1', 1)
+
+    client.registerModel('main.dvala', model as never)
+    client.unregisterModel('main.dvala')
+
+    expect(workerInstances).toHaveLength(1)
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({ type: 'closeDocument', path: 'main.dvala' })
+  })
+
+  it('reseeds registered models before diagnostics after worker restart', () => {
+    const model = makeModel('let x = 1', 5)
+
+    client.registerModel('main.dvala', model as never)
+    const firstWorker = workerInstances[0]!
+
+    client.restartWorkerForTesting()
+    expect(firstWorker.terminate).toHaveBeenCalledTimes(1)
+
+    client.requestDiagnosticsForTesting('main.dvala', 5)
+
+    expect(workerInstances).toHaveLength(2)
+    expect(workerInstances[1]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 5,
+      },
+      {
+        type: 'requestDiagnostics',
+        requestId: 1,
+        path: 'main.dvala',
+        sourceVersion: 5,
+      },
+    ])
+  })
+
+  it('sends ordered updates with the previously mirrored source version', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    client.updateDocument('main.dvala', 'let x = 2', 4)
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'updateDocument',
+      path: 'main.dvala',
+      source: 'let x = 2',
+      sourceVersion: 4,
+      previousSourceVersion: 3,
+    })
+  })
+
+  it('resends the full model when the worker requests a resync', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 3,
+      },
+    ])
+  })
+
+  it('retries pending diagnostics after the worker requests a resync', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    client.requestDiagnosticsForTesting('main.dvala', 3)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 3,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 1,
+      },
+      {
+        type: 'requestDiagnostics',
+        requestId: 2,
+        path: 'main.dvala',
+        sourceVersion: 3,
+      },
+    ])
+  })
+
+  it('coalesces duplicate resync requests for the same model version and pending diagnostics state', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    client.requestDiagnosticsForTesting('main.dvala', 3)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 3,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 1,
+      },
+      {
+        type: 'requestDiagnostics',
+        requestId: 2,
+        path: 'main.dvala',
+        sourceVersion: 3,
+      },
+    ])
+  })
+
+  it('starts a fresh resync cycle after a local edit changes the model version mid-recovery', () => {
+    let currentSource = 'let x = 1'
+    let currentVersion = 3
+    const model = {
+      getValue: () => currentSource,
+      getVersionId: () => currentVersion,
+      uri: { toString: () => 'inmemory://resync-overlap' },
+    }
+
+    client.registerModel('main.dvala', model as never)
+    client.requestDiagnosticsForTesting('main.dvala', 3)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    currentSource = 'let x = 2'
+    currentVersion = 4
+    client.updateDocument('main.dvala', currentSource, currentVersion)
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 3,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 1,
+      },
+      {
+        type: 'requestDiagnostics',
+        requestId: 2,
+        path: 'main.dvala',
+        sourceVersion: 3,
+      },
+      {
+        type: 'updateDocument',
+        path: 'main.dvala',
+        source: 'let x = 2',
+        sourceVersion: 4,
+        previousSourceVersion: 3,
+      },
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 2',
+        sourceVersion: 4,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 2,
+      },
+      {
+        type: 'requestDiagnostics',
+        requestId: 3,
+        path: 'main.dvala',
+        sourceVersion: 4,
+      },
+    ])
+  })
+
+  it('drops stale diagnostics results whose requestId is no longer pending for the path', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    client.requestDiagnosticsForTesting('main.dvala', 3)
+    client.requestDiagnosticsForTesting('main.dvala', 3)
+
+    dispatchWorkerMessage(0, {
+      type: 'diagnosticsResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      diagnostics: [
+        {
+          message: 'stale result',
+          severity: 'error',
+          source: 'dvala',
+          range: {
+            start: { line: 1, column: 1 },
+            end: { line: 1, column: 2 },
+          },
+        },
+      ],
+    })
+
+    expect(setModelMarkers).not.toHaveBeenCalled()
+
+    dispatchWorkerMessage(0, {
+      type: 'diagnosticsResult',
+      requestId: 2,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      diagnostics: [
+        {
+          message: 'fresh result',
+          severity: 'warning',
+          source: 'dvala',
+          range: {
+            start: { line: 1, column: 1 },
+            end: { line: 1, column: 2 },
+          },
+        },
+      ],
+    })
+
+    expect(setModelMarkers).toHaveBeenCalledTimes(1)
+    expect(setModelMarkers).toHaveBeenCalledWith(
+      model,
+      'dvala',
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'fresh result',
+          severity: 4,
+        }),
+      ]),
+    )
+  })
+
+  it('formats through the worker and resolves a full-document edit', async () => {
+    const model = makeModel('let   x', 3)
+
+    client.registerModel('main.dvala', model as never)
+    const editsPromise = client.getFormattingEditsForTesting(model as never)
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'requestFormatting',
+      requestId: 1,
+      path: 'main.dvala',
+      source: 'let   x',
+      sourceVersion: 3,
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'formattingResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      formatted: 'let x',
+    })
+
+    await expect(editsPromise).resolves.toEqual([
+      {
+        range: model.getFullModelRange(),
+        text: 'let x',
+      },
+    ])
+  })
+
+  it('drops stale formatting results whose requestId is no longer pending for the path', async () => {
+    const model = makeModel('let   x', 3)
+
+    client.registerModel('main.dvala', model as never)
+    const firstPromise = client.getFormattingEditsForTesting(model as never)
+    const secondPromise = client.getFormattingEditsForTesting(model as never)
+
+    dispatchWorkerMessage(0, {
+      type: 'formattingResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      formatted: 'stale',
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'formattingResult',
+      requestId: 2,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      formatted: 'fresh',
+    })
+
+    await expect(firstPromise).resolves.toEqual([])
+    await expect(secondPromise).resolves.toEqual([
+      {
+        range: model.getFullModelRange(),
+        text: 'fresh',
+      },
+    ])
+  })
+
+  it('resolves pending formatting requests safely when the worker errors', async () => {
+    const model = makeModel('let   x', 3)
+
+    client.registerModel('main.dvala', model as never)
+    const editsPromise = client.getFormattingEditsForTesting(model as never)
+
+    workerInstances[0]!.onerror?.(new Event('error'))
+
+    await expect(editsPromise).resolves.toEqual([])
+    expect(workerInstances[0]!.terminate).not.toHaveBeenCalled()
+  })
+
+  it('resolves definition requests through the worker', async () => {
+    const model = makeModel('let answer = 42; answer', 3)
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 19 }
+
+    client.registerModel('main.dvala', model as never)
+    const defsPromise = client.getDefinitionsForTesting('main.dvala', position as never)
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'requestNavigation',
+      requestId: 1,
+      kind: 'definition',
+      path: 'main.dvala',
+      source: 'let answer = 42; answer',
+      sourceVersion: 3,
+      line: 1,
+      column: 19,
+      workspaceFiles: [],
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'navigationResult',
+      requestId: 1,
+      kind: 'definition',
+      path: 'main.dvala',
+      sourceVersion: 3,
+      locations: [{ file: 'main.dvala', line: 1, column: 5, endColumn: 11 }],
+    })
+
+    await expect(defsPromise).resolves.toEqual([
+      {
+        uri: { toString: expect.any(Function) },
+        range: {
+          startLineNumber: 1,
+          startColumn: 5,
+          endLineNumber: 1,
+          endColumn: 11,
+        },
+      },
+    ])
+  })
+
+  it('resolves pending navigation requests safely when the worker errors', async () => {
+    const model = makeModel('let answer = 42; answer', 3)
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 19 }
+
+    client.registerModel('main.dvala', model as never)
+    const defsPromise = client.getDefinitionsForTesting('main.dvala', position as never)
+
+    workerInstances[0]!.onerror?.(new Event('error'))
+
+    await expect(defsPromise).resolves.toBeNull()
+    expect(workerInstances[0]!.terminate).not.toHaveBeenCalled()
+  })
+
+  it('uses unsaved registered model contents in navigation workspace snapshots', async () => {
+    workspaceFiles = [
+      {
+        id: 'lib-file',
+        path: 'lib.dvala',
+        code: 'let stale = 1\n{ stale }',
+        context: '',
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ]
+
+    const mainModel = makeModel('let lib = import("./lib"); stale', 3)
+    const libModel = makeModel('let fresh = 1\n{ fresh }', 4, 'inmemory://lib')
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 28 }
+
+    client.registerModel('main.dvala', mainModel as never)
+    client.registerModel('lib.dvala', libModel as never)
+
+    void client.getDefinitionsForTesting('main.dvala', position as never)
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'requestNavigation',
+      requestId: 1,
+      kind: 'definition',
+      path: 'main.dvala',
+      source: 'let lib = import("./lib"); stale',
+      sourceVersion: 3,
+      line: 1,
+      column: 28,
+      workspaceFiles: [{ path: 'lib.dvala', code: 'let fresh = 1\n{ fresh }' }],
+    })
+  })
+
+  it('drops stale rename results whose requestId is no longer pending for the path', async () => {
+    const model = makeModel('let answer = 42; answer', 3)
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 19 }
+
+    client.registerModel('main.dvala', model as never)
+    const firstPromise = client.getRenameEditsForTesting('main.dvala', position as never, 'old')
+    const secondPromise = client.getRenameEditsForTesting('main.dvala', position as never, 'fresh')
+
+    dispatchWorkerMessage(0, {
+      type: 'navigationResult',
+      requestId: 1,
+      kind: 'rename',
+      path: 'main.dvala',
+      sourceVersion: 3,
+      edits: [{ file: 'main.dvala', line: 1, column: 5, endColumn: 11, text: 'old' }],
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'navigationResult',
+      requestId: 2,
+      kind: 'rename',
+      path: 'main.dvala',
+      sourceVersion: 3,
+      edits: [{ file: 'main.dvala', line: 1, column: 5, endColumn: 11, text: 'fresh' }],
+    })
+
+    await expect(firstPromise).resolves.toBeNull()
+    await expect(secondPromise).resolves.toEqual({
+      edits: [
+        {
+          resource: { toString: expect.any(Function) },
+          textEdit: {
+            range: {
+              startLineNumber: 1,
+              startColumn: 5,
+              endLineNumber: 1,
+              endColumn: 11,
+            },
+            text: 'fresh',
+          },
+          versionId: undefined,
+        },
+      ],
+    })
+  })
+})

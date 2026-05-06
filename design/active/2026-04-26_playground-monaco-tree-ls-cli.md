@@ -1,7 +1,22 @@
 # Playground: Monaco Editor + Tree View + LS Parity + CLI Launch
 
-**Status:** Draft
+**Status:** Parked after architectural milestone
 **Created:** 2026-04-26
+
+## Status Note
+
+This plan is no longer the primary driver of the work.
+
+It produced the core architectural evidence it needed to produce:
+
+- Monaco-based editor integration and the broader IDE shell are viable
+- the playground can host LS-backed features through a worker boundary
+- canonical open-buffer overlays and request correlation matter more than additional playground-facing feature completion
+- snapshot handling, runtime orchestration, and thin-client pressure all point toward a backend-first architecture rather than a playground-first one
+
+The plan is therefore intentionally parked before full completion. Remaining items are deferred unless they directly validate or unblock the backend-authority work in [design/active/2026-05-06_dvala-backend-authority.md](2026-05-06_dvala-backend-authority.md).
+
+This is a deliberate stop, not abandonment. The playground remains the reference implementation and testbed for backend ideas, but it is no longer the primary architectural target.
 
 ## Goal
 
@@ -298,6 +313,30 @@ Diagnostics is the right first provider because it's *push-only* — no synchron
 
 ## Open Questions
 
+## Handoff To Backend-Authority Track
+
+The main lessons carried forward from this plan are:
+
+1. Canonical authority matters more than feature count.
+The highest-value playground work was not another Monaco affordance; it was moving LS-backed document state, request sequencing, and stale-result rules behind one authority boundary.
+
+2. Open-buffer overlay semantics are foundational.
+Unsaved editor state must overlay persisted workspace files uniformly across diagnostics, navigation, rename, completion, runtime loading, and snapshot-related features. This is a backend concern, not a playground concern.
+
+3. Thin clients are the right direction.
+The more the playground grew IDE features, the more costly duplicated orchestration logic became. That is strong evidence that the playground should become a reference client of a Dvala backend, not the place where Dvala semantics continue to accumulate.
+
+4. Snapshot and session flows need backend-grade contracts.
+Once snapshots, REPL state, and suspended execution entered the picture, the architecture pressure moved beyond language-service parity and toward a distinct runtime + workspace backend split.
+
+5. Worker protocol hardening was evidence, not just cleanup.
+The 32a-32d work demonstrated that correlation IDs, mirror ownership, resync rules, and worker-lifecycle recovery are backend-shaping concerns. They should inform the backend platform design directly.
+
+6. The playground is still useful, but as a proving ground.
+Future playground work should be chosen when it validates a backend seam, runtime artifact flow, or thin-client integration path, not merely to finish the original feature matrix.
+
+Current recommendation: treat the remaining playground items as optional validation tracks. Resume them only when they answer a backend question that the backend-authority plan needs resolved.
+
 - ~~**Monaco bundle size.**~~ **Decided 2026-04-26: bundle Monaco into the main `dvala` package.** ~3 MB is acceptable; splitting into a separate `@dvala/playground` package is cheap to do later if install-size complaints arrive (the playground is already its own workspace, no programmatic API to preserve).
 - ~~**Token provider strategy.**~~ **Decided 2026-04-26 (corrected 2026-04-27): `TokensProvider` backed by `tokenizeSource` from [src/tooling.ts](../../src/tooling.ts).** Single source of truth between highlighter, parser, and language service. The original decision said `tokenScan`, but that's the let-binding scanner in the language service, not the tokenizer — corrected here. Risk to watch: `tokenizeSource` may need line-resumable state for Monaco's incremental per-line tokenization; if perf becomes a problem, address it then rather than preemptively falling back to Monarch.
 - ~~**File path migration.**~~ **Decided 2026-04-26: wipe silently.** Pre-1.0 — playground state is treated as ephemeral. Bump the IndexedDB schema in `playground-www/src/idb.ts` and let the upgrade handler drop the old store. No banner, no migration code.
@@ -449,11 +488,37 @@ Current next-step recommendation: the next PR after Phase 2 parity should start 
 
 32a. Make the worker the canonical owner of mirrored document state for all LS-backed features, not just diagnostics. Eliminate remaining main-thread-only fallbacks where they would create parity gaps or divergent cache behavior.
 
+  2026-05-05 first slice: move cached typecheck ownership under the worker for diagnostics and remove the persistent main-thread hover/typecheck cache from `lsWorkerClient.ts`. Hover keeps the already-stable synchronous Monaco provider path for now and recomputes from the active model on demand, because the first async worker-hover attempt broke the playground's hover trigger path. That still eliminates the stale shared cache and keeps file-switch rebinding, version-correct hover content, import-path navigation, and browser-safe go-to-definition behavior unchanged.
+
+  2026-05-05 second slice: make document lifecycle explicit in the worker protocol. `registerModel` / `unregisterModel` now map to worker `openDocument` / `closeDocument`, worker recreation reseeds all still-registered models before new diagnostics requests, and stale older source versions are ignored at the worker mirror boundary. This hardens the mirror contract without yet moving `WorkspaceIndex` or workspace-file indexing into the worker.
+
 32b. Tighten the edit-delta protocol: document open / close events, ordered versioned edits, explicit resync on gap or version mismatch, and a small recovery path after worker restart so stale mirrors cannot survive silently.
+
+  2026-05-05 first slice: `updateDocument` now carries the previously mirrored source version, the worker rejects out-of-order or missing-mirror updates by posting `resyncDocument(path)`, and the main thread answers that with a fresh `openDocument` resend from the registered Monaco model. Missing-mirror `requestDiagnostics` now takes the same recovery path and immediately retries diagnostics after reseeding instead of fabricating an empty clean result. Duplicate `resyncDocument` messages for the same model version and same pending diagnostics state are coalesced on the client so one recovery cycle does not fan out into repeated full reseeds and retry churn. The payload is still a full-document snapshot for now, but version ordering and recovery are explicit instead of implicit.
 
 32c. Harden request / response sequencing: correlation IDs on all LS requests, per-path cancellation rules, and late-result dropping validated across hover / completion / diagnostics / navigation providers rather than diagnostics alone.
 
+  2026-05-05 first slice: diagnostics replies now have to match the still-pending `requestId` for their path on the main thread, not just the model version. That closes the race where a cancelled older diagnostics request for the same source version could still arrive late and overwrite the newer result.
+
+  2026-05-05 second slice: diagnostics request issuance, cancellation, pending-request matching, and completion now flow through one local helper layer in `lsWorkerClient.ts` instead of being split across multiple call sites. That keeps the live diagnostics path behavior the same while making the next worker-backed LS surface easier to put under the same request-correlation rules.
+
+  2026-05-05 third slice: document formatting now round-trips through the worker with its own `requestId`-correlated request / result / error messages. Stale formatting replies are dropped by pending request ID just like diagnostics, and the existing full-document edit behavior is preserved behind an async Monaco formatting provider.
+
+  2026-05-05 fourth slice: definition / references / rename now share one worker-backed `requestNavigation` path that builds a request-scoped `WorkspaceIndex` from the active source snapshot plus current workspace file snapshots, and stale replies are dropped per `kind:path` request key on the main thread. The browser-safe go-to-definition helper and test hooks stay local/deterministic for now because that built-docs path hung when routed through the async worker request directly, while the Monaco providers themselves now use the worker-backed path.
+
+  2026-05-05 fifth slice: hover and symbol/export completions now use correlated worker request / result / error messages as well, so stale replies are dropped across every LS-backed Monaco provider in the follow-up track. Hover computes inferred types inside the worker from the current source snapshot, while completion builds a request-scoped `WorkspaceIndex` in the worker for in-scope and imported-export suggestions. Import-path completions intentionally stay local and synchronous on the main thread because that branch is deterministic from current workspace files and Monaco's auto-open-in-string behavior was unreliable when even that fast path was wrapped in an async provider.
+
 32d. Add regression coverage for incremental multi-file edits and worker lifecycle edges: rapid typing, cross-file rename after unsaved edits, worker restart / re-init, and stale-result suppression under overlapping requests.
+
+  2026-05-05 first slice: added focused client coverage for a local edit arriving during an in-flight resync cycle. When the model version changes mid-recovery, a subsequent `resyncDocument` starts a fresh reseed + diagnostics retry instead of being incorrectly coalesced with the older recovery fingerprint.
+
+  2026-05-05 second slice: added client coverage for the newer async Monaco providers when the LS worker dies mid-request. Pending worker-backed completion requests now stay covered as safe empty suggestions and pending hover requests stay covered as `null` results through the existing `handleWorkerError()` path, so the worker-lifecycle edge is exercised beyond diagnostics alone.
+
+  2026-05-05 third slice: extended the same worker-error lifecycle coverage to the remaining async provider families. Pending formatting requests now stay covered as empty edit lists and pending navigation requests now stay covered as `null` results when the LS worker errors mid-request, so the client-side recovery contract is exercised consistently across formatting, navigation, completion, and hover.
+
+  2026-05-05 fourth slice: worker-backed request snapshots for navigation and symbol completion now overlay other registered open Monaco models on top of persisted workspace files, excluding the active request path which still travels as the primary `source` payload. That closes the cross-file unsaved-edit gap where rename / definition / reference and imported-export completion logic could otherwise read stale disk-backed content from another open file.
+
+  2026-05-05 fifth slice: added a worker-level behavior regression for cross-file rename through an imported file supplied only via the request snapshot. That keeps 32d coverage anchored to observable LS behavior as well as client request-payload shape, so the unsaved-edit fix is exercised at the rename result boundary too.
 
 32e. Re-profile on a medium workspace after the protocol changes. Revisit debounce windows, batching strategy, and any remaining full-document resend paths before starting Phase 3 local-project work.
 

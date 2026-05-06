@@ -62,13 +62,23 @@ export function markdownSourcePlugin() {
 export function cssStubPlugin() {
   const CSS_PREFIX = '\0css-stub:'
   const WORKER_PREFIX = '\0worker-stub:'
+  const LS_WORKER_PREFIX = '\0ls-worker-runtime:'
   const WORKER_STUB =
     'class NoopWorker { constructor() {} terminate() {} postMessage() {} addEventListener() {} removeEventListener() {} dispatchEvent() { return false } }; export default NoopWorker;'
+  const LS_WORKER_RUNTIME = `class PlaygroundLsWorker extends Worker {
+  constructor() {
+    super(new URL('lsWorker.js', document.baseURI), { type: 'module' })
+  }
+}
+export default PlaygroundLsWorker;`
   return {
     name: 'css-stub',
     resolveId(id) {
       if (id.endsWith('.css')) {
         return { id: `${CSS_PREFIX}${id}.js`, external: false }
+      }
+      if (id.endsWith('lsWorker?worker')) {
+        return { id: `${LS_WORKER_PREFIX}${id}.js`, external: false }
       }
       if (id.endsWith('?worker')) {
         return { id: `${WORKER_PREFIX}${id}.js`, external: false }
@@ -76,6 +86,7 @@ export function cssStubPlugin() {
     },
     load(id) {
       if (id.startsWith(CSS_PREFIX)) return 'export default {}'
+      if (id.startsWith(LS_WORKER_PREFIX)) return LS_WORKER_RUNTIME
       if (id.startsWith(WORKER_PREFIX)) return WORKER_STUB
     },
   }

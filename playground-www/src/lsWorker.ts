@@ -1,11 +1,11 @@
 /**
  * Dvala Language Service Web Worker.
  *
- * Runs in a separate thread so typechecking + parse work never blocks the
+ * Runs in a separate thread so parse and LS-typecheck work never blocks the
  * editor UI. The main thread streams edit deltas via `updateDocument`
- * messages and requests diagnostics on a debounced schedule; the worker
- * holds a stateful per-file mirror and responds with portable `Diagnostic[]`
- * arrays that the main thread pushes into Monaco's marker API.
+ * messages and requests diagnostics on demand; the worker holds a stateful
+ * per-file mirror and caches typecheck results for diagnostics against that
+ * mirrored state.
  *
  * ## Protocol
  *
@@ -15,15 +15,31 @@
  *
  * ### Main → Worker
  *
- * - `updateDocument(path, source, sourceVersion)`: edit delta. The worker
- *   stores the latest source for the given path. `sourceVersion` is a
- *   monotonically increasing counter from the main thread that the worker
- *   stamps onto diagnostics responses so the main thread can discard stale
- *   replies.
+ * - `openDocument(path, source, sourceVersion)`: register or resync a full
+ *   document mirror. Used when a Monaco model is first bound to a path and
+ *   again after worker recreation so the worker owns the current set of open
+ *   LS documents.
+ * - `closeDocument(path)`: drop the mirrored state for a closed Monaco
+ *   model. Prevents stale worker-only buffers from surviving after tabs are
+ *   disposed.
+ * - `updateDocument(path, source, sourceVersion, previousSourceVersion)`:
+ *   ordered edit delta. The worker accepts it only when
+ *   `previousSourceVersion` matches the mirrored version it already has for
+ *   that path; otherwise it requests an explicit resync from the main
+ *   thread instead of silently drifting.
  * - `requestDiagnostics(path, sourceVersion)`: compute parse + typecheck
  *   diagnostics for the file at `path`. The worker tokenizes, parses, and
- *   typechecks the stored mirror; posts back `diagnosticsResult` or
- *   `diagnosticsError`.
+ *   typechecks the stored mirror; if no mirror is available it requests an
+ *   explicit resync instead of silently fabricating an empty result.
+ * - `requestFormatting(path, source, sourceVersion)`: format the supplied
+ *   source snapshot and post back `formattingResult` or `formattingError`.
+ *   This does not depend on the mirrored file state, but still uses
+ *   `requestId` correlation so stale replies can be dropped on the main
+ *   thread.
+ * - `requestNavigation(path, source, sourceVersion, position, workspaceFiles)`:
+ *   resolve definition / references / rename queries from a source snapshot
+ *   plus a workspace file snapshot. This lets navigation move onto the
+ *   worker before the worker owns a long-lived workspace index.
  * - `cancelRequest(requestId)`: cancel an in-flight request. The worker
  *   checks a `cancelled` flag at well-known yield points (after parse,
  *   after typecheck) and drops the result if set.
@@ -36,7 +52,18 @@
  * - `diagnosticsError(path, sourceVersion, message)`: the worker hit an
  *   unrecoverable error during tokenize/parse/typecheck. The main thread
  *   clears markers (best-effort) and may log.
- *
+ * - `formattingResult(path, sourceVersion, formatted)`: successful format
+ *   response for a source snapshot. The main thread applies it only when
+ *   the path still has the same pending formatting request.
+ * - `formattingError(path, sourceVersion, message)`: formatting failed.
+ *   The main thread resolves the request with no edits.
+ * - `navigationResult(path, sourceVersion, kind, payload)`: successful
+ *   definition / references / rename response for a source snapshot.
+ * - `navigationError(path, sourceVersion, kind, message)`: navigation
+ *   computation failed. The main thread resolves the request with no result.
+ * - `resyncDocument(path)`: the worker detected a missing mirror or a
+ *   version gap while processing `updateDocument`, so the main thread
+ *   should resend the canonical full document via `openDocument`.
  * ## Cooperative cancellation
  *
  * Long-running typecheck passes on real projects can overlap with fresh
@@ -49,16 +76,40 @@
 
 import { tokenizeSource } from '../../src/tooling'
 import { parseTokenStreamRecoverable } from '../../src/tooling'
-import { buildParseDiagnostics } from '../../src/shared/diagnosticBuilder'
+import { formatSource } from '../../src/tooling'
+import { buildParseDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
+import type { CompletionItem } from '../../src/shared/completionBuilder'
+import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 import type { Diagnostic } from '../../src/shared/types'
+import { allBuiltinModules } from '../../src/allModules'
+import { parseToAst } from '../../src/parser'
+import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
+import { WorkspaceIndex, type ResolveImport, typecheck } from '../../src/internal'
+import type { TypecheckResult } from '../../src/internal'
+import { folderFromPath, isInPlaygroundFolder } from './filePath'
+import { getImportCompletionItems, getImportedExportCompletionItems, getScopedCompletionItems } from './lsCompletions'
+import { resolvePlaygroundPath } from './playgroundFileResolver'
 
 // ── Message types ─────────────────────────────────────────────────────────────
+
+interface OpenDocumentMessage {
+  type: 'openDocument'
+  path: string
+  source: string
+  sourceVersion: number
+}
 
 interface UpdateDocumentMessage {
   type: 'updateDocument'
   path: string
   source: string
   sourceVersion: number
+  previousSourceVersion: number
+}
+
+interface CloseDocumentMessage {
+  type: 'closeDocument'
+  path: string
 }
 
 interface RequestDiagnosticsMessage {
@@ -68,12 +119,74 @@ interface RequestDiagnosticsMessage {
   sourceVersion: number
 }
 
+interface RequestFormattingMessage {
+  type: 'requestFormatting'
+  requestId: number
+  path: string
+  source: string
+  sourceVersion: number
+}
+
+interface RequestHoverMessage {
+  type: 'requestHover'
+  requestId: number
+  path: string
+  source: string
+  sourceVersion: number
+  line: number
+  column: number
+  startColumn?: number
+  endColumn?: number
+}
+
+interface RequestCompletionMessage {
+  type: 'requestCompletion'
+  requestId: number
+  path: string
+  source: string
+  sourceVersion: number
+  line: number
+  column: number
+  prefix: string
+  importPrefix: string | null
+  workspaceFiles: WorkspaceSnapshotFile[]
+}
+
+type NavigationRequestKind = 'definition' | 'references' | 'rename'
+
+interface WorkspaceSnapshotFile {
+  path: string
+  code: string
+}
+
+interface RequestNavigationMessage {
+  type: 'requestNavigation'
+  requestId: number
+  path: string
+  source: string
+  sourceVersion: number
+  kind: NavigationRequestKind
+  line: number
+  column: number
+  newName?: string
+  workspaceFiles: WorkspaceSnapshotFile[]
+}
+
 interface CancelRequestMessage {
   type: 'cancelRequest'
   requestId: number
 }
 
-type WorkerInMessage = UpdateDocumentMessage | RequestDiagnosticsMessage | CancelRequestMessage
+type WorkerInMessage =
+  | OpenDocumentMessage
+  | UpdateDocumentMessage
+  | CloseDocumentMessage
+  | RequestDiagnosticsMessage
+  | RequestFormattingMessage
+  | RequestHoverMessage
+  | RequestCompletionMessage
+  | RequestNavigationMessage
+  | CancelRequestMessage
 
 interface DiagnosticsResultMessage {
   type: 'diagnosticsResult'
@@ -91,12 +204,97 @@ interface DiagnosticsErrorMessage {
   message: string
 }
 
+interface FormattingResultMessage {
+  type: 'formattingResult'
+  requestId: number
+  path: string
+  sourceVersion: number
+  formatted: string
+}
+
+interface FormattingErrorMessage {
+  type: 'formattingError'
+  requestId: number
+  path: string
+  sourceVersion: number
+  message: string
+}
+
+interface HoverResultMessage {
+  type: 'hoverResult'
+  requestId: number
+  path: string
+  sourceVersion: number
+  inferredType?: string
+}
+
+interface HoverErrorMessage {
+  type: 'hoverError'
+  requestId: number
+  path: string
+  sourceVersion: number
+  message: string
+}
+
+interface CompletionResultMessage {
+  type: 'completionResult'
+  requestId: number
+  path: string
+  sourceVersion: number
+  items: CompletionItem[]
+}
+
+interface CompletionErrorMessage {
+  type: 'completionError'
+  requestId: number
+  path: string
+  sourceVersion: number
+  message: string
+}
+
+interface NavigationLocationPayload {
+  file: string
+  line: number
+  column: number
+  endColumn: number
+}
+
+interface NavigationRenameEditPayload extends NavigationLocationPayload {
+  text: string
+}
+
+interface NavigationResultMessage {
+  type: 'navigationResult'
+  requestId: number
+  path: string
+  sourceVersion: number
+  kind: NavigationRequestKind
+  locations?: NavigationLocationPayload[]
+  edits?: NavigationRenameEditPayload[]
+}
+
+interface NavigationErrorMessage {
+  type: 'navigationError'
+  requestId: number
+  path: string
+  sourceVersion: number
+  kind: NavigationRequestKind
+  message: string
+}
+
+interface ResyncDocumentMessage {
+  type: 'resyncDocument'
+  path: string
+}
+
 // ── Worker state ──────────────────────────────────────────────────────────────
 
 /** Per-file mirror buffer. */
 interface FileState {
   source: string
   sourceVersion: number
+  typecheckResult?: TypecheckResult
+  typecheckVersion?: number
 }
 
 const files = new Map<string, FileState>()
@@ -116,6 +314,15 @@ function checkCancelled(requestId: number): void {
   if (cancelledRequests.get(requestId)) throw new CancellationError()
 }
 
+function setFileState(path: string, source: string, sourceVersion: number): void {
+  const current = files.get(path)
+  if (current && sourceVersion < current.sourceVersion) return
+  files.set(path, {
+    source,
+    sourceVersion,
+  })
+}
+
 // ── Core pipeline ─────────────────────────────────────────────────────────────
 
 interface DiagnosticsInput {
@@ -123,6 +330,26 @@ interface DiagnosticsInput {
   source: string
   sourceVersion: number
   requestId: number
+}
+
+function computeTypecheckResult(source: string, path: string): TypecheckResult {
+  const tokens = tokenizeSource(source, true, path)
+  try {
+    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
+    const ast = parseToAst(minified)
+    return typecheck(ast, { modules: allBuiltinModules })
+  } catch {
+    return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
+  }
+}
+
+function getOrComputeTypecheckResult(path: string, file: FileState): TypecheckResult {
+  if (file.typecheckResult && file.typecheckVersion === file.sourceVersion) return file.typecheckResult
+
+  const result = computeTypecheckResult(file.source, path)
+  file.typecheckResult = result
+  file.typecheckVersion = file.sourceVersion
+  return result
 }
 
 function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
@@ -134,9 +361,207 @@ function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   diagnostics.push(...buildParseDiagnostics(parseResult.errors))
   checkCancelled(input.requestId)
 
-  // Worker handles tokenize + parse only. Typecheck runs on the main
-  // thread to avoid pulling builtin (.dvala files) into the worker bundle.
+  const file = files.get(input.path)
+  if (file) {
+    const typecheckResult = getOrComputeTypecheckResult(input.path, file)
+    diagnostics.push(...buildTypeDiagnostics(typecheckResult))
+  }
+  checkCancelled(input.requestId)
+
   return diagnostics
+}
+
+function computeHover(message: RequestHoverMessage): string | undefined {
+  const typecheckResult = computeTypecheckResult(message.source, message.path)
+  const wordRange =
+    message.startColumn !== undefined && message.endColumn !== undefined
+      ? {
+          start: { line: message.line, column: message.startColumn },
+          end: { line: message.line, column: message.endColumn },
+        }
+      : undefined
+
+  const type = findTypeAtPosition(
+    typecheckResult.typeMap,
+    typecheckResult.sourceMap,
+    { line: message.line, column: message.column },
+    wordRange,
+  )
+
+  return type ? formatHoverType(type) : undefined
+}
+
+function computeCompletion(message: RequestCompletionMessage): CompletionItem[] {
+  const snapshotFiles = new Map(message.workspaceFiles.map(file => [file.path, file.code]))
+  snapshotFiles.set(message.path, message.source)
+
+  const index = new WorkspaceIndex()
+  indexWorkspaceSnapshot(message.path, message.source, snapshotFiles, index)
+
+  if (message.importPrefix !== null) {
+    return getImportCompletionItems(
+      message.importPrefix,
+      message.path,
+      message.workspaceFiles.map(file => ({
+        id: file.path,
+        path: file.path,
+        code: file.code,
+        context: '',
+        createdAt: 0,
+        updatedAt: 0,
+      })),
+    )
+  }
+
+  const currentFileSymbols = index.getFileSymbols(message.path)
+  const seen = new Set<string>()
+  const items: CompletionItem[] = []
+
+  for (const item of getScopedCompletionItems(
+    message.prefix,
+    index.getSymbolsInScope(message.path, message.line, message.column),
+  )) {
+    if (seen.has(item.label)) continue
+    seen.add(item.label)
+    items.push(item)
+  }
+
+  for (const item of getImportedExportCompletionItems(message.prefix, currentFileSymbols, filePath =>
+    index.getFileSymbols(filePath),
+  )) {
+    if (seen.has(item.label)) continue
+    seen.add(item.label)
+    items.push(item)
+  }
+
+  return items
+}
+
+function resolveWorkspaceImportPathForSnapshot(
+  snapshotFiles: Map<string, string>,
+  rawPath: string,
+  fromFile: string,
+): string | null {
+  if (!(rawPath.startsWith('.') || rawPath.startsWith('/'))) return null
+  let resolved: string
+  try {
+    resolved = resolvePlaygroundPath(isInPlaygroundFolder(fromFile) ? '' : folderFromPath(fromFile), rawPath)
+  } catch {
+    return null
+  }
+  if (isInPlaygroundFolder(resolved)) return null
+  if (snapshotFiles.has(resolved)) return resolved
+  if (snapshotFiles.has(`${resolved}.dvala`)) return `${resolved}.dvala`
+  return null
+}
+
+function indexWorkspaceSnapshot(
+  path: string,
+  source: string,
+  snapshotFiles: Map<string, string>,
+  index: WorkspaceIndex,
+  seen = new Set<string>(),
+): void {
+  if (seen.has(path)) return
+  seen.add(path)
+
+  const resolveImport: ResolveImport = (rawPath, fromFile) =>
+    resolveWorkspaceImportPathForSnapshot(snapshotFiles, rawPath, fromFile)
+  const fileSymbols = index.updateFile(path, source, resolveImport)
+  for (const importedPath of fileSymbols.imports.values()) {
+    if (seen.has(importedPath)) continue
+    const importedSource = snapshotFiles.get(importedPath)
+    if (importedSource === undefined) continue
+    indexWorkspaceSnapshot(importedPath, importedSource, snapshotFiles, index, seen)
+  }
+}
+
+function getImportPathAtSourcePosition(source: string, line: number, column: number): string | null {
+  const lineText = source.split('\n')[line - 1]
+  if (lineText === undefined) return null
+
+  const beforeCursor = lineText.slice(0, Math.max(0, column - 1))
+  const prefixMatch = /import\(\s*"([^"]*)$/.exec(beforeCursor)
+  if (!prefixMatch) return null
+
+  const afterCursor = lineText.slice(Math.max(0, column - 1))
+  const suffixMatch = /^([^"]*)"/.exec(afterCursor)
+  const rawPath = `${prefixMatch[1] ?? ''}${suffixMatch?.[1] ?? ''}`
+  return rawPath.length > 0 ? rawPath : ''
+}
+
+function computeNavigation(message: RequestNavigationMessage): Pick<NavigationResultMessage, 'locations' | 'edits'> {
+  const snapshotFiles = new Map(message.workspaceFiles.map(file => [file.path, file.code]))
+  snapshotFiles.set(message.path, message.source)
+
+  const index = new WorkspaceIndex()
+  indexWorkspaceSnapshot(message.path, message.source, snapshotFiles, index)
+
+  if (message.kind === 'definition') {
+    const importPath = getImportPathAtSourcePosition(message.source, message.line, message.column)
+    if (importPath !== null) {
+      const resolved = resolveWorkspaceImportPathForSnapshot(snapshotFiles, importPath, message.path)
+      if (resolved) {
+        return {
+          locations: [
+            {
+              file: resolved,
+              line: 1,
+              column: 1,
+              endColumn: 1,
+            },
+          ],
+        }
+      }
+    }
+
+    const def = index.findDefinition(message.path, message.line, message.column)
+    return {
+      locations: def
+        ? [
+            {
+              file: def.location.file,
+              line: def.location.line,
+              column: def.location.column,
+              endColumn: def.location.column + def.name.length,
+            },
+          ]
+        : [],
+    }
+  }
+
+  const canonical = index.resolveCanonicalFile(message.path, message.line, message.column)
+  if (!canonical) return message.kind === 'rename' ? { edits: [] } : { locations: [] }
+
+  const occurrences = index.findAllOccurrences(canonical.file, canonical.name)
+  if (message.kind === 'references') {
+    return {
+      locations: occurrences.map(loc => ({
+        file: loc.file,
+        line: loc.line,
+        column: loc.column,
+        endColumn: loc.column + loc.nameLength,
+      })),
+    }
+  }
+
+  return {
+    edits: occurrences.map(loc => ({
+      file: loc.file,
+      line: loc.line,
+      column: loc.column,
+      endColumn: loc.column + loc.nameLength,
+      text: message.newName ?? canonical.name,
+    })),
+  }
+}
+
+function requestDocumentResync(path: string): void {
+  const out: ResyncDocumentMessage = {
+    type: 'resyncDocument',
+    path,
+  }
+  self.postMessage(out)
 }
 
 // ── Message handler ───────────────────────────────────────────────────────────
@@ -145,8 +570,24 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
   const msg = event.data
 
   switch (msg.type) {
+    case 'openDocument': {
+      setFileState(msg.path, msg.source, msg.sourceVersion)
+      return
+    }
+
     case 'updateDocument': {
-      files.set(msg.path, { source: msg.source, sourceVersion: msg.sourceVersion })
+      const current = files.get(msg.path)
+      if (!current || current.sourceVersion !== msg.previousSourceVersion) {
+        requestDocumentResync(msg.path)
+        return
+      }
+
+      setFileState(msg.path, msg.source, msg.sourceVersion)
+      return
+    }
+
+    case 'closeDocument': {
+      files.delete(msg.path)
       return
     }
 
@@ -155,15 +596,7 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
       cancelledRequests.delete(msg.requestId)
 
       if (!file) {
-        // No mirror yet — reply with empty diagnostics.
-        const out: DiagnosticsResultMessage = {
-          type: 'diagnosticsResult',
-          requestId: msg.requestId,
-          path: msg.path,
-          sourceVersion: msg.sourceVersion,
-          diagnostics: [],
-        }
-        self.postMessage(out)
+        requestDocumentResync(msg.path)
         return
       }
 
@@ -191,6 +624,115 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,
+          message: error instanceof Error ? error.message : String(error),
+        }
+        self.postMessage(out)
+      }
+      return
+    }
+
+    case 'requestFormatting': {
+      cancelledRequests.delete(msg.requestId)
+
+      try {
+        const out: FormattingResultMessage = {
+          type: 'formattingResult',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          formatted: formatSource(msg.source),
+        }
+        self.postMessage(out)
+      } catch (error) {
+        const out: FormattingErrorMessage = {
+          type: 'formattingError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: error instanceof Error ? error.message : String(error),
+        }
+        self.postMessage(out)
+      }
+      return
+    }
+
+    case 'requestHover': {
+      cancelledRequests.delete(msg.requestId)
+
+      try {
+        const inferredType = computeHover(msg)
+        checkCancelled(msg.requestId)
+        const out: HoverResultMessage = {
+          type: 'hoverResult',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          ...(inferredType ? { inferredType } : {}),
+        }
+        self.postMessage(out)
+      } catch (error) {
+        if (error instanceof CancellationError) return
+        const out: HoverErrorMessage = {
+          type: 'hoverError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: error instanceof Error ? error.message : String(error),
+        }
+        self.postMessage(out)
+      }
+      return
+    }
+
+    case 'requestCompletion': {
+      cancelledRequests.delete(msg.requestId)
+
+      try {
+        const items = computeCompletion(msg)
+        checkCancelled(msg.requestId)
+        const out: CompletionResultMessage = {
+          type: 'completionResult',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          items,
+        }
+        self.postMessage(out)
+      } catch (error) {
+        if (error instanceof CancellationError) return
+        const out: CompletionErrorMessage = {
+          type: 'completionError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: error instanceof Error ? error.message : String(error),
+        }
+        self.postMessage(out)
+      }
+      return
+    }
+
+    case 'requestNavigation': {
+      cancelledRequests.delete(msg.requestId)
+
+      try {
+        const result = computeNavigation(msg)
+        const out: NavigationResultMessage = {
+          type: 'navigationResult',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          kind: msg.kind,
+          ...result,
+        }
+        self.postMessage(out)
+      } catch (error) {
+        const out: NavigationErrorMessage = {
+          type: 'navigationError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          kind: msg.kind,
           message: error instanceof Error ? error.message : String(error),
         }
         self.postMessage(out)
