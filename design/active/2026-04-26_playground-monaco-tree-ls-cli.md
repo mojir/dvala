@@ -1,7 +1,22 @@
 # Playground: Monaco Editor + Tree View + LS Parity + CLI Launch
 
-**Status:** Draft
+**Status:** Parked after architectural milestone
 **Created:** 2026-04-26
+
+## Status Note
+
+This plan is no longer the primary driver of the work.
+
+It produced the core architectural evidence it needed to produce:
+
+- Monaco-based editor integration and the broader IDE shell are viable
+- the playground can host LS-backed features through a worker boundary
+- canonical open-buffer overlays and request correlation matter more than additional playground-facing feature completion
+- snapshot handling, runtime orchestration, and thin-client pressure all point toward a backend-first architecture rather than a playground-first one
+
+The plan is therefore intentionally parked before full completion. Remaining items are deferred unless they directly validate or unblock the backend-authority work in [design/active/2026-05-06_dvala-backend-authority.md](2026-05-06_dvala-backend-authority.md).
+
+This is a deliberate stop, not abandonment. The playground remains the reference implementation and testbed for backend ideas, but it is no longer the primary architectural target.
 
 ## Goal
 
@@ -297,6 +312,30 @@ Diagnostics is the right first provider because it's *push-only* — no synchron
 ---
 
 ## Open Questions
+
+## Handoff To Backend-Authority Track
+
+The main lessons carried forward from this plan are:
+
+1. Canonical authority matters more than feature count.
+The highest-value playground work was not another Monaco affordance; it was moving LS-backed document state, request sequencing, and stale-result rules behind one authority boundary.
+
+2. Open-buffer overlay semantics are foundational.
+Unsaved editor state must overlay persisted workspace files uniformly across diagnostics, navigation, rename, completion, runtime loading, and snapshot-related features. This is a backend concern, not a playground concern.
+
+3. Thin clients are the right direction.
+The more the playground grew IDE features, the more costly duplicated orchestration logic became. That is strong evidence that the playground should become a reference client of a Dvala backend, not the place where Dvala semantics continue to accumulate.
+
+4. Snapshot and session flows need backend-grade contracts.
+Once snapshots, REPL state, and suspended execution entered the picture, the architecture pressure moved beyond language-service parity and toward a distinct runtime + workspace backend split.
+
+5. Worker protocol hardening was evidence, not just cleanup.
+The 32a-32d work demonstrated that correlation IDs, mirror ownership, resync rules, and worker-lifecycle recovery are backend-shaping concerns. They should inform the backend platform design directly.
+
+6. The playground is still useful, but as a proving ground.
+Future playground work should be chosen when it validates a backend seam, runtime artifact flow, or thin-client integration path, not merely to finish the original feature matrix.
+
+Current recommendation: treat the remaining playground items as optional validation tracks. Resume them only when they answer a backend question that the backend-authority plan needs resolved.
 
 - ~~**Monaco bundle size.**~~ **Decided 2026-04-26: bundle Monaco into the main `dvala` package.** ~3 MB is acceptable; splitting into a separate `@dvala/playground` package is cheap to do later if install-size complaints arrive (the playground is already its own workspace, no programmatic API to preserve).
 - ~~**Token provider strategy.**~~ **Decided 2026-04-26 (corrected 2026-04-27): `TokensProvider` backed by `tokenizeSource` from [src/tooling.ts](../../src/tooling.ts).** Single source of truth between highlighter, parser, and language service. The original decision said `tokenScan`, but that's the let-binding scanner in the language service, not the tokenizer — corrected here. Risk to watch: `tokenizeSource` may need line-resumable state for Monaco's incremental per-line tokenization; if perf becomes a problem, address it then rather than preemptively falling back to Monarch.
