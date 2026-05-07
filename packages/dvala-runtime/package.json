@@ -1,0 +1,27 @@
+{
+  "name": "@mojir/dvala-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Portable runtime boundary for Dvala hosts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./artifacts": {
+      "types": "./dist/artifacts/index.d.ts",
+      "import": "./dist/artifacts/index.js"
+    },
+    "./evaluator": {
+      "types": "./dist/evaluator/index.d.ts",
+      "import": "./dist/evaluator/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsgo -p ./tsconfig.json",
+    "typecheck": "tsgo -p ./tsconfig.json --noEmit"
+  }
+}
