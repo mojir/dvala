@@ -38,6 +38,8 @@ export type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot } from
 export { createDvala } from './createDvala'
 export type { CreateDvalaOptions, DvalaRunOptions, DvalaRunAsyncOptions, DvalaRunner } from './createDvala'
 export type { FileResolver } from './evaluator/ContextStack'
+export { createPackageRuntimeBridge } from './runtime/createPackageRuntimeBridge'
+export type { CreatePackageRuntimeBridgeOptions, RuntimeArtifactBridge } from './runtime/createPackageRuntimeBridge'
 
 // Standalone tooling
 export {
