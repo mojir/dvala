@@ -1,5 +1,6 @@
 import type { AstNode } from '../parser/types'
-import type { Continuation, SnapshotState } from '../evaluator/effectTypes'
+import type { Continuation } from '../evaluator/effectTypes'
+import type { RuntimeContinuation, RuntimeNodeEvalHook } from '@mojir/dvala-runtime'
 import type { CallStackEntry } from '../evaluator/callStack'
 import { reconstructCallStack } from '../evaluator/callStack'
 import type { Any } from '../interface'
@@ -173,22 +174,26 @@ export class Debugger {
   // onNodeEval hook — pass this to dvala.runAsync()
   // -------------------------------------------------------------------------
 
+  private static asContinuation(continuation: RuntimeContinuation): Continuation {
+    return continuation as Continuation
+  }
+
   /**
    * The `onNodeEval` hook function. Pass as `onNodeEval` in run options.
    *
    * Determines whether to stop based on breakpoints and step commands.
    * For stepOver/stepOut, calls getContinuation() to measure call depth.
    */
-  public readonly onNodeEval: SnapshotState['onNodeEval'] = (
+  public readonly onNodeEval: RuntimeNodeEvalHook = (
     node: AstNode,
-    getContinuation: () => Continuation,
+    getContinuation: () => RuntimeContinuation,
   ): void | Promise<void> => {
     const nodeId = node[2]
 
     // Breakpoint check — may need async condition evaluation
     const bp = this.breakpoints.get(nodeId)
     if (bp !== undefined) {
-      const continuation = getContinuation()
+      const continuation = Debugger.asContinuation(getContinuation())
 
       // Unconditional breakpoint — always stop
       if (!bp.condition) {
@@ -213,11 +218,11 @@ export class Debugger {
     switch (this.stepCommand) {
       case 'stepInto':
         // Stop on the very next node
-        return this.stop('step', node, getContinuation())
+        return this.stop('step', node, Debugger.asContinuation(getContinuation()))
 
       case 'stepOver': {
         // Stop when call depth is at or below the depth where stepOver was issued
-        const continuation = getContinuation()
+        const continuation = Debugger.asContinuation(getContinuation())
         const currentDepth = Debugger.countCallDepth(continuation)
         if (currentDepth <= this.stepDepth) {
           return this.stop('step', node, continuation)
@@ -227,7 +232,7 @@ export class Debugger {
 
       case 'stepOut': {
         // Stop when call depth is strictly below the depth where stepOut was issued
-        const continuation = getContinuation()
+        const continuation = Debugger.asContinuation(getContinuation())
         const currentDepth = Debugger.countCallDepth(continuation)
         if (currentDepth < this.stepDepth) {
           return this.stop('step', node, continuation)
