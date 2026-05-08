@@ -17,9 +17,10 @@ import {
 } from '@mojir/dvala-runtime'
 import {
   createDefaultRuntimeBridgeAdapter,
-  withRuntimeModules,
+  toRuntimeResumeOptions,
+  toRuntimeRunOptions,
 } from './createDefaultRuntimeBridgeAdapter'
-import type { BridgeRunnerOptions } from './runtimeBridgeOptions'
+import type { BridgeProgramRunOptions, BridgeRunnerOptions, RuntimeBridgeExecutionContext } from './runtimeBridgeOptions'
 
 type DraftSessionKind = 'program' | 'snapshot'
 
@@ -29,7 +30,7 @@ export interface CreatePackageRuntimeBridgeOptions extends BridgeRunnerOptions {
   identity: RuntimeIdentity
   artifactBridge: RuntimeArtifactBridge
   hostToHandlers?: (host: RuntimeHost) => RuntimeHandlers | undefined
-  programRunOptions?: Omit<DvalaRunAsyncOptions, 'effectHandlers' | 'pure'>
+  programRunOptions?: BridgeProgramRunOptions
   runProgram?: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RuntimeRunResult>
   resumeProgram?: (snapshot: RuntimeSnapshot, value: unknown, options?: RuntimeResumeOptions) => Promise<RuntimeRunResult>
 }
@@ -104,18 +105,18 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
     return options.hostToHandlers?.(host)
   }
 
-  function runProgram(source: string | DvalaBundle, runOptions?: DvalaRunAsyncOptions): Promise<RuntimeRunResult> {
-    if (options.runProgram) return options.runProgram(source, runOptions)
-    return defaultAdapter!.runProgram(source, runOptions)
+  function runProgram(source: string | DvalaBundle, context?: RuntimeBridgeExecutionContext): Promise<RuntimeRunResult> {
+    if (options.runProgram) return options.runProgram(source, toRuntimeRunOptions(context))
+    return defaultAdapter!.runProgram(source, context)
   }
 
   function resumeProgram(
     snapshot: RuntimeSnapshot,
     value: unknown,
-    resumeOptions?: RuntimeResumeOptions,
+    context?: RuntimeBridgeExecutionContext,
   ): Promise<RuntimeRunResult> {
-    if (options.resumeProgram) return options.resumeProgram(snapshot, value, resumeOptions)
-    return defaultAdapter!.resumeProgram(snapshot, value, resumeOptions)
+    if (options.resumeProgram) return options.resumeProgram(snapshot, value, toRuntimeResumeOptions(options.modules, context))
+    return defaultAdapter!.resumeProgram(snapshot, value, context)
   }
 
   return createRuntime(
@@ -127,11 +128,7 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
         return new DraftRuntimeSession(
           nextSessionId('program'),
           'program',
-          async () =>
-            runProgram(decoded, {
-              ...options.programRunOptions,
-              effectHandlers,
-            }),
+          async () => runProgram(decoded, { handlers: effectHandlers, programRunOptions: options.programRunOptions }),
           options.artifactBridge.encodeSnapshotArtifact,
         )
       },
@@ -142,14 +139,7 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
         return new DraftRuntimeSession(
           nextSessionId('snapshot'),
           'snapshot',
-          async () =>
-            resumeProgram(snapshot, resumeValue, {
-              handlers: effectHandlers,
-              modules: withRuntimeModules(options.modules),
-              maxSnapshots: options.programRunOptions?.maxSnapshots,
-              disableAutoCheckpoint: options.programRunOptions?.disableAutoCheckpoint,
-              terminalSnapshot: options.programRunOptions?.terminalSnapshot,
-            }),
+          async () => resumeProgram(snapshot, resumeValue, { handlers: effectHandlers, programRunOptions: options.programRunOptions }),
           options.artifactBridge.encodeSnapshotArtifact,
         )
       },
