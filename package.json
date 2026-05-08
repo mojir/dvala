@@ -140,7 +140,7 @@
     "lint": "wireit",
     "lint:no-fix": "wireit",
     "typecheck": "wireit",
-    "typecheck:watch": "tsgo -p ./tsconfig.compile.json --noEmit --watch",
+    "typecheck:watch": "pnpm --filter @mojir/dvala-runtime run build && tsgo -p ./tsconfig.compile.json --noEmit --watch",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run knip && pnpm run build && pnpm run test",
     "check:no-fix": "pnpm run lint:no-fix && pnpm run typecheck && pnpm run knip && pnpm run test",
     "clean": "pnpm run clean-dvala && pnpm run clean-playground && rm -rf .wireit coverage test-results vscode-dvala/out .cache",
@@ -261,7 +261,7 @@
       "output": []
     },
     "typecheck": {
-      "command": "pnpm --filter @mojir/dvala-runtime run typecheck && tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit",
+      "command": "pnpm --filter @mojir/dvala-runtime run build && tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit",
       "files": [
         "packages/dvala-runtime/src/**/*.ts",
         "packages/dvala-runtime/package.json",
@@ -278,7 +278,9 @@
         "tsconfig*.json",
         "vscode-dvala/tsconfig.json"
       ],
-      "output": []
+      "output": [
+        "packages/dvala-runtime/dist/**"
+      ]
     },
     "test": {
       "command": "vitest run",
