@@ -4,18 +4,21 @@ import {
   createRuntime,
   createRuntimeExecutor,
   type ArtifactCompatibilityBridge,
+  type DvalaRunAsyncOptions,
   type RuntimeRunResult,
   type DvalaRuntime,
   type RuntimeHandlers,
   type RuntimeHost,
   type RuntimeIdentity,
+  type RuntimeResumeOptions,
+  type RuntimeModuleLike,
   type RuntimeSession,
   type RuntimeSessionState,
   type RuntimeSnapshot,
   type SnapshotArtifactEnvelope,
 } from '@mojir/dvala-runtime'
-import { createDvala, type CreateDvalaOptions, type DvalaRunAsyncOptions } from '../createDvala'
-import { resume, type ResumeOptions } from '../resume'
+import { createDvala, type CreateDvalaOptions } from '../createDvala'
+import { resume } from '../resume'
 
 type DraftSessionKind = 'program' | 'snapshot'
 
@@ -27,7 +30,7 @@ export interface CreatePackageRuntimeBridgeOptions extends CreateDvalaOptions {
   hostToHandlers?: (host: RuntimeHost) => RuntimeHandlers | undefined
   programRunOptions?: Omit<DvalaRunAsyncOptions, 'effectHandlers' | 'pure'>
   runProgram?: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RuntimeRunResult>
-  resumeProgram?: (snapshot: RuntimeSnapshot, value: unknown, options?: ResumeOptions) => Promise<RuntimeRunResult>
+  resumeProgram?: (snapshot: RuntimeSnapshot, value: unknown, options?: RuntimeResumeOptions) => Promise<RuntimeRunResult>
 }
 
 class DraftRuntimeSession implements RuntimeSession {
@@ -108,10 +111,13 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
   function resumeProgram(
     snapshot: RuntimeSnapshot,
     value: unknown,
-    resumeOptions?: ResumeOptions,
+    resumeOptions?: RuntimeResumeOptions,
   ): Promise<RuntimeRunResult> {
     if (options.resumeProgram) return options.resumeProgram(snapshot, value, resumeOptions)
-    return resume(snapshot, value, resumeOptions)
+    return resume(snapshot, value, {
+      ...resumeOptions,
+      modules: resumeOptions?.modules as DvalaModule[] | undefined,
+    })
   }
 
   return createRuntime(
@@ -141,7 +147,7 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
           async () =>
             resumeProgram(snapshot, resumeValue, {
               handlers: effectHandlers,
-              modules: options.modules as DvalaModule[] | undefined,
+              modules: options.modules as RuntimeModuleLike[] | undefined,
               maxSnapshots: options.programRunOptions?.maxSnapshots,
               disableAutoCheckpoint: options.programRunOptions?.disableAutoCheckpoint,
               terminalSnapshot: options.programRunOptions?.terminalSnapshot,
