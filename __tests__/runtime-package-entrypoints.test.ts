@@ -107,7 +107,7 @@ describe('@mojir/dvala-runtime package entrypoints', () => {
     const artifact: ProgramArtifactEnvelope = createProgramArtifact()
 
     expect(Object.keys(runtimeArtifactsPackage)).toEqual([])
-    expect(runtimeArtifactsPackage[Symbol.toStringTag]).toBe('Module')
+    expect(Object.prototype.toString.call(runtimeArtifactsPackage)).toBe('[object Module]')
     expect(artifact.manifest.kind).toBe('program')
     expect(artifact.semanticIr.payloadFormat).toBe('cbor')
   })
