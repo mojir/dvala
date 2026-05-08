@@ -24,7 +24,20 @@ type DraftSessionKind = 'program' | 'snapshot'
 
 export type RuntimeArtifactBridge = ArtifactCompatibilityBridge<string | DvalaBundle, RuntimeSnapshot, RuntimeHost>
 
-export interface CreatePackageRuntimeBridgeOptions extends CreateDvalaOptions {
+type BridgeRunnerOptions = Pick<
+  CreateDvalaOptions,
+  | 'modules'
+  | 'effectHandlers'
+  | 'cache'
+  | 'debug'
+  | 'disableAutoCheckpoint'
+  | 'fileResolver'
+  | 'fileResolverBaseDir'
+  | 'typecheck'
+  | 'onTypeDiagnostic'
+>
+
+export interface CreatePackageRuntimeBridgeOptions extends BridgeRunnerOptions {
   identity: RuntimeIdentity
   artifactBridge: RuntimeArtifactBridge
   hostToHandlers?: (host: RuntimeHost) => RuntimeHandlers | undefined
