@@ -13,6 +13,9 @@ async function verifyProgramArtifact(
 ): Promise<VerifiedProgram> {
   const signatureOk = await host.verifySignature(artifact)
   if (!signatureOk) verificationFailure('program artifact signature verification failed')
+  if (artifact.manifest.schemaVersion !== identity.schemaVersion) {
+    verificationFailure('program artifact schema version does not match bound runtime')
+  }
   if (artifact.manifest.runtimeFingerprint !== identity.fingerprint) {
     verificationFailure('program artifact runtime fingerprint does not match bound runtime')
   }
@@ -30,6 +33,9 @@ async function verifySnapshotArtifact(
 ): Promise<VerifiedSnapshot> {
   const signatureOk = await host.verifySignature(artifact)
   if (!signatureOk) verificationFailure('snapshot artifact signature verification failed')
+  if (artifact.manifest.schemaVersion !== identity.schemaVersion) {
+    verificationFailure('snapshot artifact schema version does not match bound runtime')
+  }
   if (artifact.manifest.runtimeFingerprint !== identity.fingerprint) {
     verificationFailure('snapshot artifact runtime fingerprint does not match bound runtime')
   }

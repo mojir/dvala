@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { createPackageRuntimeBridge } from '../src/runtime/createPackageRuntimeBridge'
+import { toRuntimeResumeOptions } from '../src/runtime/createDefaultRuntimeBridgeAdapter'
+import type { DvalaModule } from '../src/builtin/modules/interface'
 import type { HandlerRegistration, Snapshot } from '../src/evaluator/effectTypes'
 import type { DvalaBundle } from '../src/bundler/interface'
 import type { ProgramArtifactEnvelope, SnapshotArtifactEnvelope } from '../packages/dvala-runtime/src/artifacts/types'
@@ -10,6 +12,12 @@ const identity: RuntimeIdentity = {
   version: 'test-version',
   fingerprint: 'runtime-fingerprint',
   schemaVersion: 'schema-v1',
+}
+
+const testModule: DvalaModule = {
+  name: 'test.module',
+  description: 'Test module for runtime bridge options',
+  functions: {},
 }
 
 function createProgramArtifact(): ProgramArtifactEnvelope {
@@ -111,6 +119,57 @@ describe('createPackageRuntimeBridge', () => {
     expect(session.inspect()).toMatchObject({ status: 'completed' })
   })
 
+  it('rejects rerunning the same draft session', async () => {
+    const runtime = createPackageRuntimeBridge({
+      identity,
+      artifactBridge: {
+        decodeProgramArtifact: (): string => '1 + 2',
+        decodeSnapshotArtifact: (): Snapshot => {
+          throw new Error('decodeSnapshotArtifact should not be called in rerun test')
+        },
+        encodeSnapshotArtifact: async (): Promise<SnapshotArtifactEnvelope> => {
+          throw new Error('encodeSnapshotArtifact should not be called in rerun test')
+        },
+      },
+    })
+
+    const bound = runtime.bindHost(createHost())
+    const verified = await bound.verifyProgram(createProgramArtifact())
+    const session = await bound.startProgram(verified)
+
+    await expect(session.run()).resolves.toMatchObject({ type: 'completed', value: 3 })
+    await expect(session.run()).rejects.toThrow('dvala-runtime draft session has already been run')
+  })
+
+  it('rejects artifacts with a mismatched schema version', async () => {
+    const runtime = createPackageRuntimeBridge({
+      identity,
+      artifactBridge: {
+        decodeProgramArtifact: (): string => '1 + 2',
+        decodeSnapshotArtifact: (): Snapshot => {
+          throw new Error('decodeSnapshotArtifact should not be called in schema mismatch test')
+        },
+        encodeSnapshotArtifact: async (): Promise<SnapshotArtifactEnvelope> => {
+          throw new Error('encodeSnapshotArtifact should not be called in schema mismatch test')
+        },
+      },
+    })
+
+    const bound = runtime.bindHost(createHost())
+    const programArtifact = createProgramArtifact()
+    const snapshotArtifact = createSnapshotArtifact()
+
+    programArtifact.manifest.schemaVersion = 'schema-v2'
+    snapshotArtifact.manifest.schemaVersion = 'schema-v2'
+
+    await expect(bound.verifyProgram(programArtifact)).rejects.toThrow(
+      'dvala-runtime: program artifact schema version does not match bound runtime',
+    )
+    await expect(bound.verifySnapshot(snapshotArtifact)).rejects.toThrow(
+      'dvala-runtime: snapshot artifact schema version does not match bound runtime',
+    )
+  })
+
   it('resumes a snapshot artifact through the bridge using the supplied resume value', async () => {
     const snapshotArtifact = createSnapshotArtifact()
     let decodeCalls = 0
@@ -189,5 +248,30 @@ describe('createPackageRuntimeBridge', () => {
     expect(encodedSnapshotId).toBe(result.snapshot.id)
     expect(exported).toBe(exportedSnapshot)
     expect(session.inspect()).toMatchObject({ status: 'suspended', snapshotCount: 1 })
+  })
+
+  it('preserves scope when shaping runtime resume options', () => {
+    const runtimeResumeOptions = toRuntimeResumeOptions([testModule], {
+      handlers: [
+        {
+          pattern: 'test.ask',
+          handler: ({ resume }) => resume(42),
+        },
+      ],
+      programRunOptions: {
+        scope: { answer: 42 },
+        maxSnapshots: 3,
+        disableAutoCheckpoint: true,
+        terminalSnapshot: false,
+      },
+    })
+
+    expect(runtimeResumeOptions).toMatchObject({
+      scope: { answer: 42 },
+      maxSnapshots: 3,
+      disableAutoCheckpoint: true,
+      terminalSnapshot: false,
+      modules: [testModule],
+    })
   })
 })

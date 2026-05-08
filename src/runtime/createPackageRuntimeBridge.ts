@@ -65,20 +65,28 @@ class DraftRuntimeSession implements RuntimeSession {
     if (this.closed) {
       throw new Error(`dvala-runtime draft session is closed: ${this.id}`)
     }
+    if (this.status !== 'idle') {
+      throw new Error(`dvala-runtime draft session has already been run: ${this.id}`)
+    }
     this.status = 'running'
-    const result = await this.runThunk()
+    try {
+      const result = await this.runThunk()
 
-    if (result.type === 'suspended') {
-      this.status = 'suspended'
-      this.latestSnapshot = result.snapshot
+      if (result.type === 'suspended') {
+        this.status = 'suspended'
+        this.latestSnapshot = result.snapshot
+        return result
+      }
+      if (result.type === 'completed' || result.type === 'halted') {
+        this.status = 'completed'
+        return result
+      }
+      this.status = 'failed'
       return result
+    } catch (error) {
+      this.status = 'failed'
+      throw error
     }
-    if (result.type === 'completed') {
-      this.status = 'completed'
-      return result
-    }
-    this.status = 'failed'
-    return result
   }
 
   public async suspend(): Promise<SnapshotArtifactEnvelope> {

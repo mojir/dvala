@@ -32,6 +32,7 @@ export function toRuntimeResumeOptions(
     maxSnapshots: context?.programRunOptions?.maxSnapshots,
     disableAutoCheckpoint: context?.programRunOptions?.disableAutoCheckpoint,
     terminalSnapshot: context?.programRunOptions?.terminalSnapshot,
+    scope: context?.programRunOptions?.scope,
   }
 }
 
