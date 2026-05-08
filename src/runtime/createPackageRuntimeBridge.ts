@@ -2,12 +2,9 @@ import type { DvalaBundle } from '../bundler/interface'
 import {
   createPackageRuntimeBridge as createPackageRuntimeBridgePackage,
   type ArtifactCompatibilityBridge,
-  type BridgeProgramRunOptions,
   type CreatePackageRuntimeBridgeOptions as PackageCreatePackageRuntimeBridgeOptions,
   type DvalaRuntime,
-  type RuntimeHandlers,
   type RuntimeHost,
-  type RuntimeIdentity,
   type RuntimeSnapshot,
 } from '@mojir/dvala-runtime'
 import {
@@ -18,11 +15,12 @@ import {
 
 export type RuntimeArtifactBridge = ArtifactCompatibilityBridge<string | DvalaBundle, RuntimeSnapshot, RuntimeHost>
 
-export interface CreatePackageRuntimeBridgeOptions extends BridgeRunnerOptions {
-  identity: RuntimeIdentity
-  artifactBridge: RuntimeArtifactBridge
-  hostToHandlers?: (host: RuntimeHost) => RuntimeHandlers | undefined
-  programRunOptions?: BridgeProgramRunOptions
+type PackageRuntimeBridgeBaseOptions = Omit<
+  PackageCreatePackageRuntimeBridgeOptions<string | DvalaBundle, RuntimeSnapshot, RuntimeHost>,
+  'runProgram' | 'resumeProgram'
+>
+
+export interface CreatePackageRuntimeBridgeOptions extends BridgeRunnerOptions, PackageRuntimeBridgeBaseOptions {
   runProgram?: BridgeRuntimeOverrides['runProgram']
   resumeProgram?: BridgeRuntimeOverrides['resumeProgram']
 }
