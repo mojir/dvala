@@ -1,8 +1,8 @@
 import type { DvalaModule } from '../builtin/modules/interface'
+import type { DvalaRunAsyncOptions, DvalaRunOptions, RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
 import { DvalaError } from '../errors'
 import { createContextStack } from '../evaluator/ContextStack'
 import type { FileResolver } from '../evaluator/ContextStack'
-import type { Handlers, RunResult, SnapshotState } from '../evaluator/effectTypes'
 import type { Context } from '../evaluator/interface'
 import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from '../evaluator/trampoline-evaluator'
 import type { Ast, SourceMap } from '../parser/types'
@@ -10,40 +10,14 @@ import type { DvalaBundle } from '../bundler/interface'
 import { isDvalaBundle } from '../bundler/interface'
 import { toJS } from '../utils/interop'
 
-export type DvalaRunOptions =
-  | { scope?: Record<string, unknown>; pure: true; effectHandlers?: never; filePath?: string }
-  | { scope?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; filePath?: string }
-
-export type DvalaRunAsyncOptions =
-  | {
-      scope?: Record<string, unknown>
-      pure: true
-      effectHandlers?: never
-      maxSnapshots?: number
-      disableAutoCheckpoint?: boolean
-      terminalSnapshot?: boolean
-      onNodeEval?: SnapshotState['onNodeEval']
-      filePath?: string
-    }
-  | {
-      scope?: Record<string, unknown>
-      pure?: false
-      effectHandlers?: Handlers
-      maxSnapshots?: number
-      disableAutoCheckpoint?: boolean
-      terminalSnapshot?: boolean
-      onNodeEval?: SnapshotState['onNodeEval']
-      filePath?: string
-    }
-
 interface RuntimeExecutionRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
-  runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RunResult>
+  runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RuntimeRunResult>
 }
 
 interface CreateRuntimeRunnerOptions {
   modules?: Map<string, DvalaModule>
-  factoryEffectHandlers?: Handlers
+  factoryEffectHandlers?: RuntimeHandlers
   factoryDisableTimeTravel: boolean
   factoryFileResolver?: FileResolver
   factoryFileResolverBaseDir?: string
@@ -57,12 +31,12 @@ interface CreateRuntimeRunnerOptions {
 }
 
 export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): RuntimeExecutionRunner {
-  function mergeEffectHandlers(runEffectHandlers?: Handlers): Handlers | undefined {
+  function mergeEffectHandlers(runEffectHandlers?: RuntimeHandlers): RuntimeHandlers | undefined {
     if (!options.factoryEffectHandlers && !runEffectHandlers) return undefined
     return [...(runEffectHandlers ?? []), ...(options.factoryEffectHandlers ?? [])]
   }
 
-  function assertNotPureWithHandlers(pure: boolean, effectHandlers: Handlers | undefined): void {
+  function assertNotPureWithHandlers(pure: boolean, effectHandlers: RuntimeHandlers | undefined): void {
     if (!pure) return
     const hasEffectHandlers = effectHandlers && effectHandlers.length > 0
     if (hasEffectHandlers) {
@@ -111,7 +85,7 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
       return toJS(result)
     },
 
-    async runAsync(source: string | DvalaBundle, runOptions?: DvalaRunAsyncOptions): Promise<RunResult> {
+    async runAsync(source: string | DvalaBundle, runOptions?: DvalaRunAsyncOptions): Promise<RuntimeRunResult> {
       const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
       const pure = runOptions?.pure ?? false
 

@@ -4,25 +4,27 @@ import {
   createRuntime,
   createRuntimeExecutor,
   type ArtifactCompatibilityBridge,
+  type RuntimeRunResult,
   type DvalaRuntime,
+  type RuntimeHandlers,
   type RuntimeHost,
   type RuntimeIdentity,
   type RuntimeSession,
   type RuntimeSessionState,
+  type RuntimeSnapshot,
   type SnapshotArtifactEnvelope,
 } from '@mojir/dvala-runtime'
 import { createDvala, type CreateDvalaOptions, type DvalaRunAsyncOptions } from '../createDvala'
-import type { Handlers, RunResult, Snapshot } from '../evaluator/effectTypes'
 import { resume } from '../resume'
 
 type DraftSessionKind = 'program' | 'snapshot'
 
-export type RuntimeArtifactBridge = ArtifactCompatibilityBridge<string | DvalaBundle, Snapshot, RuntimeHost>
+export type RuntimeArtifactBridge = ArtifactCompatibilityBridge<string | DvalaBundle, RuntimeSnapshot, RuntimeHost>
 
 export interface CreatePackageRuntimeBridgeOptions extends CreateDvalaOptions {
   identity: RuntimeIdentity
   artifactBridge: RuntimeArtifactBridge
-  hostToHandlers?: (host: RuntimeHost) => Handlers | undefined
+  hostToHandlers?: (host: RuntimeHost) => RuntimeHandlers | undefined
   programRunOptions?: Omit<DvalaRunAsyncOptions, 'effectHandlers' | 'pure'>
 }
 
@@ -30,21 +32,21 @@ class DraftRuntimeSession implements RuntimeSession {
   public readonly id: string
 
   private status: RuntimeSessionState['status'] = 'idle'
-  private latestSnapshot: Snapshot | undefined
+  private latestSnapshot: RuntimeSnapshot | undefined
   private closed = false
 
   public constructor(
     id: string,
     private readonly kind: DraftSessionKind,
-    private readonly runThunk: () => Promise<RunResult>,
+    private readonly runThunk: () => Promise<RuntimeRunResult>,
     private readonly encodeSnapshotArtifact: (
-      snapshot: Snapshot,
+      snapshot: RuntimeSnapshot,
     ) => SnapshotArtifactEnvelope | Promise<SnapshotArtifactEnvelope>,
   ) {
     this.id = id
   }
 
-  public async run(): Promise<RunResult> {
+  public async run(): Promise<RuntimeRunResult> {
     if (this.closed) {
       throw new Error(`dvala-runtime draft session is closed: ${this.id}`)
     }
@@ -92,7 +94,7 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
     return `${kind}-session-${sessionCounter}`
   }
 
-  function handlersForHost(host: RuntimeHost): Handlers | undefined {
+  function handlersForHost(host: RuntimeHost): RuntimeHandlers | undefined {
     return options.hostToHandlers?.(host)
   }
 

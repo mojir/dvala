@@ -2,6 +2,7 @@ import { AutoCompleter } from './AutoCompleter/AutoCompleter'
 import type { DvalaModule } from './builtin/modules/interface'
 import type { Context } from './evaluator/interface'
 import type { FileResolver } from './evaluator/ContextStack'
+import type { RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
 import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parseToAst } from './parser'
@@ -9,17 +10,17 @@ import type { Ast, SourceMap } from './parser/types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Cache'
 import type { DvalaBundle } from './bundler/interface'
-import type { Handlers, RunResult } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
 import { validateFromJS } from './utils/interop'
 import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } from './typechecker/typecheck'
-import { createRuntimeRunner, type DvalaRunAsyncOptions, type DvalaRunOptions } from './runtime/createRuntimeRunner'
+import type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
+import { createRuntimeRunner } from './runtime/createRuntimeRunner'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
   modules?: DvalaModule[]
   /** Factory-level effect handlers, checked after per-call handlers. */
-  effectHandlers?: Handlers
+  effectHandlers?: RuntimeHandlers
   /** Maximum number of cached ASTs. Default: 100. */
   cache?: number
   /** Enable debug tokenization: captures source positions for better error messages. */
@@ -73,11 +74,11 @@ export interface CreateDvalaOptions {
   onTypeDiagnostic?: (diagnostic: TypeDiagnostic) => void
 }
 
-export type { DvalaRunAsyncOptions, DvalaRunOptions } from './runtime/createRuntimeRunner'
+export type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
-  runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RunResult>
+  runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RuntimeRunResult>
   getUndefinedSymbols: (source: string, symbolsOptions?: { scope?: Record<string, unknown> }) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
   /** Typecheck source code and return diagnostics + type map. */

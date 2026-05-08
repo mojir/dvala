@@ -15,6 +15,20 @@ export { createRuntime } from './createRuntime'
 export { bindRuntimeHost } from './run'
 export type { RuntimeExecutorCallbacks } from './evaluator/runtimeExecutor'
 export { createRuntimeExecutor, createUnimplementedRuntimeExecutor } from './evaluator/runtimeExecutor'
+export type {
+  DvalaRunAsyncOptions,
+  DvalaRunOptions,
+  RuntimeContinuation,
+  RuntimeEffectContext,
+  RuntimeEffectHandler,
+  RuntimeHandlerRegistration,
+  RuntimeHandlers,
+  RuntimeModuleLike,
+  RuntimeNodeEvalHook,
+  RuntimeResumeOptions,
+  RuntimeRunResult,
+  RuntimeSnapshot,
+} from './types/run'
 export type { ArtifactCompatibilityBridge } from './artifacts/compat'
 export type {
   ArtifactManifest,

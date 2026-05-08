@@ -1,6 +1,7 @@
 import type { ProgramArtifactEnvelope, SnapshotArtifactEnvelope } from '../artifacts/types'
 
 import type { CapabilityPolicy } from './capability'
+import type { RuntimeRunResult } from './run'
 
 export type RuntimeIdentity = {
   version: string
@@ -37,7 +38,7 @@ export interface RuntimeHost {
 
 export interface RuntimeSession {
   id: string
-  run(): Promise<unknown>
+  run(): Promise<RuntimeRunResult>
   suspend(): Promise<SnapshotArtifactEnvelope>
   inspect(): RuntimeSessionState
   close(): Promise<void>
