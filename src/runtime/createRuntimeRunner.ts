@@ -36,7 +36,7 @@ export type DvalaRunAsyncOptions =
       filePath?: string
     }
 
-export interface RuntimeExecutionRunner {
+interface RuntimeExecutionRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
   runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RunResult>
 }

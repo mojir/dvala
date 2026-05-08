@@ -1,6 +1,6 @@
 # Dvala Subprojects And Release Train
 
-**Status:** Draft
+**Status:** Accepted — first extraction slice in progress
 **Created:** 2026-05-07
 
 ## Goal
@@ -790,14 +790,14 @@ This iteration is meant to settle the following:
 If those are accepted, the next iteration should focus on:
 
 - what the root workspace and top-level scripts should keep owning
-- what package-local script surfaces each real subproject should expose
-- how aggressively runtime internals should be cleaned up during the first extraction versus wrapped temporarily
+- the minimal package-local script surfaces each real subproject should expose beneath those root commands
+- implementing the first extraction with thin, temporary boundary adapters only where they are genuinely needed
 
-## Open Questions
+## Resolved Follow-Up Decisions
 
-- When should `dvala-core-tooling` stop being a source boundary and become a real subproject?
-- Which package-local scripts should each subproject expose beneath the root release-train commands?
-- How much temporary adapter or re-export layering is acceptable during the first `dvala-runtime` extraction?
+- `dvala-core-tooling` should remain a source boundary during the first `dvala-runtime` extraction and be reconsidered only after that boundary has stabilized.
+- Real subprojects should expose only the minimal local scripts they need, while the root remains authoritative for repo-wide `build`, `test`, `check`, `lint`, and release flows.
+- The first `dvala-runtime` extraction may use thin, temporary boundary adapters where necessary for parser AST or bundle-shape compatibility, but should avoid broad re-export or facade layering.
 
 ## Implementation Plan
 
@@ -806,4 +806,7 @@ If those are accepted, the next iteration should focus on:
 3. Expand the `pnpm` workspace shape conceptually to `packages/*` and `apps/*`.
 4. Treat CLI and MCP as real package-style subprojects within that shared release train.
 5. Define the first extraction boundary for `dvala-runtime` using the portable-host rule, including future KMP needs.
-6. Create `packages/dvala-runtime` as the first real extraction slice, moving host-facing contracts and run/suspend/resume runtime entrypoints first while leaving workspace and tooling concerns outside.
+6. Keep `dvala-core-tooling` as a source boundary during that first extraction rather than promoting it to a real package in the same slice.
+7. Keep package-local scripts minimal under root-owned repo-wide orchestration.
+8. Create `packages/dvala-runtime` as the first real extraction slice, moving host-facing contracts and run/suspend/resume runtime entrypoints first while leaving workspace and tooling concerns outside.
+9. Use only thin temporary adapters at the parser/bundle boundary, and treat broader compatibility layering as out of bounds for the first slice.

@@ -29,6 +29,10 @@
       ],
       "ignoreDependencies": ["@vscode/vsce", "serve"]
     },
+    "packages/dvala-runtime": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
     "vscode-dvala": {
       "entry": ["src/debugAdapter.ts"],
       "project": ["src/**/*.ts"]

@@ -1,20 +1,19 @@
 import type { DvalaBundle } from '../bundler/interface'
 import type { DvalaModule } from '../builtin/modules/interface'
+import {
+  createRuntime,
+  createRuntimeExecutor,
+  type ArtifactCompatibilityBridge,
+  type DvalaRuntime,
+  type RuntimeHost,
+  type RuntimeIdentity,
+  type RuntimeSession,
+  type RuntimeSessionState,
+  type SnapshotArtifactEnvelope,
+} from '@mojir/dvala-runtime'
 import { createDvala, type CreateDvalaOptions, type DvalaRunAsyncOptions } from '../createDvala'
 import type { Handlers, RunResult, Snapshot } from '../evaluator/effectTypes'
 import { resume } from '../resume'
-
-import { createRuntime } from '../../packages/dvala-runtime/src/createRuntime'
-import { createRuntimeExecutor } from '../../packages/dvala-runtime/src/evaluator/runtimeExecutor'
-import type { ArtifactCompatibilityBridge } from '../../packages/dvala-runtime/src/artifacts/compat'
-import type { SnapshotArtifactEnvelope } from '../../packages/dvala-runtime/src/artifacts/types'
-import type {
-  DvalaRuntime,
-  RuntimeHost,
-  RuntimeIdentity,
-  RuntimeSession,
-  RuntimeSessionState,
-} from '../../packages/dvala-runtime/src/types/runtime'
 
 type DraftSessionKind = 'program' | 'snapshot'
 
