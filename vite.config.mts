@@ -3,10 +3,12 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
 const runtimePackageEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/index.ts', import.meta.url))
+const runtimeArtifactsEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/artifacts/index.ts', import.meta.url))
 
 export default defineConfig({
   resolve: {
     alias: {
+      '@mojir/dvala-runtime/artifacts': runtimeArtifactsEntry,
       '@mojir/dvala-runtime': runtimePackageEntry,
     },
   },
