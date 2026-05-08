@@ -14,8 +14,23 @@ import * as monaco from 'monaco-editor'
 import LsWorker from './lsWorker?worker'
 import { allReference, isCustomReference, isFunctionReference } from '../../reference/index'
 import type { Reference } from '../../reference/index'
-import type { Diagnostic } from '../../src/shared/types'
 import { WorkspaceIndex } from '../../src/internal'
+import type {
+  PlaygroundCompletionErrorMessage,
+  PlaygroundCompletionResultMessage,
+  PlaygroundDiagnosticsErrorMessage,
+  PlaygroundDiagnosticsResultMessage,
+  PlaygroundFormattingErrorMessage,
+  PlaygroundFormattingResultMessage,
+  PlaygroundHoverErrorMessage,
+  PlaygroundHoverResultMessage,
+  PlaygroundNavigationErrorMessage,
+  PlaygroundNavigationRequestKind as NavigationRequestKind,
+  PlaygroundNavigationResultMessage,
+  PlaygroundRequestDiagnosticsMessage,
+  PlaygroundResyncDocumentMessage,
+  PlaygroundWorkerOutMessage,
+} from '../../src/internal'
 import { findCallContext } from '../../src/shared/callContext'
 import { getWorkspaceFiles } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
@@ -101,7 +116,6 @@ let worker: Worker | null = null
 let nextRequestId = 1
 
 type PendingRequestMap = Map<string, number>
-type NavigationRequestKind = 'definition' | 'references' | 'rename'
 
 /** Debounce timers keyed by path. */
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -406,18 +420,12 @@ function buildNavigationRenameEdit(
   }
 }
 
-function handleWorkerMessage(event: MessageEvent): void {
+function handleWorkerMessage(event: MessageEvent<PlaygroundWorkerOutMessage>): void {
   const msg = event.data
 
   switch (msg.type) {
     case 'diagnosticsResult': {
-      const { path, sourceVersion, diagnostics } = msg as {
-        type: 'diagnosticsResult'
-        requestId: number
-        path: string
-        sourceVersion: number
-        diagnostics: Diagnostic[]
-      }
+      const { path, sourceVersion, diagnostics } = msg as PlaygroundDiagnosticsResultMessage
 
       const model = registeredModels.get(path)
       if (!model) return
@@ -448,7 +456,7 @@ function handleWorkerMessage(event: MessageEvent): void {
     }
 
     case 'diagnosticsError': {
-      const { path, requestId } = msg as { type: 'diagnosticsError'; path: string; requestId: number }
+      const { path, requestId } = msg as PlaygroundDiagnosticsErrorMessage
       if (!matchesPendingRequest(pendingRequests, path, requestId)) return
       const model = registeredModels.get(path)
       if (model) monaco.editor.setModelMarkers(model, 'dvala', [])
@@ -457,13 +465,7 @@ function handleWorkerMessage(event: MessageEvent): void {
     }
 
     case 'formattingResult': {
-      const { path, requestId, sourceVersion, formatted } = msg as {
-        type: 'formattingResult'
-        requestId: number
-        path: string
-        sourceVersion: number
-        formatted: string
-      }
+      const { path, requestId, sourceVersion, formatted } = msg as PlaygroundFormattingResultMessage
       if (!matchesPendingRequest(pendingFormattingRequests, path, requestId)) return
 
       const model = registeredModels.get(path)
@@ -477,20 +479,14 @@ function handleWorkerMessage(event: MessageEvent): void {
     }
 
     case 'formattingError': {
-      const { path, requestId } = msg as { type: 'formattingError'; path: string; requestId: number }
+      const { path, requestId } = msg as PlaygroundFormattingErrorMessage
       if (!matchesPendingRequest(pendingFormattingRequests, path, requestId)) return
       clearPendingFormattingRequest(path, [])
       return
     }
 
     case 'completionResult': {
-      const { path, requestId, sourceVersion, items } = msg as {
-        type: 'completionResult'
-        requestId: number
-        path: string
-        sourceVersion: number
-        items: CompletionItem[]
-      }
+      const { path, requestId, sourceVersion, items } = msg as PlaygroundCompletionResultMessage
       if (!matchesPendingRequest(pendingCompletionRequests, path, requestId)) return
 
       const model = registeredModels.get(path)
@@ -504,20 +500,14 @@ function handleWorkerMessage(event: MessageEvent): void {
     }
 
     case 'completionError': {
-      const { path, requestId } = msg as { type: 'completionError'; path: string; requestId: number }
+      const { path, requestId } = msg as PlaygroundCompletionErrorMessage
       if (!matchesPendingRequest(pendingCompletionRequests, path, requestId)) return
       clearPendingCompletionRequest(path, null)
       return
     }
 
     case 'hoverResult': {
-      const { path, requestId, sourceVersion, inferredType } = msg as {
-        type: 'hoverResult'
-        requestId: number
-        path: string
-        sourceVersion: number
-        inferredType?: string
-      }
+      const { path, requestId, sourceVersion, inferredType } = msg as PlaygroundHoverResultMessage
       if (!matchesPendingRequest(pendingHoverRequests, path, requestId)) return
 
       const model = registeredModels.get(path)
@@ -531,22 +521,14 @@ function handleWorkerMessage(event: MessageEvent): void {
     }
 
     case 'hoverError': {
-      const { path, requestId } = msg as { type: 'hoverError'; path: string; requestId: number }
+      const { path, requestId } = msg as PlaygroundHoverErrorMessage
       if (!matchesPendingRequest(pendingHoverRequests, path, requestId)) return
       clearPendingHoverRequest(path, undefined)
       return
     }
 
     case 'navigationResult': {
-      const { path, requestId, sourceVersion, kind, locations, edits } = msg as {
-        type: 'navigationResult'
-        requestId: number
-        path: string
-        sourceVersion: number
-        kind: NavigationRequestKind
-        locations?: { file: string; line: number; column: number; endColumn: number }[]
-        edits?: { file: string; line: number; column: number; endColumn: number; text: string }[]
-      }
+      const { path, requestId, sourceVersion, kind, locations, edits } = msg as PlaygroundNavigationResultMessage
       const key = getNavigationRequestKey(kind, path)
       if (!matchesPendingRequest(pendingNavigationRequests, key, requestId)) return
 
@@ -566,12 +548,7 @@ function handleWorkerMessage(event: MessageEvent): void {
     }
 
     case 'navigationError': {
-      const { path, requestId, kind } = msg as {
-        type: 'navigationError'
-        path: string
-        requestId: number
-        kind: NavigationRequestKind
-      }
+      const { path, requestId, kind } = msg as PlaygroundNavigationErrorMessage
       const key = getNavigationRequestKey(kind, path)
       if (!matchesPendingRequest(pendingNavigationRequests, key, requestId)) return
       clearPendingNavigationRequest(kind, path, null)
@@ -579,7 +556,7 @@ function handleWorkerMessage(event: MessageEvent): void {
     }
 
     case 'resyncDocument': {
-      const { path } = msg as { type: 'resyncDocument'; path: string }
+      const { path } = msg as PlaygroundResyncDocumentMessage
       const model = registeredModels.get(path)
       if (!model || !worker) return
       const fingerprint = getResyncFingerprint(path, model.getVersionId())
@@ -1240,10 +1217,15 @@ export function getFormattingEditsForTesting(model: monaco.editor.ITextModel): P
  */
 function requestDiagnostics(path: string, sourceVersion: number): void {
   const w = getWorker()
-  startTrackedRequest(pendingRequests, path, w, requestId => ({
-    type: 'requestDiagnostics',
-    requestId,
+  startTrackedRequest(
+    pendingRequests,
     path,
-    sourceVersion,
-  }))
+    w,
+    (requestId): PlaygroundRequestDiagnosticsMessage => ({
+      type: 'requestDiagnostics',
+      requestId,
+      path,
+      sourceVersion,
+    }),
+  )
 }

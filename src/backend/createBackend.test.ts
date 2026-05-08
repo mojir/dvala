@@ -1,0 +1,69 @@
+import { describe, expect, it } from 'vitest'
+
+import { createBackend } from './createBackend'
+
+describe('createBackend', () => {
+  it('returns diagnostics from the backend-owned open document mirror', async () => {
+    const backend = createBackend()
+    await backend.openDocument({ path: 'main.dvala', source: '1 + 2', version: 1 })
+
+    const result = await backend.requestDiagnostics({
+      requestId: 1,
+      path: 'main.dvala',
+      version: 1,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      requestId: 1,
+      path: 'main.dvala',
+      version: 1,
+      diagnostics: [],
+    })
+  })
+
+  it('requests resync when diagnostics are requested for a missing mirror', async () => {
+    const backend = createBackend()
+
+    const result = await backend.requestDiagnostics({
+      requestId: 7,
+      path: 'main.dvala',
+      version: 1,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      requestId: 7,
+      path: 'main.dvala',
+      version: 1,
+      error: {
+        kind: 'resync-required',
+        message: 'Backend document mirror missing or stale for main.dvala',
+        path: 'main.dvala',
+      },
+    })
+  })
+
+  it('requests resync when diagnostics target a stale version', async () => {
+    const backend = createBackend()
+    await backend.openDocument({ path: 'main.dvala', source: '1 + 2', version: 2 })
+
+    const result = await backend.requestDiagnostics({
+      requestId: 9,
+      path: 'main.dvala',
+      version: 1,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      requestId: 9,
+      path: 'main.dvala',
+      version: 1,
+      error: {
+        kind: 'resync-required',
+        message: 'Backend document mirror missing or stale for main.dvala',
+        path: 'main.dvala',
+      },
+    })
+  })
+})

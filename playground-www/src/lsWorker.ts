@@ -3,9 +3,8 @@
  *
  * Runs in a separate thread so parse and LS-typecheck work never blocks the
  * editor UI. The main thread streams edit deltas via `updateDocument`
- * messages and requests diagnostics on demand; the worker holds a stateful
- * per-file mirror and caches typecheck results for diagnostics against that
- * mirrored state.
+ * messages and requests diagnostics on demand; the worker adapts that
+ * protocol onto a backend-owned document mirror and diagnostics pipeline.
  *
  * ## Protocol
  *
@@ -28,8 +27,8 @@
  *   that path; otherwise it requests an explicit resync from the main
  *   thread instead of silently drifting.
  * - `requestDiagnostics(path, sourceVersion)`: compute parse + typecheck
- *   diagnostics for the file at `path`. The worker tokenizes, parses, and
- *   typechecks the stored mirror; if no mirror is available it requests an
+ *   diagnostics for the file at `path`. The worker forwards the request to
+ *   the backend-owned mirror; if no mirror is available it requests an
  *   explicit resync instead of silently fabricating an empty result.
  * - `requestFormatting(path, source, sourceVersion)`: format the supplied
  *   source snapshot and post back `formattingResult` or `formattingError`.
@@ -75,229 +74,38 @@
  */
 
 import { tokenizeSource } from '../../src/tooling'
-import { parseTokenStreamRecoverable } from '../../src/tooling'
 import { formatSource } from '../../src/tooling'
-import { buildParseDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
-import type { Diagnostic } from '../../src/shared/types'
 import { allBuiltinModules } from '../../src/allModules'
 import { parseToAst } from '../../src/parser'
 import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
-import { WorkspaceIndex, type ResolveImport, typecheck } from '../../src/internal'
+import { WorkspaceIndex, createBackend, type ResolveImport, typecheck } from '../../src/internal'
 import type { TypecheckResult } from '../../src/internal'
+import type {
+  PlaygroundCompletionErrorMessage as CompletionErrorMessage,
+  PlaygroundCompletionResultMessage as CompletionResultMessage,
+  PlaygroundDiagnosticsErrorMessage as DiagnosticsErrorMessage,
+  PlaygroundDiagnosticsResultMessage as DiagnosticsResultMessage,
+  PlaygroundFormattingErrorMessage as FormattingErrorMessage,
+  PlaygroundFormattingResultMessage as FormattingResultMessage,
+  PlaygroundHoverErrorMessage as HoverErrorMessage,
+  PlaygroundHoverResultMessage as HoverResultMessage,
+  PlaygroundNavigationErrorMessage as NavigationErrorMessage,
+  PlaygroundNavigationResultMessage as NavigationResultMessage,
+  PlaygroundRequestCompletionMessage as RequestCompletionMessage,
+  PlaygroundRequestHoverMessage as RequestHoverMessage,
+  PlaygroundRequestNavigationMessage as RequestNavigationMessage,
+  PlaygroundResyncDocumentMessage as ResyncDocumentMessage,
+  PlaygroundWorkerInMessage as WorkerInMessage,
+} from '../../src/internal'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
 import { getImportCompletionItems, getImportedExportCompletionItems, getScopedCompletionItems } from './lsCompletions'
 import { resolvePlaygroundPath } from './playgroundFileResolver'
 
-// ── Message types ─────────────────────────────────────────────────────────────
-
-interface OpenDocumentMessage {
-  type: 'openDocument'
-  path: string
-  source: string
-  sourceVersion: number
-}
-
-interface UpdateDocumentMessage {
-  type: 'updateDocument'
-  path: string
-  source: string
-  sourceVersion: number
-  previousSourceVersion: number
-}
-
-interface CloseDocumentMessage {
-  type: 'closeDocument'
-  path: string
-}
-
-interface RequestDiagnosticsMessage {
-  type: 'requestDiagnostics'
-  requestId: number
-  path: string
-  sourceVersion: number
-}
-
-interface RequestFormattingMessage {
-  type: 'requestFormatting'
-  requestId: number
-  path: string
-  source: string
-  sourceVersion: number
-}
-
-interface RequestHoverMessage {
-  type: 'requestHover'
-  requestId: number
-  path: string
-  source: string
-  sourceVersion: number
-  line: number
-  column: number
-  startColumn?: number
-  endColumn?: number
-}
-
-interface RequestCompletionMessage {
-  type: 'requestCompletion'
-  requestId: number
-  path: string
-  source: string
-  sourceVersion: number
-  line: number
-  column: number
-  prefix: string
-  importPrefix: string | null
-  workspaceFiles: WorkspaceSnapshotFile[]
-}
-
-type NavigationRequestKind = 'definition' | 'references' | 'rename'
-
-interface WorkspaceSnapshotFile {
-  path: string
-  code: string
-}
-
-interface RequestNavigationMessage {
-  type: 'requestNavigation'
-  requestId: number
-  path: string
-  source: string
-  sourceVersion: number
-  kind: NavigationRequestKind
-  line: number
-  column: number
-  newName?: string
-  workspaceFiles: WorkspaceSnapshotFile[]
-}
-
-interface CancelRequestMessage {
-  type: 'cancelRequest'
-  requestId: number
-}
-
-type WorkerInMessage =
-  | OpenDocumentMessage
-  | UpdateDocumentMessage
-  | CloseDocumentMessage
-  | RequestDiagnosticsMessage
-  | RequestFormattingMessage
-  | RequestHoverMessage
-  | RequestCompletionMessage
-  | RequestNavigationMessage
-  | CancelRequestMessage
-
-interface DiagnosticsResultMessage {
-  type: 'diagnosticsResult'
-  requestId: number
-  path: string
-  sourceVersion: number
-  diagnostics: (Diagnostic & { readonly severity: 'error' | 'warning' | 'info'; readonly source: string })[]
-}
-
-interface DiagnosticsErrorMessage {
-  type: 'diagnosticsError'
-  requestId: number
-  path: string
-  sourceVersion: number
-  message: string
-}
-
-interface FormattingResultMessage {
-  type: 'formattingResult'
-  requestId: number
-  path: string
-  sourceVersion: number
-  formatted: string
-}
-
-interface FormattingErrorMessage {
-  type: 'formattingError'
-  requestId: number
-  path: string
-  sourceVersion: number
-  message: string
-}
-
-interface HoverResultMessage {
-  type: 'hoverResult'
-  requestId: number
-  path: string
-  sourceVersion: number
-  inferredType?: string
-}
-
-interface HoverErrorMessage {
-  type: 'hoverError'
-  requestId: number
-  path: string
-  sourceVersion: number
-  message: string
-}
-
-interface CompletionResultMessage {
-  type: 'completionResult'
-  requestId: number
-  path: string
-  sourceVersion: number
-  items: CompletionItem[]
-}
-
-interface CompletionErrorMessage {
-  type: 'completionError'
-  requestId: number
-  path: string
-  sourceVersion: number
-  message: string
-}
-
-interface NavigationLocationPayload {
-  file: string
-  line: number
-  column: number
-  endColumn: number
-}
-
-interface NavigationRenameEditPayload extends NavigationLocationPayload {
-  text: string
-}
-
-interface NavigationResultMessage {
-  type: 'navigationResult'
-  requestId: number
-  path: string
-  sourceVersion: number
-  kind: NavigationRequestKind
-  locations?: NavigationLocationPayload[]
-  edits?: NavigationRenameEditPayload[]
-}
-
-interface NavigationErrorMessage {
-  type: 'navigationError'
-  requestId: number
-  path: string
-  sourceVersion: number
-  kind: NavigationRequestKind
-  message: string
-}
-
-interface ResyncDocumentMessage {
-  type: 'resyncDocument'
-  path: string
-}
-
 // ── Worker state ──────────────────────────────────────────────────────────────
 
-/** Per-file mirror buffer. */
-interface FileState {
-  source: string
-  sourceVersion: number
-  typecheckResult?: TypecheckResult
-  typecheckVersion?: number
-}
-
-const files = new Map<string, FileState>()
+const backend = createBackend()
 
 /** Active request cancellation flags, keyed by requestId. */
 const cancelledRequests = new Map<number, boolean>()
@@ -314,23 +122,7 @@ function checkCancelled(requestId: number): void {
   if (cancelledRequests.get(requestId)) throw new CancellationError()
 }
 
-function setFileState(path: string, source: string, sourceVersion: number): void {
-  const current = files.get(path)
-  if (current && sourceVersion < current.sourceVersion) return
-  files.set(path, {
-    source,
-    sourceVersion,
-  })
-}
-
 // ── Core pipeline ─────────────────────────────────────────────────────────────
-
-interface DiagnosticsInput {
-  path: string
-  source: string
-  sourceVersion: number
-  requestId: number
-}
 
 function computeTypecheckResult(source: string, path: string): TypecheckResult {
   const tokens = tokenizeSource(source, true, path)
@@ -341,34 +133,6 @@ function computeTypecheckResult(source: string, path: string): TypecheckResult {
   } catch {
     return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
   }
-}
-
-function getOrComputeTypecheckResult(path: string, file: FileState): TypecheckResult {
-  if (file.typecheckResult && file.typecheckVersion === file.sourceVersion) return file.typecheckResult
-
-  const result = computeTypecheckResult(file.source, path)
-  file.typecheckResult = result
-  file.typecheckVersion = file.sourceVersion
-  return result
-}
-
-function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
-  const diagnostics: Diagnostic[] = []
-
-  // ── Tokenize + parse ──
-  const tokenStream = tokenizeSource(input.source, true, input.path)
-  const parseResult = parseTokenStreamRecoverable(tokenStream)
-  diagnostics.push(...buildParseDiagnostics(parseResult.errors))
-  checkCancelled(input.requestId)
-
-  const file = files.get(input.path)
-  if (file) {
-    const typecheckResult = getOrComputeTypecheckResult(input.path, file)
-    diagnostics.push(...buildTypeDiagnostics(typecheckResult))
-  }
-  checkCancelled(input.requestId)
-
-  return diagnostics
 }
 
 function computeHover(message: RequestHoverMessage): string | undefined {
@@ -566,54 +330,75 @@ function requestDocumentResync(path: string): void {
 
 // ── Message handler ───────────────────────────────────────────────────────────
 
-self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
+self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
   const msg = event.data
 
   switch (msg.type) {
     case 'openDocument': {
-      setFileState(msg.path, msg.source, msg.sourceVersion)
+      await backend.openDocument({
+        path: msg.path,
+        source: msg.source,
+        version: msg.sourceVersion,
+      })
       return
     }
 
     case 'updateDocument': {
-      const current = files.get(msg.path)
-      if (!current || current.sourceVersion !== msg.previousSourceVersion) {
+      const result = await backend.updateDocument(
+        {
+          path: msg.path,
+          source: msg.source,
+          version: msg.sourceVersion,
+        },
+        msg.previousSourceVersion,
+      )
+      if (!result.ok && result.error.kind === 'resync-required') {
         requestDocumentResync(msg.path)
         return
       }
-
-      setFileState(msg.path, msg.source, msg.sourceVersion)
       return
     }
 
     case 'closeDocument': {
-      files.delete(msg.path)
+      await backend.closeDocument(msg.path)
       return
     }
 
     case 'requestDiagnostics': {
-      const file = files.get(msg.path)
       cancelledRequests.delete(msg.requestId)
 
-      if (!file) {
+      const result = await backend.requestDiagnostics({
+        requestId: msg.requestId,
+        path: msg.path,
+        version: msg.sourceVersion,
+      })
+
+      if (!result.ok && result.error.kind === 'resync-required') {
         requestDocumentResync(msg.path)
         return
       }
 
-      try {
-        const diagnostics = computeDiagnostics({
-          path: msg.path,
-          source: file.source,
-          sourceVersion: msg.sourceVersion,
-          requestId: msg.requestId,
-        })
+      if (!result.ok && result.error.kind === 'cancelled') return
 
+      if (!result.ok) {
+        const out: DiagnosticsErrorMessage = {
+          type: 'diagnosticsError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: result.error.message,
+        }
+        self.postMessage(out)
+        return
+      }
+
+      try {
         const out: DiagnosticsResultMessage = {
           type: 'diagnosticsResult',
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,
-          diagnostics: diagnostics as DiagnosticsResultMessage['diagnostics'],
+          diagnostics: result.diagnostics as DiagnosticsResultMessage['diagnostics'],
         }
         self.postMessage(out)
       } catch (error) {
@@ -742,6 +527,7 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
 
     case 'cancelRequest': {
       cancelledRequests.set(msg.requestId, true)
+      await backend.cancelRequest(msg.requestId)
       // Prune stale cancelled entries periodically (every ~20 cancels).
       // Entries set to `true` that are never matched by a subsequent
       // requestDiagnostics would otherwise accumulate forever.

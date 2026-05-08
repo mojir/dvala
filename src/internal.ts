@@ -27,3 +27,74 @@ export type { TypeDiagnostic, TypecheckResult } from './typechecker/typecheck'
 // and is safe to import from a Web Worker.
 export { WorkspaceIndex } from './languageService/WorkspaceIndex'
 export type { ResolveImport } from './languageService/WorkspaceIndex'
+
+// ── Backend boundary ─────────────────────────────────────────────────────
+// Root-internal backend API surface for worker/server adapters. Not part of
+// the stable public package API.
+export type { DvalaBackend } from './backend/DvalaBackend'
+export { createBackend } from './backend/createBackend'
+export type { CreateBackendOptions } from './backend/createBackend'
+export type {
+  PlaygroundCancelRequestMessage,
+  PlaygroundCloseDocumentMessage,
+  PlaygroundCompletionErrorMessage,
+  PlaygroundCompletionResultMessage,
+  PlaygroundDiagnosticsErrorMessage,
+  PlaygroundDiagnosticsResultMessage,
+  PlaygroundFormattingErrorMessage,
+  PlaygroundFormattingResultMessage,
+  PlaygroundHoverErrorMessage,
+  PlaygroundHoverResultMessage,
+  PlaygroundNavigationErrorMessage,
+  PlaygroundNavigationLocationPayload,
+  PlaygroundNavigationRenameEditPayload,
+  PlaygroundNavigationRequestKind,
+  PlaygroundNavigationResultMessage,
+  PlaygroundOpenDocumentMessage,
+  PlaygroundRequestCompletionMessage,
+  PlaygroundRequestDiagnosticsMessage,
+  PlaygroundRequestFormattingMessage,
+  PlaygroundRequestHoverMessage,
+  PlaygroundRequestNavigationMessage,
+  PlaygroundResyncDocumentMessage,
+  PlaygroundUpdateDocumentMessage,
+  PlaygroundWorkerInMessage,
+  PlaygroundWorkerOutMessage,
+  PlaygroundWorkspaceSnapshotFile,
+} from './backend/adapters/playgroundWorkerProtocol'
+export { createInMemoryDocumentStore } from './backend/documentStore'
+export type { BackendDocumentStore, BackendOpenDocument } from './backend/documentStore'
+export type {
+  BackendAccepted,
+  BackendCancelResult,
+  BackendCompletionRequest,
+  BackendCompletionResult,
+  BackendDiagnosticsRequest,
+  BackendDiagnosticsResult,
+  BackendDocumentSyncResult,
+  BackendDocumentVersion,
+  BackendFormattingRequest,
+  BackendFormattingResult,
+  BackendHoverRequest,
+  BackendHoverResult,
+  BackendNavigationEdit,
+  BackendNavigationEditRange,
+  BackendNavigationKind,
+  BackendNavigationLocation,
+  BackendNavigationRequest,
+  BackendNavigationResult,
+  BackendPortableDiagnostic,
+  BackendReplaceWorkspaceSnapshotRequest,
+  BackendRequestError,
+  BackendRequestErrorKind,
+  BackendRequestFailure,
+  BackendRequestId,
+  BackendResyncRequired,
+  BackendSessionInspectionResult,
+  BackendSessionResumeRequest,
+  BackendSessionResumeResult,
+  BackendSessionStartRequest,
+  BackendSessionStartResult,
+  BackendTextDocument,
+  BackendWorkspaceSnapshotFile,
+} from './backend/requests'
