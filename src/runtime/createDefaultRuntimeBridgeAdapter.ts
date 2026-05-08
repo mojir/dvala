@@ -30,7 +30,7 @@ function withRuntimeModules(modules: BridgeRunnerOptions['modules']): DvalaModul
   return modules as DvalaModule[] | undefined
 }
 
-export function toRuntimeRunOptions(context?: RuntimeBridgeExecutionContext): DvalaRunAsyncOptions | undefined {
+function toRuntimeRunOptions(context?: RuntimeBridgeExecutionContext): DvalaRunAsyncOptions | undefined {
   if (!context) return undefined
   return {
     ...context.programRunOptions,
@@ -71,7 +71,7 @@ interface RuntimeBridgeProgramAdapter {
   ) => Promise<RuntimeRunResult>
 }
 
-export function createDefaultRuntimeBridgeAdapter(options: BridgeRunnerOptions): RuntimeBridgeProgramAdapter {
+function createDefaultRuntimeBridgeAdapter(options: BridgeRunnerOptions): RuntimeBridgeProgramAdapter {
   const runner = createDvala(options)
 
   return {
