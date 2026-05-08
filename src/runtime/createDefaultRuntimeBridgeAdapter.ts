@@ -10,11 +10,6 @@ import { createDvala } from '../createDvala'
 import { resume, type ResumeOptions } from '../resume'
 import type { BridgeRunnerOptions, RuntimeBridgeExecutionContext } from './runtimeBridgeOptions'
 
-export interface RuntimeBridgeProgramAdapter {
-  runProgram: (source: string | DvalaBundle, context?: RuntimeBridgeExecutionContext) => Promise<RuntimeRunResult>
-  resumeProgram: (snapshot: RuntimeSnapshot, value: unknown, context?: RuntimeBridgeExecutionContext) => Promise<RuntimeRunResult>
-}
-
 function withRuntimeModules(modules: BridgeRunnerOptions['modules']): DvalaModule[] | undefined {
   return modules as DvalaModule[] | undefined
 }
@@ -48,6 +43,15 @@ function toRootResumeOptions(
     ...toRuntimeResumeOptions(modules, context),
     modules: withRuntimeModules(modules),
   }
+}
+
+interface RuntimeBridgeProgramAdapter {
+  runProgram: (source: string | DvalaBundle, context?: RuntimeBridgeExecutionContext) => Promise<RuntimeRunResult>
+  resumeProgram: (
+    snapshot: RuntimeSnapshot,
+    value: unknown,
+    context?: RuntimeBridgeExecutionContext,
+  ) => Promise<RuntimeRunResult>
 }
 
 export function createDefaultRuntimeBridgeAdapter(options: BridgeRunnerOptions): RuntimeBridgeProgramAdapter {
