@@ -2,6 +2,7 @@ export type {
   ArtifactManifest,
   ArtifactSectionId,
   ArtifactExtensionSection,
+  BuiltinModuleSection,
   CanonicalSection,
   CompressionFormat,
   CoreSectionKind,
@@ -16,13 +17,12 @@ export type {
   ProgramArtifactManifest,
   ProgramCoreSectionKind,
   ProgramReferenceSection,
-  SemanticIrNodeKind,
   SemanticIrInspectionView,
+  SemanticIrNodeKind,
   SemanticIrSection,
   SnapshotArtifactEnvelope,
   SnapshotArtifactManifest,
   SnapshotCoreSectionKind,
-  BuiltinModuleSection,
 } from './types'
 export type { ArtifactCompatibilityBridge } from './compat'
 export type { CoseAlgorithm, CoseSignatureEnvelope } from './signature'

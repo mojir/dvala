@@ -14,7 +14,7 @@ export type BridgeRunnerOptions = Pick<
   | 'onTypeDiagnostic'
 >
 
-export type BridgeProgramRunOptions = Omit<DvalaRunAsyncOptions, 'effectHandlers' | 'pure'>
+type BridgeProgramRunOptions = Omit<DvalaRunAsyncOptions, 'effectHandlers' | 'pure'>
 
 export interface RuntimeBridgeExecutionContext {
   handlers?: RuntimeHandlers
