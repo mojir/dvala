@@ -15,28 +15,15 @@ import {
   type RuntimeSnapshot,
   type SnapshotArtifactEnvelope,
 } from '@mojir/dvala-runtime'
-import type { CreateDvalaOptions } from '../createDvala'
 import {
   createDefaultRuntimeBridgeAdapter,
   withRuntimeModules,
 } from './createDefaultRuntimeBridgeAdapter'
+import type { BridgeRunnerOptions } from './runtimeBridgeOptions'
 
 type DraftSessionKind = 'program' | 'snapshot'
 
 export type RuntimeArtifactBridge = ArtifactCompatibilityBridge<string | DvalaBundle, RuntimeSnapshot, RuntimeHost>
-
-type BridgeRunnerOptions = Pick<
-  CreateDvalaOptions,
-  | 'modules'
-  | 'effectHandlers'
-  | 'cache'
-  | 'debug'
-  | 'disableAutoCheckpoint'
-  | 'fileResolver'
-  | 'fileResolverBaseDir'
-  | 'typecheck'
-  | 'onTypeDiagnostic'
->
 
 export interface CreatePackageRuntimeBridgeOptions extends BridgeRunnerOptions {
   identity: RuntimeIdentity

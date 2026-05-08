@@ -7,15 +7,16 @@ import {
   type RuntimeRunResult,
   type RuntimeSnapshot,
 } from '@mojir/dvala-runtime'
-import { createDvala, type CreateDvalaOptions } from '../createDvala'
+import { createDvala } from '../createDvala'
 import { resume } from '../resume'
+import type { BridgeRunnerOptions } from './runtimeBridgeOptions'
 
 export interface RuntimeBridgeProgramAdapter {
   runProgram: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RuntimeRunResult>
   resumeProgram: (snapshot: RuntimeSnapshot, value: unknown, options?: RuntimeResumeOptions) => Promise<RuntimeRunResult>
 }
 
-export function createDefaultRuntimeBridgeAdapter(options: CreateDvalaOptions): RuntimeBridgeProgramAdapter {
+export function createDefaultRuntimeBridgeAdapter(options: BridgeRunnerOptions): RuntimeBridgeProgramAdapter {
   const runner = createDvala(options)
 
   return {
@@ -32,7 +33,7 @@ export function createDefaultRuntimeBridgeAdapter(options: CreateDvalaOptions): 
 }
 
 export function withRuntimeModules(
-  modules: CreateDvalaOptions['modules'],
+  modules: BridgeRunnerOptions['modules'],
 ): RuntimeModuleLike[] | undefined {
   return modules as RuntimeModuleLike[] | undefined
 }
