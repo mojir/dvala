@@ -6,13 +6,12 @@
 
 import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
+import type { RuntimeResumeOptions, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 import { continueWithEffects, resumeWithEffects } from './evaluator/trampoline-evaluator'
 import { deserializeFromObject } from './evaluator/suspension'
 import { toJS, validateFromJS } from './utils/interop'
 import type { Any } from './interface'
 import type { Context } from './evaluator/interface'
-
-import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
 // ---------------------------------------------------------------------------
 // Options
@@ -23,14 +22,8 @@ import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
  * All host interaction goes through `handlers`.
  * `modules` must be provided again (they are not in the blob).
  */
-export interface ResumeOptions {
-  handlers?: Handlers
+export interface ResumeOptions extends RuntimeResumeOptions {
   modules?: DvalaModule[]
-  maxSnapshots?: number
-  disableAutoCheckpoint?: boolean
-  terminalSnapshot?: boolean
-  /** New scope values to inject into the computation's globalContext before resuming. */
-  scope?: Record<string, unknown>
 }
 
 // ---------------------------------------------------------------------------
@@ -54,7 +47,11 @@ export interface ResumeOptions {
  * const next = await resume(snapshot, humanDecision, { handlers })
  * ```
  */
-export async function resume(snapshot: Snapshot, value: unknown, options?: ResumeOptions): Promise<RunResult> {
+export async function resume(
+  snapshot: RuntimeSnapshot,
+  value: unknown,
+  options?: ResumeOptions,
+): Promise<RuntimeRunResult> {
   try {
     const modules = options?.modules ? new Map(options.modules.map(m => [m.name, m])) : undefined
 

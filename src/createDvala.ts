@@ -1,10 +1,8 @@
 import { AutoCompleter } from './AutoCompleter/AutoCompleter'
-import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
-import { createContextStack } from './evaluator/ContextStack'
 import type { Context } from './evaluator/interface'
 import type { FileResolver } from './evaluator/ContextStack'
-import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from './evaluator/trampoline-evaluator'
+import type { RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
 import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parseToAst } from './parser'
@@ -12,17 +10,17 @@ import type { Ast, SourceMap } from './parser/types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Cache'
 import type { DvalaBundle } from './bundler/interface'
-import { isDvalaBundle } from './bundler/interface'
-import type { Handlers, RunResult, SnapshotState } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
-import { toJS, validateFromJS } from './utils/interop'
+import { validateFromJS } from './utils/interop'
 import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } from './typechecker/typecheck'
+import type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
+import { createRuntimeRunner } from './runtime/createRuntimeRunner'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
   modules?: DvalaModule[]
   /** Factory-level effect handlers, checked after per-call handlers. */
-  effectHandlers?: Handlers
+  effectHandlers?: RuntimeHandlers
   /** Maximum number of cached ASTs. Default: 100. */
   cache?: number
   /** Enable debug tokenization: captures source positions for better error messages. */
@@ -76,43 +74,11 @@ export interface CreateDvalaOptions {
   onTypeDiagnostic?: (diagnostic: TypeDiagnostic) => void
 }
 
-/**
- * Options for `run()`. When `pure` is `true`, `effectHandlers` cannot be provided.
- */
-export type DvalaRunOptions =
-  | { scope?: Record<string, unknown>; pure: true; effectHandlers?: never; filePath?: string }
-  | { scope?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; filePath?: string }
-
-/**
- * Options for `runAsync()`. When `pure` is `true`, `effectHandlers` cannot be provided.
- * Time travel (auto-checkpointing and terminal snapshots) is enabled by default.
- * Set `disableAutoCheckpoint: true` to opt out.
- */
-export type DvalaRunAsyncOptions =
-  | {
-      scope?: Record<string, unknown>
-      pure: true
-      effectHandlers?: never
-      maxSnapshots?: number
-      disableAutoCheckpoint?: boolean
-      terminalSnapshot?: boolean
-      onNodeEval?: SnapshotState['onNodeEval']
-      filePath?: string
-    }
-  | {
-      scope?: Record<string, unknown>
-      pure?: false
-      effectHandlers?: Handlers
-      maxSnapshots?: number
-      disableAutoCheckpoint?: boolean
-      terminalSnapshot?: boolean
-      onNodeEval?: SnapshotState['onNodeEval']
-      filePath?: string
-    }
+export type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
-  runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RunResult>
+  runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RuntimeRunResult>
   getUndefinedSymbols: (source: string, symbolsOptions?: { scope?: Record<string, unknown> }) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
   /** Typecheck source code and return diagnostics + type map. */
@@ -176,20 +142,6 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     return ast
   }
 
-  function mergeEffectHandlers(runEffectHandlers?: Handlers): Handlers | undefined {
-    if (!factoryEffectHandlers && !runEffectHandlers) return undefined
-    // Run handlers first (checked first), then factory handlers.
-    return [...(runEffectHandlers ?? []), ...(factoryEffectHandlers ?? [])]
-  }
-
-  function assertNotPureWithHandlers(pure: boolean, effectHandlers: Handlers | undefined): void {
-    if (!pure) return
-    const hasEffectHandlers = effectHandlers && effectHandlers.length > 0
-    if (hasEffectHandlers) {
-      throw new TypeError('Cannot use pure mode with effect handlers')
-    }
-  }
-
   // Convert a plain scope record to a globalContext for createContextStack.
   // Each value is wrapped as { value } to match the Context type.
   // fromJS converts plain JS arrays/objects to PersistentVector/PersistentMap so
@@ -211,136 +163,22 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   }
 
   return {
-    run(source: string | DvalaBundle, runOptions?: DvalaRunOptions): unknown {
-      const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
-      const pure = runOptions?.pure ?? false
-
-      assertNotPureWithHandlers(pure, effectHandlers)
-
-      const contextStack = createContextStack(
-        { globalContext: scopeToGlobalContext(runOptions?.scope) },
-        modules,
-        pure,
-        undefined,
-        factoryFileResolver,
-        factoryFileResolverBaseDir,
-      )
-
-      if (isDvalaBundle(source)) {
-        // New AST bundle format: single pre-parsed AST with all modules inlined.
-        // The evaluator merges the source map into contextStack automatically.
-        const ast = source.ast
-        if (effectHandlers) {
-          // toJS converts PersistentVector/Map to plain JS arrays/objects so
-          // host code can work with standard JS values.
-          return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers))
-        }
-        const result = evaluate(ast, contextStack)
-        /* v8 ignore next 2 */
-        if (result instanceof Promise)
-          throw new TypeError('Unexpected async result in run(). Use runAsync() for async operations.')
-        return toJS(result)
-      }
-
-      const ast = buildAst(source, runOptions?.filePath)
-
-      // Run typecheck pass if enabled (non-blocking — diagnostics only)
-      emitTypeDiagnostics(ast)
-
-      if (effectHandlers) {
-        return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers))
-      }
-
-      const result = evaluate(ast, contextStack)
-      if (result instanceof Promise) {
-        throw new TypeError('Unexpected async result in run(). Use runAsync() for async operations.')
-      }
-      return toJS(result)
-    },
-
-    async runAsync(source: string | DvalaBundle, runOptions?: DvalaRunAsyncOptions): Promise<RunResult> {
-      const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
-      const pure = runOptions?.pure ?? false
-
-      assertNotPureWithHandlers(pure, effectHandlers)
-
-      try {
-        const forceDebug = !!runOptions?.onNodeEval
-        const effectiveDebug = debug || forceDebug
-        const contextStack = createContextStack(
-          { globalContext: scopeToGlobalContext(runOptions?.scope) },
-          modules,
-          pure,
-          undefined,
-          factoryFileResolver,
-          factoryFileResolverBaseDir,
-          effectiveDebug ? allocateNodeId : undefined,
-          effectiveDebug,
-        )
-
-        // For AST bundles, use the pre-parsed AST directly.
-        // Force debug (sourceMap building) when onNodeEval is set so nodeIds can be resolved.
-        const ast = isDvalaBundle(source) ? source.ast : buildAst(source, runOptions?.filePath, forceDebug)
-        if (!isDvalaBundle(source)) {
-          emitTypeDiagnostics(ast)
-        }
-        // For bundles, merge the bundle's sourceMap into accumulatedSourceMap so that
-        // onNodeEval callers can resolve nodeIds to positions after the run.
-        if (isDvalaBundle(source) && source.ast.sourceMap && forceDebug) {
-          if (!accumulatedSourceMap) {
-            accumulatedSourceMap = {
-              sources: [...source.ast.sourceMap.sources],
-              positions: new Map(source.ast.sourceMap.positions),
-            }
-          } else {
-            const sourceOffset = accumulatedSourceMap.sources.length
-            accumulatedSourceMap.sources.push(...source.ast.sourceMap.sources)
-            for (const [nodeId, pos] of source.ast.sourceMap.positions)
-              accumulatedSourceMap.positions.set(nodeId, { ...pos, source: pos.source + sourceOffset })
-          }
-        }
-        // Share the accumulated source map with the context stack so that
-        // runtime file imports can merge their positions into it for coverage.
-        if (accumulatedSourceMap) {
-          contextStack.sourceMap = accumulatedSourceMap
-        }
-        const disableAutoCheckpoint = runOptions?.disableAutoCheckpoint ?? factoryDisableTimeTravel
-        const terminalSnapshot = runOptions?.terminalSnapshot
-        const result = await evaluateWithEffects(
-          ast,
-          contextStack,
-          effectHandlers,
-          runOptions?.maxSnapshots,
-          {
-            modules,
-          },
-          !disableAutoCheckpoint,
-          terminalSnapshot,
-          runOptions?.onNodeEval,
-        )
-        // Include the accumulated sourceMap so callers can resolve nodeIds to positions.
-        // Only present when debug mode was active (explicitly or via onNodeEval).
-        const sourceMap = accumulatedSourceMap
-        if (result.type === 'completed') {
-          // Apply toJS to convert PV/PM to plain JS arrays/objects, matching run() semantics
-          return {
-            ...result,
-            value: toJS(result.value as never),
-            scope: contextStack.getModuleScopeBindings(),
-            sourceMap,
-          }
-        }
-        return { ...result, sourceMap }
-      } catch (error) {
-        if (error instanceof DvalaError) {
-          return { type: 'error', error }
-        }
-        if (error instanceof TypeError) {
-          throw error
-        }
-        return { type: 'error', error: new DvalaError(`${error}`, undefined) }
-      }
-    },
+    ...createRuntimeRunner({
+      modules,
+      factoryEffectHandlers,
+      factoryDisableTimeTravel,
+      factoryFileResolver,
+      factoryFileResolverBaseDir,
+      debug,
+      allocateNodeId,
+      buildAst,
+      emitTypeDiagnostics,
+      scopeToGlobalContext,
+      getAccumulatedSourceMap: () => accumulatedSourceMap,
+      setAccumulatedSourceMap: sourceMap => {
+        accumulatedSourceMap = sourceMap
+      },
+    }),
 
     getUndefinedSymbols(source: string, symbolsOptions?: { scope?: Record<string, unknown> }): Set<string> {
       const modulesList = modules ? [...modules.values()] : undefined

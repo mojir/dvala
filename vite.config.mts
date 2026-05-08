@@ -1,7 +1,15 @@
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
+const runtimePackageEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/index.ts', import.meta.url))
+
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@mojir/dvala-runtime': runtimePackageEntry,
+    },
+  },
   plugins: [
     {
       name: 'dvala-source',

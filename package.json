@@ -140,11 +140,11 @@
     "lint": "wireit",
     "lint:no-fix": "wireit",
     "typecheck": "wireit",
-    "typecheck:watch": "tsgo -p ./tsconfig.compile.json --noEmit --watch",
+    "typecheck:watch": "pnpm --filter @mojir/dvala-runtime run build && tsgo -p ./tsconfig.compile.json --noEmit --watch",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run knip && pnpm run build && pnpm run test",
     "check:no-fix": "pnpm run lint:no-fix && pnpm run typecheck && pnpm run knip && pnpm run test",
     "clean": "pnpm run clean-dvala && pnpm run clean-playground && rm -rf .wireit coverage test-results vscode-dvala/out .cache",
-    "clean-dvala": "rm -rf dist build",
+    "clean-dvala": "rm -rf dist build packages/dvala-runtime/dist",
     "clean-playground": "rm -rf playground-builder/build playground-www/build",
     "build": "wireit",
     "build-dvala": "wireit",
@@ -201,6 +201,9 @@
     "lint": {
       "command": "oxfmt . && oxlint --fix .",
       "files": [
+        "packages/dvala-runtime/src/**/*.ts",
+        "packages/dvala-runtime/package.json",
+        "packages/dvala-runtime/tsconfig.json",
         "src/**/*.ts",
         "common/**/*.ts",
         "cli/src/**/*.ts",
@@ -218,6 +221,9 @@
     "lint:no-fix": {
       "command": "oxfmt --check . && oxlint .",
       "files": [
+        "packages/dvala-runtime/src/**/*.ts",
+        "packages/dvala-runtime/package.json",
+        "packages/dvala-runtime/tsconfig.json",
         "src/**/*.ts",
         "common/**/*.ts",
         "cli/src/**/*.ts",
@@ -235,6 +241,8 @@
     "knip": {
       "command": "knip",
       "files": [
+        "packages/dvala-runtime/src/**/*.ts",
+        "packages/dvala-runtime/package.json",
         "src/**/*.ts",
         "common/**/*.ts",
         "cli/src/**/*.ts",
@@ -253,8 +261,11 @@
       "output": []
     },
     "typecheck": {
-      "command": "tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit",
+      "command": "pnpm --filter @mojir/dvala-runtime run build && tsgo -p ./tsconfig.compile.json --noEmit && tsgo -p vscode-dvala/tsconfig.json --noEmit",
       "files": [
+        "packages/dvala-runtime/src/**/*.ts",
+        "packages/dvala-runtime/package.json",
+        "packages/dvala-runtime/tsconfig.json",
         "src/**/*.ts",
         "common/**/*.ts",
         "cli/src/**/*.ts",
@@ -267,11 +278,14 @@
         "tsconfig*.json",
         "vscode-dvala/tsconfig.json"
       ],
-      "output": []
+      "output": [
+        "packages/dvala-runtime/dist/**"
+      ]
     },
     "test": {
       "command": "vitest run",
       "files": [
+        "packages/dvala-runtime/src/**",
         "src/**",
         "common/**",
         "__tests__/**",
@@ -285,6 +299,7 @@
     "test:coverage": {
       "command": "vitest run --coverage",
       "files": [
+        "packages/dvala-runtime/src/**",
         "src/**",
         "common/**",
         "__tests__/**",
@@ -307,8 +322,11 @@
       ]
     },
     "build-dvala": {
-      "command": "rolldown -c rolldown.config.mjs && tsgo -p tsconfig.json --emitDeclarationOnly --declarationDir dist",
+      "command": "pnpm --filter @mojir/dvala-runtime run build && rolldown -c rolldown.config.mjs && tsgo -p tsconfig.json --emitDeclarationOnly --declarationDir dist",
       "files": [
+        "packages/dvala-runtime/src/**",
+        "packages/dvala-runtime/package.json",
+        "packages/dvala-runtime/tsconfig.json",
         "src/**",
         "common/**",
         "reference/**/*.ts",
@@ -318,6 +336,7 @@
         "package.json"
       ],
       "output": [
+        "packages/dvala-runtime/dist/**",
         "dist/**",
         "!dist/cli/**",
         "!dist/mcp-server/**"
@@ -409,6 +428,7 @@
     }
   },
   "dependencies": {
+    "@mojir/dvala-runtime": "workspace:*",
     "@vue/reactivity": "^3.5.33",
     "marked": "^18.0.2"
   },

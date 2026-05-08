@@ -1,5 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreIssues": {
+    "packages/dvala-runtime/src/types/run.ts": ["types"]
+  },
   "workspaces": {
     ".": {
       "entry": [
@@ -28,6 +31,9 @@
         "scripts/**/*.{ts,mjs}"
       ],
       "ignoreDependencies": ["@vscode/vsce", "serve"]
+    },
+    "packages/dvala-runtime": {
+      "project": ["src/**/*.ts"]
     },
     "vscode-dvala": {
       "entry": ["src/debugAdapter.ts"],
