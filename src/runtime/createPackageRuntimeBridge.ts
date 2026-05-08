@@ -6,6 +6,7 @@ import {
   type CreatePackageRuntimeBridgeOptions as PackageCreatePackageRuntimeBridgeOptions,
   type DvalaRunAsyncOptions,
   type DvalaRuntime,
+  type RuntimeBridgeExecutionContext,
   type RuntimeHandlers,
   type RuntimeHost,
   type RuntimeIdentity,
@@ -15,10 +16,10 @@ import {
 } from '@mojir/dvala-runtime'
 import {
   createDefaultRuntimeBridgeAdapter,
+  type BridgeRunnerOptions,
   toRuntimeResumeOptions,
   toRuntimeRunOptions,
 } from './createDefaultRuntimeBridgeAdapter'
-import type { BridgeRunnerOptions, RuntimeBridgeExecutionContext } from './runtimeBridgeOptions'
 
 export type RuntimeArtifactBridge = ArtifactCompatibilityBridge<string | DvalaBundle, RuntimeSnapshot, RuntimeHost>
 

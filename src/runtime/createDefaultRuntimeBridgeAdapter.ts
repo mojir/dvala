@@ -1,14 +1,28 @@
 import type { DvalaBundle } from '../bundler/interface'
 import type { DvalaModule } from '../builtin/modules/interface'
+import type { CreateDvalaOptions } from '../createDvala'
 import {
   type DvalaRunAsyncOptions,
+  type RuntimeBridgeExecutionContext,
   type RuntimeResumeOptions,
   type RuntimeRunResult,
   type RuntimeSnapshot,
 } from '@mojir/dvala-runtime'
 import { createDvala } from '../createDvala'
 import { resume, type ResumeOptions } from '../resume'
-import type { BridgeRunnerOptions, RuntimeBridgeExecutionContext } from './runtimeBridgeOptions'
+
+export type BridgeRunnerOptions = Pick<
+  CreateDvalaOptions,
+  | 'modules'
+  | 'effectHandlers'
+  | 'cache'
+  | 'debug'
+  | 'disableAutoCheckpoint'
+  | 'fileResolver'
+  | 'fileResolverBaseDir'
+  | 'typecheck'
+  | 'onTypeDiagnostic'
+>
 
 function withRuntimeModules(modules: BridgeRunnerOptions['modules']): DvalaModule[] | undefined {
   return modules as DvalaModule[] | undefined
