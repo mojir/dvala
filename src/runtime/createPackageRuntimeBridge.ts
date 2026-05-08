@@ -15,7 +15,7 @@ import {
   type SnapshotArtifactEnvelope,
 } from '@mojir/dvala-runtime'
 import { createDvala, type CreateDvalaOptions, type DvalaRunAsyncOptions } from '../createDvala'
-import { resume } from '../resume'
+import { resume, type ResumeOptions } from '../resume'
 
 type DraftSessionKind = 'program' | 'snapshot'
 
@@ -26,6 +26,8 @@ export interface CreatePackageRuntimeBridgeOptions extends CreateDvalaOptions {
   artifactBridge: RuntimeArtifactBridge
   hostToHandlers?: (host: RuntimeHost) => RuntimeHandlers | undefined
   programRunOptions?: Omit<DvalaRunAsyncOptions, 'effectHandlers' | 'pure'>
+  runProgram?: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RuntimeRunResult>
+  resumeProgram?: (snapshot: RuntimeSnapshot, value: unknown, options?: ResumeOptions) => Promise<RuntimeRunResult>
 }
 
 class DraftRuntimeSession implements RuntimeSession {
@@ -86,7 +88,7 @@ class DraftRuntimeSession implements RuntimeSession {
 }
 
 export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOptions): DvalaRuntime {
-  const runner = createDvala(options)
+  const runner = options.runProgram ? undefined : createDvala(options)
   let sessionCounter = 0
 
   function nextSessionId(kind: DraftSessionKind): string {
@@ -96,6 +98,20 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
 
   function handlersForHost(host: RuntimeHost): RuntimeHandlers | undefined {
     return options.hostToHandlers?.(host)
+  }
+
+  function runProgram(source: string | DvalaBundle, runOptions?: DvalaRunAsyncOptions): Promise<RuntimeRunResult> {
+    if (options.runProgram) return options.runProgram(source, runOptions)
+    return runner!.runAsync(source, runOptions)
+  }
+
+  function resumeProgram(
+    snapshot: RuntimeSnapshot,
+    value: unknown,
+    resumeOptions?: ResumeOptions,
+  ): Promise<RuntimeRunResult> {
+    if (options.resumeProgram) return options.resumeProgram(snapshot, value, resumeOptions)
+    return resume(snapshot, value, resumeOptions)
   }
 
   return createRuntime(
@@ -108,7 +124,7 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
           nextSessionId('program'),
           'program',
           async () =>
-            runner.runAsync(decoded, {
+            runProgram(decoded, {
               ...options.programRunOptions,
               effectHandlers,
             }),
@@ -123,7 +139,7 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
           nextSessionId('snapshot'),
           'snapshot',
           async () =>
-            resume(snapshot, resumeValue, {
+            resumeProgram(snapshot, resumeValue, {
               handlers: effectHandlers,
               modules: options.modules as DvalaModule[] | undefined,
               maxSnapshots: options.programRunOptions?.maxSnapshots,
