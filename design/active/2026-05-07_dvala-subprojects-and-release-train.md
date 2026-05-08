@@ -1,7 +1,26 @@
 # Dvala Subprojects And Release Train
 
-**Status:** Accepted — first extraction slice in progress
+**Status:** Accepted — first `dvala-runtime` extraction slice completed on `main`
 **Created:** 2026-05-07
+
+## Status Update
+
+As of 2026-05-08, the first concrete milestone described in this document has landed:
+
+- `packages/dvala-runtime` exists as a real workspace package
+- the workspace now includes `packages/*` in [pnpm-workspace.yaml](pnpm-workspace.yaml)
+- host-facing runtime contracts and artifact contracts are imported through that package boundary
+- the generic runtime bridge implementation now lives in `packages/dvala-runtime`
+- the root runtime layer has been reduced to a compatibility shim where needed
+- package entrypoint and `./artifacts` subpath coverage have been added as a follow-up hardening step
+
+What has not happened yet:
+
+- the broader evaluator cluster has not been moved wholesale into `packages/dvala-runtime`
+- CLI and MCP have not yet been promoted to real package-style subprojects
+- the wider target monorepo shape in this document remains a later rollout, not an in-progress batch
+
+The current recommendation is to treat the first `dvala-runtime` extraction as complete for this phase and to treat the rest of this document as a roadmap for later forcing functions, not as one continuous implementation track.
 
 ## Goal
 
@@ -33,8 +52,8 @@ The second should remain conservative for now.
 Today the repository does not yet express the intended architecture clearly:
 
 - the root [package.json](package.json) is still the main release package, CLI entrypoint, MCP server package root, and build orchestration root
-- [pnpm-workspace.yaml](pnpm-workspace.yaml) only includes `vscode-dvala`
-- most of the architectural boundaries exist only in source layout and design prose, not as real workspace packages
+- [pnpm-workspace.yaml](pnpm-workspace.yaml) now includes `packages/*` and `vscode-dvala`, but only `dvala-runtime` has been made real so far
+- most of the remaining architectural boundaries still exist only in source layout and design prose, not as real workspace packages
 
 That is workable for a single-package project, but it does not yet support the backend-first structure we now want.
 
@@ -715,6 +734,9 @@ The first extraction slice is successful when:
 This is intentionally not a demand to finalize the semantic IR, freeze every artifact field, or complete all runtime cleanup in one move.
 It is the smallest honest package extraction that makes the architecture real.
 
+This definition of done is now satisfied on `main` for the first `dvala-runtime` extraction slice.
+The remaining work described in this document should now be interpreted as follow-up phases rather than unfinished work inside the same slice.
+
 ## Release strategy
 
 ### Shared release train now
@@ -810,3 +832,19 @@ If those are accepted, the next iteration should focus on:
 7. Keep package-local scripts minimal under root-owned repo-wide orchestration.
 8. Create `packages/dvala-runtime` as the first real extraction slice, moving host-facing contracts and run/suspend/resume runtime entrypoints first while leaving workspace and tooling concerns outside.
 9. Use only thin temporary adapters at the parser/bundle boundary, and treat broader compatibility layering as out of bounds for the first slice.
+
+## Current Plan Status
+
+Done now:
+
+- `dvala-runtime` has been accepted and extracted as the first real subproject
+- the repo now expresses that first package boundary in the workspace and codebase
+- root-owned repo-wide orchestration remains authoritative
+- the first extraction used thin temporary adapters rather than broad compatibility layering
+
+Next only when there is a concrete forcing function:
+
+- decide whether any additional evaluator ownership should move into `packages/dvala-runtime`
+- promote CLI and MCP into real package-style subprojects
+- expand the target package/app shape beyond `dvala-runtime`
+- reconsider publishability and release independence only if external consumers or cadence pressure make it worth the cost
