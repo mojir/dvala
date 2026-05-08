@@ -20,7 +20,11 @@ import {
   toRuntimeResumeOptions,
   toRuntimeRunOptions,
 } from './createDefaultRuntimeBridgeAdapter'
-import type { BridgeProgramRunOptions, BridgeRunnerOptions, RuntimeBridgeExecutionContext } from './runtimeBridgeOptions'
+import type {
+  BridgeProgramRunOptions,
+  BridgeRunnerOptions,
+  RuntimeBridgeExecutionContext,
+} from './runtimeBridgeOptions'
 
 type DraftSessionKind = 'program' | 'snapshot'
 
@@ -32,7 +36,11 @@ export interface CreatePackageRuntimeBridgeOptions extends BridgeRunnerOptions {
   hostToHandlers?: (host: RuntimeHost) => RuntimeHandlers | undefined
   programRunOptions?: BridgeProgramRunOptions
   runProgram?: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RuntimeRunResult>
-  resumeProgram?: (snapshot: RuntimeSnapshot, value: unknown, options?: RuntimeResumeOptions) => Promise<RuntimeRunResult>
+  resumeProgram?: (
+    snapshot: RuntimeSnapshot,
+    value: unknown,
+    options?: RuntimeResumeOptions,
+  ) => Promise<RuntimeRunResult>
 }
 
 class DraftRuntimeSession implements RuntimeSession {
@@ -93,7 +101,8 @@ class DraftRuntimeSession implements RuntimeSession {
 }
 
 export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOptions): DvalaRuntime {
-  const defaultAdapter = options.runProgram || options.resumeProgram ? undefined : createDefaultRuntimeBridgeAdapter(options)
+  const defaultAdapter =
+    options.runProgram || options.resumeProgram ? undefined : createDefaultRuntimeBridgeAdapter(options)
   let sessionCounter = 0
 
   function nextSessionId(kind: DraftSessionKind): string {
@@ -105,7 +114,10 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
     return options.hostToHandlers?.(host)
   }
 
-  function runProgram(source: string | DvalaBundle, context?: RuntimeBridgeExecutionContext): Promise<RuntimeRunResult> {
+  function runProgram(
+    source: string | DvalaBundle,
+    context?: RuntimeBridgeExecutionContext,
+  ): Promise<RuntimeRunResult> {
     if (options.runProgram) return options.runProgram(source, toRuntimeRunOptions(context))
     return defaultAdapter!.runProgram(source, context)
   }
@@ -115,7 +127,8 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
     value: unknown,
     context?: RuntimeBridgeExecutionContext,
   ): Promise<RuntimeRunResult> {
-    if (options.resumeProgram) return options.resumeProgram(snapshot, value, toRuntimeResumeOptions(options.modules, context))
+    if (options.resumeProgram)
+      return options.resumeProgram(snapshot, value, toRuntimeResumeOptions(options.modules, context))
     return defaultAdapter!.resumeProgram(snapshot, value, context)
   }
 
@@ -139,7 +152,11 @@ export function createPackageRuntimeBridge(options: CreatePackageRuntimeBridgeOp
         return new DraftRuntimeSession(
           nextSessionId('snapshot'),
           'snapshot',
-          async () => resumeProgram(snapshot, resumeValue, { handlers: effectHandlers, programRunOptions: options.programRunOptions }),
+          async () =>
+            resumeProgram(snapshot, resumeValue, {
+              handlers: effectHandlers,
+              programRunOptions: options.programRunOptions,
+            }),
           options.artifactBridge.encodeSnapshotArtifact,
         )
       },
