@@ -66,4 +66,26 @@ describe('createBackend', () => {
       },
     })
   })
+
+  it('formats a source snapshot through the backend', async () => {
+    const backend = createBackend()
+
+    const result = await backend.requestFormatting({
+      requestId: 11,
+      path: 'main.dvala',
+      source: 'let x=1',
+      version: 3,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      requestId: 11,
+      path: 'main.dvala',
+      version: 3,
+      formatted: expect.any(String),
+    })
+    if (result.ok) {
+      expect(result.formatted).not.toBe('let x=1')
+    }
+  })
 })

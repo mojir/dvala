@@ -74,7 +74,6 @@
  */
 
 import { tokenizeSource } from '../../src/tooling'
-import { formatSource } from '../../src/tooling'
 import type { CompletionItem } from '../../src/shared/completionBuilder'
 import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
 import { allBuiltinModules } from '../../src/allModules'
@@ -419,13 +418,34 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
     case 'requestFormatting': {
       cancelledRequests.delete(msg.requestId)
 
+      const result = await backend.requestFormatting({
+        requestId: msg.requestId,
+        path: msg.path,
+        source: msg.source,
+        version: msg.sourceVersion,
+      })
+
+      if (!result.ok && result.error.kind === 'cancelled') return
+
+      if (!result.ok) {
+        const out: FormattingErrorMessage = {
+          type: 'formattingError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: result.error.message,
+        }
+        self.postMessage(out)
+        return
+      }
+
       try {
         const out: FormattingResultMessage = {
           type: 'formattingResult',
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,
-          formatted: formatSource(msg.source),
+          formatted: result.formatted,
         }
         self.postMessage(out)
       } catch (error) {
