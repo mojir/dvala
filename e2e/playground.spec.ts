@@ -76,9 +76,16 @@ async function getOutputText(page: Page): Promise<string> {
 
 /** Trigger Monaco suggestions and wait for the suggest widget to appear. */
 async function openEditorSuggestions(page: Page) {
-  await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+  await focusEditor(page)
   await page.keyboard.press('Control+Space')
   await waitForEditorSuggestions(page)
+}
+
+async function focusEditor(page: Page) {
+  const editorInput = page.getByRole('textbox', { name: 'Editor content' })
+  await page.locator('#dvala-editor-host').click({ position: { x: 40, y: 20 } })
+  await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+  await expect(editorInput).toBeFocused()
 }
 
 /** Wait for Monaco suggestions to appear without manual invocation. */
@@ -323,7 +330,7 @@ test.describe('editor completions', () => {
     await setDvalaCode(page, 'let localValue = 1;\n')
     await setEditorCursor(page, 'let localValue = 1;\n'.length)
 
-    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    await focusEditor(page)
     await page.keyboard.type('loc')
 
     await waitForEditorSuggestions(page)
@@ -456,7 +463,7 @@ test.describe('editor completions', () => {
     await setDvalaCode(page, code)
     await setEditorCursor(page, code.length)
 
-    await page.evaluate(() => (window as any).Playground.focusDvalaCode())
+    await focusEditor(page)
     await page.keyboard.type('./l')
 
     await waitForEditorSuggestions(page)
