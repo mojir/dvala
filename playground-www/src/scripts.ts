@@ -2957,6 +2957,7 @@ export async function run() {
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
+    const debug = getState('debug')
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
     // Anchor file imports at the running file's folder (or workspace root
     // for scratch). `filePath` is set so source maps and error messages can
@@ -2967,6 +2968,7 @@ export async function run() {
         path: filePath,
         source: code,
         workspaceFiles: getWorkspaceFiles(),
+        ...(debug ? { debug: true } : {}),
         ...(pure ? { pure: true } : { effectHandlers: wrappedHandlers }),
         ...(disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
         terminalSnapshot: true,

@@ -36,6 +36,7 @@ export async function runPlaygroundSessionThroughBackend(args: {
   source: string
   workspaceFiles: readonly RuntimeWorkspaceFile[]
   effectHandlers?: RuntimeHandlers
+  debug?: boolean
   pure?: boolean
   disableAutoCheckpoint?: boolean
   terminalSnapshot?: boolean
@@ -46,6 +47,7 @@ export async function runPlaygroundSessionThroughBackend(args: {
       requestId: nextRequestId(),
       path: args.path,
       source: args.source,
+      ...(args.debug ? { debug: true } : {}),
       ...(args.effectHandlers ? { effectHandlers: args.effectHandlers } : {}),
       ...(args.pure ? { pure: true } : {}),
       ...(args.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),

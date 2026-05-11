@@ -480,8 +480,9 @@ function createRuntimeFileResolver(documents: BackendDocumentStore) {
   }
 }
 
-function createRuntimeRunner(documents: BackendDocumentStore, path?: string) {
+function createRuntimeRunner(documents: BackendDocumentStore, path?: string, debug?: boolean) {
   return createDvala({
+    ...(debug ? { debug: true } : {}),
     modules: allBuiltinModules,
     fileResolver: createRuntimeFileResolver(documents),
     fileResolverBaseDir: runtimeBaseDir(path),
@@ -812,7 +813,10 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
               ...(request.path ? { filePath: request.path } : {}),
             }
 
-        const runResult = await createRuntimeRunner(documents, request.path).runAsync(request.source, runOptions)
+        const runResult = await createRuntimeRunner(documents, request.path, request.debug).runAsync(
+          request.source,
+          runOptions,
+        )
 
         if (isCancelled(cancelledRequests, request.requestId)) {
           sessions.delete(sessionId)

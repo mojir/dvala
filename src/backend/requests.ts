@@ -190,6 +190,7 @@ export interface BackendSessionStartRequest {
   path?: string
   source: string
   effectHandlers?: RuntimeHandlers
+  debug?: boolean
   pure?: boolean
   disableAutoCheckpoint?: boolean
   terminalSnapshot?: boolean

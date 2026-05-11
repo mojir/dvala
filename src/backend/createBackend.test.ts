@@ -314,6 +314,32 @@ describe('createBackend', () => {
     )
   })
 
+  it('preserves debug-mode source locations for runtime errors', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 28,
+      path: 'main.dvala',
+      source: 'assert(false, "boom")',
+      pure: true,
+      debug: true,
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 28,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok) return
+
+    expect(started.runResult.type).toBe('error')
+    if (started.runResult.type === 'error') {
+      expect(started.runResult.error.message).toContain('main.dvala')
+    }
+  })
+
   it('starts a suspended session with provided effect handlers and resumes it through the backend', async () => {
     const backend = createBackend()
 
