@@ -3,6 +3,7 @@ import { createDvala } from '../createDvala'
 import { WorkspaceIndex, type ResolveImport } from '../languageService/WorkspaceIndex'
 import type { FileSymbols, SymbolDef } from '../languageService/types'
 import { parseToAst } from '../parser'
+import { retrigger } from '../retrigger'
 import { resume } from '../resume'
 import { buildBuiltinCompletions, symbolDefToCompletion } from '../shared/completionBuilder'
 import { buildParseDiagnostics, buildTypeDiagnostics } from '../shared/diagnosticBuilder'
@@ -464,6 +465,11 @@ function runtimeBaseDir(path?: string): string {
 function createRuntimeFileResolver(documents: BackendDocumentStore) {
   return (importPath: string, fromDir: string): string => {
     const resolved = resolvePlaygroundPath(isInPlaygroundFolder(fromDir) ? '' : fromDir, importPath)
+    if (isInPlaygroundFolder(resolved)) {
+      throw new Error(
+        `Cannot import '${importPath}' from '${fromDir || '<root>'}': ${PLAYGROUND_FOLDER}/ is playground state, not part of the deployable project`,
+      )
+    }
     const exact = documents.getEffectiveSource(resolved)
     if (exact !== undefined) return exact
 
@@ -792,10 +798,21 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         const sessionId = createSessionId()
         updateSession(sessionId, 'running')
 
-        const runResult = await createRuntimeRunner(documents, request.path).runAsync(request.source, {
-          ...(request.effectHandlers ? { effectHandlers: request.effectHandlers } : {}),
-          ...(request.path ? { filePath: request.path } : {}),
-        })
+        const runOptions = request.pure
+          ? {
+              pure: true as const,
+              ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
+              ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),
+              ...(request.path ? { filePath: request.path } : {}),
+            }
+          : {
+              ...(request.effectHandlers ? { effectHandlers: request.effectHandlers } : {}),
+              ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
+              ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),
+              ...(request.path ? { filePath: request.path } : {}),
+            }
+
+        const runResult = await createRuntimeRunner(documents, request.path).runAsync(request.source, runOptions)
 
         if (isCancelled(cancelledRequests, request.requestId)) {
           sessions.delete(sessionId)
@@ -842,9 +859,19 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         const sessionId = createSessionId()
         updateSession(sessionId, 'running')
 
-        const runResult = await resume(request.snapshot, request.value, {
-          modules: allBuiltinModules,
-        })
+        const runResult = request.snapshot.effectName
+          ? await retrigger(request.snapshot, {
+              handlers: request.effectHandlers,
+              modules: allBuiltinModules,
+              ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
+              ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),
+            })
+          : await resume(request.snapshot, request.value, {
+              handlers: request.effectHandlers,
+              modules: allBuiltinModules,
+              ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
+              ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),
+            })
 
         if (isCancelled(cancelledRequests, request.requestId)) {
           sessions.delete(sessionId)

@@ -282,6 +282,8 @@ describe('createBackend', () => {
       requestId: 23,
       path: 'main.dvala',
       source: '41 + 1',
+      pure: true,
+      terminalSnapshot: true,
     })
 
     expect(started).toEqual(
@@ -297,6 +299,7 @@ describe('createBackend', () => {
       expect.objectContaining({
         type: 'completed',
         value: 42,
+        snapshot: expect.any(Object),
       }),
     )
 
@@ -353,7 +356,15 @@ describe('createBackend', () => {
     const resumed = await backend.resumeSnapshot({
       requestId: 25,
       snapshot: started.runResult.snapshot,
-      value: 41,
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ resume }) => {
+            resume(41)
+          },
+        },
+      ],
+      terminalSnapshot: true,
     })
 
     expect(resumed).toEqual(
@@ -369,6 +380,7 @@ describe('createBackend', () => {
       expect.objectContaining({
         type: 'completed',
         value: 42,
+        snapshot: expect.any(Object),
       }),
     )
 
@@ -411,6 +423,37 @@ describe('createBackend', () => {
           value: 42,
         }),
       )
+    }
+  })
+
+  it('rejects imports into the playground state folder for runtime sessions', async () => {
+    const backend = createBackend()
+
+    await backend.replaceWorkspaceSnapshot({
+      files: [{ path: '.dvala-playground/secret.dvala', code: '41' }],
+    })
+
+    const result = await backend.startSession({
+      requestId: 27,
+      path: 'main.dvala',
+      source: 'import("./.dvala-playground/secret")',
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 27,
+        sessionId: expect.any(String),
+        runResult: expect.objectContaining({
+          type: 'error',
+        }),
+      }),
+    )
+    if (result.ok) {
+      expect(result.runResult.type).toBe('error')
+      if (result.runResult.type === 'error') {
+        expect(result.runResult.error.message).toContain('.dvala-playground/')
+      }
     }
   })
 })

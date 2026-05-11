@@ -190,6 +190,9 @@ export interface BackendSessionStartRequest {
   path?: string
   source: string
   effectHandlers?: RuntimeHandlers
+  pure?: boolean
+  disableAutoCheckpoint?: boolean
+  terminalSnapshot?: boolean
 }
 
 export type BackendSessionStartResult =
@@ -205,6 +208,9 @@ export interface BackendSessionResumeRequest {
   requestId: BackendRequestId
   snapshot: RuntimeSnapshot
   value?: unknown
+  effectHandlers?: RuntimeHandlers
+  disableAutoCheckpoint?: boolean
+  terminalSnapshot?: boolean
 }
 
 export type BackendSessionResumeResult =
