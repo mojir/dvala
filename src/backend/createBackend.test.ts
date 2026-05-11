@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { createDvala } from '../createDvala'
 import { createBackend } from './createBackend'
 
 describe('createBackend', () => {
@@ -271,6 +272,124 @@ describe('createBackend', () => {
           expect.objectContaining({ file: 'lib.dvala' }),
           expect.objectContaining({ file: 'main.dvala' }),
         ]),
+      )
+    }
+  })
+
+  it('starts a completed session and inspects it through the backend', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 23,
+      path: 'main.dvala',
+      source: '41 + 1',
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 23,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok) return
+
+    expect(started.runResult).toEqual(
+      expect.objectContaining({
+        type: 'completed',
+        value: 42,
+      }),
+    )
+
+    const startedInspection = await backend.inspectSession(started.sessionId)
+    expect(startedInspection).toEqual(
+      expect.objectContaining({
+        ok: true,
+        sessionId: started.sessionId,
+        status: 'completed',
+        lastUpdatedAt: expect.any(Number),
+      }),
+    )
+  })
+
+  it('resumes an existing snapshot and inspects the resumed backend session', async () => {
+    const backend = createBackend()
+    const dvala = createDvala()
+
+    const suspended = await dvala.runAsync('let x = perform(@my.ask); x + 1', {
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(suspended.type).toBe('suspended')
+    if (suspended.type !== 'suspended') return
+
+    const resumed = await backend.resumeSnapshot({
+      requestId: 24,
+      snapshot: suspended.snapshot,
+      value: 41,
+    })
+
+    expect(resumed).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 24,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!resumed.ok) return
+
+    expect(resumed.runResult).toEqual(
+      expect.objectContaining({
+        type: 'completed',
+        value: 42,
+      }),
+    )
+
+    const resumedInspection = await backend.inspectSession(resumed.sessionId)
+    expect(resumedInspection).toEqual(
+      expect.objectContaining({
+        ok: true,
+        sessionId: resumed.sessionId,
+        status: 'completed',
+        lastUpdatedAt: expect.any(Number),
+      }),
+    )
+  })
+
+  it('uses backend-owned workspace overlays when starting a session', async () => {
+    const backend = createBackend()
+
+    await backend.replaceWorkspaceSnapshot({
+      files: [{ path: 'lib.dvala', code: 'let value = 1; { value }' }],
+    })
+    await backend.openDocument({ path: 'lib.dvala', source: 'let value = 41; { value }', version: 2 })
+
+    const result = await backend.startSession({
+      requestId: 25,
+      path: 'main.dvala',
+      source: 'let { value } = import("./lib"); value + 1',
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 25,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (result.ok) {
+      expect(result.runResult).toEqual(
+        expect.objectContaining({
+          type: 'completed',
+          value: 42,
+        }),
       )
     }
   })

@@ -1,7 +1,9 @@
 import { allBuiltinModules } from '../allModules'
+import { createDvala } from '../createDvala'
 import { WorkspaceIndex, type ResolveImport } from '../languageService/WorkspaceIndex'
 import type { FileSymbols, SymbolDef } from '../languageService/types'
 import { parseToAst } from '../parser'
+import { resume } from '../resume'
 import { buildBuiltinCompletions, symbolDefToCompletion } from '../shared/completionBuilder'
 import { buildParseDiagnostics, buildTypeDiagnostics } from '../shared/diagnosticBuilder'
 import { findTypeAtPosition, formatHoverType } from '../shared/typeDisplay'
@@ -9,6 +11,7 @@ import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { formatSource } from '../tooling'
 import { tokenizeSource, parseTokenStreamRecoverable } from '../tooling'
 import { typecheck } from '../typechecker/typecheck'
+import type { RuntimeRunResult } from '@mojir/dvala-runtime'
 
 import type { DvalaBackend } from './DvalaBackend'
 import { createInMemoryDocumentStore, type BackendDocumentStore } from './documentStore'
@@ -36,6 +39,11 @@ import type {
 
 export interface CreateBackendOptions {
   documents?: BackendDocumentStore
+}
+
+interface BackendSessionRecord {
+  status: BackendSessionInspectionResult['status']
+  lastUpdatedAt: number
 }
 
 const PLAYGROUND_FOLDER = '.dvala-playground'
@@ -448,9 +456,61 @@ function computeNavigationResult(request: BackendNavigationRequest) {
   }
 }
 
+function runtimeBaseDir(path?: string): string {
+  if (!path || isInPlaygroundFolder(path)) return ''
+  return folderFromPath(path)
+}
+
+function createRuntimeFileResolver(documents: BackendDocumentStore) {
+  return (importPath: string, fromDir: string): string => {
+    const resolved = resolvePlaygroundPath(isInPlaygroundFolder(fromDir) ? '' : fromDir, importPath)
+    const exact = documents.getEffectiveSource(resolved)
+    if (exact !== undefined) return exact
+
+    const withSuffix = documents.getEffectiveSource(`${resolved}.dvala`)
+    if (withSuffix !== undefined) return withSuffix
+
+    throw new Error(`File not found: ${importPath} (resolved from '${fromDir}' to '${resolved}')`)
+  }
+}
+
+function createRuntimeRunner(documents: BackendDocumentStore, path?: string) {
+  return createDvala({
+    modules: allBuiltinModules,
+    fileResolver: createRuntimeFileResolver(documents),
+    fileResolverBaseDir: runtimeBaseDir(path),
+  })
+}
+
+function statusFromRunResult(result: RuntimeRunResult): BackendSessionInspectionResult['status'] {
+  switch (result.type) {
+    case 'suspended':
+      return 'suspended'
+    case 'error':
+      return 'failed'
+    case 'completed':
+    case 'halted':
+      return 'completed'
+  }
+}
+
 export function createBackend(options: CreateBackendOptions = {}): DvalaBackend {
   const documents = options.documents ?? createInMemoryDocumentStore()
   const cancelledRequests = new Map<number, boolean>()
+  const sessions = new Map<string, BackendSessionRecord>()
+  let sessionCounter = 0
+
+  function createSessionId(): string {
+    sessionCounter += 1
+    return `backend-session-${sessionCounter}`
+  }
+
+  function updateSession(sessionId: string, status: BackendSessionInspectionResult['status']): void {
+    sessions.set(sessionId, {
+      status,
+      lastUpdatedAt: Date.now(),
+    })
+  }
 
   return {
     async openDocument(document: BackendTextDocument): Promise<void> {
@@ -719,25 +779,109 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     },
 
     async startSession(request: BackendSessionStartRequest): Promise<BackendSessionStartResult> {
-      return requestFailure(
-        request.requestId,
-        {
-          kind: 'invalid-request',
-          message: 'Backend operation not implemented yet: startSession',
-          ...(request.path ? { path: request.path } : {}),
-        },
-        request.path,
-      )
+      try {
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(
+            request.requestId,
+            { kind: 'cancelled', message: 'Backend session start request cancelled', path: request.path },
+            request.path,
+          )
+        }
+
+        const sessionId = createSessionId()
+        updateSession(sessionId, 'running')
+
+        const runResult = await createRuntimeRunner(documents, request.path).runAsync(request.source, {
+          ...(request.path ? { filePath: request.path } : {}),
+        })
+
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          sessions.delete(sessionId)
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(
+            request.requestId,
+            { kind: 'cancelled', message: 'Backend session start request cancelled', path: request.path },
+            request.path,
+          )
+        }
+
+        updateSession(sessionId, statusFromRunResult(runResult))
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          sessionId,
+          runResult,
+        }
+      } catch (error) {
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'runtime-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            ...(request.path ? { path: request.path } : {}),
+          },
+          request.path,
+        )
+      }
     },
 
     async resumeSnapshot(request: BackendSessionResumeRequest): Promise<BackendSessionResumeResult> {
-      return requestFailure(request.requestId, {
-        kind: 'invalid-request',
-        message: 'Backend operation not implemented yet: resumeSnapshot',
-      })
+      try {
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(request.requestId, {
+            kind: 'cancelled',
+            message: 'Backend session resume request cancelled',
+          })
+        }
+
+        const sessionId = createSessionId()
+        updateSession(sessionId, 'running')
+
+        const runResult = await resume(request.snapshot, request.value, {
+          modules: allBuiltinModules,
+        })
+
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          sessions.delete(sessionId)
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(request.requestId, {
+            kind: 'cancelled',
+            message: 'Backend session resume request cancelled',
+          })
+        }
+
+        updateSession(sessionId, statusFromRunResult(runResult))
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          sessionId,
+          runResult,
+        }
+      } catch (error) {
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return requestFailure(request.requestId, {
+          kind: 'runtime-failed',
+          message: error instanceof Error ? error.message : `${error}`,
+        })
+      }
     },
 
     async inspectSession(sessionId: string): Promise<BackendSessionInspectionResult> {
+      const session = sessions.get(sessionId)
+      if (session) {
+        return {
+          ok: true,
+          sessionId,
+          status: session.status,
+          lastUpdatedAt: session.lastUpdatedAt,
+        }
+      }
+
       return {
         ok: true,
         sessionId,
@@ -745,7 +889,9 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
       }
     },
 
-    async stopSession(_sessionId: string): Promise<void> {},
+    async stopSession(sessionId: string): Promise<void> {
+      sessions.delete(sessionId)
+    },
 
     async cancelRequest(requestId: number): Promise<BackendCancelResult> {
       cancelledRequests.set(requestId, true)
