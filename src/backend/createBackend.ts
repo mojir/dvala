@@ -18,7 +18,7 @@ import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { formatSource } from '../tooling'
 import { tokenizeSource } from '../tooling'
 import { typecheck } from '../typechecker/typecheck'
-import type { RuntimeRunResult } from '@mojir/dvala-runtime'
+import type { RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
 import type { DvalaBackend } from './DvalaBackend'
 import { createInMemoryDocumentStore, type BackendDocumentStore } from './documentStore'
@@ -45,6 +45,8 @@ import type {
   BackendSnapshotBindingsInspectionResult,
   BackendSnapshotInspectionRequest,
   BackendSnapshotInspectionResult,
+  BackendSnapshotValidationRequest,
+  BackendSnapshotValidationResult,
   BackendSessionInspectionResult,
   BackendSessionResumeRequest,
   BackendSessionResumeResult,
@@ -142,6 +144,20 @@ function extractSnapshotBindings(
     resume: () => {},
     getSnapshots: () => deserialized.snapshots,
   })
+}
+
+function asRuntimeSnapshot(value: unknown): RuntimeSnapshot | null {
+  if (typeof value !== 'object' || value === null) return null
+  if (!('id' in value) || typeof value.id !== 'string') return null
+  if (!('continuation' in value)) return null
+  if (!('timestamp' in value) || typeof value.timestamp !== 'number') return null
+  if (!('index' in value) || typeof value.index !== 'number') return null
+  if (!('executionId' in value) || typeof value.executionId !== 'string') return null
+  if (!('message' in value) || typeof value.message !== 'string') return null
+  if ('terminal' in value && value.terminal !== undefined && typeof value.terminal !== 'boolean') return null
+  if ('effectName' in value && value.effectName !== undefined && typeof value.effectName !== 'string') return null
+
+  return value as RuntimeSnapshot
 }
 
 function stripDvalaSuffix(name: string): string {
@@ -1254,6 +1270,22 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           kind: 'runtime-failed',
           message: error instanceof Error ? error.message : `${error}`,
         })
+      }
+    },
+
+    async validateSnapshot(request: BackendSnapshotValidationRequest): Promise<BackendSnapshotValidationResult> {
+      const snapshot = asRuntimeSnapshot(request.value)
+      if (!snapshot) {
+        return requestFailure(request.requestId, {
+          kind: 'invalid-request',
+          message: 'Not a valid snapshot object.',
+        })
+      }
+
+      return {
+        ok: true,
+        requestId: request.requestId,
+        snapshot,
       }
     },
 

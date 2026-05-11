@@ -22,6 +22,7 @@ import type {
   BackendSessionInspectionResult,
   BackendSnapshotBindingsInspectionResult,
   BackendSnapshotInspectionResult,
+  BackendSnapshotValidationResult,
   BackendSessionResumeRequest,
   BackendSessionResumeResult,
   BackendSessionStartRequest,
@@ -299,6 +300,16 @@ function createResyncingBackend(overrides: {
         ok: true,
         requestId: 103,
         bindings: {},
+      }
+    },
+    async validateSnapshot(): Promise<BackendSnapshotValidationResult> {
+      return {
+        ok: false,
+        requestId: 104,
+        error: {
+          kind: 'invalid-request',
+          message: 'not implemented',
+        },
       }
     },
     async inspectSession(): Promise<BackendSessionInspectionResult> {

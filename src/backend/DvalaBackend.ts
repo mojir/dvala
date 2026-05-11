@@ -25,6 +25,8 @@ import type {
   BackendSessionResumeResult,
   BackendSessionStartRequest,
   BackendSessionStartResult,
+  BackendSnapshotValidationRequest,
+  BackendSnapshotValidationResult,
   BackendTextDocument,
   BackendWorkspaceSymbolsRequest,
   BackendWorkspaceSymbolsResult,
@@ -51,6 +53,7 @@ export interface DvalaBackend {
   inspectSnapshotBindings(
     request: BackendSnapshotBindingsInspectionRequest,
   ): Promise<BackendSnapshotBindingsInspectionResult>
+  validateSnapshot(request: BackendSnapshotValidationRequest): Promise<BackendSnapshotValidationResult>
   inspectSession(sessionId: string): Promise<BackendSessionInspectionResult>
   stopSession(sessionId: string): Promise<void>
 

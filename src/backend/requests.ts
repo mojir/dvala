@@ -211,6 +211,19 @@ export type BackendSnapshotBindingsInspectionResult =
     }
   | BackendRequestFailure
 
+export interface BackendSnapshotValidationRequest {
+  requestId: BackendRequestId
+  value: unknown
+}
+
+export type BackendSnapshotValidationResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      snapshot: RuntimeSnapshot
+    }
+  | BackendRequestFailure
+
 export interface BackendCompletionRequest {
   requestId: BackendRequestId
   path: string

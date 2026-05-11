@@ -100,3 +100,13 @@ export async function inspectPlaygroundSnapshotBindingsThroughBackend(args: {
   if (result.ok) return result.bindings
   throw new Error(result.error.message)
 }
+
+export async function validatePlaygroundSnapshotThroughBackend(args: { value: unknown }): Promise<RuntimeSnapshot> {
+  const result = await runtimeBackend.validateSnapshot({
+    requestId: nextRequestId(),
+    value: args.value,
+  })
+
+  if (result.ok) return result.snapshot
+  throw new Error(result.error.message)
+}

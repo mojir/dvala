@@ -6,6 +6,7 @@ import {
   inspectPlaygroundSnapshotThroughBackend,
   resumePlaygroundSnapshotThroughBackend,
   runPlaygroundSessionThroughBackend,
+  validatePlaygroundSnapshotThroughBackend,
 } from './runtimeBackend'
 
 function workspaceFile(overrides: Partial<WorkspaceFile> & Pick<WorkspaceFile, 'path' | 'code'>): WorkspaceFile {
@@ -131,5 +132,36 @@ describe('runtimeBackend', () => {
       answer: 42,
       local: 'ok',
     })
+  })
+
+  it('validates imported snapshots through the backend', async () => {
+    const started = await runPlaygroundSessionThroughBackend({
+      path: 'main.dvala',
+      source: 'let x = perform(@my.ask); x + 1',
+      workspaceFiles: [],
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started.type).toBe('suspended')
+    if (started.type !== 'suspended') return
+
+    const snapshot = await validatePlaygroundSnapshotThroughBackend({ value: started.snapshot })
+
+    expect(snapshot).toEqual(started.snapshot)
+  })
+
+  it('rejects invalid imported snapshots through the backend', async () => {
+    await expect(
+      validatePlaygroundSnapshotThroughBackend({
+        value: { id: 'bad', message: 'oops' },
+      }),
+    ).rejects.toThrow('Not a valid snapshot object.')
   })
 })

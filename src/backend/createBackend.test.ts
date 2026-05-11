@@ -792,6 +792,64 @@ describe('createBackend', () => {
     }
   })
 
+  it('validates imported snapshots through the backend', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 33,
+      path: 'main.dvala',
+      source: 'let x = perform(@my.ask); x + 1',
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 33,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok || started.runResult.type !== 'suspended') return
+
+    const validation = await backend.validateSnapshot({
+      requestId: 34,
+      value: started.runResult.snapshot,
+    })
+
+    expect(validation).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 34,
+        snapshot: started.runResult.snapshot,
+      }),
+    )
+  })
+
+  it('rejects invalid imported snapshots through the backend', async () => {
+    const backend = createBackend()
+
+    const validation = await backend.validateSnapshot({
+      requestId: 35,
+      value: { id: 'bad', message: 'oops' },
+    })
+
+    expect(validation).toEqual({
+      ok: false,
+      requestId: 35,
+      error: {
+        kind: 'invalid-request',
+        message: 'Not a valid snapshot object.',
+      },
+    })
+  })
+
   it('rejects imports into the playground state folder for runtime sessions', async () => {
     const backend = createBackend()
 

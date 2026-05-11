@@ -72,6 +72,7 @@ import {
   inspectPlaygroundSnapshotThroughBackend,
   resumePlaygroundSnapshotThroughBackend,
   runPlaygroundSessionThroughBackend,
+  validatePlaygroundSnapshotThroughBackend,
 } from './runtimeBackend'
 import { ensureHandlersFile, wrapWithBoundaryHandler } from './handlersBuffer'
 import {
@@ -3844,21 +3845,15 @@ export function openImportSnapshotModal() {
         void showInfoModal('Import failed', 'Invalid JSON — could not parse the file.')
         return
       }
-      if (
-        typeof parsed !== 'object' ||
-        parsed === null ||
-        !('id' in parsed) ||
-        !('continuation' in parsed) ||
-        !('timestamp' in parsed) ||
-        !('index' in parsed) ||
-        !('executionId' in parsed) ||
-        !('message' in parsed)
-      ) {
-        void showInfoModal('Import failed', 'Not a valid snapshot object.')
-        return
-      }
-      showToast('Snapshot imported')
-      saveAndOpenSnapshotTab(parsed as Snapshot, 'halted', 'Snapshot imported')
+
+      void validatePlaygroundSnapshotThroughBackend({ value: parsed })
+        .then(snapshot => {
+          showToast('Snapshot imported')
+          saveAndOpenSnapshotTab(snapshot as Snapshot, 'halted', 'Snapshot imported')
+        })
+        .catch(() => {
+          void showInfoModal('Import failed', 'Not a valid snapshot object.')
+        })
     }
     reader.readAsText(file)
   }
