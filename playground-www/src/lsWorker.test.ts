@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 type WorkerMessage = Record<string, unknown>
 
 type FakeWorkerGlobal = {
-  onmessage: ((event: MessageEvent<WorkerMessage>) => void) | null
+  onmessage: ((event: MessageEvent<WorkerMessage>) => void | Promise<void>) | null
   postMessage: ReturnType<typeof vi.fn>
 }
 
@@ -22,8 +22,8 @@ async function loadWorker(): Promise<FakeWorkerGlobal> {
   return fakeSelf
 }
 
-function dispatch(worker: FakeWorkerGlobal, message: WorkerMessage): void {
-  worker.onmessage?.(new MessageEvent<WorkerMessage>('message', { data: message }))
+async function dispatch(worker: FakeWorkerGlobal, message: WorkerMessage): Promise<void> {
+  await worker.onmessage?.(new MessageEvent<WorkerMessage>('message', { data: message }))
 }
 
 describe('lsWorker document sync', () => {
@@ -34,7 +34,7 @@ describe('lsWorker document sync', () => {
   it('requests resync when an update arrives before a document mirror exists', async () => {
     const worker = await loadWorker()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'updateDocument',
       path: 'main.dvala',
       source: 'let x = 1',
@@ -48,7 +48,7 @@ describe('lsWorker document sync', () => {
   it('requests resync when an update version does not match the mirrored version', async () => {
     const worker = await loadWorker()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'openDocument',
       path: 'main.dvala',
       source: 'let x = 1',
@@ -56,7 +56,7 @@ describe('lsWorker document sync', () => {
     })
     worker.postMessage.mockClear()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'updateDocument',
       path: 'main.dvala',
       source: 'let x = 2',
@@ -70,7 +70,7 @@ describe('lsWorker document sync', () => {
   it('requests resync instead of empty diagnostics when no mirror exists', async () => {
     const worker = await loadWorker()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'requestDiagnostics',
       requestId: 1,
       path: 'main.dvala',
@@ -89,14 +89,14 @@ describe('lsWorker document sync', () => {
   it('accepts an ordered update and serves diagnostics from the latest mirror', async () => {
     const worker = await loadWorker()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'openDocument',
       path: 'main.dvala',
       source: 'let x = 1',
       sourceVersion: 3,
     })
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'updateDocument',
       path: 'main.dvala',
       source: 'let x = 2',
@@ -106,7 +106,7 @@ describe('lsWorker document sync', () => {
 
     worker.postMessage.mockClear()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'requestDiagnostics',
       requestId: 1,
       path: 'main.dvala',
@@ -126,7 +126,7 @@ describe('lsWorker document sync', () => {
   it('formats a source snapshot and returns a formatting result', async () => {
     const worker = await loadWorker()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'requestFormatting',
       requestId: 1,
       path: 'main.dvala',
@@ -148,7 +148,7 @@ describe('lsWorker document sync', () => {
   it('resolves definition and rename navigation from a workspace snapshot', async () => {
     const worker = await loadWorker()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'requestNavigation',
       requestId: 2,
       kind: 'definition',
@@ -177,7 +177,7 @@ describe('lsWorker document sync', () => {
 
     worker.postMessage.mockClear()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'requestNavigation',
       requestId: 3,
       kind: 'rename',
@@ -203,7 +203,7 @@ describe('lsWorker document sync', () => {
   it('deduplicates completion labels across local scope and imported exports', async () => {
     const worker = await loadWorker()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'requestCompletion',
       requestId: 4,
       path: 'main.dvala',
@@ -231,7 +231,7 @@ describe('lsWorker document sync', () => {
   it('resolves cross-file rename from the imported file content in the request snapshot', async () => {
     const worker = await loadWorker()
 
-    dispatch(worker, {
+    await dispatch(worker, {
       type: 'requestNavigation',
       requestId: 5,
       kind: 'rename',
