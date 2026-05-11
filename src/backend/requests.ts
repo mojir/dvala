@@ -1,4 +1,4 @@
-import type { RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
+import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
 import type { CompletionItem } from '../shared/completionBuilder'
 import type { Diagnostic } from '../shared/types'
@@ -189,6 +189,7 @@ export interface BackendSessionStartRequest {
   requestId: BackendRequestId
   path?: string
   source: string
+  effectHandlers?: RuntimeHandlers
 }
 
 export type BackendSessionStartResult =

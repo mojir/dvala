@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDvala } from '../createDvala'
 import { createBackend } from './createBackend'
 
 describe('createBackend', () => {
@@ -312,11 +311,13 @@ describe('createBackend', () => {
     )
   })
 
-  it('resumes an existing snapshot and inspects the resumed backend session', async () => {
+  it('starts a suspended session with provided effect handlers and resumes it through the backend', async () => {
     const backend = createBackend()
-    const dvala = createDvala()
 
-    const suspended = await dvala.runAsync('let x = perform(@my.ask); x + 1', {
+    const started = await backend.startSession({
+      requestId: 24,
+      path: 'main.dvala',
+      source: 'let x = perform(@my.ask); x + 1',
       effectHandlers: [
         {
           pattern: 'my.ask',
@@ -327,19 +328,38 @@ describe('createBackend', () => {
       ],
     })
 
-    expect(suspended.type).toBe('suspended')
-    if (suspended.type !== 'suspended') return
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 24,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok) return
+
+    expect(started.runResult.type).toBe('suspended')
+    if (started.runResult.type !== 'suspended') return
+
+    const startedInspection = await backend.inspectSession(started.sessionId)
+    expect(startedInspection).toEqual(
+      expect.objectContaining({
+        ok: true,
+        sessionId: started.sessionId,
+        status: 'suspended',
+        lastUpdatedAt: expect.any(Number),
+      }),
+    )
 
     const resumed = await backend.resumeSnapshot({
-      requestId: 24,
-      snapshot: suspended.snapshot,
+      requestId: 25,
+      snapshot: started.runResult.snapshot,
       value: 41,
     })
 
     expect(resumed).toEqual(
       expect.objectContaining({
         ok: true,
-        requestId: 24,
+        requestId: 25,
         sessionId: expect.any(String),
       }),
     )
@@ -372,7 +392,7 @@ describe('createBackend', () => {
     await backend.openDocument({ path: 'lib.dvala', source: 'let value = 41; { value }', version: 2 })
 
     const result = await backend.startSession({
-      requestId: 25,
+      requestId: 26,
       path: 'main.dvala',
       source: 'let { value } = import("./lib"); value + 1',
     })
@@ -380,7 +400,7 @@ describe('createBackend', () => {
     expect(result).toEqual(
       expect.objectContaining({
         ok: true,
-        requestId: 25,
+        requestId: 26,
         sessionId: expect.any(String),
       }),
     )

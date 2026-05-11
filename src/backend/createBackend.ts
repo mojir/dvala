@@ -793,6 +793,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         updateSession(sessionId, 'running')
 
         const runResult = await createRuntimeRunner(documents, request.path).runAsync(request.source, {
+          ...(request.effectHandlers ? { effectHandlers: request.effectHandlers } : {}),
           ...(request.path ? { filePath: request.path } : {}),
         })
 
