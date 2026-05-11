@@ -22,6 +22,67 @@ describe('createBackend', () => {
     })
   })
 
+  it('includes unresolved-symbol diagnostics from the backend-owned index', async () => {
+    const backend = createBackend()
+    await backend.openDocument({ path: 'main.dvala', source: 'missingValue + 1', version: 1 })
+
+    const result = await backend.requestDiagnostics({
+      requestId: 2,
+      path: 'main.dvala',
+      version: 1,
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 2,
+        path: 'main.dvala',
+        version: 1,
+      }),
+    )
+
+    if (result.ok) {
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          message: "Undefined symbol 'missingValue'",
+          source: 'dvala',
+          severity: 'error',
+        }),
+      )
+    }
+  })
+
+  it('resolves imported bindings before emitting backend-owned unresolved-symbol diagnostics', async () => {
+    const backend = createBackend()
+    await backend.replaceWorkspaceSnapshot({
+      files: [{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }],
+    })
+    await backend.openDocument({
+      path: 'main.dvala',
+      source: 'let { exported } = import("./lib"); exported',
+      version: 1,
+    })
+
+    const result = await backend.requestDiagnostics({
+      requestId: 3,
+      path: 'main.dvala',
+      version: 1,
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 3,
+        path: 'main.dvala',
+        version: 1,
+      }),
+    )
+
+    if (result.ok) {
+      expect(result.diagnostics.filter(diag => diag.message.includes('Undefined symbol'))).toEqual([])
+    }
+  })
+
   it('requests resync when diagnostics are requested for a missing mirror', async () => {
     const backend = createBackend()
 
@@ -114,6 +175,37 @@ describe('createBackend', () => {
     }
   })
 
+  it('computes imported hover information through the backend-owned workspace state', async () => {
+    const backend = createBackend()
+    await backend.replaceWorkspaceSnapshot({
+      files: [{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }],
+    })
+
+    const source = 'let { exported } = import("./lib"); exported'
+    const result = await backend.requestHover({
+      requestId: 14,
+      path: 'main.dvala',
+      source,
+      version: 5,
+      line: 1,
+      column: 37,
+      startColumn: 37,
+      endColumn: 45,
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 14,
+        path: 'main.dvala',
+        version: 5,
+      }),
+    )
+    if (result.ok) {
+      expect(result.inferredType).toMatch(/Integer|1/)
+    }
+  })
+
   it('deduplicates completion labels across local scope and imported exports through the backend', async () => {
     const backend = createBackend()
 
@@ -161,6 +253,41 @@ describe('createBackend', () => {
       expect.objectContaining({
         ok: true,
         requestId: 17,
+        path: 'main.dvala',
+        version: 6,
+      }),
+    )
+    if (result.ok) {
+      expect(result.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ label: './utils/', detail: 'folder' }),
+          expect.objectContaining({ label: './utils/math', detail: 'workspace file' }),
+        ]),
+      )
+    }
+  })
+
+  it('uses the backend-owned workspace snapshot for import path completions when callers omit workspaceFiles', async () => {
+    const backend = createBackend()
+    await backend.replaceWorkspaceSnapshot({
+      files: [{ path: 'utils/math.dvala', code: 'let value = 1' }],
+    })
+
+    const result = await backend.requestCompletion({
+      requestId: 18,
+      path: 'main.dvala',
+      source: 'let lib = import("./u")',
+      version: 6,
+      line: 1,
+      column: 22,
+      prefix: '',
+      importPrefix: './u',
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 18,
         path: 'main.dvala',
         version: 6,
       }),
@@ -239,6 +366,126 @@ describe('createBackend', () => {
           }),
         ]),
       )
+    }
+  })
+
+  it('uses the backend-owned workspace snapshot for import definition navigation when callers omit workspaceFiles', async () => {
+    const backend = createBackend()
+    await backend.replaceWorkspaceSnapshot({
+      files: [{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }],
+    })
+
+    const definition = await backend.requestNavigation({
+      requestId: 20,
+      kind: 'definition',
+      path: 'main.dvala',
+      source: 'let lib = import("./lib")',
+      version: 7,
+      line: 1,
+      column: 20,
+    })
+
+    expect(definition).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 20,
+        kind: 'definition',
+        path: 'main.dvala',
+        version: 7,
+      }),
+    )
+    if (definition.ok) {
+      expect(definition.locations).toEqual([
+        {
+          file: 'lib.dvala',
+          line: 1,
+          column: 1,
+          endColumn: 1,
+        },
+      ])
+    }
+  })
+
+  it('computes signature help through the backend', async () => {
+    const backend = createBackend()
+    await backend.openDocument({ path: 'main.dvala', source: 'let add = (a, b) -> a + b\nadd(', version: 9 })
+
+    const result = await backend.requestSignatureHelp({
+      requestId: 22,
+      path: 'main.dvala',
+      source: 'let add = (a, b) -> a + b\nadd(',
+      version: 9,
+      line: 2,
+      column: 5,
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 22,
+        path: 'main.dvala',
+        version: 9,
+        activeParameter: 0,
+      }),
+    )
+    if (result.ok) {
+      expect(result.signatures).toEqual([{ label: 'add(a, b)', parameters: ['a', 'b'] }])
+    }
+  })
+
+  it('returns document symbols through the backend', async () => {
+    const backend = createBackend()
+    await backend.openDocument({
+      path: 'main.dvala',
+      source: 'let answer = 42;\nlet add = (a, b) -> a + b;',
+      version: 10,
+    })
+
+    const result = await backend.requestDocumentSymbols({
+      requestId: 23,
+      path: 'main.dvala',
+      source: 'let answer = 42;\nlet add = (a, b) -> a + b;',
+      version: 10,
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 23,
+        path: 'main.dvala',
+        version: 10,
+      }),
+    )
+    if (result.ok) {
+      expect(result.symbols).toEqual(
+        expect.arrayContaining([
+          { name: 'answer', kind: 'variable', line: 1, column: 5 },
+          { name: 'add', kind: 'function', line: 2, column: 5 },
+        ]),
+      )
+    }
+  })
+
+  it('returns workspace symbols through the backend-owned state', async () => {
+    const backend = createBackend()
+    await backend.replaceWorkspaceSnapshot({
+      files: [{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }],
+    })
+    await backend.openDocument({ path: 'main.dvala', source: 'let answer = 42', version: 11 })
+
+    const result = await backend.requestWorkspaceSymbols({
+      requestId: 24,
+      query: 'exp',
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 24,
+      }),
+    )
+    if (result.ok) {
+      expect(result.symbols).toEqual([{ file: 'lib.dvala', name: 'exported', kind: 'variable', line: 1, column: 5 }])
     }
   })
 

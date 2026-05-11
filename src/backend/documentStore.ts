@@ -15,6 +15,7 @@ export interface BackendDocumentStore {
   update(document: BackendOpenDocument, previousVersion: BackendDocumentVersion): BackendDocumentSyncResult
   close(path: string): void
   replaceWorkspaceSnapshot(request: BackendReplaceWorkspaceSnapshotRequest): void
+  getOpenDocuments(): readonly BackendOpenDocument[]
   getOpenDocument(path: string): BackendOpenDocument | undefined
   getWorkspaceDocument(path: string): BackendWorkspaceSnapshotFile | undefined
   getWorkspaceSnapshot(): readonly BackendWorkspaceSnapshotFile[]
@@ -65,6 +66,10 @@ export function createInMemoryDocumentStore(): BackendDocumentStore {
       for (const file of request.files) {
         workspaceSnapshot.set(file.path, file)
       }
+    },
+
+    getOpenDocuments(): readonly BackendOpenDocument[] {
+      return [...openDocuments.values()]
     },
 
     getOpenDocument(path: string): BackendOpenDocument | undefined {
