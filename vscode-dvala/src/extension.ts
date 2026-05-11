@@ -10,18 +10,15 @@ import type { Handlers } from '../../src/evaluator/effectTypes'
 import { WorkspaceIndex } from '../../src/languageService'
 import type { SymbolDef } from '../../src/languageService'
 import { loadFile as loadIndexedFile, nodeResolveImport } from '../../src/languageService/nodeWorkspaceIndexer'
-import { findCallContext as sharedFindCallContext } from '../../src/shared/callContext'
 import {
   buildBuiltinCompletions,
   symbolDefToCompletion as toSharedCompletion,
 } from '../../src/shared/completionBuilder'
 import type { CompletionItem as SharedCompletionItem } from '../../src/shared/completionBuilder'
-import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from '../../src/shared/diagnosticBuilder'
-import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
-import type { Diagnostic as SharedDiagnostic, Range as SharedRange } from '../../src/shared/types'
+import type { Diagnostic as SharedDiagnostic } from '../../src/shared/types'
 import { formatSource } from '../../src/tooling'
-import type { TypecheckResult } from '../../src/typechecker/typecheck'
-import type { SourceMapPosition } from '../../src/parser/types'
+
+import { BackendDiagnosticsClient } from './backendDiagnosticsClient'
 
 // Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
 const DVALA_WORD_PATTERN = /[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*/
@@ -116,46 +113,10 @@ function buildVsBuiltinCompletions(): vscode.CompletionItem[] {
   })
 }
 
-const completionItems = buildVsBuiltinCompletions()
-
-/** Map a user-defined SymbolDef to a VS Code completion item via the shared builder. */
-function symbolDefToCompletionItem(def: SymbolDef): vscode.CompletionItem {
-  return toVsCompletion(toSharedCompletion(def))
-}
-
-/**
- * Find the function call context at a cursor position. Trims the source
- * to a few lines above the cursor for performance, then delegates to the
- * shared parser.
- */
-function findCallContext(
-  document: vscode.TextDocument,
-  position: vscode.Position,
-): { functionName: string; activeParam: number } | null {
-  const startLine = Math.max(0, position.line - 10)
-  const text = document.getText(new vscode.Range(new vscode.Position(startLine, 0), position))
-  // After trimming, the windowed text starts at line 1 col 1 — so map the
-  // cursor's relative position into the windowed coordinate space.
-  const relativeLine = position.line - startLine + 1
-  const relativeCol = position.character + 1
-  return sharedFindCallContext(text, { line: relativeLine, column: relativeCol })
-}
-
 let outputChannel: vscode.OutputChannel | undefined
 let statusBarItem: vscode.StatusBarItem | undefined
 let diagnosticCollection: vscode.DiagnosticCollection | undefined
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
-
-// Type system: cached typecheck result per document URI
-const typecheckCache = new Map<string, TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> }>()
-
-/** VS Code positions are 0-based; the shared modules use 1-based positions. */
-function vscodeRangeToShared(range: vscode.Range): SharedRange {
-  return {
-    start: { line: range.start.line + 1, column: range.start.character + 1 },
-    end: { line: range.end.line + 1, column: range.end.character + 1 },
-  }
-}
 
 /** Convert a shared (1-based) diagnostic into VS Code's 0-based shape. */
 function toVsDiagnostic(diag: SharedDiagnostic): vscode.Diagnostic {
@@ -176,26 +137,42 @@ function toVsDiagnostic(diag: SharedDiagnostic): vscode.Diagnostic {
   return vdiag
 }
 
-function getHoverTypeAtPosition(
-  cached: TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> },
-  position: vscode.Position,
-  preferredRange?: vscode.Range,
-): string | undefined {
-  const type = findTypeAtPosition(
-    cached.typeMap,
-    cached.sourceMap,
-    { line: position.line + 1, column: position.character + 1 },
-    preferredRange ? vscodeRangeToShared(preferredRange) : undefined,
-  )
-  return type ? formatHoverType(type) : undefined
+function completionDocumentation(label: string): vscode.MarkdownString | undefined {
+  const ref = allReference[label] ?? referenceByTitle[label]
+  return ref ? buildHoverMarkdown(label, ref) : undefined
 }
 
-function getHoverTypeAtDefinition(
-  cached: TypecheckResult & { sourceMap?: Map<number, SourceMapPosition> },
-  def: SymbolDef,
-): string | undefined {
-  const type = findTypeAtDefinition(cached.typeMap, cached.sourceMap, def)
-  return type ? formatHoverType(type) : undefined
+function extractImportPrefix(lineText: string, column0: number): string | null {
+  const beforeCursor = lineText.slice(0, column0)
+  const importMatch = /import\(\s*"([^"]*)$/.exec(beforeCursor)
+  return importMatch ? (importMatch[1] ?? '') : null
+}
+
+function extractCompletionPrefix(document: vscode.TextDocument, position: vscode.Position): string {
+  const range = document.getWordRangeAtPosition(position, DVALA_WORD_PATTERN)
+  if (!range) return ''
+  return document.getText(new vscode.Range(range.start, position))
+}
+
+function toVsLocation(file: string, line: number, column: number): vscode.Location {
+  return new vscode.Location(vscode.Uri.file(file), new vscode.Position(Math.max(0, line - 1), Math.max(0, column - 1)))
+}
+
+function backendSymbolKindToVs(kind: SymbolDef['kind']): vscode.SymbolKind {
+  switch (kind) {
+    case 'function':
+      return vscode.SymbolKind.Function
+    case 'macro':
+      return vscode.SymbolKind.Method
+    case 'handler':
+      return vscode.SymbolKind.Event
+    case 'import':
+      return vscode.SymbolKind.Module
+    case 'parameter':
+      return vscode.SymbolKind.Variable
+    case 'variable':
+      return vscode.SymbolKind.Variable
+  }
 }
 
 function getDiagnosticCollection(): vscode.DiagnosticCollection {
@@ -437,38 +414,31 @@ export function activate(context: vscode.ExtensionContext): void {
   })
 
   const completionProvider = vscode.languages.registerCompletionItemProvider('dvala', {
-    provideCompletionItems(document, position) {
+    async provideCompletionItems(document, position) {
       indexDocument(document)
-      const items: vscode.CompletionItem[] = [...completionItems]
-      const seen = new Set(completionItems.map(i => (typeof i.label === 'string' ? i.label : i.label.label)))
+      await ensureBackendWorkspaceSnapshot()
+      await backendDiagnostics.syncDocument({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+      })
 
-      // Add user-defined symbols visible at the cursor position (scope-aware)
-      const line1 = position.line + 1
-      const col1 = position.character + 1
-      const inScopeDefs = workspaceIndex.getSymbolsInScope(document.uri.fsPath, line1, col1)
-      for (const def of inScopeDefs) {
-        if (seen.has(def.name)) continue
-        seen.add(def.name)
-        items.push(symbolDefToCompletionItem(def))
-      }
+      const lineText = document.lineAt(position.line).text
+      const importPrefix = extractImportPrefix(lineText, position.character)
+      const prefix = importPrefix === null ? extractCompletionPrefix(document, position) : ''
+      const result = await backendDiagnostics.requestCompletion({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        line: position.line + 1,
+        column: position.character + 1,
+        prefix,
+        importPrefix,
+      })
 
-      // Add exported symbols from imported files (index them lazily if not yet cached)
-      const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
-      if (fileSymbols) {
-        for (const importedPath of fileSymbols.imports.values()) {
-          loadIndexedFile(workspaceIndex, importedPath)
-          const importedSymbols = workspaceIndex.getFileSymbols(importedPath)
-          if (importedSymbols) {
-            for (const exp of importedSymbols.exports) {
-              if (seen.has(exp.name)) continue
-              seen.add(exp.name)
-              items.push(symbolDefToCompletionItem(exp))
-            }
-          }
-        }
-      }
+      if (!result.ok) return []
 
-      return items
+      return result.items.map(item => toVsCompletion(item, completionDocumentation(item.label)))
     },
   })
 
@@ -476,42 +446,27 @@ export function activate(context: vscode.ExtensionContext): void {
   const signatureHelpProvider = vscode.languages.registerSignatureHelpProvider(
     'dvala',
     {
-      provideSignatureHelp(document, position) {
-        const callCtx = findCallContext(document, position)
-        if (!callCtx) return undefined
-
-        const { functionName, activeParam } = callCtx
-        const help = new vscode.SignatureHelp()
-        help.activeParameter = activeParam
-
-        // Check builtins first
-        const ref = allReference[functionName] ?? referenceByTitle[functionName]
-        if (ref && isFunctionReference(ref)) {
-          for (const variant of ref.variants) {
-            const paramLabels = variant.argumentNames.map(name => {
-              const argInfo = ref.args[name]
-              const typeStr = argInfo ? (Array.isArray(argInfo.type) ? argInfo.type.join(' | ') : argInfo.type) : ''
-              return typeStr ? `${name}: ${typeStr}` : name
-            })
-            const sig = new vscode.SignatureInformation(`${functionName}(${paramLabels.join(', ')})`)
-            sig.parameters = paramLabels.map(label => new vscode.ParameterInformation(label))
-            help.signatures.push(sig)
-          }
-          return help
-        }
-
-        // Check user-defined functions/macros
+      async provideSignatureHelp(document, position) {
         indexDocument(document)
-        const defs = workspaceIndex.getDefinitions(document.uri.fsPath)
-        const funcDef = defs.find(d => d.name === functionName && d.params)
-        if (funcDef?.params) {
-          const sig = new vscode.SignatureInformation(`${functionName}(${funcDef.params.join(', ')})`)
-          sig.parameters = funcDef.params.map(name => new vscode.ParameterInformation(name))
-          help.signatures.push(sig)
-          return help
-        }
+        await syncBackendAnalysisDocument(document)
 
-        return undefined
+        const result = await backendDiagnostics.requestSignatureHelp({
+          path: document.uri.fsPath,
+          source: document.getText(),
+          version: document.version,
+          line: position.line + 1,
+          column: position.character + 1,
+        })
+        if (!result.ok || result.signatures.length === 0) return undefined
+
+        const help = new vscode.SignatureHelp()
+        help.activeParameter = result.activeParameter
+        help.signatures = result.signatures.map(signature => {
+          const sig = new vscode.SignatureInformation(signature.label)
+          sig.parameters = signature.parameters.map(label => new vscode.ParameterInformation(label))
+          return sig
+        })
+        return help
       },
     },
     '(',
@@ -519,8 +474,9 @@ export function activate(context: vscode.ExtensionContext): void {
   )
 
   const hoverProvider = vscode.languages.registerHoverProvider('dvala', {
-    provideHover(document, position) {
+    async provideHover(document, position) {
       indexDocument(document)
+      await syncBackendAnalysisDocument(document)
 
       const diagnostics = getDiagnosticCollection()
         .get(document.uri)
@@ -531,28 +487,20 @@ export function activate(context: vscode.ExtensionContext): void {
       const symbol = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, position.line + 1, position.character + 1)
       const ref = word && !symbol ? (allReference[word] ?? referenceByTitle[word]) : undefined
 
-      // Look up inferred type from the type cache
-      const cached = typecheckCache.get(document.uri.toString())
-      let inferredTypeStr =
-        cached && symbol?.def && symbol.def.location.file === document.uri.fsPath
-          ? getHoverTypeAtDefinition(cached, symbol.def)
-          : undefined
-
-      if (!inferredTypeStr && cached) {
-        inferredTypeStr = getHoverTypeAtPosition(cached, position, range)
-      }
-
-      if (!inferredTypeStr && word && cached) {
-        const visibleDefs = workspaceIndex.getSymbolsInScope(
-          document.uri.fsPath,
-          position.line + 1,
-          position.character + 1,
-        )
-        const matchingDef = visibleDefs.find(def => def.name === word && def.location.file === document.uri.fsPath)
-        if (matchingDef) {
-          inferredTypeStr = getHoverTypeAtDefinition(cached, matchingDef)
-        }
-      }
+      const hoverResult = await backendDiagnostics.requestHover({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        line: position.line + 1,
+        column: position.character + 1,
+        ...(range
+          ? {
+              startColumn: range.start.character + 1,
+              endColumn: range.end.character + 1,
+            }
+          : {}),
+      })
+      const inferredTypeStr = hoverResult.ok ? hoverResult.inferredType : undefined
 
       if (!diagnostics?.length && !ref && !inferredTypeStr) return undefined
 
@@ -577,75 +525,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Go to Definition — handles both import paths and user-defined symbols
   const definitionProvider = vscode.languages.registerDefinitionProvider('dvala', {
-    provideDefinition(document, position) {
-      const lineText = document.lineAt(position.line).text
-
-      // 1. Check if cursor is inside an import("...") string
-      const importRegex = /import\(\s*"([^"]+)"\s*\)/g
-      let match
-      while ((match = importRegex.exec(lineText)) !== null) {
-        const stringStart = match.index + match[0].indexOf('"') + 1
-        const stringEnd = stringStart + match[1].length
-        if (position.character >= stringStart && position.character <= stringEnd) {
-          const importPath = match[1]
-          if (!importPath.startsWith('.')) return undefined
-          const dir = path.dirname(document.uri.fsPath)
-          const resolved = path.resolve(dir, importPath)
-          for (const candidate of [resolved, `${resolved}.dvala`]) {
-            try {
-              fs.accessSync(candidate)
-              return new vscode.Location(vscode.Uri.file(candidate), new vscode.Position(0, 0))
-            } catch {
-              /* try next */
-            }
-          }
-        }
-      }
-
-      // 2. Check if cursor is on a user-defined symbol — use the workspace index
+    async provideDefinition(document, position) {
       indexDocument(document)
-      const line1 = position.line + 1 // VS Code is 0-based, our index is 1-based
-      const col1 = position.character + 1
+      await syncBackendAnalysisDocument(document)
 
-      // First try: cursor is on a reference → navigate to its definition
-      const def = workspaceIndex.findDefinition(document.uri.fsPath, line1, col1)
-      if (def) {
-        const defPos = new vscode.Position(Math.max(0, def.location.line - 1), Math.max(0, def.location.column - 1))
-        return new vscode.Location(vscode.Uri.file(def.location.file), defPos)
-      }
+      const result = await backendDiagnostics.requestNavigation({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        kind: 'definition',
+        line: position.line + 1,
+        column: position.character + 1,
+      })
 
-      // Second try: cursor is on a definition from a destructured import
-      // (e.g. `let { average } = import("./lib/stats")`) — navigate to the symbol
-      // definition inside the imported file, not just the file itself.
-      // Uses the pre-built imports map instead of regex-parsing the line.
-      const symbolAtPos = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, line1, col1)
-      if (symbolAtPos?.def?.kind === 'import') {
-        const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
-        if (fileSymbols) {
-          for (const resolvedPath of fileSymbols.imports.values()) {
-            loadIndexedFile(workspaceIndex, resolvedPath)
-            const importedSymbols = workspaceIndex.getFileSymbols(resolvedPath)
-            const targetDef =
-              importedSymbols?.definitions.find(d => d.name === symbolAtPos.name && d.scope === 0) ??
-              importedSymbols?.exports.find(d => d.name === symbolAtPos.name)
-            if (targetDef) {
-              const targetPos = new vscode.Position(
-                Math.max(0, targetDef.location.line - 1),
-                Math.max(0, targetDef.location.column - 1),
-              )
-              return new vscode.Location(vscode.Uri.file(resolvedPath), targetPos)
-            }
-            // Symbol not found in this imported file — try next import
-          }
-          // Symbol not found in any import — navigate to the first import file
-          const firstImport = fileSymbols.imports.values().next().value
-          if (firstImport) {
-            return new vscode.Location(vscode.Uri.file(firstImport), new vscode.Position(0, 0))
-          }
-        }
-      }
-
-      return undefined
+      if (!result.ok || !result.locations?.length) return undefined
+      return result.locations.map(loc => toVsLocation(loc.file, loc.line, loc.column))
     },
   })
 
@@ -682,25 +576,40 @@ export function activate(context: vscode.ExtensionContext): void {
   // ---------------------------------------------------------------------------
 
   const workspaceIndex = new WorkspaceIndex()
+  const backendDiagnostics = new BackendDiagnosticsClient()
   const lsDiagnostics = vscode.languages.createDiagnosticCollection('dvala-ls')
   const typeDiagnostics = vscode.languages.createDiagnosticCollection('dvala-types')
-  // Shared dvala instance for type checking (not evaluation — no effect handlers needed)
-  // Includes a file resolver so import("./lib/math") can be typechecked
-  const typecheckDvala = createDvala({
-    modules: allBuiltinModules,
-    debug: true,
-    fileResolver: (importPath, fromDir) => {
-      const resolved = path.resolve(fromDir, importPath)
-      for (const candidate of [resolved, `${resolved}.dvala`]) {
-        try {
-          return fs.readFileSync(candidate, 'utf-8')
-        } catch {
-          /* try next */
-        }
+  let backendWorkspaceSnapshotStale = true
+
+  async function refreshBackendWorkspaceSnapshot(): Promise<void> {
+    const uris = await vscode.workspace.findFiles('**/*.dvala', '**/node_modules/**')
+    const files = uris.map(uri => {
+      const openDocument = vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === uri.fsPath)
+      const code = openDocument ? openDocument.getText() : fs.readFileSync(uri.fsPath, 'utf-8')
+      return {
+        path: uri.fsPath,
+        code,
       }
-      throw new Error(`File not found: ${importPath}`)
-    },
-  })
+    })
+
+    await backendDiagnostics.replaceWorkspaceSnapshot(files)
+    backendWorkspaceSnapshotStale = false
+  }
+
+  async function ensureBackendWorkspaceSnapshot(): Promise<void> {
+    if (!backendWorkspaceSnapshotStale) return
+    await refreshBackendWorkspaceSnapshot()
+  }
+
+  async function syncBackendAnalysisDocument(document: vscode.TextDocument): Promise<void> {
+    await ensureBackendWorkspaceSnapshot()
+    await backendDiagnostics.syncDocument({
+      path: document.uri.fsPath,
+      source: document.getText(),
+      version: document.version,
+    })
+  }
+
   /** Update the workspace index for a document and refresh diagnostics. */
   function indexDocument(document: vscode.TextDocument): void {
     if (document.languageId !== 'dvala') return
@@ -710,43 +619,47 @@ export function activate(context: vscode.ExtensionContext): void {
     // Runtime diagnostics are snapshot-specific and quickly become misleading
     // once the source has changed.
     getDiagnosticCollection().delete(document.uri)
-    refreshDiagnostics(document)
+    void refreshBackendDiagnostics(document)
   }
 
-  /** Push diagnostics (parse errors + unresolved symbols) to VS Code. */
-  function refreshDiagnostics(document: vscode.TextDocument): void {
-    const { parseErrors, unresolvedRefs } = workspaceIndex.getDiagnostics(document.uri.fsPath)
-    const sharedDiagnostics: SharedDiagnostic[] = [
-      ...buildParseDiagnostics(parseErrors),
-      ...buildSymbolDiagnostics(unresolvedRefs),
-    ]
-    lsDiagnostics.set(document.uri, sharedDiagnostics.map(toVsDiagnostic))
+  /** Push backend-owned language and type diagnostics to VS Code. */
+  async function refreshBackendDiagnostics(document: vscode.TextDocument): Promise<void> {
+    await ensureBackendWorkspaceSnapshot()
 
-    // Run type checker (non-blocking — parse errors don't prevent type checking)
-    if (parseErrors.length === 0) {
-      try {
-        const result = typecheckDvala.typecheck(document.getText(), {
-          fileResolverBaseDir: path.dirname(document.uri.fsPath),
-        })
-        // Cache the result for hover (with source map for position lookups)
-        typecheckCache.set(document.uri.toString(), result)
-        typeDiagnostics.set(document.uri, buildTypeDiagnostics(result).map(toVsDiagnostic))
-      } catch {
-        // Type checking failed — clear diagnostics, don't crash the extension
-        typeDiagnostics.set(document.uri, [])
-        typecheckCache.delete(document.uri.toString())
-      }
-    } else {
-      // Parse errors — clear type diagnostics
-      typeDiagnostics.set(document.uri, [])
-      typecheckCache.delete(document.uri.toString())
+    const mirroredDocument = {
+      path: document.uri.fsPath,
+      source: document.getText(),
+      version: document.version,
     }
+
+    await backendDiagnostics.syncDocument(mirroredDocument)
+    const result = await backendDiagnostics.requestDiagnostics(mirroredDocument.path, mirroredDocument.version)
+
+    const currentDocument = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === document.uri.toString())
+    if (!currentDocument || currentDocument.version !== mirroredDocument.version) return
+
+    if (!result.ok) {
+      lsDiagnostics.set(document.uri, [])
+      typeDiagnostics.set(document.uri, [])
+      return
+    }
+
+    const diagnostics = result.diagnostics.map(toVsDiagnostic)
+    lsDiagnostics.set(
+      document.uri,
+      diagnostics.filter(diag => diag.source === 'dvala'),
+    )
+    typeDiagnostics.set(
+      document.uri,
+      diagnostics.filter(diag => diag.source === 'dvala-types'),
+    )
   }
 
   // Index all open dvala documents on activation
   for (const doc of vscode.workspace.textDocuments) {
     indexDocument(doc)
   }
+  void ensureBackendWorkspaceSnapshot()
 
   // Lazy full-workspace scan — ensures every .dvala file on disk is in the
   // index, not just the ones the user has opened. Required for cross-file
@@ -770,12 +683,14 @@ export function activate(context: vscode.ExtensionContext): void {
   // Re-index on document change (debounced)
   const onDidChange = vscode.workspace.onDidChangeTextDocument(event => {
     if (event.document.languageId !== 'dvala') return
+    backendWorkspaceSnapshotStale = true
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => indexDocument(event.document), 300)
   })
 
   // Index newly opened documents
   const onDidOpen = vscode.workspace.onDidOpenTextDocument(doc => {
+    backendWorkspaceSnapshotStale = true
     indexDocument(doc)
   })
 
@@ -783,7 +698,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const onDidClose = vscode.workspace.onDidCloseTextDocument(doc => {
     lsDiagnostics.delete(doc.uri)
     typeDiagnostics.delete(doc.uri)
-    typecheckCache.delete(doc.uri.toString())
+    backendWorkspaceSnapshotStale = true
+    void backendDiagnostics.closeDocument(doc.uri.fsPath)
   })
 
   // Keep the index live for files that are never opened in an editor. The
@@ -792,8 +708,12 @@ export function activate(context: vscode.ExtensionContext): void {
   // file on disk would leave stale `reverseImports` entries pointing at an
   // outdated version.
   const dvalaWatcher = vscode.workspace.createFileSystemWatcher('**/*.dvala')
-  const onFsCreate = dvalaWatcher.onDidCreate(uri => loadIndexedFile(workspaceIndex, uri.fsPath))
+  const onFsCreate = dvalaWatcher.onDidCreate(uri => {
+    backendWorkspaceSnapshotStale = true
+    loadIndexedFile(workspaceIndex, uri.fsPath)
+  })
   const onFsChange = dvalaWatcher.onDidChange(uri => {
+    backendWorkspaceSnapshotStale = true
     // Open documents carry their authoritative content through
     // onDidChangeTextDocument — skip the disk read so we don't clobber a
     // dirty buffer with the saved-on-disk version.
@@ -801,27 +721,28 @@ export function activate(context: vscode.ExtensionContext): void {
     if (openDoc) return
     loadIndexedFile(workspaceIndex, uri.fsPath)
   })
-  const onFsDelete = dvalaWatcher.onDidDelete(uri => workspaceIndex.invalidateFile(uri.fsPath))
+  const onFsDelete = dvalaWatcher.onDidDelete(uri => {
+    backendWorkspaceSnapshotStale = true
+    workspaceIndex.invalidateFile(uri.fsPath)
+  })
 
   // Reference provider — Find All References (Shift+F12)
   const referenceProvider = vscode.languages.registerReferenceProvider('dvala', {
     async provideReferences(document, position) {
       indexDocument(document)
-      // Populate the index from disk so references reach files the user
-      // hasn't opened yet. First invocation pays the scan; subsequent ones
-      // are no-ops.
-      await ensureWorkspaceIndexed()
-      const target = workspaceIndex.resolveCanonicalFile(document.uri.fsPath, position.line + 1, position.character + 1)
-      if (!target) return []
+      await syncBackendAnalysisDocument(document)
 
-      const occurrences = workspaceIndex.findAllOccurrences(target.file, target.name)
-      return occurrences.map(
-        occ =>
-          new vscode.Location(
-            vscode.Uri.file(occ.file),
-            new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1)),
-          ),
-      )
+      const result = await backendDiagnostics.requestNavigation({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        kind: 'references',
+        line: position.line + 1,
+        column: position.character + 1,
+      })
+
+      if (!result.ok || !result.locations) return []
+      return result.locations.map(loc => toVsLocation(loc.file, loc.line, loc.column))
     },
   })
 
@@ -846,31 +767,32 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       indexDocument(document)
-      // Populate the index from disk so the rename reaches files the user
-      // hasn't opened yet. First invocation pays the scan; subsequent ones
-      // are no-ops.
-      await ensureWorkspaceIndexed()
-      const target = workspaceIndex.resolveCanonicalFile(document.uri.fsPath, position.line + 1, position.character + 1)
-      if (!target) return undefined
+      await syncBackendAnalysisDocument(document)
 
-      // The cursor is on an import-kind binding whose source module isn't in
-      // the index — rename will only cover the current file instead of the
-      // full workspace. Surface this so the user doesn't silently ship a
-      // half-renamed symbol.
-      if (target.unresolvedImport) {
-        void vscode.window.showWarningMessage(
-          `Rename scoped to this file only: import "${target.unresolvedImport}" isn't indexed. Open the target file or check the path, then retry for a cross-file rename.`,
-        )
-      }
+      const result = await backendDiagnostics.requestNavigation({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        kind: 'rename',
+        line: position.line + 1,
+        column: position.character + 1,
+        newName,
+      })
 
-      const occurrences = workspaceIndex.findAllOccurrences(target.file, target.name)
+      if (!result.ok || !result.edits) return undefined
       const edit = new vscode.WorkspaceEdit()
 
-      for (const occ of occurrences) {
-        const uri = vscode.Uri.file(occ.file)
-        const start = new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1))
-        const end = new vscode.Position(start.line, start.character + occ.nameLength)
-        edit.replace(uri, new vscode.Range(start, end), newName)
+      for (const backendEdit of result.edits) {
+        const uri = vscode.Uri.file(backendEdit.file)
+        const start = new vscode.Position(
+          Math.max(0, backendEdit.range.startLine - 1),
+          Math.max(0, backendEdit.range.startColumn - 1),
+        )
+        const end = new vscode.Position(
+          Math.max(0, backendEdit.range.endLine - 1),
+          Math.max(0, backendEdit.range.endColumn - 1),
+        )
+        edit.replace(uri, new vscode.Range(start, end), backendEdit.text)
       }
 
       return edit
@@ -879,45 +801,43 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Document Symbol provider — powers the outline view (Cmd+Shift+O) and breadcrumbs
   const documentSymbolProvider = vscode.languages.registerDocumentSymbolProvider('dvala', {
-    provideDocumentSymbols(document) {
+    async provideDocumentSymbols(document) {
       indexDocument(document)
-      const symbols = workspaceIndex.getDocumentSymbols(document.uri.fsPath)
-      return symbols.map(def => {
-        const line = Math.max(0, def.location.line - 1)
-        const col = Math.max(0, def.location.column - 1)
+      await syncBackendAnalysisDocument(document)
+
+      const result = await backendDiagnostics.requestDocumentSymbols({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+      })
+      if (!result.ok) return []
+
+      return result.symbols.map(def => {
+        const line = Math.max(0, def.line - 1)
+        const col = Math.max(0, def.column - 1)
         const pos = new vscode.Position(line, col)
         const range = new vscode.Range(pos, pos)
-        return new vscode.DocumentSymbol(def.name, def.kind, symbolKind(def), range, range)
+        return new vscode.DocumentSymbol(def.name, def.kind, backendSymbolKindToVs(def.kind), range, range)
       })
     },
   })
 
   // Workspace Symbol provider — Cmd+T to search all symbols across files
   const workspaceSymbolProvider = vscode.languages.registerWorkspaceSymbolProvider({
-    provideWorkspaceSymbols(query) {
-      const results: vscode.SymbolInformation[] = []
-      const lowerQuery = query.toLowerCase()
+    async provideWorkspaceSymbols(query) {
+      await ensureBackendWorkspaceSnapshot()
+      const result = await backendDiagnostics.requestWorkspaceSymbols({ query })
+      if (!result.ok) return []
 
-      for (const doc of vscode.workspace.textDocuments) {
-        if (doc.languageId !== 'dvala') continue
-        const defs = workspaceIndex.getDocumentSymbols(doc.uri.fsPath)
-        for (const def of defs) {
-          if (lowerQuery && !def.name.toLowerCase().includes(lowerQuery)) continue
-          const line = Math.max(0, def.location.line - 1)
-          const col = Math.max(0, def.location.column - 1)
-          const pos = new vscode.Position(line, col)
-          results.push(
-            new vscode.SymbolInformation(
-              def.name,
-              symbolKind(def),
-              '',
-              new vscode.Location(vscode.Uri.file(def.location.file), pos),
-            ),
-          )
-        }
-      }
-
-      return results
+      return result.symbols.map(symbol => {
+        const pos = new vscode.Position(Math.max(0, symbol.line - 1), Math.max(0, symbol.column - 1))
+        return new vscode.SymbolInformation(
+          symbol.name,
+          backendSymbolKindToVs(symbol.kind),
+          '',
+          new vscode.Location(vscode.Uri.file(symbol.file), pos),
+        )
+      })
     },
   })
 
@@ -956,24 +876,6 @@ export function activate(context: vscode.ExtensionContext): void {
     onFsDelete,
     formattingProvider,
   )
-}
-
-/** Map SymbolDef.kind to VS Code SymbolKind for the outline view. */
-function symbolKind(def: SymbolDef): vscode.SymbolKind {
-  switch (def.kind) {
-    case 'function':
-      return vscode.SymbolKind.Function
-    case 'macro':
-      return vscode.SymbolKind.Method
-    case 'handler':
-      return vscode.SymbolKind.Event
-    case 'import':
-      return vscode.SymbolKind.Module
-    case 'parameter':
-      return vscode.SymbolKind.Variable
-    case 'variable':
-      return vscode.SymbolKind.Variable
-  }
 }
 
 export function deactivate(): void {

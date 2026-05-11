@@ -3,14 +3,16 @@ import { createDvala } from '../createDvala'
 import { WorkspaceIndex, type ResolveImport } from '../languageService/WorkspaceIndex'
 import type { FileSymbols, SymbolDef } from '../languageService/types'
 import { parseToAst } from '../parser'
+import { allReference, isFunctionReference } from '../../reference/index'
 import { retrigger } from '../retrigger'
 import { resume } from '../resume'
 import { buildBuiltinCompletions, symbolDefToCompletion } from '../shared/completionBuilder'
-import { buildParseDiagnostics, buildTypeDiagnostics } from '../shared/diagnosticBuilder'
+import { findCallContext as findSharedCallContext } from '../shared/callContext'
+import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from '../shared/diagnosticBuilder'
 import { findTypeAtPosition, formatHoverType } from '../shared/typeDisplay'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { formatSource } from '../tooling'
-import { tokenizeSource, parseTokenStreamRecoverable } from '../tooling'
+import { tokenizeSource } from '../tooling'
 import { typecheck } from '../typechecker/typecheck'
 import type { RuntimeRunResult } from '@mojir/dvala-runtime'
 
@@ -22,10 +24,16 @@ import type {
   BackendCompletionResult,
   BackendDiagnosticsRequest,
   BackendDiagnosticsResult,
+  BackendDocumentSymbol,
+  BackendDocumentSymbolsRequest,
+  BackendDocumentSymbolsResult,
   BackendFormattingRequest,
   BackendFormattingResult,
   BackendHoverRequest,
   BackendHoverResult,
+  BackendSignatureHelpRequest,
+  BackendSignatureHelpSignature,
+  BackendSignatureHelpResult,
   BackendNavigationRequest,
   BackendNavigationResult,
   BackendRequestFailure,
@@ -34,8 +42,12 @@ import type {
   BackendSessionResumeResult,
   BackendSessionStartRequest,
   BackendSessionStartResult,
+  BackendSymbolKind,
   BackendTextDocument,
+  BackendWorkspaceSymbol,
   BackendWorkspaceSnapshotFile,
+  BackendWorkspaceSymbolsRequest,
+  BackendWorkspaceSymbolsResult,
 } from './requests'
 
 export interface CreateBackendOptions {
@@ -266,19 +278,27 @@ function getImportCompletionItems(
   return items
 }
 
-function computeTypecheckResult(source: string, path: string) {
+function computeTypecheckResult(source: string, path: string, documents?: BackendDocumentStore) {
   const tokens = tokenizeSource(source, true, path)
   try {
     const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
     const ast = parseToAst(minified)
-    return typecheck(ast, { modules: allBuiltinModules })
+    return typecheck(ast, {
+      modules: allBuiltinModules,
+      ...(documents
+        ? {
+            fileResolver: createRuntimeFileResolver(documents),
+            fileResolverBaseDir: runtimeBaseDir(path),
+          }
+        : {}),
+    })
   } catch {
     return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
   }
 }
 
-function computeHoverResult(request: BackendHoverRequest): string | undefined {
-  const typecheckResult = computeTypecheckResult(request.source, request.path)
+function computeHoverResult(request: BackendHoverRequest, documents: BackendDocumentStore): string | undefined {
+  const typecheckResult = computeTypecheckResult(request.source, request.path, documents)
   const wordRange =
     request.startColumn !== undefined && request.endColumn !== undefined
       ? {
@@ -335,6 +355,48 @@ function indexWorkspaceSnapshot(
     const importedSource = snapshotFiles.get(importedPath)
     if (importedSource === undefined) continue
     indexWorkspaceSnapshot(importedPath, importedSource, snapshotFiles, index, seen)
+  }
+}
+
+function resolveWorkspaceImportPathForDocuments(
+  documents: BackendDocumentStore,
+  rawPath: string,
+  fromFile: string,
+): string | null {
+  if (!(rawPath.startsWith('.') || rawPath.startsWith('/'))) return null
+
+  let resolved: string
+  try {
+    resolved = resolvePlaygroundPath(isInPlaygroundFolder(fromFile) ? '' : folderFromPath(fromFile), rawPath)
+  } catch {
+    return null
+  }
+
+  if (isInPlaygroundFolder(resolved)) return null
+  if (documents.getEffectiveSource(resolved) !== undefined) return resolved
+  if (documents.getEffectiveSource(`${resolved}.dvala`) !== undefined) return `${resolved}.dvala`
+  return null
+}
+
+function indexBackendDocuments(
+  path: string,
+  documents: BackendDocumentStore,
+  index: WorkspaceIndex,
+  seen = new Set<string>(),
+): void {
+  if (seen.has(path)) return
+  seen.add(path)
+
+  const source = documents.getEffectiveSource(path)
+  if (source === undefined) return
+
+  const resolveImport: ResolveImport = (rawPath, fromFile) =>
+    resolveWorkspaceImportPathForDocuments(documents, rawPath, fromFile)
+  const fileSymbols = index.updateFile(path, source, resolveImport)
+
+  for (const importedPath of fileSymbols.imports.values()) {
+    if (seen.has(importedPath)) continue
+    indexBackendDocuments(importedPath, documents, index, seen)
   }
 }
 
@@ -457,6 +519,66 @@ function computeNavigationResult(request: BackendNavigationRequest) {
   }
 }
 
+function indexAllBackendDocuments(documents: BackendDocumentStore, index: WorkspaceIndex): void {
+  const seen = new Set<string>()
+
+  for (const file of documents.getWorkspaceSnapshot()) {
+    indexBackendDocuments(file.path, documents, index, seen)
+  }
+
+  for (const document of documents.getOpenDocuments()) {
+    indexBackendDocuments(document.path, documents, index, seen)
+  }
+}
+
+function toBackendDocumentSymbol(def: SymbolDef): BackendDocumentSymbol {
+  return {
+    name: def.name,
+    kind: def.kind as BackendSymbolKind,
+    line: def.location.line,
+    column: def.location.column,
+  }
+}
+
+function computeSignatureHelpResult(request: BackendSignatureHelpRequest, documents: BackendDocumentStore) {
+  const callCtx = findSharedCallContext(request.source, { line: request.line, column: request.column })
+  if (!callCtx) return { activeParameter: 0, signatures: [] as const }
+
+  const ref = allReference[callCtx.functionName]
+  if (ref && isFunctionReference(ref)) {
+    return {
+      activeParameter: callCtx.activeParam,
+      signatures: ref.variants.map<BackendSignatureHelpSignature>(variant => {
+        const parameters = variant.argumentNames.map(name => {
+          const argInfo = ref.args[name]
+          const typeStr = argInfo ? (Array.isArray(argInfo.type) ? argInfo.type.join(' | ') : argInfo.type) : ''
+          return typeStr ? `${name}: ${typeStr}` : name
+        })
+        return {
+          label: `${callCtx.functionName}(${parameters.join(', ')})`,
+          parameters,
+        }
+      }),
+    }
+  }
+
+  const index = new WorkspaceIndex()
+  indexBackendDocuments(request.path, documents, index)
+  const defs = index.getDefinitions(request.path)
+  const funcDef = defs.find(def => def.name === callCtx.functionName && def.params)
+  if (!funcDef?.params) return { activeParameter: callCtx.activeParam, signatures: [] as const }
+
+  return {
+    activeParameter: callCtx.activeParam,
+    signatures: [
+      {
+        label: `${callCtx.functionName}(${funcDef.params.join(', ')})`,
+        parameters: funcDef.params,
+      },
+    ] as const,
+  }
+}
+
 function runtimeBaseDir(path?: string): string {
   if (!path || isInPlaygroundFolder(path)) return ''
   return folderFromPath(path)
@@ -552,9 +674,11 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
       }
 
       try {
-        const tokenStream = tokenizeSource(openDocument.source, true, openDocument.path)
-        const parseResult = parseTokenStreamRecoverable(tokenStream)
-        const parseDiagnostics = buildParseDiagnostics(parseResult.errors)
+        const index = new WorkspaceIndex()
+        indexBackendDocuments(openDocument.path, documents, index)
+        const { parseErrors, unresolvedRefs } = index.getDiagnostics(openDocument.path)
+        const parseDiagnostics = buildParseDiagnostics(parseErrors)
+        const symbolDiagnostics = buildSymbolDiagnostics(unresolvedRefs)
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
           return requestFailure(
@@ -565,7 +689,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const typecheckResult = computeTypecheckResult(openDocument.source, openDocument.path)
+        const typecheckResult = computeTypecheckResult(openDocument.source, openDocument.path, documents)
         const typeDiagnostics = buildTypeDiagnostics(typecheckResult)
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
@@ -583,7 +707,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           requestId: request.requestId,
           path: request.path,
           version: request.version,
-          diagnostics: [...parseDiagnostics, ...typeDiagnostics],
+          diagnostics: [...parseDiagnostics, ...symbolDiagnostics, ...typeDiagnostics],
         }
       } catch (error) {
         clearCancelledRequest(cancelledRequests, request.requestId)
@@ -658,7 +782,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const inferredType = computeHoverResult(request)
+        const inferredType = computeHoverResult(request, documents)
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
           return requestFailure(
@@ -692,6 +816,114 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
       }
     },
 
+    async requestSignatureHelp(request: BackendSignatureHelpRequest): Promise<BackendSignatureHelpResult> {
+      const openDocument = documents.getOpenDocument(request.path)
+      if (!openDocument || openDocument.version !== request.version) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'resync-required',
+            message: `Backend document mirror missing or stale for ${request.path}`,
+            path: request.path,
+          },
+          request.path,
+          request.version,
+        )
+      }
+
+      try {
+        const result = computeSignatureHelpResult(request, documents)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          path: request.path,
+          version: request.version,
+          activeParameter: result.activeParameter,
+          signatures: result.signatures,
+        }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+          request.version,
+        )
+      }
+    },
+
+    async requestDocumentSymbols(request: BackendDocumentSymbolsRequest): Promise<BackendDocumentSymbolsResult> {
+      const openDocument = documents.getOpenDocument(request.path)
+      if (!openDocument || openDocument.version !== request.version) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'resync-required',
+            message: `Backend document mirror missing or stale for ${request.path}`,
+            path: request.path,
+          },
+          request.path,
+          request.version,
+        )
+      }
+
+      try {
+        const index = new WorkspaceIndex()
+        indexBackendDocuments(request.path, documents, index)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          path: request.path,
+          version: request.version,
+          symbols: index.getDocumentSymbols(request.path).map(toBackendDocumentSymbol),
+        }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+          request.version,
+        )
+      }
+    },
+
+    async requestWorkspaceSymbols(request: BackendWorkspaceSymbolsRequest): Promise<BackendWorkspaceSymbolsResult> {
+      try {
+        const workspaceIndex = new WorkspaceIndex()
+        indexAllBackendDocuments(documents, workspaceIndex)
+        const lowerQuery = request.query.toLowerCase()
+        const symbols: BackendWorkspaceSymbol[] = documents
+          .getOpenDocuments()
+          .map(doc => doc.path)
+          .concat(documents.getWorkspaceSnapshot().map(file => file.path))
+          .filter((path, pathIndex, paths) => paths.indexOf(path) === pathIndex)
+          .flatMap(path => workspaceIndex.getDocumentSymbols(path))
+          .filter(def => (lowerQuery ? def.name.toLowerCase().includes(lowerQuery) : true))
+          .map(def => ({
+            file: def.location.file,
+            ...toBackendDocumentSymbol(def),
+          }))
+
+        return {
+          ok: true,
+          requestId: request.requestId,
+          symbols,
+        }
+      } catch (error) {
+        return requestFailure(request.requestId, {
+          kind: 'analysis-failed',
+          message: error instanceof Error ? error.message : `${error}`,
+        })
+      }
+    },
+
     async requestCompletion(request: BackendCompletionRequest): Promise<BackendCompletionResult> {
       try {
         if (isCancelled(cancelledRequests, request.requestId)) {
@@ -704,7 +936,10 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const items = computeCompletionResult(request)
+        const items = computeCompletionResult({
+          ...request,
+          workspaceFiles: request.workspaceFiles ?? documents.getWorkspaceSnapshot(),
+        })
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
           return requestFailure(
@@ -750,7 +985,10 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const result = computeNavigationResult(request)
+        const result = computeNavigationResult({
+          ...request,
+          workspaceFiles: request.workspaceFiles ?? documents.getWorkspaceSnapshot(),
+        })
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
           return requestFailure(

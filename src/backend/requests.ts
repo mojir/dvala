@@ -117,6 +117,74 @@ export type BackendHoverResult =
     }
   | BackendRequestFailure
 
+export interface BackendSignatureHelpRequest {
+  requestId: BackendRequestId
+  path: string
+  source: string
+  version: BackendDocumentVersion
+  line: number
+  column: number
+}
+
+export interface BackendSignatureHelpSignature {
+  label: string
+  parameters: readonly string[]
+}
+
+export type BackendSignatureHelpResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      path: string
+      version: BackendDocumentVersion
+      activeParameter: number
+      signatures: readonly BackendSignatureHelpSignature[]
+    }
+  | BackendRequestFailure
+
+export type BackendSymbolKind = 'variable' | 'function' | 'macro' | 'handler' | 'parameter' | 'import'
+
+export interface BackendDocumentSymbol {
+  name: string
+  kind: BackendSymbolKind
+  line: number
+  column: number
+}
+
+export interface BackendWorkspaceSymbol extends BackendDocumentSymbol {
+  file: string
+}
+
+export interface BackendDocumentSymbolsRequest {
+  requestId: BackendRequestId
+  path: string
+  source: string
+  version: BackendDocumentVersion
+}
+
+export type BackendDocumentSymbolsResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      path: string
+      version: BackendDocumentVersion
+      symbols: readonly BackendDocumentSymbol[]
+    }
+  | BackendRequestFailure
+
+export interface BackendWorkspaceSymbolsRequest {
+  requestId: BackendRequestId
+  query: string
+}
+
+export type BackendWorkspaceSymbolsResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      symbols: readonly BackendWorkspaceSymbol[]
+    }
+  | BackendRequestFailure
+
 export interface BackendCompletionRequest {
   requestId: BackendRequestId
   path: string

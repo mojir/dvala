@@ -4,6 +4,8 @@ import type {
   BackendCompletionResult,
   BackendDiagnosticsRequest,
   BackendDiagnosticsResult,
+  BackendDocumentSymbolsRequest,
+  BackendDocumentSymbolsResult,
   BackendDocumentSyncResult,
   BackendFormattingRequest,
   BackendFormattingResult,
@@ -12,12 +14,16 @@ import type {
   BackendNavigationRequest,
   BackendNavigationResult,
   BackendReplaceWorkspaceSnapshotRequest,
+  BackendSignatureHelpRequest,
+  BackendSignatureHelpResult,
   BackendSessionInspectionResult,
   BackendSessionResumeRequest,
   BackendSessionResumeResult,
   BackendSessionStartRequest,
   BackendSessionStartResult,
   BackendTextDocument,
+  BackendWorkspaceSymbolsRequest,
+  BackendWorkspaceSymbolsResult,
 } from './requests'
 
 export interface DvalaBackend {
@@ -29,6 +35,9 @@ export interface DvalaBackend {
   requestDiagnostics(request: BackendDiagnosticsRequest): Promise<BackendDiagnosticsResult>
   requestFormatting(request: BackendFormattingRequest): Promise<BackendFormattingResult>
   requestHover(request: BackendHoverRequest): Promise<BackendHoverResult>
+  requestSignatureHelp(request: BackendSignatureHelpRequest): Promise<BackendSignatureHelpResult>
+  requestDocumentSymbols(request: BackendDocumentSymbolsRequest): Promise<BackendDocumentSymbolsResult>
+  requestWorkspaceSymbols(request: BackendWorkspaceSymbolsRequest): Promise<BackendWorkspaceSymbolsResult>
   requestCompletion(request: BackendCompletionRequest): Promise<BackendCompletionResult>
   requestNavigation(request: BackendNavigationRequest): Promise<BackendNavigationResult>
 
