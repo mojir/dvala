@@ -1,5 +1,9 @@
 import { allBuiltinModules } from '../allModules'
 import { createDvala } from '../createDvala'
+import { Debugger } from '../debugger/Debugger'
+import type { ContextStack } from '../evaluator/ContextStack'
+import type { ContinuationStack } from '../evaluator/frames'
+import { deserializeFromObject, extractCheckpointSnapshots } from '../evaluator/suspension'
 import { WorkspaceIndex, type ResolveImport } from '../languageService/WorkspaceIndex'
 import type { FileSymbols, SymbolDef } from '../languageService/types'
 import { parseToAst } from '../parser'
@@ -37,6 +41,10 @@ import type {
   BackendNavigationRequest,
   BackendNavigationResult,
   BackendRequestFailure,
+  BackendSnapshotBindingsInspectionRequest,
+  BackendSnapshotBindingsInspectionResult,
+  BackendSnapshotInspectionRequest,
+  BackendSnapshotInspectionResult,
   BackendSessionInspectionResult,
   BackendSessionResumeRequest,
   BackendSessionResumeResult,
@@ -98,6 +106,42 @@ function isInPlaygroundFolder(path: string): boolean {
 function folderFromPath(path: string): string {
   const index = path.lastIndexOf('/')
   return index === -1 ? '' : path.slice(0, index)
+}
+
+function hasEnv(value: unknown): value is { env: ContextStack } {
+  return typeof value === 'object' && value !== null && 'env' in value && value.env !== undefined
+}
+
+function hasOuterEnv(value: unknown): value is { outerEnv: ContextStack } {
+  return typeof value === 'object' && value !== null && 'outerEnv' in value && value.outerEnv !== undefined
+}
+
+function getEnvFromContinuation(k: ContinuationStack): ContextStack | null {
+  let node: unknown = k
+  while (typeof node === 'object' && node !== null && 'head' in node && 'tail' in node) {
+    const frame = node.head
+    if (hasEnv(frame)) return frame.env
+    if (hasOuterEnv(frame)) return frame.outerEnv
+    node = node.tail
+  }
+  return null
+}
+
+function extractSnapshotBindings(
+  snapshot: BackendSnapshotBindingsInspectionRequest['snapshot'],
+): Record<string, unknown> {
+  const deserialized = deserializeFromObject(snapshot.continuation)
+  const env =
+    getEnvFromContinuation(deserialized.k) ?? (hasEnv(deserialized.initialStep) ? deserialized.initialStep.env : null)
+
+  if (!env) return {}
+
+  return Debugger.extractBindings({
+    env,
+    k: deserialized.k,
+    resume: () => {},
+    getSnapshots: () => deserialized.snapshots,
+  })
 }
 
 function stripDvalaSuffix(name: string): string {
@@ -1131,6 +1175,78 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           requestId: request.requestId,
           sessionId,
           runResult,
+        }
+      } catch (error) {
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return requestFailure(request.requestId, {
+          kind: 'runtime-failed',
+          message: error instanceof Error ? error.message : `${error}`,
+        })
+      }
+    },
+
+    async inspectSnapshot(request: BackendSnapshotInspectionRequest): Promise<BackendSnapshotInspectionResult> {
+      try {
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(request.requestId, {
+            kind: 'cancelled',
+            message: 'Backend snapshot inspection request cancelled',
+          })
+        }
+
+        const checkpointSnapshots = extractCheckpointSnapshots(request.snapshot.continuation)
+
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(request.requestId, {
+            kind: 'cancelled',
+            message: 'Backend snapshot inspection request cancelled',
+          })
+        }
+
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          checkpointSnapshots,
+        }
+      } catch (error) {
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return requestFailure(request.requestId, {
+          kind: 'runtime-failed',
+          message: error instanceof Error ? error.message : `${error}`,
+        })
+      }
+    },
+
+    async inspectSnapshotBindings(
+      request: BackendSnapshotBindingsInspectionRequest,
+    ): Promise<BackendSnapshotBindingsInspectionResult> {
+      try {
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(request.requestId, {
+            kind: 'cancelled',
+            message: 'Backend snapshot bindings inspection request cancelled',
+          })
+        }
+
+        const bindings = extractSnapshotBindings(request.snapshot)
+
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(request.requestId, {
+            kind: 'cancelled',
+            message: 'Backend snapshot bindings inspection request cancelled',
+          })
+        }
+
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          bindings,
         }
       } catch (error) {
         clearCancelledRequest(cancelledRequests, request.requestId)

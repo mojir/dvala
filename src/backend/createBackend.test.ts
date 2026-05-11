@@ -668,6 +668,54 @@ describe('createBackend', () => {
     )
   })
 
+  it('inspects checkpoint snapshots through the backend', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 29,
+      path: 'main.dvala',
+      source: 'perform(@dvala.checkpoint, "before"); let x = perform(@my.ask); x + 1',
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 29,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok || started.runResult.type !== 'suspended') return
+
+    const inspection = await backend.inspectSnapshot({
+      requestId: 30,
+      snapshot: started.runResult.snapshot,
+    })
+
+    expect(inspection).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 30,
+      }),
+    )
+    if (inspection.ok) {
+      expect(inspection.checkpointSnapshots).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            message: 'before',
+          }),
+        ]),
+      )
+    }
+  })
+
   it('uses backend-owned workspace overlays when starting a session', async () => {
     const backend = createBackend()
 
@@ -696,6 +744,51 @@ describe('createBackend', () => {
           value: 42,
         }),
       )
+    }
+  })
+
+  it('inspects snapshot bindings through the backend', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 31,
+      path: 'main.dvala',
+      source: 'let answer = 42; let local = "ok"; let x = perform(@my.ask); x + answer',
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 31,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok || started.runResult.type !== 'suspended') return
+
+    const inspection = await backend.inspectSnapshotBindings({
+      requestId: 32,
+      snapshot: started.runResult.snapshot,
+    })
+
+    expect(inspection).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 32,
+      }),
+    )
+    if (inspection.ok) {
+      expect(inspection.bindings).toEqual({
+        answer: 42,
+        local: 'ok',
+      })
     }
   })
 

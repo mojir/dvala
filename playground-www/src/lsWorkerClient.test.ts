@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as LsWorkerClientModule from './lsWorkerClient'
+import type * as FileStorageModule from './fileStorage'
 
 type WorkerMessage = Record<string, unknown>
 
@@ -76,9 +77,13 @@ vi.mock('./lsWorker?worker', () => ({
   default: FakeWorker,
 }))
 
-vi.mock('./fileStorage', () => ({
-  getWorkspaceFiles: () => workspaceFiles,
-}))
+vi.mock('./fileStorage', async importOriginal => {
+  const actual = await importOriginal<typeof FileStorageModule>()
+  return {
+    ...actual,
+    getWorkspaceFiles: () => workspaceFiles,
+  }
+})
 
 type StubModel = {
   getValue: () => string
