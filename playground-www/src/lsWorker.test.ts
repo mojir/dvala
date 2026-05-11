@@ -145,6 +145,30 @@ describe('lsWorker document sync', () => {
     )
   })
 
+  it('computes hover through the backend and returns a hover result', async () => {
+    const worker = await loadWorker()
+
+    await dispatch(worker, {
+      type: 'requestHover',
+      requestId: 6,
+      path: 'main.dvala',
+      source: 'let answer = 42',
+      sourceVersion: 4,
+      line: 1,
+      column: 5,
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'hoverResult',
+        requestId: 6,
+        path: 'main.dvala',
+        sourceVersion: 4,
+        inferredType: expect.stringMatching(/Integer|42/),
+      }),
+    )
+  })
+
   it('resolves definition and rename navigation from a workspace snapshot', async () => {
     const worker = await loadWorker()
 

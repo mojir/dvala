@@ -1,6 +1,7 @@
 import { allBuiltinModules } from '../allModules'
 import { parseToAst } from '../parser'
 import { buildParseDiagnostics, buildTypeDiagnostics } from '../shared/diagnosticBuilder'
+import { findTypeAtPosition, formatHoverType } from '../shared/typeDisplay'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { formatSource } from '../tooling'
 import { tokenizeSource, parseTokenStreamRecoverable } from '../tooling'
@@ -65,6 +66,26 @@ function computeTypecheckResult(source: string, path: string) {
   } catch {
     return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
   }
+}
+
+function computeHoverResult(request: BackendHoverRequest): string | undefined {
+  const typecheckResult = computeTypecheckResult(request.source, request.path)
+  const wordRange =
+    request.startColumn !== undefined && request.endColumn !== undefined
+      ? {
+          start: { line: request.line, column: request.startColumn },
+          end: { line: request.line, column: request.endColumn },
+        }
+      : undefined
+
+  const type = findTypeAtPosition(
+    typecheckResult.typeMap,
+    typecheckResult.sourceMap,
+    { line: request.line, column: request.column },
+    wordRange,
+  )
+
+  return type ? formatHoverType(type) : undefined
 }
 
 async function unimplementedAnalysis(
@@ -217,7 +238,49 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     },
 
     async requestHover(request: BackendHoverRequest): Promise<BackendHoverResult> {
-      return unimplementedAnalysis(request.requestId, request.path, request.version, 'requestHover')
+      try {
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(
+            request.requestId,
+            { kind: 'cancelled', message: 'Backend hover request cancelled', path: request.path },
+            request.path,
+            request.version,
+          )
+        }
+
+        const inferredType = computeHoverResult(request)
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(
+            request.requestId,
+            { kind: 'cancelled', message: 'Backend hover request cancelled', path: request.path },
+            request.path,
+            request.version,
+          )
+        }
+
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          path: request.path,
+          version: request.version,
+          ...(inferredType ? { inferredType } : {}),
+        }
+      } catch (error) {
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+          request.version,
+        )
+      }
     },
 
     async requestCompletion(request: BackendCompletionRequest): Promise<BackendCompletionResult> {
