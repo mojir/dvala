@@ -9,8 +9,6 @@ import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from
 import { extractCheckpointSnapshots } from '../../src/evaluator/suspension'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
-import { retrigger } from '../../src/retrigger'
-import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import { formatSource, getUndefinedSymbols } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
@@ -71,6 +69,7 @@ import {
   uniqueFilePath,
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
+import { resumePlaygroundSnapshotThroughBackend, runPlaygroundSessionThroughBackend } from './runtimeBackend'
 import { ensureHandlersFile, wrapWithBoundaryHandler } from './handlersBuffer'
 import {
   SCRATCH_FILE_ID,
@@ -2958,19 +2957,22 @@ export async function run() {
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
+    const debug = getState('debug')
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
     // Anchor file imports at the running file's folder (or workspace root
     // for scratch). `filePath` is set so source maps and error messages can
     // attribute lines to the right file.
     const filePath = getActiveFilePath()
-    const baseDir = getActiveFileFolder()
     const runResult = await Promise.race([
-      getDvala({ fileResolverBaseDir: baseDir }).runAsync(
-        code,
-        pure
-          ? { pure: true, disableAutoCheckpoint, terminalSnapshot: true, filePath }
-          : { effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true, filePath },
-      ),
+      runPlaygroundSessionThroughBackend({
+        path: filePath,
+        source: code,
+        workspaceFiles: getWorkspaceFiles(),
+        ...(debug ? { debug: true } : {}),
+        ...(pure ? { pure: true } : { effectHandlers: wrappedHandlers }),
+        ...(disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
+        terminalSnapshot: true,
+      }),
       timeoutPromise,
     ])
     if (runResult.type === 'error') {
@@ -4307,19 +4309,14 @@ export async function resumeSnapshot() {
   const hijacker = hijackConsole()
   try {
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
-    const runResult = snapshot.effectName
-      ? await retrigger(snapshot, {
-          handlers: dvalaParams.effectHandlers,
-          modules: allBuiltinModules,
-          disableAutoCheckpoint,
-          terminalSnapshot: true,
-        })
-      : await resume(snapshot, null, {
-          handlers: dvalaParams.effectHandlers,
-          modules: allBuiltinModules,
-          disableAutoCheckpoint,
-          terminalSnapshot: true,
-        })
+    const runResult = await resumePlaygroundSnapshotThroughBackend({
+      snapshot,
+      workspaceFiles: getWorkspaceFiles(),
+      value: null,
+      effectHandlers: dvalaParams.effectHandlers,
+      ...(disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
+      terminalSnapshot: true,
+    })
     if (runResult.type === 'error') {
       if (runResult.snapshot) {
         saveTerminalSnapshot(runResult.snapshot, 'error')

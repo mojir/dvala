@@ -1004,6 +1004,28 @@ test.describe('settings', () => {
     await page.evaluate(() => (window as any).Playground.toggleAutoCheckpoint())
   })
 
+  test('debug toggle persists across reload', async ({ page }) => {
+    await page.evaluate(() => {
+      const btn = document.getElementById('tab-btn-settings') as HTMLElement | null
+      if (btn) (window as any).Playground.toggleSettingsDropdown(btn)
+    })
+    await expect(page.locator('#settings-dropdown')).toBeVisible()
+
+    const toggle = page.locator('#settings-debug-toggle')
+    const wasChecked = await toggle.isChecked()
+
+    await page.evaluate(() => (window as any).Playground.toggleDebug())
+    expect(await toggle.isChecked()).toBe(!wasChecked)
+
+    await page.reload()
+    await waitForInit(page)
+
+    const toggleAfter = page.locator('#settings-debug-toggle')
+    expect(await toggleAfter.isChecked()).toBe(!wasChecked)
+
+    await page.evaluate(() => (window as any).Playground.toggleDebug())
+  })
+
   test('intercept checkpoint opens checkpoint modal when program performs checkpoint', async ({ page }) => {
     // Enable intercept effects (main toggle) and intercept checkpoint
     const wasInterceptEffectsEnabled = await page.evaluate(() => {
