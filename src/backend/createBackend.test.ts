@@ -113,4 +113,65 @@ describe('createBackend', () => {
       expect(result.inferredType).toMatch(/Integer|42/)
     }
   })
+
+  it('deduplicates completion labels across local scope and imported exports through the backend', async () => {
+    const backend = createBackend()
+
+    const result = await backend.requestCompletion({
+      requestId: 15,
+      path: 'main.dvala',
+      source: 'let value = 1\nlet lib = import("./lib")\nval',
+      version: 5,
+      line: 3,
+      column: 4,
+      prefix: 'val',
+      importPrefix: null,
+      workspaceFiles: [{ path: 'lib.dvala', code: 'let value = 2\n{ value }' }],
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 15,
+        path: 'main.dvala',
+        version: 5,
+      }),
+    )
+    if (result.ok) {
+      expect(result.items.filter(item => item.label === 'value')).toHaveLength(1)
+    }
+  })
+
+  it('returns workspace import path completions through the backend', async () => {
+    const backend = createBackend()
+
+    const result = await backend.requestCompletion({
+      requestId: 17,
+      path: 'main.dvala',
+      source: 'let lib = import("./u")',
+      version: 6,
+      line: 1,
+      column: 22,
+      prefix: '',
+      importPrefix: './u',
+      workspaceFiles: [{ path: 'utils/math.dvala', code: 'let value = 1' }],
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 17,
+        path: 'main.dvala',
+        version: 6,
+      }),
+    )
+    if (result.ok) {
+      expect(result.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ label: './utils/', detail: 'folder' }),
+          expect.objectContaining({ label: './utils/math', detail: 'workspace file' }),
+        ]),
+      )
+    }
+  })
 })

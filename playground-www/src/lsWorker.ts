@@ -73,7 +73,6 @@
  * so even if a cancellation races with a result-post, stale data is dropped.
  */
 
-import type { CompletionItem } from '../../src/shared/completionBuilder'
 import { WorkspaceIndex, createBackend, type ResolveImport } from '../../src/internal'
 import type {
   PlaygroundCompletionErrorMessage as CompletionErrorMessage,
@@ -86,13 +85,11 @@ import type {
   PlaygroundHoverResultMessage as HoverResultMessage,
   PlaygroundNavigationErrorMessage as NavigationErrorMessage,
   PlaygroundNavigationResultMessage as NavigationResultMessage,
-  PlaygroundRequestCompletionMessage as RequestCompletionMessage,
   PlaygroundRequestNavigationMessage as RequestNavigationMessage,
   PlaygroundResyncDocumentMessage as ResyncDocumentMessage,
   PlaygroundWorkerInMessage as WorkerInMessage,
 } from '../../src/internal'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
-import { getImportCompletionItems, getImportedExportCompletionItems, getScopedCompletionItems } from './lsCompletions'
 import { resolvePlaygroundPath } from './playgroundFileResolver'
 
 // ── Worker state ──────────────────────────────────────────────────────────────
@@ -115,52 +112,6 @@ function checkCancelled(requestId: number): void {
 }
 
 // ── Core pipeline ─────────────────────────────────────────────────────────────
-
-function computeCompletion(message: RequestCompletionMessage): CompletionItem[] {
-  const snapshotFiles = new Map(message.workspaceFiles.map(file => [file.path, file.code]))
-  snapshotFiles.set(message.path, message.source)
-
-  const index = new WorkspaceIndex()
-  indexWorkspaceSnapshot(message.path, message.source, snapshotFiles, index)
-
-  if (message.importPrefix !== null) {
-    return getImportCompletionItems(
-      message.importPrefix,
-      message.path,
-      message.workspaceFiles.map(file => ({
-        id: file.path,
-        path: file.path,
-        code: file.code,
-        context: '',
-        createdAt: 0,
-        updatedAt: 0,
-      })),
-    )
-  }
-
-  const currentFileSymbols = index.getFileSymbols(message.path)
-  const seen = new Set<string>()
-  const items: CompletionItem[] = []
-
-  for (const item of getScopedCompletionItems(
-    message.prefix,
-    index.getSymbolsInScope(message.path, message.line, message.column),
-  )) {
-    if (seen.has(item.label)) continue
-    seen.add(item.label)
-    items.push(item)
-  }
-
-  for (const item of getImportedExportCompletionItems(message.prefix, currentFileSymbols, filePath =>
-    index.getFileSymbols(filePath),
-  )) {
-    if (seen.has(item.label)) continue
-    seen.add(item.label)
-    items.push(item)
-  }
-
-  return items
-}
 
 function resolveWorkspaceImportPathForSnapshot(
   snapshotFiles: Map<string, string>,
@@ -477,15 +428,39 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
     case 'requestCompletion': {
       cancelledRequests.delete(msg.requestId)
 
+      const result = await backend.requestCompletion({
+        requestId: msg.requestId,
+        path: msg.path,
+        source: msg.source,
+        version: msg.sourceVersion,
+        line: msg.line,
+        column: msg.column,
+        prefix: msg.prefix,
+        importPrefix: msg.importPrefix,
+        workspaceFiles: msg.workspaceFiles,
+      })
+
+      if (!result.ok) {
+        if (result.error.kind === 'cancelled') return
+        const out: CompletionErrorMessage = {
+          type: 'completionError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: result.error.message,
+        }
+        self.postMessage(out)
+        return
+      }
+
       try {
-        const items = computeCompletion(msg)
         checkCancelled(msg.requestId)
         const out: CompletionResultMessage = {
           type: 'completionResult',
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,
-          items,
+          items: result.items,
         }
         self.postMessage(out)
       } catch (error) {
