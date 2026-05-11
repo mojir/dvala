@@ -73,14 +73,8 @@
  * so even if a cancellation races with a result-post, stale data is dropped.
  */
 
-import { tokenizeSource } from '../../src/tooling'
 import type { CompletionItem } from '../../src/shared/completionBuilder'
-import { findTypeAtPosition, formatHoverType } from '../../src/shared/typeDisplay'
-import { allBuiltinModules } from '../../src/allModules'
-import { parseToAst } from '../../src/parser'
-import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
-import { WorkspaceIndex, createBackend, type ResolveImport, typecheck } from '../../src/internal'
-import type { TypecheckResult } from '../../src/internal'
+import { WorkspaceIndex, createBackend, type ResolveImport } from '../../src/internal'
 import type {
   PlaygroundCompletionErrorMessage as CompletionErrorMessage,
   PlaygroundCompletionResultMessage as CompletionResultMessage,
@@ -93,7 +87,6 @@ import type {
   PlaygroundNavigationErrorMessage as NavigationErrorMessage,
   PlaygroundNavigationResultMessage as NavigationResultMessage,
   PlaygroundRequestCompletionMessage as RequestCompletionMessage,
-  PlaygroundRequestHoverMessage as RequestHoverMessage,
   PlaygroundRequestNavigationMessage as RequestNavigationMessage,
   PlaygroundResyncDocumentMessage as ResyncDocumentMessage,
   PlaygroundWorkerInMessage as WorkerInMessage,
@@ -122,37 +115,6 @@ function checkCancelled(requestId: number): void {
 }
 
 // ── Core pipeline ─────────────────────────────────────────────────────────────
-
-function computeTypecheckResult(source: string, path: string): TypecheckResult {
-  const tokens = tokenizeSource(source, true, path)
-  try {
-    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
-    const ast = parseToAst(minified)
-    return typecheck(ast, { modules: allBuiltinModules })
-  } catch {
-    return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
-  }
-}
-
-function computeHover(message: RequestHoverMessage): string | undefined {
-  const typecheckResult = computeTypecheckResult(message.source, message.path)
-  const wordRange =
-    message.startColumn !== undefined && message.endColumn !== undefined
-      ? {
-          start: { line: message.line, column: message.startColumn },
-          end: { line: message.line, column: message.endColumn },
-        }
-      : undefined
-
-  const type = findTypeAtPosition(
-    typecheckResult.typeMap,
-    typecheckResult.sourceMap,
-    { line: message.line, column: message.column },
-    wordRange,
-  )
-
-  return type ? formatHoverType(type) : undefined
-}
 
 function computeCompletion(message: RequestCompletionMessage): CompletionItem[] {
   const snapshotFiles = new Map(message.workspaceFiles.map(file => [file.path, file.code]))
@@ -464,15 +426,38 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
     case 'requestHover': {
       cancelledRequests.delete(msg.requestId)
 
+      const result = await backend.requestHover({
+        requestId: msg.requestId,
+        path: msg.path,
+        source: msg.source,
+        version: msg.sourceVersion,
+        line: msg.line,
+        column: msg.column,
+        ...(msg.startColumn !== undefined ? { startColumn: msg.startColumn } : {}),
+        ...(msg.endColumn !== undefined ? { endColumn: msg.endColumn } : {}),
+      })
+
+      if (!result.ok) {
+        if (result.error.kind === 'cancelled') return
+        const out: HoverErrorMessage = {
+          type: 'hoverError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          message: result.error.message,
+        }
+        self.postMessage(out)
+        return
+      }
+
       try {
-        const inferredType = computeHover(msg)
         checkCancelled(msg.requestId)
         const out: HoverResultMessage = {
           type: 'hoverResult',
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,
-          ...(inferredType ? { inferredType } : {}),
+          ...(result.inferredType ? { inferredType: result.inferredType } : {}),
         }
         self.postMessage(out)
       } catch (error) {

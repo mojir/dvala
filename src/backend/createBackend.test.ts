@@ -88,4 +88,29 @@ describe('createBackend', () => {
       expect(result.formatted).not.toBe('let x=1')
     }
   })
+
+  it('computes hover information through the backend', async () => {
+    const backend = createBackend()
+
+    const result = await backend.requestHover({
+      requestId: 13,
+      path: 'main.dvala',
+      source: 'let answer = 42',
+      version: 4,
+      line: 1,
+      column: 5,
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 13,
+        path: 'main.dvala',
+        version: 4,
+      }),
+    )
+    if (result.ok) {
+      expect(result.inferredType).toMatch(/Integer|42/)
+    }
+  })
 })
