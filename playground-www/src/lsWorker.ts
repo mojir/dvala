@@ -73,7 +73,7 @@
  * so even if a cancellation races with a result-post, stale data is dropped.
  */
 
-import { WorkspaceIndex, createBackend, type ResolveImport } from '../../src/internal'
+import { createBackend } from '../../src/internal'
 import type {
   PlaygroundCompletionErrorMessage as CompletionErrorMessage,
   PlaygroundCompletionResultMessage as CompletionResultMessage,
@@ -85,12 +85,9 @@ import type {
   PlaygroundHoverResultMessage as HoverResultMessage,
   PlaygroundNavigationErrorMessage as NavigationErrorMessage,
   PlaygroundNavigationResultMessage as NavigationResultMessage,
-  PlaygroundRequestNavigationMessage as RequestNavigationMessage,
   PlaygroundResyncDocumentMessage as ResyncDocumentMessage,
   PlaygroundWorkerInMessage as WorkerInMessage,
 } from '../../src/internal'
-import { folderFromPath, isInPlaygroundFolder } from './filePath'
-import { resolvePlaygroundPath } from './playgroundFileResolver'
 
 // ── Worker state ──────────────────────────────────────────────────────────────
 
@@ -112,125 +109,6 @@ function checkCancelled(requestId: number): void {
 }
 
 // ── Core pipeline ─────────────────────────────────────────────────────────────
-
-function resolveWorkspaceImportPathForSnapshot(
-  snapshotFiles: Map<string, string>,
-  rawPath: string,
-  fromFile: string,
-): string | null {
-  if (!(rawPath.startsWith('.') || rawPath.startsWith('/'))) return null
-  let resolved: string
-  try {
-    resolved = resolvePlaygroundPath(isInPlaygroundFolder(fromFile) ? '' : folderFromPath(fromFile), rawPath)
-  } catch {
-    return null
-  }
-  if (isInPlaygroundFolder(resolved)) return null
-  if (snapshotFiles.has(resolved)) return resolved
-  if (snapshotFiles.has(`${resolved}.dvala`)) return `${resolved}.dvala`
-  return null
-}
-
-function indexWorkspaceSnapshot(
-  path: string,
-  source: string,
-  snapshotFiles: Map<string, string>,
-  index: WorkspaceIndex,
-  seen = new Set<string>(),
-): void {
-  if (seen.has(path)) return
-  seen.add(path)
-
-  const resolveImport: ResolveImport = (rawPath, fromFile) =>
-    resolveWorkspaceImportPathForSnapshot(snapshotFiles, rawPath, fromFile)
-  const fileSymbols = index.updateFile(path, source, resolveImport)
-  for (const importedPath of fileSymbols.imports.values()) {
-    if (seen.has(importedPath)) continue
-    const importedSource = snapshotFiles.get(importedPath)
-    if (importedSource === undefined) continue
-    indexWorkspaceSnapshot(importedPath, importedSource, snapshotFiles, index, seen)
-  }
-}
-
-function getImportPathAtSourcePosition(source: string, line: number, column: number): string | null {
-  const lineText = source.split('\n')[line - 1]
-  if (lineText === undefined) return null
-
-  const beforeCursor = lineText.slice(0, Math.max(0, column - 1))
-  const prefixMatch = /import\(\s*"([^"]*)$/.exec(beforeCursor)
-  if (!prefixMatch) return null
-
-  const afterCursor = lineText.slice(Math.max(0, column - 1))
-  const suffixMatch = /^([^"]*)"/.exec(afterCursor)
-  const rawPath = `${prefixMatch[1] ?? ''}${suffixMatch?.[1] ?? ''}`
-  return rawPath.length > 0 ? rawPath : ''
-}
-
-function computeNavigation(message: RequestNavigationMessage): Pick<NavigationResultMessage, 'locations' | 'edits'> {
-  const snapshotFiles = new Map(message.workspaceFiles.map(file => [file.path, file.code]))
-  snapshotFiles.set(message.path, message.source)
-
-  const index = new WorkspaceIndex()
-  indexWorkspaceSnapshot(message.path, message.source, snapshotFiles, index)
-
-  if (message.kind === 'definition') {
-    const importPath = getImportPathAtSourcePosition(message.source, message.line, message.column)
-    if (importPath !== null) {
-      const resolved = resolveWorkspaceImportPathForSnapshot(snapshotFiles, importPath, message.path)
-      if (resolved) {
-        return {
-          locations: [
-            {
-              file: resolved,
-              line: 1,
-              column: 1,
-              endColumn: 1,
-            },
-          ],
-        }
-      }
-    }
-
-    const def = index.findDefinition(message.path, message.line, message.column)
-    return {
-      locations: def
-        ? [
-            {
-              file: def.location.file,
-              line: def.location.line,
-              column: def.location.column,
-              endColumn: def.location.column + def.name.length,
-            },
-          ]
-        : [],
-    }
-  }
-
-  const canonical = index.resolveCanonicalFile(message.path, message.line, message.column)
-  if (!canonical) return message.kind === 'rename' ? { edits: [] } : { locations: [] }
-
-  const occurrences = index.findAllOccurrences(canonical.file, canonical.name)
-  if (message.kind === 'references') {
-    return {
-      locations: occurrences.map(loc => ({
-        file: loc.file,
-        line: loc.line,
-        column: loc.column,
-        endColumn: loc.column + loc.nameLength,
-      })),
-    }
-  }
-
-  return {
-    edits: occurrences.map(loc => ({
-      file: loc.file,
-      line: loc.line,
-      column: loc.column,
-      endColumn: loc.column + loc.nameLength,
-      text: message.newName ?? canonical.name,
-    })),
-  }
-}
 
 function requestDocumentResync(path: string): void {
   const out: ResyncDocumentMessage = {
@@ -480,15 +358,60 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
     case 'requestNavigation': {
       cancelledRequests.delete(msg.requestId)
 
+      const result = await backend.requestNavigation({
+        requestId: msg.requestId,
+        kind: msg.kind,
+        path: msg.path,
+        source: msg.source,
+        version: msg.sourceVersion,
+        line: msg.line,
+        column: msg.column,
+        ...(msg.newName !== undefined ? { newName: msg.newName } : {}),
+        workspaceFiles: msg.workspaceFiles,
+      })
+
+      if (!result.ok) {
+        if (result.error.kind === 'cancelled') return
+        const out: NavigationErrorMessage = {
+          type: 'navigationError',
+          requestId: msg.requestId,
+          path: msg.path,
+          sourceVersion: msg.sourceVersion,
+          kind: msg.kind,
+          message: result.error.message,
+        }
+        self.postMessage(out)
+        return
+      }
+
       try {
-        const result = computeNavigation(msg)
         const out: NavigationResultMessage = {
           type: 'navigationResult',
           requestId: msg.requestId,
           path: msg.path,
           sourceVersion: msg.sourceVersion,
           kind: msg.kind,
-          ...result,
+          ...(result.locations
+            ? {
+                locations: result.locations.map(location => ({
+                  file: location.file,
+                  line: location.line,
+                  column: location.column,
+                  endColumn: location.endColumn,
+                })),
+              }
+            : {}),
+          ...(result.edits
+            ? {
+                edits: result.edits.map(edit => ({
+                  file: edit.file,
+                  line: edit.range.startLine,
+                  column: edit.range.startColumn,
+                  endColumn: edit.range.endColumn,
+                  text: edit.text,
+                })),
+              }
+            : {}),
         }
         self.postMessage(out)
       } catch (error) {
