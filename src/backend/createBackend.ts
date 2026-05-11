@@ -2,6 +2,7 @@ import { allBuiltinModules } from '../allModules'
 import { parseToAst } from '../parser'
 import { buildParseDiagnostics, buildTypeDiagnostics } from '../shared/diagnosticBuilder'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
+import { formatSource } from '../tooling'
 import { tokenizeSource, parseTokenStreamRecoverable } from '../tooling'
 import { typecheck } from '../typechecker/typecheck'
 
@@ -170,7 +171,49 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     },
 
     async requestFormatting(request: BackendFormattingRequest): Promise<BackendFormattingResult> {
-      return unimplementedAnalysis(request.requestId, request.path, request.version, 'requestFormatting')
+      try {
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(
+            request.requestId,
+            { kind: 'cancelled', message: 'Backend formatting request cancelled', path: request.path },
+            request.path,
+            request.version,
+          )
+        }
+
+        const formatted = formatSource(request.source)
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(
+            request.requestId,
+            { kind: 'cancelled', message: 'Backend formatting request cancelled', path: request.path },
+            request.path,
+            request.version,
+          )
+        }
+
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          path: request.path,
+          version: request.version,
+          formatted,
+        }
+      } catch (error) {
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+          request.version,
+        )
+      }
     },
 
     async requestHover(request: BackendHoverRequest): Promise<BackendHoverResult> {
