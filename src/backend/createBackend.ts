@@ -365,22 +365,87 @@ function computeCompletionResult(request: BackendCompletionRequest) {
   return items
 }
 
-async function unimplementedAnalysis(
-  requestId: number,
-  path: string,
-  version: number,
-  operation: string,
-): Promise<BackendRequestFailure> {
-  return requestFailure(
-    requestId,
-    {
-      kind: 'invalid-request',
-      message: `Backend operation not implemented yet: ${operation}`,
-      path,
-    },
-    path,
-    version,
-  )
+function getImportPathAtSourcePosition(source: string, line: number, column: number): string | null {
+  const lineText = source.split('\n')[line - 1]
+  if (lineText === undefined) return null
+
+  const beforeCursor = lineText.slice(0, Math.max(0, column - 1))
+  const prefixMatch = /import\(\s*"([^"]*)$/.exec(beforeCursor)
+  if (!prefixMatch) return null
+
+  const afterCursor = lineText.slice(Math.max(0, column - 1))
+  const suffixMatch = /^([^"]*)"/.exec(afterCursor)
+  const rawPath = `${prefixMatch[1] ?? ''}${suffixMatch?.[1] ?? ''}`
+  return rawPath.length > 0 ? rawPath : ''
+}
+
+function computeNavigationResult(request: BackendNavigationRequest) {
+  const snapshotFiles = new Map((request.workspaceFiles ?? []).map(file => [file.path, file.code]))
+  snapshotFiles.set(request.path, request.source)
+
+  const index = new WorkspaceIndex()
+  indexWorkspaceSnapshot(request.path, request.source, snapshotFiles, index)
+
+  if (request.kind === 'definition') {
+    const importPath = getImportPathAtSourcePosition(request.source, request.line, request.column)
+    if (importPath !== null) {
+      const resolved = resolveWorkspaceImportPathForSnapshot(snapshotFiles, importPath, request.path)
+      if (resolved) {
+        return {
+          locations: [
+            {
+              file: resolved,
+              line: 1,
+              column: 1,
+              endColumn: 1,
+            },
+          ],
+        }
+      }
+    }
+
+    const def = index.findDefinition(request.path, request.line, request.column)
+    return {
+      locations: def
+        ? [
+            {
+              file: def.location.file,
+              line: def.location.line,
+              column: def.location.column,
+              endColumn: def.location.column + def.name.length,
+            },
+          ]
+        : [],
+    }
+  }
+
+  const canonical = index.resolveCanonicalFile(request.path, request.line, request.column)
+  if (!canonical) return request.kind === 'rename' ? { edits: [] } : { locations: [] }
+
+  const occurrences = index.findAllOccurrences(canonical.file, canonical.name)
+  if (request.kind === 'references') {
+    return {
+      locations: occurrences.map(loc => ({
+        file: loc.file,
+        line: loc.line,
+        column: loc.column,
+        endColumn: loc.column + loc.nameLength,
+      })),
+    }
+  }
+
+  return {
+    edits: occurrences.map(loc => ({
+      file: loc.file,
+      text: request.newName ?? canonical.name,
+      range: {
+        startLine: loc.line,
+        startColumn: loc.column,
+        endLine: loc.line,
+        endColumn: loc.column + loc.nameLength,
+      },
+    })),
+  }
 }
 
 export function createBackend(options: CreateBackendOptions = {}): DvalaBackend {
@@ -607,7 +672,50 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     },
 
     async requestNavigation(request: BackendNavigationRequest): Promise<BackendNavigationResult> {
-      return unimplementedAnalysis(request.requestId, request.path, request.version, 'requestNavigation')
+      try {
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(
+            request.requestId,
+            { kind: 'cancelled', message: 'Backend navigation request cancelled', path: request.path },
+            request.path,
+            request.version,
+          )
+        }
+
+        const result = computeNavigationResult(request)
+        if (isCancelled(cancelledRequests, request.requestId)) {
+          clearCancelledRequest(cancelledRequests, request.requestId)
+          return requestFailure(
+            request.requestId,
+            { kind: 'cancelled', message: 'Backend navigation request cancelled', path: request.path },
+            request.path,
+            request.version,
+          )
+        }
+
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          path: request.path,
+          version: request.version,
+          kind: request.kind,
+          ...result,
+        }
+      } catch (error) {
+        clearCancelledRequest(cancelledRequests, request.requestId)
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+          request.version,
+        )
+      }
     },
 
     async startSession(request: BackendSessionStartRequest): Promise<BackendSessionStartResult> {

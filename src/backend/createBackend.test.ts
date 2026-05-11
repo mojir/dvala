@@ -174,4 +174,104 @@ describe('createBackend', () => {
       )
     }
   })
+
+  it('resolves definition and rename navigation through the backend', async () => {
+    const backend = createBackend()
+
+    const definition = await backend.requestNavigation({
+      requestId: 19,
+      kind: 'definition',
+      path: 'main.dvala',
+      source: 'let answer = 42; answer',
+      version: 7,
+      line: 1,
+      column: 19,
+      workspaceFiles: [],
+    })
+
+    expect(definition).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 19,
+        kind: 'definition',
+        path: 'main.dvala',
+        version: 7,
+      }),
+    )
+    if (definition.ok) {
+      expect(definition.locations).toEqual([
+        expect.objectContaining({
+          file: 'main.dvala',
+          line: 1,
+          column: 5,
+        }),
+      ])
+    }
+
+    const rename = await backend.requestNavigation({
+      requestId: 20,
+      kind: 'rename',
+      path: 'main.dvala',
+      source: 'let answer = 42; answer',
+      version: 7,
+      line: 1,
+      column: 19,
+      newName: 'result',
+      workspaceFiles: [],
+    })
+
+    expect(rename).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 20,
+        kind: 'rename',
+        path: 'main.dvala',
+        version: 7,
+      }),
+    )
+    if (rename.ok) {
+      expect(rename.edits).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            file: 'main.dvala',
+            text: 'result',
+            range: expect.objectContaining({ startLine: 1, startColumn: 5 }),
+          }),
+        ]),
+      )
+    }
+  })
+
+  it('resolves cross-file references through the backend workspace snapshot', async () => {
+    const backend = createBackend()
+
+    const result = await backend.requestNavigation({
+      requestId: 21,
+      kind: 'references',
+      path: 'main.dvala',
+      source: 'let { fresh } = import("./lib"); fresh',
+      version: 8,
+      line: 1,
+      column: 7,
+      workspaceFiles: [{ path: 'lib.dvala', code: 'let fresh = 1\n{ fresh }' }],
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 21,
+        kind: 'references',
+        path: 'main.dvala',
+        version: 8,
+      }),
+    )
+    if (result.ok) {
+      expect(result.locations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ file: 'lib.dvala' }),
+          expect.objectContaining({ file: 'main.dvala' }),
+        ]),
+      )
+    }
+  })
 })
