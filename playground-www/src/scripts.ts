@@ -3307,6 +3307,10 @@ export function setContextForTesting(json: string): void {
   saveState({ context: json }, false)
 }
 
+export function getTerminalSnapshotsForTesting() {
+  return getTerminalSnapshots()
+}
+
 export function getEditorValue(): string {
   return getCodeEditor().getValue()
 }

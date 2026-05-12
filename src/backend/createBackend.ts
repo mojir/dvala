@@ -167,6 +167,11 @@ function asRuntimeSnapshot(value: unknown): RuntimeSnapshot | null {
   if ('terminal' in value && value.terminal !== undefined && typeof value.terminal !== 'boolean') return null
   if ('effectName' in value && value.effectName !== undefined && typeof value.effectName !== 'string') return null
 
+  const checkpointSnapshots = extractCheckpointSnapshots(value.continuation)
+  for (const checkpointSnapshot of checkpointSnapshots) {
+    if (!asRuntimeSnapshot(checkpointSnapshot)) return null
+  }
+
   return value as RuntimeSnapshot
 }
 

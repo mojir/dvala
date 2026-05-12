@@ -875,6 +875,54 @@ describe('createBackend', () => {
     })
   })
 
+  it('rejects imported snapshots with malformed embedded checkpoint snapshots through the backend', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 37,
+      path: 'main.dvala',
+      source: 'perform(@dvala.checkpoint, "before"); let x = perform(@my.ask); x + 1',
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 37,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok || started.runResult.type !== 'suspended') return
+
+    const imported = JSON.parse(JSON.stringify(started.runResult.snapshot)) as {
+      continuation: { snapshots?: { continuation: unknown }[] }
+    }
+    if (imported.continuation.snapshots?.[0]) {
+      imported.continuation.snapshots[0].continuation = {}
+    }
+
+    const validation = await backend.validateSnapshot({
+      requestId: 38,
+      value: imported,
+    })
+
+    expect(validation).toEqual({
+      ok: false,
+      requestId: 38,
+      error: {
+        kind: 'invalid-request',
+        message: 'Not a valid snapshot object.',
+      },
+    })
+  })
+
   it('rejects imports into the playground state folder for runtime sessions', async () => {
     const backend = createBackend()
 

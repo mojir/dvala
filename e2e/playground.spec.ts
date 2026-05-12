@@ -939,6 +939,56 @@ test.describe('snapshots', () => {
     await page.evaluate(() => (window as any).Playground.resetPlayground())
   })
 
+  test('importing a valid snapshot opens it in the snapshot view', async ({ page }) => {
+    await setDvalaCode(page, 'perform(@dvala.checkpoint, "before"); 40 + 2')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const snapshotJson = await page.evaluate(() => {
+      const snapshots = (window as any).Playground.getTerminalSnapshotsForTesting()
+      return JSON.stringify(snapshots[0].snapshot)
+    })
+
+    const fileChooserPromise = page.waitForEvent('filechooser')
+    await page.evaluate(() => (window as any).Playground.openImportSnapshotModal())
+    const fileChooser = await fileChooserPromise
+    await fileChooser.setFiles({
+      name: 'snapshot.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(snapshotJson),
+    })
+
+    await expect(page.locator('#toast-container')).toContainText('Snapshot imported', { timeout: 3000 })
+    await expect(page.locator('#dvala-snapshot-view')).toBeVisible({ timeout: 3000 })
+  })
+
+  test('importing a snapshot with malformed embedded checkpoints shows the import error modal', async ({ page }) => {
+    await setDvalaCode(page, 'perform(@dvala.checkpoint, "before"); 40 + 2')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    const invalidSnapshotJson = await page.evaluate(() => {
+      const snapshots = (window as any).Playground.getTerminalSnapshotsForTesting()
+      const imported = JSON.parse(JSON.stringify(snapshots[0].snapshot))
+      if (imported.continuation?.snapshots?.[0]) {
+        imported.continuation.snapshots[0].continuation = {}
+      }
+      return JSON.stringify(imported)
+    })
+
+    const fileChooserPromise = page.waitForEvent('filechooser')
+    await page.evaluate(() => (window as any).Playground.openImportSnapshotModal())
+    const fileChooser = await fileChooserPromise
+    await fileChooser.setFiles({
+      name: 'invalid-snapshot.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(invalidSnapshotJson),
+    })
+
+    await expect(page.locator('#snapshot-modal')).toContainText('Import failed', { timeout: 3000 })
+    await expect(page.locator('#snapshot-modal')).toContainText('Not a valid snapshot object.')
+  })
+
   test('running code creates a terminal snapshot in the side panel', async ({ page }) => {
     await setDvalaCode(page, '1 + 1')
     await clickRun(page)
