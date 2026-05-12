@@ -330,6 +330,11 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
         workspaceFiles: msg.workspaceFiles,
       })
 
+      if (!result.ok && result.error.kind === 'resync-required') {
+        requestDocumentResync(msg.path)
+        return
+      }
+
       if (!result.ok) {
         if (result.error.kind === 'cancelled') return
         const out: CompletionErrorMessage = {
@@ -379,6 +384,11 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
         column: msg.column,
         ...(msg.newName !== undefined ? { newName: msg.newName } : {}),
       })
+
+      if (!result.ok && result.error.kind === 'resync-required') {
+        requestDocumentResync(msg.path)
+        return
+      }
 
       if (!result.ok) {
         if (result.error.kind === 'cancelled') return

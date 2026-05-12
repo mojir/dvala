@@ -565,6 +565,155 @@ describe('lsWorkerClient lifecycle', () => {
     ])
   })
 
+  it('retries pending formatting after the worker requests a resync', () => {
+    const model = makeModel('let x = 1', 3)
+
+    client.registerModel('main.dvala', model as never)
+    void client.getFormattingEditsForTesting(model as never)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let x = 1',
+        sourceVersion: 3,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 1,
+      },
+      {
+        type: 'requestFormatting',
+        requestId: 2,
+        path: 'main.dvala',
+        sourceVersion: 3,
+      },
+    ])
+  })
+
+  it('retries pending completion after the worker requests a resync', async () => {
+    const model = {
+      ...makeModel('let localValue = 1;\nlocal', 3),
+      getLineContent: () => 'local',
+      getWordUntilPosition: () => ({ word: 'local', startColumn: 1, endColumn: 6 }),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi
+      .mocked((await import('monaco-editor')).languages.registerCompletionItemProvider)
+      .mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 2, column: 6 }
+    const context: Record<string, never> = {}
+    const token: Record<string, never> = {}
+    void provider?.provideCompletionItems(model as never, position as never, context as never, token as never)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let localValue = 1;\nlocal',
+        sourceVersion: 3,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 1,
+      },
+      {
+        type: 'requestCompletion',
+        requestId: 2,
+        path: 'main.dvala',
+        sourceVersion: 3,
+        line: 2,
+        column: 6,
+        prefix: 'local',
+        importPrefix: null,
+      },
+    ])
+  })
+
+  it('retries pending hover after the worker requests a resync', async () => {
+    const model = {
+      ...makeModel('', 3),
+      getWordAtPosition: () => ({ word: 'x', startColumn: 1, endColumn: 2 }),
+      getValueInRange: () => 'x',
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi.mocked((await import('monaco-editor')).languages.registerHoverProvider).mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 1 }
+    const token: Record<string, never> = {}
+    void provider?.provideHover(model as never, position as never, token as never)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: '',
+        sourceVersion: 3,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 1,
+      },
+      {
+        type: 'requestHover',
+        requestId: 2,
+        path: 'main.dvala',
+        sourceVersion: 3,
+        line: 1,
+        column: 1,
+        startColumn: 1,
+        endColumn: 2,
+      },
+    ])
+  })
+
+  it('retries pending navigation after the worker requests a resync', () => {
+    const model = makeModel('let answer = 42; answer', 3)
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 19 }
+
+    client.registerModel('main.dvala', model as never)
+    void client.getDefinitionsForTesting('main.dvala', position as never)
+    workerInstances[0]!.messages.length = 0
+
+    dispatchWorkerMessage(0, { type: 'resyncDocument', path: 'main.dvala' })
+
+    expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'openDocument',
+        path: 'main.dvala',
+        source: 'let answer = 42; answer',
+        sourceVersion: 3,
+      },
+      {
+        type: 'cancelRequest',
+        requestId: 1,
+      },
+      {
+        type: 'requestNavigation',
+        requestId: 2,
+        kind: 'definition',
+        path: 'main.dvala',
+        sourceVersion: 3,
+        line: 1,
+        column: 19,
+      },
+    ])
+  })
+
   it('coalesces duplicate resync requests for the same model version and pending diagnostics state', () => {
     const model = makeModel('let x = 1', 3)
 

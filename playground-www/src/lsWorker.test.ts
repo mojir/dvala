@@ -185,6 +185,51 @@ describe('lsWorker document sync', () => {
     )
   })
 
+  it('requests resync instead of completion errors when no mirror exists', async () => {
+    const worker = await loadWorker()
+
+    await dispatch(worker, {
+      type: 'requestCompletion',
+      requestId: 7,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      line: 1,
+      column: 1,
+      prefix: 'x',
+      importPrefix: null,
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith({ type: 'resyncDocument', path: 'main.dvala' })
+    expect(worker.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'completionError',
+        path: 'main.dvala',
+      }),
+    )
+  })
+
+  it('requests resync instead of navigation errors when no mirror exists', async () => {
+    const worker = await loadWorker()
+
+    await dispatch(worker, {
+      type: 'requestNavigation',
+      requestId: 8,
+      kind: 'definition',
+      path: 'main.dvala',
+      sourceVersion: 3,
+      line: 1,
+      column: 1,
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith({ type: 'resyncDocument', path: 'main.dvala' })
+    expect(worker.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'navigationError',
+        path: 'main.dvala',
+      }),
+    )
+  })
+
   it('resolves definition and rename navigation from a workspace snapshot', async () => {
     const worker = await loadWorker()
 
@@ -202,7 +247,6 @@ describe('lsWorker document sync', () => {
       requestId: 2,
       kind: 'definition',
       path: 'main.dvala',
-      source: 'let answer = 42; answer',
       sourceVersion: 3,
       line: 1,
       column: 19,
@@ -230,7 +274,6 @@ describe('lsWorker document sync', () => {
       requestId: 3,
       kind: 'rename',
       path: 'main.dvala',
-      source: 'let answer = 42; answer',
       sourceVersion: 3,
       line: 1,
       column: 19,
@@ -266,7 +309,6 @@ describe('lsWorker document sync', () => {
       type: 'requestCompletion',
       requestId: 4,
       path: 'main.dvala',
-      source: 'let value = 1\nlet lib = import("./lib")\nval',
       sourceVersion: 2,
       line: 3,
       column: 4,
@@ -313,7 +355,6 @@ describe('lsWorker document sync', () => {
       requestId: 5,
       kind: 'rename',
       path: 'main.dvala',
-      source: 'let { fresh } = import("./lib"); fresh',
       sourceVersion: 3,
       line: 1,
       column: 7,
