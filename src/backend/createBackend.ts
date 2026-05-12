@@ -146,10 +146,20 @@ function extractSnapshotBindings(
   })
 }
 
+function hasValidRuntimeContinuation(continuation: unknown): boolean {
+  try {
+    deserializeFromObject(continuation)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function asRuntimeSnapshot(value: unknown): RuntimeSnapshot | null {
   if (typeof value !== 'object' || value === null) return null
   if (!('id' in value) || typeof value.id !== 'string') return null
   if (!('continuation' in value)) return null
+  if (!hasValidRuntimeContinuation(value.continuation)) return null
   if (!('timestamp' in value) || typeof value.timestamp !== 'number') return null
   if (!('index' in value) || typeof value.index !== 'number') return null
   if (!('executionId' in value) || typeof value.executionId !== 'string') return null

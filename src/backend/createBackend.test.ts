@@ -850,6 +850,31 @@ describe('createBackend', () => {
     })
   })
 
+  it('rejects imported snapshots with malformed continuation blobs through the backend', async () => {
+    const backend = createBackend()
+
+    const validation = await backend.validateSnapshot({
+      requestId: 36,
+      value: {
+        id: 'bad',
+        continuation: {},
+        timestamp: 0,
+        index: 0,
+        executionId: 'run-1',
+        message: 'snapshot',
+      },
+    })
+
+    expect(validation).toEqual({
+      ok: false,
+      requestId: 36,
+      error: {
+        kind: 'invalid-request',
+        message: 'Not a valid snapshot object.',
+      },
+    })
+  })
+
   it('rejects imports into the playground state folder for runtime sessions', async () => {
     const backend = createBackend()
 

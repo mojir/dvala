@@ -171,6 +171,7 @@ import {
   showToast,
   slideBackSnapshotModal,
 } from './scripts/modals'
+import { importSnapshotFromJsonText } from './scripts/snapshotImport'
 import { state } from './scripts/playgroundState'
 import type { PendingEffect } from './scripts/playgroundState'
 import {
@@ -3838,22 +3839,11 @@ export function openImportSnapshotModal() {
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      let parsed: unknown
-      try {
-        parsed = JSON.parse(reader.result as string)
-      } catch {
-        void showInfoModal('Import failed', 'Invalid JSON — could not parse the file.')
-        return
-      }
-
-      void validatePlaygroundSnapshotThroughBackend({ value: parsed })
-        .then(snapshot => {
-          showToast('Snapshot imported')
-          saveAndOpenSnapshotTab(snapshot as Snapshot, 'halted', 'Snapshot imported')
-        })
-        .catch(() => {
-          void showInfoModal('Import failed', 'Not a valid snapshot object.')
-        })
+      void importSnapshotFromJsonText(reader.result as string, {
+        validateSnapshot: validatePlaygroundSnapshotThroughBackend,
+        saveAndOpenSnapshotTab,
+        showInfoModal,
+      })
     }
     reader.readAsText(file)
   }
