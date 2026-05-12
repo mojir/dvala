@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { createBackend } from './createBackend'
+import type { BackendSessionResumeRequest } from './requests'
+import type { BackendRuntimeAdapter } from './runtime/runtimeAdapter'
 
 describe('createBackend', () => {
   it('returns diagnostics from the backend-owned open document mirror', async () => {
@@ -1050,5 +1052,171 @@ describe('createBackend', () => {
         expect(result.runResult.error.message).toContain('.dvala-playground/')
       }
     }
+  })
+
+  it('delegates runtime session lifecycle through an injected backend runtime adapter', async () => {
+    const start = vi.fn().mockResolvedValue({
+      sessionId: 'adapter-start',
+      runResult: { type: 'completed', value: 42 },
+    })
+    const resumeSession = vi.fn().mockResolvedValue({
+      sessionId: 'adapter-resume',
+      runResult: { type: 'completed', value: 43 },
+    })
+    const inspect = vi.fn().mockResolvedValue({
+      ok: true,
+      sessionId: 'adapter-start',
+      status: 'completed',
+      lastUpdatedAt: 123,
+    })
+    const inspectSnapshot = vi.fn().mockResolvedValue([{ id: 'checkpoint-1' }])
+    const inspectSnapshotBindings = vi.fn().mockResolvedValue({ answer: 42 })
+    const validateSnapshot = vi.fn().mockResolvedValue({ id: 'validated-snapshot' })
+    const stop = vi.fn().mockResolvedValue(undefined)
+    const runtime: BackendRuntimeAdapter = {
+      start,
+      resume: resumeSession,
+      inspectSnapshot,
+      inspectSnapshotBindings,
+      validateSnapshot,
+      inspect,
+      stop,
+    }
+
+    const backend = createBackend({ runtime })
+
+    const started = await backend.startSession({
+      requestId: 39,
+      path: 'main.dvala',
+      source: '41 + 1',
+      pure: true,
+    })
+
+    expect(start).toHaveBeenCalledWith({
+      requestId: 39,
+      path: 'main.dvala',
+      source: '41 + 1',
+      effectHandlers: undefined,
+      debug: undefined,
+      pure: true,
+      disableAutoCheckpoint: undefined,
+      terminalSnapshot: undefined,
+    })
+    expect(started).toEqual({
+      ok: true,
+      requestId: 39,
+      sessionId: 'adapter-start',
+      runResult: { type: 'completed', value: 42 },
+    })
+
+    const snapshotSource = { id: 'snap' }
+    const snapshot = snapshotSource as unknown as BackendSessionResumeRequest['snapshot']
+    const resumed = await backend.resumeSnapshot({
+      requestId: 40,
+      snapshot,
+      value: 7,
+    })
+
+    expect(resumeSession).toHaveBeenCalledWith({
+      requestId: 40,
+      snapshot,
+      value: 7,
+      effectHandlers: undefined,
+      disableAutoCheckpoint: undefined,
+      terminalSnapshot: undefined,
+    })
+    expect(resumed).toEqual({
+      ok: true,
+      requestId: 40,
+      sessionId: 'adapter-resume',
+      runResult: { type: 'completed', value: 43 },
+    })
+
+    await expect(backend.inspectSession('adapter-start')).resolves.toEqual({
+      ok: true,
+      sessionId: 'adapter-start',
+      status: 'completed',
+      lastUpdatedAt: 123,
+    })
+    expect(inspect).toHaveBeenCalledWith('adapter-start')
+
+    await expect(
+      backend.inspectSnapshot({
+        requestId: 41,
+        snapshot,
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      requestId: 41,
+      checkpointSnapshots: [{ id: 'checkpoint-1' }],
+    })
+    expect(inspectSnapshot).toHaveBeenCalledWith({
+      requestId: 41,
+      snapshot,
+    })
+
+    await expect(
+      backend.inspectSnapshotBindings({
+        requestId: 42,
+        snapshot,
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      requestId: 42,
+      bindings: { answer: 42 },
+    })
+    expect(inspectSnapshotBindings).toHaveBeenCalledWith({
+      requestId: 42,
+      snapshot,
+    })
+
+    await expect(
+      backend.validateSnapshot({
+        requestId: 43,
+        value: snapshotSource,
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      requestId: 43,
+      snapshot: { id: 'validated-snapshot' },
+    })
+    expect(validateSnapshot).toHaveBeenCalledWith({
+      requestId: 43,
+      value: snapshotSource,
+    })
+
+    await backend.stopSession('adapter-start')
+    expect(stop).toHaveBeenCalledWith('adapter-start')
+  })
+
+  it('returns runtime-failed when the injected runtime adapter throws', async () => {
+    const runtime: BackendRuntimeAdapter = {
+      start: vi.fn().mockRejectedValue(new Error('adapter boom')),
+      resume: vi.fn(),
+      inspectSnapshot: vi.fn(),
+      inspectSnapshotBindings: vi.fn(),
+      validateSnapshot: vi.fn(),
+      inspect: vi.fn(),
+      stop: vi.fn(),
+    }
+
+    const backend = createBackend({ runtime })
+
+    await expect(
+      backend.startSession({
+        requestId: 44,
+        path: 'main.dvala',
+        source: '41 + 1',
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      requestId: 44,
+      path: 'main.dvala',
+      error: {
+        kind: 'runtime-failed',
+        message: 'adapter boom',
+        path: 'main.dvala',
+      },
+    })
   })
 })

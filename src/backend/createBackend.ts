@@ -1,15 +1,8 @@
 import { allBuiltinModules } from '../allModules'
-import { createDvala } from '../createDvala'
-import { Debugger } from '../debugger/Debugger'
-import type { ContextStack } from '../evaluator/ContextStack'
-import type { ContinuationStack } from '../evaluator/frames'
-import { deserializeFromObject, extractCheckpointSnapshots } from '../evaluator/suspension'
 import { WorkspaceIndex, type ResolveImport } from '../languageService/WorkspaceIndex'
 import type { FileSymbols, SymbolDef } from '../languageService/types'
 import { parseToAst } from '../parser'
 import { allReference, isFunctionReference } from '../../reference/index'
-import { retrigger } from '../retrigger'
-import { resume } from '../resume'
 import { buildBuiltinCompletions, symbolDefToCompletion } from '../shared/completionBuilder'
 import { findCallContext as findSharedCallContext } from '../shared/callContext'
 import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from '../shared/diagnosticBuilder'
@@ -18,10 +11,10 @@ import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { formatSource } from '../tooling'
 import { tokenizeSource } from '../tooling'
 import { typecheck } from '../typechecker/typecheck'
-import type { RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
 import type { DvalaBackend } from './DvalaBackend'
 import { createInMemoryDocumentStore, type BackendDocumentStore } from './documentStore'
+import { createBackendRuntimeAdapter, type BackendRuntimeAdapter } from './runtime/runtimeAdapter'
 import type {
   BackendCancelResult,
   BackendCompletionRequest,
@@ -62,11 +55,7 @@ import type {
 
 export interface CreateBackendOptions {
   documents?: BackendDocumentStore
-}
-
-interface BackendSessionRecord {
-  status: BackendSessionInspectionResult['status']
-  lastUpdatedAt: number
+  runtime?: BackendRuntimeAdapter
 }
 
 const PLAYGROUND_FOLDER = '.dvala-playground'
@@ -108,71 +97,6 @@ function isInPlaygroundFolder(path: string): boolean {
 function folderFromPath(path: string): string {
   const index = path.lastIndexOf('/')
   return index === -1 ? '' : path.slice(0, index)
-}
-
-function hasEnv(value: unknown): value is { env: ContextStack } {
-  return typeof value === 'object' && value !== null && 'env' in value && value.env !== undefined
-}
-
-function hasOuterEnv(value: unknown): value is { outerEnv: ContextStack } {
-  return typeof value === 'object' && value !== null && 'outerEnv' in value && value.outerEnv !== undefined
-}
-
-function getEnvFromContinuation(k: ContinuationStack): ContextStack | null {
-  let node: unknown = k
-  while (typeof node === 'object' && node !== null && 'head' in node && 'tail' in node) {
-    const frame = node.head
-    if (hasEnv(frame)) return frame.env
-    if (hasOuterEnv(frame)) return frame.outerEnv
-    node = node.tail
-  }
-  return null
-}
-
-function extractSnapshotBindings(
-  snapshot: BackendSnapshotBindingsInspectionRequest['snapshot'],
-): Record<string, unknown> {
-  const deserialized = deserializeFromObject(snapshot.continuation)
-  const env =
-    getEnvFromContinuation(deserialized.k) ?? (hasEnv(deserialized.initialStep) ? deserialized.initialStep.env : null)
-
-  if (!env) return {}
-
-  return Debugger.extractBindings({
-    env,
-    k: deserialized.k,
-    resume: () => {},
-    getSnapshots: () => deserialized.snapshots,
-  })
-}
-
-function hasValidRuntimeContinuation(continuation: unknown): boolean {
-  try {
-    deserializeFromObject(continuation)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function asRuntimeSnapshot(value: unknown): RuntimeSnapshot | null {
-  if (typeof value !== 'object' || value === null) return null
-  if (!('id' in value) || typeof value.id !== 'string') return null
-  if (!('continuation' in value)) return null
-  if (!hasValidRuntimeContinuation(value.continuation)) return null
-  if (!('timestamp' in value) || typeof value.timestamp !== 'number') return null
-  if (!('index' in value) || typeof value.index !== 'number') return null
-  if (!('executionId' in value) || typeof value.executionId !== 'string') return null
-  if (!('message' in value) || typeof value.message !== 'string') return null
-  if ('terminal' in value && value.terminal !== undefined && typeof value.terminal !== 'boolean') return null
-  if ('effectName' in value && value.effectName !== undefined && typeof value.effectName !== 'string') return null
-
-  const checkpointSnapshots = extractCheckpointSnapshots(value.continuation)
-  for (const checkpointSnapshot of checkpointSnapshots) {
-    if (!asRuntimeSnapshot(checkpointSnapshot)) return null
-  }
-
-  return value as RuntimeSnapshot
 }
 
 function stripDvalaSuffix(name: string): string {
@@ -434,6 +358,29 @@ function indexWorkspaceSnapshot(
   }
 }
 
+function runtimeBaseDir(path?: string): string {
+  if (!path || isInPlaygroundFolder(path)) return ''
+  return folderFromPath(path)
+}
+
+function createRuntimeFileResolver(documents: BackendDocumentStore) {
+  return (importPath: string, fromDir: string): string => {
+    const resolved = resolvePlaygroundPath(isInPlaygroundFolder(fromDir) ? '' : fromDir, importPath)
+    if (isInPlaygroundFolder(resolved)) {
+      throw new Error(
+        `Cannot import '${importPath}' from '${fromDir || '<root>'}': ${PLAYGROUND_FOLDER}/ is playground state, not part of the deployable project`,
+      )
+    }
+    const exact = documents.getEffectiveSource(resolved)
+    if (exact !== undefined) return exact
+
+    const withSuffix = documents.getEffectiveSource(`${resolved}.dvala`)
+    if (withSuffix !== undefined) return withSuffix
+
+    throw new Error(`File not found: ${importPath} (resolved from '${fromDir}' to '${resolved}')`)
+  }
+}
+
 function resolveWorkspaceImportPathForDocuments(
   documents: BackendDocumentStore,
   rawPath: string,
@@ -674,66 +621,62 @@ function computeSignatureHelpResult(request: BackendSignatureHelpRequest, docume
   }
 }
 
-function runtimeBaseDir(path?: string): string {
-  if (!path || isInPlaygroundFolder(path)) return ''
-  return folderFromPath(path)
-}
-
-function createRuntimeFileResolver(documents: BackendDocumentStore) {
-  return (importPath: string, fromDir: string): string => {
-    const resolved = resolvePlaygroundPath(isInPlaygroundFolder(fromDir) ? '' : fromDir, importPath)
-    if (isInPlaygroundFolder(resolved)) {
-      throw new Error(
-        `Cannot import '${importPath}' from '${fromDir || '<root>'}': ${PLAYGROUND_FOLDER}/ is playground state, not part of the deployable project`,
-      )
-    }
-    const exact = documents.getEffectiveSource(resolved)
-    if (exact !== undefined) return exact
-
-    const withSuffix = documents.getEffectiveSource(`${resolved}.dvala`)
-    if (withSuffix !== undefined) return withSuffix
-
-    throw new Error(`File not found: ${importPath} (resolved from '${fromDir}' to '${resolved}')`)
-  }
-}
-
-function createRuntimeRunner(documents: BackendDocumentStore, path?: string, debug?: boolean) {
-  return createDvala({
-    ...(debug ? { debug: true } : {}),
-    modules: allBuiltinModules,
-    fileResolver: createRuntimeFileResolver(documents),
-    fileResolverBaseDir: runtimeBaseDir(path),
-  })
-}
-
-function statusFromRunResult(result: RuntimeRunResult): BackendSessionInspectionResult['status'] {
-  switch (result.type) {
-    case 'suspended':
-      return 'suspended'
-    case 'error':
-      return 'failed'
-    case 'completed':
-    case 'halted':
-      return 'completed'
-  }
-}
-
 export function createBackend(options: CreateBackendOptions = {}): DvalaBackend {
   const documents = options.documents ?? createInMemoryDocumentStore()
+  const runtime = options.runtime ?? createBackendRuntimeAdapter(documents)
   const cancelledRequests = new Map<number, boolean>()
-  const sessions = new Map<string, BackendSessionRecord>()
-  let sessionCounter = 0
 
-  function createSessionId(): string {
-    sessionCounter += 1
-    return `backend-session-${sessionCounter}`
+  function runtimeCancelledFailure(requestId: number, message: string, path?: string): BackendRequestFailure {
+    clearCancelledRequest(cancelledRequests, requestId)
+    return requestFailure(
+      requestId,
+      {
+        kind: 'cancelled',
+        message,
+        ...(path ? { path } : {}),
+      },
+      path,
+    )
   }
 
-  function updateSession(sessionId: string, status: BackendSessionInspectionResult['status']): void {
-    sessions.set(sessionId, {
-      status,
-      lastUpdatedAt: Date.now(),
-    })
+  function runtimeErrorFailure(requestId: number, error: unknown, path?: string): BackendRequestFailure {
+    clearCancelledRequest(cancelledRequests, requestId)
+    return requestFailure(
+      requestId,
+      {
+        kind: 'runtime-failed',
+        message: error instanceof Error ? error.message : `${error}`,
+        ...(path ? { path } : {}),
+      },
+      path,
+    )
+  }
+
+  async function runRuntimeRequest<T, TResult>(requestOptions: {
+    requestId: number
+    cancelMessage: string
+    path?: string
+    run: () => Promise<T>
+    onCancelled?: (value: T) => Promise<void>
+    success: (value: T) => TResult
+  }): Promise<TResult | BackendRequestFailure> {
+    try {
+      if (isCancelled(cancelledRequests, requestOptions.requestId)) {
+        return runtimeCancelledFailure(requestOptions.requestId, requestOptions.cancelMessage, requestOptions.path)
+      }
+
+      const value = await requestOptions.run()
+
+      if (isCancelled(cancelledRequests, requestOptions.requestId)) {
+        await requestOptions.onCancelled?.(value)
+        return runtimeCancelledFailure(requestOptions.requestId, requestOptions.cancelMessage, requestOptions.path)
+      }
+
+      clearCancelledRequest(cancelledRequests, requestOptions.requestId)
+      return requestOptions.success(value)
+    } catch (error) {
+      return runtimeErrorFailure(requestOptions.requestId, error, requestOptions.path)
+    }
   }
 
   return {
@@ -1183,197 +1126,66 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     },
 
     async startSession(request: BackendSessionStartRequest): Promise<BackendSessionStartResult> {
-      try {
-        if (isCancelled(cancelledRequests, request.requestId)) {
-          clearCancelledRequest(cancelledRequests, request.requestId)
-          return requestFailure(
-            request.requestId,
-            { kind: 'cancelled', message: 'Backend session start request cancelled', path: request.path },
-            request.path,
-          )
-        }
-
-        const sessionId = createSessionId()
-        updateSession(sessionId, 'running')
-
-        const runOptions = request.pure
-          ? {
-              pure: true as const,
-              ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
-              ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),
-              ...(request.path ? { filePath: request.path } : {}),
-            }
-          : {
-              ...(request.effectHandlers ? { effectHandlers: request.effectHandlers } : {}),
-              ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
-              ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),
-              ...(request.path ? { filePath: request.path } : {}),
-            }
-
-        const runResult = await createRuntimeRunner(documents, request.path, request.debug).runAsync(
-          request.source,
-          runOptions,
-        )
-
-        if (isCancelled(cancelledRequests, request.requestId)) {
-          sessions.delete(sessionId)
-          clearCancelledRequest(cancelledRequests, request.requestId)
-          return requestFailure(
-            request.requestId,
-            { kind: 'cancelled', message: 'Backend session start request cancelled', path: request.path },
-            request.path,
-          )
-        }
-
-        updateSession(sessionId, statusFromRunResult(runResult))
-        clearCancelledRequest(cancelledRequests, request.requestId)
-        return {
+      return runRuntimeRequest({
+        requestId: request.requestId,
+        cancelMessage: 'Backend session start request cancelled',
+        path: request.path,
+        run: () => runtime.start(request),
+        onCancelled: started => runtime.stop(started.sessionId),
+        success: started => ({
           ok: true,
           requestId: request.requestId,
-          sessionId,
-          runResult,
-        }
-      } catch (error) {
-        clearCancelledRequest(cancelledRequests, request.requestId)
-        return requestFailure(
-          request.requestId,
-          {
-            kind: 'runtime-failed',
-            message: error instanceof Error ? error.message : `${error}`,
-            ...(request.path ? { path: request.path } : {}),
-          },
-          request.path,
-        )
-      }
+          sessionId: started.sessionId,
+          runResult: started.runResult,
+        }),
+      })
     },
 
     async resumeSnapshot(request: BackendSessionResumeRequest): Promise<BackendSessionResumeResult> {
-      try {
-        if (isCancelled(cancelledRequests, request.requestId)) {
-          clearCancelledRequest(cancelledRequests, request.requestId)
-          return requestFailure(request.requestId, {
-            kind: 'cancelled',
-            message: 'Backend session resume request cancelled',
-          })
-        }
-
-        const sessionId = createSessionId()
-        updateSession(sessionId, 'running')
-
-        const runResult = request.snapshot.effectName
-          ? await retrigger(request.snapshot, {
-              handlers: request.effectHandlers,
-              modules: allBuiltinModules,
-              ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
-              ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),
-            })
-          : await resume(request.snapshot, request.value, {
-              handlers: request.effectHandlers,
-              modules: allBuiltinModules,
-              ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
-              ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),
-            })
-
-        if (isCancelled(cancelledRequests, request.requestId)) {
-          sessions.delete(sessionId)
-          clearCancelledRequest(cancelledRequests, request.requestId)
-          return requestFailure(request.requestId, {
-            kind: 'cancelled',
-            message: 'Backend session resume request cancelled',
-          })
-        }
-
-        updateSession(sessionId, statusFromRunResult(runResult))
-        clearCancelledRequest(cancelledRequests, request.requestId)
-        return {
+      return runRuntimeRequest({
+        requestId: request.requestId,
+        cancelMessage: 'Backend session resume request cancelled',
+        run: () => runtime.resume(request),
+        onCancelled: resumed => runtime.stop(resumed.sessionId),
+        success: resumed => ({
           ok: true,
           requestId: request.requestId,
-          sessionId,
-          runResult,
-        }
-      } catch (error) {
-        clearCancelledRequest(cancelledRequests, request.requestId)
-        return requestFailure(request.requestId, {
-          kind: 'runtime-failed',
-          message: error instanceof Error ? error.message : `${error}`,
-        })
-      }
+          sessionId: resumed.sessionId,
+          runResult: resumed.runResult,
+        }),
+      })
     },
 
     async inspectSnapshot(request: BackendSnapshotInspectionRequest): Promise<BackendSnapshotInspectionResult> {
-      try {
-        if (isCancelled(cancelledRequests, request.requestId)) {
-          clearCancelledRequest(cancelledRequests, request.requestId)
-          return requestFailure(request.requestId, {
-            kind: 'cancelled',
-            message: 'Backend snapshot inspection request cancelled',
-          })
-        }
-
-        const checkpointSnapshots = extractCheckpointSnapshots(request.snapshot.continuation)
-
-        if (isCancelled(cancelledRequests, request.requestId)) {
-          clearCancelledRequest(cancelledRequests, request.requestId)
-          return requestFailure(request.requestId, {
-            kind: 'cancelled',
-            message: 'Backend snapshot inspection request cancelled',
-          })
-        }
-
-        clearCancelledRequest(cancelledRequests, request.requestId)
-        return {
+      return runRuntimeRequest({
+        requestId: request.requestId,
+        cancelMessage: 'Backend snapshot inspection request cancelled',
+        run: () => runtime.inspectSnapshot(request),
+        success: checkpointSnapshots => ({
           ok: true,
           requestId: request.requestId,
           checkpointSnapshots,
-        }
-      } catch (error) {
-        clearCancelledRequest(cancelledRequests, request.requestId)
-        return requestFailure(request.requestId, {
-          kind: 'runtime-failed',
-          message: error instanceof Error ? error.message : `${error}`,
-        })
-      }
+        }),
+      })
     },
 
     async inspectSnapshotBindings(
       request: BackendSnapshotBindingsInspectionRequest,
     ): Promise<BackendSnapshotBindingsInspectionResult> {
-      try {
-        if (isCancelled(cancelledRequests, request.requestId)) {
-          clearCancelledRequest(cancelledRequests, request.requestId)
-          return requestFailure(request.requestId, {
-            kind: 'cancelled',
-            message: 'Backend snapshot bindings inspection request cancelled',
-          })
-        }
-
-        const bindings = extractSnapshotBindings(request.snapshot)
-
-        if (isCancelled(cancelledRequests, request.requestId)) {
-          clearCancelledRequest(cancelledRequests, request.requestId)
-          return requestFailure(request.requestId, {
-            kind: 'cancelled',
-            message: 'Backend snapshot bindings inspection request cancelled',
-          })
-        }
-
-        clearCancelledRequest(cancelledRequests, request.requestId)
-        return {
+      return runRuntimeRequest({
+        requestId: request.requestId,
+        cancelMessage: 'Backend snapshot bindings inspection request cancelled',
+        run: () => runtime.inspectSnapshotBindings(request),
+        success: bindings => ({
           ok: true,
           requestId: request.requestId,
           bindings,
-        }
-      } catch (error) {
-        clearCancelledRequest(cancelledRequests, request.requestId)
-        return requestFailure(request.requestId, {
-          kind: 'runtime-failed',
-          message: error instanceof Error ? error.message : `${error}`,
-        })
-      }
+        }),
+      })
     },
 
     async validateSnapshot(request: BackendSnapshotValidationRequest): Promise<BackendSnapshotValidationResult> {
-      const snapshot = asRuntimeSnapshot(request.value)
+      const snapshot = await runtime.validateSnapshot(request)
       if (!snapshot) {
         return requestFailure(request.requestId, {
           kind: 'invalid-request',
@@ -1389,25 +1201,11 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     },
 
     async inspectSession(sessionId: string): Promise<BackendSessionInspectionResult> {
-      const session = sessions.get(sessionId)
-      if (session) {
-        return {
-          ok: true,
-          sessionId,
-          status: session.status,
-          lastUpdatedAt: session.lastUpdatedAt,
-        }
-      }
-
-      return {
-        ok: true,
-        sessionId,
-        status: 'missing',
-      }
+      return runtime.inspect(sessionId)
     },
 
     async stopSession(sessionId: string): Promise<void> {
-      sessions.delete(sessionId)
+      await runtime.stop(sessionId)
     },
 
     async cancelRequest(requestId: number): Promise<BackendCancelResult> {

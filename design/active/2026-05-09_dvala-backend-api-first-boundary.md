@@ -1,6 +1,6 @@
 # Dvala Backend API First Boundary
 
-**Status:** Draft
+**Status:** Active, first runtime seam proven
 **Created:** 2026-05-09
 
 ## Goal
@@ -54,6 +54,12 @@ The current scope decisions for the first boundary are:
 - keep first-pass analysis request payloads close to the current playground worker protocol
 - define cleaner backend-owned result and error semantics rather than inheriting current worker response shapes wholesale
 - keep the backend as a root-internal source boundary until at least one analysis slice and one runtime slice are both proven
+
+Current status of those decisions:
+
+- the analysis slice is already proven through the worker-backed diagnostics, formatting, hover, completion, and navigation flows on `main`
+- the first runtime slice is now also proven on `main` through a backend-owned runtime adapter that handles `startSession`, `resumeSnapshot`, `inspectSession`, `stopSession`, `inspectSnapshot`, `inspectSnapshotBindings`, and backend-facing snapshot validation
+- `validateSnapshot` remains intentionally backend-owned admission control even though the runtime adapter performs the runtime-shape verification work underneath it
 
 ### First-boundary capabilities
 
@@ -430,34 +436,33 @@ This is the compatibility layer between backend session APIs and current runtime
 Suggested file: `src/backend/runtime/runtimeAdapter.ts`
 
 ```ts
+import type {
+	BackendSnapshotBindingsInspectionRequest,
+	BackendSnapshotInspectionRequest,
+	BackendSnapshotValidationRequest,
+	BackendSessionInspectionResult,
+	BackendSessionResumeRequest,
+	BackendSessionStartRequest,
+} from './requests'
 import type { RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
-
-export type BackendRuntimeStartInput = {
-	path?: string
-	source: string
-	requestId: number
-}
-
-export type BackendRuntimeResumeInput = {
-	requestId: number
-	snapshot: RuntimeSnapshot
-	value?: unknown
-}
 
 export type BackendRuntimeSessionHandle = {
 	sessionId: string
-	result: RuntimeRunResult
+	runResult: RuntimeRunResult
 }
 
 export interface BackendRuntimeAdapter {
-	start(input: BackendRuntimeStartInput): Promise<BackendRuntimeSessionHandle>
-	resume(input: BackendRuntimeResumeInput): Promise<BackendRuntimeSessionHandle>
-	inspect(sessionId: string): Promise<{ status: 'running' | 'suspended' | 'completed' | 'failed' | 'missing' }>
+	start(request: BackendSessionStartRequest): Promise<BackendRuntimeSessionHandle>
+	resume(request: BackendSessionResumeRequest): Promise<BackendRuntimeSessionHandle>
+	inspectSnapshot(request: BackendSnapshotInspectionRequest): Promise<readonly RuntimeSnapshot[]>
+	inspectSnapshotBindings(request: BackendSnapshotBindingsInspectionRequest): Promise<Readonly<Record<string, unknown>>>
+	validateSnapshot(request: BackendSnapshotValidationRequest): Promise<RuntimeSnapshot | null>
+	inspect(sessionId: string): Promise<BackendSessionInspectionResult>
 	stop(sessionId: string): Promise<void>
 }
 ```
 
-This layer should initially adapt current `createDvala()` and `resume()`-based flows, while preserving the ability to route through `dvala-runtime`-native verified inputs later.
+This layer now exists in `src/backend/runtime/runtimeAdapter.ts` and currently adapts `createDvala()`, `resume()`, `retrigger()`, and snapshot inspection/verification helpers behind backend-facing request objects. That is enough to count as the first proven runtime seam while still preserving the ability to route through `dvala-runtime`-native verified inputs later.
 
 ### Proposed request and result types
 
@@ -749,12 +754,19 @@ This preserves current behavior while moving semantic ownership downward.
 
 ### Stage 2: one runtime seam
 
+Status: completed on `main`
+
 After analysis is using the backend surface, move one runtime path behind the same backend.
 
-Preferred path:
+Implemented path:
 
 - `startSession`
 - `resumeSnapshot`
+- `inspectSession`
+- `stopSession`
+- `inspectSnapshot`
+- `inspectSnapshotBindings`
+- backend-facing snapshot validation through `validateSnapshot`
 
 Not yet:
 
@@ -762,7 +774,7 @@ Not yet:
 - time-travel UI
 - rich trace/replay panels
 
-This gives the backend one real runtime lifecycle without forcing the entire runtime-inspection roadmap into the same iteration.
+This now gives the backend one real runtime lifecycle without forcing the entire runtime-inspection roadmap into the same iteration.
 
 ## Non-Goals
 
@@ -778,7 +790,6 @@ This design does not attempt to:
 ## Open Questions
 
 - When should `replaceWorkspaceSnapshot(files)` be retired in favor of explicit persisted-file mutations?
-- What is the first runtime-backed client flow worth proving behind `startSession` and `resumeSnapshot` after the analysis slice lands?
 - Which backend result and error types should be shared directly with transports, and which should stay backend-internal and be translated by adapters?
 - What concrete evidence should count as “analysis slice proven” and “runtime slice proven” for package-promotion purposes?
 
@@ -788,6 +799,6 @@ This design does not attempt to:
 2. Move the current playground LS worker protocol types into that backend boundary or into a shared adapter-facing protocol file owned by the backend layer.
 3. Implement backend-owned document mirrors, version checks, cancellation flags, and stale-result behavior for the current analysis surface.
 4. Make `playground-www/src/lsWorker.ts` an adapter over backend analysis operations rather than the canonical owner of the protocol and state model.
-5. Introduce one runtime session adapter that routes `startSession` and `resumeSnapshot` through backend-owned orchestration using `dvala-runtime` only for portable runtime responsibilities.
+5. Complete the first runtime session adapter by keeping `startSession`, `resumeSnapshot`, session inspection, and snapshot inspection/validation behind backend-owned orchestration using `dvala-runtime` only for portable runtime responsibilities.
 6. Identify the remaining mixed code in `src/createDvala.ts` and split it into runtime-owned, backend-owned, and tooling-only slices.
 7. Reassess whether the backend boundary is stable enough to promote into a real workspace package.
