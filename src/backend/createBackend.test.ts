@@ -1219,4 +1219,32 @@ describe('createBackend', () => {
       },
     })
   })
+
+  it('returns runtime-failed when validateSnapshot throws from the injected runtime adapter', async () => {
+    const runtime: BackendRuntimeAdapter = {
+      start: vi.fn(),
+      resume: vi.fn(),
+      inspectSnapshot: vi.fn(),
+      inspectSnapshotBindings: vi.fn(),
+      validateSnapshot: vi.fn().mockRejectedValue(new Error('validate boom')),
+      inspect: vi.fn(),
+      stop: vi.fn(),
+    }
+
+    const backend = createBackend({ runtime })
+
+    await expect(
+      backend.validateSnapshot({
+        requestId: 45,
+        value: { id: 'bad' },
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      requestId: 45,
+      error: {
+        kind: 'runtime-failed',
+        message: 'validate boom',
+      },
+    })
+  })
 })

@@ -1185,18 +1185,22 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     },
 
     async validateSnapshot(request: BackendSnapshotValidationRequest): Promise<BackendSnapshotValidationResult> {
-      const snapshot = await runtime.validateSnapshot(request)
-      if (!snapshot) {
-        return requestFailure(request.requestId, {
-          kind: 'invalid-request',
-          message: 'Not a valid snapshot object.',
-        })
-      }
+      try {
+        const snapshot = await runtime.validateSnapshot(request)
+        if (!snapshot) {
+          return requestFailure(request.requestId, {
+            kind: 'invalid-request',
+            message: 'Not a valid snapshot object.',
+          })
+        }
 
-      return {
-        ok: true,
-        requestId: request.requestId,
-        snapshot,
+        return {
+          ok: true,
+          requestId: request.requestId,
+          snapshot,
+        }
+      } catch (error) {
+        return runtimeErrorFailure(request.requestId, error)
       }
     },
 
