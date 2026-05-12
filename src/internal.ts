@@ -51,6 +51,7 @@ export type {
   PlaygroundNavigationRequestKind,
   PlaygroundNavigationResultMessage,
   PlaygroundOpenDocumentMessage,
+  PlaygroundReplaceWorkspaceSnapshotMessage,
   PlaygroundRequestCompletionMessage,
   PlaygroundRequestDiagnosticsMessage,
   PlaygroundRequestFormattingMessage,

@@ -154,6 +154,11 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
       return
     }
 
+    case 'replaceWorkspaceSnapshot': {
+      await backend.replaceWorkspaceSnapshot({ files: msg.files })
+      return
+    }
+
     case 'requestDiagnostics': {
       cancelledRequests.delete(msg.requestId)
 
@@ -212,9 +217,13 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
       const result = await backend.requestFormatting({
         requestId: msg.requestId,
         path: msg.path,
-        source: msg.source,
         version: msg.sourceVersion,
       })
+
+      if (!result.ok && result.error.kind === 'resync-required') {
+        requestDocumentResync(msg.path)
+        return
+      }
 
       if (!result.ok && result.error.kind === 'cancelled') return
 
@@ -258,13 +267,17 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
       const result = await backend.requestHover({
         requestId: msg.requestId,
         path: msg.path,
-        source: msg.source,
         version: msg.sourceVersion,
         line: msg.line,
         column: msg.column,
         ...(msg.startColumn !== undefined ? { startColumn: msg.startColumn } : {}),
         ...(msg.endColumn !== undefined ? { endColumn: msg.endColumn } : {}),
       })
+
+      if (!result.ok && result.error.kind === 'resync-required') {
+        requestDocumentResync(msg.path)
+        return
+      }
 
       if (!result.ok) {
         if (result.error.kind === 'cancelled') return
@@ -309,7 +322,6 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
       const result = await backend.requestCompletion({
         requestId: msg.requestId,
         path: msg.path,
-        source: msg.source,
         version: msg.sourceVersion,
         line: msg.line,
         column: msg.column,
@@ -317,6 +329,11 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
         importPrefix: msg.importPrefix,
         workspaceFiles: msg.workspaceFiles,
       })
+
+      if (!result.ok && result.error.kind === 'resync-required') {
+        requestDocumentResync(msg.path)
+        return
+      }
 
       if (!result.ok) {
         if (result.error.kind === 'cancelled') return
@@ -362,13 +379,16 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
         requestId: msg.requestId,
         kind: msg.kind,
         path: msg.path,
-        source: msg.source,
         version: msg.sourceVersion,
         line: msg.line,
         column: msg.column,
         ...(msg.newName !== undefined ? { newName: msg.newName } : {}),
-        workspaceFiles: msg.workspaceFiles,
       })
+
+      if (!result.ok && result.error.kind === 'resync-required') {
+        requestDocumentResync(msg.path)
+        return
+      }
 
       if (!result.ok) {
         if (result.error.kind === 'cancelled') return

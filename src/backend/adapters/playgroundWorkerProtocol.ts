@@ -28,6 +28,11 @@ export interface PlaygroundCloseDocumentMessage {
   path: string
 }
 
+export interface PlaygroundReplaceWorkspaceSnapshotMessage {
+  type: 'replaceWorkspaceSnapshot'
+  files: PlaygroundWorkspaceSnapshotFile[]
+}
+
 export interface PlaygroundRequestDiagnosticsMessage {
   type: 'requestDiagnostics'
   requestId: number
@@ -39,7 +44,6 @@ export interface PlaygroundRequestFormattingMessage {
   type: 'requestFormatting'
   requestId: number
   path: string
-  source: string
   sourceVersion: number
 }
 
@@ -47,7 +51,6 @@ export interface PlaygroundRequestHoverMessage {
   type: 'requestHover'
   requestId: number
   path: string
-  source: string
   sourceVersion: number
   line: number
   column: number
@@ -59,7 +62,6 @@ export interface PlaygroundRequestCompletionMessage {
   type: 'requestCompletion'
   requestId: number
   path: string
-  source: string
   sourceVersion: number
   line: number
   column: number
@@ -72,13 +74,11 @@ export interface PlaygroundRequestNavigationMessage {
   type: 'requestNavigation'
   requestId: number
   path: string
-  source: string
   sourceVersion: number
   kind: PlaygroundNavigationRequestKind
   line: number
   column: number
   newName?: string
-  workspaceFiles: PlaygroundWorkspaceSnapshotFile[]
 }
 
 export interface PlaygroundCancelRequestMessage {
@@ -90,6 +90,7 @@ export type PlaygroundWorkerInMessage =
   | PlaygroundOpenDocumentMessage
   | PlaygroundUpdateDocumentMessage
   | PlaygroundCloseDocumentMessage
+  | PlaygroundReplaceWorkspaceSnapshotMessage
   | PlaygroundRequestDiagnosticsMessage
   | PlaygroundRequestFormattingMessage
   | PlaygroundRequestHoverMessage

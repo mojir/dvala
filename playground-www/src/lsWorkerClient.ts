@@ -32,16 +32,14 @@ import type {
   PlaygroundWorkerOutMessage,
 } from '../../src/internal'
 import { findCallContext } from '../../src/shared/callContext'
-import { getWorkspaceFiles } from './fileStorage'
+import { getWorkspaceFiles, onWorkspaceFilesChanged, type WorkspaceFile } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
 import { HANDLERS_FILE_PATH } from './handlersBuffer'
 import { resolvePlaygroundPath } from './playgroundFileResolver'
 import { SCRATCH_FILE_PATH } from './scratchBuffer'
-import { getImportCompletionItems, getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
+import { getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
-import type { WorkspaceFile } from './fileStorage'
-
 const referenceByTitle = new Map(Object.values(allReference).map(ref => [ref.title, ref]))
 
 function buildHoverMarkdown(name: string, ref: Reference): string {
@@ -114,6 +112,7 @@ function kindToMonaco(kind: CompletionItem['kind']): monaco.languages.Completion
 
 let worker: Worker | null = null
 let nextRequestId = 1
+let workspaceFilesListenerRegistered = false
 
 type PendingRequestMap = Map<string, number>
 
@@ -129,11 +128,17 @@ const pendingFormattingRequests = new Map<string, number>()
 /** Pending formatting resolvers keyed by path. */
 const pendingFormattingResolvers = new Map<string, (edits: monaco.languages.TextEdit[]) => void>()
 
+/** Pending formatting retry closures keyed by path. */
+const pendingFormattingRetries = new Map<string, () => void>()
+
 /** Pending completion request IDs keyed by path. */
 const pendingCompletionRequests = new Map<string, number>()
 
 /** Pending completion resolvers keyed by path. */
 const pendingCompletionResolvers = new Map<string, (items: CompletionItem[] | null) => void>()
+
+/** Pending completion retry closures keyed by path. */
+const pendingCompletionRetries = new Map<string, () => void>()
 
 /** Pending hover request IDs keyed by path. */
 const pendingHoverRequests = new Map<string, number>()
@@ -144,11 +149,17 @@ const pendingHoverRequestKeys = new Map<string, string>()
 /** Pending hover resolvers keyed by path. */
 const pendingHoverResolvers = new Map<string, (inferredType: string | undefined) => void>()
 
+/** Pending hover retry closures keyed by path. */
+const pendingHoverRetries = new Map<string, () => void>()
+
 /** Pending navigation request IDs keyed by request kind + path. */
 const pendingNavigationRequests = new Map<string, number>()
 
 /** Pending navigation resolvers keyed by request kind + path. */
 const pendingNavigationResolvers = new Map<string, (result: unknown) => void>()
+
+/** Pending navigation retry closures keyed by request kind + path. */
+const pendingNavigationRetries = new Map<string, () => void>()
 
 /** Last source version mirrored to the worker for each open path. */
 const lastSentSourceVersions = new Map<string, number>()
@@ -189,23 +200,6 @@ function indexWorkspaceFile(path: string, source: string, seen = new Set<string>
     if (!importedFile) continue
     indexWorkspaceFile(importedFile.path, importedFile.code, seen)
   }
-}
-
-function getWorkspaceSnapshotFiles(excludePath?: string): { path: string; code: string }[] {
-  const snapshot = new Map<string, { path: string; code: string }>()
-
-  for (const file of getWorkspaceFiles() as WorkspaceFile[]) {
-    if (file.path === excludePath) continue
-    snapshot.set(file.path, { path: file.path, code: file.code })
-  }
-
-  for (const [path, model] of registeredModels) {
-    if (isInPlaygroundFolder(path)) continue
-    if (path === excludePath) continue
-    snapshot.set(path, { path, code: model.getValue() })
-  }
-
-  return [...snapshot.values()]
 }
 
 function getWorker(): Worker {
@@ -258,30 +252,35 @@ function cancelPendingDiagnosticsRequest(path: string, w = getWorker()): void {
 function clearPendingFormattingRequest(path: string, edits: monaco.languages.TextEdit[]): void {
   pendingFormattingResolvers.get(path)?.(edits)
   pendingFormattingResolvers.delete(path)
+  pendingFormattingRetries.delete(path)
   clearPendingRequest(pendingFormattingRequests, path)
 }
 
 function cancelPendingFormattingRequest(path: string, w = getWorker()): void {
   pendingFormattingResolvers.get(path)?.([])
   pendingFormattingResolvers.delete(path)
+  pendingFormattingRetries.delete(path)
   cancelPendingRequest(pendingFormattingRequests, path, w)
 }
 
 function clearPendingCompletionRequest(path: string, items: CompletionItem[] | null): void {
   pendingCompletionResolvers.get(path)?.(items)
   pendingCompletionResolvers.delete(path)
+  pendingCompletionRetries.delete(path)
   clearPendingRequest(pendingCompletionRequests, path)
 }
 
 function cancelPendingCompletionRequest(path: string, w = getWorker()): void {
   pendingCompletionResolvers.get(path)?.(null)
   pendingCompletionResolvers.delete(path)
+  pendingCompletionRetries.delete(path)
   cancelPendingRequest(pendingCompletionRequests, path, w)
 }
 
 function clearPendingHoverRequest(path: string, inferredType: string | undefined): void {
   pendingHoverResolvers.get(path)?.(inferredType)
   pendingHoverResolvers.delete(path)
+  pendingHoverRetries.delete(path)
   pendingHoverRequestKeys.delete(path)
   clearPendingRequest(pendingHoverRequests, path)
 }
@@ -289,6 +288,7 @@ function clearPendingHoverRequest(path: string, inferredType: string | undefined
 function cancelPendingHoverRequest(path: string, w = getWorker()): void {
   pendingHoverResolvers.get(path)?.(undefined)
   pendingHoverResolvers.delete(path)
+  pendingHoverRetries.delete(path)
   pendingHoverRequestKeys.delete(path)
   cancelPendingRequest(pendingHoverRequests, path, w)
 }
@@ -318,6 +318,7 @@ function clearPendingNavigationRequest<T>(kind: NavigationRequestKind, path: str
   const resolve = pendingNavigationResolvers.get(key) as ((value: T) => void) | undefined
   resolve?.(result)
   pendingNavigationResolvers.delete(key)
+  pendingNavigationRetries.delete(key)
   clearPendingRequest(pendingNavigationRequests, key)
 }
 
@@ -331,12 +332,21 @@ function cancelPendingNavigationRequest<T>(
   const resolve = pendingNavigationResolvers.get(key) as ((value: T) => void) | undefined
   resolve?.(result)
   pendingNavigationResolvers.delete(key)
+  pendingNavigationRetries.delete(key)
   cancelPendingRequest(pendingNavigationRequests, key, w)
 }
 
 function getResyncFingerprint(path: string, sourceVersion: number): string {
-  const pendingRequestId = getPendingRequestId(pendingRequests, path)
-  return `${sourceVersion}:${pendingRequestId ?? 'none'}`
+  return [
+    sourceVersion,
+    getPendingRequestId(pendingRequests, path) ?? 'none',
+    getPendingRequestId(pendingFormattingRequests, path) ?? 'none',
+    getPendingRequestId(pendingCompletionRequests, path) ?? 'none',
+    getPendingRequestId(pendingHoverRequests, path) ?? 'none',
+    getPendingRequestId(pendingNavigationRequests, getNavigationRequestKey('definition', path)) ?? 'none',
+    getPendingRequestId(pendingNavigationRequests, getNavigationRequestKey('references', path)) ?? 'none',
+    getPendingRequestId(pendingNavigationRequests, getNavigationRequestKey('rename', path)) ?? 'none',
+  ].join(':')
 }
 
 function syncModelToWorker(w: Worker, path: string, model: monaco.editor.ITextModel): void {
@@ -356,6 +366,17 @@ function syncRegisteredModelsToWorker(w: Worker): void {
   }
 }
 
+function toWorkerWorkspaceFiles(workspaceFiles: readonly WorkspaceFile[]) {
+  return workspaceFiles.map(file => ({ path: file.path, code: file.code }))
+}
+
+function syncWorkspaceSnapshotToWorker(w: Worker): void {
+  w.postMessage({
+    type: 'replaceWorkspaceSnapshot',
+    files: toWorkerWorkspaceFiles(getWorkspaceFiles()),
+  })
+}
+
 function handleWorkerError(): void {
   for (const resolve of pendingFormattingResolvers.values()) {
     resolve([])
@@ -371,13 +392,17 @@ function handleWorkerError(): void {
   }
   pendingFormattingResolvers.clear()
   pendingFormattingRequests.clear()
+  pendingFormattingRetries.clear()
   pendingCompletionResolvers.clear()
   pendingCompletionRequests.clear()
+  pendingCompletionRetries.clear()
   pendingHoverResolvers.clear()
   pendingHoverRequests.clear()
+  pendingHoverRetries.clear()
   pendingHoverRequestKeys.clear()
   pendingNavigationResolvers.clear()
   pendingNavigationRequests.clear()
+  pendingNavigationRetries.clear()
   lastResyncFingerprints.clear()
   worker = null
 }
@@ -565,6 +590,12 @@ function handleWorkerMessage(event: MessageEvent<PlaygroundWorkerOutMessage>): v
       if (getPendingRequestId(pendingRequests, path) !== undefined) {
         requestDiagnostics(path, model.getVersionId())
       }
+      pendingFormattingRetries.get(path)?.()
+      pendingCompletionRetries.get(path)?.()
+      pendingHoverRetries.get(path)?.()
+      pendingNavigationRetries.get(getNavigationRequestKey('definition', path))?.()
+      pendingNavigationRetries.get(getNavigationRequestKey('references', path))?.()
+      pendingNavigationRetries.get(getNavigationRequestKey('rename', path))?.()
       lastResyncFingerprints.set(path, getResyncFingerprint(path, model.getVersionId()))
       return
     }
@@ -575,6 +606,7 @@ function createWorker(): Worker {
   const nextWorker = new LsWorker()
   nextWorker.onerror = () => handleWorkerError()
   nextWorker.onmessage = event => handleWorkerMessage(event)
+  syncWorkspaceSnapshotToWorker(nextWorker)
   syncRegisteredModelsToWorker(nextWorker)
   return nextWorker
 }
@@ -755,18 +787,20 @@ function requestNavigation<T>(
 
   return new Promise(resolve => {
     pendingNavigationResolvers.set(key, resolve as (result: unknown) => void)
-    startTrackedRequest(pendingNavigationRequests, key, w, requestId => ({
-      type: 'requestNavigation',
-      requestId,
-      kind,
-      path,
-      source: model.getValue(),
-      sourceVersion: model.getVersionId(),
-      line: position.lineNumber,
-      column: position.column,
-      ...(newName ? { newName } : {}),
-      workspaceFiles: getWorkspaceSnapshotFiles(path),
-    }))
+    const retry = () => {
+      startTrackedRequest(pendingNavigationRequests, key, w, requestId => ({
+        type: 'requestNavigation',
+        requestId,
+        kind,
+        path,
+        sourceVersion: model.getVersionId(),
+        line: position.lineNumber,
+        column: position.column,
+        ...(newName ? { newName } : {}),
+      }))
+    }
+    pendingNavigationRetries.set(key, retry)
+    retry()
   })
 }
 
@@ -779,13 +813,16 @@ function requestFormattingEdits(model: monaco.editor.ITextModel): Promise<monaco
 
   return new Promise(resolve => {
     pendingFormattingResolvers.set(path, resolve)
-    startTrackedRequest(pendingFormattingRequests, path, w, requestId => ({
-      type: 'requestFormatting',
-      requestId,
-      path,
-      source: model.getValue(),
-      sourceVersion: model.getVersionId(),
-    }))
+    const retry = () => {
+      startTrackedRequest(pendingFormattingRequests, path, w, requestId => ({
+        type: 'requestFormatting',
+        requestId,
+        path,
+        sourceVersion: model.getVersionId(),
+      }))
+    }
+    pendingFormattingRetries.set(path, retry)
+    retry()
   })
 }
 
@@ -801,18 +838,20 @@ function requestCompletionItems(
 
   return new Promise(resolve => {
     pendingCompletionResolvers.set(path, resolve)
-    startTrackedRequest(pendingCompletionRequests, path, w, requestId => ({
-      type: 'requestCompletion',
-      requestId,
-      path,
-      source: model.getValue(),
-      sourceVersion: model.getVersionId(),
-      line: position.lineNumber,
-      column: position.column,
-      prefix,
-      importPrefix,
-      workspaceFiles: getWorkspaceSnapshotFiles(path),
-    }))
+    const retry = () => {
+      startTrackedRequest(pendingCompletionRequests, path, w, requestId => ({
+        type: 'requestCompletion',
+        requestId,
+        path,
+        sourceVersion: model.getVersionId(),
+        line: position.lineNumber,
+        column: position.column,
+        prefix,
+        importPrefix,
+      }))
+    }
+    pendingCompletionRetries.set(path, retry)
+    retry()
   })
 }
 
@@ -866,21 +905,24 @@ function requestHoverType(
   return new Promise(resolve => {
     pendingHoverRequestKeys.set(path, requestKey)
     pendingHoverResolvers.set(path, resolve)
-    startTrackedRequest(pendingHoverRequests, path, w, requestId => ({
-      type: 'requestHover',
-      requestId,
-      path,
-      source: model.getValue(),
-      sourceVersion: model.getVersionId(),
-      line: position.lineNumber,
-      column: position.column,
-      ...(wordRange
-        ? {
-            startColumn: wordRange.startColumn,
-            endColumn: wordRange.endColumn,
-          }
-        : {}),
-    }))
+    const retry = () => {
+      startTrackedRequest(pendingHoverRequests, path, w, requestId => ({
+        type: 'requestHover',
+        requestId,
+        path,
+        sourceVersion: model.getVersionId(),
+        line: position.lineNumber,
+        column: position.column,
+        ...(wordRange
+          ? {
+              startColumn: wordRange.startColumn,
+              endColumn: wordRange.endColumn,
+            }
+          : {}),
+      }))
+    }
+    pendingHoverRetries.set(path, retry)
+    retry()
   })
 }
 
@@ -890,6 +932,14 @@ function requestHoverType(
  * Initialize the LS worker. Call once during playground boot.
  */
 export function initLspWorker(): void {
+  if (!workspaceFilesListenerRegistered) {
+    onWorkspaceFilesChanged(() => {
+      if (!worker) return
+      syncWorkspaceSnapshotToWorker(worker)
+    })
+    workspaceFilesListenerRegistered = true
+  }
+
   void getWorker()
 
   // Register Monaco hover provider for Dvala. Built-in docs and source
@@ -960,14 +1010,6 @@ export function initLspWorker(): void {
       const word = model.getWordUntilPosition(position)
       const prefix = String(word.word).toLowerCase()
       const importPrefix = getImportCompletionPrefix(model.getLineContent(position.lineNumber), position.column)
-      if (importPrefix !== null) {
-        return toMonacoCompletionList(
-          getImportCompletionItems(importPrefix, path, getWorkspaceFiles()),
-          range,
-          word.startColumn,
-        )
-      }
-
       if (!path) {
         return toMonacoCompletionList(
           dedupeCompletionItems([...getScopedCompletionItems(prefix, [])]),

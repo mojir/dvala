@@ -21,6 +21,11 @@ export { filenameFromPath, folderFromPath, normalizeFilePath, stripDvalaSuffix }
 const STATE_KEY = 'state'
 
 let fileCache: WorkspaceFile[] = []
+const workspaceFileListeners = new Set<(files: readonly WorkspaceFile[]) => void>()
+
+function notifyWorkspaceFileListeners(): void {
+  for (const listener of workspaceFileListeners) listener(fileCache)
+}
 
 /**
  * Backwards-compat for callers that still think in terms of "name." Returns
@@ -131,11 +136,20 @@ export function setWorkspaceFiles(entries: WorkspaceFile[]): void {
   const normalized = normalizeFiles(entries)
   fileCache = normalized.entries
   if (getDb()) idbPut(SAVED_FILES_STORE, STATE_KEY, normalized.entries)
+  notifyWorkspaceFileListeners()
 }
 
 export function clearAllFiles(): void {
   fileCache = []
   if (getDb()) idbClear(SAVED_FILES_STORE)
+  notifyWorkspaceFileListeners()
+}
+
+export function onWorkspaceFilesChanged(listener: (files: readonly WorkspaceFile[]) => void): () => void {
+  workspaceFileListeners.add(listener)
+  return () => {
+    workspaceFileListeners.delete(listener)
+  }
 }
 
 // FileBackend interface — Phase 3 (CLI mode + BridgeBackend) introduces this

@@ -123,14 +123,22 @@ describe('lsWorker document sync', () => {
     expect(worker.postMessage).not.toHaveBeenCalledWith({ type: 'resyncDocument', path: 'main.dvala' })
   })
 
-  it('formats a source snapshot and returns a formatting result', async () => {
+  it('formats the mirrored active document and returns a formatting result', async () => {
     const worker = await loadWorker()
+
+    await dispatch(worker, {
+      type: 'openDocument',
+      path: 'main.dvala',
+      source: '1',
+      sourceVersion: 3,
+    })
+
+    worker.postMessage.mockClear()
 
     await dispatch(worker, {
       type: 'requestFormatting',
       requestId: 1,
       path: 'main.dvala',
-      source: '1',
       sourceVersion: 3,
     })
 
@@ -149,10 +157,18 @@ describe('lsWorker document sync', () => {
     const worker = await loadWorker()
 
     await dispatch(worker, {
+      type: 'openDocument',
+      path: 'main.dvala',
+      source: 'let answer = 42',
+      sourceVersion: 4,
+    })
+
+    worker.postMessage.mockClear()
+
+    await dispatch(worker, {
       type: 'requestHover',
       requestId: 6,
       path: 'main.dvala',
-      source: 'let answer = 42',
       sourceVersion: 4,
       line: 1,
       column: 5,
@@ -169,19 +185,71 @@ describe('lsWorker document sync', () => {
     )
   })
 
+  it('requests resync instead of completion errors when no mirror exists', async () => {
+    const worker = await loadWorker()
+
+    await dispatch(worker, {
+      type: 'requestCompletion',
+      requestId: 7,
+      path: 'main.dvala',
+      sourceVersion: 3,
+      line: 1,
+      column: 1,
+      prefix: 'x',
+      importPrefix: null,
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith({ type: 'resyncDocument', path: 'main.dvala' })
+    expect(worker.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'completionError',
+        path: 'main.dvala',
+      }),
+    )
+  })
+
+  it('requests resync instead of navigation errors when no mirror exists', async () => {
+    const worker = await loadWorker()
+
+    await dispatch(worker, {
+      type: 'requestNavigation',
+      requestId: 8,
+      kind: 'definition',
+      path: 'main.dvala',
+      sourceVersion: 3,
+      line: 1,
+      column: 1,
+    })
+
+    expect(worker.postMessage).toHaveBeenCalledWith({ type: 'resyncDocument', path: 'main.dvala' })
+    expect(worker.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'navigationError',
+        path: 'main.dvala',
+      }),
+    )
+  })
+
   it('resolves definition and rename navigation from a workspace snapshot', async () => {
     const worker = await loadWorker()
+
+    await dispatch(worker, {
+      type: 'openDocument',
+      path: 'main.dvala',
+      source: 'let answer = 42; answer',
+      sourceVersion: 3,
+    })
+
+    worker.postMessage.mockClear()
 
     await dispatch(worker, {
       type: 'requestNavigation',
       requestId: 2,
       kind: 'definition',
       path: 'main.dvala',
-      source: 'let answer = 42; answer',
       sourceVersion: 3,
       line: 1,
       column: 19,
-      workspaceFiles: [],
     })
 
     expect(worker.postMessage).toHaveBeenCalledWith(
@@ -206,12 +274,10 @@ describe('lsWorker document sync', () => {
       requestId: 3,
       kind: 'rename',
       path: 'main.dvala',
-      source: 'let answer = 42; answer',
       sourceVersion: 3,
       line: 1,
       column: 19,
       newName: 'result',
-      workspaceFiles: [],
     })
 
     expect(worker.postMessage).toHaveBeenCalledWith(
@@ -228,16 +294,26 @@ describe('lsWorker document sync', () => {
     const worker = await loadWorker()
 
     await dispatch(worker, {
+      type: 'openDocument',
+      path: 'main.dvala',
+      source: 'let value = 1\nlet lib = import("./lib")\nval',
+      sourceVersion: 2,
+    })
+
+    await dispatch(worker, {
+      type: 'replaceWorkspaceSnapshot',
+      files: [{ path: 'lib.dvala', code: 'let value = 2\n{ value }' }],
+    })
+
+    await dispatch(worker, {
       type: 'requestCompletion',
       requestId: 4,
       path: 'main.dvala',
-      source: 'let value = 1\nlet lib = import("./lib")\nval',
       sourceVersion: 2,
       line: 3,
       column: 4,
       prefix: 'val',
       importPrefix: null,
-      workspaceFiles: [{ path: 'lib.dvala', code: 'let value = 2\n{ value }' }],
     })
 
     const completionMessage = worker.postMessage.mock.calls.find(call => call[0]?.type === 'completionResult')?.[0] as {
@@ -256,16 +332,33 @@ describe('lsWorker document sync', () => {
     const worker = await loadWorker()
 
     await dispatch(worker, {
+      type: 'openDocument',
+      path: 'main.dvala',
+      source: 'let { fresh } = import("./lib"); fresh',
+      sourceVersion: 3,
+    })
+
+    await dispatch(worker, {
+      type: 'replaceWorkspaceSnapshot',
+      files: [{ path: 'lib.dvala', code: 'let stale = 1\n{ stale }' }],
+    })
+
+    await dispatch(worker, {
+      type: 'openDocument',
+      path: 'lib.dvala',
+      source: 'let fresh = 1\n{ fresh }',
+      sourceVersion: 4,
+    })
+
+    await dispatch(worker, {
       type: 'requestNavigation',
       requestId: 5,
       kind: 'rename',
       path: 'main.dvala',
-      source: 'let { fresh } = import("./lib"); fresh',
       sourceVersion: 3,
       line: 1,
       column: 7,
       newName: 'renamed',
-      workspaceFiles: [{ path: 'lib.dvala', code: 'let fresh = 1\n{ fresh }' }],
     })
 
     expect(worker.postMessage).toHaveBeenCalledWith(
