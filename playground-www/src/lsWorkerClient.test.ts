@@ -14,6 +14,21 @@ let workspaceFiles: {
   createdAt: number
   updatedAt: number
 }[] = []
+const workspaceFileListeners = new Set<(files: readonly (typeof workspaceFiles)[number][]) => void>()
+
+function setWorkspaceFilesState(
+  files: {
+    id: string
+    path: string
+    code: string
+    context: string
+    createdAt: number
+    updatedAt: number
+  }[],
+) {
+  workspaceFiles = files
+  for (const listener of workspaceFileListeners) listener(workspaceFiles)
+}
 
 class FakeWorker {
   public messages: WorkerMessage[] = []
@@ -82,6 +97,12 @@ vi.mock('./fileStorage', async importOriginal => {
   return {
     ...actual,
     getWorkspaceFiles: () => workspaceFiles,
+    onWorkspaceFilesChanged: (listener: (files: readonly (typeof workspaceFiles)[number][]) => void) => {
+      workspaceFileListeners.add(listener)
+      return () => {
+        workspaceFileListeners.delete(listener)
+      }
+    },
   }
 })
 
@@ -118,6 +139,7 @@ beforeEach(async () => {
   workerInstances.length = 0
   setModelMarkers.mockReset()
   workspaceFiles = []
+  workspaceFileListeners.clear()
   client = await import('./lsWorkerClient')
 })
 
@@ -133,6 +155,10 @@ describe('lsWorkerClient lifecycle', () => {
 
     expect(workerInstances).toHaveLength(1)
     expect(workerInstances[0]!.messages).toEqual([
+      {
+        type: 'replaceWorkspaceSnapshot',
+        files: [],
+      },
       {
         type: 'openDocument',
         path: 'main.dvala',
@@ -169,13 +195,11 @@ describe('lsWorkerClient lifecycle', () => {
       type: 'requestCompletion',
       requestId: 1,
       path: 'main.dvala',
-      source: 'let localValue = 1;\nlocal',
       sourceVersion: 3,
       line: 2,
       column: 6,
       prefix: 'local',
       importPrefix: null,
-      workspaceFiles: [],
     })
 
     dispatchWorkerMessage(0, {
@@ -194,6 +218,95 @@ describe('lsWorkerClient lifecycle', () => {
           sortText: '1_localValue',
         }),
       ],
+    })
+  })
+
+  it('routes import path completions through the worker for registered models', async () => {
+    setWorkspaceFilesState([
+      {
+        id: 'utils-file',
+        path: 'utils/math.dvala',
+        code: 'let value = 1',
+        context: '',
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ])
+
+    const model = {
+      ...makeModel('let lib = import("./u")', 6),
+      getLineContent: () => 'let lib = import("./u")',
+      getWordUntilPosition: () => ({ word: 'u', startColumn: 20, endColumn: 21 }),
+    }
+
+    client.initLspWorker()
+    client.registerModel('main.dvala', model as never)
+
+    const provider = vi
+      .mocked((await import('monaco-editor')).languages.registerCompletionItemProvider)
+      .mock.calls.at(-1)?.[1]
+    const position: { lineNumber: number; column: number } = { lineNumber: 1, column: 22 }
+    const context: Record<string, never> = {}
+    const token: Record<string, never> = {}
+    const completionsPromise = provider?.provideCompletionItems(
+      model as never,
+      position as never,
+      context as never,
+      token as never,
+    )
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'requestCompletion',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 6,
+      line: 1,
+      column: 22,
+      prefix: 'u',
+      importPrefix: './u',
+    })
+
+    dispatchWorkerMessage(0, {
+      type: 'completionResult',
+      requestId: 1,
+      path: 'main.dvala',
+      sourceVersion: 6,
+      items: [{ label: './utils/math', kind: 'module', detail: 'workspace file', sortText: '2_./utils/math' }],
+    })
+
+    await expect(completionsPromise).resolves.toEqual({
+      suggestions: [
+        expect.objectContaining({
+          label: './utils/math',
+          detail: 'workspace file',
+          sortText: '2_./utils/math',
+        }),
+      ],
+    })
+  })
+
+  it('syncs workspace snapshot changes to the worker', () => {
+    client.initLspWorker()
+
+    expect(workerInstances[0]!.messages[0]).toEqual({
+      type: 'replaceWorkspaceSnapshot',
+      files: [],
+    })
+
+    setWorkspaceFilesState([
+      {
+        id: 'utils-file',
+        path: 'utils/math.dvala',
+        code: 'let value = 1',
+        context: '',
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ])
+
+    expect(workerInstances[0]!.messages.at(-1)).toEqual({
+      type: 'replaceWorkspaceSnapshot',
+      files: [{ path: 'utils/math.dvala', code: 'let value = 1' }],
     })
   })
 
@@ -371,6 +484,10 @@ describe('lsWorkerClient lifecycle', () => {
 
     expect(workerInstances).toHaveLength(2)
     expect(workerInstances[1]!.messages).toEqual([
+      {
+        type: 'replaceWorkspaceSnapshot',
+        files: [],
+      },
       {
         type: 'openDocument',
         path: 'main.dvala',
@@ -610,7 +727,6 @@ describe('lsWorkerClient lifecycle', () => {
       type: 'requestFormatting',
       requestId: 1,
       path: 'main.dvala',
-      source: 'let   x',
       sourceVersion: 3,
     })
 
@@ -686,11 +802,9 @@ describe('lsWorkerClient lifecycle', () => {
       requestId: 1,
       kind: 'definition',
       path: 'main.dvala',
-      source: 'let answer = 42; answer',
       sourceVersion: 3,
       line: 1,
       column: 19,
-      workspaceFiles: [],
     })
 
     dispatchWorkerMessage(0, {
@@ -754,11 +868,9 @@ describe('lsWorkerClient lifecycle', () => {
       requestId: 1,
       kind: 'definition',
       path: 'main.dvala',
-      source: 'let lib = import("./lib"); stale',
       sourceVersion: 3,
       line: 1,
       column: 28,
-      workspaceFiles: [{ path: 'lib.dvala', code: 'let fresh = 1\n{ fresh }' }],
     })
   })
 

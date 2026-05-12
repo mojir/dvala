@@ -150,6 +150,33 @@ describe('createBackend', () => {
     }
   })
 
+  it('formats the mirrored active document through the backend when source is omitted', async () => {
+    const backend = createBackend()
+
+    await backend.openDocument({
+      path: 'main.dvala',
+      source: 'let x=1',
+      version: 3,
+    })
+
+    const result = await backend.requestFormatting({
+      requestId: 12,
+      path: 'main.dvala',
+      version: 3,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      requestId: 12,
+      path: 'main.dvala',
+      version: 3,
+      formatted: expect.any(String),
+    })
+    if (result.ok) {
+      expect(result.formatted).not.toBe('let x=1')
+    }
+  })
+
   it('computes hover information through the backend', async () => {
     const backend = createBackend()
 
@@ -166,6 +193,36 @@ describe('createBackend', () => {
       expect.objectContaining({
         ok: true,
         requestId: 13,
+        path: 'main.dvala',
+        version: 4,
+      }),
+    )
+    if (result.ok) {
+      expect(result.inferredType).toMatch(/Integer|42/)
+    }
+  })
+
+  it('computes hover information from the mirrored active document when source is omitted', async () => {
+    const backend = createBackend()
+
+    await backend.openDocument({
+      path: 'main.dvala',
+      source: 'let answer = 42',
+      version: 4,
+    })
+
+    const result = await backend.requestHover({
+      requestId: 14,
+      path: 'main.dvala',
+      version: 4,
+      line: 1,
+      column: 5,
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 14,
         path: 'main.dvala',
         version: 4,
       }),
@@ -403,6 +460,47 @@ describe('createBackend', () => {
           endColumn: 1,
         },
       ])
+    }
+  })
+
+  it('uses unsaved open documents for cross-file rename when callers omit workspaceFiles', async () => {
+    const backend = createBackend()
+    await backend.replaceWorkspaceSnapshot({
+      files: [{ path: 'lib.dvala', code: 'let stale = 1\n{ stale }' }],
+    })
+    await backend.openDocument({
+      path: 'lib.dvala',
+      source: 'let fresh = 1\n{ fresh }',
+      version: 2,
+    })
+
+    const rename = await backend.requestNavigation({
+      requestId: 21,
+      kind: 'rename',
+      path: 'main.dvala',
+      source: 'let { fresh } = import("./lib"); fresh',
+      version: 7,
+      line: 1,
+      column: 7,
+      newName: 'renamed',
+    })
+
+    expect(rename).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 21,
+        kind: 'rename',
+        path: 'main.dvala',
+        version: 7,
+      }),
+    )
+    if (rename.ok) {
+      expect(rename.edits).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ file: 'lib.dvala', text: 'renamed' }),
+          expect.objectContaining({ file: 'main.dvala', text: 'renamed' }),
+        ]),
+      )
     }
   })
 

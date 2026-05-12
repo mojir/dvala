@@ -464,7 +464,7 @@ test.describe('editor completions', () => {
     await setEditorCursor(page, code.length)
 
     await focusEditor(page)
-    await page.keyboard.type('./l')
+    await page.keyboard.type('./l', { delay: 50 })
 
     await waitForEditorSuggestions(page)
 

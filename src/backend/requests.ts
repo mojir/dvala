@@ -82,7 +82,7 @@ export type BackendDiagnosticsResult =
 export interface BackendFormattingRequest {
   requestId: BackendRequestId
   path: string
-  source: string
+  source?: string
   version: BackendDocumentVersion
 }
 
@@ -99,7 +99,7 @@ export type BackendFormattingResult =
 export interface BackendHoverRequest {
   requestId: BackendRequestId
   path: string
-  source: string
+  source?: string
   version: BackendDocumentVersion
   line: number
   column: number
@@ -227,7 +227,7 @@ export type BackendSnapshotValidationResult =
 export interface BackendCompletionRequest {
   requestId: BackendRequestId
   path: string
-  source: string
+  source?: string
   version: BackendDocumentVersion
   line: number
   column: number
@@ -271,7 +271,7 @@ export interface BackendNavigationEdit {
 export interface BackendNavigationRequest {
   requestId: BackendRequestId
   path: string
-  source: string
+  source?: string
   version: BackendDocumentVersion
   kind: BackendNavigationKind
   line: number

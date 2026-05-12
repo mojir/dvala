@@ -373,6 +373,7 @@ function computeTypecheckResult(source: string, path: string, documents?: Backen
 }
 
 function computeHoverResult(request: BackendHoverRequest, documents: BackendDocumentStore): string | undefined {
+  if (request.source === undefined) return undefined
   const typecheckResult = computeTypecheckResult(request.source, request.path, documents)
   const wordRange =
     request.startColumn !== undefined && request.endColumn !== undefined
@@ -476,6 +477,7 @@ function indexBackendDocuments(
 }
 
 function computeCompletionResult(request: BackendCompletionRequest) {
+  if (request.source === undefined) return []
   const workspaceFiles = request.workspaceFiles ?? []
   if (request.importPrefix !== null) {
     return getImportCompletionItems(request.importPrefix, request.path, workspaceFiles)
@@ -526,6 +528,7 @@ function getImportPathAtSourcePosition(source: string, line: number, column: num
 }
 
 function computeNavigationResult(request: BackendNavigationRequest) {
+  if (request.source === undefined) return request.kind === 'rename' ? { edits: [] } : { locations: [] }
   const snapshotFiles = new Map((request.workspaceFiles ?? []).map(file => [file.path, file.code]))
   snapshotFiles.set(request.path, request.source)
 
@@ -604,6 +607,23 @@ function indexAllBackendDocuments(documents: BackendDocumentStore, index: Worksp
   for (const document of documents.getOpenDocuments()) {
     indexBackendDocuments(document.path, documents, index, seen)
   }
+}
+
+function getEffectiveWorkspaceSnapshot(documents: BackendDocumentStore): readonly BackendWorkspaceSnapshotFile[] {
+  const snapshot = new Map<string, BackendWorkspaceSnapshotFile>()
+
+  for (const file of documents.getWorkspaceSnapshot()) {
+    snapshot.set(file.path, file)
+  }
+
+  for (const document of documents.getOpenDocuments()) {
+    snapshot.set(document.path, {
+      path: document.path,
+      code: document.source,
+    })
+  }
+
+  return [...snapshot.values()]
 }
 
 function toBackendDocumentSymbol(def: SymbolDef): BackendDocumentSymbol {
@@ -811,7 +831,21 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const formatted = formatSource(request.source)
+        const openDocument = documents.getOpenDocument(request.path)
+        if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+          return requestFailure(
+            request.requestId,
+            {
+              kind: 'resync-required',
+              message: `Backend document mirror missing or stale for ${request.path}`,
+              path: request.path,
+            },
+            request.path,
+            request.version,
+          )
+        }
+
+        const formatted = formatSource(request.source ?? openDocument?.source ?? '')
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
           return requestFailure(
@@ -857,7 +891,27 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const inferredType = computeHoverResult(request, documents)
+        const openDocument = documents.getOpenDocument(request.path)
+        if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+          return requestFailure(
+            request.requestId,
+            {
+              kind: 'resync-required',
+              message: `Backend document mirror missing or stale for ${request.path}`,
+              path: request.path,
+            },
+            request.path,
+            request.version,
+          )
+        }
+
+        const inferredType = computeHoverResult(
+          {
+            ...request,
+            source: request.source ?? openDocument?.source,
+          },
+          documents,
+        )
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
           return requestFailure(
@@ -1011,9 +1065,24 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
+        const openDocument = documents.getOpenDocument(request.path)
+        if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+          return requestFailure(
+            request.requestId,
+            {
+              kind: 'resync-required',
+              message: `Backend document mirror missing or stale for ${request.path}`,
+              path: request.path,
+            },
+            request.path,
+            request.version,
+          )
+        }
+
         const items = computeCompletionResult({
           ...request,
-          workspaceFiles: request.workspaceFiles ?? documents.getWorkspaceSnapshot(),
+          source: request.source ?? openDocument?.source,
+          workspaceFiles: request.workspaceFiles ?? getEffectiveWorkspaceSnapshot(documents),
         })
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
@@ -1060,9 +1129,24 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
+        const openDocument = documents.getOpenDocument(request.path)
+        if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+          return requestFailure(
+            request.requestId,
+            {
+              kind: 'resync-required',
+              message: `Backend document mirror missing or stale for ${request.path}`,
+              path: request.path,
+            },
+            request.path,
+            request.version,
+          )
+        }
+
         const result = computeNavigationResult({
           ...request,
-          workspaceFiles: request.workspaceFiles ?? documents.getWorkspaceSnapshot(),
+          source: request.source ?? openDocument?.source,
+          workspaceFiles: request.workspaceFiles ?? getEffectiveWorkspaceSnapshot(documents),
         })
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)

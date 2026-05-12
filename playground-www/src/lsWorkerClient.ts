@@ -32,16 +32,14 @@ import type {
   PlaygroundWorkerOutMessage,
 } from '../../src/internal'
 import { findCallContext } from '../../src/shared/callContext'
-import { getWorkspaceFiles } from './fileStorage'
+import { getWorkspaceFiles, onWorkspaceFilesChanged, type WorkspaceFile } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
 import { HANDLERS_FILE_PATH } from './handlersBuffer'
 import { resolvePlaygroundPath } from './playgroundFileResolver'
 import { SCRATCH_FILE_PATH } from './scratchBuffer'
-import { getImportCompletionItems, getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
+import { getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
 
 import type { CompletionItem } from '../../src/shared/completionBuilder'
-import type { WorkspaceFile } from './fileStorage'
-
 const referenceByTitle = new Map(Object.values(allReference).map(ref => [ref.title, ref]))
 
 function buildHoverMarkdown(name: string, ref: Reference): string {
@@ -114,6 +112,7 @@ function kindToMonaco(kind: CompletionItem['kind']): monaco.languages.Completion
 
 let worker: Worker | null = null
 let nextRequestId = 1
+let workspaceFilesListenerRegistered = false
 
 type PendingRequestMap = Map<string, number>
 
@@ -189,23 +188,6 @@ function indexWorkspaceFile(path: string, source: string, seen = new Set<string>
     if (!importedFile) continue
     indexWorkspaceFile(importedFile.path, importedFile.code, seen)
   }
-}
-
-function getWorkspaceSnapshotFiles(excludePath?: string): { path: string; code: string }[] {
-  const snapshot = new Map<string, { path: string; code: string }>()
-
-  for (const file of getWorkspaceFiles() as WorkspaceFile[]) {
-    if (file.path === excludePath) continue
-    snapshot.set(file.path, { path: file.path, code: file.code })
-  }
-
-  for (const [path, model] of registeredModels) {
-    if (isInPlaygroundFolder(path)) continue
-    if (path === excludePath) continue
-    snapshot.set(path, { path, code: model.getValue() })
-  }
-
-  return [...snapshot.values()]
 }
 
 function getWorker(): Worker {
@@ -354,6 +336,17 @@ function syncRegisteredModelsToWorker(w: Worker): void {
   for (const [path, model] of registeredModels) {
     syncModelToWorker(w, path, model)
   }
+}
+
+function toWorkerWorkspaceFiles(workspaceFiles: readonly WorkspaceFile[]) {
+  return workspaceFiles.map(file => ({ path: file.path, code: file.code }))
+}
+
+function syncWorkspaceSnapshotToWorker(w: Worker): void {
+  w.postMessage({
+    type: 'replaceWorkspaceSnapshot',
+    files: toWorkerWorkspaceFiles(getWorkspaceFiles()),
+  })
 }
 
 function handleWorkerError(): void {
@@ -575,6 +568,7 @@ function createWorker(): Worker {
   const nextWorker = new LsWorker()
   nextWorker.onerror = () => handleWorkerError()
   nextWorker.onmessage = event => handleWorkerMessage(event)
+  syncWorkspaceSnapshotToWorker(nextWorker)
   syncRegisteredModelsToWorker(nextWorker)
   return nextWorker
 }
@@ -760,12 +754,10 @@ function requestNavigation<T>(
       requestId,
       kind,
       path,
-      source: model.getValue(),
       sourceVersion: model.getVersionId(),
       line: position.lineNumber,
       column: position.column,
       ...(newName ? { newName } : {}),
-      workspaceFiles: getWorkspaceSnapshotFiles(path),
     }))
   })
 }
@@ -783,7 +775,6 @@ function requestFormattingEdits(model: monaco.editor.ITextModel): Promise<monaco
       type: 'requestFormatting',
       requestId,
       path,
-      source: model.getValue(),
       sourceVersion: model.getVersionId(),
     }))
   })
@@ -805,13 +796,11 @@ function requestCompletionItems(
       type: 'requestCompletion',
       requestId,
       path,
-      source: model.getValue(),
       sourceVersion: model.getVersionId(),
       line: position.lineNumber,
       column: position.column,
       prefix,
       importPrefix,
-      workspaceFiles: getWorkspaceSnapshotFiles(path),
     }))
   })
 }
@@ -870,7 +859,6 @@ function requestHoverType(
       type: 'requestHover',
       requestId,
       path,
-      source: model.getValue(),
       sourceVersion: model.getVersionId(),
       line: position.lineNumber,
       column: position.column,
@@ -890,6 +878,14 @@ function requestHoverType(
  * Initialize the LS worker. Call once during playground boot.
  */
 export function initLspWorker(): void {
+  if (!workspaceFilesListenerRegistered) {
+    onWorkspaceFilesChanged(() => {
+      if (!worker) return
+      syncWorkspaceSnapshotToWorker(worker)
+    })
+    workspaceFilesListenerRegistered = true
+  }
+
   void getWorker()
 
   // Register Monaco hover provider for Dvala. Built-in docs and source
@@ -960,14 +956,6 @@ export function initLspWorker(): void {
       const word = model.getWordUntilPosition(position)
       const prefix = String(word.word).toLowerCase()
       const importPrefix = getImportCompletionPrefix(model.getLineContent(position.lineNumber), position.column)
-      if (importPrefix !== null) {
-        return toMonacoCompletionList(
-          getImportCompletionItems(importPrefix, path, getWorkspaceFiles()),
-          range,
-          word.startColumn,
-        )
-      }
-
       if (!path) {
         return toMonacoCompletionList(
           dedupeCompletionItems([...getScopedCompletionItems(prefix, [])]),
