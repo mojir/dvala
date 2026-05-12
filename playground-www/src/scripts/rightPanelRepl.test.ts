@@ -26,22 +26,22 @@ function makeSnapshot(continuation: unknown) {
 }
 
 describe('extractSnapshotBindings', () => {
-  it('flattens the visible snapshot scope with inner bindings shadowing outer ones', () => {
+  it('flattens the visible snapshot scope with inner bindings shadowing outer ones', async () => {
     const env = createContextStack({ globalContext: { outer: { value: 1 }, self: { value: 'skip' } } })
       .create({ answer: { value: 41 } })
       .create({ answer: { value: 42 }, local: { value: 'ok' } })
 
     const continuation = serializeToObject(cons({ type: 'Sequence', nodes: [], index: 0, env }, null))
 
-    expect(extractSnapshotBindings(makeSnapshot(continuation))).toEqual({
+    await expect(extractSnapshotBindings(makeSnapshot(continuation))).resolves.toEqual({
       answer: 42,
       local: 'ok',
       outer: 1,
     })
   })
 
-  it('returns an empty scope for terminal snapshots without an active environment', () => {
-    expect(extractSnapshotBindings(makeSnapshot(serializeTerminalSnapshot([], 0)))).toEqual({})
+  it('returns an empty scope for terminal snapshots without an active environment', async () => {
+    await expect(extractSnapshotBindings(makeSnapshot(serializeTerminalSnapshot([], 0)))).resolves.toEqual({})
   })
 })
 

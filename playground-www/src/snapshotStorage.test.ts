@@ -5,6 +5,7 @@
 // tabs), and the legacy-IDB wipe in `init()`.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as FileStorageModule from './fileStorage'
 
 const SCRATCH_FILE_ID = '__scratch__'
 
@@ -32,12 +33,16 @@ vi.mock('./idb', () => ({
   }),
 }))
 
-vi.mock('./fileStorage', () => ({
-  getWorkspaceFiles: () => workspaceFiles,
-  setWorkspaceFiles: (entries: Stub[]) => {
-    workspaceFiles = entries
-  },
-}))
+vi.mock('./fileStorage', async importOriginal => {
+  const actual = await importOriginal<typeof FileStorageModule>()
+  return {
+    ...actual,
+    getWorkspaceFiles: () => workspaceFiles,
+    setWorkspaceFiles: (entries: Stub[]) => {
+      workspaceFiles = entries
+    },
+  }
+})
 
 vi.mock('./scratchBuffer', () => ({
   SCRATCH_FILE_ID,

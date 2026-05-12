@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import type { WorkspaceFile } from './fileStorage'
-import { resumePlaygroundSnapshotThroughBackend, runPlaygroundSessionThroughBackend } from './runtimeBackend'
+import {
+  inspectPlaygroundSnapshotBindingsThroughBackend,
+  inspectPlaygroundSnapshotThroughBackend,
+  resumePlaygroundSnapshotThroughBackend,
+  runPlaygroundSessionThroughBackend,
+  validatePlaygroundSnapshotThroughBackend,
+} from './runtimeBackend'
 
 function workspaceFile(overrides: Partial<WorkspaceFile> & Pick<WorkspaceFile, 'path' | 'code'>): WorkspaceFile {
   return {
@@ -71,5 +77,91 @@ describe('runtimeBackend', () => {
         snapshot: expect.any(Object),
       }),
     )
+  })
+
+  it('inspects checkpoint snapshots through the backend', async () => {
+    const started = await runPlaygroundSessionThroughBackend({
+      path: 'main.dvala',
+      source: 'perform(@dvala.checkpoint, "before"); let x = perform(@my.ask); x + 1',
+      workspaceFiles: [],
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started.type).toBe('suspended')
+    if (started.type !== 'suspended') return
+
+    const checkpoints = await inspectPlaygroundSnapshotThroughBackend({ snapshot: started.snapshot })
+
+    expect(checkpoints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'before',
+        }),
+      ]),
+    )
+  })
+
+  it('inspects snapshot bindings through the backend', async () => {
+    const started = await runPlaygroundSessionThroughBackend({
+      path: 'main.dvala',
+      source: 'let answer = 42; let local = "ok"; let x = perform(@my.ask); x + answer',
+      workspaceFiles: [],
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started.type).toBe('suspended')
+    if (started.type !== 'suspended') return
+
+    const bindings = await inspectPlaygroundSnapshotBindingsThroughBackend({ snapshot: started.snapshot })
+
+    expect(bindings).toEqual({
+      answer: 42,
+      local: 'ok',
+    })
+  })
+
+  it('validates imported snapshots through the backend', async () => {
+    const started = await runPlaygroundSessionThroughBackend({
+      path: 'main.dvala',
+      source: 'let x = perform(@my.ask); x + 1',
+      workspaceFiles: [],
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started.type).toBe('suspended')
+    if (started.type !== 'suspended') return
+
+    const snapshot = await validatePlaygroundSnapshotThroughBackend({ value: started.snapshot })
+
+    expect(snapshot).toEqual(started.snapshot)
+  })
+
+  it('rejects invalid imported snapshots through the backend', async () => {
+    await expect(
+      validatePlaygroundSnapshotThroughBackend({
+        value: { id: 'bad', message: 'oops' },
+      }),
+    ).rejects.toThrow('Not a valid snapshot object.')
   })
 })

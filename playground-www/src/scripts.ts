@@ -6,7 +6,6 @@ import { getLinkName } from '../../reference'
 import type { Any } from '../../src/interface'
 import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from '../../src/evaluator/effectTypes'
-import { extractCheckpointSnapshots } from '../../src/evaluator/suspension'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { asUnknownRecord } from '../../src/typeGuards'
@@ -69,7 +68,12 @@ import {
   uniqueFilePath,
 } from './fileStorage'
 import { playgroundFileResolver } from './playgroundFileResolver'
-import { resumePlaygroundSnapshotThroughBackend, runPlaygroundSessionThroughBackend } from './runtimeBackend'
+import {
+  inspectPlaygroundSnapshotThroughBackend,
+  resumePlaygroundSnapshotThroughBackend,
+  runPlaygroundSessionThroughBackend,
+  validatePlaygroundSnapshotThroughBackend,
+} from './runtimeBackend'
 import { ensureHandlersFile, wrapWithBoundaryHandler } from './handlersBuffer'
 import {
   SCRATCH_FILE_ID,
@@ -167,6 +171,7 @@ import {
   showToast,
   slideBackSnapshotModal,
 } from './scripts/modals'
+import { importSnapshotFromJsonText } from './scripts/snapshotImport'
 import { state } from './scripts/playgroundState'
 import type { PendingEffect } from './scripts/playgroundState'
 import {
@@ -3302,6 +3307,10 @@ export function setContextForTesting(json: string): void {
   saveState({ context: json }, false)
 }
 
+export function getTerminalSnapshotsForTesting() {
+  return getTerminalSnapshots()
+}
+
 export function getEditorValue(): string {
   return getCodeEditor().getValue()
 }
@@ -3568,14 +3577,33 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
   // Checkpoints
   const checkpointsEl = ref('checkpoints')
   checkpointsEl.innerHTML = ''
-  const cpSnapshots = extractCheckpointSnapshots(snapshot.continuation)
-  ref('cp-count').textContent = String(cpSnapshots.length)
-  if (cpSnapshots.length === 0) {
-    const empty = document.createElement('span')
-    empty.textContent = '(no checkpoints)'
-    empty.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
-    checkpointsEl.appendChild(empty)
-  } else {
+  ref('cp-count').textContent = '...'
+  const loading = document.createElement('span')
+  loading.textContent = '(loading checkpoints)'
+  loading.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
+  checkpointsEl.appendChild(loading)
+  void populateSnapshotCheckpoints(panel, snapshot)
+}
+
+async function populateSnapshotCheckpoints(panel: HTMLElement, snapshot: Snapshot): Promise<void> {
+  const checkpointsEl = panel.querySelector('[data-ref="checkpoints"]') as HTMLElement | null
+  const countEl = panel.querySelector('[data-ref="cp-count"]') as HTMLElement | null
+  if (!checkpointsEl || !countEl) return
+
+  try {
+    const cpSnapshots = await inspectPlaygroundSnapshotThroughBackend({ snapshot })
+    if (!panel.isConnected) return
+
+    checkpointsEl.innerHTML = ''
+    countEl.textContent = String(cpSnapshots.length)
+    if (cpSnapshots.length === 0) {
+      const empty = document.createElement('span')
+      empty.textContent = '(no checkpoints)'
+      empty.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
+      checkpointsEl.appendChild(empty)
+      return
+    }
+
     cpSnapshots.forEach(cpSnapshot => {
       const card = document.createElement('div')
       card.style.cssText =
@@ -3644,6 +3672,16 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
 
       checkpointsEl.appendChild(card)
     })
+  } catch {
+    if (!panel.isConnected) return
+
+    checkpointsEl.innerHTML = ''
+    countEl.textContent = '0'
+
+    const unavailable = document.createElement('span')
+    unavailable.textContent = '(checkpoints unavailable)'
+    unavailable.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
+    checkpointsEl.appendChild(unavailable)
   }
 }
 
@@ -3805,28 +3843,11 @@ export function openImportSnapshotModal() {
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      let parsed: unknown
-      try {
-        parsed = JSON.parse(reader.result as string)
-      } catch {
-        void showInfoModal('Import failed', 'Invalid JSON — could not parse the file.')
-        return
-      }
-      if (
-        typeof parsed !== 'object' ||
-        parsed === null ||
-        !('id' in parsed) ||
-        !('continuation' in parsed) ||
-        !('timestamp' in parsed) ||
-        !('index' in parsed) ||
-        !('executionId' in parsed) ||
-        !('message' in parsed)
-      ) {
-        void showInfoModal('Import failed', 'Not a valid snapshot object.')
-        return
-      }
-      showToast('Snapshot imported')
-      saveAndOpenSnapshotTab(parsed as Snapshot, 'halted', 'Snapshot imported')
+      void importSnapshotFromJsonText(reader.result as string, {
+        validateSnapshot: validatePlaygroundSnapshotThroughBackend,
+        saveAndOpenSnapshotTab,
+        showInfoModal,
+      })
     }
     reader.readAsText(file)
   }

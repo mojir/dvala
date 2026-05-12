@@ -23,6 +23,12 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
+PLAYWRIGHT_WORKFLOWS=(
+  '.github/workflows/ci.yml'
+  '.github/workflows/deploy-pages.yml'
+  '.github/workflows/publish.yml'
+)
+
 # Files that, when changed, demand a fresh perf row. Anything under
 # `src/` plausibly affects pipeline timing — broader is safer than
 # missing a regression. Use `--no-verify` for non-perf-relevant pushes.
@@ -44,6 +50,8 @@ DEFAULT_BASE='origin/main'
 #
 # Stored as space-separated full SHAs in `bench_tips`.
 bench_tips=''
+needs_lockfile_check=0
+needs_playwright_sync_check=0
 
 while read -r local_ref local_sha remote_ref remote_sha; do
   # Branch deletion — nothing to bench.
@@ -71,7 +79,71 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   if [[ -n "$latest_src_touch" ]]; then
     bench_tips="$bench_tips $latest_src_touch"
   fi
+
+  if git diff --name-only "$range" -- 'package.json' 'pnpm-lock.yaml' | grep -q .; then
+    needs_lockfile_check=1
+  fi
+
+  if git diff --name-only "$range" -- 'package.json' "${PLAYWRIGHT_WORKFLOWS[@]}" | grep -q .; then
+    needs_playwright_sync_check=1
+  fi
 done
+
+if [[ "$needs_lockfile_check" -eq 1 ]]; then
+  echo '🔒 Verifying frozen lockfile matches package.json...'
+  if ! pnpm install --frozen-lockfile >/dev/null; then
+    echo '❌ pnpm install --frozen-lockfile failed. Push aborted.'
+    echo '   Refresh the lockfile and retry:'
+    echo '     pnpm install --lockfile-only'
+    exit 1
+  fi
+fi
+
+if [[ "$needs_playwright_sync_check" -eq 1 ]]; then
+  echo '🎭 Verifying Playwright package and workflow image versions match...'
+  if ! node <<'EOF'
+const fs = require('fs')
+const path = require('path')
+
+const root = process.cwd()
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
+const version = packageJson.devDependencies?.['@playwright/test']
+
+if (!version) {
+  console.error('package.json is missing devDependency @playwright/test')
+  process.exit(1)
+}
+
+const workflows = [
+  '.github/workflows/ci.yml',
+  '.github/workflows/deploy-pages.yml',
+  '.github/workflows/publish.yml',
+]
+
+const mismatches = []
+for (const workflow of workflows) {
+  const content = fs.readFileSync(path.join(root, workflow), 'utf8')
+  const match = content.match(/mcr\.microsoft\.com\/playwright:v([^\s"']+)-noble/)
+  if (!match) {
+    mismatches.push(`${workflow}: missing Playwright container image`)
+    continue
+  }
+  if (match[1] !== version) {
+    mismatches.push(`${workflow}: image uses ${match[1]}, package.json uses ${version}`)
+  }
+}
+
+if (mismatches.length > 0) {
+  console.error('Playwright version mismatch detected:')
+  for (const mismatch of mismatches) console.error(`  - ${mismatch}`)
+  process.exit(1)
+}
+EOF
+  then
+    echo '❌ Playwright package/workflow image versions are out of sync. Push aborted.'
+    exit 1
+  fi
+fi
 
 if [[ -z "$bench_tips" ]]; then
   exit 0

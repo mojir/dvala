@@ -185,6 +185,45 @@ export type BackendWorkspaceSymbolsResult =
     }
   | BackendRequestFailure
 
+export interface BackendSnapshotInspectionRequest {
+  requestId: BackendRequestId
+  snapshot: RuntimeSnapshot
+}
+
+export type BackendSnapshotInspectionResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      checkpointSnapshots: readonly RuntimeSnapshot[]
+    }
+  | BackendRequestFailure
+
+export interface BackendSnapshotBindingsInspectionRequest {
+  requestId: BackendRequestId
+  snapshot: RuntimeSnapshot
+}
+
+export type BackendSnapshotBindingsInspectionResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      bindings: Readonly<Record<string, unknown>>
+    }
+  | BackendRequestFailure
+
+export interface BackendSnapshotValidationRequest {
+  requestId: BackendRequestId
+  value: unknown
+}
+
+export type BackendSnapshotValidationResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      snapshot: RuntimeSnapshot
+    }
+  | BackendRequestFailure
+
 export interface BackendCompletionRequest {
   requestId: BackendRequestId
   path: string

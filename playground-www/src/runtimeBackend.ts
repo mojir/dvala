@@ -76,3 +76,37 @@ export async function resumePlaygroundSnapshotThroughBackend(args: {
     }),
   )
 }
+
+export async function inspectPlaygroundSnapshotThroughBackend(args: {
+  snapshot: RuntimeSnapshot
+}): Promise<readonly RuntimeSnapshot[]> {
+  const result = await runtimeBackend.inspectSnapshot({
+    requestId: nextRequestId(),
+    snapshot: args.snapshot,
+  })
+
+  if (result.ok) return result.checkpointSnapshots
+  throw new Error(result.error.message)
+}
+
+export async function inspectPlaygroundSnapshotBindingsThroughBackend(args: {
+  snapshot: RuntimeSnapshot
+}): Promise<Readonly<Record<string, unknown>>> {
+  const result = await runtimeBackend.inspectSnapshotBindings({
+    requestId: nextRequestId(),
+    snapshot: args.snapshot,
+  })
+
+  if (result.ok) return result.bindings
+  throw new Error(result.error.message)
+}
+
+export async function validatePlaygroundSnapshotThroughBackend(args: { value: unknown }): Promise<RuntimeSnapshot> {
+  const result = await runtimeBackend.validateSnapshot({
+    requestId: nextRequestId(),
+    value: args.value,
+  })
+
+  if (result.ok) return result.snapshot
+  throw new Error(result.error.message)
+}

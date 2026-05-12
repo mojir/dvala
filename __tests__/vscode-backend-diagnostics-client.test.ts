@@ -20,6 +20,9 @@ import type {
   BackendSignatureHelpRequest,
   BackendSignatureHelpResult,
   BackendSessionInspectionResult,
+  BackendSnapshotBindingsInspectionResult,
+  BackendSnapshotInspectionResult,
+  BackendSnapshotValidationResult,
   BackendSessionResumeRequest,
   BackendSessionResumeResult,
   BackendSessionStartRequest,
@@ -284,6 +287,30 @@ function createResyncingBackend(overrides: {
     },
     async resumeSnapshot(_: BackendSessionResumeRequest): Promise<BackendSessionResumeResult> {
       throw new Error('not implemented')
+    },
+    async inspectSnapshot(): Promise<BackendSnapshotInspectionResult> {
+      return {
+        ok: true,
+        requestId: 102,
+        checkpointSnapshots: [],
+      }
+    },
+    async inspectSnapshotBindings(): Promise<BackendSnapshotBindingsInspectionResult> {
+      return {
+        ok: true,
+        requestId: 103,
+        bindings: {},
+      }
+    },
+    async validateSnapshot(): Promise<BackendSnapshotValidationResult> {
+      return {
+        ok: false,
+        requestId: 104,
+        error: {
+          kind: 'invalid-request',
+          message: 'not implemented',
+        },
+      }
     },
     async inspectSession(): Promise<BackendSessionInspectionResult> {
       return { ok: true, sessionId: 'test', status: 'missing' }

@@ -668,6 +668,54 @@ describe('createBackend', () => {
     )
   })
 
+  it('inspects checkpoint snapshots through the backend', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 29,
+      path: 'main.dvala',
+      source: 'perform(@dvala.checkpoint, "before"); let x = perform(@my.ask); x + 1',
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 29,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok || started.runResult.type !== 'suspended') return
+
+    const inspection = await backend.inspectSnapshot({
+      requestId: 30,
+      snapshot: started.runResult.snapshot,
+    })
+
+    expect(inspection).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 30,
+      }),
+    )
+    if (inspection.ok) {
+      expect(inspection.checkpointSnapshots).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            message: 'before',
+          }),
+        ]),
+      )
+    }
+  })
+
   it('uses backend-owned workspace overlays when starting a session', async () => {
     const backend = createBackend()
 
@@ -697,6 +745,182 @@ describe('createBackend', () => {
         }),
       )
     }
+  })
+
+  it('inspects snapshot bindings through the backend', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 31,
+      path: 'main.dvala',
+      source: 'let answer = 42; let local = "ok"; let x = perform(@my.ask); x + answer',
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 31,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok || started.runResult.type !== 'suspended') return
+
+    const inspection = await backend.inspectSnapshotBindings({
+      requestId: 32,
+      snapshot: started.runResult.snapshot,
+    })
+
+    expect(inspection).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 32,
+      }),
+    )
+    if (inspection.ok) {
+      expect(inspection.bindings).toEqual({
+        answer: 42,
+        local: 'ok',
+      })
+    }
+  })
+
+  it('validates imported snapshots through the backend', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 33,
+      path: 'main.dvala',
+      source: 'let x = perform(@my.ask); x + 1',
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 33,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok || started.runResult.type !== 'suspended') return
+
+    const validation = await backend.validateSnapshot({
+      requestId: 34,
+      value: started.runResult.snapshot,
+    })
+
+    expect(validation).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 34,
+        snapshot: started.runResult.snapshot,
+      }),
+    )
+  })
+
+  it('rejects invalid imported snapshots through the backend', async () => {
+    const backend = createBackend()
+
+    const validation = await backend.validateSnapshot({
+      requestId: 35,
+      value: { id: 'bad', message: 'oops' },
+    })
+
+    expect(validation).toEqual({
+      ok: false,
+      requestId: 35,
+      error: {
+        kind: 'invalid-request',
+        message: 'Not a valid snapshot object.',
+      },
+    })
+  })
+
+  it('rejects imported snapshots with malformed continuation blobs through the backend', async () => {
+    const backend = createBackend()
+
+    const validation = await backend.validateSnapshot({
+      requestId: 36,
+      value: {
+        id: 'bad',
+        continuation: {},
+        timestamp: 0,
+        index: 0,
+        executionId: 'run-1',
+        message: 'snapshot',
+      },
+    })
+
+    expect(validation).toEqual({
+      ok: false,
+      requestId: 36,
+      error: {
+        kind: 'invalid-request',
+        message: 'Not a valid snapshot object.',
+      },
+    })
+  })
+
+  it('rejects imported snapshots with malformed embedded checkpoint snapshots through the backend', async () => {
+    const backend = createBackend()
+
+    const started = await backend.startSession({
+      requestId: 37,
+      path: 'main.dvala',
+      source: 'perform(@dvala.checkpoint, "before"); let x = perform(@my.ask); x + 1',
+      effectHandlers: [
+        {
+          pattern: 'my.ask',
+          handler: ({ suspend }) => {
+            suspend()
+          },
+        },
+      ],
+    })
+
+    expect(started).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 37,
+        sessionId: expect.any(String),
+      }),
+    )
+    if (!started.ok || started.runResult.type !== 'suspended') return
+
+    const imported = JSON.parse(JSON.stringify(started.runResult.snapshot)) as {
+      continuation: { snapshots?: { continuation: unknown }[] }
+    }
+    if (imported.continuation.snapshots?.[0]) {
+      imported.continuation.snapshots[0].continuation = {}
+    }
+
+    const validation = await backend.validateSnapshot({
+      requestId: 38,
+      value: imported,
+    })
+
+    expect(validation).toEqual({
+      ok: false,
+      requestId: 38,
+      error: {
+        kind: 'invalid-request',
+        message: 'Not a valid snapshot object.',
+      },
+    })
   })
 
   it('rejects imports into the playground state folder for runtime sessions', async () => {

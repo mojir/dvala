@@ -268,7 +268,7 @@ async function loadBaseline(target: ReplTarget, session: ReplSessionState): Prom
         history: [{ type: 'result', value: result.value }],
       }
     } else {
-      nextBaseScope = extractSnapshotBindings(target.snapshot)
+      nextBaseScope = await extractSnapshotBindings(target.snapshot)
     }
     resetSessionToBaseline(session, nextBaseScope, repl)
     session.loadedFileSource = target.kind === 'file' ? target.fileSource : target.snapshot.id
