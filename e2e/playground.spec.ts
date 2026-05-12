@@ -331,7 +331,7 @@ test.describe('editor completions', () => {
     await setEditorCursor(page, 'let localValue = 1;\n'.length)
 
     await focusEditor(page)
-    await page.keyboard.type('loc')
+    await page.keyboard.type('loc', { delay: 50 })
 
     await waitForEditorSuggestions(page)
 
