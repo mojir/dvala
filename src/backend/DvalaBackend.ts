@@ -2,6 +2,7 @@ import type {
   BackendCancelResult,
   BackendCompletionRequest,
   BackendCompletionResult,
+  BackendDocumentVersion,
   BackendDiagnosticsRequest,
   BackendDiagnosticsResult,
   BackendDocumentSymbolsRequest,
@@ -27,6 +28,7 @@ import type {
   BackendSessionStartResult,
   BackendSnapshotValidationRequest,
   BackendSnapshotValidationResult,
+  BackendRequestId,
   BackendTextDocument,
   BackendWorkspaceSymbolsRequest,
   BackendWorkspaceSymbolsResult,
@@ -34,7 +36,10 @@ import type {
 
 export interface DvalaBackend {
   openDocument(document: BackendTextDocument): Promise<void>
-  updateDocument(document: BackendTextDocument, previousVersion: number): Promise<BackendDocumentSyncResult>
+  updateDocument(
+    document: BackendTextDocument,
+    previousVersion: BackendDocumentVersion,
+  ): Promise<BackendDocumentSyncResult>
   closeDocument(path: string): Promise<void>
   replaceWorkspaceSnapshot(request: BackendReplaceWorkspaceSnapshotRequest): Promise<void>
 
@@ -57,5 +62,5 @@ export interface DvalaBackend {
   inspectSession(sessionId: string): Promise<BackendSessionInspectionResult>
   stopSession(sessionId: string): Promise<void>
 
-  cancelRequest(requestId: number): Promise<BackendCancelResult>
+  cancelRequest(requestId: BackendRequestId): Promise<BackendCancelResult>
 }

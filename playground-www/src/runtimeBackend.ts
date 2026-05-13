@@ -1,6 +1,6 @@
 import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
-import { createBackend } from '../../src/internal'
+import { createBackend } from '../../packages/dvala-workspace-backend/src/index'
 import type { WorkspaceFile } from './fileStorage'
 
 const runtimeBackend = createBackend()

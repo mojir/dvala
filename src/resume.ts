@@ -11,7 +11,7 @@ import { continueWithEffects, resumeWithEffects } from './evaluator/trampoline-e
 import { deserializeFromObject } from './evaluator/suspension'
 import { toJS, validateFromJS } from './utils/interop'
 import type { Any } from './interface'
-import type { Context } from './evaluator/interface'
+import { scopeToGlobalContext } from './runtime/scopeToGlobalContext'
 
 // ---------------------------------------------------------------------------
 // Options
@@ -55,15 +55,7 @@ export async function resume(
   try {
     const modules = options?.modules ? new Map(options.modules.map(m => [m.name, m])) : undefined
 
-    // Convert a plain scope record to a Context for injection into globalContexts.
-    // fromJS converts plain JS arrays/objects to PersistentVector/PersistentMap.
-    let scopeContext: Context | undefined
-    if (options?.scope) {
-      scopeContext = {}
-      for (const [k, v] of Object.entries(options.scope)) {
-        scopeContext[k] = { value: validateFromJS(v, `scope binding "${k}"`) }
-      }
-    }
+    const scopeContext = scopeToGlobalContext(options?.scope)
 
     // Extract the opaque continuation from the snapshot and deserialize it.
     const deserialized = deserializeFromObject(snapshot.continuation, {

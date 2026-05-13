@@ -117,6 +117,39 @@ function expectInitialPrompt(cliArgs: string[], expectedPrompt: string): Promise
   })
 }
 
+function runReplAndCapture(cliArgs: string[], commands: string[]): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child: ChildProcessWithoutNullStreams = spawn('node', [dvalaCliPath, ...cliArgs], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
+    })
+
+    let stdout = ''
+    let stderr = ''
+    let commandIndex = 0
+
+    child.stdout.on('data', (data: Buffer) => {
+      stdout += data.toString()
+
+      if (stdout.includes('> ') && commandIndex < commands.length) {
+        child.stdin.write(`${commands[commandIndex]!}\n`)
+        commandIndex += 1
+      }
+    })
+
+    child.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString()
+    })
+
+    child.on('close', () => resolve({ stdout, stderr }))
+
+    setTimeout(() => {
+      child.kill()
+      reject(new Error(`Timeout. stdout:\n${stdout}\n\nstderr:\n${stderr}`))
+    }, 10000)
+  })
+}
+
 describe('CLI IO effect handlers', () => {
   it('shows the loaded filename stem in the initial prompt', async () => {
     const mainFile = path.join(exampleProjectDir, 'main.dvala')
@@ -132,6 +165,20 @@ describe('CLI IO effect handlers', () => {
     const result = await replEval('REPL.result.result.avg', [], ['repl', '-l', mainFile])
 
     expect(result).toBe('5')
+  })
+
+  it('shows a preload runtime error when the loaded file performs an unhandled effect', async () => {
+    const tempDir = fs.mkdtempSync(path.join(process.cwd(), 'tmp-cli-load-'))
+    const loadFile = path.join(tempDir, 'suspend-load.dvala')
+    try {
+      fs.writeFileSync(loadFile, 'let x = perform(@my.ask); x', 'utf-8')
+
+      const output = await runReplAndCapture(['repl', '-l', loadFile], [':quit'])
+
+      expect(output.stderr).toContain("RuntimeError: Unhandled effect: 'my.ask'")
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true })
+    }
   })
 
   // ── dvala.io.read ─────────────────────────────────────────────────────

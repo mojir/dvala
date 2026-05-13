@@ -25,7 +25,6 @@ import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { expandMacros } from '../../src/ast/expandMacros'
 import { treeShake } from '../../src/ast/treeShake'
 import { bundle } from '../../src/bundler'
-import { createDvala } from '../../src/createDvala'
 import { hostHandler } from '../../src/evaluator/effectTypes'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
 import type { CoverageConfig, CoverageReporter, ResolvedConfig } from '../../src/config'
@@ -51,8 +50,10 @@ import initScript from './init.dvala'
 import mainTemplate from './templates/main.dvala'
 import mainTestTemplate from './templates/main.test.dvala'
 import { getCliModules } from './js-interop/Cli'
+import { createCliRuntimeClient, createFileResolver } from './runtimeClient'
 import '../../src/initReferenceData'
 import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
+import { createDvala } from '../../src/createDvala'
 
 const useColor = !process.env.NO_COLOR
 const fmt = createColorizer(useColor)
@@ -203,52 +204,31 @@ const config = processArguments(process.argv.slice(2))
 
 const cliModules = getCliModules()
 
-// Create a file resolver that resolves paths relative to the importing file's directory.
-// Tries the exact path first, then appends .dvala if not found.
-function createFileResolver(): (importPath: string, fromDir: string) => string {
-  return (importPath: string, fromDir: string) => {
-    const resolved = path.resolve(fromDir, importPath)
-    if (fs.existsSync(resolved)) {
-      return fs.readFileSync(resolved, 'utf-8')
-    }
-    const withExtension = `${resolved}.dvala`
-    if (fs.existsSync(withExtension)) {
-      return fs.readFileSync(withExtension, 'utf-8')
-    }
-    throw new Error(`File not found: ${importPath} (tried ${resolved} and ${withExtension})`)
-  }
-}
-
 function makeDvala(
   context: Record<string, unknown>,
   pure: boolean,
   noCheck = false,
   fileResolverBaseDir = process.cwd(),
 ) {
-  const runner = createDvala({
-    debug: true,
-    modules: [...allBuiltinModules, ...cliModules],
-    fileResolver: createFileResolver(),
+  const client = createCliRuntimeClient({
+    context,
+    pure,
+    noCheck,
     fileResolverBaseDir,
-    typecheck: !noCheck,
+    modules: cliModules,
     onTypeDiagnostic: d => {
-      // Print type diagnostics as warnings to stderr
       const loc = d.sourceCodeInfo ? ` at ${d.sourceCodeInfo.position.line}:${d.sourceCodeInfo.position.column}` : ''
       process.stderr.write(`\x1b[33m[type ${d.severity}]${loc}: ${d.message}\x1b[0m\n`)
     },
   })
+
   return {
-    run: (program: string | DvalaBundle, filePath?: string) =>
-      runner.run(program, pure ? { scope: context, pure: true, filePath } : { scope: context, filePath }),
+    run: client.run,
     runAsync: (
       program: string | DvalaBundle,
       filePath?: string,
       effectHandlers = getCliIoEffectHandlers(async () => ''),
-    ) =>
-      runner.runAsync(
-        program,
-        pure ? { scope: context, pure: true, filePath } : { scope: context, filePath, effectHandlers },
-      ),
+    ) => client.runAsync(program, filePath, effectHandlers),
   }
 }
 

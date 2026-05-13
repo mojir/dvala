@@ -22,6 +22,7 @@ import type {
   BackendDiagnosticsRequest,
   BackendDiagnosticsResult,
   BackendDocumentSymbol,
+  BackendDocumentVersion,
   BackendDocumentSymbolsRequest,
   BackendDocumentSymbolsResult,
   BackendFormattingRequest,
@@ -34,6 +35,7 @@ import type {
   BackendNavigationRequest,
   BackendNavigationResult,
   BackendRequestFailure,
+  BackendRequestId,
   BackendSnapshotBindingsInspectionRequest,
   BackendSnapshotBindingsInspectionResult,
   BackendSnapshotInspectionRequest,
@@ -67,15 +69,15 @@ const builtinModuleCompletions = allBuiltinModules.map(mod => ({
   sortText: `0_${mod.name}`,
 }))
 
-function clearCancelledRequest(cancelledRequests: Map<number, boolean>, requestId: number): void {
+function clearCancelledRequest(cancelledRequests: Map<BackendRequestId, boolean>, requestId: BackendRequestId): void {
   cancelledRequests.delete(requestId)
 }
 
 function requestFailure(
-  requestId: number,
+  requestId: BackendRequestId,
   error: BackendRequestFailure['error'],
   path?: string,
-  version?: number,
+  version?: BackendDocumentVersion,
 ): BackendRequestFailure {
   return {
     ok: false,
@@ -86,7 +88,7 @@ function requestFailure(
   }
 }
 
-function isCancelled(cancelledRequests: Map<number, boolean>, requestId: number): boolean {
+function isCancelled(cancelledRequests: Map<BackendRequestId, boolean>, requestId: BackendRequestId): boolean {
   return cancelledRequests.get(requestId) === true
 }
 
@@ -423,9 +425,11 @@ function indexBackendDocuments(
   }
 }
 
-function computeCompletionResult(request: BackendCompletionRequest) {
+function computeCompletionResult(
+  request: BackendCompletionRequest,
+  workspaceFiles: readonly BackendWorkspaceSnapshotFile[],
+) {
   if (request.source === undefined) return []
-  const workspaceFiles = request.workspaceFiles ?? []
   if (request.importPrefix !== null) {
     return getImportCompletionItems(request.importPrefix, request.path, workspaceFiles)
   }
@@ -474,9 +478,12 @@ function getImportPathAtSourcePosition(source: string, line: number, column: num
   return rawPath.length > 0 ? rawPath : ''
 }
 
-function computeNavigationResult(request: BackendNavigationRequest) {
+function computeNavigationResult(
+  request: BackendNavigationRequest,
+  workspaceFiles: readonly BackendWorkspaceSnapshotFile[],
+) {
   if (request.source === undefined) return request.kind === 'rename' ? { edits: [] } : { locations: [] }
-  const snapshotFiles = new Map((request.workspaceFiles ?? []).map(file => [file.path, file.code]))
+  const snapshotFiles = new Map(workspaceFiles.map(file => [file.path, file.code]))
   snapshotFiles.set(request.path, request.source)
 
   const index = new WorkspaceIndex()
@@ -573,6 +580,27 @@ function getEffectiveWorkspaceSnapshot(documents: BackendDocumentStore): readonl
   return [...snapshot.values()]
 }
 
+function resolveAnalysisWorkspaceSnapshot(
+  documents: BackendDocumentStore,
+  compatibilityFiles?: readonly BackendWorkspaceSnapshotFile[],
+): readonly BackendWorkspaceSnapshotFile[] {
+  const resolved = new Map<string, BackendWorkspaceSnapshotFile>()
+
+  // Backend-owned state is canonical.
+  for (const file of getEffectiveWorkspaceSnapshot(documents)) {
+    resolved.set(file.path, file)
+  }
+
+  // Compatibility payloads only fill missing files for legacy callers.
+  for (const file of compatibilityFiles ?? []) {
+    if (!resolved.has(file.path)) {
+      resolved.set(file.path, file)
+    }
+  }
+
+  return [...resolved.values()]
+}
+
 function toBackendDocumentSymbol(def: SymbolDef): BackendDocumentSymbol {
   return {
     name: def.name,
@@ -624,9 +652,9 @@ function computeSignatureHelpResult(request: BackendSignatureHelpRequest, docume
 export function createBackend(options: CreateBackendOptions = {}): DvalaBackend {
   const documents = options.documents ?? createInMemoryDocumentStore()
   const runtime = options.runtime ?? createBackendRuntimeAdapter(documents)
-  const cancelledRequests = new Map<number, boolean>()
+  const cancelledRequests = new Map<BackendRequestId, boolean>()
 
-  function runtimeCancelledFailure(requestId: number, message: string, path?: string): BackendRequestFailure {
+  function runtimeCancelledFailure(requestId: BackendRequestId, message: string, path?: string): BackendRequestFailure {
     clearCancelledRequest(cancelledRequests, requestId)
     return requestFailure(
       requestId,
@@ -639,7 +667,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     )
   }
 
-  function runtimeErrorFailure(requestId: number, error: unknown, path?: string): BackendRequestFailure {
+  function runtimeErrorFailure(requestId: BackendRequestId, error: unknown, path?: string): BackendRequestFailure {
     clearCancelledRequest(cancelledRequests, requestId)
     return requestFailure(
       requestId,
@@ -653,7 +681,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
   }
 
   async function runRuntimeRequest<T, TResult>(requestOptions: {
-    requestId: number
+    requestId: BackendRequestId
     cancelMessage: string
     path?: string
     run: () => Promise<T>
@@ -684,7 +712,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
       documents.open(document)
     },
 
-    async updateDocument(document: BackendTextDocument, previousVersion: number) {
+    async updateDocument(document: BackendTextDocument, previousVersion: BackendDocumentVersion) {
       return documents.update(document, previousVersion)
     },
 
@@ -1022,11 +1050,13 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const items = computeCompletionResult({
-          ...request,
-          source: request.source ?? openDocument?.source,
-          workspaceFiles: request.workspaceFiles ?? getEffectiveWorkspaceSnapshot(documents),
-        })
+        const items = computeCompletionResult(
+          {
+            ...request,
+            source: request.source ?? openDocument?.source,
+          },
+          resolveAnalysisWorkspaceSnapshot(documents, request.workspaceFiles),
+        )
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
           return requestFailure(
@@ -1086,11 +1116,13 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const result = computeNavigationResult({
-          ...request,
-          source: request.source ?? openDocument?.source,
-          workspaceFiles: request.workspaceFiles ?? getEffectiveWorkspaceSnapshot(documents),
-        })
+        const result = computeNavigationResult(
+          {
+            ...request,
+            source: request.source ?? openDocument?.source,
+          },
+          resolveAnalysisWorkspaceSnapshot(documents, request.workspaceFiles),
+        )
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
           return requestFailure(
@@ -1212,7 +1244,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
       await runtime.stop(sessionId)
     },
 
-    async cancelRequest(requestId: number): Promise<BackendCancelResult> {
+    async cancelRequest(requestId: BackendRequestId): Promise<BackendCancelResult> {
       cancelledRequests.set(requestId, true)
       return { ok: true }
     },

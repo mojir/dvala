@@ -1,5 +1,5 @@
 import { createBackend } from '../../src/internal'
-import type { DvalaBackend } from '../../src/backend/DvalaBackend'
+import type { DvalaBackend } from '../../packages/dvala-workspace-backend/src/index'
 import type {
   BackendCompletionRequest,
   BackendCompletionResult,
@@ -16,7 +16,7 @@ import type {
   BackendWorkspaceSnapshotFile,
   BackendWorkspaceSymbolsRequest,
   BackendWorkspaceSymbolsResult,
-} from '../../src/backend/requests'
+} from '../../packages/dvala-workspace-backend/src/index'
 
 export class BackendDiagnosticsClient {
   private readonly backend: DvalaBackend
