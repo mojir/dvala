@@ -1,20 +1,16 @@
 import { AutoCompleter } from './AutoCompleter/AutoCompleter'
 import type { DvalaModule } from './builtin/modules/interface'
-import type { Context } from './evaluator/interface'
 import type { FileResolver } from './evaluator/ContextStack'
 import type { RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
-import { tokenize } from './tokenizer/tokenize'
-import { minifyTokenStream } from './tokenizer/minifyTokenStream'
-import { parseToAst } from './parser'
-import type { Ast, SourceMap } from './parser/types'
+import type { Ast } from './parser/types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
-import { Cache } from './Cache'
 import type { DvalaBundle } from './bundler/interface'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
-import { validateFromJS } from './utils/interop'
 import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } from './typechecker/typecheck'
 import type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
 import { createRuntimeRunner } from './runtime/createRuntimeRunner'
+import { createAstBuilder } from './runtime/createAstBuilder'
+import { scopeToGlobalContext } from './runtime/scopeToGlobalContext'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
@@ -104,56 +100,11 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const typecheckEnabled = options?.typecheck ?? true
   const onTypeDiagnostic = options?.onTypeDiagnostic
   const registeredModules = modules ? [...modules.values()] : undefined
-  // Always use an internal AST cache to ensure deterministic node IDs
-  // when the same source is run multiple times.
-  const cache = new Cache(options?.cache ?? 100)
-  // Accumulated source map across all run() calls (debug mode only).
-  // Global node IDs ensure no collisions between files.
-  let accumulatedSourceMap: SourceMap | undefined
-
-  function buildAst(source: string, filePath?: string, forceDebug?: boolean): Ast {
-    const effectiveDebug = debug || (forceDebug ?? false)
-    if (!filePath && !forceDebug) {
-      const cached = cache.get(source)
-      if (cached) return cached
-    }
-    const tokenStream = tokenize(source, effectiveDebug, filePath)
-    const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-    const ast: Ast = parseToAst(minified, allocateNodeId)
-    // Accumulate source map from each parsed file
-    if (ast.sourceMap) {
-      if (!accumulatedSourceMap) {
-        accumulatedSourceMap = { sources: [...ast.sourceMap.sources], positions: new Map(ast.sourceMap.positions) }
-      } else {
-        const sourceOffset = accumulatedSourceMap.sources.length
-        accumulatedSourceMap.sources.push(...ast.sourceMap.sources)
-        for (const [nodeId, pos] of ast.sourceMap.positions) {
-          accumulatedSourceMap.positions.set(nodeId, { ...pos, source: pos.source + sourceOffset })
-        }
-      }
-      // Point ast's sourceMap to the accumulated one so evaluate() uses it
-      ast.sourceMap = accumulatedSourceMap
-    }
-    // Only cache when debug mode is consistent with the factory setting.
-    // If forceDebug elevated debug for this call, the AST has a sourceMap that
-    // would be absent from a non-debug cached entry — skip caching to avoid
-    // serving a debug AST to non-debug callers (or vice versa).
-    if (!filePath && !forceDebug) cache.set(source, ast)
-    return ast
-  }
-
-  // Convert a plain scope record to a globalContext for createContextStack.
-  // Each value is wrapped as { value } to match the Context type.
-  // fromJS converts plain JS arrays/objects to PersistentVector/PersistentMap so
-  // the evaluator can operate on them correctly.
-  function scopeToGlobalContext(scope?: Record<string, unknown>): Context | undefined {
-    if (!scope) return undefined
-    const ctx: Context = {}
-    for (const [k, v] of Object.entries(scope)) {
-      ctx[k] = { value: validateFromJS(v, `scope binding "${k}"`) }
-    }
-    return ctx
-  }
+  const astBuilder = createAstBuilder({
+    debug,
+    cacheSize: options?.cache ?? 100,
+    allocateNodeId,
+  })
 
   function emitTypeDiagnostics(ast: Ast): void {
     if (!typecheckEnabled) return
@@ -171,13 +122,11 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       factoryFileResolverBaseDir,
       debug,
       allocateNodeId,
-      buildAst,
+      buildAst: astBuilder.buildAst,
       emitTypeDiagnostics,
       scopeToGlobalContext,
-      getAccumulatedSourceMap: () => accumulatedSourceMap,
-      setAccumulatedSourceMap: sourceMap => {
-        accumulatedSourceMap = sourceMap
-      },
+      getAccumulatedSourceMap: astBuilder.getAccumulatedSourceMap,
+      setAccumulatedSourceMap: astBuilder.setAccumulatedSourceMap,
     }),
 
     getUndefinedSymbols(source: string, symbolsOptions?: { scope?: Record<string, unknown> }): Set<string> {
@@ -193,7 +142,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       source: string,
       typecheckOptions?: { fileResolverBaseDir?: string; filePath?: string; fold?: boolean },
     ): TypecheckResult {
-      const ast = buildAst(source, typecheckOptions?.filePath, true)
+      const ast = astBuilder.buildAst(source, typecheckOptions?.filePath, true)
       return runTypecheck(ast, {
         modules: registeredModules,
         fileResolver: factoryFileResolver,

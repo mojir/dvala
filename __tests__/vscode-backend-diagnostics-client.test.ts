@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { DvalaBackend } from '../src/backend/DvalaBackend'
+import type { DvalaBackend } from '../packages/dvala-workspace-backend/src/index'
 import type {
   BackendCancelResult,
   BackendCompletionRequest,
@@ -30,8 +30,8 @@ import type {
   BackendTextDocument,
   BackendWorkspaceSymbolsRequest,
   BackendWorkspaceSymbolsResult,
-} from '../src/backend/requests'
-import { createBackend } from '../src/backend/createBackend'
+} from '../packages/dvala-workspace-backend/src/index'
+import { createBackend } from '../packages/dvala-workspace-backend/src/index'
 import { BackendDiagnosticsClient } from '../vscode-dvala/src/backendDiagnosticsClient'
 
 describe('BackendDiagnosticsClient', () => {

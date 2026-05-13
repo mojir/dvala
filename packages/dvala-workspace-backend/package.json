@@ -1,0 +1,27 @@
+{
+  "name": "@mojir/dvala-workspace-backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Workspace/backend authority package scaffold for Dvala",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js"
+    },
+    "./adapters/playground-worker-protocol": {
+      "types": "./dist/adapters/playgroundWorkerProtocol.d.ts",
+      "import": "./dist/adapters/playgroundWorkerProtocol.js"
+    }
+  },
+  "scripts": {
+    "build": "tsgo -p ./tsconfig.json",
+    "typecheck": "tsgo -p ./tsconfig.json --noEmit"
+  }
+}

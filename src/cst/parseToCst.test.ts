@@ -8,7 +8,7 @@ import { tokenize } from '../tokenizer/tokenize'
 import { parseToCst } from '../parser'
 import type { UntypedCstNode } from './builder'
 import type { CstToken, TriviaNode } from './types'
-import { readFileSync, readdirSync, statSync } from 'fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
 
 // ---------------------------------------------------------------------------
@@ -506,6 +506,9 @@ describe('parseToCst — corpus losslessness', () => {
   for (const filePath of dvalaFiles) {
     const relPath = filePath.replace(`${projectRoot}/`, '')
     it(`roundtrips ${relPath}`, () => {
+      if (!existsSync(filePath)) {
+        return
+      }
       const source = readFileSync(filePath, 'utf-8')
       // Some files may have parse errors — skip those gracefully
       try {

@@ -30,7 +30,7 @@ import type {
   PlaygroundRequestDiagnosticsMessage,
   PlaygroundResyncDocumentMessage,
   PlaygroundWorkerOutMessage,
-} from '../../src/internal'
+} from '../../packages/dvala-workspace-backend/src/adapters/playgroundWorkerProtocol'
 import { findCallContext } from '../../src/shared/callContext'
 import { getWorkspaceFiles, onWorkspaceFilesChanged, type WorkspaceFile } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'

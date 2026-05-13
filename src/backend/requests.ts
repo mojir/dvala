@@ -7,6 +7,9 @@ export type BackendRequestId = number
 
 export type BackendDocumentVersion = number
 
+// Request IDs are caller-generated correlation tokens that must be unique among in-flight requests.
+// Backends use them for cancellation and stale-result suppression.
+
 export interface BackendTextDocument {
   path: string
   source: string
@@ -18,13 +21,16 @@ export interface BackendWorkspaceSnapshotFile {
   code: string
 }
 
-export type BackendRequestErrorKind =
-  | 'cancelled'
-  | 'not-found'
-  | 'invalid-request'
-  | 'analysis-failed'
-  | 'runtime-failed'
-  | 'resync-required'
+export const BACKEND_REQUEST_ERROR_KINDS = [
+  'cancelled',
+  'not-found',
+  'invalid-request',
+  'analysis-failed',
+  'runtime-failed',
+  'resync-required',
+] as const
+
+export type BackendRequestErrorKind = (typeof BACKEND_REQUEST_ERROR_KINDS)[number]
 
 export interface BackendRequestError {
   kind: BackendRequestErrorKind
@@ -53,6 +59,11 @@ export interface BackendResyncRequired {
 }
 
 export type BackendDocumentSyncResult = BackendAccepted | BackendResyncRequired
+
+// Document update invariants:
+// - openDocument seeds the canonical source/version mirror.
+// - updateDocument requires previousVersion to match the backend mirror.
+// - mismatch returns resync-required; callers must re-open with a fresh snapshot.
 
 export interface BackendReplaceWorkspaceSnapshotRequest {
   files: readonly BackendWorkspaceSnapshotFile[]

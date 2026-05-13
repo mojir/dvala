@@ -130,6 +130,59 @@ describe('createBackend', () => {
     })
   })
 
+  it('returns resync-required when updateDocument previousVersion does not match mirror state', async () => {
+    const backend = createBackend()
+    await backend.openDocument({ path: 'main.dvala', source: '1 + 1', version: 2 })
+
+    const result = await backend.updateDocument(
+      {
+        path: 'main.dvala',
+        source: '1 + 2',
+        version: 3,
+      },
+      1,
+    )
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        kind: 'resync-required',
+        path: 'main.dvala',
+      },
+    })
+  })
+
+  it('accepts updateDocument when previousVersion matches mirror state', async () => {
+    const backend = createBackend()
+    await backend.openDocument({ path: 'main.dvala', source: '1 + 1', version: 2 })
+
+    const update = await backend.updateDocument(
+      {
+        path: 'main.dvala',
+        source: '1 + 2',
+        version: 3,
+      },
+      2,
+    )
+
+    expect(update).toEqual({ ok: true })
+
+    const diagnostics = await backend.requestDiagnostics({
+      requestId: 10,
+      path: 'main.dvala',
+      version: 3,
+    })
+
+    expect(diagnostics).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 10,
+        path: 'main.dvala',
+        version: 3,
+      }),
+    )
+  })
+
   it('formats a source snapshot through the backend', async () => {
     const backend = createBackend()
 
@@ -503,6 +556,51 @@ describe('createBackend', () => {
           expect.objectContaining({ file: 'main.dvala', text: 'renamed' }),
         ]),
       )
+    }
+  })
+
+  it('does not let compatibility workspaceFiles override backend-owned open document state', async () => {
+    const backend = createBackend()
+
+    await backend.replaceWorkspaceSnapshot({
+      files: [{ path: 'lib.dvala', code: 'let stale = 1\n{ stale }' }],
+    })
+    await backend.openDocument({
+      path: 'lib.dvala',
+      source: 'let fresh = 1\n{ fresh }',
+      version: 2,
+    })
+
+    const rename = await backend.requestNavigation({
+      requestId: 22,
+      kind: 'rename',
+      path: 'main.dvala',
+      source: 'let { fresh } = import("./lib"); fresh',
+      version: 7,
+      line: 1,
+      column: 7,
+      newName: 'renamed',
+      workspaceFiles: [{ path: 'lib.dvala', code: 'let stale = 1\n{ stale }' }],
+    })
+
+    expect(rename).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 22,
+        kind: 'rename',
+        path: 'main.dvala',
+        version: 7,
+      }),
+    )
+
+    if (rename.ok) {
+      expect(rename.edits).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ file: 'lib.dvala', text: 'renamed' }),
+          expect.objectContaining({ file: 'main.dvala', text: 'renamed' }),
+        ]),
+      )
+      expect(rename.edits).not.toEqual(expect.arrayContaining([expect.objectContaining({ text: 'stale' })]))
     }
   })
 
@@ -1246,5 +1344,130 @@ describe('createBackend', () => {
         message: 'validate boom',
       },
     })
+  })
+
+  it('returns cancelled when analysis request is pre-cancelled', async () => {
+    const backend = createBackend()
+    await backend.openDocument({ path: 'main.dvala', source: '1 + 2', version: 1 })
+
+    await backend.cancelRequest(100)
+    const cancelled = await backend.requestDiagnostics({
+      requestId: 100,
+      path: 'main.dvala',
+      version: 1,
+    })
+
+    expect(cancelled).toEqual({
+      ok: false,
+      requestId: 100,
+      path: 'main.dvala',
+      version: 1,
+      error: {
+        kind: 'cancelled',
+        message: 'Backend diagnostics request cancelled',
+        path: 'main.dvala',
+      },
+    })
+
+    const next = await backend.requestDiagnostics({
+      requestId: 100,
+      path: 'main.dvala',
+      version: 1,
+    })
+
+    expect(next).toEqual(
+      expect.objectContaining({
+        ok: true,
+        requestId: 100,
+        path: 'main.dvala',
+        version: 1,
+      }),
+    )
+  })
+
+  it('returns cancelled and stops runtime session when cancellation lands during startSession', async () => {
+    let resolveStart:
+      | ((value: { sessionId: string; runResult: { type: 'completed'; value: number } }) => void)
+      | undefined
+    const start = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ sessionId: string; runResult: { type: 'completed'; value: number } }>(resolve => {
+          resolveStart = resolve
+        }),
+    )
+    const stop = vi.fn().mockResolvedValue(undefined)
+    const runtime: BackendRuntimeAdapter = {
+      start,
+      resume: vi.fn(),
+      inspectSnapshot: vi.fn(),
+      inspectSnapshotBindings: vi.fn(),
+      validateSnapshot: vi.fn(),
+      inspect: vi.fn(),
+      stop,
+    }
+
+    const backend = createBackend({ runtime })
+
+    const startedPromise = backend.startSession({
+      requestId: 101,
+      path: 'main.dvala',
+      source: '41 + 1',
+    })
+
+    await backend.cancelRequest(101)
+    if (typeof resolveStart === 'function') {
+      resolveStart({
+        sessionId: 'cancelled-session',
+        runResult: { type: 'completed', value: 42 },
+      })
+    }
+
+    await expect(startedPromise).resolves.toEqual({
+      ok: false,
+      requestId: 101,
+      path: 'main.dvala',
+      error: {
+        kind: 'cancelled',
+        message: 'Backend session start request cancelled',
+        path: 'main.dvala',
+      },
+    })
+    expect(start).toHaveBeenCalledTimes(1)
+    expect(stop).toHaveBeenCalledWith('cancelled-session')
+  })
+
+  it('short-circuits pre-cancelled startSession before runtime adapter invocation', async () => {
+    const start = vi.fn()
+    const runtime: BackendRuntimeAdapter = {
+      start,
+      resume: vi.fn(),
+      inspectSnapshot: vi.fn(),
+      inspectSnapshotBindings: vi.fn(),
+      validateSnapshot: vi.fn(),
+      inspect: vi.fn(),
+      stop: vi.fn(),
+    }
+
+    const backend = createBackend({ runtime })
+    await backend.cancelRequest(102)
+
+    await expect(
+      backend.startSession({
+        requestId: 102,
+        path: 'main.dvala',
+        source: '41 + 1',
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      requestId: 102,
+      path: 'main.dvala',
+      error: {
+        kind: 'cancelled',
+        message: 'Backend session start request cancelled',
+        path: 'main.dvala',
+      },
+    })
+
+    expect(start).not.toHaveBeenCalled()
   })
 })
