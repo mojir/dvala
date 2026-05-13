@@ -1,20 +1,20 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { createBackend } from '../../packages/dvala-workspace-backend/src/index'
+import { createBackend } from '../../../packages/dvala-workspace-backend/src/index'
 import type {
   BackendRuntimeAdapter,
   BackendSessionResumeRequest,
   BackendSessionStartRequest,
-} from '../../packages/dvala-workspace-backend/src/index'
-import type { DvalaBundle } from '../../src/bundler/interface'
-import { allBuiltinModules } from '../../src/allModules'
-import { createDvala } from '../../src/createDvala'
-import { retrigger } from '../../src/retrigger'
-import { resume } from '../../src/resume'
-import type { DvalaModule } from '../../src/builtin/modules/interface'
+} from '../../../packages/dvala-workspace-backend/src/index'
+import type { DvalaBundle } from '../../../src/bundler/interface'
+import { allBuiltinModules } from '../../../src/allModules'
+import { createDvala } from '../../../src/createDvala'
+import { retrigger } from '../../../src/retrigger'
+import { resume } from '../../../src/resume'
+import type { DvalaModule } from '../../../src/builtin/modules/interface'
 import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
-import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
+import type { TypeDiagnostic } from '../../../src/typechecker/typecheck'
 
 export function createFileResolver(): (importPath: string, fromDir: string) => string {
   return (importPath: string, fromDir: string) => {

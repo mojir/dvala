@@ -1,9 +1,9 @@
-import type { FunctionReference, Reference } from '../../../reference'
+import type { FunctionReference, Reference } from '../../../../reference'
 import type { Colorizer } from '../colorizer'
-import { createFormatter } from '../../../common/createFormatter'
-import { findAllOccurrences } from '../../../common/utils'
-import { isFunctionReference } from '../../../reference'
-import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../src/symbolPatterns'
+import { createFormatter } from '../../../../common/createFormatter'
+import { findAllOccurrences } from '../../../../common/utils'
+import { isFunctionReference } from '../../../../reference'
+import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../../src/symbolPatterns'
 import { createVariableRule, getMdRules } from '../cliFormatterRules'
 
 const variableRegExp = new RegExp(`\\$${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*`, 'g')

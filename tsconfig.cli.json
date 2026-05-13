@@ -1,4 +1,4 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["types/**/*", "cli/**/*", "reference/**/*"]
+  "include": ["types/**/*", "cli/**/*", "packages/dvala-cli/**/*", "reference/**/*"]
 }

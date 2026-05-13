@@ -1,4 +1,4 @@
-import type { FormatterRule } from '../cli/src/cliFormatterRules'
+import type { FormatterRule } from '../packages/dvala-cli/src/cliFormatterRules'
 
 export type TextFormatter = (text: string) => string
 

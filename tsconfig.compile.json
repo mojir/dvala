@@ -7,6 +7,7 @@
     "types/**/*",
     "src/**/*",
     "packages/dvala-mcp-server/**/*",
+    "packages/dvala-cli/**/*",
     "__tests__/**/*.test.ts",
     "cli/**/*",
     "mcp-server/**/*",

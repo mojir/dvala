@@ -1,0 +1,11 @@
+{
+  "name": "@mojir/dvala-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI subproject scaffold for Dvala",
+  "scripts": {
+    "build": "tsgo -p ./tsconfig.json",
+    "typecheck": "tsgo -p ./tsconfig.json --noEmit"
+  }
+}
