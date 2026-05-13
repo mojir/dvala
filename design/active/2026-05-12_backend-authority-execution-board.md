@@ -336,6 +336,10 @@ Adoption progress (2026-05-13):
   - `playground-www/src/lsWorker.ts` and `playground-www/src/lsWorkerClient.ts` now import worker protocol types from `packages/dvala-workspace-backend/src/adapters/playgroundWorkerProtocol`.
   - `playground-www/src/runtimeBackend.ts` now imports `createBackend` from `packages/dvala-workspace-backend/src/index`.
 - Focused playground worker/runtime backend tests remain green after the boundary import switch.
+- MCP server boundary migrated to package scaffold:
+  - `packages/dvala-mcp-server` now owns the MCP server implementation surface.
+  - `mcp-server/src/server.ts` is now a thin entrypoint that delegates to `packages/dvala-mcp-server/src/index`.
+  - Package-level typecheck and repo-wide validation remain green after the boundary split.
 
 ## Suggested Sequencing
 

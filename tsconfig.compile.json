@@ -6,6 +6,7 @@
   "include": [
     "types/**/*",
     "src/**/*",
+    "packages/dvala-mcp-server/**/*",
     "__tests__/**/*.test.ts",
     "cli/**/*",
     "mcp-server/**/*",

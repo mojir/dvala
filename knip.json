@@ -35,6 +35,9 @@
     "packages/dvala-runtime": {
       "project": ["src/**/*.ts"]
     },
+    "packages/dvala-mcp-server": {
+      "project": ["src/**/*.ts"]
+    },
     "vscode-dvala": {
       "entry": ["src/debugAdapter.ts"],
       "project": ["src/**/*.ts"]
