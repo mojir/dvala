@@ -9,6 +9,7 @@
     "packages/dvala-mcp-server/**/*",
     "packages/dvala-core-tooling/**/*",
     "packages/dvala-cli/**/*",
+    "apps/playground-www/**/*",
     "__tests__/**/*.test.ts",
     "cli/**/*",
     "mcp-server/**/*",

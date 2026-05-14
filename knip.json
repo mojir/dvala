@@ -44,6 +44,9 @@
     "packages/dvala-cli": {
       "project": ["src/**/*.ts"]
     },
+    "apps/playground-www": {
+      "project": ["src/**/*.ts"]
+    },
     "vscode-dvala": {
       "entry": ["src/debugAdapter.ts"],
       "project": ["src/**/*.ts"]
