@@ -18,7 +18,7 @@
 // panel's `onChange` callback.
 
 import type { Ast } from '../../../src/parser/types'
-import { buildDocTree, parseToCst, parseTokenStream, tokenizeSource } from '../../../src/tooling'
+import { buildDocTree, parseToCst, parseTokenStream, tokenizeSource } from '../../../packages/dvala-core-tooling/src/index'
 import { prettyPrint } from '../../../src/prettyPrint'
 import type { JsonTreeViewerHandle } from '../components/jsonTreeViewer'
 import { createJsonTreeViewer } from '../components/jsonTreeViewer'
