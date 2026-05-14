@@ -96,6 +96,8 @@ importers:
 
   packages/dvala-cli: {}
 
+  packages/dvala-core-tooling: {}
+
   packages/dvala-mcp-server: {}
 
   packages/dvala-runtime: {}
