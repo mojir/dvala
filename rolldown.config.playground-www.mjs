@@ -12,10 +12,10 @@ export default defineConfig([
 
       warn(warning)
     },
-    input: 'playground-www/src/playground.ts',
+    input: 'apps/playground-www/src/playground.ts',
     output: [
       {
-        file: 'playground-www/build/playground.js',
+        file: 'apps/playground-www/build/playground.js',
         format: 'iife',
         name: 'Playground',
         minify: isCI,
@@ -25,10 +25,10 @@ export default defineConfig([
     plugins: [bookChaptersPlugin(), cssStubPlugin(), dvalaSourcePlugin(), markdownSourcePlugin()],
   },
   {
-    input: 'playground-www/src/lsWorker.ts',
+    input: 'apps/playground-www/src/lsWorker.ts',
     output: [
       {
-        file: 'playground-www/build/lsWorker.js',
+        file: 'apps/playground-www/build/lsWorker.js',
         format: 'esm',
         minify: isCI,
         sourcemap: true,

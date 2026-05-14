@@ -94,7 +94,7 @@ console.log('Formatting book markdown files...')
 for (const f of collectMarkdownFiles(path.join(root, 'book'))) formatMarkdownFile(f)
 
 console.log('Formatting feature card markdown files...')
-for (const f of collectMarkdownFiles(path.join(root, 'playground-www/src/featureCards'))) formatMarkdownFile(f)
+for (const f of collectMarkdownFiles(path.join(root, 'apps/playground-www/src/featureCards'))) formatMarkdownFile(f)
 
 console.log('Formatting example project .dvala files...')
 for (const f of collectDvalaFiles(path.join(root, 'examples'))) formatDvalaFile(f)

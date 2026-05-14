@@ -23,8 +23,8 @@ import {
   tokenizeSource,
   untokenize,
 } from '../src/tooling'
-import { StateHistory } from '../playground-www/src/StateHistory'
-import type { HistoryEntry, HistoryStatus } from '../playground-www/src/StateHistory'
+import { StateHistory } from '../apps/playground-www/src/StateHistory'
+import type { HistoryEntry, HistoryStatus } from '../apps/playground-www/src/StateHistory'
 import { stringifyValue } from '../common/utils'
 import { examples } from '../reference/examples'
 

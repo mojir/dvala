@@ -61,7 +61,7 @@ describe('round-trip — book examples', () => {
 // ---------------------------------------------------------------------------
 
 describe('round-trip — feature card examples', () => {
-  for (const filePath of collectFiles(path.join(root, 'playground-www/src/featureCards'), '.md')) {
+  for (const filePath of collectFiles(path.join(root, 'apps/playground-www/src/featureCards'), '.md')) {
     const markdown = fs.readFileSync(filePath, 'utf-8')
     const blocks = extractCodeBlocks(markdown)
     blocks.forEach((block, i) => {

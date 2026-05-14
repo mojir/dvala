@@ -40,7 +40,7 @@ export function markdownSourcePlugin() {
  * the playground bundle drags in via `monaco-editor`:
  *
  * 1. `*.css` — rolldown removed CSS bundling support. The prebuilt Monaco
- *    stylesheet is loaded via `<link>` in `playground-www/index.html`
+ *    stylesheet is loaded via `<link>` in `apps/playground-www/index.html`
  *    instead.
  * 2. `*?worker` — Vite-specific worker URL syntax. Production rolldown
  *    resolves it to a no-op worker stub; Monaco then logs a warning and
@@ -99,7 +99,7 @@ export default PlaygroundLsWorker;`
  * dropping a .md file in book/ is enough for it to appear.
  *
  * `bookDir` defaults to `<cwd>/book` for the existing rolldown configs (which run from the
- * monorepo root). Vite's playground config runs from `playground-www/` and passes an
+ * monorepo root). Vite's playground config runs from `apps/playground-www/` and passes an
  * explicit absolute path so resolution doesn't depend on cwd.
  */
 export function bookChaptersPlugin({ bookDir = path.resolve('book') } = {}) {

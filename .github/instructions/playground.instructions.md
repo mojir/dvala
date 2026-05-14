@@ -1,6 +1,6 @@
 ---
-description: Playground architecture conventions. Use when editing playground-www/** or when working on playground features.
-applyTo: "playground-www/**"
+description: Playground architecture conventions. Use when editing apps/playground-www/** or when working on playground features.
+applyTo: "apps/playground-www/**"
 ---
 
 ### Naming conventions (canonical — use these terms in code, comments, UI, and design docs)

@@ -24,7 +24,7 @@ export default defineConfig({
     },
   ],
   test: {
-    exclude: ['e2e/**', '**/node_modules/**'],
+    exclude: ['e2e/**', '.wireit/**', '**/node_modules/**'],
     setupFiles: ['./vitest.setup.ts'],
     // Share module cache across files within a worker. Drops cumulative import
     // time from ~48s to ~15s and trims wall-clock by ~17% on this suite. Safe
@@ -41,7 +41,7 @@ export default defineConfig({
         'types/**',
         '**/*.test.ts',
         'playground-builder/**',
-        'playground-www/**',
+        'apps/playground-www/**',
         'reference/**',
         'dist/**',
         'node_modules/**',

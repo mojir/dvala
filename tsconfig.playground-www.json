@@ -1,4 +1,4 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["types/**/*", "playground-www/**/*", "reference/**/*", "common/**/*", "book/**/*"]
+  "include": ["types/**/*", "apps/playground-www/**/*", "reference/**/*", "common/**/*", "book/**/*"]
 }
