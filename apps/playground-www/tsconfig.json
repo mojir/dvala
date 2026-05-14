@@ -6,6 +6,6 @@
     "declarationDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["src/**/*", "../../playground-www/src/vite-env.d.ts", "../../types/**/*"],
+  "include": ["src/**/*"],
   "exclude": []
 }

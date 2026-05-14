@@ -150,6 +150,7 @@
     "build-dvala": "wireit",
     "build-cli": "wireit",
     "build-mcp": "wireit",
+    "build-playground-www": "wireit",
     "build-playground": "wireit",
     "build-book": "wireit",
     "build-vscode-ext": "wireit",
@@ -361,6 +362,7 @@
         "build-dvala",
         "build-cli",
         "build-mcp",
+        "build-playground-www",
         "build-playground",
         "build-vscode-ext"
       ]
@@ -420,6 +422,18 @@
       ],
       "output": [
         "dist/mcp-server/**"
+      ],
+      "clean": "if-file-deleted"
+    },
+    "build-playground-www": {
+      "command": "pnpm --filter @mojir/dvala-playground-www run build",
+      "files": [
+        "apps/playground-www/src/**",
+        "apps/playground-www/package.json",
+        "apps/playground-www/tsconfig.json"
+      ],
+      "output": [
+        "apps/playground-www/dist/**"
       ],
       "clean": "if-file-deleted"
     },
