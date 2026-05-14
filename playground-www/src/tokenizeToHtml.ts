@@ -7,7 +7,7 @@ import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { standardEffectNames } from '../../src/evaluator/standardEffects'
 import { splitSegments } from '../../src/parser/subParsers/parseTemplateString'
 import type { Token } from '../../src/tokenizer/token'
-import { tokenizeSource } from '../../src/tooling'
+import { tokenizeSource } from '../../packages/dvala-core-tooling/src/index'
 import { playgroundEffectReference } from './playgroundEffects'
 
 const normalExpressionSet = new Set(normalExpressionKeys)
