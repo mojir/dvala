@@ -340,6 +340,10 @@ Adoption progress (2026-05-13):
   - `packages/dvala-mcp-server` now owns the MCP server implementation surface.
   - `mcp-server/src/server.ts` is now a thin entrypoint that delegates to `packages/dvala-mcp-server/src/index`.
   - Package-level typecheck and repo-wide validation remain green after the boundary split.
+- CLI boundary migrated to package scaffold:
+  - `packages/dvala-cli` now owns the CLI implementation surface.
+  - `cli/src/cli.ts` is now a thin entrypoint that delegates to `packages/dvala-cli/src/index`.
+  - Package-level typecheck and repo-wide validation remain green after the boundary split.
 
 ## Suggested Sequencing
 
