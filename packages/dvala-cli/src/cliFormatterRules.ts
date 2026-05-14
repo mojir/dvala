@@ -1,9 +1,9 @@
-import type { TextFormatter } from '../../common/createFormatter'
+import type { TextFormatter } from '../../../common/createFormatter'
 import type { Colorizer } from './colorizer'
-import { createFormatter } from '../../common/createFormatter'
-import { splitSegments } from '../../src/parser/subParsers/parseTemplateString'
-import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
-import { tokenizeSource } from '../../src/tooling'
+import { createFormatter } from '../../../common/createFormatter'
+import { splitSegments } from '../../../src/parser/subParsers/parseTemplateString'
+import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../src/symbolPatterns'
+import { tokenizeSource } from '../../../src/tooling'
 import { Colors } from './colorizer'
 
 export type FormatterRule = (

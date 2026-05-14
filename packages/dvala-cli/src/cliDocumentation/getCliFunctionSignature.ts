@@ -1,4 +1,4 @@
-import type { FunctionReference } from '../../../reference'
+import type { FunctionReference } from '../../../../reference'
 import type { Colorizer } from '../colorizer'
 import { getCliType } from './getCliType'
 

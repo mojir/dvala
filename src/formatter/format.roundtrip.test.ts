@@ -93,6 +93,7 @@ function collectDvalaFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return []
   const results: string[] = []
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('tmp-cli-load-')) continue
     if (EXCLUDED_DIRS.has(entry.name)) continue
     const fullPath = path.join(dir, entry.name)
     if (entry.isDirectory()) results.push(...collectDvalaFiles(fullPath))

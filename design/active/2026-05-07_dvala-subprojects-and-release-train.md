@@ -17,7 +17,7 @@ As of 2026-05-08, the first concrete milestone described in this document has la
 What has not happened yet:
 
 - the broader evaluator cluster has not been moved wholesale into `packages/dvala-runtime`
-- CLI and MCP have not yet been promoted to real package-style subprojects
+- CLI and MCP have now been promoted to real package-style subprojects (`packages/dvala-cli` and `packages/dvala-mcp-server`)
 - the wider target monorepo shape in this document remains a later rollout, not an in-progress batch
 
 The current recommendation is to treat the first `dvala-runtime` extraction as complete for this phase and to treat the rest of this document as a roadmap for later forcing functions, not as one continuous implementation track.

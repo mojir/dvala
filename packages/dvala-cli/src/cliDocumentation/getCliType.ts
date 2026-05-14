@@ -1,4 +1,4 @@
-import type { Argument, TypedValue } from '../../../reference'
+import type { Argument, TypedValue } from '../../../../reference'
 import type { Colorizer } from '../colorizer'
 
 export function getCliType(fmt: Colorizer, arg: Argument | TypedValue) {

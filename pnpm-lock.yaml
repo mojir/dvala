@@ -94,7 +94,13 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
+  packages/dvala-cli: {}
+
+  packages/dvala-mcp-server: {}
+
   packages/dvala-runtime: {}
+
+  packages/dvala-workspace-backend: {}
 
   vscode-dvala:
     dependencies:
