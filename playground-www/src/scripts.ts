@@ -9,7 +9,7 @@ import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { asUnknownRecord } from '../../src/typeGuards'
-import { formatSource, getUndefinedSymbols } from '../../src/tooling'
+import { formatSource, getUndefinedSymbols } from '../../packages/dvala-core-tooling/src/index'
 import type { DvalaErrorJSON } from '../../src/errors'
 import type { TypeDiagnostic } from '../../src/typechecker/typecheck'
 import {

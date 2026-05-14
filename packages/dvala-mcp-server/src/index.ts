@@ -17,7 +17,7 @@ import {
 import { allBuiltinModules } from '../../../src/allModules'
 import { createDvala } from '../../../src/createDvala'
 import '../../../src/initReferenceData'
-import { parseTokenStream, tokenizeSource } from '../../../src/tooling'
+import { parseTokenStream, tokenizeSource } from '../../dvala-core-tooling/src/index'
 
 export function createMcpServer(): McpServer {
   const dvala = createDvala({ modules: allBuiltinModules, debug: false })

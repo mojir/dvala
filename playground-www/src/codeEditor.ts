@@ -19,7 +19,7 @@ import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { standardEffectNames } from '../../src/evaluator/standardEffects'
 import type { Token } from '../../src/tokenizer/token'
-import { tokenizeSource } from '../../src/tooling'
+import { tokenizeSource } from '../../packages/dvala-core-tooling/src/index'
 import { playgroundEffectReference } from './playgroundEffects'
 
 // ------------------------------------------------------------------

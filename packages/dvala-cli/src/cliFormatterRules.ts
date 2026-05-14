@@ -3,7 +3,7 @@ import type { Colorizer } from './colorizer'
 import { createFormatter } from '../../../common/createFormatter'
 import { splitSegments } from '../../../src/parser/subParsers/parseTemplateString'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../src/symbolPatterns'
-import { tokenizeSource } from '../../../src/tooling'
+import { tokenizeSource } from '../../dvala-core-tooling/src/index'
 import { Colors } from './colorizer'
 
 export type FormatterRule = (

@@ -821,6 +821,30 @@ If those are accepted, the next iteration should focus on:
 - Real subprojects should expose only the minimal local scripts they need, while the root remains authoritative for repo-wide `build`, `test`, `check`, `lint`, and release flows.
 - The first `dvala-runtime` extraction may use thin, temporary boundary adapters where necessary for parser AST or bundle-shape compatibility, but should avoid broad re-export or facade layering.
 
+## 2026-05-14 Interview Decisions: `dvala-core-tooling`
+
+Context: after completing `dvala-runtime`, `dvala-workspace-backend`, `dvala-cli`, and `dvala-mcp-server` package scaffolds, we ran a focused decision interview for the next boundary.
+
+Decisions:
+
+1. Keep the syntactic layer inside `dvala-runtime` for now.
+2. Design internal seams so syntax extraction remains straightforward later.
+3. Use a curated primary API plus direct advanced module paths for future tooling surfaces.
+4. Treat `dvala-core-tooling` as internal-first now, but shape APIs to allow later public hardening.
+5. Promote `packages/dvala-core-tooling` now as a real package boundary, with structure-first guardrails.
+
+Guardrails for the first promotion PR:
+
+- No semantic behavior moves in the first PR.
+- Keep exported surfaces intentionally minimal and marked as unstable/internal.
+- Re-evaluate boundary shape after first consumer adoption.
+
+Re-evaluation triggers:
+
+- At least two non-runtime consumers need stable syntax/tooling contracts.
+- Syntax/tooling cadence diverges from runtime cadence.
+- A small stable syntax API can be named without evaluator/runtime leakage.
+
 ## Implementation Plan
 
 1. Accept `dvala-runtime` as the first real subproject.
@@ -832,6 +856,14 @@ If those are accepted, the next iteration should focus on:
 7. Keep package-local scripts minimal under root-owned repo-wide orchestration.
 8. Create `packages/dvala-runtime` as the first real extraction slice, moving host-facing contracts and run/suspend/resume runtime entrypoints first while leaving workspace and tooling concerns outside.
 9. Use only thin temporary adapters at the parser/bundle boundary, and treat broader compatibility layering as out of bounds for the first slice.
+
+Next PR slice for `packages/dvala-core-tooling` (structure-first):
+
+1. Scaffold `packages/dvala-core-tooling` with package metadata, tsconfig, and minimal entrypoint(s).
+2. Wire the new package into workspace/config/build surfaces (`knip`, compile includes, wireit globs, clean scripts) using the same pattern as prior package promotions.
+3. Keep first exports minimal and explicitly unstable/internal.
+4. Add one focused consumer import migration only if needed to validate the boundary wiring.
+5. Run repo validation and keep semantics unchanged.
 
 ## Current Plan Status
 
