@@ -1,6 +1,6 @@
 // File explorer, scratch buffer, and auto-save.
 
-import { tokenizeSource } from '../../../src/tooling'
+import { tokenizeSource } from '../../../packages/dvala-core-tooling/src/index'
 import type { EditorMenuItem } from '../editorMenu'
 import { renderEditorMenu } from '../editorMenu'
 import {
