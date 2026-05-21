@@ -29,6 +29,8 @@ vi.mock('./idb', async importOriginal => {
     ...actual,
     openDb: vi.fn(async () => {}),
     getDb: vi.fn(() => ({}) as unknown),
+    idbGet: vi.fn(async () => undefined),
+    idbPut: vi.fn(() => {}),
     idbClear: vi.fn((store: string) => {
       idbCleared.push(store)
     }),
