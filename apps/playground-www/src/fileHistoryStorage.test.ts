@@ -13,18 +13,21 @@ let idbStore: Record<string, unknown> = {}
 // before imports run), so we declare the in-memory store at module scope and
 // have the mock impls poke at it. `getDb()` returning a truthy value is what
 // makes the rename actually persist; we keep it true to exercise the write.
-vi.mock('./idb', () => ({
-  FILE_HISTORIES_STORE: 'file-histories-store',
-  openDb: vi.fn(async () => {}),
-  getDb: vi.fn(() => ({}) as unknown),
-  idbGet: vi.fn(async (_store: string, _key: string) => idbStore[_key]),
-  idbPut: vi.fn(async (_store: string, key: string, value: unknown) => {
-    idbStore[key] = value
-  }),
-  idbClear: vi.fn(async () => {
-    idbStore = {}
-  }),
-}))
+vi.mock('./idb', async importOriginal => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  return {
+    ...actual,
+    openDb: vi.fn(async () => {}),
+    getDb: vi.fn(() => ({}) as unknown),
+    idbGet: vi.fn(async (_store: string, _key: string) => idbStore[_key]),
+    idbPut: vi.fn(async (_store: string, key: string, value: unknown) => {
+      idbStore[key] = value
+    }),
+    idbClear: vi.fn(async () => {
+      idbStore = {}
+    }),
+  }
+})
 
 vi.mock('./scratchBuffer', () => ({
   // `vi.mock` factories are hoisted to the top of the file, so module-scope

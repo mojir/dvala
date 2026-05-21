@@ -23,15 +23,17 @@ type Stub = {
 let workspaceFiles: Stub[] = []
 const idbCleared: string[] = []
 
-vi.mock('./idb', () => ({
-  SAVED_SNAPSHOTS_STORE: 'saved-snapshots',
-  TERMINAL_SNAPSHOTS_STORE: 'terminal-snapshots',
-  openDb: vi.fn(async () => {}),
-  getDb: vi.fn(() => ({}) as unknown),
-  idbClear: vi.fn((store: string) => {
-    idbCleared.push(store)
-  }),
-}))
+vi.mock('./idb', async importOriginal => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  return {
+    ...actual,
+    openDb: vi.fn(async () => {}),
+    getDb: vi.fn(() => ({}) as unknown),
+    idbClear: vi.fn((store: string) => {
+      idbCleared.push(store)
+    }),
+  }
+})
 
 vi.mock('./fileStorage', async importOriginal => {
   const actual = await importOriginal<typeof FileStorageModule>()
