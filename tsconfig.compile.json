@@ -15,7 +15,6 @@
     "mcp-server/**/*",
     "common/**/*",
     "playground-builder/**/*",
-    "playground-www/**/*",
     "reference/**/*",
     "vite.config.mts",
     "vitest.setup.ts",

@@ -187,7 +187,7 @@ function renderAllDemos() {
   // Read logo for embedding as data URL
   let logoDataUrl = ''
   try {
-    const logoPath = join(process.cwd(), 'playground-www/public/images/dvala-logo.webp')
+    const logoPath = join(process.cwd(), 'apps/playground-www/public/images/dvala-logo.webp')
     const logoBase64 = readFileSync(logoPath).toString('base64')
     logoDataUrl = `data:image/webp;base64,${logoBase64}`
   } catch { /* logo not found — render without it */ }

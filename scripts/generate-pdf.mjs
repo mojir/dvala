@@ -23,7 +23,7 @@ const { version } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 
 
 // ---------------------------------------------------------------------------
 // Dvala syntax highlighting — uses the real tokenizer from dist/
-// Mirrors the token-to-color logic in playground-www/src/SyntaxOverlay.ts
+// Mirrors the token-to-color logic in apps/playground-www/src/SyntaxOverlay.ts
 // ---------------------------------------------------------------------------
 import { createRequire } from 'node:module'
 const _require = createRequire(import.meta.url)
@@ -261,7 +261,7 @@ function escapeHtml(str) {
 // Cover page
 // ---------------------------------------------------------------------------
 function buildCover() {
-  const logoPath = path.join(ROOT, 'playground-www/public/images/dvala-logo-print.webp')
+  const logoPath = path.join(ROOT, 'apps/playground-www/public/images/dvala-logo-print.webp')
   const logoBase64 = fs.readFileSync(logoPath).toString('base64')
   return `
 <div class="cover">
