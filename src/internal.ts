@@ -31,9 +31,9 @@ export type { ResolveImport } from './languageService/WorkspaceIndex'
 // ── Backend boundary ─────────────────────────────────────────────────────
 // Root-internal backend API surface for worker/server adapters. Not part of
 // the stable public package API.
-export type { DvalaBackend } from './backend/DvalaBackend'
-export { createBackend } from './backend/createBackend'
-export type { CreateBackendOptions } from './backend/createBackend'
+export type { DvalaBackend } from '../packages/dvala-workspace-backend/src/DvalaBackend'
+export { createBackend } from '../packages/dvala-workspace-backend/src/createBackend'
+export type { CreateBackendOptions } from '../packages/dvala-workspace-backend/src/createBackend'
 export type {
   PlaygroundCancelRequestMessage,
   PlaygroundCloseDocumentMessage,
@@ -62,9 +62,9 @@ export type {
   PlaygroundWorkerInMessage,
   PlaygroundWorkerOutMessage,
   PlaygroundWorkspaceSnapshotFile,
-} from './backend/adapters/playgroundWorkerProtocol'
-export { createInMemoryDocumentStore } from './backend/documentStore'
-export type { BackendDocumentStore, BackendOpenDocument } from './backend/documentStore'
+} from '../packages/dvala-workspace-backend/src/adapters/playgroundWorkerProtocol'
+export { createInMemoryDocumentStore } from '../packages/dvala-workspace-backend/src/documentStore'
+export type { BackendDocumentStore, BackendOpenDocument } from '../packages/dvala-workspace-backend/src/documentStore'
 export type {
   BackendAccepted,
   BackendCancelResult,
@@ -98,4 +98,4 @@ export type {
   BackendSessionStartResult,
   BackendTextDocument,
   BackendWorkspaceSnapshotFile,
-} from './backend/requests'
+} from '../packages/dvala-workspace-backend/src/requests'
