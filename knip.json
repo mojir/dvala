@@ -6,12 +6,15 @@
   "workspaces": {
     ".": {
       "entry": [
+        "src/index.ts",
+        "src/full.ts",
+        "src/bundler.ts",
+        "src/internal.ts",
+        "src/testFramework/index.ts",
+        "src/modules/*.ts",
         "cli/src/cli.ts",
         "mcp-server/src/server.ts",
         "playground-builder/src/buildPlaygroundSite.ts",
-        "apps/playground-www/src/playground.ts",
-        "apps/playground-www/src/vite-env.d.ts",
-        "src/internal.ts",
         "scripts/*.{ts,mjs}",
         "benchmarks/*.ts",
         "__tests__/**/*.test.ts",
@@ -24,7 +27,6 @@
         "cli/src/**/*.ts",
         "mcp-server/src/**/*.ts",
         "playground-builder/src/**/*.ts",
-        "apps/playground-www/src/**/*.ts",
         "reference/**/*.ts",
         "__tests__/**/*.ts",
         "benchmarks/**/*.ts",
@@ -33,18 +35,27 @@
       "ignoreDependencies": ["@vscode/vsce", "serve"]
     },
     "packages/dvala-runtime": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/dvala-workspace-backend": {
+      "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-mcp-server": {
+      "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-core-tooling": {
+      "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-cli": {
+      "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"]
     },
     "apps/playground-www": {
+      "entry": ["src/playground.ts"],
       "project": ["src/**/*.ts"]
     },
     "vscode-dvala": {
