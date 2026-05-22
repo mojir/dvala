@@ -1,6 +1,15 @@
 dist
 build
 coverage
+# in-source build artifacts (tsgo emits alongside .ts when outDir is absent or when run manually)
+src/**/*.js
+src/**/*.d.ts
+common/**/*.js
+common/**/*.d.ts
+reference/**/*.js
+reference/**/*.d.ts
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
 .tmp-cli-test
 docs
 .wireit

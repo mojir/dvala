@@ -28,6 +28,7 @@
     "noUnusedLocals": true /* Report errors on unused locals. */,
     "noUnusedParameters": true /* Allow javascript files to be compiled. */,
     "declaration": true,
+    "outDir": "./dist",
     "declarationDir": "./dist" /* Generates corresponding '.d.ts' file. */,
     "esModuleInterop": true /* Skip type checking of declaration files. */,
     "forceConsistentCasingInFileNames": true,
