@@ -1,9 +1,8 @@
 /* eslint-disable no-console */
 
 import type { Reference } from '../../../reference'
-import type { DvalaBundle } from '../../../src/bundler/interface'
-import { deserializeBundle, serializeBundle } from '../../../src/bundler/serialize'
-import type { UnknownRecord } from '../../../src/interface'
+import type { DvalaBundle, UnknownRecord } from '../../dvala-core-tooling/src'
+import { bundle, deserializeBundle, serializeBundle } from '../../../src/bundler'
 import fs from 'node:fs'
 import path from 'node:path'
 import { stringifyValue } from '../../../common/utils'
@@ -19,13 +18,14 @@ import {
   listModules,
   lookupDoc,
 } from '../../../reference/format'
-import { allBuiltinModules } from '../../../src/allModules'
-import { normalExpressionKeys, specialExpressionKeys } from '../../../src/builtin'
-import { expandMacros } from '../../../src/ast/expandMacros'
-import { treeShake } from '../../../src/ast/treeShake'
-import { bundle } from '../../../src/bundler'
-import { hostHandler } from '../../../src/evaluator/effectTypes'
-import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../src/symbolPatterns'
+import {
+  allBuiltinModules,
+  expandMacros,
+  treeShake,
+  polishSymbolCharacterClass,
+  polishSymbolFirstCharacterClass,
+} from '../../dvala-core-tooling/src'
+import { normalExpressionKeys, specialExpressionKeys, hostHandler } from '../../../src'
 import type { CoverageConfig, CoverageReporter, ResolvedConfig } from '../../../src/config'
 import { findConfig } from '../../../src/config'
 import { runTestFile, runTestSuite } from '../../../src/testFramework'
@@ -38,8 +38,13 @@ import { formatTap } from '../../../src/testFramework/formatTap'
 import { formatConsole } from '../../../src/testFramework/formatConsole'
 import { formatHtml } from '../../../src/testFramework/formatHtml'
 import { formatJunit } from '../../../src/testFramework/formatJunit'
-import { applyReplBinding, executeReplLine, type ReplBinding } from '../../../src/shared/replCore'
-import { parseTokenStream, tokenizeSource } from '../../dvala-core-tooling/src/index'
+import {
+  applyReplBinding,
+  executeReplLine,
+  type ReplBinding,
+  parseTokenStream,
+  tokenizeSource,
+} from '../../dvala-core-tooling/src'
 import { getCliDocumentation } from './cliDocumentation/getCliDocumentation'
 import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
 import { getInlineCodeFormatter } from './cliFormatterRules'
@@ -51,8 +56,8 @@ import mainTestTemplate from './templates/main.test.dvala'
 import { getCliModules } from './js-interop/Cli'
 import { createCliRuntimeClient, createFileResolver } from './runtimeClient'
 import '../../../src/initReferenceData'
-import type { TypeDiagnostic } from '../../../src/typechecker/typecheck'
-import { createDvala } from '../../../src/createDvala'
+import type { TypeDiagnostic } from '../../dvala-core-tooling/src'
+import { createDvala } from '../../../src'
 
 const useColor = !process.env.NO_COLOR
 const fmt = createColorizer(useColor)

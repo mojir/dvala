@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import type { ReadLine, ReadLineOptions } from 'node:readline'
-import type { UnknownRecord } from '../../../src/interface'
+import type { UnknownRecord } from '../../dvala-core-tooling/src'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'

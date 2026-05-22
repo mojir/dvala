@@ -1,5 +1,7 @@
 // Internal-first scaffold: keep behavior in root sources and expose a thin boundary shim.
 export * from '../../../src/tooling'
+export type { DvalaBundle } from '../../../src/bundler/interface'
+export { isDvalaBundle } from '../../../src/bundler/interface'
 
 // Parser / tokenizer primitives
 export { parseToAst } from '../../../src/parser'
@@ -32,3 +34,18 @@ export type { TypeDiagnostic, TypecheckResult } from '../../../src/typechecker/t
 
 // Modules
 export { allBuiltinModules } from '../../../src/allModules'
+
+// AST utilities
+export { expandMacros } from '../../../src/ast/expandMacros'
+export { treeShake } from '../../../src/ast/treeShake'
+
+// Symbol / template helpers
+export { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../src/symbolPatterns'
+export { splitSegments } from '../../../src/parser/subParsers/parseTemplateString'
+
+// REPL utilities
+export { applyReplBinding, executeReplLine } from '../../../src/shared/replCore'
+export type { ReplBinding } from '../../../src/shared/replCore'
+
+// Generic types
+export type { UnknownRecord } from '../../../src/interface'
