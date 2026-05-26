@@ -14,12 +14,7 @@ import {
   type DvalaErrorJSON,
 } from '../../../src'
 import { initReferenceData } from '../../../src/initReferenceData'
-import {
-  allBuiltinModules,
-  formatSource,
-  getUndefinedSymbols,
-  type TypeDiagnostic,
-} from '../../../packages/dvala-core-tooling/src'
+import { allBuiltinModules, formatSource, getUndefinedSymbols, type TypeDiagnostic } from '@mojir/dvala-core-tooling'
 import {
   RIGHT_PANEL_TOOL_TABS,
   FILE_RIGHT_PANEL_TABS,

@@ -59,7 +59,7 @@
       "project": ["src/**/*.ts"]
     },
     "vscode-dvala": {
-      "entry": ["src/debugAdapter.ts"],
+      "entry": ["src/extension.ts", "src/debugAdapter.ts"],
       "project": ["src/**/*.ts"]
     }
   }

@@ -1,4 +1,4 @@
-import { allBuiltinModules } from '../../../../packages/dvala-core-tooling/src'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { createDvala, resume, retrigger, extractCheckpointSnapshots } from '../../../../src'
 import { Debugger, deserializeFromObject } from '../../../../src/internal'
 import type { ContextStack } from '../../../../src/internal'

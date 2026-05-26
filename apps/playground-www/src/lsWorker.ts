@@ -73,7 +73,7 @@
  * so even if a cancellation races with a result-post, stale data is dropped.
  */
 
-import { createBackend } from '../../../packages/dvala-workspace-backend/src/index'
+import { createBackend } from '@mojir/dvala-workspace-backend'
 import type {
   PlaygroundCompletionErrorMessage as CompletionErrorMessage,
   PlaygroundCompletionResultMessage as CompletionResultMessage,
@@ -87,7 +87,7 @@ import type {
   PlaygroundNavigationResultMessage as NavigationResultMessage,
   PlaygroundResyncDocumentMessage as ResyncDocumentMessage,
   PlaygroundWorkerInMessage as WorkerInMessage,
-} from '../../../packages/dvala-workspace-backend/src/adapters/playgroundWorkerProtocol'
+} from '@mojir/dvala-workspace-backend/adapters/playground-worker-protocol'
 
 // ── Worker state ──────────────────────────────────────────────────────────────
 

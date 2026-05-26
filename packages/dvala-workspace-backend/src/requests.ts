@@ -1,6 +1,6 @@
 import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
-import type { CompletionItem, Diagnostic } from '../../dvala-core-tooling/src'
+import type { CompletionItem, Diagnostic } from '@mojir/dvala-core-tooling'
 
 export type BackendRequestId = number
 

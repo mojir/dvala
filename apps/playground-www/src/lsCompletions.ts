@@ -5,7 +5,7 @@ import {
   type FileSymbols,
   type SymbolDef,
   allBuiltinModules,
-} from '../../../packages/dvala-core-tooling/src'
+} from '@mojir/dvala-core-tooling'
 import type { WorkspaceFile } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder, stripDvalaSuffix } from './filePath'
 

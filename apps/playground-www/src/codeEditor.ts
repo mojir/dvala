@@ -18,7 +18,7 @@ import * as monaco from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import { normalExpressionKeys, specialExpressionKeys, standardEffectNames } from '../../../src'
 import type { Token } from '../../../src'
-import { tokenizeSource } from '../../../packages/dvala-core-tooling/src'
+import { tokenizeSource } from '@mojir/dvala-core-tooling'
 import { playgroundEffectReference } from './playgroundEffects'
 
 // ------------------------------------------------------------------

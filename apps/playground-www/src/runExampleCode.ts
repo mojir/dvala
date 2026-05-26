@@ -7,7 +7,7 @@
 
 import { createDvala } from '../../../src'
 import type { EffectContext, HandlerRegistration } from '../../../src'
-import { allBuiltinModules } from '../../../packages/dvala-core-tooling/src'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { stringifyValue } from '../../../common/utils'
 
 const dvala = createDvala({ debug: false, modules: allBuiltinModules })

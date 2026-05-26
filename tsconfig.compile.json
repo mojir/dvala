@@ -3,11 +3,13 @@
   "compilerOptions": {
     "noEmit": true
   },
+  "references": [{ "path": "./packages/dvala-runtime" }],
   "include": [
     "types/**/*",
     "src/**/*",
     "packages/dvala-mcp-server/**/*",
     "packages/dvala-core-tooling/**/*",
+    "packages/dvala-workspace-backend/**/*",
     "packages/dvala-cli/**/*",
     "apps/playground-www/**/*",
     "__tests__/**/*.test.ts",

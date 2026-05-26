@@ -4,12 +4,24 @@ import { defineConfig } from 'vitest/config'
 
 const runtimePackageEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/index.ts', import.meta.url))
 const runtimeArtifactsEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/artifacts/index.ts', import.meta.url))
+const coreToolingEntry = fileURLToPath(new URL('./packages/dvala-core-tooling/src/index.ts', import.meta.url))
+const workspaceBackendEntry = fileURLToPath(new URL('./packages/dvala-workspace-backend/src/index.ts', import.meta.url))
+const workspaceBackendRuntimeEntry = fileURLToPath(
+  new URL('./packages/dvala-workspace-backend/src/runtime/index.ts', import.meta.url),
+)
+const workspaceBackendPlaygroundProtocolEntry = fileURLToPath(
+  new URL('./packages/dvala-workspace-backend/src/adapters/playgroundWorkerProtocol.ts', import.meta.url),
+)
 
 export default defineConfig({
   resolve: {
     alias: {
       '@mojir/dvala-runtime/artifacts': runtimeArtifactsEntry,
       '@mojir/dvala-runtime': runtimePackageEntry,
+      '@mojir/dvala-core-tooling': coreToolingEntry,
+      '@mojir/dvala-workspace-backend/adapters/playground-worker-protocol': workspaceBackendPlaygroundProtocolEntry,
+      '@mojir/dvala-workspace-backend/runtime': workspaceBackendRuntimeEntry,
+      '@mojir/dvala-workspace-backend': workspaceBackendEntry,
     },
   },
   plugins: [

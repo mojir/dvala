@@ -23,7 +23,7 @@ import {
   treeShake,
   polishSymbolCharacterClass,
   polishSymbolFirstCharacterClass,
-} from '../../dvala-core-tooling/src'
+} from '@mojir/dvala-core-tooling'
 import type { DvalaBundle, UnknownRecord } from '../../../src'
 import { normalExpressionKeys, specialExpressionKeys, hostHandler } from '../../../src'
 import type { CoverageConfig, CoverageReporter, ResolvedConfig } from '../../../src/config'
@@ -44,7 +44,7 @@ import {
   type ReplBinding,
   parseTokenStream,
   tokenizeSource,
-} from '../../dvala-core-tooling/src'
+} from '@mojir/dvala-core-tooling'
 import { getCliDocumentation } from './cliDocumentation/getCliDocumentation'
 import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
 import { getInlineCodeFormatter } from './cliFormatterRules'
@@ -55,10 +55,10 @@ import mainTemplate from './templates/main.dvala'
 import mainTestTemplate from './templates/main.test.dvala'
 import { getCliModules } from './js-interop/Cli'
 import { createCliRuntimeClient, createFileResolver } from './runtimeClient'
+import type { TypeDiagnostic } from '@mojir/dvala-core-tooling'
 import { initReferenceData } from '../../../src/initReferenceData'
-initReferenceData()
-import type { TypeDiagnostic } from '../../dvala-core-tooling/src'
 import { createDvala } from '../../../src'
+initReferenceData()
 
 const useColor = !process.env.NO_COLOR
 const fmt = createColorizer(useColor)

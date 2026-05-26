@@ -6,7 +6,7 @@ import {
   polishSymbolCharacterClass,
   polishSymbolFirstCharacterClass,
   tokenizeSource,
-} from '../../dvala-core-tooling/src'
+} from '@mojir/dvala-core-tooling'
 import { Colors } from './colorizer'
 
 export type FormatterRule = (
