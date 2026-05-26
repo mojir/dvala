@@ -1,7 +1,5 @@
-import { toJS } from '../../../../src/utils/interop'
-import { isAtom, isEffect, isRegularExpression } from '../../../../src/typeGuards/dvala'
-import { isDvalaFunction } from '../../../../src/typeGuards/dvalaFunction'
-import type { ReplBinding } from '../../../../src/shared/replCore'
+import { toJS, isAtom, isEffect, isRegularExpression, isDvalaFunction } from '../../../../src'
+import type { ReplBinding } from '../../../../packages/dvala-core-tooling/src'
 
 interface ReplSessionFingerprint {
   loadedFileSource: string

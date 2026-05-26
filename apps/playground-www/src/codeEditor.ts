@@ -16,10 +16,9 @@
 import * as monaco from 'monaco-editor'
 // eslint-disable-next-line import/default -- Vite resolves `?worker` to a worker-constructor default export; the import plugin can't see through the suffix.
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import { normalExpressionKeys, specialExpressionKeys } from '../../../src/builtin'
-import { standardEffectNames } from '../../../src/evaluator/standardEffects'
-import type { Token } from '../../../src/tokenizer/token'
-import { tokenizeSource } from '../../../packages/dvala-core-tooling/src/index'
+import { normalExpressionKeys, specialExpressionKeys, standardEffectNames } from '../../../src'
+import type { Token } from '../../../src'
+import { tokenizeSource } from '../../../packages/dvala-core-tooling/src'
 import { playgroundEffectReference } from './playgroundEffects'
 
 // ------------------------------------------------------------------

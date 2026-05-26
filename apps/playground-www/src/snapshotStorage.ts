@@ -25,7 +25,7 @@
 // access, sort order (saved: insertion order with newest first; terminal:
 // newest first, ring-buffered to `MAX_TERMINAL_SNAPSHOTS`).
 
-import type { Snapshot } from '../../../src/evaluator/effectTypes'
+import type { Snapshot } from '../../../src'
 import { SNAPSHOTS_FOLDER, isInSnapshotsFolder } from './filePath'
 import { getWorkspaceFiles, setWorkspaceFiles } from './fileStorage'
 import type { WorkspaceFile } from './fileStorage'

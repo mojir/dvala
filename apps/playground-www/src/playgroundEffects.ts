@@ -1,4 +1,4 @@
-import type { ExampleEntry } from '../../../src/builtin/interface'
+import type { ExampleEntry } from '../../../src'
 import type { EffectReference } from '../../../reference'
 import type { PlaygroundAPI } from './playgroundAPI'
 

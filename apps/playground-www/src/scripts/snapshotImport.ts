@@ -1,4 +1,4 @@
-import type { Snapshot } from '../../../../src/evaluator/effectTypes'
+import type { Snapshot } from '../../../../src'
 
 import type { TerminalSnapshotEntry } from '../snapshotStorage'
 

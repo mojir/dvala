@@ -23,8 +23,12 @@ export type { Any } from './interface'
 export { fromJS, toJS } from './utils/interop'
 export type { DvalaBundle } from './bundler/interface'
 export { isDvalaBundle } from './bundler/interface'
-export { type DvalaError, isDvalaError } from './errors'
+export { type DvalaError, isDvalaError, type DvalaErrorJSON } from './errors'
 export { isGrid, isMatrix, isVector } from './typeGuards/annotatedCollections'
+export { isAtom, isEffect, isRegularExpression } from './typeGuards/dvala'
+export { asUnknownRecord } from './typeGuards'
+export type { ExampleEntry } from './builtin/interface'
+export { prettyPrint } from './prettyPrint'
 export type { AutoCompleter, AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 
 // Effects — standalone resume/retrigger functions and types
@@ -34,7 +38,15 @@ export { retrigger } from './retrigger'
 export type { RetriggerOptions } from './retrigger'
 export { hostHandler } from './evaluator/effectTypes'
 export { extractCheckpointSnapshots } from './evaluator/suspension'
-export type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
+export type {
+  EffectContext,
+  EffectHandler,
+  HandlerRegistration,
+  Handlers,
+  RunResult,
+  Snapshot,
+} from './evaluator/effectTypes'
+export { standardEffectNames } from './evaluator/standardEffects'
 
 // Factory API
 export { createDvala } from './createDvala'

@@ -1,5 +1,4 @@
-import type { Any } from '../../../src/interface'
-import type { EffectHandler, HandlerRegistration } from '../../../src/evaluator/effectTypes'
+import type { Any, EffectHandler, HandlerRegistration } from '../../../src'
 import type { PlaygroundAPI } from './playgroundAPI'
 
 type ApiValue = PlaygroundAPI[keyof PlaygroundAPI]

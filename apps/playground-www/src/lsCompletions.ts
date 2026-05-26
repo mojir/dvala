@@ -1,7 +1,11 @@
-import { buildBuiltinCompletions, symbolDefToCompletion } from '../../../src/shared/completionBuilder'
-import type { CompletionItem } from '../../../src/shared/completionBuilder'
-import type { FileSymbols, SymbolDef } from '../../../src/languageService/types'
-import { allBuiltinModules } from '../../../src/allModules'
+import {
+  buildBuiltinCompletions,
+  symbolDefToCompletion,
+  type CompletionItem,
+  type FileSymbols,
+  type SymbolDef,
+  allBuiltinModules,
+} from '../../../packages/dvala-core-tooling/src'
 import type { WorkspaceFile } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder, stripDvalaSuffix } from './filePath'
 

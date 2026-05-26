@@ -9,7 +9,7 @@
 //   - showToast (notifications)
 //   - pushSavePanel (Save As form)
 
-import type { Snapshot } from '../../../../src/evaluator/effectTypes'
+import type { Snapshot } from '../../../../src'
 import { hamburgerIcon } from '../icons'
 import { renderDvalaMarkdown } from '../renderDvalaMarkdown'
 import {

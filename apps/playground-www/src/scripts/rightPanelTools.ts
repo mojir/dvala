@@ -17,9 +17,9 @@
 // and `refreshActiveRightPanelTab` from the `afterSwap` hook + the right
 // panel's `onChange` callback.
 
-import type { Ast } from '../../../../src/parser/types'
-import { buildDocTree, parseToCst, parseTokenStream, tokenizeSource } from '../../../../packages/dvala-core-tooling/src/index'
-import { prettyPrint } from '../../../../src/prettyPrint'
+import type { Ast } from '../../../../src'
+import { prettyPrint } from '../../../../src'
+import { buildDocTree, parseToCst, parseTokenStream, tokenizeSource } from '../../../../packages/dvala-core-tooling/src'
 import type { JsonTreeViewerHandle } from '../components/jsonTreeViewer'
 import { createJsonTreeViewer } from '../components/jsonTreeViewer'
 import { getRightPanel } from './panelInstances'
