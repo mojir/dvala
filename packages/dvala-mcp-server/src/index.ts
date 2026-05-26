@@ -15,8 +15,8 @@ import {
   lookupDoc,
 } from '../../../reference/format'
 import { allBuiltinModules, parseTokenStream, tokenizeSource } from '../../dvala-core-tooling/src'
-import { createDvala } from '../../../src'
-import '../../../src/initReferenceData'
+import { createDvala, initReferenceData } from '../../../src'
+initReferenceData()
 
 export function createMcpServer(): McpServer {
   const dvala = createDvala({ modules: allBuiltinModules, debug: false })

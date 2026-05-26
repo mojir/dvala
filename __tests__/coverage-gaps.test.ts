@@ -13,7 +13,8 @@ import { getUndefinedSymbols } from '../src/tooling'
 import type { Handlers } from '../src/evaluator/effectTypes'
 import { getStandardEffectDefinition } from '../src/evaluator/standardEffects'
 import { PersistentMap, PersistentVector } from '../src/utils/persistent'
-import '../src/initReferenceData'
+import { initReferenceData } from '../src'
+initReferenceData()
 
 // ---------------------------------------------------------------------------
 // Stub evaluate functions — cover "implemented in Dvala" throws

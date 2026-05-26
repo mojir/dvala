@@ -4,7 +4,8 @@ import { getMetaNormalExpression } from '../../../src/builtin/core/meta'
 import type { ContextStack } from '../../../src/evaluator/ContextStack'
 import { FUNCTION_SYMBOL } from '../../../src/utils/symbols'
 import { PersistentVector } from '../../../src/utils/persistent'
-import '../../../src/initReferenceData'
+import { initReferenceData } from '../../../src'
+initReferenceData()
 
 describe('misc functions', () => {
   for (const dvala of [createDvala(), createDvala({ debug: true })]) {

@@ -13,7 +13,8 @@ import {
   asUnknownRecord,
   type DvalaErrorJSON,
 } from '../../../src'
-import '../../../src/initReferenceData'
+import { initReferenceData } from '../../../src'
+initReferenceData()
 import {
   allBuiltinModules,
   formatSource,

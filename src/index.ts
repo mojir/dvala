@@ -55,6 +55,9 @@ export type { FileResolver } from './evaluator/ContextStack'
 export { createPackageRuntimeBridge } from './runtime/createPackageRuntimeBridge'
 export type { CreatePackageRuntimeBridgeOptions, RuntimeArtifactBridge } from './runtime/createPackageRuntimeBridge'
 
+// Reference data initializer
+export { initReferenceData } from './initReferenceData'
+
 // Standalone tooling
 export {
   tokenizeSource,
