@@ -8,9 +8,9 @@ import type {
   BackendSessionStartRequest,
 } from '../../../packages/dvala-workspace-backend/src/index'
 import { allBuiltinModules } from '../../dvala-core-tooling/src'
-import type { DvalaBundle, TypeDiagnostic } from '../../dvala-core-tooling/src'
+import type { TypeDiagnostic } from '../../dvala-core-tooling/src'
 import { createDvala, retrigger, resume } from '../../../src'
-import type { DvalaModule } from '../../../src'
+import type { DvalaBundle, DvalaModule } from '../../../src'
 import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
 export function createFileResolver(): (importPath: string, fromDir: string) => string {

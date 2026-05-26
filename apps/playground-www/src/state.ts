@@ -1,4 +1,4 @@
-import type { UnknownRecord } from '../../../packages/dvala-core-tooling/src'
+import type { UnknownRecord } from '../../../src'
 import { reactive } from './lib/reactive'
 import { SCRATCH_FILE_ID } from './scratchBuffer'
 

@@ -1,7 +1,5 @@
 // Internal-first scaffold: keep behavior in root sources and expose a thin boundary shim.
 export * from '../../../src/tooling'
-export type { DvalaBundle } from '../../../src/bundler/interface'
-export { isDvalaBundle } from '../../../src/bundler/interface'
 
 // Parser / tokenizer primitives
 export { parseToAst } from '../../../src/parser'
@@ -46,6 +44,3 @@ export { splitSegments } from '../../../src/parser/subParsers/parseTemplateStrin
 // REPL utilities
 export { applyReplBinding, executeReplLine } from '../../../src/shared/replCore'
 export type { ReplBinding } from '../../../src/shared/replCore'
-
-// Generic types
-export type { UnknownRecord } from '../../../src/interface'

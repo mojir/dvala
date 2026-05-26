@@ -2,9 +2,10 @@
 // Full entry point: re-exports everything from the minimal entry plus
 // all modules, reference data, and API helpers.
 
+import { initReferenceData } from './initReferenceData'
+
 export * from './index'
 
-import { initReferenceData } from './initReferenceData'
 initReferenceData()
 
 // All built-in modules (convenience re-export)

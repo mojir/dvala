@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 
 import type { Reference } from '../../../reference'
-import type { DvalaBundle, UnknownRecord } from '../../dvala-core-tooling/src'
 import { bundle, deserializeBundle, serializeBundle } from '../../../src/bundler'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -25,6 +24,7 @@ import {
   polishSymbolCharacterClass,
   polishSymbolFirstCharacterClass,
 } from '../../dvala-core-tooling/src'
+import type { DvalaBundle, UnknownRecord } from '../../../src'
 import { normalExpressionKeys, specialExpressionKeys, hostHandler } from '../../../src'
 import type { CoverageConfig, CoverageReporter, ResolvedConfig } from '../../../src/config'
 import { findConfig } from '../../../src/config'
