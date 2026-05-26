@@ -7,6 +7,7 @@
     "declarationDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["src/**/*", "../../types/**/*"],
+  "include": ["src/**/*"],
+  "files": ["../../types/dvala-source.d.ts"],
   "exclude": ["**/*.test.ts", "__tests__"]
 }
