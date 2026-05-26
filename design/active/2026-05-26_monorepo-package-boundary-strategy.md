@@ -25,15 +25,15 @@ Intentional exceptions (CLI-specific, not routing through packages):
 
 ---
 
-## Phase 1.5 — Workspace wiring (next)
+## Phase 1.5 — Workspace wiring (DONE, PR #191)
 
 Add proper `package.json` wiring so the dependency graph is explicit in tooling:
-- Add `"name": "@dvala/core-tooling"` etc. to each package's `package.json`
+- Add `"name": "@mojir/dvala-core-tooling"` etc. to each package's `package.json`
 - Add `"exports"` fields pointing to source (or dist)
-- Add `"@dvala/core-tooling": "workspace:*"` to consuming packages' `package.json`
-- Consider `tsconfig` project references (`composite: true`, `references: [...]`)
+- Add `"@mojir/dvala-core-tooling": "workspace:*"` to consuming packages' `package.json`
+- `tsconfig` project references: `composite: true` added to `dvala-runtime` (self-contained); other packages blocked until Phase 2 removes back-references to root `src/`
 
-This makes imports by package name (e.g. `import { WorkspaceIndex } from '@dvala/core-tooling'`) work natively via pnpm workspace symlinks, eliminating the relative path strings.
+This makes imports by package name (e.g. `import { WorkspaceIndex } from '@mojir/dvala-core-tooling'`) work natively via pnpm workspace symlinks, eliminating the relative path strings.
 
 **Note:** `@mojir/dvala-runtime` is already published on npm and uses this pattern. Other packages should follow.
 

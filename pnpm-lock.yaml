@@ -108,6 +108,9 @@ importers:
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../dvala-core-tooling
+      '@mojir/dvala-runtime':
+        specifier: workspace:*
+        version: link:../dvala-runtime
       '@mojir/dvala-workspace-backend':
         specifier: workspace:*
         version: link:../dvala-workspace-backend
@@ -119,6 +122,9 @@ importers:
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../dvala-core-tooling
+      '@mojir/dvala-runtime':
+        specifier: workspace:*
+        version: link:../dvala-runtime
 
   packages/dvala-runtime: {}
 
@@ -127,6 +133,9 @@ importers:
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../dvala-core-tooling
+      '@mojir/dvala-runtime':
+        specifier: workspace:*
+        version: link:../dvala-runtime
 
   vscode-dvala:
     dependencies:

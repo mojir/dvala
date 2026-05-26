@@ -3,9 +3,7 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "references": [
-    { "path": "./packages/dvala-runtime" }
-  ],
+  "references": [{ "path": "./packages/dvala-runtime" }],
   "include": [
     "types/**/*",
     "src/**/*",

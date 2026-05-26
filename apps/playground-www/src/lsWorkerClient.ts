@@ -40,6 +40,7 @@ import { SCRATCH_FILE_PATH } from './scratchBuffer'
 import { getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
 
 import type { CompletionItem } from '@mojir/dvala-core-tooling'
+
 const referenceByTitle = new Map(Object.values(allReference).map(ref => [ref.title, ref]))
 
 function buildHoverMarkdown(name: string, ref: Reference): string {

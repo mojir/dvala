@@ -55,10 +55,10 @@ import mainTemplate from './templates/main.dvala'
 import mainTestTemplate from './templates/main.test.dvala'
 import { getCliModules } from './js-interop/Cli'
 import { createCliRuntimeClient, createFileResolver } from './runtimeClient'
-import { initReferenceData } from '../../../src/initReferenceData'
-initReferenceData()
 import type { TypeDiagnostic } from '@mojir/dvala-core-tooling'
+import { initReferenceData } from '../../../src/initReferenceData'
 import { createDvala } from '../../../src'
+initReferenceData()
 
 const useColor = !process.env.NO_COLOR
 const fmt = createColorizer(useColor)

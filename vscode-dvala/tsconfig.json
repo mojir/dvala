@@ -18,9 +18,7 @@
       ]
     }
   },
-  "references": [
-    { "path": "../packages/dvala-runtime" }
-  ],
+  "references": [{ "path": "../packages/dvala-runtime" }],
   "include": ["src", "../types"],
   "exclude": ["node_modules", ".vscode-test"]
 }

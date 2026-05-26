@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mojir/dvala-core-tooling": "workspace:*",
+    "@mojir/dvala-runtime": "workspace:*",
     "@mojir/dvala-workspace-backend": "workspace:*"
   }
 }
