@@ -1,7 +1,9 @@
 # Dvala Backend API First Boundary
 
-**Status:** Active, first runtime seam proven
+**Status:** Archived 2026-05-26 — seams proven, open questions carried forward
 **Created:** 2026-05-09
+
+> **Archived 2026-05-26.** The analysis and runtime-session seams are proven. The remaining open questions — retire `replaceWorkspaceSnapshot(files)`, fully retire the `workspaceFiles` compatibility payloads, and settle transport-shared vs. backend-internal result/error types — are carried forward as the cleanup backlog in [2026-05-26_backend-authority-active-roadmap.md](../active/2026-05-26_backend-authority-active-roadmap.md).
 
 ## Goal
 

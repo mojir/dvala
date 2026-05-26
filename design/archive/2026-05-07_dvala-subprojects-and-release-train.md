@@ -1,7 +1,9 @@
 # Dvala Subprojects And Release Train
 
-**Status:** Accepted — first `dvala-runtime` extraction slice completed on `main`
+**Status:** Archived 2026-05-26 — settled
 **Created:** 2026-05-07
+
+> **Archived 2026-05-26.** Remaining execution is consolidated into [2026-05-26_backend-authority-active-roadmap.md](../active/2026-05-26_backend-authority-active-roadmap.md). The portable host-runtime API + signed-artifact (CBOR/COSE) direction moved (concisely) into the vision doc [2026-05-06_dvala-backend-authority.md](../active/2026-05-06_dvala-backend-authority.md). This file is retained for the full host-runtime API and artifact-envelope TypeScript sketch.
 
 ## Status Update
 

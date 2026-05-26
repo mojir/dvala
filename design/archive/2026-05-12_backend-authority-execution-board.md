@@ -1,7 +1,9 @@
 # Backend Authority Execution Board
 
-**Status:** Draft
+**Status:** Archived 2026-05-26 — complete
 **Created:** 2026-05-12
+
+> **Archived 2026-05-26.** All A1–D2 items landed and `dvala-workspace-backend` was promoted. Superseded by [2026-05-26_backend-authority-active-roadmap.md](../active/2026-05-26_backend-authority-active-roadmap.md).
 
 ## Goal
 
