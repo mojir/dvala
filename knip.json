@@ -59,9 +59,8 @@
       "project": ["src/**/*.ts"]
     },
     "vscode-dvala": {
-      "entry": ["src/debugAdapter.ts"],
-      "project": ["src/**/*.ts"],
-      "ignoreDependencies": ["@types/vscode"]
+      "entry": ["src/extension.ts", "src/debugAdapter.ts"],
+      "project": ["src/**/*.ts"]
     }
   }
 }
