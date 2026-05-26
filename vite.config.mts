@@ -73,6 +73,7 @@ export default defineConfig({
         '**/interface.ts',
         '**/types.ts',
         'src/index.ts',
+        'src/standaloneTooling.ts',
         'src/full.ts',
         'src/modules/**',
         'src/bundler.ts',

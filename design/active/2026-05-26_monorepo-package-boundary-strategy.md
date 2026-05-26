@@ -52,3 +52,17 @@ Replace all remaining `../../../src/` relative imports in subpackages with prope
 **Result:** No subpackage imports from `../../../src/` except intentional exceptions. All workspace deps declared explicitly in each package's `package.json`.
 
 Note: Each package still compiles as part of the root TypeScript project (not independently via `composite: true`). Full project-reference independence (separate `dist/` per package, publishable standalone) is future work.
+
+---
+
+## Phase 2 follow-up — `src/standaloneTooling.ts` split (DONE, same branch)
+
+Phase 2 introduced a regression: expanding `src/tooling.ts` with `completionBuilder` exports (which import `reference/index.ts`) caused the minimal bundle entry (`src/index.ts`) to drag in `reference/index.ts`. That module has top-level `docsToReference()` calls that throw when `stripDocsPlugin` has removed `.docs` fields.
+
+**Fix:** Extracted the 6 functions that `src/index.ts` re-exports into `src/standaloneTooling.ts`:
+
+- `tokenizeSource`, `parseTokenStream`, `untokenize`, `getUndefinedSymbols`, `getAutoCompleter`, `formatSource`
+
+`src/index.ts` and `src/createDvala.ts` now import from `./standaloneTooling` directly. `src/tooling.ts` (the `@mojir/dvala/tooling` bundle entry) does `export * from './standaloneTooling'` so its public API is unchanged.
+
+**Invariant enforced structurally:** `standaloneTooling.ts` must never import from `reference/index.ts`. Since no file in the minimal bundle's dependency graph imports `src/tooling.ts` at all, the boundary is self-enforcing — editing the full tooling bundle entry cannot accidentally pollute the minimal bundle.
