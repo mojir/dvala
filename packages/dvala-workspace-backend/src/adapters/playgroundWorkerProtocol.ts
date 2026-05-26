@@ -1,4 +1,4 @@
-import type { CompletionItem, Diagnostic } from '../../../../packages/dvala-core-tooling/src'
+import type { CompletionItem, Diagnostic } from '../../../dvala-core-tooling/src'
 
 export interface PlaygroundWorkspaceSnapshotFile {
   path: string
