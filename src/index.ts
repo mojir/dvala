@@ -11,7 +11,7 @@ export {
   asUserDefinedFunction,
   assertUserDefinedFunction,
 } from './typeGuards/dvalaFunction'
-export { type Arity } from './builtin/interface'
+export { type Arity, type BuiltinNormalExpressions } from './builtin/interface'
 export { type DvalaFunction } from './parser/types'
 export type { Context } from './evaluator/interface'
 export type { Ast } from './parser/types'
@@ -19,6 +19,8 @@ export type { SourceCodeInfo } from './tokenizer/token'
 export type { Token, TokenType } from './tokenizer/token'
 export { normalExpressionKeys, specialExpressionKeys } from './builtin'
 export type { DvalaModule } from './builtin/modules/interface'
+export type { Any } from './interface'
+export { fromJS, toJS } from './utils/interop'
 export type { DvalaBundle } from './bundler/interface'
 export { isDvalaBundle } from './bundler/interface'
 export { type DvalaError, isDvalaError } from './errors'

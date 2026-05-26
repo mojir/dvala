@@ -1,6 +1,4 @@
-import type { Arity, BuiltinNormalExpressions } from '../../../../../../src/builtin/interface'
-import type { DvalaModule } from '../../../../../../src/builtin/modules/interface'
-import type { Any } from '../../../../../../src/interface'
+import type { Arity, BuiltinNormalExpressions, DvalaModule, Any } from '../../../../../../src'
 import process from 'node:process'
 
 interface JsFunction {
