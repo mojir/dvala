@@ -1,5 +1,5 @@
 import { toJS, isAtom, isEffect, isRegularExpression, isDvalaFunction } from '../../../../src'
-import type { ReplBinding } from '../../../../packages/dvala-core-tooling/src'
+import type { ReplBinding } from '@mojir/dvala-core-tooling'
 
 interface ReplSessionFingerprint {
   loadedFileSource: string

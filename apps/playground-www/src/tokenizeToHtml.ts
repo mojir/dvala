@@ -5,7 +5,7 @@
 
 import { normalExpressionKeys, specialExpressionKeys, standardEffectNames } from '../../../src'
 import type { Token } from '../../../src'
-import { splitSegments, tokenizeSource } from '../../../packages/dvala-core-tooling/src'
+import { splitSegments, tokenizeSource } from '@mojir/dvala-core-tooling'
 import { playgroundEffectReference } from './playgroundEffects'
 
 const normalExpressionSet = new Set(normalExpressionKeys)

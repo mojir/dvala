@@ -7,5 +7,9 @@
   "scripts": {
     "build": "tsgo -p ./tsconfig.json",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mojir/dvala-core-tooling": "workspace:*",
+    "@mojir/dvala-workspace-backend": "workspace:*"
   }
 }

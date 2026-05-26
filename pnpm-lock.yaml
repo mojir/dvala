@@ -94,17 +94,39 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
-  apps/playground-www: {}
+  apps/playground-www:
+    dependencies:
+      '@mojir/dvala-core-tooling':
+        specifier: workspace:*
+        version: link:../../packages/dvala-core-tooling
+      '@mojir/dvala-workspace-backend':
+        specifier: workspace:*
+        version: link:../../packages/dvala-workspace-backend
 
-  packages/dvala-cli: {}
+  packages/dvala-cli:
+    dependencies:
+      '@mojir/dvala-core-tooling':
+        specifier: workspace:*
+        version: link:../dvala-core-tooling
+      '@mojir/dvala-workspace-backend':
+        specifier: workspace:*
+        version: link:../dvala-workspace-backend
 
   packages/dvala-core-tooling: {}
 
-  packages/dvala-mcp-server: {}
+  packages/dvala-mcp-server:
+    dependencies:
+      '@mojir/dvala-core-tooling':
+        specifier: workspace:*
+        version: link:../dvala-core-tooling
 
   packages/dvala-runtime: {}
 
-  packages/dvala-workspace-backend: {}
+  packages/dvala-workspace-backend:
+    dependencies:
+      '@mojir/dvala-core-tooling':
+        specifier: workspace:*
+        version: link:../dvala-core-tooling
 
   vscode-dvala:
     dependencies:

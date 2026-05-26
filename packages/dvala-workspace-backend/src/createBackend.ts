@@ -17,7 +17,7 @@ import {
   formatSource,
   tokenizeSource,
   typecheck,
-} from '../../dvala-core-tooling/src'
+} from '@mojir/dvala-core-tooling'
 import { allReference, isFunctionReference } from '../../../reference/index'
 
 import type { DvalaBackend } from './DvalaBackend'

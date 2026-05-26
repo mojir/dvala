@@ -14,7 +14,7 @@ import * as monaco from 'monaco-editor'
 import LsWorker from './lsWorker?worker'
 import { allReference, isCustomReference, isFunctionReference } from '../../../reference/index'
 import type { Reference } from '../../../reference/index'
-import { WorkspaceIndex } from '../../../packages/dvala-core-tooling/src'
+import { WorkspaceIndex } from '@mojir/dvala-core-tooling'
 import type {
   PlaygroundCompletionErrorMessage,
   PlaygroundCompletionResultMessage,
@@ -30,8 +30,8 @@ import type {
   PlaygroundRequestDiagnosticsMessage,
   PlaygroundResyncDocumentMessage,
   PlaygroundWorkerOutMessage,
-} from '../../../packages/dvala-workspace-backend/src/adapters/playgroundWorkerProtocol'
-import { findCallContext } from '../../../packages/dvala-core-tooling/src'
+} from '@mojir/dvala-workspace-backend/adapters/playground-worker-protocol'
+import { findCallContext } from '@mojir/dvala-core-tooling'
 import { getWorkspaceFiles, onWorkspaceFilesChanged, type WorkspaceFile } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
 import { HANDLERS_FILE_PATH } from './handlersBuffer'
@@ -39,7 +39,7 @@ import { resolvePlaygroundPath } from './playgroundFileResolver'
 import { SCRATCH_FILE_PATH } from './scratchBuffer'
 import { getImportCompletionPrefix, getScopedCompletionItems } from './lsCompletions'
 
-import type { CompletionItem } from '../../../packages/dvala-core-tooling/src'
+import type { CompletionItem } from '@mojir/dvala-core-tooling'
 const referenceByTitle = new Map(Object.values(allReference).map(ref => [ref.title, ref]))
 
 function buildHoverMarkdown(name: string, ref: Reference): string {

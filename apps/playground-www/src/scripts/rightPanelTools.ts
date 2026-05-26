@@ -19,7 +19,7 @@
 
 import type { Ast } from '../../../../src'
 import { prettyPrint } from '../../../../src'
-import { buildDocTree, parseToCst, parseTokenStream, tokenizeSource } from '../../../../packages/dvala-core-tooling/src'
+import { buildDocTree, parseToCst, parseTokenStream, tokenizeSource } from '@mojir/dvala-core-tooling'
 import type { JsonTreeViewerHandle } from '../components/jsonTreeViewer'
 import { createJsonTreeViewer } from '../components/jsonTreeViewer'
 import { getRightPanel } from './panelInstances'

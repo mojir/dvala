@@ -1,6 +1,6 @@
 import { stringifyValue } from '../../../../common/utils'
 import { createDvala, type HandlerRegistration, type RunResult, type Snapshot, toJS } from '../../../../src'
-import { applyReplBinding, executeReplLine, type ReplBinding, allBuiltinModules } from '../../../../packages/dvala-core-tooling/src'
+import { applyReplBinding, executeReplLine, type ReplBinding, allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { getHandlersCode, wrapWithBoundaryHandler } from '../handlersBuffer'
 import { getWorkspaceFiles } from '../fileStorage'
 import { playgroundFileResolver } from '../playgroundFileResolver'

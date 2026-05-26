@@ -1,14 +1,14 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { createBackend } from '../../../packages/dvala-workspace-backend/src/index'
+import { createBackend } from '@mojir/dvala-workspace-backend'
 import type {
   BackendRuntimeAdapter,
   BackendSessionResumeRequest,
   BackendSessionStartRequest,
-} from '../../../packages/dvala-workspace-backend/src/index'
-import { allBuiltinModules } from '../../dvala-core-tooling/src'
-import type { TypeDiagnostic } from '../../dvala-core-tooling/src'
+} from '@mojir/dvala-workspace-backend'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
+import type { TypeDiagnostic } from '@mojir/dvala-core-tooling'
 import { createDvala, retrigger, resume } from '../../../src'
 import type { DvalaBundle, DvalaModule } from '../../../src'
 import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
