@@ -14,10 +14,10 @@ import {
   listModules,
   lookupDoc,
 } from '../../../reference/format'
-import { allBuiltinModules } from '../../../src/allModules'
-import { createDvala } from '../../../src/createDvala'
-import '../../../src/initReferenceData'
-import { parseTokenStream, tokenizeSource } from '../../dvala-core-tooling/src/index'
+import { allBuiltinModules, parseTokenStream, tokenizeSource } from '../../dvala-core-tooling/src'
+import { createDvala } from '../../../src'
+import { initReferenceData } from '../../../src/initReferenceData'
+initReferenceData()
 
 export function createMcpServer(): McpServer {
   const dvala = createDvala({ modules: allBuiltinModules, debug: false })

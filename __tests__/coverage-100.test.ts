@@ -17,7 +17,8 @@ import { asUserDefinedSymbolNode } from '../src/typeGuards/astNode'
 import { splitSegments } from '../src/parser/subParsers/parseTemplateString'
 import { tokenizeSource } from '../src/tooling'
 import type { Snapshot } from '../src/evaluator/effectTypes'
-import '../src/initReferenceData'
+import { initReferenceData } from '../src/initReferenceData'
+initReferenceData()
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
 

@@ -1,20 +1,24 @@
-import { allBuiltinModules } from '../../../src/allModules'
-import { WorkspaceIndex, type ResolveImport } from '../../../src/languageService/WorkspaceIndex'
-import type { FileSymbols, SymbolDef } from '../../../src/languageService/types'
-import { parseToAst } from '../../../src/parser'
-import { allReference, isFunctionReference } from '../../../reference/index'
-import { buildBuiltinCompletions, symbolDefToCompletion } from '../../../src/shared/completionBuilder'
-import { findCallContext as findSharedCallContext } from '../../../src/shared/callContext'
 import {
+  allBuiltinModules,
+  WorkspaceIndex,
+  type ResolveImport,
+  type FileSymbols,
+  type SymbolDef,
+  parseToAst,
+  buildBuiltinCompletions,
+  symbolDefToCompletion,
+  findCallContext as findSharedCallContext,
   buildParseDiagnostics,
   buildSymbolDiagnostics,
   buildTypeDiagnostics,
-} from '../../../src/shared/diagnosticBuilder'
-import { findTypeAtPosition, formatHoverType } from '../../../src/shared/typeDisplay'
-import { minifyTokenStream } from '../../../src/tokenizer/minifyTokenStream'
-import { formatSource } from '../../../src/tooling'
-import { tokenizeSource } from '../../../src/tooling'
-import { typecheck } from '../../../src/typechecker/typecheck'
+  findTypeAtPosition,
+  formatHoverType,
+  minifyTokenStream,
+  formatSource,
+  tokenizeSource,
+  typecheck,
+} from '../../dvala-core-tooling/src'
+import { allReference, isFunctionReference } from '../../../reference/index'
 
 import type { DvalaBackend } from './DvalaBackend'
 import { createInMemoryDocumentStore, type BackendDocumentStore } from './documentStore'

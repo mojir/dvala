@@ -2,13 +2,11 @@
 // Full entry point: re-exports everything from the minimal entry plus
 // all modules, reference data, and API helpers.
 
-// Re-export everything from the minimal entry point
-// Wire up reference data for the `doc` builtin function.
-// In the minimal entry point (src/index.ts), this is not called,
-// so `doc` gracefully returns empty strings for built-in functions.
-import './initReferenceData'
+import { initReferenceData } from './initReferenceData'
 
 export * from './index'
+
+initReferenceData()
 
 // All built-in modules (convenience re-export)
 export { allBuiltinModules } from './allModules'

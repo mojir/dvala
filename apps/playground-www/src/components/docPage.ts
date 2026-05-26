@@ -1,4 +1,4 @@
-import type { ExampleEntry } from '../../../../src/builtin/interface'
+import type { ExampleEntry } from '../../../../src'
 
 /**
  * Renders a single reference doc page for /ref/<linkName>.

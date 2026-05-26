@@ -1,4 +1,4 @@
-import type { UnknownRecord } from '../../../src/interface'
+import type { UnknownRecord } from '../../../src'
 import { reactive } from './lib/reactive'
 import { SCRATCH_FILE_ID } from './scratchBuffer'
 

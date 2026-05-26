@@ -20,7 +20,8 @@ import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
 import type { DataType } from '../src/builtin/interface'
 import { isDataType, isFunctionDocs } from '../src/builtin/interface'
 import { allReference } from '../reference'
-import '../src/initReferenceData'
+import { initReferenceData } from '../src/initReferenceData'
+initReferenceData()
 
 const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
 

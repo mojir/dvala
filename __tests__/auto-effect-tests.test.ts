@@ -30,7 +30,8 @@ import { isDataType } from '../src/builtin/interface'
 import type { Any } from '../src/interface'
 import { fromJS } from '../src/utils/interop'
 import { allReference } from '../reference'
-import '../src/initReferenceData'
+import { initReferenceData } from '../src/initReferenceData'
+initReferenceData()
 
 const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
 

@@ -3,7 +3,7 @@ import type { Colorizer } from '../colorizer'
 import { createFormatter } from '../../../../common/createFormatter'
 import { findAllOccurrences } from '../../../../common/utils'
 import { isFunctionReference } from '../../../../reference'
-import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../../src/symbolPatterns'
+import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../dvala-core-tooling/src'
 import { createVariableRule, getMdRules } from '../cliFormatterRules'
 
 const variableRegExp = new RegExp(`\\$${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*`, 'g')

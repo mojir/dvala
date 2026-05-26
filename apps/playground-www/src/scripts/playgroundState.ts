@@ -2,7 +2,7 @@
 // API choice: a single mutable singleton object — produces the smallest diff in
 // callers (each `foo` reference becomes `state.foo`, no helper functions needed).
 
-import type { EffectContext, Snapshot } from '../../../../src/evaluator/effectTypes'
+import type { EffectContext, Snapshot } from '../../../../src'
 
 export interface PendingEffect {
   ctx: EffectContext

@@ -3,15 +3,23 @@ import './styles.css'
 import { stringifyValue } from '../../../common/utils'
 import type { Example } from '../../../reference/examples'
 import { getLinkName } from '../../../reference'
-import type { Any } from '../../../src/interface'
-import { createDvala } from '../../../src/createDvala'
-import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from '../../../src/evaluator/effectTypes'
-import { allBuiltinModules } from '../../../src/allModules'
-import '../../../src/initReferenceData'
-import { asUnknownRecord } from '../../../src/typeGuards'
-import { formatSource, getUndefinedSymbols } from '../../../packages/dvala-core-tooling/src/index'
-import type { DvalaErrorJSON } from '../../../src/errors'
-import type { TypeDiagnostic } from '../../../src/typechecker/typecheck'
+import {
+  type Any,
+  createDvala,
+  type EffectContext,
+  type EffectHandler,
+  type HandlerRegistration,
+  type Snapshot,
+  asUnknownRecord,
+  type DvalaErrorJSON,
+} from '../../../src'
+import { initReferenceData } from '../../../src/initReferenceData'
+import {
+  allBuiltinModules,
+  formatSource,
+  getUndefinedSymbols,
+  type TypeDiagnostic,
+} from '../../../packages/dvala-core-tooling/src'
 import {
   RIGHT_PANEL_TOOL_TABS,
   FILE_RIGHT_PANEL_TABS,
@@ -182,6 +190,8 @@ import {
   syncCodePanelView,
   syncPlaygroundUrlState,
 } from './scripts/sidePanels'
+
+initReferenceData()
 
 export {
   closeAllModals,

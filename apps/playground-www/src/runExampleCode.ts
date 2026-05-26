@@ -5,9 +5,9 @@
  * - All other effects cause no output to be shown
  */
 
-import { createDvala } from '../../../src/createDvala'
-import { allBuiltinModules } from '../../../src/allModules'
-import type { EffectContext, HandlerRegistration } from '../../../src/evaluator/effectTypes'
+import { createDvala } from '../../../src'
+import type { EffectContext, HandlerRegistration } from '../../../src'
+import { allBuiltinModules } from '../../../packages/dvala-core-tooling/src'
 import { stringifyValue } from '../../../common/utils'
 
 const dvala = createDvala({ debug: false, modules: allBuiltinModules })

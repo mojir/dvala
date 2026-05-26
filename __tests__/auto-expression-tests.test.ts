@@ -14,7 +14,8 @@ import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { normalExpressions } from '../src/builtin/normalExpressions'
 import type { ExampleEntry, TypedValue } from '../src/builtin/interface'
-import '../src/initReferenceData'
+import { initReferenceData } from '../src/initReferenceData'
+initReferenceData()
 
 /** Extract the code string from an ExampleEntry, or return null if it should be skipped (noRun). */
 function getExampleCode(entry: ExampleEntry): string | null {

@@ -28,6 +28,13 @@ export type { TypeDiagnostic, TypecheckResult } from './typechecker/typecheck'
 export { WorkspaceIndex } from './languageService/WorkspaceIndex'
 export type { ResolveImport } from './languageService/WorkspaceIndex'
 
+// ── Evaluator internals ──────────────────────────────────────────────────
+// Types and helpers needed by runtime adapters (workspace-backend, CLI).
+export { Debugger } from './debugger/Debugger'
+export { deserializeFromObject } from './evaluator/suspension'
+export type { ContextStack } from './evaluator/ContextStack'
+export type { ContinuationStack } from './evaluator/frames'
+
 // ── Backend boundary ─────────────────────────────────────────────────────
 // Root-internal backend API surface for worker/server adapters. Not part of
 // the stable public package API.
