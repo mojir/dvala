@@ -105,6 +105,9 @@ importers:
 
   packages/dvala-cli:
     dependencies:
+      '@mojir/dvala':
+        specifier: workspace:*
+        version: link:../..
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../dvala-core-tooling
@@ -115,10 +118,17 @@ importers:
         specifier: workspace:*
         version: link:../dvala-workspace-backend
 
-  packages/dvala-core-tooling: {}
+  packages/dvala-core-tooling:
+    dependencies:
+      '@mojir/dvala':
+        specifier: workspace:*
+        version: link:../..
 
   packages/dvala-mcp-server:
     dependencies:
+      '@mojir/dvala':
+        specifier: workspace:*
+        version: link:../..
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../dvala-core-tooling

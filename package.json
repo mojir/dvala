@@ -54,6 +54,11 @@
       "import": "./dist/bundler.esm.js",
       "require": "./dist/bundler.js"
     },
+    "./tooling": {
+      "types": "./dist/src/tooling.d.ts",
+      "import": "./dist/tooling.esm.js",
+      "require": "./dist/tooling.js"
+    },
     "./modules/assertion": {
       "types": "./dist/src/modules/assertion.d.ts",
       "import": "./dist/modules/assertion.esm.js",

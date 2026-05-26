@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 
 import type { Reference } from '../../../reference'
-import { bundle, deserializeBundle, serializeBundle } from '../../../src/bundler'
+import { bundle, deserializeBundle, serializeBundle } from '@mojir/dvala/bundler'
 import fs from 'node:fs'
 import path from 'node:path'
 import { stringifyValue } from '../../../common/utils'
@@ -24,8 +24,8 @@ import {
   polishSymbolCharacterClass,
   polishSymbolFirstCharacterClass,
 } from '@mojir/dvala-core-tooling'
-import type { DvalaBundle, UnknownRecord } from '../../../src'
-import { normalExpressionKeys, specialExpressionKeys, hostHandler } from '../../../src'
+import type { DvalaBundle, UnknownRecord } from '@mojir/dvala'
+import { normalExpressionKeys, specialExpressionKeys, hostHandler } from '@mojir/dvala'
 import type { CoverageConfig, CoverageReporter, ResolvedConfig } from '../../../src/config'
 import { findConfig } from '../../../src/config'
 import { runTestFile, runTestSuite } from '../../../src/testFramework'
@@ -57,7 +57,7 @@ import { getCliModules } from './js-interop/Cli'
 import { createCliRuntimeClient, createFileResolver } from './runtimeClient'
 import type { TypeDiagnostic } from '@mojir/dvala-core-tooling'
 import { initReferenceData } from '../../../src/initReferenceData'
-import { createDvala } from '../../../src'
+import { createDvala } from '@mojir/dvala'
 initReferenceData()
 
 const useColor = !process.env.NO_COLOR

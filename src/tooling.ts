@@ -93,3 +93,35 @@ export function getAutoCompleter(program: string, position: number, params: Auto
 export { format as formatSource } from './formatter/format'
 export { parseToCst } from './parser'
 export { buildDocTree } from './formatter/cstFormat'
+
+// Parser / tokenizer primitives (direct access for tooling consumers)
+export { parseToAst } from './parser'
+export { minifyTokenStream } from './tokenizer/minifyTokenStream'
+export { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from './symbolPatterns'
+export { splitSegments } from './parser/subParsers/parseTemplateString'
+
+// Language service
+export { WorkspaceIndex } from './languageService/WorkspaceIndex'
+export type { ResolveImport } from './languageService/WorkspaceIndex'
+export type { FileSymbols, SymbolDef, SymbolRef, ScopeRange } from './languageService/types'
+
+// Shared analysis helpers
+export type { Position, Range, Diagnostic } from './shared/types'
+export type { CompletionItem } from './shared/completionBuilder'
+export { buildBuiltinCompletions, symbolDefToCompletion, referenceToCompletion } from './shared/completionBuilder'
+export { findCallContext } from './shared/callContext'
+export { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from './shared/diagnosticBuilder'
+export { findTypeAtPosition, findTypeAtDefinition, formatHoverType } from './shared/typeDisplay'
+
+// Typechecker
+export { typecheck, typecheckExpr } from './typechecker/typecheck'
+export type { TypeDiagnostic, TypecheckResult } from './typechecker/typecheck'
+
+// Modules + AST utilities
+export { allBuiltinModules } from './allModules'
+export { expandMacros } from './ast/expandMacros'
+export { treeShake } from './ast/treeShake'
+
+// REPL utilities
+export { applyReplBinding, executeReplLine } from './shared/replCore'
+export type { ReplBinding } from './shared/replCore'

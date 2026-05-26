@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
+const dvalaEntry = fileURLToPath(new URL('./src/index.ts', import.meta.url))
+const dvalaBundlerEntry = fileURLToPath(new URL('./src/bundler.ts', import.meta.url))
+const dvalaToolingEntry = fileURLToPath(new URL('./src/tooling.ts', import.meta.url))
 const runtimePackageEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/index.ts', import.meta.url))
 const runtimeArtifactsEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/artifacts/index.ts', import.meta.url))
 const coreToolingEntry = fileURLToPath(new URL('./packages/dvala-core-tooling/src/index.ts', import.meta.url))
@@ -16,6 +19,9 @@ const workspaceBackendPlaygroundProtocolEntry = fileURLToPath(
 export default defineConfig({
   resolve: {
     alias: {
+      '@mojir/dvala/bundler': dvalaBundlerEntry,
+      '@mojir/dvala/tooling': dvalaToolingEntry,
+      '@mojir/dvala': dvalaEntry,
       '@mojir/dvala-runtime/artifacts': runtimeArtifactsEntry,
       '@mojir/dvala-runtime': runtimePackageEntry,
       '@mojir/dvala-core-tooling': coreToolingEntry,
