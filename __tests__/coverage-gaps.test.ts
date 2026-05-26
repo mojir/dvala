@@ -13,7 +13,7 @@ import { getUndefinedSymbols } from '../src/tooling'
 import type { Handlers } from '../src/evaluator/effectTypes'
 import { getStandardEffectDefinition } from '../src/evaluator/standardEffects'
 import { PersistentMap, PersistentVector } from '../src/utils/persistent'
-import { initReferenceData } from '../src'
+import { initReferenceData } from '../src/initReferenceData'
 initReferenceData()
 
 // ---------------------------------------------------------------------------

@@ -55,7 +55,7 @@ import mainTemplate from './templates/main.dvala'
 import mainTestTemplate from './templates/main.test.dvala'
 import { getCliModules } from './js-interop/Cli'
 import { createCliRuntimeClient, createFileResolver } from './runtimeClient'
-import { initReferenceData } from '../../../src'
+import { initReferenceData } from '../../../src/initReferenceData'
 initReferenceData()
 import type { TypeDiagnostic } from '../../dvala-core-tooling/src'
 import { createDvala } from '../../../src'
