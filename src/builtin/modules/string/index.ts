@@ -8,7 +8,7 @@ import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../interface'
 import type { DvalaModule } from '../interface'
 import { moduleDocsFromFunctions } from '../interface'
-import type { SourceCodeInfo } from '../../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import stringModuleSource from './string.dvala'
 
 const stringUtilsFunctions: BuiltinNormalExpressions = {

@@ -1,5 +1,5 @@
 import { DvalaError } from '../errors'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { getCodeMarker } from '../utils/debug/getCodeMarker'
 import type { TestCaseResult, TestRunResult } from './result'
 

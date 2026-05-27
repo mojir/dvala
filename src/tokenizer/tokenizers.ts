@@ -26,8 +26,8 @@ import type {
   TokenDescriptor,
   WhitespaceToken,
 } from './token'
-import type { ReservedSymbol } from './reservedNames'
-import { reservedSymbolRecord } from './reservedNames'
+import type { ReservedSymbol } from '@mojir/dvala-types'
+import { reservedSymbolRecord } from '@mojir/dvala-types'
 
 type Tokenizer<T extends Token> = (
   input: string,

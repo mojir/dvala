@@ -86,8 +86,8 @@ import type {
 } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
-import { reservedSymbolRecord } from '../tokenizer/reservedNames'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import { reservedSymbolRecord } from '@mojir/dvala-types'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined } from '../typeGuards'
 import {

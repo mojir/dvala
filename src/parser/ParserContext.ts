@@ -1,5 +1,6 @@
 import { ParseError } from '../errors'
-import type { SourceCodeInfo, Token, TokenDebugInfo } from '../tokenizer/token'
+import type { Token, TokenDebugInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { debugInfoToSourceCodeInfo } from '../tokenizer/token'
 import type { TokenStream } from '../tokenizer/tokenize'
 import type { AliasParam, AstNode, SourceMap, SourceMapPosition } from './types'

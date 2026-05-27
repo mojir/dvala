@@ -15,11 +15,11 @@ import { normalExpressionKeys, specialExpressionKeys, specialExpressions } from 
 import { isUnknownRecord } from '../src/typeGuards'
 import { canBeOperator } from '../src/utils/arity'
 import { normalExpressions } from '../src/builtin/normalExpressions'
-import { isReservedSymbol } from '../src/tokenizer/reservedNames'
+import { isReservedSymbol } from '@mojir/dvala-types'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { MODULE_DESCRIPTION_MAX_LENGTH } from '../src/builtin/modules/interface'
-import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
+import { specialExpressionTypes } from '@mojir/dvala-types'
 import { type ApiName, categories } from '../reference/api'
 import { initReferenceData } from '../src/initReferenceData'
 initReferenceData()

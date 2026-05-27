@@ -1,11 +1,11 @@
-import type { SpecialExpressionType } from '../builtin'
-import type { Arity } from '../builtin/interface'
-import type { specialExpressionTypes } from '../builtin/specialExpressionTypes'
+import type { SpecialExpressionType } from '@mojir/dvala-types'
+import type { Arity } from '@mojir/dvala-types'
+import type { specialExpressionTypes } from '@mojir/dvala-types'
 import type { FunctionType, NodeType, NodeTypes } from '@mojir/dvala-types'
 import type { Context } from '../evaluator/interface'
 import type { Any, Arr, Coll } from '../interface'
-import type { ReservedSymbol } from '../tokenizer/reservedNames'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { ReservedSymbol } from '@mojir/dvala-types'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import type { ATOM_SYMBOL, EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '@mojir/dvala-types'
 
 export type EvaluatedFunction = [BindingTarget[], AstNode[], Context]

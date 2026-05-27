@@ -4,7 +4,7 @@ import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseRecoverable } from '../parser'
 import { builtin } from '../builtin'
-import { reservedSymbolRecord } from '../tokenizer/reservedNames'
+import { reservedSymbolRecord } from '@mojir/dvala-types'
 
 // Collect all builtin names — must mirror WorkspaceIndex.ts
 const builtinNames = new Set<string>([

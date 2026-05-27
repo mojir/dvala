@@ -1,5 +1,5 @@
 import type { Any, Arr, Obj, Seq } from '../../../interface'
-import type { SourceCodeInfo } from '../../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { asArray, assertArray } from '../../../typeGuards/array'
 import { asAny, asSeq, assertAny, assertSeq } from '../../../typeGuards/dvala'
 import { asNumber, assertNumber } from '../../../typeGuards/number'

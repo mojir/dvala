@@ -1,4 +1,4 @@
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { getAssertionError } from '../utils/getAssertionError'
 
 type StringAssertionOptions =

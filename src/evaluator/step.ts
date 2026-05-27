@@ -23,7 +23,7 @@
 import type { DvalaError } from '../errors'
 import type { Any } from '../interface'
 import type { AstNode, EffectRef } from '../parser/types'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import type { ContinuationStack, Frame, ParallelBranchContext, ReRunParallelFrame, ResumeParallelFrame } from './frames'
 import type { ContextStack } from './ContextStack'
 import type { Snapshot } from './effectTypes'

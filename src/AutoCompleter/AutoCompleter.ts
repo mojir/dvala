@@ -1,6 +1,6 @@
 import { normalExpressionKeys, specialExpressionKeys } from '../builtin'
 import { tokenize } from '../tokenizer/tokenize'
-import { reservedSymbolRecord } from '../tokenizer/reservedNames'
+import { reservedSymbolRecord } from '@mojir/dvala-types'
 
 export interface AutoCompleterParams {
   effectNames?: readonly string[]

@@ -1,5 +1,5 @@
-import type { SpecialExpressionName } from '../../builtin'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
+import type { SpecialExpressionName } from '@mojir/dvala-types'
+import { specialExpressionTypes } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import type { CstBuilder } from '../../cst/builder'
 import { ParseError } from '../../errors'

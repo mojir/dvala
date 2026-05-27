@@ -1,5 +1,5 @@
 import { RuntimeError } from '../../../../errors'
-import type { SourceCodeInfo } from '../../../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { approxZero } from '../../../../utils'
 
 export function getUnit<T extends number[]>(value: T, sourceCodeInfo: SourceCodeInfo | undefined): T {

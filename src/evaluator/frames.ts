@@ -29,7 +29,7 @@ import type {
 } from '../parser/types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import type { ContextStack } from './ContextStack'
 import type { Snapshot } from './effectTypes'
 import type { Context } from './interface'

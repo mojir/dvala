@@ -5,7 +5,7 @@ import type {
   NormalBuiltinFunction,
   UserDefinedFunction,
 } from '../parser/types'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { getAssertionError } from '../utils/getAssertionError'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import { isUnknownRecord } from '.'

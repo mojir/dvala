@@ -1,3 +1,7 @@
 export * from './constants'
 export * from './symbols'
 export * from './persistent'
+export * from './arity'
+export * from './sourceCodeInfo'
+export * from './reservedNames'
+export * from './specialExpressionTypes'

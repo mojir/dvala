@@ -4,7 +4,8 @@ import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
 import { bindingTargetTypes } from '../types'
-import type { SourceCodeInfo, SymbolToken, Token } from '../../tokenizer/token'
+import type { SymbolToken, Token } from '../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import {
   asSymbolToken,
   assertLParenToken,

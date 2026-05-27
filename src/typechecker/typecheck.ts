@@ -17,7 +17,7 @@ import { resolveSourceCodeInfo } from '../parser/types'
 import { parseToAst } from '../parser'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { expandType, InferenceContext, TypeEnv, inferExpr, TypeInferenceError } from './infer'
 import { initBuiltinTypes, registerModuleType, resetModuleTypeCache } from './builtinTypes'
 import {

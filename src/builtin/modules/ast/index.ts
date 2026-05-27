@@ -12,7 +12,7 @@ import { assertNumber } from '../../../typeGuards/number'
 import type { BuiltinNormalExpressions, FunctionDocs } from '../../interface'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
-import type { SourceCodeInfo } from '../../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,5 +1,5 @@
 import type { Any, Arr, Coll, Obj } from '../../interface'
-import type { SourceCodeInfo } from '../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { collHasKey, deepEqual, toAny } from '../../utils'
 import { asAny, assertAny, assertColl, assertObj, isObj, isSeq } from '../../typeGuards/dvala'
 import type { BuiltinNormalExpressions } from '../interface'

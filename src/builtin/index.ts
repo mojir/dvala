@@ -17,7 +17,7 @@ import { parallelSpecialExpression } from './specialExpressions/parallel'
 import { performSpecialExpression } from './specialExpressions/perform'
 import { raceSpecialExpression } from './specialExpressions/race'
 import { settledSpecialExpression } from './specialExpressions/settled'
-import { specialExpressionTypes } from './specialExpressionTypes'
+import { specialExpressionTypes } from '@mojir/dvala-types'
 
 export const specialExpressions = {
   [specialExpressionTypes['??']]: qqSpecialExpression,
@@ -41,9 +41,6 @@ export const specialExpressions = {
 
 export type SpecialExpressions = typeof specialExpressions
 export type SpecialExpression = SpecialExpressions[keyof SpecialExpressions]
-export type SpecialExpressionName = keyof typeof specialExpressionTypes
-
-export type SpecialExpressionType = (typeof specialExpressionTypes)[SpecialExpressionName]
 
 export const builtin: Builtin = {
   normalExpressions,

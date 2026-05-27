@@ -3,11 +3,9 @@ import type { EvaluateNode } from '../evaluator/interface'
 import type { GetUndefinedSymbols, UndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr } from '../interface'
 import type { AstNode, UserDefinedFunction } from '../parser/types'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { Arity, SourceCodeInfo } from '@mojir/dvala-types'
 import type { MaybePromise } from '../utils/maybePromise'
 import type { SpecialExpressions } from '.'
-
-export type Arity = { min?: number; max?: number }
 
 // --- Data types used in documentation ---
 

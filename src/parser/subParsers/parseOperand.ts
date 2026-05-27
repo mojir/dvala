@@ -1,5 +1,5 @@
-import type { SpecialExpressionName } from '../../builtin'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
+import type { SpecialExpressionName } from '@mojir/dvala-types'
+import { specialExpressionTypes } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import type {
@@ -10,7 +10,7 @@ import type {
   StringNode,
 } from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
-import { isNumberReservedSymbol } from '../../tokenizer/reservedNames'
+import { isNumberReservedSymbol } from '@mojir/dvala-types'
 import type { StringToken, TemplateStringToken, TokenDebugInfo, TokenType } from '../../tokenizer/token'
 import {
   isLBraceToken,

@@ -1,6 +1,6 @@
 import { RuntimeError } from '../../../../errors'
 import type { Any } from '../../../../interface'
-import type { SourceCodeInfo } from '../../../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { assertNumber } from '../../../../typeGuards/number'
 import { assertString } from '../../../../typeGuards/string'
 import { toFixedArity } from '../../../../utils/arity'

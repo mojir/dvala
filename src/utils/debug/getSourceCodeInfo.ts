@@ -1,4 +1,4 @@
-import type { SourceCodeInfo } from '../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 
 export function getSourceCodeInfo(
   anyValue: any,

@@ -11,11 +11,12 @@ export {
   asUserDefinedFunction,
   assertUserDefinedFunction,
 } from './typeGuards/dvalaFunction'
-export { type Arity, type BuiltinNormalExpressions } from './builtin/interface'
+export { type BuiltinNormalExpressions } from './builtin/interface'
+export { type Arity } from '@mojir/dvala-types'
 export { type DvalaFunction } from './parser/types'
 export type { Context } from './evaluator/interface'
 export type { Ast } from './parser/types'
-export type { SourceCodeInfo } from './tokenizer/token'
+export type { SourceCodeInfo } from '@mojir/dvala-types'
 export type { Token, TokenType } from './tokenizer/token'
 export { normalExpressionKeys, specialExpressionKeys } from './builtin'
 export type { DvalaModule } from './builtin/modules/interface'
