@@ -54,6 +54,11 @@
       "import": "./dist/bundler.esm.js",
       "require": "./dist/bundler.js"
     },
+    "./tooling": {
+      "types": "./dist/src/tooling.d.ts",
+      "import": "./dist/tooling.esm.js",
+      "require": "./dist/tooling.js"
+    },
     "./modules/assertion": {
       "types": "./dist/src/modules/assertion.d.ts",
       "import": "./dist/modules/assertion.esm.js",
@@ -230,7 +235,8 @@
         "__tests__/**/*.ts",
         ".oxlintrc.json",
         ".oxfmtrc.json",
-        ".prettierignore"
+        ".prettierignore",
+        "!**/node_modules/**"
       ],
       "output": []
     },
@@ -265,7 +271,8 @@
         "__tests__/**/*.ts",
         ".oxlintrc.json",
         ".oxfmtrc.json",
-        ".prettierignore"
+        ".prettierignore",
+        "!**/node_modules/**"
       ],
       "output": []
     },
@@ -297,7 +304,8 @@
         "scripts/**/*.{ts,mjs}",
         "knip.json",
         "package.json",
-        "tsconfig*.json"
+        "tsconfig*.json",
+        "!**/node_modules/**"
       ],
       "output": []
     },
@@ -332,7 +340,8 @@
         "types/**/*.ts",
         "vscode-dvala/src/**/*.ts",
         "tsconfig*.json",
-        "vscode-dvala/tsconfig.json"
+        "vscode-dvala/tsconfig.json",
+        "!**/node_modules/**"
       ],
       "output": [
         "packages/dvala-runtime/dist/**"
@@ -349,7 +358,8 @@
         "reference/**",
         "vitest.setup.ts",
         "vite.config.mts",
-        "tsconfig.json"
+        "tsconfig.json",
+        "!**/node_modules/**"
       ],
       "output": []
     },
@@ -364,7 +374,8 @@
         "reference/**",
         "vitest.setup.ts",
         "vite.config.mts",
-        "tsconfig.json"
+        "tsconfig.json",
+        "!**/node_modules/**"
       ],
       "output": [
         "coverage/**"

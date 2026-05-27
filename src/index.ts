@@ -64,5 +64,5 @@ export {
   getUndefinedSymbols,
   getAutoCompleter,
   formatSource,
-} from './tooling'
-export type { TokenStream } from './tooling'
+} from './standaloneTooling'
+export type { TokenStream } from './standaloneTooling'

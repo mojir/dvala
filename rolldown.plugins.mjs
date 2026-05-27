@@ -149,18 +149,14 @@ export function stripDocsPlugin() {
     renderChunk(code) {
       let result = code
 
-      // Helper: find the end of a balanced brace block starting at `{`
-      function findBalancedBraceEnd(str, start) {
+      // Helper: find the end of a balanced block starting at `open` char
+      function findBalancedEnd(str, start, open, close) {
         let depth = 0
         for (let i = start; i < str.length; i++) {
-          if (str[i] === '{') {
-            depth++
-          }
-          else if (str[i] === '}') {
+          if (str[i] === open) depth++
+          else if (str[i] === close) {
             depth--
-            if (depth === 0) {
-              return i
-            }
+            if (depth === 0) return i
           }
         }
         return -1
@@ -172,15 +168,11 @@ export function stripDocsPlugin() {
         // eslint-disable-next-line no-cond-assign
         for (let match; (match = pattern.exec(result)) !== null;) {
           const braceStart = result.indexOf('{', match.index + match[0].length - 1)
-          if (braceStart === -1) {
-            break
-          }
-          const braceEnd = findBalancedBraceEnd(result, braceStart)
-          if (braceEnd === -1) {
-            break
-          }
+          if (braceStart === -1) break
+          const braceEnd = findBalancedEnd(result, braceStart, '{', '}')
+          if (braceEnd === -1) break
           result = result.slice(0, match.index) + result.slice(braceEnd + 1)
-          pattern.lastIndex = 0 // reset since string changed
+          pattern.lastIndex = 0
         }
         return result
       }
@@ -188,13 +180,40 @@ export function stripDocsPlugin() {
       // 1. Remove inline `docs: { ... }` property (with balanced braces)
       result = stripBalancedBlocks(result, /docs:\s*(?=\{)/g)
 
-      // 2. Remove `docs: variableName` (variable reference, not inline object)
-      result = result.replace(/docs:\s*[a-zA-Z_$][\w$]*/g, '')
+      // 2. Remove `docs: identifier` or `docs: identifier(...)` (variable or function call).
+      //    After removing `docs: identifier`, a trailing `(args)` would corrupt the object literal,
+      //    so consume any balanced `(...)` call immediately following the identifier too.
+      result = result.replace(/docs:\s*[a-zA-Z_$][\w$]*/g, (match, offset, str) => {
+        const afterMatch = offset + match.length
+        if (str[afterMatch] === '(') {
+          // Signal the call's end position through a sentinel — we'll strip it in a second pass
+          // using a balanced-paren walk. Return a unique placeholder.
+          return '\x00DOCS_CALL_SENTINEL\x00'
+        }
+        return ''
+      })
+      // Second pass: replace each sentinel + balanced `(...)` with empty string
+      let sentinel = result.indexOf('\x00DOCS_CALL_SENTINEL\x00')
+      while (sentinel !== -1) {
+        const parenStart = sentinel + '\x00DOCS_CALL_SENTINEL\x00'.length
+        const parenEnd = findBalancedEnd(result, parenStart, '(', ')')
+        const end = parenEnd === -1 ? parenStart : parenEnd + 1
+        result = result.slice(0, sentinel) + result.slice(end)
+        sentinel = result.indexOf('\x00DOCS_CALL_SENTINEL\x00')
+      }
 
       // 3. Remove standalone docs variable declarations: `var/const/let docsXxx = { ... };`
       result = stripBalancedBlocks(result, /(?:var|const|let)\s+\w*[Dd]ocs\w*\s*=\s*(?=\{)/g)
       // Clean up trailing semicolons left behind
       result = result.replace(/^\s*;\s*$/gm, '')
+
+      // 3b. Remove `for (const/let [...] of Object.entries(moduleDocs$N)) statement;` loops
+      //     that were left dangling after their docs variable was removed in step 3.
+      //     Only targets `moduleDocs` (with optional `$N` rolldown suffix) — not generic `docs` params.
+      result = result.replace(
+        /for\s*\((?:const|let)\s*\[[^\]]*\]\s*of\s*Object\.entries\(moduleDocs(?:\$\d+)?\)\)[^;]*;/g,
+        '',
+      )
 
       // 4. Remove shorthand `docs` property in object literals (bare `docs` as object key)
       result = result.replace(/(?<=\W)docs\s*(?=[,}])/g, '')

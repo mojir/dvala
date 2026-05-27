@@ -261,6 +261,21 @@ It should not own:
 - workspace file watching
 - UI panel/view concerns
 
+### Portable Runtime & Artifact API (settled direction, not started)
+
+The host-facing runtime API and signed-artifact model below are the accepted default direction. They are **not started** and sit downstream of the current backend-authority/thin-client execution tracked in [2026-05-26_backend-authority-active-roadmap.md](2026-05-26_backend-authority-active-roadmap.md). Revisit when a portable-runtime or KMP forcing function appears. The full TypeScript sketch lives in archived [2026-05-07_dvala-subprojects-and-release-train.md](../archive/2026-05-07_dvala-subprojects-and-release-train.md).
+
+Key decisions:
+
+- The primary `dvala-runtime` public API is **host-oriented**, not evaluator-oriented: a host binds capabilities once (`RuntimeHost` → `BoundRuntime`), then verifies and runs artifacts. Low-level evaluator entrypoints remain a secondary, internal surface.
+- Trust is modeled as **immutable verified handles** (`VerifiedProgram`, `VerifiedSnapshot`) produced by verification, not as mutable ambient runtime state. Start/resume require a verified handle.
+- Programs and snapshots are **canonical structured artifacts**, portable across hosts from the start; snapshots are cross-host-resumable.
+- The portable artifact preserves a **Dvala semantic IR**, not a frozen parser AST. Each section has an encoded canonical form (authoritative) plus a decoded inspectable form (non-authoritative, tooling-only).
+- **Deterministic CBOR + COSE** is the default stack: canonical CBOR encoding, COSE signature over the canonical content. Compression is an outer transport wrapper, not part of artifact identity.
+- The envelope separates a **protected manifest** (always signed: kind, schema version, runtime fingerprint, module hash, capability policy), **canonical payload sections** (semantic IR, machine state, builtin modules), and **COSE signature material**. An `extensions` lane incubates non-core sections.
+- Snapshots carry **either** an embedded sealed program **or** a program reference — never both.
+- Likely entrypoint split: `@mojir/dvala-runtime` (host-facing run/verify/resume), `@mojir/dvala-runtime/artifacts` (contract types + serializers), `@mojir/dvala-runtime/evaluator` (internal-only lower-level access).
+
 ## 2. Dvala Core Tooling
 
 A UI-free and editor-free semantic/tooling layer that contains:

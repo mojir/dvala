@@ -9,8 +9,8 @@ import type {
 } from '@mojir/dvala-workspace-backend'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import type { TypeDiagnostic } from '@mojir/dvala-core-tooling'
-import { createDvala, retrigger, resume } from '../../../src'
-import type { DvalaBundle, DvalaModule } from '../../../src'
+import { createDvala, retrigger, resume } from '@mojir/dvala'
+import type { DvalaBundle, DvalaModule } from '@mojir/dvala'
 import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
 export function createFileResolver(): (importPath: string, fromDir: string) => string {
