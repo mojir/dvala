@@ -35,7 +35,7 @@
  * Dvala source from the renamed AST regardless of content.
  */
 
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import type { AstNode } from '../parser/types'
 import { prettyPrint } from '../prettyPrint'
 

@@ -17,7 +17,7 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { asNonUndefined } from '../typeGuards'
 import { isBuiltinSymbolNode, isSpecialSymbolNode } from '../typeGuards/astNode'
 import { toAny } from '../utils'
-import { FUNCTION_SYMBOL } from '../utils/symbols'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import type { Context, LookUpResult } from './interface'
 import { isContextEntry } from './interface'
 

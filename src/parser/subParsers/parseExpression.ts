@@ -1,6 +1,6 @@
 import type { SpecialExpressionName } from '../../builtin'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import type { CstBuilder } from '../../cst/builder'
 import { ParseError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'

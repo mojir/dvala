@@ -1,6 +1,6 @@
 import type { Any } from '../../interface'
 import type { AstNode } from '../../parser/types'
-import type { NodeTypes } from '../../constants/constants'
+import type { NodeTypes } from '@mojir/dvala-types'
 import { asAny } from '../../typeGuards/dvala'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
 

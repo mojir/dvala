@@ -5,7 +5,7 @@ import { assertRegularExpression, assertStringOrRegularExpression, isRegularExpr
 import { assertString, isString } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
 import { PersistentVector } from '../../utils/persistent'
-import { REGEXP_SYMBOL } from '../../utils/symbols'
+import { REGEXP_SYMBOL } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const regexpNormalExpression: BuiltinNormalExpressions = {

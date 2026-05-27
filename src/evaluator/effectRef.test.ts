@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { Any } from '../interface'
 import { isEffect, isObj } from '../typeGuards/dvala'
 import { PersistentMap } from '../utils/persistent'
-import { EFFECT_SYMBOL } from '../utils/symbols'
+import { EFFECT_SYMBOL } from '@mojir/dvala-types'
 import { clearEffectRefInternMap, getEffectRef } from './effectRef'
 
 describe('getEffectRef', () => {

@@ -1,4 +1,4 @@
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { createDvala } from '../createDvala'
 import type { FileResolver } from '../evaluator/ContextStack'
 import { hostHandler } from '../evaluator/effectTypes'

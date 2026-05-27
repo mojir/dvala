@@ -48,7 +48,7 @@ import {
   subtractEffects,
 } from './types'
 import type { AliasParam, AstNode, ObjectBindingEntry, SourceMap } from '../parser/types'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
 import { FOLD_ENABLED } from './foldToggle'

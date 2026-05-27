@@ -1,6 +1,6 @@
 import type { MatchCase, MatchNode } from '../../builtin/specialExpressions/match'
 import { type SymbolToken, assertReservedSymbolToken, isReservedSymbolToken } from '../../tokenizer/token'
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import type { ParserContext } from '../ParserContext'
 import { withSourceCodeInfo } from '../helpers'
 import { parseBindingTarget } from './parseBindingTarget'

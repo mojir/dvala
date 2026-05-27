@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseRecoverable } from './index'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 
 function parseR(source: string) {
   const tokens = tokenize(source, true, undefined)

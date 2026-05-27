@@ -27,7 +27,7 @@ import {
 import { isSpecialSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { getSymbolName, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { parseSymbol } from './parseSymbol'
 import { parseString } from './parseString'
 import { parseNumber } from './parseNumber'

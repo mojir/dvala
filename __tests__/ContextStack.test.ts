@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NodeTypes } from '../src/constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { createContextStack } from '../src/evaluator/ContextStack'
 import type { SpecialSymbolNode } from '../src/parser/types'
 

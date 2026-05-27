@@ -1,4 +1,4 @@
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import type { NumberNode, ReservedNode } from '../types'
 import { isNumberReservedSymbol, numberReservedSymbolRecord } from '../../tokenizer/reservedNames'
 import { asReservedSymbolToken } from '../../tokenizer/token'

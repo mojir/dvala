@@ -1,5 +1,5 @@
 import type { Any, Obj } from '../../interface'
-import type { NodeTypes } from '../../constants/constants'
+import type { NodeTypes } from '@mojir/dvala-types'
 import type { AstNode, SpreadNode } from '../../parser/types'
 import { assertString } from '../../typeGuards/string'
 import { PersistentMap } from '../../utils/persistent'

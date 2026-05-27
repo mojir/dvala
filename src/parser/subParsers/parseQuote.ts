@@ -1,7 +1,7 @@
 import { CstBuilder, type UntypedCstNode } from '../../cst/builder'
 import type { CstToken } from '../../cst/types'
 import { isTrivia } from '../../cst/attachTrivia'
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import {
   isLBraceToken,

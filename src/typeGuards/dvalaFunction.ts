@@ -7,7 +7,7 @@ import type {
 } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getAssertionError } from '../utils/getAssertionError'
-import { FUNCTION_SYMBOL } from '../utils/symbols'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import { isUnknownRecord } from '.'
 
 export function isDvalaFunction(value: unknown): value is DvalaFunction {

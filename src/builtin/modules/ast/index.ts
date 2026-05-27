@@ -1,4 +1,4 @@
-import { NodeTypes, isNodeType } from '../../../constants/constants'
+import { NodeTypes, isNodeType } from '@mojir/dvala-types'
 import { prettyPrint } from '../../../prettyPrint'
 import { TypeError } from '../../../errors'
 import type { Any, Arr } from '../../../interface'

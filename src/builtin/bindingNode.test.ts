@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ArrayBindingTarget, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { getAllBindingTargetNames } from './bindingNode'
 
 describe('getAllBindingTargetNames', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { treeShake } from '../../src/ast/treeShake'
-import { NodeTypes } from '../../src/constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { createDvala } from '../../src/createDvala'
 import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
 import { tokenize } from '../../src/tokenizer/tokenize'

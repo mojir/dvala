@@ -1,4 +1,4 @@
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
 import { tokenize } from '../../tokenizer/tokenize'

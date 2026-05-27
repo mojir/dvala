@@ -1,4 +1,4 @@
-import { NodeTypes, isNodeType } from '../constants/constants'
+import { NodeTypes, isNodeType } from '@mojir/dvala-types'
 import { resolveSourceCodeInfo } from '../parser/types'
 import type { Ast, AstNode, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'

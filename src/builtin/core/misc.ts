@@ -7,7 +7,7 @@ import { asStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
 import { isPersistentVector } from '../../utils/persistent'
-import { FUNCTION_SYMBOL } from '../../utils/symbols'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 
 function isEqual(params: Iterable<unknown>, sourceCodeInfo: SourceCodeInfo | undefined) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { TypeError, UserError } from '../errors'
 import type { Any } from '../interface'
 import { parse } from '../parser'

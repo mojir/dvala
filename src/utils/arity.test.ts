@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DvalaError } from '../errors'
 import type { FunctionLike, BuiltinSymbolNode, NormalExpressionNodeWithName, NumberNode } from '../parser/types'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import {
   arityAccepts,
   arityAcceptsMin,

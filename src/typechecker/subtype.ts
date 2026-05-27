@@ -16,7 +16,7 @@
  * - Negation: S <: !T iff S & T = Never (S and T are disjoint)
  */
 
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { createContextStack } from '../evaluator/ContextStack'
 import { evaluateNodeForFold } from '../evaluator/foldEvaluate'
 import type { AstNode } from '../parser/types'

@@ -10,7 +10,7 @@
  * produces full SymbolDef[] and SymbolRef[] with source locations.
  */
 
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { bindingTargetTypes } from '../parser/types'
 import type { AstNode, BindingTarget, ObjectBindingEntry, SourceMap, SourceMapPosition } from '../parser/types'
 import type { ScopeRange, SymbolDef, SymbolRef } from './types'

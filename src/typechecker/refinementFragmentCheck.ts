@@ -34,7 +34,7 @@
  * either "no throw" (accept) or "throw RefinementError" (reject).
  */
 
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import type { AstNode } from '../parser/types'
 import { isTypeGuard } from './builtinTypes'
 import { RefinementError } from './parseType'

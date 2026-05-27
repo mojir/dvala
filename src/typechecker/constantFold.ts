@@ -22,7 +22,7 @@
  *   - design/archive/2026-04-16_fold-toggle-and-differential-tests.md
  */
 
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { createContextStack } from '../evaluator/ContextStack'
 import { evaluateNodeForFold } from '../evaluator/foldEvaluate'
 import type { AstNode } from '../parser/types'

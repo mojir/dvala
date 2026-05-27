@@ -1,4 +1,4 @@
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import type { NumberNode } from '../types'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'

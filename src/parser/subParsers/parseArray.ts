@@ -1,5 +1,5 @@
 import type { ArrayNode } from '../../builtin/specialExpressions/array'
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import { asLBracketToken, assertRBracketToken, isOperatorToken, isRBracketToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'

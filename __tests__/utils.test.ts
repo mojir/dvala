@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { RegularExpression, SymbolNode } from '../src/parser/types'
 import { collHasKey, deepEqual, smartTrim, toNonNegativeInteger } from '../src/utils'
-import { REGEXP_SYMBOL } from '../src/utils/symbols'
+import { REGEXP_SYMBOL } from '@mojir/dvala-types'
 import { valueToString } from '../src/utils/debug/debugTools'
-import { NodeTypes } from '../src/constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { PersistentMap, PersistentVector } from '../src/utils/persistent'
 
 describe('utils', () => {

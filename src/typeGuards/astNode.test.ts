@@ -10,7 +10,7 @@ import type {
   StringNode,
   SymbolNode,
 } from '../parser/types'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import {
   asExpressionNode,
   asNormalExpressionNode,

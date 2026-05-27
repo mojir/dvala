@@ -517,6 +517,7 @@
   },
   "dependencies": {
     "@mojir/dvala-runtime": "workspace:*",
+    "@mojir/dvala-types": "workspace:*",
     "@vue/reactivity": "^3.5.33",
     "marked": "^18.0.2"
   },

@@ -8,7 +8,7 @@ import { generateDocString } from '../../utils/docString/generateDocString'
 import type { Any } from '../../interface'
 import { PersistentMap } from '../../utils/persistent'
 import type { Arity, BuiltinNormalExpressions } from '../interface'
-import { FUNCTION_SYMBOL } from '../../utils/symbols'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 
 export function getMetaNormalExpression(
   normalExpressionReference: Record<string, FunctionReference>,

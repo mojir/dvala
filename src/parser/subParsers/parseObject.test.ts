@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { DvalaError } from '../../errors'
 import { tokenize } from '../../tokenizer/tokenize'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'

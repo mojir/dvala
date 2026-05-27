@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
+import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '@mojir/dvala-types'
 import type { Any } from '../interface'
 import { PersistentMap, PersistentVector } from '../utils/persistent'
 import type {

@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import type { AstNode } from '../parser/types'
 import { tryFoldBuiltinCall } from './constantFold'
 import type { Type } from './types'
