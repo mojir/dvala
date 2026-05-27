@@ -1,7 +1,7 @@
 import { TypeError } from '../errors'
 import type { Any } from '../interface'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import { isPersistentVector } from '../utils/persistent'
+import { isPersistentVector } from '@mojir/dvala-types'
 import { isNumber } from './number'
 
 const annotatedArrays = new WeakSet<unknown[]>()

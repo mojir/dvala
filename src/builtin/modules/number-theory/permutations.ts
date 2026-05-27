@@ -3,7 +3,7 @@ import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
-import { PersistentVector } from '../../../utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 import { factorialOf } from './factorial'
 
 /**

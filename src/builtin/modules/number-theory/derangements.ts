@@ -3,7 +3,7 @@ import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
-import { PersistentVector } from '../../../utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 
 // Generates all derangements of the given array (no element stays in original position).
 // Works with plain arrays internally for efficiency, wraps results in PersistentVector.

@@ -108,7 +108,7 @@ import {
   listToArray,
   PersistentVector,
   PersistentMap,
-} from '../utils/persistent'
+} from '@mojir/dvala-types'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'

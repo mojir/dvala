@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { createContextStack } from '../../../../src/evaluator/ContextStack'
 import { createSnapshot } from '../../../../src/evaluator/effectTypes'
 import { serializeTerminalSnapshot, serializeToObject } from '../../../../src/evaluator/suspension'
-import { cons } from '../../../../src/utils/persistent/PersistentList'
+import { cons } from '@mojir/dvala-types'
 import { extractSnapshotBindings } from './rightPanelReplBaseline'
 import { getReplPromptText, getReplPromptWidth } from './rightPanelReplPrompt'
 import {

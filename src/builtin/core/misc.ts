@@ -6,7 +6,7 @@ import { isDvalaFunction, isHandlerFunction, isMacroFunction } from '../../typeG
 import { asStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
-import { isPersistentVector } from '../../utils/persistent'
+import { isPersistentVector } from '@mojir/dvala-types'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 

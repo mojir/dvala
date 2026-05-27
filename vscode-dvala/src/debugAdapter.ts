@@ -31,7 +31,7 @@ import type {
 import { isEffect, isRegularExpression } from '../../src/typeGuards/dvala'
 import { isDvalaFunction } from '../../src/typeGuards/dvalaFunction'
 import { toJS } from '../../src/utils/interop'
-import { isPersistentMap, isPersistentVector } from '../../src/utils/persistent'
+import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
 
 const LOG_FILE = '/tmp/dvala-dap.log'
 function log(msg: string): void {

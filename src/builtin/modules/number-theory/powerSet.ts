@@ -4,7 +4,7 @@ import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
-import { PersistentVector } from '../../../utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 
 // Generates the power set of the given set (all possible subsets).
 // Works with plain arrays internally, wraps each subset in a PersistentVector.

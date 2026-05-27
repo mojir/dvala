@@ -7,7 +7,7 @@ import { qualifiedNameMatchesPattern, findMatchingHandlers, generateUUID } from 
 import { extractCheckpointSnapshots } from '../src/evaluator/suspension'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 import type { Any } from '../src/interface'
-import { PersistentMap } from '../src/utils/persistent'
+import { PersistentMap } from '@mojir/dvala-types'
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
 

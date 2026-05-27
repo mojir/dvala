@@ -2,7 +2,7 @@ import type { Any, Arr, Coll, Obj, Seq } from '../interface'
 import type { Atom, EffectRef, FunctionLike, RegularExpression } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getAssertionError } from '../utils/getAssertionError'
-import { isPersistentMap, isPersistentVector } from '../utils/persistent'
+import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
 import { ATOM_SYMBOL, EFFECT_SYMBOL, REGEXP_SYMBOL } from '@mojir/dvala-types'
 import { isDvalaFunction } from './dvalaFunction'
 

@@ -12,7 +12,7 @@ import { tokenize } from '../src/tokenizer/tokenize'
 import { getUndefinedSymbols } from '../src/tooling'
 import type { Handlers } from '../src/evaluator/effectTypes'
 import { getStandardEffectDefinition } from '../src/evaluator/standardEffects'
-import { PersistentMap, PersistentVector } from '../src/utils/persistent'
+import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import { initReferenceData } from '../src/initReferenceData'
 initReferenceData()
 

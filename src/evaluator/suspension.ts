@@ -29,7 +29,7 @@ import { RuntimeError } from '../errors'
 import type { Any } from '../interface'
 
 import type { DvalaModule } from '../builtin/modules/interface'
-import { isPersistentMap, isPersistentVector, PersistentMap, PersistentVector } from '../utils/persistent'
+import { isPersistentMap, isPersistentVector, PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import { ContextStackImpl } from './ContextStack'
 import { dedupSubTrees, expandPoolRefs } from './dedupSubTrees'
 import type { Context } from './interface'

@@ -8,7 +8,7 @@ import { bindingTargetTypes } from '../parser/types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
 import { fromJS, toJS } from '../utils/interop'
-import { listSize, listToArray, PersistentMap, PersistentVector } from '../utils/persistent'
+import { listSize, listToArray, PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import type { ContextStack } from './ContextStack'
 import { createContextStack } from './ContextStack'
 import type {

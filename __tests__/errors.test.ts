@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DvalaError, RecurSignal, UserError, isDvalaError } from '../src/errors'
-import { PersistentVector } from '../src/utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 
 describe('errors', () => {
   it('recurSignal', () => {

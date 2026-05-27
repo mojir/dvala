@@ -3,7 +3,7 @@ import { createDvala } from '../../../src/createDvala'
 import { getMetaNormalExpression } from '../../../src/builtin/core/meta'
 import type { ContextStack } from '../../../src/evaluator/ContextStack'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
-import { PersistentVector } from '../../../src/utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 import { initReferenceData } from '../../../src/initReferenceData'
 initReferenceData()
 

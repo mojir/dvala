@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PersistentVector } from '../utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 import type {
   AndFrame,
   ArrayBuildFrame,

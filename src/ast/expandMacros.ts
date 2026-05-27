@@ -7,7 +7,7 @@ import type { Ast, AstNode, SourceMap, SourceMapPosition } from '../parser/types
 import { isMacroFunction } from '../typeGuards/dvalaFunction'
 import { fromJS } from '../utils/interop'
 import type { Any } from '../interface'
-import { PersistentVector } from '../utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 
 interface MacroExpandOptions {
   /** File resolver for cross-file macro imports (e.g. let { double } = import("./macros")) */

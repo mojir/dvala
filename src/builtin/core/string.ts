@@ -5,7 +5,7 @@ import { assertStringOrRegularExpression, isAtom, isObj } from '../../typeGuards
 import { assertNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
-import { isPersistentVector, PersistentVector } from '../../utils/persistent'
+import { isPersistentVector, PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 
 const blankRegexp = /^\s*$/

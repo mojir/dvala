@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Any } from '../interface'
 import { fromJS } from '../utils/interop'
-import { PersistentVector } from '../utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '@mojir/dvala-types'
 import { getStandardEffectHandler, standardEffectNames } from './standardEffects'
 import type { ContinuationStack } from './frames'

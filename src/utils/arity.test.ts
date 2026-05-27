@@ -10,8 +10,8 @@ import {
   getCommonArityFromFunctions,
   toFixedArity,
 } from './arity'
-import { PersistentVector } from './persistent'
-import { FUNCTION_SYMBOL } from './symbols'
+import { PersistentVector } from '@mojir/dvala-types'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 
 describe('arity utilities', () => {
   describe('arityAccepts', () => {

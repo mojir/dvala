@@ -1,7 +1,7 @@
 import type { Arr } from '../../interface'
 import { assertArray } from '../../typeGuards/array'
 import { asNumber, assertNumber } from '../../typeGuards/number'
-import { isPersistentVector, PersistentVector } from '../../utils/persistent'
+import { isPersistentVector, PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 import { toFixedArity } from '../../utils/arity'
 

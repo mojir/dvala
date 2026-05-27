@@ -1,5 +1,5 @@
 import type { Arr } from '../../../interface'
-import { PersistentVector } from '../../../utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 import type {
   ComplementFunction,
   EveryPredFunction,

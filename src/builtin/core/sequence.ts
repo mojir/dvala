@@ -5,7 +5,7 @@ import { assertNumber } from '../../typeGuards/number'
 import { assertString } from '../../typeGuards/string'
 import { deepEqual, toAny } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
-import { isPersistentVector, PersistentVector } from '../../utils/persistent'
+import { isPersistentVector, PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const sequenceNormalExpression: BuiltinNormalExpressions = {

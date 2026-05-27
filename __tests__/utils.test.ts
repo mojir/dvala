@@ -4,7 +4,7 @@ import { collHasKey, deepEqual, smartTrim, toNonNegativeInteger } from '../src/u
 import { REGEXP_SYMBOL } from '@mojir/dvala-types'
 import { valueToString } from '../src/utils/debug/debugTools'
 import { NodeTypes } from '@mojir/dvala-types'
-import { PersistentMap, PersistentVector } from '../src/utils/persistent'
+import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
 
 describe('utils', () => {
   it('collHasKey', () => {
