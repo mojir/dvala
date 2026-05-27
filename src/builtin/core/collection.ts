@@ -7,7 +7,7 @@ import { assertArray } from '../../typeGuards/array'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber, isString, isStringOrNumber } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
-import { isPersistentVector, PersistentMap, PersistentVector } from '../../utils/persistent'
+import { isPersistentVector, PersistentMap, PersistentVector } from '@mojir/dvala-types'
 
 function get(coll: Coll, key: string | number): Any | undefined {
   if (isObj(coll)) {

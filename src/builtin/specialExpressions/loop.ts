@@ -1,7 +1,7 @@
 import type { Context } from '../../evaluator/interface'
 import type { Any } from '../../interface'
 import type { AstNode, BindingTarget } from '../../parser/types'
-import type { NodeTypes } from '../../constants/constants'
+import type { NodeTypes } from '@mojir/dvala-types'
 import { joinSets } from '../../utils'
 import { getAllBindingTargetNames } from '../bindingNode'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'

@@ -18,7 +18,7 @@ import { bindingTargetTypes } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { assertArray } from '../typeGuards/array'
 import { assertObj } from '../typeGuards/dvala'
-import { PersistentMap, PersistentVector } from '../utils/persistent'
+import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
 
 // ---------------------------------------------------------------------------
 // Root type validation

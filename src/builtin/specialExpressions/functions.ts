@@ -1,5 +1,5 @@
 import type { ContextStack } from '../../evaluator/ContextStack'
-import type { NodeTypes } from '../../constants/constants'
+import type { NodeTypes } from '@mojir/dvala-types'
 import type { Context } from '../../evaluator/interface'
 import type { GetUndefinedSymbols, UndefinedSymbols } from '../../getUndefinedSymbols'
 import type { DvalaFunction } from '../../parser/types'

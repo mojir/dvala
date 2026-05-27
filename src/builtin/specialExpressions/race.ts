@@ -1,6 +1,6 @@
 import type { Any } from '../../interface'
 import type { AstNode } from '../../parser/types'
-import type { NodeTypes } from '../../constants/constants'
+import type { NodeTypes } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 
 type RaceNode = [typeof NodeTypes.Race, AstNode, number]

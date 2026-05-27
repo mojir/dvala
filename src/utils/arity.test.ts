@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DvalaError } from '../errors'
 import type { FunctionLike, BuiltinSymbolNode, NormalExpressionNodeWithName, NumberNode } from '../parser/types'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import {
   arityAccepts,
   arityAcceptsMin,
@@ -10,8 +10,8 @@ import {
   getCommonArityFromFunctions,
   toFixedArity,
 } from './arity'
-import { PersistentVector } from './persistent'
-import { FUNCTION_SYMBOL } from './symbols'
+import { PersistentVector } from '@mojir/dvala-types'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 
 describe('arity utilities', () => {
   describe('arityAccepts', () => {

@@ -4,7 +4,7 @@ import { assertObj } from '../../typeGuards/dvala'
 import { asString, assertString } from '../../typeGuards/string'
 import { collHasKey, toAny } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
-import { PersistentMap, PersistentVector } from '../../utils/persistent'
+import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const objectNormalExpression: BuiltinNormalExpressions = {

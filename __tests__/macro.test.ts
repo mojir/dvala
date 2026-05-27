@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { astModule } from '../src/builtin/modules/ast'
 import { handlerModule } from '../src/builtin/modules/effectHandler'
-import { MAX_MACRO_EXPANSION_DEPTH } from '../src/constants/constants'
+import { MAX_MACRO_EXPANSION_DEPTH } from '@mojir/dvala-types'
 
 const dvala = createDvala({ modules: [astModule, handlerModule] })
 const run = (code: string) => dvala.run(code)

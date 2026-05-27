@@ -1,5 +1,5 @@
 import type { EffectRef } from '../../parser/types'
-import type { NodeTypes } from '../../constants/constants'
+import type { NodeTypes } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 
 export type EffectNode = [typeof NodeTypes.Effect, string, number]

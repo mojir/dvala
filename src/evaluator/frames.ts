@@ -1158,7 +1158,7 @@ export interface CodeTemplateBuildFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
-import type { PersistentList } from '../utils/persistent/PersistentList'
+import type { PersistentList } from '@mojir/dvala-types'
 
 /**
  * The continuation stack — a persistent linked list of frames.

@@ -1,9 +1,9 @@
 import { describe, it } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
 import type { AstNode, RegularExpression } from '../parser/types'
-import { PersistentMap, PersistentVector } from '../utils/persistent'
-import { FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
-import { NodeTypes } from '../constants/constants'
+import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
+import { FUNCTION_SYMBOL, REGEXP_SYMBOL } from '@mojir/dvala-types'
+import { NodeTypes } from '@mojir/dvala-types'
 import {
   asAny,
   asColl,

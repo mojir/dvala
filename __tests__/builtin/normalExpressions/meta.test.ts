@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
 import { getMetaNormalExpression } from '../../../src/builtin/core/meta'
 import type { ContextStack } from '../../../src/evaluator/ContextStack'
-import { FUNCTION_SYMBOL } from '../../../src/utils/symbols'
-import { PersistentVector } from '../../../src/utils/persistent'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
+import { PersistentVector } from '@mojir/dvala-types'
 import { initReferenceData } from '../../../src/initReferenceData'
 initReferenceData()
 

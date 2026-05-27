@@ -1,8 +1,8 @@
 import type { Any, Arr } from '../../interface'
-import type { NodeTypes } from '../../constants/constants'
+import type { NodeTypes } from '@mojir/dvala-types'
 import type { AstNode } from '../../parser/types'
 import { asAny } from '../../typeGuards/dvala'
-import { PersistentVector } from '../../utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
 
 export type ArrayNode = [typeof NodeTypes.Array, AstNode[], number]

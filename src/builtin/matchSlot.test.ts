@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Any } from '../interface'
 import { bindingTargetTypes } from '../parser/types'
-import { PersistentMap, PersistentVector } from '../utils/persistent'
+import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import {
   checkTypeAtPath,
   extractMatchArrayRest,

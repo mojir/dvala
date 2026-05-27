@@ -15,7 +15,7 @@
  */
 
 import type { Any } from '../interface'
-import { isPersistentMap, isPersistentVector, PersistentMap, PersistentVector } from './persistent'
+import { isPersistentMap, isPersistentVector, PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import { isAtom, isEffect, isRegularExpression } from '../typeGuards/dvala'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
 

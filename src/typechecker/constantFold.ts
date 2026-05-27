@@ -22,11 +22,11 @@
  *   - design/archive/2026-04-16_fold-toggle-and-differential-tests.md
  */
 
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { createContextStack } from '../evaluator/ContextStack'
 import { evaluateNodeForFold } from '../evaluator/foldEvaluate'
 import type { AstNode } from '../parser/types'
-import { isPersistentMap, isPersistentVector } from '../utils/persistent'
+import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
 import type { Type } from './types'
 import { NullType, atom as atomType, literal, record, tuple } from './types'
 

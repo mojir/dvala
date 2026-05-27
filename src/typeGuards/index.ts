@@ -1,7 +1,7 @@
 import { TypeError } from '../errors'
 import type { UnknownRecord } from '../interface'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import { isPersistentMap, isPersistentVector } from '../utils/persistent'
+import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
 import { valueToString } from '../utils/debug/debugTools'
 import { getSourceCodeInfo } from '../utils/debug/getSourceCodeInfo'
 

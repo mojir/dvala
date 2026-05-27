@@ -9,7 +9,7 @@ import { asStringOrNumber, assertString, assertStringOrNumber } from '../../../t
 import { toFixedArity } from '../../../utils/arity'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
-import { PersistentMap, PersistentVector } from '../../../utils/persistent'
+import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import collectionModuleSource from './collection.dvala'
 
 // --- Private helper: get value from collection by key ---

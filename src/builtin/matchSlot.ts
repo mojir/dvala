@@ -11,7 +11,7 @@ import type { Any, Arr, Obj } from '../interface'
 import type { AstNode, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 import { asAny, isObj } from '../typeGuards/dvala'
-import { isPersistentVector, PersistentMap, PersistentVector } from '../utils/persistent'
+import { isPersistentVector, PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import type { BindingPathStep } from './bindingSlot'
 
 // ---------------------------------------------------------------------------

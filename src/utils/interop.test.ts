@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { assertValidHostValue, validateFromJS } from './interop'
-import { isPersistentMap, PersistentMap, PersistentVector } from './persistent'
+import { isPersistentMap, PersistentMap, PersistentVector } from '@mojir/dvala-types'
 
 describe('assertValidHostValue', () => {
   const ctx = 'test'

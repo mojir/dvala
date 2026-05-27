@@ -12,7 +12,7 @@
  */
 
 import type { EffectRef } from '../parser/types'
-import { EFFECT_SYMBOL } from '../utils/symbols'
+import { EFFECT_SYMBOL } from '@mojir/dvala-types'
 
 const internMap = new Map<string, EffectRef>()
 

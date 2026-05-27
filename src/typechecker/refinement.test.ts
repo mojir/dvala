@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { builtin } from '../builtin'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { createDvala } from '../createDvala'
 import type { AstNode } from '../parser/types'
 import { getBuiltinType, initBuiltinTypes } from './builtinTypes'

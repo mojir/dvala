@@ -1,5 +1,5 @@
 import type { DoNode } from '../../builtin/specialExpressions/block'
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import {
   asReservedSymbolToken,

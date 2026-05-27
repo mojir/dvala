@@ -4,7 +4,7 @@ import { DvalaError, ReferenceError } from '../src/errors'
 import { Cache } from '../src/Cache'
 import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, untokenize } from '../src/tooling'
 import type { Ast } from '../src/parser/types'
-import { NodeTypes } from '../src/constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { vectorModule } from '../src/builtin/modules/vector'
 
 describe('all tests', () => {

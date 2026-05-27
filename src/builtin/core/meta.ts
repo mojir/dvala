@@ -6,9 +6,9 @@ import { assertString } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
 import { generateDocString } from '../../utils/docString/generateDocString'
 import type { Any } from '../../interface'
-import { PersistentMap } from '../../utils/persistent'
+import { PersistentMap } from '@mojir/dvala-types'
 import type { Arity, BuiltinNormalExpressions } from '../interface'
-import { FUNCTION_SYMBOL } from '../../utils/symbols'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 
 export function getMetaNormalExpression(
   normalExpressionReference: Record<string, FunctionReference>,

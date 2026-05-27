@@ -1,6 +1,6 @@
 import type { Arr } from '../interface'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import { isPersistentVector } from '../utils/persistent'
+import { isPersistentVector } from '@mojir/dvala-types'
 import { getAssertionError } from '../utils/getAssertionError'
 
 /** Assert that `value` is a Dvala array (PersistentVector). */

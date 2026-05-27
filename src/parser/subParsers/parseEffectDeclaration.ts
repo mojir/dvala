@@ -9,7 +9,7 @@
  * Example: effect @log(String) -> Null
  */
 
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import type { AstNode } from '../types'
 import { assertOperatorToken, isEffectNameToken, isLParenToken, isRParenToken } from '../../tokenizer/token'

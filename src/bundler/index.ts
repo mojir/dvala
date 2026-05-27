@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseToAst } from '../parser'

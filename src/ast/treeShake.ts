@@ -1,4 +1,4 @@
-import { NodeTypes } from '../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import type { Ast, AstNode } from '../parser/types'
 
 /**

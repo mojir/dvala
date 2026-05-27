@@ -11,7 +11,7 @@
  *   type Result<T, E> = {tag: :ok, value: T} | {tag: :error, error: E}
  */
 
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import type { AliasParam, AstNode } from '../types'
 import { isOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'

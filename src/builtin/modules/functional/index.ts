@@ -1,5 +1,5 @@
 import type { Arr } from '../../../interface'
-import { PersistentVector } from '../../../utils/persistent'
+import { PersistentVector } from '@mojir/dvala-types'
 import type {
   ComplementFunction,
   EveryPredFunction,
@@ -9,7 +9,7 @@ import type {
   SomePredFunction,
 } from '../../../parser/types'
 import { getArityFromFunction, getCommonArityFromFunctions, toFixedArity } from '../../../utils/arity'
-import { FUNCTION_SYMBOL } from '../../../utils/symbols'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { asFunctionLike, assertFunctionLike } from '../../../typeGuards/dvala'
 import { TypeError } from '../../../errors'

@@ -2,7 +2,7 @@ import type { Any } from '../../interface'
 import type { CompFunction, ConstantlyFunction, FunctionLike } from '../../parser/types'
 import { toAny } from '../../utils'
 import { getArityFromFunction, toFixedArity } from '../../utils/arity'
-import { FUNCTION_SYMBOL } from '../../utils/symbols'
+import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 import { assertFunctionLike } from '../../typeGuards/dvala'
 

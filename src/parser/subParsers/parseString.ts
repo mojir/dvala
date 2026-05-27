@@ -1,4 +1,4 @@
-import { NodeTypes } from '../../constants/constants'
+import { NodeTypes } from '@mojir/dvala-types'
 import type { StringNode } from '../types'
 import type { StringToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'

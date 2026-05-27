@@ -41,7 +41,7 @@ import {
 } from '../builtin/matchSlot'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
-import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '../constants/constants'
+import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '@mojir/dvala-types'
 import {
   ArithmeticError,
   AssertionError,
@@ -108,7 +108,7 @@ import {
   listToArray,
   PersistentVector,
   PersistentMap,
-} from '../utils/persistent'
+} from '@mojir/dvala-types'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
@@ -117,7 +117,7 @@ import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '../utils/ar
 import { valueToString } from '../utils/debug/debugTools'
 import { assertValidHostValue, fromJS, toJS, validateFromJS } from '../utils/interop'
 import type { MaybePromise } from '../utils/maybePromise'
-import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '../utils/symbols'
+import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
 import {
   HaltSignal,
