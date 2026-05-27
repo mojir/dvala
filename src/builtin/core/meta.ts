@@ -5,9 +5,10 @@ import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
 import { assertString } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
 import { generateDocString } from '../../utils/docString/generateDocString'
-import type { Any } from '../../interface'
+import type { Any } from '@mojir/dvala-types'
 import { PersistentMap } from '@mojir/dvala-types'
-import type { Arity, BuiltinNormalExpressions } from '../interface'
+import type { BuiltinNormalExpressions } from '../interface'
+import type { Arity } from '@mojir/dvala-types'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 
 export function getMetaNormalExpression(

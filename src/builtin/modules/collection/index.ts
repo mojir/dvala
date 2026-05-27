@@ -1,5 +1,5 @@
-import type { Any, Coll } from '../../../interface'
-import type { SourceCodeInfo } from '../../../tokenizer/token'
+import type { Any, Coll } from '@mojir/dvala-types'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { collHasKey, toAny } from '../../../utils'
 import { assertAny, assertColl, isColl, isArr, isObj } from '../../../typeGuards/dvala'
 import type { BuiltinNormalExpressions } from '../../interface'

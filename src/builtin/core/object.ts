@@ -1,4 +1,4 @@
-import type { Any, Arr, Obj } from '../../interface'
+import type { Any, Arr, Obj } from '@mojir/dvala-types'
 import { assertArray, assertStringArray } from '../../typeGuards/array'
 import { assertObj } from '../../typeGuards/dvala'
 import { asString, assertString } from '../../typeGuards/string'

@@ -1,5 +1,5 @@
-import type { Any } from '../../interface'
-import type { AstNode } from '../../parser/types'
+import type { Any } from '@mojir/dvala-types'
+import type { AstNode } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 

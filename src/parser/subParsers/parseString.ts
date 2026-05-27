@@ -1,5 +1,5 @@
 import { NodeTypes } from '@mojir/dvala-types'
-import type { StringNode } from '../types'
+import type { StringNode } from '@mojir/dvala-types'
 import type { StringToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'

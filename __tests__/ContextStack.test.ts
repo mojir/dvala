@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '@mojir/dvala-types'
 import { createContextStack } from '../src/evaluator/ContextStack'
-import type { SpecialSymbolNode } from '../src/parser/types'
+import type { SpecialSymbolNode } from '@mojir/dvala-types'
 
 describe('contextStack', () => {
   it('should throw if adding duplicate', () => {

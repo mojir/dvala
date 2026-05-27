@@ -1,7 +1,7 @@
 import { getCodeMarker } from '../src/utils/debug/getCodeMarker'
 import type { CallStackEntry } from './evaluator/callStack'
-import type { Arr } from './interface'
-import type { SourceCodeInfo } from './tokenizer/token'
+import type { Arr } from '@mojir/dvala-types'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 
 function getDvalaErrorMessage(message: string, sourceCodeInfo?: SourceCodeInfo) {
   if (!sourceCodeInfo) {

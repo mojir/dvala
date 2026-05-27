@@ -17,3 +17,6 @@ export const specialExpressionTypes = {
   race: 'race',
   settled: 'settled',
 } as const
+
+export type SpecialExpressionName = keyof typeof specialExpressionTypes
+export type SpecialExpressionType = (typeof specialExpressionTypes)[SpecialExpressionName]

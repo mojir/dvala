@@ -6,10 +6,10 @@
  * Both modules import types from here without creating a cycle.
  */
 
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import type { DvalaError } from '../errors'
 import type { ContinuationStack } from './frames'
-import type { AstNode, SourceMap } from '../parser/types'
+import type { AstNode, SourceMap } from '@mojir/dvala-types'
 import type { ContextStack } from './ContextStack'
 import { toJS } from '../utils/interop'
 

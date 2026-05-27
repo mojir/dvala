@@ -11,7 +11,7 @@
 
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
-import type { AstNode } from '../types'
+import type { AstNode } from '@mojir/dvala-types'
 import { assertOperatorToken, isEffectNameToken, isLParenToken, isRParenToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'

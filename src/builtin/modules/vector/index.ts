@@ -1,5 +1,5 @@
 import { RuntimeError } from '../../../errors'
-import type { Any } from '../../../interface'
+import type { Any } from '@mojir/dvala-types'
 import { assertNonEmptyVector, assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'

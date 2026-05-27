@@ -1,7 +1,7 @@
-import type { SpecialExpressionName } from '../builtin'
+import type { SpecialExpressionName } from '@mojir/dvala-types'
 import { normalExpressions, normalExpressionTypes } from '../builtin/normalExpressions'
 import type { AndNode } from '../builtin/specialExpressions/and'
-import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
+import { specialExpressionTypes } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../errors'
 import type { OperatorToken, TokenDebugInfo } from '../tokenizer/token'
@@ -17,7 +17,7 @@ import type {
   NormalExpressionNodeWithName,
   SymbolNode,
   UserDefinedSymbolNode,
-} from './types'
+} from '@mojir/dvala-types'
 import type { ParserContext } from './ParserContext'
 
 export const exponentiationPrecedence = 12

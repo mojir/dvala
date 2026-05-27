@@ -5,7 +5,7 @@ import { createDvala } from '../../src/createDvala'
 import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
 import { tokenize } from '../../src/tokenizer/tokenize'
 import { parseToAst } from '../../src/parser'
-import type { Ast } from '../../src/parser/types'
+import type { Ast } from '@mojir/dvala-types'
 
 function parse(source: string): Ast {
   const tokenStream = tokenize(source, false, undefined)

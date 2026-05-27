@@ -11,7 +11,7 @@
  * enclosing call.
  */
 
-import type { SourceMapPosition } from '../parser/types'
+import type { SourceMapPosition } from '@mojir/dvala-types'
 import type { SymbolDef } from '../languageService/types'
 import { expandTypeForDisplay, sanitizeDisplayType, simplify, typeToString } from '../typechecker'
 import type { Type } from '../typechecker/types'

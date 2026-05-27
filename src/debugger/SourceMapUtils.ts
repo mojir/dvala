@@ -1,4 +1,4 @@
-import type { AstNode, SourceMap } from '../parser/types'
+import type { AstNode, SourceMap } from '@mojir/dvala-types'
 
 /**
  * Source map utilities for debugger frontends.

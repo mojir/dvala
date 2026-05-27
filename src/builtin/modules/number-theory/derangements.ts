@@ -1,4 +1,4 @@
-import type { Any, Arr } from '../../../interface'
+import type { Any, Arr } from '@mojir/dvala-types'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'

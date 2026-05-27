@@ -1,4 +1,4 @@
-import type { SpecialExpressionName } from '../src/builtin'
+import type { SpecialExpressionName } from '@mojir/dvala-types'
 import type {
   BuiltinNormalExpressions,
   ExampleEntry,
@@ -64,7 +64,7 @@ import { sequenceUtilsModule } from '../src/builtin/modules/sequence'
 import { stringUtilsModule } from '../src/builtin/modules/string'
 import { vectorModule } from '../src/builtin/modules/vector'
 import { normalExpressions } from '../src/builtin/normalExpressions'
-import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
+import { specialExpressionTypes } from '@mojir/dvala-types'
 import { allStandardEffectDefinitions } from '../src/evaluator/standardEffects'
 import { isSymbolicOperator } from '../src/tokenizer/operators'
 import { canBeOperator } from '../src/utils/arity'

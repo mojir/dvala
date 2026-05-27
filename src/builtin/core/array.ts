@@ -1,4 +1,4 @@
-import type { Arr } from '../../interface'
+import type { Arr } from '@mojir/dvala-types'
 import { assertArray } from '../../typeGuards/array'
 import { asNumber, assertNumber } from '../../typeGuards/number'
 import { isPersistentVector, PersistentVector } from '@mojir/dvala-types'

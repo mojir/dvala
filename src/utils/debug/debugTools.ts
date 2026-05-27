@@ -1,5 +1,5 @@
 import { isFunctionType, isNodeType } from '@mojir/dvala-types'
-import type { AstNode, DvalaFunction } from '../../parser/types'
+import type { AstNode, DvalaFunction } from '@mojir/dvala-types'
 import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '@mojir/dvala-types'
 
 function isDvalaFunction(func: unknown): func is DvalaFunction {

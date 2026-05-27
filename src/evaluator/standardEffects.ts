@@ -15,13 +15,14 @@
  */
 
 import { ArithmeticError, RuntimeError, TypeError } from '../errors'
-import type { Arity, FunctionDocs } from '../builtin/interface'
-import type { Any } from '../interface'
+import type { FunctionDocs } from '../builtin/interface'
+import type { Arity } from '@mojir/dvala-types'
+import type { Any } from '@mojir/dvala-types'
 import { isEffect, isRegularExpression } from '../typeGuards/dvala'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
 import { toFixedArity } from '../utils/arity'
 import { isPersistentMap, isPersistentVector, PersistentVector } from '@mojir/dvala-types'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import type { ContinuationStack } from './frames'
 import type { Step } from './step'
 

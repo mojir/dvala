@@ -12,7 +12,7 @@
  * `typecheck.ts`.
  */
 
-import type { AliasParam } from '../parser/types'
+import type { AliasParam } from '@mojir/dvala-types'
 import { parseToAst } from '../parser'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'

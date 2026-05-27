@@ -1,5 +1,5 @@
 import { DvalaError } from '../../../errors'
-import type { Any } from '../../../interface'
+import type { Any } from '@mojir/dvala-types'
 import { asNonUndefined } from '../../../typeGuards'
 import { assertNumber } from '../../../typeGuards/number'
 import { asStringOrNumber, assertString } from '../../../typeGuards/string'
@@ -8,7 +8,7 @@ import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../interface'
 import type { DvalaModule } from '../interface'
 import { moduleDocsFromFunctions } from '../interface'
-import type { SourceCodeInfo } from '../../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import stringModuleSource from './string.dvala'
 
 const stringUtilsFunctions: BuiltinNormalExpressions = {

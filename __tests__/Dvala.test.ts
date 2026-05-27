@@ -3,7 +3,7 @@ import { createDvala } from '../src/createDvala'
 import { DvalaError, ReferenceError } from '../src/errors'
 import { Cache } from '../src/Cache'
 import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, untokenize } from '../src/tooling'
-import type { Ast } from '../src/parser/types'
+import type { Ast } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import { vectorModule } from '../src/builtin/modules/vector'
 

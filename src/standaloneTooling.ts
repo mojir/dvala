@@ -22,7 +22,7 @@ import { tokenize } from './tokenizer/tokenize'
 import type { TokenStream } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parseToAst } from './parser'
-import type { Ast } from './parser/types'
+import type { Ast } from '@mojir/dvala-types'
 
 export type { TokenStream }
 

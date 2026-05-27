@@ -1,6 +1,6 @@
-import type { Any, Arr } from '../../interface'
+import type { Any, Arr } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
-import type { AstNode } from '../../parser/types'
+import type { AstNode } from '@mojir/dvala-types'
 import { asAny } from '../../typeGuards/dvala'
 import { PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'

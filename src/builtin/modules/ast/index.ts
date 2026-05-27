@@ -1,8 +1,8 @@
 import { NodeTypes, isNodeType } from '@mojir/dvala-types'
 import { prettyPrint } from '../../../prettyPrint'
 import { TypeError } from '../../../errors'
-import type { Any, Arr } from '../../../interface'
-import type { AstNode } from '../../../parser/types'
+import type { Any, Arr } from '@mojir/dvala-types'
+import type { AstNode } from '@mojir/dvala-types'
 import { toFixedArity } from '../../../utils/arity'
 import { toAny } from '../../../utils'
 import { isPersistentVector } from '@mojir/dvala-types'
@@ -12,7 +12,7 @@ import { assertNumber } from '../../../typeGuards/number'
 import type { BuiltinNormalExpressions, FunctionDocs } from '../../interface'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
-import type { SourceCodeInfo } from '../../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 
 // ---------------------------------------------------------------------------
 // Helpers

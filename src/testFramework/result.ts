@@ -2,7 +2,7 @@
  * Structured test results — format-agnostic.
  * Formatters (TAP, JUnit, JSON, etc.) consume these types.
  */
-import type { SourceMap } from '../parser/types'
+import type { SourceMap } from '@mojir/dvala-types'
 
 export interface TestCaseResult {
   name: string

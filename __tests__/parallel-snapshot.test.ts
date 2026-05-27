@@ -11,7 +11,7 @@ import { createDvala } from '../src/createDvala'
 import { resume as baseResume } from '../src/resume'
 import { retrigger } from '../src/retrigger'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
-import type { Any } from '../src/interface'
+import type { Any } from '@mojir/dvala-types'
 import type { ResumeOptions } from '../src/resume'
 
 const dvala = createDvala({ disableAutoCheckpoint: true })

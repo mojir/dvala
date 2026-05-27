@@ -4,7 +4,7 @@ import { NodeTypes } from '@mojir/dvala-types'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseToAst } from '../parser'
-import type { Ast, AstNode, SourceMap } from '../parser/types'
+import type { Ast, AstNode, SourceMap } from '@mojir/dvala-types'
 import type { DvalaBundle } from './interface'
 
 const builtinModuleNames = new Set([

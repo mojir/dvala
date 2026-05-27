@@ -2,9 +2,10 @@ import { getAllBindingTargetNames } from '../../builtin/bindingNode'
 import type { ForNode, LoopBindingNode } from '../../builtin/specialExpressions/loops'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
-import type { AstNode, BindingTarget } from '../types'
-import { bindingTargetTypes } from '../types'
-import type { SourceCodeInfo, SymbolToken, Token } from '../../tokenizer/token'
+import type { AstNode, BindingTarget } from '@mojir/dvala-types'
+import { bindingTargetTypes } from '@mojir/dvala-types'
+import type { SymbolToken, Token } from '../../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import {
   asSymbolToken,
   assertLParenToken,

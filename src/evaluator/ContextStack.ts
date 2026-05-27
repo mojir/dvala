@@ -1,9 +1,9 @@
 import type { SpecialExpression } from '../builtin'
 import { builtin, specialExpressionKeys } from '../builtin'
 import { normalExpressions } from '../builtin/normalExpressions'
-import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
+import { specialExpressionTypes } from '@mojir/dvala-types'
 import { ReferenceError, TypeError } from '../errors'
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type {
   NormalBuiltinFunction,
@@ -11,9 +11,9 @@ import type {
   SpecialBuiltinFunction,
   SymbolNode,
   UserDefinedSymbolNode,
-} from '../parser/types'
-import { resolveSourceCodeInfo } from '../parser/types'
-import type { SourceCodeInfo } from '../tokenizer/token'
+} from '@mojir/dvala-types'
+import { resolveSourceCodeInfo } from '@mojir/dvala-types'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { asNonUndefined } from '../typeGuards'
 import { isBuiltinSymbolNode, isSpecialSymbolNode } from '../typeGuards/astNode'
 import { toAny } from '../utils'

@@ -1,6 +1,6 @@
-import type { Any, Obj } from '../../interface'
+import type { Any, Obj } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
-import type { AstNode, SpreadNode } from '../../parser/types'
+import type { AstNode, SpreadNode } from '@mojir/dvala-types'
 import { assertString } from '../../typeGuards/string'
 import { PersistentMap } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'

@@ -1,5 +1,5 @@
 import { TypeError } from '../errors'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { valueToString } from './debug/debugTools'
 import { getSourceCodeInfo } from './debug/getSourceCodeInfo'
 

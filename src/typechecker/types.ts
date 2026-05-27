@@ -10,7 +10,7 @@
  * Design: side-table only, erased after checking. Zero runtime cost.
  */
 
-import type { AstNode } from '../parser/types'
+import type { AstNode } from '@mojir/dvala-types'
 
 /**
  * Refinement-predicate body — the expression parsed from the text

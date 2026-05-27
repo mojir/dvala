@@ -26,7 +26,7 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { resume as baseResume } from '../src/resume'
 import type { ResumeOptions } from '../src/resume'
-import type { Any } from '../src/interface'
+import type { Any } from '@mojir/dvala-types'
 import { fromJS } from '../src/utils/interop'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
 // Wrapper that disables auto-checkpoint by default (tests care about value, not snapshots)

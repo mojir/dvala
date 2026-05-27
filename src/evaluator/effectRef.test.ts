@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import { isEffect, isObj } from '../typeGuards/dvala'
 import { PersistentMap } from '@mojir/dvala-types'
 import { EFFECT_SYMBOL } from '@mojir/dvala-types'

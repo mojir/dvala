@@ -4,7 +4,7 @@ import { expandMacros } from '../../src/ast/expandMacros'
 import { tokenize } from '../../src/tokenizer/tokenize'
 import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
 import { parseToAst } from '../../src/parser'
-import type { Ast } from '../../src/parser/types'
+import type { Ast } from '@mojir/dvala-types'
 
 function parse(source: string): Ast {
   const tokenStream = tokenize(source, false, undefined)

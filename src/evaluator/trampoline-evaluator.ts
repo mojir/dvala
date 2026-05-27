@@ -56,7 +56,7 @@ import {
 } from '../errors'
 import { reconstructCallStack } from './callStack'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
-import type { Any, Arr, Obj } from '../interface'
+import type { Any, Arr, Obj } from '@mojir/dvala-types'
 import { parse, parseToAst } from '../parser'
 import type {
   Ast,
@@ -83,11 +83,11 @@ import type {
   SymbolNode,
   TemplateStringNode,
   UserDefinedFunction,
-} from '../parser/types'
-import { bindingTargetTypes } from '../parser/types'
+} from '@mojir/dvala-types'
+import { bindingTargetTypes } from '@mojir/dvala-types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
-import { reservedSymbolRecord } from '../tokenizer/reservedNames'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import { reservedSymbolRecord } from '@mojir/dvala-types'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined } from '../typeGuards'
 import {
@@ -1398,7 +1398,7 @@ function continueArgSlotBinding(
 ): Step {
   const evaluatedFunc = fn.evaluatedfunction
   const args = evaluatedFunc[0]
-  const closureContext = evaluatedFunc[2]
+  const closureContext = evaluatedFunc[2] as Context
   const bindingEnv = outerEnv.create(closureContext).create(context)
 
   // Phase 1: Bind provided args (not needing defaults)
@@ -1441,7 +1441,7 @@ function handleRestArgAndBody(
 ): Step {
   const evaluatedFunc = fn.evaluatedfunction
   const args = evaluatedFunc[0]
-  const closureContext = evaluatedFunc[2]
+  const closureContext = evaluatedFunc[2] as Context
   const bindingEnv = outerEnv.create(closureContext).create(context)
 
   // Handle rest argument
@@ -1474,7 +1474,7 @@ function proceedToFnBody(
   k: ContinuationStack,
 ): Step {
   const evaluatedFunc = fn.evaluatedfunction
-  const closureContext = evaluatedFunc[2]
+  const closureContext = evaluatedFunc[2] as Context
   const bodyEnv = outerEnv.create(closureContext).create(context)
   const bodyNodes = fn.evaluatedfunction[1]
   if (bodyNodes.length === 0) {
@@ -4591,7 +4591,7 @@ function applyFnArgBind(frame: FnArgBindFrame, value: Any, k: ContinuationStack)
 
   // Use startBindingSlots to bind the evaluated default value
   const arg = args[argIndex]!
-  const closureContext = evaluatedFunc[2]
+  const closureContext = evaluatedFunc[2] as Context
   const bindingEnv = outerEnv.create(closureContext).create(context)
 
   // Create completion frame to continue after binding
@@ -4659,7 +4659,7 @@ function continueBindingArgs(
 ): Step {
   const evaluatedFunc = fn.evaluatedfunction
   const args = evaluatedFunc[0]
-  const closureContext = evaluatedFunc[2]
+  const closureContext = evaluatedFunc[2] as Context
   const bindingEnv = outerEnv.create(closureContext).create(context)
 
   // Continue binding optional params that need defaults

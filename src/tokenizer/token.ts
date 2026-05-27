@@ -1,5 +1,5 @@
 import { TokenizerError } from '../errors'
-import type { ReservedSymbol } from './reservedNames'
+import type { ReservedSymbol, SourceCodeInfo } from '@mojir/dvala-types'
 import { type SymbolicBinaryOperator, type SymbolicOperator, isBinaryOperator } from './operators'
 
 type TokenTypeTuple = [
@@ -89,15 +89,6 @@ export type Token =
   | WhitespaceToken
 
 export type TokenDescriptor<T extends Token> = [length: number, token?: T]
-
-export interface SourceCodeInfo {
-  position: {
-    line: number
-    column: number
-  }
-  code: string
-  filePath?: string
-}
 
 export function isAtomToken(token: Token | undefined): token is AtomToken {
   return token?.[0] === 'Atom'

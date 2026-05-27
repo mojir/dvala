@@ -19,10 +19,10 @@
  *   - EffectRef: stored as just the name string
  */
 
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
 import { isArr, isEffect, isObj, isRegularExpression } from '../typeGuards/dvala'
-import type { DvalaFunction } from '../parser/types'
+import type { DvalaFunction } from '@mojir/dvala-types'
 
 /**
  * Checks whether a Dvala runtime value is fully JSON-serializable.

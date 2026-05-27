@@ -14,7 +14,7 @@
  * Conversion is deep and recursive — nested arrays/objects are fully converted.
  */
 
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import { isPersistentMap, isPersistentVector, PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import { isAtom, isEffect, isRegularExpression } from '../typeGuards/dvala'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'

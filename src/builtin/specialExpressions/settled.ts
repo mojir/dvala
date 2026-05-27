@@ -1,5 +1,5 @@
-import type { Arr } from '../../interface'
-import type { AstNode } from '../../parser/types'
+import type { Arr } from '@mojir/dvala-types'
+import type { AstNode } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 

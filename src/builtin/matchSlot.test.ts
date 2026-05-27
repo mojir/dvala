@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Any } from '../interface'
-import { bindingTargetTypes } from '../parser/types'
+import type { Any } from '@mojir/dvala-types'
+import { bindingTargetTypes } from '@mojir/dvala-types'
 import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import {
   checkTypeAtPath,

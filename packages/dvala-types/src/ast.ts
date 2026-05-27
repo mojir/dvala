@@ -1,14 +1,13 @@
-import type { SpecialExpressionType } from '../builtin'
-import type { Arity } from '../builtin/interface'
-import type { specialExpressionTypes } from '../builtin/specialExpressionTypes'
-import type { FunctionType, NodeType, NodeTypes } from '@mojir/dvala-types'
-import type { Context } from '../evaluator/interface'
-import type { Any, Arr, Coll } from '../interface'
-import type { ReservedSymbol } from '../tokenizer/reservedNames'
-import type { SourceCodeInfo } from '../tokenizer/token'
-import type { ATOM_SYMBOL, EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '@mojir/dvala-types'
+import type { SpecialExpressionType } from './specialExpressionTypes'
+import type { Arity } from './arity'
+import type { specialExpressionTypes } from './specialExpressionTypes'
+import type { FunctionType, NodeType, NodeTypes } from './constants'
+import type { Any, Arr, Coll } from './values'
+import type { ReservedSymbol } from './reservedNames'
+import type { SourceCodeInfo } from './sourceCodeInfo'
+import type { ATOM_SYMBOL, EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from './symbols'
 
-export type EvaluatedFunction = [BindingTarget[], AstNode[], Context]
+export type EvaluatedFunction = [BindingTarget[], AstNode[], unknown]
 
 interface GenericDvalaFunction {
   [FUNCTION_SYMBOL]: true

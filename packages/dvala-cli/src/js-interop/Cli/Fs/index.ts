@@ -1,4 +1,5 @@
-import type { Arity, BuiltinNormalExpressions, DvalaModule, Any } from '../../../../../../src'
+import type { BuiltinNormalExpressions, DvalaModule, Any } from '../../../../../../src'
+import type { Arity } from '@mojir/dvala-types'
 import { fromJS, toJS } from '../../../../../../src'
 import fs from 'node:fs'
 import os from 'node:os'

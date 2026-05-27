@@ -1,4 +1,4 @@
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { isNormalExpressionNodeWithName } from '../typeGuards/astNode'
 import type { ContinuationStack } from './frames'
 

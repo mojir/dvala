@@ -9,8 +9,8 @@ import type {
   SpreadNode,
   SymbolNode,
   UserDefinedSymbolNode,
-} from '../parser/types'
-import type { SourceCodeInfo } from '../tokenizer/token'
+} from '@mojir/dvala-types'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { getAssertionError } from '../utils/getAssertionError'
 
 export function isSymbolNode(node: AstNode): node is SymbolNode {

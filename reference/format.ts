@@ -26,7 +26,7 @@ import {
   moduleReference,
   normalExpressionReference,
 } from '.'
-import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
+import { specialExpressionTypes } from '@mojir/dvala-types'
 import { examples } from './examples'
 
 // ---------------------------------------------------------------------------

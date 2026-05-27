@@ -1,6 +1,6 @@
 import { RuntimeError } from '../../errors'
-import type { Arr } from '../../interface'
-import type { RegularExpression } from '../../parser/types'
+import type { Arr } from '@mojir/dvala-types'
+import type { RegularExpression } from '@mojir/dvala-types'
 import { assertRegularExpression, assertStringOrRegularExpression, isRegularExpression } from '../../typeGuards/dvala'
 import { assertString, isString } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'

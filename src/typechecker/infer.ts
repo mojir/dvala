@@ -47,7 +47,7 @@ import {
   isEffectSubset,
   subtractEffects,
 } from './types'
-import type { AliasParam, AstNode, ObjectBindingEntry, SourceMap } from '../parser/types'
+import type { AliasParam, AstNode, ObjectBindingEntry, SourceMap } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'
@@ -59,7 +59,7 @@ import { prettyPrint } from '../prettyPrint'
 import { getEffectDeclaration } from './effectTypes'
 import { simplify } from './simplify'
 import { isSubtype } from './subtype'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 
 interface DiagnosticRange {
   start: { line: number; column: number }

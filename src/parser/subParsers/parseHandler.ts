@@ -1,6 +1,6 @@
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
-import type { AstNode, BindingTarget } from '../types'
+import type { AstNode, BindingTarget } from '@mojir/dvala-types'
 import {
   isEffectNameToken,
   isLParenToken,

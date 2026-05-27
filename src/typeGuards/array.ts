@@ -1,5 +1,5 @@
-import type { Arr } from '../interface'
-import type { SourceCodeInfo } from '../tokenizer/token'
+import type { Arr } from '@mojir/dvala-types'
+import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { isPersistentVector } from '@mojir/dvala-types'
 import { getAssertionError } from '../utils/getAssertionError'
 

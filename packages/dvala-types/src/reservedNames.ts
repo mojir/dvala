@@ -1,5 +1,3 @@
-import type { Any } from '../interface'
-
 const nonNumberReservedSymbolRecord = {
   true: true,
   false: false,
@@ -16,7 +14,7 @@ const nonNumberReservedSymbolRecord = {
   with: null,
   quote: null,
   _: null,
-} as const satisfies Record<string, Any>
+} as const satisfies Record<string, boolean | null>
 
 const phi = (1 + Math.sqrt(5)) / 2
 export const numberReservedSymbolRecord = {

@@ -27,7 +27,7 @@ import type {
   HandlerFunction,
   RegularExpression,
   SourceMap,
-} from '../../src/parser/types'
+} from '@mojir/dvala-types'
 import { isEffect, isRegularExpression } from '../../src/typeGuards/dvala'
 import { isDvalaFunction } from '../../src/typeGuards/dvalaFunction'
 import { toJS } from '../../src/utils/interop'
@@ -723,7 +723,7 @@ class DvalaDebugSession extends DebugSession {
       vars.push({ name: 'parameters', value: `(${paramNames.join(', ')})`, variablesReference: 0 })
 
       // Closure: captured variables — expandable if non-empty
-      const closureEntries = Object.entries(closureCtx)
+      const closureEntries = Object.entries(closureCtx as Record<string, unknown>)
       if (closureEntries.length > 0) {
         const closureObj: Record<string, unknown> = {}
         for (const [key, entry] of closureEntries) {

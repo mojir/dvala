@@ -1,4 +1,4 @@
-import type { AstNode, SourceMap, SourceMapPosition } from '../parser/types'
+import type { AstNode, SourceMap, SourceMapPosition } from '@mojir/dvala-types'
 import type { DvalaBundle } from './interface'
 
 /**

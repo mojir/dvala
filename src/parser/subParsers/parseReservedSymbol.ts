@@ -1,6 +1,6 @@
 import { NodeTypes } from '@mojir/dvala-types'
-import type { NumberNode, ReservedNode } from '../types'
-import { isNumberReservedSymbol, numberReservedSymbolRecord } from '../../tokenizer/reservedNames'
+import type { NumberNode, ReservedNode } from '@mojir/dvala-types'
+import { isNumberReservedSymbol, numberReservedSymbolRecord } from '@mojir/dvala-types'
 import { asReservedSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
