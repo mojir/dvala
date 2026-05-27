@@ -13,6 +13,8 @@ older columns that didn't measure it. New scenarios appear as new sections.
 
 | Commit | Date | Message |
 | --- | --- | --- |
+| `90571f50` | 2026-05-27 20:36:54 | refactor: move utils/persistent into the dvala-types leaf |
+| `90571f50` | 2026-05-27 20:35:20 | refactor: move utils/persistent into the dvala-types leaf |
 | `dd6cfd53` | 2026-05-26 21:05:06 | refactor: extract standaloneTooling.ts to structurally decouple minimal bundle from tooling bundle |
 | `9a6c955a` | 2026-05-26 14:31:12 | refactor: address code-review findings — facade cleanup and import ordering |
 | `4b3374b0` | 2026-05-26 13:07:49 | fix: remove initReferenceData from minimal bundle entry point to prevent empty dist/index.js |
@@ -21,105 +23,103 @@ older columns that didn't measure it. New scenarios appear as new sections.
 | `09bdfa87` | 2026-05-22 21:32:42 | refactor: route cross-package src/ imports through dvala-core-tooling boundary |
 | `88a2acd5` | 2026-05-22 17:58:21 | fix: remove src/backend/ shims and fix test-file exclusions |
 | `cc0dc1fc` | 2026-05-21 14:30:42 | feat: move workspace-backend behavioral code into package |
-| `225da874` | 2026-05-14 19:39:06 | Move playground-www into apps/playground-www |
-| `895fd484` | 2026-05-14 17:33:02 | test: harden cli entrypoint smoke and avoid tmp scan race |
 
 ## 1. Pipeline: tokenize
 
 *pure tokenize cost — `tokenize(source)` for each corpus program*
 
-| Measurement | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) | `225da874` (2026-05-14) | `895fd484` (2026-05-14) |
+| Measurement | `90571f50` (2026-05-27) | `90571f50` (2026-05-27) | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | tiny (1 + 2 * 3) | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms |
 | medium (untyped fold) | 0.008 ms | 0.008 ms | 0.008 ms | 0.008 ms | 0.008 ms | 0.008 ms | 0.008 ms | 0.008 ms | 0.008 ms | 0.008 ms |
-| typed (annotated arithmetic) | 0.010 ms | 0.009 ms | 0.010 ms | 0.010 ms | 0.010 ms | 0.010 ms | 0.010 ms | 0.010 ms | 0.010 ms | 0.010 ms |
-| refinement-heavy (50 annotations) | 0.375 ms | 0.370 ms | 0.375 ms | 0.371 ms | 0.360 ms | 0.369 ms | 0.371 ms | 0.373 ms | 0.389 ms | 0.393 ms |
-| effect-heavy (handler + perform) | 0.004 ms | 0.005 ms | 0.004 ms | 0.005 ms | 0.005 ms | 0.004 ms | 0.004 ms | 0.004 ms | 0.005 ms | 0.005 ms |
-| eval-heavy (fib(15) recursion) | 0.007 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.006 ms | 0.006 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.007 ms |
+| typed (annotated arithmetic) | 0.009 ms | 0.009 ms | 0.010 ms | 0.009 ms | 0.010 ms | 0.010 ms | 0.010 ms | 0.010 ms | 0.010 ms | 0.010 ms |
+| refinement-heavy (50 annotations) | 0.360 ms | 0.365 ms | 0.375 ms | 0.370 ms | 0.375 ms | 0.371 ms | 0.360 ms | 0.369 ms | 0.371 ms | 0.373 ms |
+| effect-heavy (handler + perform) | 0.004 ms | 0.004 ms | 0.004 ms | 0.005 ms | 0.004 ms | 0.005 ms | 0.005 ms | 0.004 ms | 0.004 ms | 0.004 ms |
+| eval-heavy (fib(15) recursion) | 0.006 ms | 0.006 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.006 ms | 0.006 ms | 0.007 ms | 0.007 ms |
 
 ## 2. Pipeline: parse (pre-tokenized)
 
 *parser cost only — `parseTokenStream(pre-tokenized)` for each corpus program*
 
-| Measurement | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) | `225da874` (2026-05-14) | `895fd484` (2026-05-14) |
+| Measurement | `90571f50` (2026-05-27) | `90571f50` (2026-05-27) | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| tiny (1 + 2 * 3) | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms |
-| medium (untyped fold) | 0.002 ms | 0.002 ms | 0.002 ms | 0.003 ms | 0.002 ms | 0.003 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.003 ms |
-| typed (annotated arithmetic) | 0.003 ms | 0.003 ms | 0.003 ms | 0.003 ms | 0.003 ms | 0.002 ms | 0.002 ms | 0.003 ms | 0.003 ms | 0.003 ms |
-| refinement-heavy (50 annotations) | 0.081 ms | 0.087 ms | 0.090 ms | 0.088 ms | 0.079 ms | 0.089 ms | 0.081 ms | 0.079 ms | 0.093 ms | 0.096 ms |
-| effect-heavy (handler + perform) | 0.002 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.002 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.002 ms | 0.001 ms |
-| eval-heavy (fib(15) recursion) | 0.002 ms | 0.002 ms | 0.003 ms | 0.003 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.003 ms | 0.003 ms |
+| tiny (1 + 2 * 3) | 0.000 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms |
+| medium (untyped fold) | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.003 ms | 0.002 ms | 0.003 ms | 0.002 ms | 0.002 ms |
+| typed (annotated arithmetic) | 0.002 ms | 0.003 ms | 0.003 ms | 0.003 ms | 0.003 ms | 0.003 ms | 0.003 ms | 0.002 ms | 0.002 ms | 0.003 ms |
+| refinement-heavy (50 annotations) | 0.080 ms | 0.079 ms | 0.081 ms | 0.087 ms | 0.090 ms | 0.088 ms | 0.079 ms | 0.089 ms | 0.081 ms | 0.079 ms |
+| effect-heavy (handler + perform) | 0.001 ms | 0.002 ms | 0.002 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.002 ms | 0.001 ms | 0.001 ms | 0.001 ms |
+| eval-heavy (fib(15) recursion) | 0.002 ms | 0.003 ms | 0.002 ms | 0.002 ms | 0.003 ms | 0.003 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms |
 
 ## 3. Pipeline: typecheck (cumulative — incl. tokenize + parse)
 
 *`dvala.typecheck(source)` per program — full pipeline through the typechecker. Typecheck-only cost ≈ this − phase-tokenize − phase-parse.*
 
-| Measurement | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) | `225da874` (2026-05-14) | `895fd484` (2026-05-14) |
+| Measurement | `90571f50` (2026-05-27) | `90571f50` (2026-05-27) | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| tiny (1 + 2 * 3) | 0.005 ms | 0.006 ms | 0.006 ms | 0.007 ms | 0.006 ms | 0.007 ms | 0.007 ms | 0.008 ms | 0.007 ms | 0.008 ms |
-| medium (untyped fold) | 0.031 ms | 0.033 ms | 0.033 ms | 0.032 ms | 0.034 ms | 0.031 ms | 0.032 ms | 0.035 ms | 0.034 ms | 0.034 ms |
-| typed (annotated arithmetic) | 0.053 ms | 0.052 ms | 0.052 ms | 0.053 ms | 0.053 ms | 0.051 ms | 0.056 ms | 0.053 ms | 0.055 ms | 0.056 ms |
-| refinement-heavy (50 annotations) | 5.730 ms | 5.322 ms | 5.297 ms | 5.276 ms | 5.395 ms | 5.370 ms | 5.247 ms | 5.124 ms | 5.602 ms | 5.637 ms |
-| effect-heavy (handler + perform) | 0.019 ms | 0.021 ms | 0.022 ms | 0.021 ms | 0.021 ms | 0.022 ms | 0.025 ms | 0.021 ms | 0.022 ms | 0.023 ms |
-| eval-heavy (fib(15) recursion) | 0.076 ms | 0.077 ms | 0.077 ms | 0.076 ms | 0.079 ms | 0.074 ms | 0.074 ms | 0.080 ms | 0.081 ms | 0.083 ms |
+| tiny (1 + 2 * 3) | 0.006 ms | 0.005 ms | 0.005 ms | 0.006 ms | 0.006 ms | 0.007 ms | 0.006 ms | 0.007 ms | 0.007 ms | 0.008 ms |
+| medium (untyped fold) | 0.031 ms | 0.031 ms | 0.031 ms | 0.033 ms | 0.033 ms | 0.032 ms | 0.034 ms | 0.031 ms | 0.032 ms | 0.035 ms |
+| typed (annotated arithmetic) | 0.052 ms | 0.055 ms | 0.053 ms | 0.052 ms | 0.052 ms | 0.053 ms | 0.053 ms | 0.051 ms | 0.056 ms | 0.053 ms |
+| refinement-heavy (50 annotations) | 5.152 ms | 5.305 ms | 5.730 ms | 5.322 ms | 5.297 ms | 5.276 ms | 5.395 ms | 5.370 ms | 5.247 ms | 5.124 ms |
+| effect-heavy (handler + perform) | 0.020 ms | 0.022 ms | 0.019 ms | 0.021 ms | 0.022 ms | 0.021 ms | 0.021 ms | 0.022 ms | 0.025 ms | 0.021 ms |
+| eval-heavy (fib(15) recursion) | 0.073 ms | 0.078 ms | 0.076 ms | 0.077 ms | 0.077 ms | 0.076 ms | 0.079 ms | 0.074 ms | 0.074 ms | 0.080 ms |
 
 ## 4. Pipeline: run (typecheck disabled)
 
 *`dvala.run(source)` with typecheck disabled — captures tokenize + parse + evaluate. Evaluator-only cost ≈ this − phase-tokenize − phase-parse.*
 
-| Measurement | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) | `225da874` (2026-05-14) | `895fd484` (2026-05-14) |
+| Measurement | `90571f50` (2026-05-27) | `90571f50` (2026-05-27) | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| tiny (1 + 2 * 3) | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.002 ms | 0.001 ms |
-| medium (untyped fold) | 0.036 ms | 0.037 ms | 0.036 ms | 0.037 ms | 0.036 ms | 0.036 ms | 0.036 ms | 0.037 ms | 0.039 ms | 0.041 ms |
-| typed (annotated arithmetic) | 0.007 ms | 0.007 ms | 0.006 ms | 0.006 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.008 ms |
-| refinement-heavy (50 annotations) | 0.063 ms | 0.067 ms | 0.077 ms | 0.065 ms | 0.073 ms | 0.062 ms | 0.066 ms | 0.069 ms | 0.070 ms | 0.075 ms |
+| tiny (1 + 2 * 3) | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms |
+| medium (untyped fold) | 0.036 ms | 0.036 ms | 0.036 ms | 0.037 ms | 0.036 ms | 0.037 ms | 0.036 ms | 0.036 ms | 0.036 ms | 0.037 ms |
+| typed (annotated arithmetic) | 0.006 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.006 ms | 0.006 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.007 ms |
+| refinement-heavy (50 annotations) | 0.064 ms | 0.064 ms | 0.063 ms | 0.067 ms | 0.077 ms | 0.065 ms | 0.073 ms | 0.062 ms | 0.066 ms | 0.069 ms |
 | effect-heavy (handler + perform) | 0.005 ms | 0.005 ms | 0.005 ms | 0.005 ms | 0.005 ms | 0.005 ms | 0.005 ms | 0.005 ms | 0.005 ms | 0.005 ms |
-| eval-heavy (fib(15) recursion) | 4.453 ms | 4.633 ms | 4.377 ms | 4.439 ms | 4.348 ms | 4.297 ms | 4.437 ms | 4.501 ms | 4.862 ms | 4.818 ms |
+| eval-heavy (fib(15) recursion) | 4.391 ms | 4.420 ms | 4.453 ms | 4.633 ms | 4.377 ms | 4.439 ms | 4.348 ms | 4.297 ms | 4.437 ms | 4.501 ms |
 
 ## 5. Pipeline: end-to-end (full)
 
 *`dvala.run(source)` — tokenize + parse + typecheck + evaluate. The number a user actually observes.*
 
-| Measurement | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) | `225da874` (2026-05-14) | `895fd484` (2026-05-14) |
+| Measurement | `90571f50` (2026-05-27) | `90571f50` (2026-05-27) | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | tiny (1 + 2 * 3) | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms | 0.002 ms |
-| medium (untyped fold) | 0.045 ms | 0.043 ms | 0.043 ms | 0.044 ms | 0.043 ms | 0.043 ms | 0.045 ms | 0.045 ms | 0.047 ms | 0.048 ms |
-| typed (annotated arithmetic) | 0.027 ms | 0.025 ms | 0.027 ms | 0.027 ms | 0.025 ms | 0.027 ms | 0.026 ms | 0.028 ms | 0.028 ms | 0.028 ms |
-| refinement-heavy (50 annotations) | 0.683 ms | 0.578 ms | 0.660 ms | 0.671 ms | 0.582 ms | 0.594 ms | 0.607 ms | 0.600 ms | 0.720 ms | 0.737 ms |
-| effect-heavy (handler + perform) | 0.009 ms | 0.007 ms | 0.009 ms | 0.008 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.008 ms | 0.009 ms | 0.009 ms |
-| eval-heavy (fib(15) recursion) | 4.500 ms | 4.563 ms | 4.477 ms | 4.497 ms | 4.492 ms | 4.452 ms | 4.479 ms | 4.609 ms | 4.980 ms | 4.894 ms |
+| medium (untyped fold) | 0.042 ms | 0.043 ms | 0.045 ms | 0.043 ms | 0.043 ms | 0.044 ms | 0.043 ms | 0.043 ms | 0.045 ms | 0.045 ms |
+| typed (annotated arithmetic) | 0.025 ms | 0.027 ms | 0.027 ms | 0.025 ms | 0.027 ms | 0.027 ms | 0.025 ms | 0.027 ms | 0.026 ms | 0.028 ms |
+| refinement-heavy (50 annotations) | 0.562 ms | 0.659 ms | 0.683 ms | 0.578 ms | 0.660 ms | 0.671 ms | 0.582 ms | 0.594 ms | 0.607 ms | 0.600 ms |
+| effect-heavy (handler + perform) | 0.007 ms | 0.009 ms | 0.009 ms | 0.007 ms | 0.009 ms | 0.008 ms | 0.007 ms | 0.007 ms | 0.007 ms | 0.008 ms |
+| eval-heavy (fib(15) recursion) | 4.405 ms | 4.545 ms | 4.500 ms | 4.563 ms | 4.477 ms | 4.497 ms | 4.492 ms | 4.452 ms | 4.479 ms | 4.609 ms |
 
 ## 6. Refinement subtype-check cost (per predicate shape)
 
 *isolated subtype-check calls between source type and refinement target — no parse or typecheck overhead*
 
-| Measurement | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) | `225da874` (2026-05-14) | `895fd484` (2026-05-14) |
+| Measurement | `90571f50` (2026-05-27) | `90571f50` (2026-05-27) | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| interval target — Number → {n \| n > 0 && n < 100} | 0.09 μs | 0.09 μs | 0.10 μs | 0.09 μs | 0.10 μs | 0.09 μs | 0.10 μs | 0.09 μs | 0.10 μs | 0.10 μs |
-| set target — :ok → {x \| :ok \| :error} | 0.13 μs | 0.13 μs | 0.12 μs | 0.12 μs | 0.12 μs | 0.12 μs | 0.12 μs | 0.13 μs | 0.13 μs | 0.13 μs |
-| count target — String → {s \| count(s) > 0} | 0.06 μs | 0.05 μs | 0.06 μs | 0.06 μs | 0.06 μs | 0.05 μs | 0.06 μs | 0.05 μs | 0.06 μs | 0.06 μs |
-| excludedSet — Number → {n \| !=0 && !=1 && !=-1} | 0.21 μs | 0.22 μs | 0.21 μs | 0.21 μs | 0.21 μs | 0.20 μs | 0.21 μs | 0.22 μs | 0.22 μs | 0.22 μs |
-| literal source — 50 → {n \| n > 0 && n < 100} | 0.10 μs | 0.11 μs | 0.11 μs | 0.11 μs | 0.10 μs | 0.10 μs | 0.10 μs | 0.10 μs | 0.10 μs | 0.11 μs |
+| interval target — Number → {n \| n > 0 && n < 100} | 0.17 μs | 0.17 μs | 0.09 μs | 0.09 μs | 0.10 μs | 0.09 μs | 0.10 μs | 0.09 μs | 0.10 μs | 0.09 μs |
+| set target — :ok → {x \| :ok \| :error} | 0.22 μs | 0.22 μs | 0.13 μs | 0.13 μs | 0.12 μs | 0.12 μs | 0.12 μs | 0.12 μs | 0.12 μs | 0.13 μs |
+| count target — String → {s \| count(s) > 0} | 0.11 μs | 0.11 μs | 0.06 μs | 0.05 μs | 0.06 μs | 0.06 μs | 0.06 μs | 0.05 μs | 0.06 μs | 0.05 μs |
+| excludedSet — Number → {n \| !=0 && !=1 && !=-1} | 0.33 μs | 0.33 μs | 0.21 μs | 0.22 μs | 0.21 μs | 0.21 μs | 0.21 μs | 0.20 μs | 0.21 μs | 0.22 μs |
+| literal source — 50 → {n \| n > 0 && n < 100} | 0.19 μs | 0.18 μs | 0.10 μs | 0.11 μs | 0.11 μs | 0.11 μs | 0.10 μs | 0.10 μs | 0.10 μs | 0.10 μs |
 
 ## 7. Stacked refinement simplify scaling
 
 *simplifying N stacked refinements (`Base & {p1} & {p2} & ... & {pN}`) — empirically O(N²); regressions show as a worse exponent*
 
-| Measurement | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) | `225da874` (2026-05-14) | `895fd484` (2026-05-14) |
+| Measurement | `90571f50` (2026-05-27) | `90571f50` (2026-05-27) | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| N= 2 stacked refinements | 0.82 μs | 0.80 μs | 0.80 μs | 0.80 μs | 0.79 μs | 0.79 μs | 0.78 μs | 0.83 μs | 0.85 μs | 0.86 μs |
-| N= 4 stacked refinements | 3.45 μs | 3.58 μs | 3.38 μs | 3.54 μs | 3.57 μs | 3.49 μs | 3.43 μs | 3.49 μs | 3.58 μs | 3.69 μs |
-| N= 8 stacked refinements | 14.71 μs | 14.75 μs | 14.60 μs | 14.91 μs | 14.49 μs | 14.52 μs | 14.68 μs | 14.93 μs | 15.44 μs | 15.83 μs |
-| N=16 stacked refinements | 89.57 μs | 91.04 μs | 90.18 μs | 91.29 μs | 88.93 μs | 89.15 μs | 90.56 μs | 90.95 μs | 94.29 μs | 95.69 μs |
-| N=32 stacked refinements | 472.53 μs | 480.82 μs | 472.44 μs | 476.63 μs | 470.92 μs | 466.93 μs | 478.70 μs | 480.57 μs | 493.22 μs | 507.99 μs |
+| N= 2 stacked refinements | 0.99 μs | 0.98 μs | 0.82 μs | 0.80 μs | 0.80 μs | 0.80 μs | 0.79 μs | 0.79 μs | 0.78 μs | 0.83 μs |
+| N= 4 stacked refinements | 4.20 μs | 4.12 μs | 3.45 μs | 3.58 μs | 3.38 μs | 3.54 μs | 3.57 μs | 3.49 μs | 3.43 μs | 3.49 μs |
+| N= 8 stacked refinements | 17.51 μs | 17.04 μs | 14.71 μs | 14.75 μs | 14.60 μs | 14.91 μs | 14.49 μs | 14.52 μs | 14.68 μs | 14.93 μs |
+| N=16 stacked refinements | 99.20 μs | 97.69 μs | 89.57 μs | 91.04 μs | 90.18 μs | 91.29 μs | 88.93 μs | 89.15 μs | 90.56 μs | 90.95 μs |
+| N=32 stacked refinements | 511.75 μs | 501.77 μs | 472.53 μs | 480.82 μs | 472.44 μs | 476.63 μs | 470.92 μs | 466.93 μs | 478.70 μs | 480.57 μs |
 
 ## 8. Many-inequality refinement worst case
 
 *`Number & {n | n != 1 && n != 2 && ... && n != N}` — documented quadratic worst case (each conjunction step merges against the growing exclusion list)*
 
-| Measurement | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) | `225da874` (2026-05-14) | `895fd484` (2026-05-14) |
+| Measurement | `90571f50` (2026-05-27) | `90571f50` (2026-05-27) | `dd6cfd53` (2026-05-26) | `9a6c955a` (2026-05-26) | `4b3374b0` (2026-05-26) | `585579cb` (2026-05-26) | `18b49784` (2026-05-26) | `09bdfa87` (2026-05-22) | `88a2acd5` (2026-05-22) | `cc0dc1fc` (2026-05-21) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| N= 10 (parse + simplify) | 30.28 μs | 29.88 μs | 30.12 μs | 27.72 μs | 27.60 μs | 27.77 μs | 30.28 μs | 31.49 μs | 30.19 μs | 30.51 μs |
-| N= 50 (parse + simplify) | 186.58 μs | 187.79 μs | 190.00 μs | 178.93 μs | 175.36 μs | 175.99 μs | 186.66 μs | 195.17 μs | 189.71 μs | 203.17 μs |
-| N=100 (parse + simplify) | 454.00 μs | 465.08 μs | 458.94 μs | 460.67 μs | 444.52 μs | 432.36 μs | 458.97 μs | 460.60 μs | 477.28 μs | 485.81 μs |
+| N= 10 (parse + simplify) | 29.56 μs | 29.39 μs | 30.28 μs | 29.88 μs | 30.12 μs | 27.72 μs | 27.60 μs | 27.77 μs | 30.28 μs | 31.49 μs |
+| N= 50 (parse + simplify) | 184.01 μs | 183.92 μs | 186.58 μs | 187.79 μs | 190.00 μs | 178.93 μs | 175.36 μs | 175.99 μs | 186.66 μs | 195.17 μs |
+| N=100 (parse + simplify) | 457.80 μs | 453.05 μs | 454.00 μs | 465.08 μs | 458.94 μs | 460.67 μs | 444.52 μs | 432.36 μs | 458.97 μs | 460.60 μs |
 
