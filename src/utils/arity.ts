@@ -1,6 +1,6 @@
 import type { Arity } from '@mojir/dvala-types'
 import { TypeError } from '../errors'
-import type { FunctionLike } from '../parser/types'
+import type { FunctionLike } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { isColl } from '../typeGuards/dvala'
 import { valueToString } from './debug/debugTools'

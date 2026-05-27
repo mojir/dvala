@@ -1,4 +1,4 @@
-import type { AstNode, BindingTarget } from '../parser/types'
+import type { AstNode, BindingTarget } from '@mojir/dvala-types'
 
 /**
  * Formatting hint stored in Function node payloads.

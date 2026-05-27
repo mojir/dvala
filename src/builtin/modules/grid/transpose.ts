@@ -1,4 +1,4 @@
-import type { Any } from '../../../interface'
+import type { Any } from '@mojir/dvala-types'
 
 export function transpose<T extends Any>(grid: T[][]): T[][] {
   const result: T[][] = []

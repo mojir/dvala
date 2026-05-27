@@ -24,7 +24,7 @@ import {
 } from '../helpers'
 import { getPrecedence } from '../getPrecedence'
 import { ParserContext } from '../ParserContext'
-import type { AstNode, SymbolNode } from '../types'
+import type { AstNode, SymbolNode } from '@mojir/dvala-types'
 import { parseDo } from './parseDo'
 import { parseEffectDeclaration } from './parseEffectDeclaration'
 import { parseForOrDoseq } from './parseForOrDoseq'

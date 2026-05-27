@@ -25,7 +25,7 @@ import { initReferenceData } from '../src/initReferenceData'
 initReferenceData()
 import { getExamples, chapters } from '../reference/book'
 import type { HandlerRegistration } from '../src/evaluator/effectTypes'
-import type { Any } from '../src/interface'
+import type { Any } from '@mojir/dvala-types'
 
 const corePageExamples = [
   '1 + 2 + 3',

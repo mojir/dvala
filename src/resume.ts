@@ -10,7 +10,7 @@ import type { RuntimeResumeOptions, RuntimeRunResult, RuntimeSnapshot } from '@m
 import { continueWithEffects, resumeWithEffects } from './evaluator/trampoline-evaluator'
 import { deserializeFromObject } from './evaluator/suspension'
 import { toJS, validateFromJS } from './utils/interop'
-import type { Any } from './interface'
+import type { Any } from '@mojir/dvala-types'
 import { scopeToGlobalContext } from './runtime/scopeToGlobalContext'
 
 // ---------------------------------------------------------------------------

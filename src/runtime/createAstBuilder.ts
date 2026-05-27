@@ -1,6 +1,6 @@
 import { Cache } from '../Cache'
 import { parseToAst } from '../parser'
-import type { Ast, SourceMap } from '../parser/types'
+import type { Ast, SourceMap } from '@mojir/dvala-types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
 

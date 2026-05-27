@@ -1,4 +1,4 @@
-import type { Any } from '../../interface'
+import type { Any } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
 import { toFixedArity } from '../../utils/arity'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'

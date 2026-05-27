@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { RegularExpression, SymbolNode } from '../src/parser/types'
+import type { RegularExpression, SymbolNode } from '@mojir/dvala-types'
 import { collHasKey, deepEqual, smartTrim, toNonNegativeInteger } from '../src/utils'
 import { REGEXP_SYMBOL } from '@mojir/dvala-types'
 import { valueToString } from '../src/utils/debug/debugTools'

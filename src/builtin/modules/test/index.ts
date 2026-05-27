@@ -1,6 +1,6 @@
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import { TypeError } from '../../../errors'
-import type { Any } from '../../../interface'
+import type { Any } from '@mojir/dvala-types'
 import { assertString } from '../../../typeGuards/string'
 import { isDvalaFunction } from '../../../typeGuards/dvalaFunction'
 import type { DvalaModule } from '../interface'

@@ -5,7 +5,7 @@ import { bundle } from '../src/bundler'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 import type { DvalaModule } from '../src/builtin/modules/interface'
 import type { DvalaBundle } from '../src/bundler/interface'
-import type { Any } from '../src/interface'
+import type { Any } from '@mojir/dvala-types'
 
 const customTypedModule: DvalaModule = {
   name: 'custom',

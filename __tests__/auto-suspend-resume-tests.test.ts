@@ -28,7 +28,7 @@ import { describe, expect, it } from 'vitest'
 import { resume as baseResume } from '../src/resume'
 import type { ResumeOptions } from '../src/resume'
 import { createDvala } from '../src/createDvala'
-import type { Any } from '../src/interface'
+import type { Any } from '@mojir/dvala-types'
 import { fromJS } from '../src/utils/interop'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
 

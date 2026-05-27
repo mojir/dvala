@@ -1,6 +1,6 @@
 import type { Context } from '../../evaluator/interface'
-import type { Any } from '../../interface'
-import type { AstNode, BindingTarget } from '../../parser/types'
+import type { Any } from '@mojir/dvala-types'
+import type { AstNode, BindingTarget } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
 import { joinSets } from '../../utils'
 import { getAllBindingTargetNames } from '../bindingNode'

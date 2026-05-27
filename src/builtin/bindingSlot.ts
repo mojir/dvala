@@ -12,9 +12,9 @@
  * 3. Suspension/resume at any point during binding
  */
 
-import type { Any, Arr } from '../interface'
-import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '../parser/types'
-import { bindingTargetTypes } from '../parser/types'
+import type { Any, Arr } from '@mojir/dvala-types'
+import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '@mojir/dvala-types'
+import { bindingTargetTypes } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { assertArray } from '../typeGuards/array'
 import { assertObj } from '../typeGuards/dvala'

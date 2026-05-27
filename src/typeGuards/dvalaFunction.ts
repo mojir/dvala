@@ -4,7 +4,7 @@ import type {
   MacroFunction,
   NormalBuiltinFunction,
   UserDefinedFunction,
-} from '../parser/types'
+} from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { getAssertionError } from '../utils/getAssertionError'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'

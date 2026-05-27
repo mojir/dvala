@@ -1,5 +1,5 @@
 import { DvalaError, RuntimeError } from '../../../../errors'
-import type { Any } from '../../../../interface'
+import type { Any } from '@mojir/dvala-types'
 import { assertVector } from '../../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../../typeGuards/number'
 import type { BuiltinNormalExpression, BuiltinNormalExpressions } from '../../../../builtin/interface'

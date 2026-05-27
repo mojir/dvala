@@ -26,7 +26,7 @@
  */
 
 import { RuntimeError } from '../errors'
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 
 import type { DvalaModule } from '../builtin/modules/interface'
 import { isPersistentMap, isPersistentVector, PersistentMap, PersistentVector } from '@mojir/dvala-types'

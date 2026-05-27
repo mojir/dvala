@@ -1,5 +1,5 @@
 import { TypeError } from '../../errors'
-import type { QualifiedMatcherFunction } from '../../parser/types'
+import type { QualifiedMatcherFunction } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { asAny, asEffect, isAtom, isEffect, isRegularExpression } from '../../typeGuards/dvala'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'

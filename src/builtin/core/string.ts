@@ -1,5 +1,5 @@
 import { TypeError } from '../../errors'
-import type { Arr } from '../../interface'
+import type { Arr } from '@mojir/dvala-types'
 import { assertArray } from '../../typeGuards/array'
 import { assertStringOrRegularExpression, isAtom, isObj } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'

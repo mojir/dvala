@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '@mojir/dvala-types'
 import { parseToAst } from '../parser'
-import type { AstNode, BindingTarget } from '../parser/types'
+import type { AstNode, BindingTarget } from '@mojir/dvala-types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
 import { verifyAssertionFunctionBodies } from './assertsBodyVerify'

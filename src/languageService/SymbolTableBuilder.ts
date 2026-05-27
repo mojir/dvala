@@ -11,8 +11,8 @@
  */
 
 import { NodeTypes } from '@mojir/dvala-types'
-import { bindingTargetTypes } from '../parser/types'
-import type { AstNode, BindingTarget, ObjectBindingEntry, SourceMap, SourceMapPosition } from '../parser/types'
+import { bindingTargetTypes } from '@mojir/dvala-types'
+import type { AstNode, BindingTarget, ObjectBindingEntry, SourceMap, SourceMapPosition } from '@mojir/dvala-types'
 import type { ScopeRange, SymbolDef, SymbolRef } from './types'
 
 /** Scope entry: maps symbol name → definition */

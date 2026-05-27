@@ -1,4 +1,4 @@
-import type { Ast } from '../parser/types'
+import type { Ast } from '@mojir/dvala-types'
 
 /**
  * A bundle produced by the bundler. Contains a single self-contained AST

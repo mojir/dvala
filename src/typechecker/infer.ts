@@ -47,7 +47,7 @@ import {
   isEffectSubset,
   subtractEffects,
 } from './types'
-import type { AliasParam, AstNode, ObjectBindingEntry, SourceMap } from '../parser/types'
+import type { AliasParam, AstNode, ObjectBindingEntry, SourceMap } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import { getBuiltinType, getModuleType } from './builtinTypes'
 import { collectSymRefs, literalTypeToAstNode, tryFoldBuiltinCall, tryFoldUserFunctionCall } from './constantFold'

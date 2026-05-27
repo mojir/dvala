@@ -1,9 +1,9 @@
-import type { AstNode } from '../parser/types'
+import type { AstNode } from '@mojir/dvala-types'
 import type { Continuation } from '../evaluator/effectTypes'
 import type { RuntimeContinuation, RuntimeNodeEvalHook } from '@mojir/dvala-runtime'
 import type { CallStackEntry } from '../evaluator/callStack'
 import { reconstructCallStack } from '../evaluator/callStack'
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import type { ContextStack } from '../evaluator/ContextStack'
 import type { Context } from '../evaluator/interface'
 

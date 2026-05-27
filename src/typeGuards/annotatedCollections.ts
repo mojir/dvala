@@ -1,5 +1,5 @@
 import { TypeError } from '../errors'
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { isPersistentVector } from '@mojir/dvala-types'
 import { isNumber } from './number'

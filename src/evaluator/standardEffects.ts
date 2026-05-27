@@ -17,7 +17,7 @@
 import { ArithmeticError, RuntimeError, TypeError } from '../errors'
 import type { FunctionDocs } from '../builtin/interface'
 import type { Arity } from '@mojir/dvala-types'
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import { isEffect, isRegularExpression } from '../typeGuards/dvala'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
 import { toFixedArity } from '../utils/arity'

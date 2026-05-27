@@ -5,7 +5,7 @@
  * The primary API for running Dvala programs is `createDvala()` from `./createDvala`.
  */
 
-import type { Any } from './interface'
+import type { Any } from '@mojir/dvala-types'
 import { DvalaError, RuntimeError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { retriggerWithEffects } from './evaluator/trampoline-evaluator'

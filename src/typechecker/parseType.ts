@@ -66,7 +66,7 @@ import { fragmentCheckPredicate } from './refinementFragmentCheck'
 // flows from parser into AST). Re-export here so typechecker consumers
 // have a single import site and the two declarations can never diverge.
 
-import type { AliasParam, AstNode } from '../parser/types'
+import type { AliasParam, AstNode } from '@mojir/dvala-types'
 
 /** Registered type aliases: name → { params, body string } */
 const typeAliasRegistry = new Map<string, { params: AliasParam[]; body: string }>()

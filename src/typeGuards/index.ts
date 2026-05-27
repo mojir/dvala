@@ -1,5 +1,5 @@
 import { TypeError } from '../errors'
-import type { UnknownRecord } from '../interface'
+import type { UnknownRecord } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
 import { valueToString } from '../utils/debug/debugTools'

@@ -1,4 +1,4 @@
-import type { EffectRef } from '../../parser/types'
+import type { EffectRef } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 

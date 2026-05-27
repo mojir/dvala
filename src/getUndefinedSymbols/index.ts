@@ -16,7 +16,7 @@ import type {
   SpreadNode,
   TemplateStringNode,
   UserDefinedSymbolNode,
-} from '../parser/types'
+} from '@mojir/dvala-types'
 import { addToSet } from '../utils'
 import { isNormalExpressionNodeWithName, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 

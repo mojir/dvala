@@ -9,7 +9,7 @@ import type {
   SpreadNode,
   SymbolNode,
   UserDefinedSymbolNode,
-} from '../parser/types'
+} from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { getAssertionError } from '../utils/getAssertionError'
 

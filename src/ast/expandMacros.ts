@@ -3,10 +3,10 @@ import { createDvala } from '../createDvala'
 import type { FileResolver } from '../evaluator/ContextStack'
 import { hostHandler } from '../evaluator/effectTypes'
 import { prettyPrint } from '../prettyPrint'
-import type { Ast, AstNode, SourceMap, SourceMapPosition } from '../parser/types'
+import type { Ast, AstNode, SourceMap, SourceMapPosition } from '@mojir/dvala-types'
 import { isMacroFunction } from '../typeGuards/dvalaFunction'
 import { fromJS } from '../utils/interop'
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import { PersistentVector } from '@mojir/dvala-types'
 
 interface MacroExpandOptions {

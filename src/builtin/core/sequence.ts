@@ -1,4 +1,4 @@
-import type { Any, Arr, Seq } from '../../interface'
+import type { Any, Arr, Seq } from '@mojir/dvala-types'
 import { assertCharArray } from '../../typeGuards/array'
 import { asAny, assertAny, assertSeq } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'

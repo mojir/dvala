@@ -1,5 +1,5 @@
-import type { Any, Arr, Coll, Obj, Seq } from '../interface'
-import type { Atom, EffectRef, FunctionLike, RegularExpression } from '../parser/types'
+import type { Any, Arr, Coll, Obj, Seq } from '@mojir/dvala-types'
+import type { Atom, EffectRef, FunctionLike, RegularExpression } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { getAssertionError } from '../utils/getAssertionError'
 import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'

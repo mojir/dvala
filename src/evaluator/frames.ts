@@ -15,7 +15,7 @@
  * chain without host bindings, which are re-injected on resume).
  */
 
-import type { Any, Arr, Obj } from '../interface'
+import type { Any, Arr, Obj } from '@mojir/dvala-types'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { BindingSlot } from '../builtin/bindingSlot'
 import type { MatchSlot } from '../builtin/matchSlot'
@@ -26,7 +26,7 @@ import type {
   HandlerFunction,
   NormalExpressionNode,
   UserDefinedFunction,
-} from '../parser/types'
+} from '@mojir/dvala-types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { SourceCodeInfo } from '@mojir/dvala-types'

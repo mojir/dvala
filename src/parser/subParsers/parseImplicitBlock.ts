@@ -1,5 +1,5 @@
 import { isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
-import type { AstNode } from '../types'
+import type { AstNode } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import { NodeTypes } from '@mojir/dvala-types'
 import type { DoNode } from '../../builtin/specialExpressions/block'

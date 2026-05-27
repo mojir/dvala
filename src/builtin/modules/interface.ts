@@ -1,7 +1,7 @@
 export const MODULE_DESCRIPTION_MAX_LENGTH = 120
 
 import type { BuiltinNormalExpressions, FunctionDocs } from '../../builtin/interface'
-import type { AstNode } from '../../parser/types'
+import type { AstNode } from '@mojir/dvala-types'
 
 /**
  * Represents a Dvala module that can be imported dynamically.

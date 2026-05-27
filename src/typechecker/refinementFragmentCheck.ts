@@ -35,7 +35,7 @@
  */
 
 import { NodeTypes } from '@mojir/dvala-types'
-import type { AstNode } from '../parser/types'
+import type { AstNode } from '@mojir/dvala-types'
 import { isTypeGuard } from './builtinTypes'
 import { RefinementError } from './parseType'
 

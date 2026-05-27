@@ -1,7 +1,7 @@
 import type { LambdaNode } from '../../builtin/specialExpressions/functions'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
-import type { AstNode, BindingTarget } from '../types'
+import type { AstNode, BindingTarget } from '@mojir/dvala-types'
 import { assertOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'

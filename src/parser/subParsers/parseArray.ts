@@ -2,7 +2,7 @@ import type { ArrayNode } from '../../builtin/specialExpressions/array'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '../../errors'
 import { asLBracketToken, assertRBracketToken, isOperatorToken, isRBracketToken } from '../../tokenizer/token'
-import type { AstNode } from '../types'
+import type { AstNode } from '@mojir/dvala-types'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 

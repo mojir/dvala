@@ -1,5 +1,5 @@
 import { NodeTypes } from '@mojir/dvala-types'
-import type { AstNode } from '../parser/types'
+import type { AstNode } from '@mojir/dvala-types'
 import type { Type } from './types'
 import { NullType, literal, typeEquals } from './types'
 

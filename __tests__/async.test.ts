@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '../src/evaluator/effectTypes'
-import type { DvalaFunction } from '../src/parser/types'
+import type { DvalaFunction } from '@mojir/dvala-types'
 
 function value(result: RunResult): unknown {
   if (result.type !== 'completed') throw new Error(`Expected completed, got ${result.type}`)

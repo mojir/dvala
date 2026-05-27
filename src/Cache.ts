@@ -1,4 +1,4 @@
-import type { Ast } from './parser/types'
+import type { Ast } from '@mojir/dvala-types'
 import { toNonNegativeInteger } from './utils'
 import { valueToString } from './utils/debug/debugTools'
 

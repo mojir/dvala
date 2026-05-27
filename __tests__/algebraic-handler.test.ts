@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import type { Any } from '../src/interface'
+import type { Any } from '@mojir/dvala-types'
 
 function run(code: string): Any {
   return createDvala().run(code) as Any

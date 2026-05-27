@@ -1,4 +1,4 @@
-import type { Any, Arr } from '../../../interface'
+import type { Any, Arr } from '@mojir/dvala-types'
 import { fromJS } from '../../../utils/interop'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { assertMatrix, assertVector, isMatrix, isVector } from '../../../typeGuards/annotatedCollections'

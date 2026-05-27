@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Any } from '../src/interface'
+import type { Any } from '@mojir/dvala-types'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { EXAMPLE_DESCRIPTION_MAX_LENGTH, examples } from '../reference/examples'

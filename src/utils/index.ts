@@ -1,4 +1,4 @@
-import type { Any } from '../interface'
+import type { Any } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { isAtom, isColl, isRegularExpression } from '../typeGuards/dvala'
 import { isNumber } from '../typeGuards/number'

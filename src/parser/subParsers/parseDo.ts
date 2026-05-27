@@ -7,7 +7,7 @@ import {
   isOperatorToken,
   isReservedSymbolToken,
 } from '../../tokenizer/token'
-import type { AstNode } from '../types'
+import type { AstNode } from '@mojir/dvala-types'
 import type { ParserContext } from '../ParserContext'
 import { withSourceCodeInfo } from '../helpers'
 

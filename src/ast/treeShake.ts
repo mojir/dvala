@@ -1,5 +1,5 @@
 import { NodeTypes } from '@mojir/dvala-types'
-import type { Ast, AstNode } from '../parser/types'
+import type { Ast, AstNode } from '@mojir/dvala-types'
 
 /**
  * Tree-shaking pass: remove unused let bindings from a bundled AST.

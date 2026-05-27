@@ -1,5 +1,5 @@
-import type { Any } from '../../interface'
-import type { CompFunction, ConstantlyFunction, FunctionLike } from '../../parser/types'
+import type { Any } from '@mojir/dvala-types'
+import type { CompFunction, ConstantlyFunction, FunctionLike } from '@mojir/dvala-types'
 import { toAny } from '../../utils'
 import { getArityFromFunction, toFixedArity } from '../../utils/arity'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'

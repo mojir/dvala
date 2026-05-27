@@ -14,8 +14,8 @@
  *  - Memoize `(calleeId, argValues)` across a single type-check pass.
  */
 
-import type { AstNode } from '../parser/types'
-import type { Any } from '../interface'
+import type { AstNode } from '@mojir/dvala-types'
+import type { Any } from '@mojir/dvala-types'
 import type { ContextStack } from './ContextStack'
 import type { Step } from './step'
 import { DvalaError, MacroError, ReferenceError } from '../errors'

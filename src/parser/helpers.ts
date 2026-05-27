@@ -17,7 +17,7 @@ import type {
   NormalExpressionNodeWithName,
   SymbolNode,
   UserDefinedSymbolNode,
-} from './types'
+} from '@mojir/dvala-types'
 import type { ParserContext } from './ParserContext'
 
 export const exponentiationPrecedence = 12

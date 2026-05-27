@@ -5,7 +5,7 @@ import { tokenize } from '../../tokenizer/tokenize'
 import type { TemplateStringToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
-import type { AstNode, StringNode, TemplateStringNode } from '../types'
+import type { AstNode, StringNode, TemplateStringNode } from '@mojir/dvala-types'
 import { createParserContext, parseExpression } from './parseExpression'
 
 // ---------------------------------------------------------------------------

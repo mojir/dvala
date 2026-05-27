@@ -1,5 +1,5 @@
 import { RuntimeError } from '../../../errors'
-import type { Any } from '../../../interface'
+import type { Any } from '@mojir/dvala-types'
 import {
   assertMatrix,
   assertSquareMatrix,

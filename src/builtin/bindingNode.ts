@@ -1,6 +1,6 @@
 import { RuntimeError } from '../errors'
-import type { AstNode, BindingTarget } from '../parser/types'
-import { bindingTargetTypes } from '../parser/types'
+import type { AstNode, BindingTarget } from '@mojir/dvala-types'
+import { bindingTargetTypes } from '@mojir/dvala-types'
 
 export function walkDefaults(bindingTarget: BindingTarget, onDefault: (Node: AstNode) => void): void {
   if (bindingTarget[0] === bindingTargetTypes.object) {

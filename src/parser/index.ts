@@ -5,7 +5,7 @@ import { debugInfoToSourceCodeInfo, isOperatorToken } from '../tokenizer/token'
 import type { TokenStream } from '../tokenizer/tokenize'
 import type { ParserContext } from './ParserContext'
 import { createParserContext, createCstParserContext, parseExpression } from './subParsers/parseExpression'
-import type { AliasParam, AstNode, Ast, SourceMap } from './types'
+import type { AliasParam, AstNode, Ast, SourceMap } from '@mojir/dvala-types'
 
 // ---------------------------------------------------------------------------
 // CST parsing — produces an untyped CST tree with full trivia

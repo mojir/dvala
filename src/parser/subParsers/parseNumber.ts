@@ -1,5 +1,5 @@
 import { NodeTypes } from '@mojir/dvala-types'
-import type { NumberNode } from '../types'
+import type { NumberNode } from '@mojir/dvala-types'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 

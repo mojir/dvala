@@ -1,5 +1,5 @@
 import { DvalaError } from '../../../errors'
-import type { Any } from '../../../interface'
+import type { Any } from '@mojir/dvala-types'
 import { asNonUndefined } from '../../../typeGuards'
 import { assertNumber } from '../../../typeGuards/number'
 import { asStringOrNumber, assertString } from '../../../typeGuards/string'

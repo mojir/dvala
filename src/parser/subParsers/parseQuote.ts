@@ -14,7 +14,7 @@ import type { Token } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
-import type { AstNode } from '../types'
+import type { AstNode } from '@mojir/dvala-types'
 import { createCstParserContext, createParserContext, parseExpression } from './parseExpression'
 
 type CodeTemplateNode = AstNode<typeof NodeTypes.CodeTmpl, [AstNode[], AstNode[]]>

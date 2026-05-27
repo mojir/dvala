@@ -6,8 +6,8 @@ import type {
   ObjectBindingEntry,
   SymbolNode,
   UserDefinedSymbolNode,
-} from '../types'
-import { bindingTargetTypes } from '../types'
+} from '@mojir/dvala-types'
+import { bindingTargetTypes } from '@mojir/dvala-types'
 import {
   type Token,
   assertOperatorToken,

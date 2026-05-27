@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { minimatch } from 'minimatch'
-import type { SourceMap } from '../parser/types'
+import type { SourceMap } from '@mojir/dvala-types'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseToAst } from '../parser'

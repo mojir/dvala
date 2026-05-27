@@ -4,7 +4,7 @@ import { DvalaError } from '../../errors'
 import { tokenize } from '../../tokenizer/tokenize'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
 import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'
-import type { AstNode } from '../types'
+import type { AstNode } from '@mojir/dvala-types'
 import { createParserContext } from './parseExpression'
 import { parseObject } from './parseObject'
 

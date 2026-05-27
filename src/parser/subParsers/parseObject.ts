@@ -13,7 +13,7 @@ import {
   isSymbolToken,
   isTemplateStringToken,
 } from '../../tokenizer/token'
-import type { AstNode } from '../types'
+import type { AstNode } from '@mojir/dvala-types'
 import { stringFromQuotedSymbol, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseString } from './parseString'

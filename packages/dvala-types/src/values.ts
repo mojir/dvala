@@ -1,5 +1,5 @@
-import type { Atom, DvalaFunction, EffectRef, RegularExpression } from './parser/types'
-import type { PersistentMap, PersistentVector } from '@mojir/dvala-types'
+import type { Atom, DvalaFunction, EffectRef, RegularExpression } from './ast'
+import type { PersistentMap, PersistentVector } from './persistent'
 
 // Dvala's two persistent collection types, replacing plain JS arrays/objects.
 export type Arr = PersistentVector<unknown>

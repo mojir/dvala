@@ -8,7 +8,7 @@ import type {
   NormalExpressionNodeExpression,
   SpecialSymbolNode,
   StringNode,
-} from '../types'
+} from '@mojir/dvala-types'
 import { isBinaryOperator } from '../../tokenizer/operators'
 import { isNumberReservedSymbol } from '@mojir/dvala-types'
 import type { StringToken, TemplateStringToken, TokenDebugInfo, TokenType } from '../../tokenizer/token'

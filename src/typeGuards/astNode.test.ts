@@ -9,7 +9,7 @@ import type {
   NumberNode,
   StringNode,
   SymbolNode,
-} from '../parser/types'
+} from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import {
   asExpressionNode,

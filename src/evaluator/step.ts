@@ -21,8 +21,8 @@
  */
 
 import type { DvalaError } from '../errors'
-import type { Any } from '../interface'
-import type { AstNode, EffectRef } from '../parser/types'
+import type { Any } from '@mojir/dvala-types'
+import type { AstNode, EffectRef } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import type { ContinuationStack, Frame, ParallelBranchContext, ReRunParallelFrame, ResumeParallelFrame } from './frames'
 import type { ContextStack } from './ContextStack'

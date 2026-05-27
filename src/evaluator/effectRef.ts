@@ -11,7 +11,7 @@
  * the unique EffectRef in the new runtime.
  */
 
-import type { EffectRef } from '../parser/types'
+import type { EffectRef } from '@mojir/dvala-types'
 import { EFFECT_SYMBOL } from '@mojir/dvala-types'
 
 const internMap = new Map<string, EffectRef>()
