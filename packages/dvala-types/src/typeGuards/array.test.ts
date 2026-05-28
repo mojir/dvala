@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest'
-import { testTypeGuars } from '../../__tests__/testUtils'
-import { PersistentVector } from '@mojir/dvala-types'
+import { testTypeGuars } from '../../../../__tests__/testUtils'
+import { PersistentVector } from '../persistent'
 import {
   asArray,
   asCharArray,

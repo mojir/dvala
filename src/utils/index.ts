@@ -1,9 +1,9 @@
 import type { Any } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { isAtom, isColl, isRegularExpression } from '../typeGuards/dvala'
-import { isNumber } from '../typeGuards/number'
-import { asString, assertStringOrNumber } from '../typeGuards/string'
-import { isUnknownRecord } from '../typeGuards'
+import { isAtom, isColl, isRegularExpression } from '@mojir/dvala-types'
+import { isNumber } from '@mojir/dvala-types'
+import { asString, assertStringOrNumber } from '@mojir/dvala-types'
+import { isUnknownRecord } from '@mojir/dvala-types'
 import { TypeError } from '@mojir/dvala-types'
 import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
 

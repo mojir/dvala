@@ -1,5 +1,5 @@
 import { AssertionError } from '@mojir/dvala-types'
-import { assertString } from '../../typeGuards/string'
+import { assertString } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const assertionNormalExpression: BuiltinNormalExpressions = {

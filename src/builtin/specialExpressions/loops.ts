@@ -6,7 +6,7 @@ import type { AstNode, BindingTarget } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
 import type { Builtin, BuiltinSpecialExpression, CustomDocs } from '../interface'
 import { getAllBindingTargetNames } from '../bindingNode'
-import { toFixedArity } from '../../utils/arity'
+import { toFixedArity } from '@mojir/dvala-types'
 
 export type LoopBindingNode = [[BindingTarget, AstNode], [BindingTarget, AstNode][], AstNode?, AstNode?] // Binding, Let-Bindings, When, While
 

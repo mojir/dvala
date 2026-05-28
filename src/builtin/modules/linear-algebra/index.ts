@@ -7,15 +7,15 @@ import {
   assertNonEmptyVector,
   assertSquareMatrix,
   assertVector,
-} from '../../../typeGuards/annotatedCollections'
-import { assertNumber } from '../../../typeGuards/number'
+} from '@mojir/dvala-types'
+import { assertNumber } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import type { DvalaModule } from '../interface'
 import { calcMean } from '../vector/calcMean'
 import { calcMedad } from '../vector/calcMedad'
 import { calcMedian } from '../vector/calcMedian'
 import { calcStdDev } from '../vector/calcStdDev'
-import { toFixedArity } from '../../../utils/arity'
+import { toFixedArity } from '@mojir/dvala-types'
 import { moduleDocs } from './docs'
 import { gaussJordanElimination } from './helpers/gaussJordanElimination'
 import { solve } from './helpers/solve'

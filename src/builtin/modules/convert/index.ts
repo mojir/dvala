@@ -1,5 +1,5 @@
-import { assertNumber } from '../../../typeGuards/number'
-import { toFixedArity } from '../../../utils/arity'
+import { assertNumber } from '@mojir/dvala-types'
+import { toFixedArity } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'

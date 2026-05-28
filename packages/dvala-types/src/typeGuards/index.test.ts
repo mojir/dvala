@@ -1,7 +1,7 @@
 import { describe, expect, it, test } from 'vitest'
-import { testTypeGuars } from '../../__tests__/testUtils'
-import { DvalaError } from '@mojir/dvala-types'
-import { assertNumberOfParams, canBeOperator } from '../utils/arity'
+import { testTypeGuars } from '../../../../__tests__/testUtils'
+import { DvalaError } from '../errors'
+import { assertNumberOfParams, canBeOperator } from '../arityValidator'
 import { asNonUndefined, asUnknownRecord, assertNonUndefined, assertUnknownRecord, isUnknownRecord } from '.'
 
 describe('typeGuards index file', () => {

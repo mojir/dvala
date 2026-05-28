@@ -1,5 +1,5 @@
-import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { getAssertionError } from '../utils/getAssertionError'
+import type { SourceCodeInfo } from '../sourceCodeInfo'
+import { getAssertionError } from '../getAssertionError'
 
 type StringAssertionOptions =
   | {

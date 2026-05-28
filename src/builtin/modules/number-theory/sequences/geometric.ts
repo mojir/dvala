@@ -1,6 +1,6 @@
-import { assertNumber } from '../../../../typeGuards/number'
+import { assertNumber } from '@mojir/dvala-types'
 import { approxEqual } from '../../../../utils'
-import { toFixedArity } from '../../../../utils/arity'
+import { toFixedArity } from '@mojir/dvala-types'
 import type { SequenceNormalExpressions } from '.'
 
 /**

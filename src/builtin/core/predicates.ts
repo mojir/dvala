@@ -1,10 +1,10 @@
-import { isDvalaFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
-import { assertColl, isArr, isAtom, isColl, isEffect, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
-import { assertNumber, isNumber } from '../../typeGuards/number'
+import { isDvalaFunction, isMacroFunction } from '@mojir/dvala-types'
+import { assertColl, isArr, isAtom, isColl, isEffect, isObj, isRegularExpression, isSeq } from '@mojir/dvala-types'
+import { assertNumber, isNumber } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
-import { isGrid, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
+import { isGrid, isMatrix, isVector } from '@mojir/dvala-types'
 import { EPSILON } from '../../utils'
-import { toFixedArity } from '../../utils/arity'
+import { toFixedArity } from '@mojir/dvala-types'
 
 export const predicatesNormalExpression: BuiltinNormalExpressions = {
   isFunction: {

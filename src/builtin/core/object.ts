@@ -1,9 +1,9 @@
 import type { Any, Arr, Obj } from '@mojir/dvala-types'
-import { assertArray, assertStringArray } from '../../typeGuards/array'
-import { assertObj } from '../../typeGuards/dvala'
-import { asString, assertString } from '../../typeGuards/string'
+import { assertArray, assertStringArray } from '@mojir/dvala-types'
+import { assertObj } from '@mojir/dvala-types'
+import { asString, assertString } from '@mojir/dvala-types'
 import { collHasKey, toAny } from '../../utils'
-import { toFixedArity } from '../../utils/arity'
+import { toFixedArity } from '@mojir/dvala-types'
 import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 

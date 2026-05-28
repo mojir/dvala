@@ -1,12 +1,12 @@
 import type { Any, Arr, Coll, Obj } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { collHasKey, deepEqual, toAny } from '../../utils'
-import { asAny, assertAny, assertColl, assertObj, isObj, isSeq } from '../../typeGuards/dvala'
+import { asAny, assertAny, assertColl, assertObj, isObj, isSeq } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
-import { assertArray } from '../../typeGuards/array'
-import { assertNumber, isNumber } from '../../typeGuards/number'
-import { assertString, assertStringOrNumber, isString, isStringOrNumber } from '../../typeGuards/string'
-import { toFixedArity } from '../../utils/arity'
+import { assertArray } from '@mojir/dvala-types'
+import { assertNumber, isNumber } from '@mojir/dvala-types'
+import { assertString, assertStringOrNumber, isString, isStringOrNumber } from '@mojir/dvala-types'
+import { toFixedArity } from '@mojir/dvala-types'
 import { isPersistentVector, PersistentMap, PersistentVector } from '@mojir/dvala-types'
 
 function get(coll: Coll, key: string | number): Any | undefined {

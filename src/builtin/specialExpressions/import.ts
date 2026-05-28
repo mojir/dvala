@@ -1,6 +1,6 @@
 import type { Any } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
-import { toFixedArity } from '../../utils/arity'
+import { toFixedArity } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 
 type ImportNode = [typeof NodeTypes.Import, string, number]

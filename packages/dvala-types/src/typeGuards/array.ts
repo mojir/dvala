@@ -1,7 +1,7 @@
-import type { Arr } from '@mojir/dvala-types'
-import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { isPersistentVector } from '@mojir/dvala-types'
-import { getAssertionError } from '../utils/getAssertionError'
+import type { Arr } from '../values'
+import type { SourceCodeInfo } from '../sourceCodeInfo'
+import { isPersistentVector } from '../persistent'
+import { getAssertionError } from '../getAssertionError'
 
 /** Assert that `value` is a Dvala array (PersistentVector). */
 export function asArray(value: unknown, sourceCodeInfo?: SourceCodeInfo): Arr {

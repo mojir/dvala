@@ -6,8 +6,8 @@ import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '@mojir/dvala-types'
 import type { OperatorToken, TokenDebugInfo } from '../tokenizer/token'
 import { isOperatorToken, isReservedSymbolToken } from '../tokenizer/token'
-import { isBuiltinSymbolNode } from '../typeGuards/astNode'
-import { assertNumberOfParams } from '../utils/arity'
+import { isBuiltinSymbolNode } from '@mojir/dvala-types'
+import { assertNumberOfParams } from '@mojir/dvala-types'
 import type {
   AstNode,
   BindingTarget,

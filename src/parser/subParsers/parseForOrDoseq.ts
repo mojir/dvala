@@ -17,7 +17,7 @@ import {
   isReservedSymbolToken,
   isSymbolToken,
 } from '../../tokenizer/token'
-import { asUserDefinedSymbolNode } from '../../typeGuards/astNode'
+import { asUserDefinedSymbolNode } from '@mojir/dvala-types'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseLet } from './parseLet'

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Any } from '@mojir/dvala-types'
-import { isEffect, isObj } from '../typeGuards/dvala'
+import { isEffect, isObj } from '@mojir/dvala-types'
 import { PersistentMap } from '@mojir/dvala-types'
 import { EFFECT_SYMBOL } from '@mojir/dvala-types'
 import { clearEffectRefInternMap, getEffectRef } from './effectRef'

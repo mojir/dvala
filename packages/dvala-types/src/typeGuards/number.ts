@@ -1,7 +1,7 @@
-import { TypeError } from '@mojir/dvala-types'
-import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { valueToString } from '@mojir/dvala-types'
-import { getSourceCodeInfo } from '@mojir/dvala-types'
+import { TypeError } from '../errors'
+import type { SourceCodeInfo } from '../sourceCodeInfo'
+import { valueToString } from '../debug'
+import { getSourceCodeInfo } from '../debug'
 
 type SignOptions =
   | {

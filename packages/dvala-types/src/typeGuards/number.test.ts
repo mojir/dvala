@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DvalaError } from '@mojir/dvala-types'
+import { DvalaError } from '../errors'
 import { asNumber, assertNumber, isNumber } from './number'
 
 describe('number type guards', () => {

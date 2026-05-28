@@ -1,10 +1,10 @@
 import type { Any } from '@mojir/dvala-types'
 import type { CompFunction, ConstantlyFunction, FunctionLike } from '@mojir/dvala-types'
 import { toAny } from '../../utils'
-import { getArityFromFunction, toFixedArity } from '../../utils/arity'
+import { getArityFromFunction, toFixedArity } from '@mojir/dvala-types'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
-import { assertFunctionLike } from '../../typeGuards/dvala'
+import { assertFunctionLike } from '@mojir/dvala-types'
 
 export const functionalNormalExpression: BuiltinNormalExpressions = {
   '|>': {

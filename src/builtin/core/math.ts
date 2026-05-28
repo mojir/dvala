@@ -1,9 +1,9 @@
 import { ArithmeticError, RuntimeError } from '@mojir/dvala-types'
 import type { Any, Arr } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { assertNonEmptyVector, isVector } from '../../typeGuards/annotatedCollections'
-import { assertNumber, isNumber } from '../../typeGuards/number'
-import { toFixedArity } from '../../utils/arity'
+import { assertNonEmptyVector, isVector } from '@mojir/dvala-types'
+import { assertNumber, isNumber } from '@mojir/dvala-types'
+import { toFixedArity } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 
 function getNumberOperands(params: Iterable<unknown>, sourceCodeInfo: SourceCodeInfo | undefined): number[] {

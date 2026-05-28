@@ -20,8 +20,8 @@
  */
 
 import type { Any } from '@mojir/dvala-types'
-import { isDvalaFunction } from '../typeGuards/dvalaFunction'
-import { isArr, isEffect, isObj, isRegularExpression } from '../typeGuards/dvala'
+import { isDvalaFunction } from '@mojir/dvala-types'
+import { isArr, isEffect, isObj, isRegularExpression } from '@mojir/dvala-types'
 import type { DvalaFunction } from '@mojir/dvala-types'
 
 /**

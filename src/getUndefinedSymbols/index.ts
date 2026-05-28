@@ -18,7 +18,7 @@ import type {
   UserDefinedSymbolNode,
 } from '@mojir/dvala-types'
 import { addToSet } from '../utils'
-import { isNormalExpressionNodeWithName, isUserDefinedSymbolNode } from '../typeGuards/astNode'
+import { isNormalExpressionNodeWithName, isUserDefinedSymbolNode } from '@mojir/dvala-types'
 
 export type UndefinedSymbols = Set<string>
 

@@ -1,8 +1,8 @@
 import { describe, expect, it, test } from 'vitest'
-import { testTypeGuars } from '../../__tests__/testUtils'
-import type { DvalaFunction } from '@mojir/dvala-types'
-import { PersistentVector } from '@mojir/dvala-types'
-import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
+import { testTypeGuars } from '../../../../__tests__/testUtils'
+import type { DvalaFunction } from '../ast'
+import { PersistentVector } from '../persistent'
+import { FUNCTION_SYMBOL } from '../symbols'
 import {
   asDvalaFunction,
   asUserDefinedFunction,

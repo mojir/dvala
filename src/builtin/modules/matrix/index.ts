@@ -1,14 +1,9 @@
 import { RuntimeError } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'
-import {
-  assertMatrix,
-  assertSquareMatrix,
-  assertVector,
-  isSquareMatrix,
-} from '../../../typeGuards/annotatedCollections'
-import { assertNumber } from '../../../typeGuards/number'
+import { assertMatrix, assertSquareMatrix, assertVector, isSquareMatrix } from '@mojir/dvala-types'
+import { assertNumber } from '@mojir/dvala-types'
 import { approxZero } from '../../../utils'
-import { toFixedArity } from '../../../utils/arity'
+import { toFixedArity } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import type { DvalaModule } from '../interface'
 import { gaussJordanElimination } from '../linear-algebra/helpers/gaussJordanElimination'

@@ -16,8 +16,8 @@ import type { Any, Arr } from '@mojir/dvala-types'
 import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '@mojir/dvala-types'
 import { bindingTargetTypes } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { assertArray } from '../typeGuards/array'
-import { assertObj } from '../typeGuards/dvala'
+import { assertArray } from '@mojir/dvala-types'
+import { assertObj } from '@mojir/dvala-types'
 import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
 
 // ---------------------------------------------------------------------------

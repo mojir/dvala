@@ -28,8 +28,8 @@ import type {
   RegularExpression,
   SourceMap,
 } from '@mojir/dvala-types'
-import { isEffect, isRegularExpression } from '../../src/typeGuards/dvala'
-import { isDvalaFunction } from '../../src/typeGuards/dvalaFunction'
+import { isEffect, isRegularExpression } from '@mojir/dvala-types'
+import { isDvalaFunction } from '@mojir/dvala-types'
 import { toJS } from '../../src/utils/interop'
 import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
 

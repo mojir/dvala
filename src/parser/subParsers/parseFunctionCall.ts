@@ -16,13 +16,8 @@ import type { AstNode, NormalExpressionNodeExpression } from '@mojir/dvala-types
 import { resolveSourceCodeInfo } from '@mojir/dvala-types'
 import type { TokenDebugInfo } from '../../tokenizer/token'
 import { isOperatorToken, isRParenToken, isSymbolToken, sourceCodeInfoToDebugInfo } from '../../tokenizer/token'
-import {
-  isBuiltinSymbolNode,
-  isSpecialSymbolNode,
-  isSpreadNode,
-  isUserDefinedSymbolNode,
-} from '../../typeGuards/astNode'
-import { assertNumberOfParams } from '../../utils/arity'
+import { isBuiltinSymbolNode, isSpecialSymbolNode, isSpreadNode, isUserDefinedSymbolNode } from '@mojir/dvala-types'
+import { assertNumberOfParams } from '@mojir/dvala-types'
 import { createNamedNormalExpressionNode, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 

@@ -1,16 +1,8 @@
 import { describe, it } from 'vitest'
-import { testTypeGuars } from '../../__tests__/testUtils'
-import type { QqNode } from '../builtin/specialExpressions/qq'
-import type {
-  AstNode,
-  ExpressionNode,
-  NormalExpressionNodeExpression,
-  NormalExpressionNodeWithName,
-  NumberNode,
-  StringNode,
-  SymbolNode,
-} from '@mojir/dvala-types'
-import { NodeTypes } from '@mojir/dvala-types'
+import { testTypeGuars } from '../../../../__tests__/testUtils'
+import type { AstNode, NormalExpressionNodeWithName, NumberNode } from '../ast'
+import type { ExpressionNode, NormalExpressionNodeExpression, StringNode, SymbolNode } from '../ast'
+import { NodeTypes } from '../constants'
 import {
   asExpressionNode,
   asNormalExpressionNode,
@@ -27,7 +19,7 @@ import {
 } from './astNode'
 
 describe('node type guards', () => {
-  const specialExpressionNode: QqNode = [
+  const specialExpressionNode: AstNode = [
     NodeTypes.Qq,
     [
       [NodeTypes.Reserved, null, 0],
