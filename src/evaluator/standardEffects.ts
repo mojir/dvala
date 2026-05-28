@@ -14,7 +14,7 @@
  * `runSync` will throw when a Promise surfaces.
  */
 
-import { ArithmeticError, RuntimeError, TypeError } from '../errors'
+import { ArithmeticError, RuntimeError, TypeError } from '@mojir/dvala-types'
 import type { FunctionDocs } from '../builtin/interface'
 import type { Arity } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'

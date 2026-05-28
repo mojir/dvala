@@ -25,7 +25,7 @@
  * 3. Fill in host bindings (values, modules) on each instance
  */
 
-import { RuntimeError } from '../errors'
+import { RuntimeError } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'
 
 import type { DvalaModule } from '../builtin/modules/interface'

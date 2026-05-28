@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { DvalaError } from '../../src/errors'
+import { DvalaError } from '@mojir/dvala-types'
 import { runTest, runTestFile, runTestSuite } from '../../src/testFramework'
 import { getErrorYaml } from '../../src/testFramework/formatTap'
 import { isSuccess, isSuiteSuccess } from '../../src/testFramework/result'

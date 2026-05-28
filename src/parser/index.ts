@@ -1,6 +1,6 @@
 import { CstBuilder, type UntypedCstNode } from '../cst/builder'
 import type { TriviaNode } from '../cst/types'
-import { ParseError } from '../errors'
+import { ParseError } from '@mojir/dvala-types'
 import { debugInfoToSourceCodeInfo, isOperatorToken } from '../tokenizer/token'
 import type { TokenStream } from '../tokenizer/tokenize'
 import type { ParserContext } from './ParserContext'

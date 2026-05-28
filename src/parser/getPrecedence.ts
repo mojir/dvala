@@ -1,4 +1,4 @@
-import { ParseError } from '../errors'
+import { ParseError } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import type { SymbolicBinaryOperator } from '../tokenizer/operators'
 import { exponentiationPrecedence } from './helpers'

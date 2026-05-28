@@ -3,7 +3,7 @@ import { createDvala } from '../src/createDvala'
 import { astModule } from '../src/builtin/modules/ast'
 import { createContextStack } from '../src/evaluator/ContextStack'
 import { evaluateNode } from '../src/evaluator/trampoline-evaluator'
-import { TypeError as DvalaTypeError } from '../src/errors'
+import { TypeError as DvalaTypeError } from '@mojir/dvala-types'
 import { prettyPrint } from '../src/prettyPrint'
 
 const dvala = createDvala({ modules: [astModule] })

@@ -1,4 +1,4 @@
-import { TokenizerError } from '../errors'
+import { TokenizerError } from '@mojir/dvala-types'
 import type { ReservedSymbol, SourceCodeInfo } from '@mojir/dvala-types'
 import { type SymbolicBinaryOperator, type SymbolicOperator, isBinaryOperator } from './operators'
 

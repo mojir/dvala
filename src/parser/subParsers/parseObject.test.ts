@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '@mojir/dvala-types'
-import { DvalaError } from '../../errors'
+import { DvalaError } from '@mojir/dvala-types'
 import { tokenize } from '../../tokenizer/tokenize'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
 import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'

@@ -20,7 +20,7 @@
  * with a serializable representation in Phase 4).
  */
 
-import type { DvalaError } from '../errors'
+import type { DvalaError } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'
 import type { AstNode, EffectRef } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'

@@ -1,4 +1,4 @@
-import { ArithmeticError, RuntimeError } from '../../errors'
+import { ArithmeticError, RuntimeError } from '@mojir/dvala-types'
 import type { Any, Arr } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { assertNonEmptyVector, isVector } from '../../typeGuards/annotatedCollections'

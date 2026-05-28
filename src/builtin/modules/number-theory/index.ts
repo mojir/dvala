@@ -1,4 +1,4 @@
-import { DvalaError, RuntimeError } from '../../../errors'
+import { DvalaError, RuntimeError } from '@mojir/dvala-types'
 import type { Any, Arr } from '@mojir/dvala-types'
 import { assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertArray } from '../../../typeGuards/array'

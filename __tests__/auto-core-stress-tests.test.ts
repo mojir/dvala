@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../src/allModules'
-import { MatchError } from '../src/errors'
+import { MatchError } from '@mojir/dvala-types'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../src/tooling'
 
 const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })

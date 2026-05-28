@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { DvalaError } from '../errors'
+import { DvalaError } from '@mojir/dvala-types'
 import { asBinaryOperator, asSymbolicOperator } from './operators'
 
 describe('operators', () => {

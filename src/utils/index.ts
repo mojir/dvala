@@ -4,7 +4,7 @@ import { isAtom, isColl, isRegularExpression } from '../typeGuards/dvala'
 import { isNumber } from '../typeGuards/number'
 import { asString, assertStringOrNumber } from '../typeGuards/string'
 import { isUnknownRecord } from '../typeGuards'
-import { TypeError } from '../errors'
+import { TypeError } from '@mojir/dvala-types'
 import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
 
 export function collHasKey(coll: unknown, key: string | number): boolean {

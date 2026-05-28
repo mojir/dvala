@@ -1,6 +1,6 @@
 import type { Ast } from '@mojir/dvala-types'
 import { toNonNegativeInteger } from './utils'
-import { valueToString } from './utils/debug/debugTools'
+import { valueToString } from '@mojir/dvala-types'
 
 interface CacheEntry {
   key: string

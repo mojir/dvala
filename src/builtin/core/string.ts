@@ -1,4 +1,4 @@
-import { TypeError } from '../../errors'
+import { TypeError } from '@mojir/dvala-types'
 import type { Arr } from '@mojir/dvala-types'
 import { assertArray } from '../../typeGuards/array'
 import { assertStringOrRegularExpression, isAtom, isObj } from '../../typeGuards/dvala'

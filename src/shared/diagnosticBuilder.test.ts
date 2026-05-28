@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ParseError } from '../errors'
+import { ParseError } from '@mojir/dvala-types'
 import type { SymbolRef } from '../languageService/types'
 import type { TypecheckResult } from '../typechecker/typecheck'
 import { buildParseDiagnostics, buildSymbolDiagnostics, buildTypeDiagnostics } from './diagnosticBuilder'

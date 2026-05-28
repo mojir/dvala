@@ -11,7 +11,7 @@
  */
 
 import { MAX_INLINE_ENTRIES, MAX_WIDTH } from './formatter/config'
-import { TypeError } from './errors'
+import { TypeError } from '@mojir/dvala-types'
 
 const INDENT_SIZE = 2
 

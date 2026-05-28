@@ -2,7 +2,7 @@ import type { SpecialExpressionName } from '@mojir/dvala-types'
 import { specialExpressionTypes } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import type { CstBuilder } from '../../cst/builder'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import { isFunctionOperator } from '../../tokenizer/operators'
 import {
   isA_BinaryOperatorToken,

@@ -1,6 +1,6 @@
 import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import {
   asLBraceToken,
   assertOperatorToken,

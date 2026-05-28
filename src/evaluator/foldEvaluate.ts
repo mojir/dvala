@@ -18,7 +18,7 @@ import type { AstNode } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'
 import type { ContextStack } from './ContextStack'
 import type { Step } from './step'
-import { DvalaError, MacroError, ReferenceError } from '../errors'
+import { DvalaError, MacroError, ReferenceError } from '@mojir/dvala-types'
 import { tick } from './trampoline-evaluator'
 
 export type FoldResult =

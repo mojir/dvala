@@ -2,7 +2,7 @@
  * Shared types for the Dvala language service.
  */
 
-import type { ParseError } from '../errors'
+import type { ParseError } from '@mojir/dvala-types'
 
 interface SymbolLocation {
   file: string

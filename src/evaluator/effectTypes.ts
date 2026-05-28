@@ -7,7 +7,7 @@
  */
 
 import type { Any } from '@mojir/dvala-types'
-import type { DvalaError } from '../errors'
+import type { DvalaError } from '@mojir/dvala-types'
 import type { ContinuationStack } from './frames'
 import type { AstNode, SourceMap } from '@mojir/dvala-types'
 import type { ContextStack } from './ContextStack'

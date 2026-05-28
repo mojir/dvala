@@ -1,6 +1,6 @@
 import { isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import type { DoNode } from '../../builtin/specialExpressions/block'
 import type { ParserContext } from '../ParserContext'

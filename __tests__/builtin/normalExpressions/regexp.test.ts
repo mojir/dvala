@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
 import { regexpEquals } from '../../testUtils'
-import { DvalaError } from '../../../src/errors'
+import { DvalaError } from '@mojir/dvala-types'
 
 describe('regexp functions', () => {
   for (const dvala of [createDvala(), createDvala({ debug: true })]) {

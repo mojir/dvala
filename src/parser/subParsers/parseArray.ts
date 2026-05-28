@@ -1,6 +1,6 @@
 import type { ArrayNode } from '../../builtin/specialExpressions/array'
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import { asLBracketToken, assertRBracketToken, isOperatorToken, isRBracketToken } from '../../tokenizer/token'
 import type { AstNode } from '@mojir/dvala-types'
 import { withSourceCodeInfo } from '../helpers'

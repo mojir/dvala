@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { MatchError } from '../src/errors'
+import { MatchError } from '@mojir/dvala-types'
 
 const dvala = createDvala()
 

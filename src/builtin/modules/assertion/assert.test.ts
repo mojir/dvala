@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../createDvala'
-import { AssertionError, DvalaError } from '../../../errors'
+import { AssertionError, DvalaError } from '@mojir/dvala-types'
 import { assertModule } from './'
 
 describe('assert functions', () => {

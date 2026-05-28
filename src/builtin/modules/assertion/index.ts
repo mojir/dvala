@@ -1,4 +1,4 @@
-import { AssertionError } from '../../../errors'
+import { AssertionError } from '@mojir/dvala-types'
 import { compare, deepEqual } from '../../../utils'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import { asAny, isColl, isObj, isRegularExpression, isSeq } from '../../../typeGuards/dvala'

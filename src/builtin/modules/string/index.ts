@@ -1,4 +1,4 @@
-import { DvalaError } from '../../../errors'
+import { DvalaError } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'
 import { asNonUndefined } from '../../../typeGuards'
 import { assertNumber } from '../../../typeGuards/number'

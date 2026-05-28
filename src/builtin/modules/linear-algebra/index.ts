@@ -1,4 +1,4 @@
-import { DvalaError, RuntimeError } from '../../../errors'
+import { DvalaError, RuntimeError } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'
 import {
   assert2dVector,

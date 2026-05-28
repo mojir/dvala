@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../../createDvala'
 import { vectorModule } from '..'
-import { DvalaError } from '../../../../errors'
+import { DvalaError } from '@mojir/dvala-types'
 
 const dvala = createDvala({ modules: [vectorModule] })
 

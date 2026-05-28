@@ -2,7 +2,7 @@ import { CstBuilder, type UntypedCstNode } from '../../cst/builder'
 import type { CstToken } from '../../cst/types'
 import { isTrivia } from '../../cst/attachTrivia'
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import {
   isLBraceToken,
   isOperatorToken,

@@ -1,6 +1,6 @@
 import { NodeTypes, isNodeType } from '@mojir/dvala-types'
 import { prettyPrint } from '../../../prettyPrint'
-import { TypeError } from '../../../errors'
+import { TypeError } from '@mojir/dvala-types'
 import type { Any, Arr } from '@mojir/dvala-types'
 import type { AstNode } from '@mojir/dvala-types'
 import { toFixedArity } from '../../../utils/arity'

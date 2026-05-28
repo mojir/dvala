@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vitest } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
 import { jsonModule } from '../../../src/builtin/modules/json'
 import { timeModule } from '../../../src/builtin/modules/time'
-import { DvalaError } from '../../../src/errors'
+import { DvalaError } from '@mojir/dvala-types'
 
 describe('misc functions', () => {
   let oldLog: () => void

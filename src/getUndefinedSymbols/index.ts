@@ -5,7 +5,7 @@ import { getFunctionUnresolvedSymbols } from '../builtin/specialExpressions/func
 import type { IfNode } from '../builtin/specialExpressions/if'
 import type { Function as DvalaFunctionTuple } from '../builtin/utils'
 import { NodeTypes } from '@mojir/dvala-types'
-import { RuntimeError } from '../errors'
+import { RuntimeError } from '@mojir/dvala-types'
 import { joinSets } from '../utils'
 import type { ContextStack } from '../evaluator/ContextStack'
 import type {

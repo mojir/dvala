@@ -4,7 +4,7 @@ import { checkTestData, createTestData } from '../../testUtils'
 import { createDvala } from '../../../src/createDvala'
 import { sequenceUtilsModule } from '../../../src/builtin/modules/sequence'
 import { vectorModule } from '../../../src/builtin/modules/vector'
-import { DvalaError } from '../../../src/errors'
+import { DvalaError } from '@mojir/dvala-types'
 
 let testData: TestData
 const dvala = createDvala({ modules: [vectorModule, sequenceUtilsModule] })
