@@ -1,11 +1,6 @@
-import type { SourceCodeInfo } from '@mojir/dvala-types'
+import type { CallStackEntry } from '@mojir/dvala-types'
 import { isNormalExpressionNodeWithName } from '../typeGuards/astNode'
 import type { ContinuationStack } from './frames'
-
-export interface CallStackEntry {
-  name: string // function name, handler effect name, or "<anonymous>"
-  sourceCodeInfo?: SourceCodeInfo
-}
 
 /**
  * Walk the continuation stack and extract a human-readable call stack.
