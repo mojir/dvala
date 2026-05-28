@@ -86,12 +86,28 @@ So a large fraction of the tangle is cuttable by extracting a shared **AST/types
 **NEXT (do this first next session): `dvala-engine` extraction (Model 2) + `runtime → parser` sever.**
 - **Spike result (done):** `runtime → parser` is cleanly **severable** — only 3 call sites (evaluator import-resolution ×2, `initCoreDvala` ×1), all the same "compile source → AST" capability (tokenize + parse). Sever by injecting a `parseSource` host capability into the evaluator `env` (which already threads `allocateNodeId`/`debug`/`getModule`); TS host (`createDvala`) supplies tokenize+parse; KMP supplies precompiled AST. `initCoreDvala` is a host-init step → relocates to the host with the engine boundary.
 - **Engine boundary mapped** — candidate engine = `src/evaluator` + `src/builtin` (+ their `.dvala` sources). Its outward pulls from the rest of `src/`: `typeGuards` (118), `utils` (61), `tokenizer` (8), `parser` (3, the sever target), `reference` (1, must sever).
-- **START WITH A BOUNDARY-DECISIONS INTERVIEW** (same style as the top-level topology interview), to settle before any move:
-  1. `typeGuards` (118 uses, shared by engine **and** tooling/typechecker/LS) — move into `dvala-engine`, or a shared package both depend on, or the `dvala-types` leaf?
-  2. `utils` (61) — split engine-internal vs shared along the engine/tooling line.
-  3. Engine package name + exact contents; confirm Model 2 (engine implements the `dvala-runtime` contract).
-  4. `reference` (1) coupling — sever (engine must not import docs/reference).
-- Then execute as a dedicated pass on its own branch → PR (foundation-style), with sweep-before-verify throughout.
+
+#### Boundary decisions (2026-05-28 interview — DECIDED)
+
+The boundary-decisions interview is **closed**. Lock these answers; do not re-litigate during execution.
+
+1. **`typeGuards/` → `@mojir/dvala-types` leaf.** Pure predicates over leaf vocab (imports nothing but `@mojir/dvala-types`). Confidence: high. Rationale: leaf already ships `isPersistentVector`/`isPersistentMap` next to the persistent collections — same pattern. No new package edge created; both engine and tooling already depend on the leaf. Alternatives rejected: into `dvala-engine` would force a `dvala-core-tooling → dvala-engine` backward edge for ~7 sites; a new shared package isn't justified by the volume.
+
+2. **`src/utils/` → per-file split.**
+   - **To leaf:** `arity.ts`, `debug/`, `getAssertionError.ts` — validators and diagnostic primitives that operate on leaf types and are needed by both engine and tooling.
+   - **To engine:** `interop.ts`, `maybePromise.ts`, `docString/` — engine-internal mechanics (JS↔Dvala interop, effect plumbing, builtin doc generation).
+   - **`utils/index.ts` barrel dissolves** — each consumer imports from the actual home.
+   - Confidence: medium-high (down from high — a new `dvala-utils` package has a real, currently-untriggered benefit of keeping the leaf strictly types+predicates; we'd extract later if needed).
+   - **Independent caveat (must address in this same pass):** `arity`/`debug/`/`getAssertionError` all transitively depend on `src/errors.ts`, which today imports `evaluator/callStack`. Anything moving to the leaf can't reach engine code, so this edge must be inverted before the moves complete.
+
+3. **Engine package = `@mojir/dvala-engine`.** Model 2 confirmed: engine *implements* the `dvala-runtime` contract (host/session/executor interfaces). Value vocabulary stays in `dvala-types`; contract stays in `dvala-runtime`; concrete evaluator + builtins live in engine. KMP becomes a second implementation of the same contract later.
+   - **First-PR scope (definite):** `src/evaluator/`, `src/builtin/` (incl. `.dvala` sources), `src/resume.ts`, `src/retrigger.ts`, plus the engine-only utils from (2): `interop.ts`, `maybePromise.ts`, `docString/`.
+   - **Gray-zone (adjudicate file-by-file during execution, not now):** `src/runtime/{scopeToGlobalContext, createRuntimeRunner, createAstBuilder, createDefaultRuntimeBridgeAdapter}` (likely engine — bridge-adapter side); `Cache.ts` (engine — sole consumer is `runtime/createAstBuilder`); `allModules.ts` (engine surface, but consumed by typechecker tests + `tooling.ts` — needs a placement call); `prettyPrint.ts` (genuinely shared by builtin + typechecker + playground — deserves its own placement question when touched); `ast/expandMacros.ts` (stays in tooling — typechecker consumer; lands in `core-tooling` later).
+
+4. **`reference/` → relocate the 3 type-only edges into engine.** `EffectReference`, `FunctionReference` move from `reference/index.ts` into engine (likely co-located with `FunctionDocs`/`SpecialExpressionDocs` in `src/builtin/interface.ts`). `CoreNormalExpressionName` moves from `reference/api.ts` into engine (it's derived from the engine's own builtin registry — properly engine-owned). `reference/` re-imports them from engine, matching the direction it already takes for `FunctionDocs`/`SpecialExpressionDocs`. Confidence: high. After this, `reference → engine` is the single direction (matches reality — `reference/index.ts` already pulls dozens of values from `src/builtin/*`).
+
+#### Then execute
+As a dedicated pass on its own branch → PR (foundation-style), with sweep-before-verify throughout.
 
 ### Remaining after the engine extraction
 `core-tooling` ownership (move parser/cst/formatter/typecheck/LS into `dvala-core-tooling`), dissolve `@mojir/dvala` (re-point clients, drop bundles, pause npm), Turborepo per-package.
@@ -158,11 +174,12 @@ Rationale: the cross-cutting steps don't decompose into clean green-on-main incr
 
 ## Open questions
 
-- Exact placement of `tokenizer` impl vs token types, `bundler`, reference data, `testFramework`, `typeGuards`.
-- Does the evaluator's parser dependency resist clean severing? (the spike answers this — gates the rest)
+- Exact placement of `tokenizer` impl vs token types, `bundler`, reference data, `testFramework`. (~~`typeGuards`~~ — decided 2026-05-28: leaf.)
+- ~~Does the evaluator's parser dependency resist clean severing?~~ — spike says no; 3 sites, all the same capability.
 - Timing of wire-format stabilization (name-based builtins) — KMP-relevant, separable from this.
 - Whether to keep producing *any* bundle (a build-only top entry) or none until consumers exist (currently: none).
-- Final name for the AST/types leaf package.
+- ~~Final name for the AST/types leaf package.~~ — `@mojir/dvala-types` (shipped #193/#194).
+- Gray-zone files inside the engine extraction (`src/runtime/*`, `Cache.ts`, `allModules.ts`, `prettyPrint.ts`) — adjudicated file-by-file during execution per the 2026-05-28 interview.
 
 ## Definition of done
 
