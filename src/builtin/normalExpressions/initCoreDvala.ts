@@ -1,12 +1,10 @@
 import { createContextStack } from '../../evaluator/ContextStack'
 import { evaluate } from '../../evaluator/trampoline-evaluator'
 import type { Any } from '@mojir/dvala-types'
-import { parseToAst } from '../../parser'
 import type { UserDefinedFunction } from '@mojir/dvala-types'
-import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
-import { tokenize } from '../../tokenizer/tokenize'
 import { isDvalaFunction } from '@mojir/dvala-types'
 import { isObj } from '@mojir/dvala-types'
+import type { ParseSource } from '../../evaluator/interface'
 import collectionSource from '../core/collection.dvala'
 import sequenceSource from '../core/sequence.dvala'
 import functionalSource from '../core/functional.dvala'
@@ -22,16 +20,9 @@ const coreDvalaSources: Record<string, string> = {
   object: objectSource,
 }
 
-let initialized = false
-
-export function initCoreDvalaSources(): void {
-  if (initialized) return
-  initialized = true
-
+export function initCoreDvalaSources(parseSource: ParseSource): void {
   for (const [, source] of Object.entries(coreDvalaSources)) {
-    const tokens = tokenize(source, false, undefined)
-    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
-    const ast = parseToAst(minified)
+    const ast = parseSource(source)
     const contextStack = createContextStack()
     const result = evaluate(ast, contextStack) as Any
 
@@ -46,9 +37,16 @@ export function initCoreDvalaSources(): void {
     // PersistentMap doesn't expose entries via Object.entries — iterate directly.
     for (const [name, fn] of result) {
       const expression = normalExpressions[name]
-      // Defensive: all core dvala modules produce UserDefined functions
-      /* v8 ignore next */
-      if (expression && isDvalaFunction(fn) && (fn as { functionType: string }).functionType === 'UserDefined') {
+      // Idempotent: already-patched implementations win (skip re-allocating nodeIds
+      // when called repeatedly, e.g. once per createDvala() instance).
+      if (
+        expression &&
+        !expression.dvalaImpl &&
+        isDvalaFunction(fn) &&
+        // Defensive: all core dvala modules produce UserDefined functions
+        /* v8 ignore next */
+        (fn as { functionType: string }).functionType === 'UserDefined'
+      ) {
         expression.dvalaImpl = fn as UserDefinedFunction
       }
     }

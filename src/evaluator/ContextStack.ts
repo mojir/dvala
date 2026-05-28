@@ -18,7 +18,7 @@ import { asNonUndefined } from '@mojir/dvala-types'
 import { isBuiltinSymbolNode, isSpecialSymbolNode } from '@mojir/dvala-types'
 import { toAny } from '../utils'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
-import type { Context, LookUpResult } from './interface'
+import type { Context, LookUpResult, ParseSource } from './interface'
 import { isContextEntry } from './interface'
 
 interface CreateContextStackParams {
@@ -59,6 +59,8 @@ export class ContextStackImpl {
   public allocateNodeId?: () => number
   /** Whether debug mode (source map building) is active */
   public debug: boolean
+  /** Host-supplied capability to compile source → Ast (severs runtime → parser). */
+  public parseSource?: ParseSource
   // Track files currently being evaluated to detect circular imports
   private _resolvingFiles: Set<string>
   constructor({
@@ -72,6 +74,7 @@ export class ContextStackImpl {
     resolvingFiles,
     allocateNodeId,
     debug,
+    parseSource,
   }: {
     contexts: Context[]
     modules?: Map<string, DvalaModule>
@@ -83,6 +86,7 @@ export class ContextStackImpl {
     resolvingFiles?: Set<string>
     allocateNodeId?: () => number
     debug?: boolean
+    parseSource?: ParseSource
   }) {
     this.globalContext = asNonUndefined(contexts[0])
     this._contexts = contexts
@@ -95,6 +99,7 @@ export class ContextStackImpl {
     this._resolvingFiles = resolvingFiles ?? new Set()
     this.allocateNodeId = allocateNodeId
     this.debug = debug ?? false
+    this.parseSource = parseSource
   }
 
   public resolve(nodeId: number): SourceCodeInfo | undefined {
@@ -201,6 +206,7 @@ export class ContextStackImpl {
       resolvingFiles: this._resolvingFiles,
       allocateNodeId: this.allocateNodeId,
       debug: this.debug,
+      parseSource: this.parseSource,
     })
     contextStack.globalContext = globalContext
     return contextStack
@@ -333,6 +339,7 @@ export function createContextStack(
   currentFileDir?: string,
   allocateNodeId?: () => number,
   debug?: boolean,
+  parseSource?: ParseSource,
 ): ContextStack {
   const globalContext = params.globalContext ?? {}
   // Contexts are checked from left to right
@@ -347,6 +354,7 @@ export function createContextStack(
     currentFileDir,
     allocateNodeId,
     debug,
+    parseSource,
   })
   return params.globalModuleScope ? contextStack : contextStack.create({})
 }

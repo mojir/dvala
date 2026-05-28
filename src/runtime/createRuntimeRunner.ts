@@ -3,7 +3,7 @@ import type { DvalaRunAsyncOptions, DvalaRunOptions, RuntimeHandlers, RuntimeRun
 import { DvalaError } from '@mojir/dvala-types'
 import { createContextStack } from '../evaluator/ContextStack'
 import type { FileResolver } from '../evaluator/ContextStack'
-import type { Context } from '../evaluator/interface'
+import type { Context, ParseSource } from '../evaluator/interface'
 import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from '../evaluator/trampoline-evaluator'
 import type { Ast, SourceMap } from '@mojir/dvala-types'
 import type { DvalaBundle } from '../bundler/interface'
@@ -23,6 +23,7 @@ interface CreateRuntimeRunnerOptions {
   factoryFileResolverBaseDir?: string
   debug: boolean
   allocateNodeId: () => number
+  parseSource: ParseSource
   buildAst: (source: string, filePath?: string, forceDebug?: boolean) => Ast
   emitTypeDiagnostics: (ast: Ast) => void
   scopeToGlobalContext: (scope?: Record<string, unknown>) => Context | undefined
@@ -58,6 +59,9 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
         undefined,
         options.factoryFileResolver,
         options.factoryFileResolverBaseDir,
+        undefined,
+        undefined,
+        options.parseSource,
       )
 
       if (isDvalaBundle(source)) {
@@ -103,6 +107,7 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
           options.factoryFileResolverBaseDir,
           effectiveDebug ? options.allocateNodeId : undefined,
           effectiveDebug,
+          options.parseSource,
         )
 
         const ast = isDvalaBundle(source) ? source.ast : options.buildAst(source, runOptions?.filePath, forceDebug)
