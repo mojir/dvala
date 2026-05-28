@@ -75,12 +75,26 @@ So a large fraction of the tangle is cuttable by extracting a shared **AST/types
 6. **Transition resolution: tsconfig `paths` → source.** Cross-package imports resolve to source via tsconfig `paths` (+ a vite alias for test/dev). The Oxc resolver behind rolldown/vite honors `paths`, so this needs **no build-ordering wiring** — confirmed by a clean build with the leaf's `dist` deleted (the bundle inlined the leaf from source; the built CLI ran). Each standalone-`paths` tsconfig (root, `vscode-dvala`) must add the new package's mapping. The dist/`exports` resolution (validated by the spike) is the **end-state**, reserved for the Turborepo/publish era.
 7. **Sequencing: integration branch with reviewed PRs, solo-focused** — see below.
 
-### Progress (2026-05-27, branch `decomp/types-leaf`)
+### Progress / RESUME HERE (updated 2026-05-27)
 
-- `@mojir/dvala-types` leaf created (dependency-free), wired via tsconfig `paths` + vite alias + a root `workspace:*` dep.
-- **Moved into the leaf:** `constants` (NodeTypes etc.) and `utils/symbols` — the zero-dep foundation. ~96 import sites re-pointed; clean break (no shims).
-- Verified: typecheck (compile + vscode), knip, build, **clean build** (leaf `dist` deleted), test, and the built CLI (`run "1 + 2"` → 3). No build-ordering wiring required.
-- **Next (the hard slice):** the value/AST vocabulary — untangle `Any ↔ DvalaFunction`, opaque `Context`/engine-internals, move `AstNode`/`BindingTarget`/token types, re-point ~180 sites.
+**Types-leaf extraction COMPLETE and merged to main** (`@mojir/dvala-types` is the dependency-free owner of the full type vocabulary):
+- **PR #193 (merged):** leaf scaffold + zero-dep foundation — `constants`, `utils/symbols`, the HAMT `persistent` data structures.
+- **PR #194 (merged):** foundational vocab (`Arity`, special-expr types, `SourceCodeInfo`, reserved names) + the value/AST vocabulary (`interface.ts` → `values.ts`, `parser/types.ts` → `ast.ts`). Broke the `Any ↔ DvalaFunction` cycle (co-located); opaqued `Context` → `unknown` in `EvaluatedFunction` (6 consumer casts). `src/interface.ts` and `src/parser/types.ts` no longer exist.
+- Resolution stays **source-via-tsconfig-`paths`** (+ vite alias); no build-ordering wiring. Leaf imports nothing external (only `vitest` in its tests).
+- Discipline that mattered: re-point **by module name** (catch `../x`/`./x`, not just `dir/x`); always **sweep in-source `.js`/`.d.ts` artifacts before typecheck** — stale emitted `.d.ts` *mask* broken imports otherwise.
+
+**NEXT (do this first next session): `dvala-engine` extraction (Model 2) + `runtime → parser` sever.**
+- **Spike result (done):** `runtime → parser` is cleanly **severable** — only 3 call sites (evaluator import-resolution ×2, `initCoreDvala` ×1), all the same "compile source → AST" capability (tokenize + parse). Sever by injecting a `parseSource` host capability into the evaluator `env` (which already threads `allocateNodeId`/`debug`/`getModule`); TS host (`createDvala`) supplies tokenize+parse; KMP supplies precompiled AST. `initCoreDvala` is a host-init step → relocates to the host with the engine boundary.
+- **Engine boundary mapped** — candidate engine = `src/evaluator` + `src/builtin` (+ their `.dvala` sources). Its outward pulls from the rest of `src/`: `typeGuards` (118), `utils` (61), `tokenizer` (8), `parser` (3, the sever target), `reference` (1, must sever).
+- **START WITH A BOUNDARY-DECISIONS INTERVIEW** (same style as the top-level topology interview), to settle before any move:
+  1. `typeGuards` (118 uses, shared by engine **and** tooling/typechecker/LS) — move into `dvala-engine`, or a shared package both depend on, or the `dvala-types` leaf?
+  2. `utils` (61) — split engine-internal vs shared along the engine/tooling line.
+  3. Engine package name + exact contents; confirm Model 2 (engine implements the `dvala-runtime` contract).
+  4. `reference` (1) coupling — sever (engine must not import docs/reference).
+- Then execute as a dedicated pass on its own branch → PR (foundation-style), with sweep-before-verify throughout.
+
+### Remaining after the engine extraction
+`core-tooling` ownership (move parser/cst/formatter/typecheck/LS into `dvala-core-tooling`), dissolve `@mojir/dvala` (re-point clients, drop bundles, pause npm), Turborepo per-package.
 
 ### Hard constraint
 
