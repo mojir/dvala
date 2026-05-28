@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { AssertionError, DvalaError } from '../src/errors'
+import { AssertionError, DvalaError } from '@mojir/dvala-types'
 import { getAutoCompleter, getUndefinedSymbols } from '../src/tooling'
 import { AutoCompleter } from '../src/AutoCompleter/AutoCompleter'
 import { resume } from '../src/resume'

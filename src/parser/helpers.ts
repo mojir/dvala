@@ -3,7 +3,7 @@ import { normalExpressions, normalExpressionTypes } from '../builtin/normalExpre
 import type { AndNode } from '../builtin/specialExpressions/and'
 import { specialExpressionTypes } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../errors'
+import { ParseError } from '@mojir/dvala-types'
 import type { OperatorToken, TokenDebugInfo } from '../tokenizer/token'
 import { isOperatorToken, isReservedSymbolToken } from '../tokenizer/token'
 import { isBuiltinSymbolNode } from '../typeGuards/astNode'

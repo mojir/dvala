@@ -1,4 +1,4 @@
-import { RecurSignal } from '../../errors'
+import { RecurSignal } from '@mojir/dvala-types'
 import type { AstNode } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'

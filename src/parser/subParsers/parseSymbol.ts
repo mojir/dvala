@@ -1,4 +1,4 @@
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import type { BuiltinSymbolNode, SpecialSymbolNode, SymbolNode } from '@mojir/dvala-types'
 import { isSymbolToken } from '../../tokenizer/token'
 import { stringFromQuotedSymbol, stringToSymbolNode } from '../helpers'

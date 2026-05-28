@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { DvalaError, ReferenceError } from '../src/errors'
+import { DvalaError, ReferenceError } from '@mojir/dvala-types'
 import { Cache } from '../src/Cache'
 import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, untokenize } from '../src/tooling'
 import type { Ast } from '@mojir/dvala-types'

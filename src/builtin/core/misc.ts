@@ -1,4 +1,4 @@
-import { TypeError } from '../../errors'
+import { TypeError } from '@mojir/dvala-types'
 import type { QualifiedMatcherFunction } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { asAny, asEffect, isAtom, isEffect, isRegularExpression } from '../../typeGuards/dvala'

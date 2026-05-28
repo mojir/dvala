@@ -1,6 +1,6 @@
-import { DvalaError } from '../errors'
+import { DvalaError } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { getCodeMarker } from '../utils/debug/getCodeMarker'
+import { getCodeMarker } from '@mojir/dvala-types'
 import type { TestCaseResult, TestRunResult } from './result'
 
 /**

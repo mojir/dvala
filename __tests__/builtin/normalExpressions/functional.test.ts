@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
-import { DvalaError, RecurSignal } from '../../../src/errors'
+import { DvalaError, RecurSignal } from '@mojir/dvala-types'
 import { functionalUtilsModule } from '../../../src/builtin/modules/functional'
 
 describe('functional functions.', () => {

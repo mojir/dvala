@@ -1,6 +1,6 @@
 import type { LambdaNode } from '../../builtin/specialExpressions/functions'
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '@mojir/dvala-types'
 import { bindingTargetTypes } from '@mojir/dvala-types'
 import {

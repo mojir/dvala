@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '../src/allModules'
 import { createDvala } from '../src/createDvala'
-import { MatchError } from '../src/errors'
+import { MatchError } from '@mojir/dvala-types'
 import { createContextStack } from '../src/evaluator/ContextStack'
 import { evaluateAsync, evaluateNode } from '../src/evaluator/trampoline-evaluator'
 import { extractCheckpointSnapshots } from '../src/evaluator/suspension'

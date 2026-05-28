@@ -2,7 +2,7 @@ import type { SpecialExpression } from '../builtin'
 import { builtin, specialExpressionKeys } from '../builtin'
 import { normalExpressions } from '../builtin/normalExpressions'
 import { specialExpressionTypes } from '@mojir/dvala-types'
-import { ReferenceError, TypeError } from '../errors'
+import { ReferenceError, TypeError } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type {

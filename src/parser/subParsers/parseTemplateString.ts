@@ -1,5 +1,5 @@
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
 import { tokenize } from '../../tokenizer/tokenize'
 import type { TemplateStringToken } from '../../tokenizer/token'

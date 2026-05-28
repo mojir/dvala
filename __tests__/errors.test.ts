@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DvalaError, RecurSignal, UserError, isDvalaError } from '../src/errors'
+import { DvalaError, RecurSignal, UserError, isDvalaError } from '@mojir/dvala-types'
 import { PersistentVector } from '@mojir/dvala-types'
 
 describe('errors', () => {

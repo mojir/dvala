@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 import { isRegularExpression } from '../src/typeGuards/dvala'
-import { DvalaError } from '../src/errors'
+import { DvalaError } from '@mojir/dvala-types'
 
 interface TypeGuardTestData {
   valid: unknown[]

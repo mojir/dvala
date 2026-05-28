@@ -1,4 +1,4 @@
-import type { SourceCodeInfo } from '@mojir/dvala-types'
+import type { SourceCodeInfo } from '../sourceCodeInfo'
 
 export function getSourceCodeInfo(
   anyValue: any,

@@ -1,6 +1,6 @@
 import type { IfNode } from '../../builtin/specialExpressions/if'
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import type { SymbolToken } from '../../tokenizer/token'
 import { assertReservedSymbolToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '@mojir/dvala-types'

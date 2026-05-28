@@ -12,7 +12,7 @@ import { getArityFromFunction, getCommonArityFromFunctions, toFixedArity } from 
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { asFunctionLike, assertFunctionLike } from '../../../typeGuards/dvala'
-import { TypeError } from '../../../errors'
+import { TypeError } from '@mojir/dvala-types'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
 import functionalModuleSource from './functional.dvala'

@@ -1,4 +1,4 @@
-import { AssertionError } from '../../errors'
+import { AssertionError } from '@mojir/dvala-types'
 import { assertString } from '../../typeGuards/string'
 import type { BuiltinNormalExpressions } from '../interface'
 

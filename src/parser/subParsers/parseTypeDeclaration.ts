@@ -12,7 +12,7 @@
  */
 
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import type { AliasParam, AstNode } from '@mojir/dvala-types'
 import { isOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'

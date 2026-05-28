@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getCodeMarker } from '../src/utils/debug/getCodeMarker'
+import { getCodeMarker } from '@mojir/dvala-types'
 
 describe('debugTools', () => {
   it('getCodeMarker', () => {

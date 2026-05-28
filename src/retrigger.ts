@@ -6,7 +6,7 @@
  */
 
 import type { Any } from '@mojir/dvala-types'
-import { DvalaError, RuntimeError } from './errors'
+import { DvalaError, RuntimeError } from '@mojir/dvala-types'
 import type { DvalaModule } from './builtin/modules/interface'
 import { retriggerWithEffects } from './evaluator/trampoline-evaluator'
 import { deserializeFromObject } from './evaluator/suspension'

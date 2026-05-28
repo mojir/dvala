@@ -10,7 +10,7 @@
  */
 
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import type { AstNode } from '@mojir/dvala-types'
 import { assertOperatorToken, isEffectNameToken, isLParenToken, isRParenToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'

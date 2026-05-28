@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
-import { DvalaError } from '../../../src/errors'
+import { DvalaError } from '@mojir/dvala-types'
 
 describe('object functions', () => {
   for (const dvala of [createDvala(), createDvala({ debug: true })]) {

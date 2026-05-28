@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
-import { DvalaError } from '../errors'
+import { DvalaError } from '@mojir/dvala-types'
 import { assertNumberOfParams, canBeOperator } from '../utils/arity'
 import { asNonUndefined, asUnknownRecord, assertNonUndefined, assertUnknownRecord, isUnknownRecord } from '.'
 

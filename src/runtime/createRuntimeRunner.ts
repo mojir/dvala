@@ -1,6 +1,6 @@
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { DvalaRunAsyncOptions, DvalaRunOptions, RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
-import { DvalaError } from '../errors'
+import { DvalaError } from '@mojir/dvala-types'
 import { createContextStack } from '../evaluator/ContextStack'
 import type { FileResolver } from '../evaluator/ContextStack'
 import type { Context } from '../evaluator/interface'

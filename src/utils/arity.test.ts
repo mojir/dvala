@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DvalaError } from '../errors'
+import { DvalaError } from '@mojir/dvala-types'
 import type { FunctionLike, BuiltinSymbolNode, NormalExpressionNodeWithName, NumberNode } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import {

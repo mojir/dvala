@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '@mojir/dvala-types'
-import { TypeError, UserError } from '../errors'
+import { TypeError, UserError } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'
 import { parse } from '../parser'
 import type { AstNode, NumberNode, StringNode } from '@mojir/dvala-types'

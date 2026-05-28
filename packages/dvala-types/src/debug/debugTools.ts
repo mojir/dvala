@@ -1,6 +1,6 @@
-import { isFunctionType, isNodeType } from '@mojir/dvala-types'
-import type { AstNode, DvalaFunction } from '@mojir/dvala-types'
-import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '@mojir/dvala-types'
+import { isFunctionType, isNodeType } from '../constants'
+import type { AstNode, DvalaFunction } from '../ast'
+import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '../symbols'
 
 function isDvalaFunction(func: unknown): func is DvalaFunction {
   if (func === null || typeof func !== 'object') return false

@@ -1,4 +1,4 @@
-import { RuntimeError } from '../errors'
+import { RuntimeError } from '@mojir/dvala-types'
 import type { AstNode, BindingTarget } from '@mojir/dvala-types'
 import { bindingTargetTypes } from '@mojir/dvala-types'
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { gridModule } from '../src/builtin/modules/grid'
-import { DvalaError } from '../src/errors'
+import { DvalaError } from '@mojir/dvala-types'
 
 const dvala = createDvala({ modules: [gridModule] })
 

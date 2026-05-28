@@ -1,9 +1,9 @@
 import type { Arity } from '@mojir/dvala-types'
-import { TypeError } from '../errors'
+import { TypeError } from '@mojir/dvala-types'
 import type { FunctionLike } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { isColl } from '../typeGuards/dvala'
-import { valueToString } from './debug/debugTools'
+import { valueToString } from '@mojir/dvala-types'
 
 export function arityAccepts(arity: Arity, nbrOfParams: number): boolean {
   const { min, max } = arity

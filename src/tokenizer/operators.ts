@@ -1,4 +1,4 @@
-import { TokenizerError } from '../errors'
+import { TokenizerError } from '@mojir/dvala-types'
 
 const binaryOperators = [
   '^', // exponentiation

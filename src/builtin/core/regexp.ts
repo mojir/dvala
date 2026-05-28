@@ -1,4 +1,4 @@
-import { RuntimeError } from '../../errors'
+import { RuntimeError } from '@mojir/dvala-types'
 import type { Arr } from '@mojir/dvala-types'
 import type { RegularExpression } from '@mojir/dvala-types'
 import { assertRegularExpression, assertStringOrRegularExpression, isRegularExpression } from '../../typeGuards/dvala'

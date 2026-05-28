@@ -1,8 +1,8 @@
 import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
 import { createDvala } from '../../src/createDvala'
-import type { UserError } from '../../src/errors'
-import { DvalaError, MatchError } from '../../src/errors'
+import type { UserError } from '@mojir/dvala-types'
+import { DvalaError, MatchError } from '@mojir/dvala-types'
 import { getUndefinedSymbols } from '../../src/tooling'
 
 const dvala = createDvala()

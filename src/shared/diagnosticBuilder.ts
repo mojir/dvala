@@ -9,7 +9,7 @@
  * passes them through to Monaco unchanged.
  */
 
-import type { ParseError } from '../errors'
+import type { ParseError } from '@mojir/dvala-types'
 import type { SymbolRef } from '../languageService/types'
 import type { TypecheckResult } from '../typechecker/typecheck'
 import type { Diagnostic, Range } from './types'

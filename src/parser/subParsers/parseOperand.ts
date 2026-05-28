@@ -1,7 +1,7 @@
 import type { SpecialExpressionName } from '@mojir/dvala-types'
 import { specialExpressionTypes } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
-import { ParseError } from '../../errors'
+import { ParseError } from '@mojir/dvala-types'
 import type {
   AstNode,
   BuiltinSymbolNode,

@@ -53,7 +53,7 @@ import {
   RuntimeError,
   TypeError,
   UserError,
-} from '../errors'
+} from '@mojir/dvala-types'
 import { reconstructCallStack } from './callStack'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '@mojir/dvala-types'
@@ -114,7 +114,7 @@ import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
 import { deepEqual, toAny } from '../utils'
 import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '../utils/arity'
-import { valueToString } from '../utils/debug/debugTools'
+import { valueToString } from '@mojir/dvala-types'
 import { assertValidHostValue, fromJS, toJS, validateFromJS } from '../utils/interop'
 import type { MaybePromise } from '../utils/maybePromise'
 import { ATOM_SYMBOL, FUNCTION_SYMBOL } from '@mojir/dvala-types'

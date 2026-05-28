@@ -1,4 +1,4 @@
-import { TypeError } from '../errors'
+import { TypeError } from '@mojir/dvala-types'
 import type { Any } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { isPersistentVector } from '@mojir/dvala-types'
