@@ -92,6 +92,11 @@ export * from './interop'
 export * from './maybePromise'
 export * from './docString/generateDocString'
 
+// Reference/API surface — canonical api registry + ApiName type unions +
+// Reference type family (FunctionReference, EffectReference, etc.)
+export * from './reference/api'
+export * from './reference/types'
+
 // Suspendable runtime entry points
 export * from './resume'
 export * from './retrigger'

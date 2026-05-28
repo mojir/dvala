@@ -1,4 +1,4 @@
-import type { EffectReference, FunctionReference } from '../../reference-shapes'
+import type { EffectReference, FunctionReference } from '../../reference/types'
 import { assertNonUndefined } from '@mojir/dvala-types'
 import { assertFunctionLike, isEffect } from '@mojir/dvala-types'
 import { isDvalaFunction } from '@mojir/dvala-types'

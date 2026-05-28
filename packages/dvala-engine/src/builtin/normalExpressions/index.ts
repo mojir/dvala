@@ -1,5 +1,6 @@
 import type { BuiltinNormalExpressions } from '../interface'
-import type { CoreNormalExpressionName, EffectReference, FunctionReference } from '../../reference-shapes'
+import type { CoreNormalExpressionName } from '../../reference/api'
+import type { EffectReference, FunctionReference } from '../../reference/types'
 
 // Core categories - always available
 import { assertionNormalExpression } from '../core/assertion'

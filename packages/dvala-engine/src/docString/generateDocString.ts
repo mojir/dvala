@@ -1,5 +1,6 @@
 import { smartTrim } from '../utils'
-import type { Argument, EffectReference, FunctionReference, TypedValue } from '../reference-shapes'
+import type { Argument, TypedValue } from '../builtin/interface'
+import type { EffectReference, FunctionReference } from '../reference/types'
 
 type DocStringSource = FunctionReference | EffectReference
 
