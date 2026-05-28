@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { parse, parseToAst as parseProgramAst } from '../parser'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
-import { builtin } from '../builtin'
+import { builtin } from '@mojir/dvala-engine'
 import { createDvala as createDvalaRaw } from '../createDvala'
 
 /**

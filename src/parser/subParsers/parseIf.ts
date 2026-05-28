@@ -1,4 +1,4 @@
-import type { IfNode } from '../../builtin/specialExpressions/if'
+import type { IfNode } from '@mojir/dvala-engine'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '@mojir/dvala-types'
 import type { SymbolToken } from '../../tokenizer/token'

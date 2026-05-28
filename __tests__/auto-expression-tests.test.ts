@@ -12,8 +12,8 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
-import { normalExpressions } from '../src/builtin/normalExpressions'
-import type { ExampleEntry, TypedValue } from '../src/builtin/interface'
+import { normalExpressions } from '@mojir/dvala-engine'
+import type { ExampleEntry, TypedValue } from '@mojir/dvala-engine'
 import { initReferenceData } from '../src/initReferenceData'
 initReferenceData()
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '@mojir/dvala-types'
-import { mathUtilsModule } from '../../../src/builtin/modules/math'
+import { mathUtilsModule } from '@mojir/dvala-engine'
 
 describe('math functions', () => {
   const dvala = createDvala()

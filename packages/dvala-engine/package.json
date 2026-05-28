@@ -15,5 +15,12 @@
   "scripts": {
     "build": "tsgo -p ./tsconfig.json",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mojir/dvala-runtime": "workspace:*",
+    "@mojir/dvala-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@mojir/dvala": "workspace:*"
   }
 }

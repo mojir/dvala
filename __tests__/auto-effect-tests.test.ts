@@ -17,18 +17,18 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
-import { resume as baseResume } from '../src/resume'
-import type { ResumeOptions } from '../src/resume'
+import { resume as baseResume } from '@mojir/dvala-engine'
+import type { ResumeOptions } from '@mojir/dvala-engine'
 // Wrapper that disables auto-checkpoint by default (tests care about value, not snapshots)
 function resumeContinuation(snapshot: Snapshot, value: Any, options?: ResumeOptions) {
   return baseResume(snapshot, value, { disableAutoCheckpoint: true, ...options })
 }
-import type { Snapshot } from '../src/evaluator/effectTypes'
-import { allStandardEffectDefinitions, standardEffectNames } from '../src/evaluator/standardEffects'
-import { qualifiedNameMatchesPattern, findMatchingHandlers } from '../src/evaluator/effectTypes'
-import { isDataType } from '../src/builtin/interface'
+import type { Snapshot } from '@mojir/dvala-engine'
+import { allStandardEffectDefinitions, standardEffectNames } from '@mojir/dvala-engine'
+import { qualifiedNameMatchesPattern, findMatchingHandlers } from '@mojir/dvala-engine'
+import { isDataType } from '@mojir/dvala-engine'
 import type { Any } from '@mojir/dvala-types'
-import { fromJS } from '../src/utils/interop'
+import { fromJS } from '@mojir/dvala-engine'
 import { allReference } from '../reference'
 import { initReferenceData } from '../src/initReferenceData'
 initReferenceData()

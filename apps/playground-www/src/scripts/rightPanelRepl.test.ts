@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from 'vitest'
-import { createContextStack } from '../../../../src/evaluator/ContextStack'
-import { createSnapshot } from '../../../../src/evaluator/effectTypes'
-import { serializeTerminalSnapshot, serializeToObject } from '../../../../src/evaluator/suspension'
+import { createContextStack } from '@mojir/dvala-engine'
+import { createSnapshot } from '@mojir/dvala-engine'
+import { serializeTerminalSnapshot, serializeToObject } from '@mojir/dvala-engine'
 import { cons } from '@mojir/dvala-types'
 import { extractSnapshotBindings } from './rightPanelReplBaseline'
 import { getReplPromptText, getReplPromptWidth } from './rightPanelReplPrompt'

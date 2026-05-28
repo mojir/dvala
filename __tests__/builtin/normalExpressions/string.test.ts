@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '@mojir/dvala-types'
-import { stringUtilsModule } from '../../../src/builtin/modules/string'
+import { stringUtilsModule } from '@mojir/dvala-engine'
 
 describe('string functions', () => {
   for (const dvala of [createDvala({}), createDvala({ debug: true })]) {

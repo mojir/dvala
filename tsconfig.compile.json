@@ -9,6 +9,7 @@
     "src/**/*",
     "packages/dvala-mcp-server/**/*",
     "packages/dvala-core-tooling/**/*",
+    "packages/dvala-engine/**/*",
     "packages/dvala-workspace-backend/**/*",
     "packages/dvala-cli/**/*",
     "apps/playground-www/**/*",

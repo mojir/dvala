@@ -1,1 +1,1 @@
-export { assertModule } from '../builtin/modules/assertion'
+export { assertModule } from '@mojir/dvala-engine'

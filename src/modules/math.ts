@@ -1,1 +1,1 @@
-export { mathUtilsModule } from '../builtin/modules/math'
+export { mathUtilsModule } from '@mojir/dvala-engine'

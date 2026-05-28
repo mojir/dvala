@@ -11,20 +11,20 @@ import {
   moduleReference,
   normalExpressionReference,
 } from '../reference'
-import { normalExpressionKeys, specialExpressionKeys, specialExpressions } from '../src/builtin'
+import { normalExpressionKeys, specialExpressionKeys, specialExpressions } from '@mojir/dvala-engine'
 import { isUnknownRecord } from '@mojir/dvala-types'
 import { canBeOperator } from '@mojir/dvala-types'
-import { normalExpressions } from '../src/builtin/normalExpressions'
+import { normalExpressions } from '@mojir/dvala-engine'
 import { isReservedSymbol } from '@mojir/dvala-types'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
-import { MODULE_DESCRIPTION_MAX_LENGTH } from '../src/builtin/modules/interface'
+import { MODULE_DESCRIPTION_MAX_LENGTH } from '@mojir/dvala-engine'
 import { specialExpressionTypes } from '@mojir/dvala-types'
 import { type ApiName, categories } from '../reference/api'
 import { initReferenceData } from '../src/initReferenceData'
 initReferenceData()
 import { getExamples, chapters } from '../reference/book'
-import type { HandlerRegistration } from '../src/evaluator/effectTypes'
+import type { HandlerRegistration } from '@mojir/dvala-engine'
 import type { Any } from '@mojir/dvala-types'
 
 const corePageExamples = [

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { astModule } from '../src/builtin/modules/ast'
-import { createContextStack } from '../src/evaluator/ContextStack'
-import { evaluateNode } from '../src/evaluator/trampoline-evaluator'
+import { astModule } from '@mojir/dvala-engine'
+import { createContextStack } from '@mojir/dvala-engine'
+import { evaluateNode } from '@mojir/dvala-engine'
 import { TypeError as DvalaTypeError } from '@mojir/dvala-types'
 import { prettyPrint } from '../src/prettyPrint'
 

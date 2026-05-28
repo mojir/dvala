@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../src/createDvala'
-import { collectionUtilsModule } from '../../src/builtin/modules/collection'
+import { collectionUtilsModule } from '@mojir/dvala-engine'
 
 const dvala = createDvala({ debug: true, modules: [collectionUtilsModule] })
 describe('determinant.', () => {

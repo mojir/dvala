@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resume as resumeContinuation } from '../src/resume'
+import { resume as resumeContinuation } from '@mojir/dvala-engine'
 import { createDvala } from '../src/createDvala'
 
 const dvala = createDvala()

@@ -3,7 +3,7 @@ import { buildSymbolTable } from './SymbolTableBuilder'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseRecoverable } from '../parser'
-import { builtin } from '../builtin'
+import { builtin } from '@mojir/dvala-engine'
 import { reservedSymbolRecord } from '@mojir/dvala-types'
 
 // Collect all builtin names — must mirror WorkspaceIndex.ts

@@ -4,7 +4,7 @@ import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { EXAMPLE_DESCRIPTION_MAX_LENGTH, examples } from '../reference/examples'
 import { tokenizeSource, parseTokenStream } from '../src/tooling'
-import type { HandlerRegistration } from '../src/evaluator/effectTypes'
+import type { HandlerRegistration } from '@mojir/dvala-engine'
 
 /**
  * Mock effect handlers for running examples.

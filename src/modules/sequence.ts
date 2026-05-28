@@ -1,1 +1,1 @@
-export { sequenceUtilsModule } from '../builtin/modules/sequence'
+export { sequenceUtilsModule } from '@mojir/dvala-engine'

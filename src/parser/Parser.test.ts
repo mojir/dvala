@@ -3,7 +3,7 @@ import { createDvala } from '../createDvala'
 import { getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../tooling'
 import { NodeTypes } from '@mojir/dvala-types'
 import { DvalaError, MatchError } from '@mojir/dvala-types'
-import { mathUtilsModule } from '../builtin/modules/math'
+import { mathUtilsModule } from '@mojir/dvala-engine'
 
 const dvala = createDvala()
 const dvalaDebug = createDvala({ debug: true })

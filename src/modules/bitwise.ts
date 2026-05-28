@@ -1,1 +1,1 @@
-export { bitwiseUtilsModule } from '../builtin/modules/bitwise'
+export { bitwiseUtilsModule } from '@mojir/dvala-engine'

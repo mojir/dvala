@@ -24,11 +24,11 @@
 
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { resume as baseResume } from '../src/resume'
-import type { ResumeOptions } from '../src/resume'
+import { resume as baseResume } from '@mojir/dvala-engine'
+import type { ResumeOptions } from '@mojir/dvala-engine'
 import type { Any } from '@mojir/dvala-types'
-import { fromJS } from '../src/utils/interop'
-import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
+import { fromJS } from '@mojir/dvala-engine'
+import type { Handlers, Snapshot } from '@mojir/dvala-engine'
 // Wrapper that disables auto-checkpoint by default (tests care about value, not snapshots)
 function resumeContinuation(snapshot: Snapshot, value: Any, options?: ResumeOptions) {
   return baseResume(snapshot, value, { disableAutoCheckpoint: true, ...options })

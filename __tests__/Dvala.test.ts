@@ -5,7 +5,7 @@ import { Cache } from '../src/Cache'
 import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, untokenize } from '../src/tooling'
 import type { Ast } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
-import { vectorModule } from '../src/builtin/modules/vector'
+import { vectorModule } from '@mojir/dvala-engine'
 
 describe('all tests', () => {
   describe('auto completer', () => {

@@ -1,4 +1,4 @@
-import type { LetNode } from '../../builtin/specialExpressions/let'
+import type { LetNode } from '@mojir/dvala-engine'
 import { NodeTypes } from '@mojir/dvala-types'
 import type { SymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'

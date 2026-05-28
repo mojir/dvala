@@ -14,7 +14,7 @@ import type {
   Reference,
   ShorthandReference,
 } from '.'
-import type { ExampleEntry } from '../src/builtin/interface'
+import type { ExampleEntry } from '@mojir/dvala-engine'
 import {
   allReference,
   isCustomReference,

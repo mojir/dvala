@@ -1,17 +1,18 @@
 import { AutoCompleter } from './AutoCompleter/AutoCompleter'
-import type { DvalaModule } from './builtin/modules/interface'
-import type { FileResolver } from './evaluator/ContextStack'
-import type { ParseSource } from './evaluator/interface'
+import type { DvalaModule } from '@mojir/dvala-engine'
+import type { FileResolver } from '@mojir/dvala-engine'
+import type { ParseSource } from '@mojir/dvala-engine'
 import type { RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
 import type { Ast } from '@mojir/dvala-types'
-import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
+import { initCoreDvalaSources } from '@mojir/dvala-engine'
 import type { DvalaBundle } from './bundler/interface'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './standaloneTooling'
 import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } from './typechecker/typecheck'
 import type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
 import { createRuntimeRunner } from './runtime/createRuntimeRunner'
 import { createAstBuilder } from './runtime/createAstBuilder'
-import { scopeToGlobalContext } from './runtime/scopeToGlobalContext'
+import { scopeToGlobalContext } from '@mojir/dvala-engine'
+import { prettyPrint } from './prettyPrint'
 import { parseToAst } from './parser'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { tokenize } from './tokenizer/tokenize'
@@ -137,6 +138,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       debug,
       allocateNodeId,
       parseSource,
+      prettyPrint,
       buildAst: astBuilder.buildAst,
       emitTypeDiagnostics,
       scopeToGlobalContext,

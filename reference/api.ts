@@ -1,5 +1,5 @@
-export { categories, coreCategoryDescriptions, coreCategories, isDataType } from '../src/builtin/interface'
-export type { Category, DataType } from '../src/builtin/interface'
+export { categories, coreCategoryDescriptions, coreCategories, isDataType } from '@mojir/dvala-engine'
+export type { Category, DataType } from '@mojir/dvala-engine'
 
 function getNumberTheorySequenceNames<T extends string>(
   name: T,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '@mojir/dvala-types'
-import { sequenceUtilsModule } from '../../../src/builtin/modules/sequence'
+import { sequenceUtilsModule } from '@mojir/dvala-engine'
 
 const dvala = createDvala()
 const dvalaInstances = [dvala, createDvala({ debug: true })]

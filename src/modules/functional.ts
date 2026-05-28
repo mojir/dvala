@@ -1,1 +1,1 @@
-export { functionalUtilsModule } from '../builtin/modules/functional'
+export { functionalUtilsModule } from '@mojir/dvala-engine'

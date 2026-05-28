@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import type { Snapshot } from '../src/evaluator/effectTypes'
-import { retrigger } from '../src/retrigger'
-import { resume } from '../src/resume'
+import type { Snapshot } from '@mojir/dvala-engine'
+import { retrigger } from '@mojir/dvala-engine'
+import { resume } from '@mojir/dvala-engine'
 
 const dvala = createDvala()
 

@@ -3,10 +3,10 @@ import { createDvala } from '../src/createDvala'
 import { AssertionError, DvalaError } from '@mojir/dvala-types'
 import { getAutoCompleter, getUndefinedSymbols } from '../src/tooling'
 import { AutoCompleter } from '../src/AutoCompleter/AutoCompleter'
-import { resume } from '../src/resume'
-import { retrigger } from '../src/retrigger'
-import { mathUtilsModule } from '../src/builtin/modules/math'
-import { miscNormalExpression } from '../src/builtin/core/misc'
+import { resume } from '@mojir/dvala-engine'
+import { retrigger } from '@mojir/dvala-engine'
+import { mathUtilsModule } from '@mojir/dvala-engine'
+import { miscNormalExpression } from '@mojir/dvala-engine'
 import {
   assertEffectNameToken,
   asEffectNameToken,
@@ -16,7 +16,7 @@ import {
 import { asUserDefinedSymbolNode } from '@mojir/dvala-types'
 import { splitSegments } from '../src/parser/subParsers/parseTemplateString'
 import { tokenizeSource } from '../src/tooling'
-import type { Snapshot } from '../src/evaluator/effectTypes'
+import type { Snapshot } from '@mojir/dvala-engine'
 import { initReferenceData } from '../src/initReferenceData'
 initReferenceData()
 

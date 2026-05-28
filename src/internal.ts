@@ -31,9 +31,9 @@ export type { ResolveImport } from './languageService/WorkspaceIndex'
 // ── Evaluator internals ──────────────────────────────────────────────────
 // Types and helpers needed by runtime adapters (workspace-backend, CLI).
 export { Debugger } from './debugger/Debugger'
-export { deserializeFromObject } from './evaluator/suspension'
-export type { ContextStack } from './evaluator/ContextStack'
-export type { ContinuationStack } from './evaluator/frames'
+export { deserializeFromObject } from '@mojir/dvala-engine'
+export type { ContextStack } from '@mojir/dvala-engine'
+export type { ContinuationStack } from '@mojir/dvala-engine'
 
 // ── Backend boundary ─────────────────────────────────────────────────────
 // Root-internal backend API surface for worker/server adapters. Not part of

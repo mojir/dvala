@@ -1,4 +1,4 @@
-import type { RunResult } from '../evaluator/effectTypes'
+import type { RunResult } from '@mojir/dvala-engine'
 
 type ReplHistoryEntry = { type: 'result'; value: unknown } | { type: 'error'; error: string }
 
