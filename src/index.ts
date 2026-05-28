@@ -10,7 +10,7 @@ export {
   isUserDefinedFunction,
   asUserDefinedFunction,
   assertUserDefinedFunction,
-} from './typeGuards/dvalaFunction'
+} from '@mojir/dvala-types'
 export { type BuiltinNormalExpressions } from './builtin/interface'
 export { type Arity } from '@mojir/dvala-types'
 export { type DvalaFunction } from '@mojir/dvala-types'
@@ -25,9 +25,9 @@ export { fromJS, toJS } from './utils/interop'
 export type { DvalaBundle } from './bundler/interface'
 export { isDvalaBundle } from './bundler/interface'
 export { type DvalaError, isDvalaError, type DvalaErrorJSON } from '@mojir/dvala-types'
-export { isGrid, isMatrix, isVector } from './typeGuards/annotatedCollections'
-export { isAtom, isEffect, isRegularExpression } from './typeGuards/dvala'
-export { asUnknownRecord } from './typeGuards'
+export { isGrid, isMatrix, isVector } from '@mojir/dvala-types'
+export { isAtom, isEffect, isRegularExpression } from '@mojir/dvala-types'
+export { asUnknownRecord } from '@mojir/dvala-types'
 export type { UnknownRecord } from '@mojir/dvala-types'
 export type { ExampleEntry } from './builtin/interface'
 export { prettyPrint } from './prettyPrint'

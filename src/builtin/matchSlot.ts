@@ -10,7 +10,7 @@
 import type { Any, Arr, Obj } from '@mojir/dvala-types'
 import type { AstNode, BindingTarget } from '@mojir/dvala-types'
 import { bindingTargetTypes } from '@mojir/dvala-types'
-import { asAny, isObj } from '../typeGuards/dvala'
+import { asAny, isObj } from '@mojir/dvala-types'
 import { isPersistentVector, PersistentMap, PersistentVector } from '@mojir/dvala-types'
 import type { BindingPathStep } from './bindingSlot'
 

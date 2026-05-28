@@ -1,9 +1,9 @@
-import type { Any, Arr, Coll, Obj, Seq } from '@mojir/dvala-types'
-import type { Atom, EffectRef, FunctionLike, RegularExpression } from '@mojir/dvala-types'
-import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { getAssertionError } from '../utils/getAssertionError'
-import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
-import { ATOM_SYMBOL, EFFECT_SYMBOL, REGEXP_SYMBOL } from '@mojir/dvala-types'
+import type { Any, Arr, Coll, Obj, Seq } from '../values'
+import type { Atom, EffectRef, FunctionLike, RegularExpression } from '../ast'
+import type { SourceCodeInfo } from '../sourceCodeInfo'
+import { getAssertionError } from '../getAssertionError'
+import { isPersistentMap, isPersistentVector } from '../persistent'
+import { ATOM_SYMBOL, EFFECT_SYMBOL, REGEXP_SYMBOL } from '../symbols'
 import { isDvalaFunction } from './dvalaFunction'
 
 export function isAny(value: unknown): value is Any {

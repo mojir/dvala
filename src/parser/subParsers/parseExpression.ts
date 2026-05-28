@@ -13,7 +13,7 @@ import {
   isSymbolToken,
 } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
-import { isSpecialSymbolNode } from '../../typeGuards/astNode'
+import { isSpecialSymbolNode } from '@mojir/dvala-types'
 import {
   binaryFunctionalOperatorPrecedence,
   createNamedNormalExpressionNode,

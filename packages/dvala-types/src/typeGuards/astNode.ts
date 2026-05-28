@@ -1,17 +1,15 @@
-import { NodeTypes } from '@mojir/dvala-types'
+import { NodeTypes } from '../constants'
+import type { AstNode, BuiltinSymbolNode, NormalExpressionNodeWithName } from '../ast'
 import type {
-  AstNode,
   ExpressionNode,
-  BuiltinSymbolNode,
   NormalExpressionNode,
-  NormalExpressionNodeWithName,
   SpecialSymbolNode,
   SpreadNode,
   SymbolNode,
   UserDefinedSymbolNode,
-} from '@mojir/dvala-types'
-import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { getAssertionError } from '../utils/getAssertionError'
+} from '../ast'
+import type { SourceCodeInfo } from '../sourceCodeInfo'
+import { getAssertionError } from '../getAssertionError'
 
 export function isSymbolNode(node: AstNode): node is SymbolNode {
   const nodeType = node[0]

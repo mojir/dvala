@@ -89,14 +89,14 @@ import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { reservedSymbolRecord } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
 import { tokenize } from '../tokenizer/tokenize'
-import { asNonUndefined } from '../typeGuards'
+import { asNonUndefined } from '@mojir/dvala-types'
 import {
   isBuiltinSymbolNode,
   isNormalExpressionNodeWithName,
   isSpreadNode,
   isUserDefinedSymbolNode,
-} from '../typeGuards/astNode'
-import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
+} from '@mojir/dvala-types'
+import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '@mojir/dvala-types'
 import {
   cons,
   isPersistentVector,
@@ -109,11 +109,11 @@ import {
   PersistentVector,
   PersistentMap,
 } from '@mojir/dvala-types'
-import { isDvalaFunction, isHandlerFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
-import { assertNumber, isNumber } from '../typeGuards/number'
-import { assertString } from '../typeGuards/string'
+import { isDvalaFunction, isHandlerFunction, isMacroFunction, isUserDefinedFunction } from '@mojir/dvala-types'
+import { assertNumber, isNumber } from '@mojir/dvala-types'
+import { assertString } from '@mojir/dvala-types'
 import { deepEqual, toAny } from '../utils'
-import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '../utils/arity'
+import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '@mojir/dvala-types'
 import { valueToString } from '@mojir/dvala-types'
 import { assertValidHostValue, fromJS, toJS, validateFromJS } from '../utils/interop'
 import type { MaybePromise } from '../utils/maybePromise'

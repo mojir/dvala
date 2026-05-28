@@ -16,8 +16,8 @@
 
 import type { Any } from '@mojir/dvala-types'
 import { isPersistentMap, isPersistentVector, PersistentMap, PersistentVector } from '@mojir/dvala-types'
-import { isAtom, isEffect, isRegularExpression } from '../typeGuards/dvala'
-import { isDvalaFunction } from '../typeGuards/dvalaFunction'
+import { isAtom, isEffect, isRegularExpression } from '@mojir/dvala-types'
+import { isDvalaFunction } from '@mojir/dvala-types'
 
 /**
  * Recursively validate that a host value can be represented in Dvala.

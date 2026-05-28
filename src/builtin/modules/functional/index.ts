@@ -8,10 +8,10 @@ import type {
   JuxtFunction,
   SomePredFunction,
 } from '@mojir/dvala-types'
-import { getArityFromFunction, getCommonArityFromFunctions, toFixedArity } from '../../../utils/arity'
+import { getArityFromFunction, getCommonArityFromFunctions, toFixedArity } from '@mojir/dvala-types'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../../interface'
-import { asFunctionLike, assertFunctionLike } from '../../../typeGuards/dvala'
+import { asFunctionLike, assertFunctionLike } from '@mojir/dvala-types'
 import { TypeError } from '@mojir/dvala-types'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'

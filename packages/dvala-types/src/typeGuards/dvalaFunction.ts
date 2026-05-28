@@ -1,13 +1,8 @@
-import type {
-  DvalaFunction,
-  HandlerFunction,
-  MacroFunction,
-  NormalBuiltinFunction,
-  UserDefinedFunction,
-} from '@mojir/dvala-types'
-import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { getAssertionError } from '../utils/getAssertionError'
-import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
+import type { DvalaFunction } from '../ast'
+import type { HandlerFunction, MacroFunction, NormalBuiltinFunction, UserDefinedFunction } from '../ast'
+import type { SourceCodeInfo } from '../sourceCodeInfo'
+import { getAssertionError } from '../getAssertionError'
+import { FUNCTION_SYMBOL } from '../symbols'
 import { isUnknownRecord } from '.'
 
 export function isDvalaFunction(value: unknown): value is DvalaFunction {

@@ -13,7 +13,7 @@ import {
   assertTemplateStringToken,
   asTemplateStringToken,
 } from '../src/tokenizer/token'
-import { asUserDefinedSymbolNode } from '../src/typeGuards/astNode'
+import { asUserDefinedSymbolNode } from '@mojir/dvala-types'
 import { splitSegments } from '../src/parser/subParsers/parseTemplateString'
 import { tokenizeSource } from '../src/tooling'
 import type { Snapshot } from '../src/evaluator/effectTypes'

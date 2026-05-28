@@ -1,7 +1,7 @@
-import { TypeError } from '@mojir/dvala-types'
-import type { Any } from '@mojir/dvala-types'
-import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { isPersistentVector } from '@mojir/dvala-types'
+import { TypeError } from '../errors'
+import type { Any } from '../values'
+import type { SourceCodeInfo } from '../sourceCodeInfo'
+import { isPersistentVector } from '../persistent'
 import { isNumber } from './number'
 
 const annotatedArrays = new WeakSet<unknown[]>()

@@ -12,8 +12,8 @@ import {
   normalExpressionReference,
 } from '../reference'
 import { normalExpressionKeys, specialExpressionKeys, specialExpressions } from '../src/builtin'
-import { isUnknownRecord } from '../src/typeGuards'
-import { canBeOperator } from '../src/utils/arity'
+import { isUnknownRecord } from '@mojir/dvala-types'
+import { canBeOperator } from '@mojir/dvala-types'
 import { normalExpressions } from '../src/builtin/normalExpressions'
 import { isReservedSymbol } from '@mojir/dvala-types'
 import { createDvala } from '../src/createDvala'

@@ -1,7 +1,7 @@
 import type { Any } from '@mojir/dvala-types'
 import type { AstNode } from '@mojir/dvala-types'
 import type { NodeTypes } from '@mojir/dvala-types'
-import { asAny } from '../../typeGuards/dvala'
+import { asAny } from '@mojir/dvala-types'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
 
 export type AndNode = [typeof NodeTypes.And, AstNode[], number]

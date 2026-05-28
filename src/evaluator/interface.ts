@@ -1,6 +1,6 @@
 import type { Any } from '@mojir/dvala-types'
 import type { AstNode } from '@mojir/dvala-types'
-import { isUnknownRecord } from '../typeGuards'
+import { isUnknownRecord } from '@mojir/dvala-types'
 import type { MaybePromise } from '../utils/maybePromise'
 import type { ContextStack } from './ContextStack'
 

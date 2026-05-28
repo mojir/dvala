@@ -1,8 +1,8 @@
 import type { Any, Arr } from '@mojir/dvala-types'
 import { ArithmeticError } from '@mojir/dvala-types'
-import { assertArray } from '../../../typeGuards/array'
-import { assertNumber } from '../../../typeGuards/number'
-import { toFixedArity } from '../../../utils/arity'
+import { assertArray } from '@mojir/dvala-types'
+import { assertNumber } from '@mojir/dvala-types'
+import { toFixedArity } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import { PersistentVector } from '@mojir/dvala-types'
 

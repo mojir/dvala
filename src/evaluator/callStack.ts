@@ -1,5 +1,5 @@
 import type { CallStackEntry } from '@mojir/dvala-types'
-import { isNormalExpressionNodeWithName } from '../typeGuards/astNode'
+import { isNormalExpressionNodeWithName } from '@mojir/dvala-types'
 import type { ContinuationStack } from './frames'
 
 /**

@@ -24,7 +24,7 @@ import {
   isSymbolToken,
   isTemplateStringToken,
 } from '../../tokenizer/token'
-import { isSpecialSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
+import { isSpecialSymbolNode, isUserDefinedSymbolNode } from '@mojir/dvala-types'
 import { getSymbolName, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { NodeTypes } from '@mojir/dvala-types'

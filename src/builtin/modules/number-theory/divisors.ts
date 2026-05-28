@@ -1,6 +1,6 @@
 import type { Any } from '@mojir/dvala-types'
-import { assertNumber } from '../../../typeGuards/number'
-import { toFixedArity } from '../../../utils/arity'
+import { assertNumber } from '@mojir/dvala-types'
+import { toFixedArity } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 
 function calcUnsortedDivisors(number: number): number[] {

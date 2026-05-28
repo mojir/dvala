@@ -1,9 +1,9 @@
 import type { Arr } from '@mojir/dvala-types'
-import { assertArray } from '../../typeGuards/array'
-import { asNumber, assertNumber } from '../../typeGuards/number'
+import { assertArray } from '@mojir/dvala-types'
+import { asNumber, assertNumber } from '@mojir/dvala-types'
 import { isPersistentVector, PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
-import { toFixedArity } from '../../utils/arity'
+import { toFixedArity } from '@mojir/dvala-types'
 
 /**
  * Recursively flatten an iterable, treating both PersistentVectors and plain

@@ -1,6 +1,6 @@
-import { isMatrix } from '../src/typeGuards/annotatedCollections'
-import { isAtom, isEffect, isRegularExpression } from '../src/typeGuards/dvala'
-import { isDvalaFunction } from '../src/typeGuards/dvalaFunction'
+import { isMatrix } from '@mojir/dvala-types'
+import { isAtom, isEffect, isRegularExpression } from '@mojir/dvala-types'
+import { isDvalaFunction } from '@mojir/dvala-types'
 
 export function stringifyValue(value: unknown, html: boolean): string {
   const gt = html ? '&gt;' : '>'
