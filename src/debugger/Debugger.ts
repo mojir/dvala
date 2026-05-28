@@ -1,9 +1,9 @@
 import type { AstNode, Any, CallStackEntry } from '@mojir/dvala-types'
-import type { Continuation } from '../evaluator/effectTypes'
+import type { Continuation } from '@mojir/dvala-engine'
 import type { RuntimeContinuation, RuntimeNodeEvalHook } from '@mojir/dvala-runtime'
-import { reconstructCallStack } from '../evaluator/callStack'
-import type { ContextStack } from '../evaluator/ContextStack'
-import type { Context } from '../evaluator/interface'
+import { reconstructCallStack } from '@mojir/dvala-engine'
+import type { ContextStack } from '@mojir/dvala-engine'
+import type { Context } from '@mojir/dvala-engine'
 
 // ---------------------------------------------------------------------------
 // Public types

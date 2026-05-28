@@ -1,4 +1,4 @@
-import type { MatchCase, MatchNode } from '../../builtin/specialExpressions/match'
+import type { MatchCase, MatchNode } from '@mojir/dvala-engine'
 import { type SymbolToken, assertReservedSymbolToken, isReservedSymbolToken } from '../../tokenizer/token'
 import { NodeTypes } from '@mojir/dvala-types'
 import type { ParserContext } from '../ParserContext'

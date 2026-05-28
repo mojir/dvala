@@ -11,17 +11,17 @@ export {
   asUserDefinedFunction,
   assertUserDefinedFunction,
 } from '@mojir/dvala-types'
-export { type BuiltinNormalExpressions } from './builtin/interface'
+export { type BuiltinNormalExpressions } from '@mojir/dvala-engine'
 export { type Arity } from '@mojir/dvala-types'
 export { type DvalaFunction } from '@mojir/dvala-types'
-export type { Context } from './evaluator/interface'
+export type { Context } from '@mojir/dvala-engine'
 export type { Ast } from '@mojir/dvala-types'
 export type { SourceCodeInfo } from '@mojir/dvala-types'
 export type { Token, TokenType } from './tokenizer/token'
-export { normalExpressionKeys, specialExpressionKeys } from './builtin'
-export type { DvalaModule } from './builtin/modules/interface'
+export { normalExpressionKeys, specialExpressionKeys } from '@mojir/dvala-engine'
+export type { DvalaModule } from '@mojir/dvala-engine'
 export type { Any } from '@mojir/dvala-types'
-export { fromJS, toJS } from './utils/interop'
+export { fromJS, toJS } from '@mojir/dvala-engine'
 export type { DvalaBundle } from './bundler/interface'
 export { isDvalaBundle } from './bundler/interface'
 export { type DvalaError, isDvalaError, type DvalaErrorJSON } from '@mojir/dvala-types'
@@ -29,17 +29,17 @@ export { isGrid, isMatrix, isVector } from '@mojir/dvala-types'
 export { isAtom, isEffect, isRegularExpression } from '@mojir/dvala-types'
 export { asUnknownRecord } from '@mojir/dvala-types'
 export type { UnknownRecord } from '@mojir/dvala-types'
-export type { ExampleEntry } from './builtin/interface'
+export type { ExampleEntry } from '@mojir/dvala-engine'
 export { prettyPrint } from './prettyPrint'
 export type { AutoCompleter, AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 
 // Effects — standalone resume/retrigger functions and types
-export { resume } from './resume'
-export type { ResumeOptions } from './resume'
-export { retrigger } from './retrigger'
-export type { RetriggerOptions } from './retrigger'
-export { hostHandler } from './evaluator/effectTypes'
-export { extractCheckpointSnapshots } from './evaluator/suspension'
+export { resume } from '@mojir/dvala-engine'
+export type { ResumeOptions } from '@mojir/dvala-engine'
+export { retrigger } from '@mojir/dvala-engine'
+export type { RetriggerOptions } from '@mojir/dvala-engine'
+export { hostHandler } from '@mojir/dvala-engine'
+export { extractCheckpointSnapshots } from '@mojir/dvala-engine'
 export type {
   EffectContext,
   EffectHandler,
@@ -47,13 +47,13 @@ export type {
   Handlers,
   RunResult,
   Snapshot,
-} from './evaluator/effectTypes'
-export { standardEffectNames } from './evaluator/standardEffects'
+} from '@mojir/dvala-engine'
+export { standardEffectNames } from '@mojir/dvala-engine'
 
 // Factory API
 export { createDvala } from './createDvala'
 export type { CreateDvalaOptions, DvalaRunOptions, DvalaRunAsyncOptions, DvalaRunner } from './createDvala'
-export type { FileResolver } from './evaluator/ContextStack'
+export type { FileResolver } from '@mojir/dvala-engine'
 export { createPackageRuntimeBridge } from './runtime/createPackageRuntimeBridge'
 export type { CreatePackageRuntimeBridgeOptions, RuntimeArtifactBridge } from './runtime/createPackageRuntimeBridge'
 

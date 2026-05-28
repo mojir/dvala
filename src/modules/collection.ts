@@ -1,1 +1,1 @@
-export { collectionUtilsModule } from '../builtin/modules/collection'
+export { collectionUtilsModule } from '@mojir/dvala-engine'

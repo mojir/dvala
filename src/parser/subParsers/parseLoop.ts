@@ -1,4 +1,4 @@
-import type { LoopNode } from '../../builtin/specialExpressions/loop'
+import type { LoopNode } from '@mojir/dvala-engine'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '@mojir/dvala-types'
 import type { AstNode, BindingTarget } from '@mojir/dvala-types'

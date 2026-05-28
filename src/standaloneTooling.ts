@@ -11,13 +11,13 @@
  * `@mojir/dvala/tooling` continue to receive these symbols unchanged.
  */
 
-import { builtin } from './builtin'
+import { builtin } from '@mojir/dvala-engine'
 import { AutoCompleter } from './AutoCompleter/AutoCompleter'
 import type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
-import { standardEffectNames } from './evaluator/standardEffects'
-import { createContextStack } from './evaluator/ContextStack'
-import { getUndefinedSymbols as getUndefinedSymbolsInternal } from './getUndefinedSymbols'
-import type { DvalaModule } from './builtin/modules/interface'
+import { standardEffectNames } from '@mojir/dvala-engine'
+import { createContextStack } from '@mojir/dvala-engine'
+import { getUndefinedSymbols as getUndefinedSymbolsInternal } from '@mojir/dvala-engine'
+import type { DvalaModule } from '@mojir/dvala-engine'
 import { tokenize } from './tokenizer/tokenize'
 import type { TokenStream } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
@@ -65,7 +65,7 @@ export function getUndefinedSymbols(
   const globalContext = options?.scope
     ? Object.fromEntries(Object.keys(options.scope).map(k => [k, { value: null }]))
     : undefined
-  const contextStack = createContextStack({ globalContext }, modulesMap)
+  const contextStack = createContextStack({ globalContext, modules: modulesMap })
   const tokenStream = tokenize(source, false, undefined)
   const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
   const ast: Ast = parseToAst(minified)

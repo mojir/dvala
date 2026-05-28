@@ -2,8 +2,8 @@
 import { describe, it } from 'vitest'
 import { createDvala } from '../createDvala'
 import { parseTokenStream, tokenizeSource } from '../tooling'
-import { evaluate } from '../evaluator/trampoline-evaluator'
-import { createContextStack } from '../evaluator/ContextStack'
+import { evaluate } from '@mojir/dvala-engine'
+import { createContextStack } from '@mojir/dvala-engine'
 
 const dvala = createDvala()
 

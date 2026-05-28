@@ -1,5 +1,5 @@
 import type { DvalaBundle } from '../bundler/interface'
-import type { DvalaModule } from '../builtin/modules/interface'
+import type { DvalaModule } from '@mojir/dvala-engine'
 import type { CreateDvalaOptions } from '../createDvala'
 import {
   type DvalaRunAsyncOptions,
@@ -11,7 +11,7 @@ import {
   type RuntimeSnapshot,
 } from '@mojir/dvala-runtime'
 import { createDvala } from '../createDvala'
-import { resume, type ResumeOptions } from '../resume'
+import { resume, type ResumeOptions } from '@mojir/dvala-engine'
 
 export type BridgeRunnerOptions = Pick<
   CreateDvalaOptions,

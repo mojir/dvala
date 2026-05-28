@@ -25,12 +25,12 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { resume as baseResume } from '../src/resume'
-import type { ResumeOptions } from '../src/resume'
+import { resume as baseResume } from '@mojir/dvala-engine'
+import type { ResumeOptions } from '@mojir/dvala-engine'
 import { createDvala } from '../src/createDvala'
 import type { Any } from '@mojir/dvala-types'
-import { fromJS } from '../src/utils/interop'
-import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
+import { fromJS } from '@mojir/dvala-engine'
+import type { Handlers, Snapshot } from '@mojir/dvala-engine'
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
 

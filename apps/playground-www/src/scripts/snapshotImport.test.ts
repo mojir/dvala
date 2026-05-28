@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { Snapshot } from '../../../../src/evaluator/effectTypes'
+import type { Snapshot } from '@mojir/dvala-engine'
 import { importSnapshotFromJsonText } from './snapshotImport'
 
 function makeSnapshot(): Snapshot {

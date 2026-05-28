@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '@mojir/dvala-types'
-import { createContextStack } from '../src/evaluator/ContextStack'
+import { createContextStack } from '@mojir/dvala-engine'
 import type { SpecialSymbolNode } from '@mojir/dvala-types'
 
 describe('contextStack', () => {

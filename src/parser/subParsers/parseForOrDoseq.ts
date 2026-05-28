@@ -1,5 +1,5 @@
-import { getAllBindingTargetNames } from '../../builtin/bindingNode'
-import type { ForNode, LoopBindingNode } from '../../builtin/specialExpressions/loops'
+import { getAllBindingTargetNames } from '@mojir/dvala-engine'
+import type { ForNode, LoopBindingNode } from '@mojir/dvala-engine'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '@mojir/dvala-types'
 import type { AstNode, BindingTarget } from '@mojir/dvala-types'

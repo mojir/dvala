@@ -1,1 +1,1 @@
-export { vectorModule } from '../builtin/modules/vector'
+export { vectorModule } from '@mojir/dvala-engine'

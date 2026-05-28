@@ -1,14 +1,14 @@
-import type { DvalaModule } from '../builtin/modules/interface'
+import type { DvalaModule } from '@mojir/dvala-engine'
 import type { DvalaRunAsyncOptions, DvalaRunOptions, RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
 import { DvalaError } from '@mojir/dvala-types'
-import { createContextStack } from '../evaluator/ContextStack'
-import type { FileResolver } from '../evaluator/ContextStack'
-import type { Context, ParseSource } from '../evaluator/interface'
-import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from '../evaluator/trampoline-evaluator'
+import { createContextStack } from '@mojir/dvala-engine'
+import type { FileResolver } from '@mojir/dvala-engine'
+import type { Context, ParseSource, PrettyPrint } from '@mojir/dvala-engine'
+import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from '@mojir/dvala-engine'
 import type { Ast, SourceMap } from '@mojir/dvala-types'
 import type { DvalaBundle } from '../bundler/interface'
 import { isDvalaBundle } from '../bundler/interface'
-import { toJS } from '../utils/interop'
+import { toJS } from '@mojir/dvala-engine'
 
 interface RuntimeExecutionRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
@@ -24,6 +24,7 @@ interface CreateRuntimeRunnerOptions {
   debug: boolean
   allocateNodeId: () => number
   parseSource: ParseSource
+  prettyPrint: PrettyPrint
   buildAst: (source: string, filePath?: string, forceDebug?: boolean) => Ast
   emitTypeDiagnostics: (ast: Ast) => void
   scopeToGlobalContext: (scope?: Record<string, unknown>) => Context | undefined
@@ -52,17 +53,15 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
 
       assertNotPureWithHandlers(pure, effectHandlers)
 
-      const contextStack = createContextStack(
-        { globalContext: options.scopeToGlobalContext(runOptions?.scope) },
-        options.modules,
+      const contextStack = createContextStack({
+        globalContext: options.scopeToGlobalContext(runOptions?.scope),
+        modules: options.modules,
         pure,
-        undefined,
-        options.factoryFileResolver,
-        options.factoryFileResolverBaseDir,
-        undefined,
-        undefined,
-        options.parseSource,
-      )
+        fileResolver: options.factoryFileResolver,
+        currentFileDir: options.factoryFileResolverBaseDir,
+        parseSource: options.parseSource,
+        prettyPrint: options.prettyPrint,
+      })
 
       if (isDvalaBundle(source)) {
         const ast = source.ast
@@ -98,17 +97,17 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
       try {
         const forceDebug = !!runOptions?.onNodeEval
         const effectiveDebug = options.debug || forceDebug
-        const contextStack = createContextStack(
-          { globalContext: options.scopeToGlobalContext(runOptions?.scope) },
-          options.modules,
+        const contextStack = createContextStack({
+          globalContext: options.scopeToGlobalContext(runOptions?.scope),
+          modules: options.modules,
           pure,
-          undefined,
-          options.factoryFileResolver,
-          options.factoryFileResolverBaseDir,
-          effectiveDebug ? options.allocateNodeId : undefined,
-          effectiveDebug,
-          options.parseSource,
-        )
+          fileResolver: options.factoryFileResolver,
+          currentFileDir: options.factoryFileResolverBaseDir,
+          allocateNodeId: effectiveDebug ? options.allocateNodeId : undefined,
+          debug: effectiveDebug,
+          parseSource: options.parseSource,
+          prettyPrint: options.prettyPrint,
+        })
 
         const ast = isDvalaBundle(source) ? source.ast : options.buildAst(source, runOptions?.filePath, forceDebug)
         if (!isDvalaBundle(source)) {

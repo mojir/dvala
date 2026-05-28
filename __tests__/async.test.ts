@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import type { RunResult } from '../src/evaluator/effectTypes'
+import type { RunResult } from '@mojir/dvala-engine'
 import type { DvalaFunction } from '@mojir/dvala-types'
 
 function value(result: RunResult): unknown {

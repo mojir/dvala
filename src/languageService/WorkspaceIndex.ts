@@ -21,7 +21,7 @@
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseRecoverable } from '../parser'
-import { builtin } from '../builtin'
+import { builtin } from '@mojir/dvala-engine'
 import { reservedSymbolRecord } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import type { AstNode, SourceMap } from '@mojir/dvala-types'

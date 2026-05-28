@@ -1,1 +1,1 @@
-export { stringUtilsModule } from '../builtin/modules/string'
+export { stringUtilsModule } from '@mojir/dvala-engine'

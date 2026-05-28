@@ -1,6 +1,9 @@
 import type { Ast } from '@mojir/dvala-types'
-import { toNonNegativeInteger } from './utils'
 import { valueToString } from '@mojir/dvala-types'
+
+function toNonNegativeInteger(num: number): number {
+  return Math.max(0, Math.ceil(num))
+}
 
 interface CacheEntry {
   key: string

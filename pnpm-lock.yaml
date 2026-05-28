@@ -11,6 +11,9 @@ importers:
 
   .:
     dependencies:
+      '@mojir/dvala-engine':
+        specifier: workspace:*
+        version: link:packages/dvala-engine
       '@mojir/dvala-runtime':
         specifier: workspace:*
         version: link:packages/dvala-runtime
@@ -102,6 +105,9 @@ importers:
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../../packages/dvala-core-tooling
+      '@mojir/dvala-engine':
+        specifier: workspace:*
+        version: link:../../packages/dvala-engine
       '@mojir/dvala-workspace-backend':
         specifier: workspace:*
         version: link:../../packages/dvala-workspace-backend
@@ -127,7 +133,18 @@ importers:
         specifier: workspace:*
         version: link:../..
 
-  packages/dvala-engine: {}
+  packages/dvala-engine:
+    dependencies:
+      '@mojir/dvala-runtime':
+        specifier: workspace:*
+        version: link:../dvala-runtime
+      '@mojir/dvala-types':
+        specifier: workspace:*
+        version: link:../dvala-types
+    devDependencies:
+      '@mojir/dvala':
+        specifier: workspace:*
+        version: link:../..
 
   packages/dvala-mcp-server:
     dependencies:
@@ -150,6 +167,9 @@ importers:
 
   vscode-dvala:
     dependencies:
+      '@mojir/dvala-engine':
+        specifier: workspace:*
+        version: link:../packages/dvala-engine
       '@vscode/debugadapter':
         specifier: ^1.68.0
         version: 1.68.0

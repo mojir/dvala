@@ -1,1 +1,1 @@
-export { matrixModule } from '../builtin/modules/matrix'
+export { matrixModule } from '@mojir/dvala-engine'

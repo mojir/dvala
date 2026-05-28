@@ -12,18 +12,18 @@ initReferenceData()
 export { allBuiltinModules } from './allModules'
 
 // Individual module re-exports
-export { assertModule } from './builtin/modules/assertion'
-export { gridModule } from './builtin/modules/grid'
-export { vectorModule } from './builtin/modules/vector'
-export { linearAlgebraModule } from './builtin/modules/linear-algebra'
-export { matrixModule } from './builtin/modules/matrix'
-export { numberTheoryModule } from './builtin/modules/number-theory'
-export { mathUtilsModule } from './builtin/modules/math'
-export { functionalUtilsModule } from './builtin/modules/functional'
-export { bitwiseUtilsModule } from './builtin/modules/bitwise'
-export { jsonModule } from './builtin/modules/json'
-export { macrosModule } from './builtin/modules/macros'
-export { timeModule } from './builtin/modules/time'
+export { assertModule } from '@mojir/dvala-engine'
+export { gridModule } from '@mojir/dvala-engine'
+export { vectorModule } from '@mojir/dvala-engine'
+export { linearAlgebraModule } from '@mojir/dvala-engine'
+export { matrixModule } from '@mojir/dvala-engine'
+export { numberTheoryModule } from '@mojir/dvala-engine'
+export { mathUtilsModule } from '@mojir/dvala-engine'
+export { functionalUtilsModule } from '@mojir/dvala-engine'
+export { bitwiseUtilsModule } from '@mojir/dvala-engine'
+export { jsonModule } from '@mojir/dvala-engine'
+export { macrosModule } from '@mojir/dvala-engine'
+export { timeModule } from '@mojir/dvala-engine'
 
 // Reference data and types
 export {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
 import { DvalaError, KeyError } from '@mojir/dvala-types'
-import { collectionUtilsModule } from '../../../src/builtin/modules/collection'
+import { collectionUtilsModule } from '@mojir/dvala-engine'
 
 const dvala = createDvala()
 

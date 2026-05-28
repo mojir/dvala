@@ -1,1 +1,1 @@
-export { numberTheoryModule } from '../builtin/modules/number-theory'
+export { numberTheoryModule } from '@mojir/dvala-engine'

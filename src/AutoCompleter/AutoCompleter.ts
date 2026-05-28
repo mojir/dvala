@@ -1,4 +1,4 @@
-import { normalExpressionKeys, specialExpressionKeys } from '../builtin'
+import { normalExpressionKeys, specialExpressionKeys } from '@mojir/dvala-engine'
 import { tokenize } from '../tokenizer/tokenize'
 import { reservedSymbolRecord } from '@mojir/dvala-types'
 

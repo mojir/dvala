@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { astModule } from '../src/builtin/modules/ast'
+import { astModule } from '@mojir/dvala-engine'
 
 const dvala = createDvala({ modules: [astModule] })
 const run = (code: string) => dvala.run(code)

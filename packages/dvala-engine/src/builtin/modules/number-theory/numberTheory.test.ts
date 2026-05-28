@@ -1,0 +1,377 @@
+import { describe, expect, it } from 'vitest'
+import { createDvala } from '@mojir/dvala'
+import { DvalaError } from '@mojir/dvala-types'
+import { numberTheoryModule } from '.'
+
+const dvala = createDvala({ modules: [numberTheoryModule] })
+
+function runNth(code: string) {
+  return dvala.run(`let nt = import("numberTheory"); ${code.replace(/nth:/g, 'nt.')}`)
+}
+describe('number theory', () => {
+  describe('nth:isCoprime', () => {
+    it('should return true if two numbers are coprime', () => {
+      expect(runNth('nth:isCoprime(1, 1)')).toEqual(true)
+      expect(runNth('nth:isCoprime(2, 3)')).toEqual(true)
+      expect(runNth('nth:isCoprime(4, 6)')).toEqual(false)
+      expect(runNth('nth:isCoprime(8, 12)')).toEqual(false)
+      expect(runNth('nth:isCoprime(10, 15)')).toEqual(false)
+      expect(runNth('nth:isCoprime(100, 200)')).toEqual(false)
+    })
+  })
+  describe('nth:isDivisibleBy', () => {
+    it('should return true if divisible by', () => {
+      expect(runNth('nth:isDivisibleBy(2, 1)')).toEqual(true)
+      expect(runNth('nth:isDivisibleBy(7, 2)')).toEqual(false)
+      expect(runNth('nth:isDivisibleBy(6, 3)')).toEqual(true)
+      expect(runNth('nth:isDivisibleBy(8, 4)')).toEqual(true)
+      expect(runNth('nth:isDivisibleBy(9, 3)')).toEqual(true)
+      expect(runNth('nth:isDivisibleBy(10, 5)')).toEqual(true)
+      expect(runNth('nth:isDivisibleBy(11, 5)')).toEqual(false)
+      expect(runNth('nth:isDivisibleBy(11, 0)')).toEqual(false)
+      expect(() => runNth('nth:isDivisibleBy(2.5, 0.5)')).toThrow(DvalaError)
+    })
+  })
+  describe('nth:gcd', () => {
+    it('should return the gcd of two numbers', () => {
+      expect(runNth('nth:gcd(1, 1)')).toEqual(1)
+      expect(runNth('nth:gcd(2, 3)')).toEqual(1)
+      expect(runNth('nth:gcd(4, 6)')).toEqual(2)
+      expect(runNth('nth:gcd(8, 12)')).toEqual(4)
+      expect(runNth('nth:gcd(10, 15)')).toEqual(5)
+      expect(runNth('nth:gcd(100, 200)')).toEqual(100)
+    })
+  })
+  describe('nth:lcm', () => {
+    it('should return the lcm of two numbers', () => {
+      expect(runNth('nth:lcm(1, 1)')).toEqual(1)
+      expect(runNth('nth:lcm(2, 3)')).toEqual(6)
+      expect(runNth('nth:lcm(4, 6)')).toEqual(12)
+      expect(runNth('nth:lcm(8, 12)')).toEqual(24)
+      expect(runNth('nth:lcm(10, 15)')).toEqual(30)
+      expect(runNth('nth:lcm(100, 200)')).toEqual(200)
+    })
+  })
+  describe('nth:multinomial', () => {
+    it('should return the multinomial coefficient of a list of numbers', () => {
+      // Basic cases
+      expect(runNth('nth:multinomial(1)')).toEqual(1)
+      expect(runNth('nth:multinomial(1, 1)')).toEqual(2)
+      expect(runNth('nth:multinomial(1, 1, 1)')).toEqual(6)
+      expect(runNth('nth:multinomial(2, 3)')).toEqual(10)
+      expect(runNth('nth:multinomial(2, 1, 3)')).toEqual(60)
+
+      // Larger numbers
+      expect(runNth('nth:multinomial(4, 2, 1)')).toEqual(105)
+      expect(runNth('nth:multinomial(5, 5)')).toEqual(252)
+      expect(runNth('nth:multinomial(10, 5)')).toEqual(3003)
+      expect(runNth('nth:multinomial(3, 4, 5, 6)')).toEqual(514594080)
+
+      // Edge cases
+      expect(runNth('nth:multinomial(0, 0)')).toEqual(1) // 0!/0!0! = 1
+      expect(runNth('nth:multinomial(0, 0, 0)')).toEqual(1)
+      expect(runNth('nth:multinomial(0, 5)')).toEqual(1) // 5!/5!0! = 1
+      expect(runNth('nth:multinomial(5, 0)')).toEqual(1) // 5!/5!0! = 1
+
+      // One parameter case
+      expect(runNth('nth:multinomial(0)')).toEqual(1)
+      expect(runNth('nth:multinomial(5)')).toEqual(1) // 5!/5! = 1
+
+      // Mixed cases
+      expect(runNth('nth:multinomial(1, 0, 1)')).toEqual(2)
+      expect(runNth('nth:multinomial(2, 0, 2)')).toEqual(6)
+    })
+  })
+
+  describe('nth:isAmicable', () => {
+    it('should return true if two numbers are amicable', () => {
+      expect(runNth('nth:isAmicable(220, 284)')).toEqual(true)
+      expect(runNth('nth:isAmicable(1184, 1210)')).toEqual(true)
+      expect(runNth('nth:isAmicable(2620, 2924)')).toEqual(true)
+      expect(runNth('nth:isAmicable(5020, 5564)')).toEqual(true)
+      expect(runNth('nth:isAmicable(6232, 6368)')).toEqual(true)
+      expect(runNth('nth:isAmicable(1210, 1184)')).toEqual(true)
+      expect(runNth('nth:isAmicable(284, 220)')).toEqual(true)
+      expect(runNth('nth:isAmicable(6, 28)')).toEqual(false)
+      expect(runNth('nth:isAmicable(12, 28)')).toEqual(false)
+      expect(runNth('nth:isAmicable(28, 6)')).toEqual(false)
+      expect(runNth('nth:isAmicable(220, 220)')).toEqual(false)
+      expect(runNth('nth:isAmicable(1, 1)')).toEqual(false)
+      expect(runNth('nth:isAmicable(2, 2)')).toEqual(false)
+      expect(() => runNth('nth:isAmicable(0, 0)')).toThrow(DvalaError)
+    })
+  })
+
+  describe('nth:eulerTotient', () => {
+    it('should return the euler totient of a number', () => {
+      expect(runNth('nth:eulerTotient(1)')).toEqual(1)
+      expect(runNth('nth:eulerTotient(2)')).toEqual(1)
+      expect(runNth('nth:eulerTotient(3)')).toEqual(2)
+      expect(runNth('nth:eulerTotient(4)')).toEqual(2)
+      expect(runNth('nth:eulerTotient(5)')).toEqual(4)
+      expect(runNth('nth:eulerTotient(6)')).toEqual(2)
+      expect(runNth('nth:eulerTotient(7)')).toEqual(6)
+      expect(runNth('nth:eulerTotient(8)')).toEqual(4)
+      expect(runNth('nth:eulerTotient(9)')).toEqual(6)
+      expect(runNth('nth:eulerTotient(10)')).toEqual(4)
+      expect(runNth('nth:eulerTotient(11)')).toEqual(10)
+      expect(runNth('nth:eulerTotient(12)')).toEqual(4)
+      expect(runNth('nth:eulerTotient(13)')).toEqual(12)
+      expect(runNth('nth:eulerTotient(14)')).toEqual(6)
+      expect(runNth('nth:eulerTotient(15)')).toEqual(8)
+      expect(runNth('nth:eulerTotient(16)')).toEqual(8)
+      expect(runNth('nth:eulerTotient(17)')).toEqual(16)
+      expect(runNth('nth:eulerTotient(18)')).toEqual(6)
+      expect(runNth('nth:eulerTotient(19)')).toEqual(18)
+      expect(runNth('nth:eulerTotient(20)')).toEqual(8)
+    })
+  })
+
+  describe('nth:mobius', () => {
+    it('should return the mobius function of a number', () => {
+      expect(runNth('nth:mobius(1)')).toEqual(1)
+      expect(runNth('nth:mobius(2)')).toEqual(-1)
+      expect(runNth('nth:mobius(3)')).toEqual(-1)
+      expect(runNth('nth:mobius(4)')).toEqual(0)
+      expect(runNth('nth:mobius(5)')).toEqual(-1)
+      expect(runNth('nth:mobius(6)')).toEqual(1)
+      expect(runNth('nth:mobius(7)')).toEqual(-1)
+      expect(runNth('nth:mobius(8)')).toEqual(0)
+      expect(runNth('nth:mobius(9)')).toEqual(0)
+      expect(runNth('nth:mobius(10)')).toEqual(1)
+      expect(runNth('nth:mobius(11)')).toEqual(-1)
+      expect(runNth('nth:mobius(12)')).toEqual(0)
+      expect(runNth('nth:mobius(13)')).toEqual(-1)
+      expect(runNth('nth:mobius(14)')).toEqual(1)
+      expect(runNth('nth:mobius(15)')).toEqual(1)
+      expect(runNth('nth:mobius(16)')).toEqual(0)
+      expect(runNth('nth:mobius(17)')).toEqual(-1)
+      expect(runNth('nth:mobius(18)')).toEqual(0)
+      expect(runNth('nth:mobius(19)')).toEqual(-1)
+      expect(runNth('nth:mobius(20)')).toEqual(0)
+      expect(runNth('nth:mobius(21)')).toEqual(1)
+      expect(runNth('nth:mobius(22)')).toEqual(1)
+      expect(runNth('nth:mobius(23)')).toEqual(-1)
+      expect(runNth('nth:mobius(24)')).toEqual(0)
+      expect(runNth('nth:mobius(25)')).toEqual(0)
+      expect(runNth('nth:mobius(30)')).toEqual(-1)
+      expect(runNth('nth:mobius(42)')).toEqual(-1)
+      expect(runNth('nth:mobius(60)')).toEqual(0)
+      expect(runNth('nth:mobius(75)')).toEqual(0)
+      expect(runNth('nth:mobius(98)')).toEqual(0)
+      expect(runNth('nth:mobius(105)')).toEqual(-1)
+      expect(runNth('nth:mobius(210)')).toEqual(1)
+      expect(runNth('nth:mobius(997)')).toEqual(-1)
+      expect(runNth('nth:mobius(999)')).toEqual(0)
+      expect(runNth('nth:mobius(1000)')).toEqual(0)
+      expect(runNth('nth:mobius(2310)')).toEqual(-1)
+      expect(runNth('nth:mobius(30030)')).toEqual(1)
+    })
+  })
+  describe('nth:mertens', () => {
+    it('should return the mertens function of a number', () => {
+      expect(runNth('nth:mertens(1)')).toEqual(1)
+      expect(runNth('nth:mertens(2)')).toEqual(0)
+      expect(runNth('nth:mertens(3)')).toEqual(-1)
+      expect(runNth('nth:mertens(4)')).toEqual(-1)
+      expect(runNth('nth:mertens(5)')).toEqual(-2)
+      expect(runNth('nth:mertens(6)')).toEqual(-1)
+      expect(runNth('nth:mertens(7)')).toEqual(-2)
+      expect(runNth('nth:mertens(8)')).toEqual(-2)
+      expect(runNth('nth:mertens(9)')).toEqual(-2)
+      expect(runNth('nth:mertens(10)')).toEqual(-1)
+      expect(runNth('nth:mertens(11)')).toEqual(-2)
+      expect(runNth('nth:mertens(12)')).toEqual(-2)
+      expect(runNth('nth:mertens(13)')).toEqual(-3)
+      expect(runNth('nth:mertens(14)')).toEqual(-2)
+      expect(runNth('nth:mertens(15)')).toEqual(-1)
+      expect(runNth('nth:mertens(16)')).toEqual(-1)
+      expect(runNth('nth:mertens(17)')).toEqual(-2)
+      expect(runNth('nth:mertens(18)')).toEqual(-2)
+      expect(runNth('nth:mertens(19)')).toEqual(-3)
+      expect(runNth('nth:mertens(20)')).toEqual(-3)
+      expect(runNth('nth:mertens(21)')).toEqual(-2)
+      expect(runNth('nth:mertens(22)')).toEqual(-1)
+      expect(runNth('nth:mertens(23)')).toEqual(-2)
+      expect(runNth('nth:mertens(24)')).toEqual(-2)
+      expect(runNth('nth:mertens(25)')).toEqual(-2)
+      expect(runNth('nth:mertens(30)')).toEqual(-3)
+      expect(runNth('nth:mertens(42)')).toEqual(-2)
+      expect(runNth('nth:mertens(60)')).toEqual(-1)
+      expect(runNth('nth:mertens(75)')).toEqual(-3)
+      expect(runNth('nth:mertens(98)')).toEqual(1)
+    })
+  })
+  describe('nth:sigma', () => {
+    it('should return the sigma function of a number', () => {
+      expect(runNth('nth:sigma(1)')).toEqual(1)
+      expect(runNth('nth:sigma(2)')).toEqual(3)
+      expect(runNth('nth:sigma(3)')).toEqual(4)
+      expect(runNth('nth:sigma(4)')).toEqual(7)
+      expect(runNth('nth:sigma(5)')).toEqual(6)
+      expect(runNth('nth:sigma(6)')).toEqual(12)
+      expect(runNth('nth:sigma(7)')).toEqual(8)
+      expect(runNth('nth:sigma(8)')).toEqual(15)
+      expect(runNth('nth:sigma(9)')).toEqual(13)
+      expect(runNth('nth:sigma(10)')).toEqual(18)
+      expect(runNth('nth:sigma(11)')).toEqual(12)
+      expect(runNth('nth:sigma(12)')).toEqual(28)
+      expect(runNth('nth:sigma(13)')).toEqual(14)
+      expect(runNth('nth:sigma(14)')).toEqual(24)
+      expect(runNth('nth:sigma(15)')).toEqual(24)
+      expect(runNth('nth:sigma(16)')).toEqual(31)
+      expect(runNth('nth:sigma(17)')).toEqual(18)
+      expect(runNth('nth:sigma(18)')).toEqual(39)
+      expect(runNth('nth:sigma(19)')).toEqual(20)
+      expect(runNth('nth:sigma(20)')).toEqual(42)
+    })
+  })
+  describe('nth:carmichaelLambda', () => {
+    it('should return the carmichael lambda of a number', () => {
+      expect(runNth('nth:carmichaelLambda(1)')).toEqual(1)
+      expect(runNth('nth:carmichaelLambda(2)')).toEqual(1)
+      expect(runNth('nth:carmichaelLambda(3)')).toEqual(2)
+      expect(runNth('nth:carmichaelLambda(4)')).toEqual(2)
+      expect(runNth('nth:carmichaelLambda(5)')).toEqual(4)
+      expect(runNth('nth:carmichaelLambda(6)')).toEqual(2)
+      expect(runNth('nth:carmichaelLambda(7)')).toEqual(6)
+      expect(runNth('nth:carmichaelLambda(8)')).toEqual(2)
+      expect(runNth('nth:carmichaelLambda(9)')).toEqual(6)
+      expect(runNth('nth:carmichaelLambda(10)')).toEqual(4)
+      expect(runNth('nth:carmichaelLambda(11)')).toEqual(10)
+      expect(runNth('nth:carmichaelLambda(12)')).toEqual(2)
+      expect(runNth('nth:carmichaelLambda(13)')).toEqual(12)
+      expect(runNth('nth:carmichaelLambda(14)')).toEqual(6)
+      expect(runNth('nth:carmichaelLambda(15)')).toEqual(4)
+      expect(runNth('nth:carmichaelLambda(16)')).toEqual(4)
+      expect(runNth('nth:carmichaelLambda(17)')).toEqual(16)
+    })
+  })
+  describe('cartesianProduct', () => {
+    it('should return the cartesian product of two or many lists', () => {
+      expect(runNth('nth:cartesianProduct([1, 2], [3, 4])')).toEqual([
+        [1, 3],
+        [1, 4],
+        [2, 3],
+        [2, 4],
+      ])
+      expect(runNth('nth:cartesianProduct([1, 2], [])')).toEqual([])
+      expect(runNth('nth:cartesianProduct([], [3, 4])')).toEqual([])
+      expect(runNth('nth:cartesianProduct([], [])')).toEqual([])
+      expect(runNth('nth:cartesianProduct([1, 2], [3, 4], [5, 6])')).toEqual([
+        [1, 3, 5],
+        [1, 3, 6],
+        [1, 4, 5],
+        [1, 4, 6],
+        [2, 3, 5],
+        [2, 3, 6],
+        [2, 4, 5],
+        [2, 4, 6],
+      ])
+    })
+  })
+  describe('nth:perfectPower', () => {
+    it('should return tuple representing powers from number', () => {
+      expect(runNth('nth:perfectPower(1)')).toEqual([1, 2])
+      expect(runNth('nth:perfectPower(2)')).toEqual(null)
+      expect(runNth('nth:perfectPower(4)')).toEqual([2, 2])
+      expect(runNth('nth:perfectPower(8)')).toEqual([2, 3])
+      expect(runNth('nth:perfectPower(9)')).toEqual([3, 2])
+      expect(runNth('nth:perfectPower(16)')).toEqual([4, 2])
+      expect(runNth('nth:perfectPower(27)')).toEqual([3, 3])
+      expect(runNth('nth:perfectPower(32)')).toEqual([2, 5])
+      expect(runNth('nth:perfectPower(64)')).toEqual([8, 2])
+      expect(runNth('nth:perfectPower(81)')).toEqual([9, 2])
+      expect(runNth('nth:perfectPower(100)')).toEqual([10, 2])
+      expect(runNth('nth:perfectPower(121)')).toEqual([11, 2])
+      expect(runNth('nth:perfectPower(125)')).toEqual([5, 3])
+      expect(runNth('nth:perfectPower(128)')).toEqual([2, 7])
+      expect(runNth('nth:perfectPower(729)')).toEqual([27, 2])
+      expect(runNth('nth:perfectPower(1000)')).toEqual([10, 3])
+      expect(runNth('nth:perfectPower(1024)')).toEqual([32, 2])
+      expect(runNth('nth:perfectPower(1331)')).toEqual([11, 3])
+      expect(runNth('nth:perfectPower(4096)')).toEqual([64, 2])
+      expect(runNth('nth:perfectPower(6561)')).toEqual([81, 2])
+    })
+  })
+  describe('nth:modExp', () => {
+    it('should return the modular exponentiation of a number', () => {
+      expect(runNth('nth:modExp(2, 3, 1)')).toEqual(0)
+      expect(runNth('nth:modExp(2, 3, 5)')).toEqual(3)
+      expect(runNth('nth:modExp(3, 4, 7)')).toEqual(4)
+      expect(runNth('nth:modExp(5, 6, 11)')).toEqual(5)
+      expect(runNth('nth:modExp(7, 8, 13)')).toEqual(3)
+      expect(runNth('nth:modExp(9, 10, 17)')).toEqual(13)
+      expect(runNth('nth:modExp(11, 12, 19)')).toEqual(1)
+      expect(runNth('nth:modExp(13, 14, 23)')).toEqual(12)
+      expect(runNth('nth:modExp(15, 16, 29)')).toEqual(7)
+      expect(runNth('nth:modExp(4, 13, 497)')).toEqual(445)
+    })
+  })
+  describe('nth:modInv', () => {
+    it('should return the modular inverse of a number', () => {
+      expect(runNth('nth:modInv(2, 3)')).toEqual(2)
+      expect(runNth('nth:modInv(3, 7)')).toEqual(5)
+      expect(runNth('nth:modInv(4, 11)')).toEqual(3)
+      expect(runNth('nth:modInv(5, 13)')).toEqual(8)
+      expect(runNth('nth:modInv(6, 17)')).toEqual(3)
+      expect(runNth('nth:modInv(7, 19)')).toEqual(11)
+      expect(runNth('nth:modInv(8, 23)')).toEqual(3)
+      expect(runNth('nth:modInv(9, 29)')).toEqual(13)
+      expect(() => runNth('nth:modInv(4, 6)')).toThrow(DvalaError)
+    })
+  })
+  describe('extendedGcd', () => {
+    it('should return the extended gcd of two numbers', () => {
+      expect(runNth('nth:extendedGcd(1, 1)')).toEqual([1, 0, 1])
+      expect(runNth('nth:extendedGcd(2, 3)')).toEqual([1, -1, 1])
+      expect(runNth('nth:extendedGcd(4, 6)')).toEqual([2, -1, 1])
+      expect(runNth('nth:extendedGcd(8, 12)')).toEqual([4, -1, 1])
+      expect(runNth('nth:extendedGcd(10, 15)')).toEqual([5, -1, 1])
+      expect(runNth('nth:extendedGcd(100, 200)')).toEqual([100, 1, 0])
+    })
+  })
+  describe('nth:chineseRemainder', () => {
+    it('should return the chinese remainder of a list of numbers', () => {
+      expect(runNth('nth:chineseRemainder([2, 3], [3, 5])')).toEqual(8)
+      expect(runNth('nth:chineseRemainder([2, 3], [3, 5])')).toEqual(8)
+      expect(runNth('nth:chineseRemainder([1, 2, 3], [2, 3, 5])')).toEqual(23)
+      expect(() => runNth('nth:chineseRemainder([1, 2, 4], [2, 3, 6])')).toThrow(DvalaError)
+      expect(() => runNth('nth:chineseRemainder([1, 2], [2, 3, 5])')).toThrow(DvalaError)
+    })
+  })
+  describe('nth:stirlingFirst', () => {
+    it('should return the stirling number of the first kind', () => {
+      expect(runNth('nth:stirlingFirst(1, 1)')).toEqual(1)
+      expect(runNth('nth:stirlingFirst(2, 1)')).toEqual(1)
+      expect(runNth('nth:stirlingFirst(2, 2)')).toEqual(1)
+      expect(runNth('nth:stirlingFirst(3, 1)')).toEqual(2)
+      expect(runNth('nth:stirlingFirst(3, 2)')).toEqual(3)
+      expect(runNth('nth:stirlingFirst(3, 3)')).toEqual(1)
+      expect(runNth('nth:stirlingFirst(4, 1)')).toEqual(6)
+      expect(runNth('nth:stirlingFirst(4, 2)')).toEqual(11)
+      expect(runNth('nth:stirlingFirst(4, 3)')).toEqual(6)
+      expect(runNth('nth:stirlingFirst(4, 4)')).toEqual(1)
+      expect(() => runNth('nth:stirlingFirst(4, 5)')).toThrow(DvalaError)
+      expect(() => runNth('nth:stirlingFirst(4, 0)')).toThrow(DvalaError)
+      expect(() => runNth('nth:stirlingFirst(0, 0)')).toThrow(DvalaError)
+    })
+  })
+  describe('nth:stirlingSecond', () => {
+    it('should return the stirling number of the second kind', () => {
+      expect(runNth('nth:stirlingSecond(1, 1)')).toEqual(1)
+      expect(runNth('nth:stirlingSecond(2, 1)')).toEqual(1)
+      expect(runNth('nth:stirlingSecond(2, 2)')).toEqual(1)
+      expect(runNth('nth:stirlingSecond(3, 1)')).toEqual(1)
+      expect(runNth('nth:stirlingSecond(3, 2)')).toEqual(3)
+      expect(runNth('nth:stirlingSecond(3, 3)')).toEqual(1)
+      expect(runNth('nth:stirlingSecond(4, 1)')).toEqual(1)
+      expect(runNth('nth:stirlingSecond(4, 2)')).toEqual(7)
+      expect(runNth('nth:stirlingSecond(4, 3)')).toEqual(6)
+      expect(runNth('nth:stirlingSecond(4, 4)')).toEqual(1)
+      expect(() => runNth('nth:stirlingFirst(4, 5)')).toThrow(DvalaError)
+      expect(() => runNth('nth:stirlingFirst(4, 0)')).toThrow(DvalaError)
+      expect(() => runNth('nth:stirlingFirst(0, 0)')).toThrow(DvalaError)
+    })
+  })
+})

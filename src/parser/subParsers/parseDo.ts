@@ -1,4 +1,4 @@
-import type { DoNode } from '../../builtin/specialExpressions/block'
+import type { DoNode } from '@mojir/dvala-engine'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '@mojir/dvala-types'
 import {

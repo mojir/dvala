@@ -17,8 +17,8 @@
  */
 
 import { NodeTypes } from '@mojir/dvala-types'
-import { createContextStack } from '../evaluator/ContextStack'
-import { evaluateNodeForFold } from '../evaluator/foldEvaluate'
+import { createContextStack } from '@mojir/dvala-engine'
+import { evaluateNodeForFold } from '@mojir/dvala-engine'
 import type { AstNode } from '@mojir/dvala-types'
 import { literalTypeToAstNode } from './constantFold'
 import { solveRefinedSubtype } from './refinementSolver'

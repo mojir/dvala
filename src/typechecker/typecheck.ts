@@ -11,7 +11,7 @@
 
 import type { Type } from './types'
 import { Unknown } from './types'
-import type { DvalaModule } from '../builtin/modules/interface'
+import type { DvalaModule } from '@mojir/dvala-engine'
 import type { AstNode, Ast, SourceMap, SourceMapPosition } from '@mojir/dvala-types'
 import { resolveSourceCodeInfo } from '@mojir/dvala-types'
 import { parseToAst } from '../parser'
@@ -36,7 +36,7 @@ import {
   TypeParseError,
 } from './parseType'
 import { installPreludeAliases } from './prelude'
-import { builtin } from '../builtin'
+import { builtin } from '@mojir/dvala-engine'
 import { expandMacros } from '../ast/expandMacros'
 import { verifyAssertionFunctionBodies } from './assertsBodyVerify'
 

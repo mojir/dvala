@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { RunResult, Snapshot } from '../evaluator/effectTypes'
+import type { RunResult, Snapshot } from '@mojir/dvala-engine'
 import { applyReplBinding, executeReplLine } from './replCore'
 
 describe('applyReplBinding', () => {

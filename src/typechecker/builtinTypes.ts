@@ -3,7 +3,7 @@
  * into Type values, cached for lookup during inference.
  */
 
-import type { BuiltinNormalExpressions, FunctionDocs } from '../builtin/interface'
+import type { BuiltinNormalExpressions, FunctionDocs } from '@mojir/dvala-engine'
 import { getEffectDeclaration } from './effectTypes'
 import { parseFunctionTypeAnnotation, type ParsedFunctionType } from './parseType'
 import type { HandlerEffectSignature, HandlerWrapperInfo, Type } from './types'

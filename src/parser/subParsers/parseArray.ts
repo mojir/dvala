@@ -1,4 +1,4 @@
-import type { ArrayNode } from '../../builtin/specialExpressions/array'
+import type { ArrayNode } from '@mojir/dvala-engine'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '@mojir/dvala-types'
 import { asLBracketToken, assertRBracketToken, isOperatorToken, isRBracketToken } from '../../tokenizer/token'

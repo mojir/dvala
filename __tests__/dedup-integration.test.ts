@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { resume } from '../src/resume'
+import { resume } from '@mojir/dvala-engine'
 import { createDvala } from '../src/createDvala'
-import { dedupSubTrees, expandPoolRefs } from '../src/evaluator/dedupSubTrees'
+import { dedupSubTrees, expandPoolRefs } from '@mojir/dvala-engine'
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
 

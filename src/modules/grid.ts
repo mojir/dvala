@@ -1,1 +1,1 @@
-export { gridModule } from '../builtin/modules/grid'
+export { gridModule } from '@mojir/dvala-engine'

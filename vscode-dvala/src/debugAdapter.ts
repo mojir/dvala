@@ -17,8 +17,8 @@ import { createDvala } from '../../src/createDvala'
 import { Debugger } from '../../src/debugger/Debugger'
 import type { DebugStoppedEvent } from '../../src/debugger/Debugger'
 import { findNodeIdForLine, getNodeEndLine, getNodeFile, getNodeLine } from '../../src/debugger/SourceMapUtils'
-import type { ContinuationStack } from '../../src/evaluator/frames'
-import type { Continuation, Handlers } from '../../src/evaluator/effectTypes'
+import type { ContinuationStack } from '@mojir/dvala-engine'
+import type { Continuation, Handlers } from '@mojir/dvala-engine'
 import type {
   AstNode,
   BindingTarget,
@@ -30,7 +30,7 @@ import type {
 } from '@mojir/dvala-types'
 import { isEffect, isRegularExpression } from '@mojir/dvala-types'
 import { isDvalaFunction } from '@mojir/dvala-types'
-import { toJS } from '../../src/utils/interop'
+import { toJS } from '@mojir/dvala-engine'
 import { isPersistentMap, isPersistentVector } from '@mojir/dvala-types'
 
 const LOG_FILE = '/tmp/dvala-dap.log'

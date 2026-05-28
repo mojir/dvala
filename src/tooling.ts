@@ -31,7 +31,8 @@ export { parseToCst } from './parser'
 export { buildDocTree } from './formatter/cstFormat'
 
 // Parser / tokenizer primitives (direct access for tooling consumers)
-export { parseToAst } from './parser'
+export { parse, parseToAst } from './parser'
+export { tokenize } from './tokenizer/tokenize'
 export { minifyTokenStream } from './tokenizer/minifyTokenStream'
 export { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from './symbolPatterns'
 export { splitSegments } from './parser/subParsers/parseTemplateString'

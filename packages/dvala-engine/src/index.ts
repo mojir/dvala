@@ -1,3 +1,99 @@
-// Placeholder — content moves in PR G (evaluator + builtins + .dvala sources + engine-only utils).
-// See design/active/2026-05-27_monorepo-decomposition.md §"Boundary decisions" (PR F vs PR G split).
-export {}
+// @mojir/dvala-engine — TS implementation of the Dvala runtime contract.
+// Evaluator + builtins + serialization + resume/retrigger. KMP is a second impl.
+
+// Evaluator
+export * from './evaluator/ContextStack'
+export * from './evaluator/interface'
+export * from './evaluator/trampoline-evaluator'
+export * from './evaluator/callStack'
+export * from './evaluator/contentHash'
+export * from './evaluator/dedupSubTrees'
+export * from './evaluator/effectRef'
+export * from './evaluator/effectTypes'
+export * from './evaluator/foldEvaluate'
+export * from './evaluator/frames'
+export * from './evaluator/serialization'
+export * from './evaluator/standardEffects'
+export * from './evaluator/step'
+export * from './evaluator/suspension'
+
+// Builtin top-level
+export * from './builtin'
+export * from './builtin/interface'
+export * from './builtin/bindingNode'
+export * from './builtin/bindingSlot'
+export * from './builtin/matchSlot'
+export * from './builtin/normalExpressions'
+export * from './builtin/normalExpressions/initCoreDvala'
+
+// Builtin core normal-expression factories (per-category)
+export * from './builtin/core/array'
+export * from './builtin/core/assertion'
+export * from './builtin/core/bitwise'
+export * from './builtin/core/collection'
+export * from './builtin/core/functional'
+export * from './builtin/core/math'
+export * from './builtin/core/meta'
+export * from './builtin/core/misc'
+export * from './builtin/core/object'
+export * from './builtin/core/predicates'
+export * from './builtin/core/regexp'
+export * from './builtin/core/sequence'
+export * from './builtin/core/string'
+
+// Builtin special-expression AST node types + impls
+export * from './builtin/specialExpressions/and'
+export * from './builtin/specialExpressions/array'
+export * from './builtin/specialExpressions/block'
+export * from './builtin/specialExpressions/effect'
+export * from './builtin/specialExpressions/functions'
+export * from './builtin/specialExpressions/if'
+export * from './builtin/specialExpressions/import'
+export * from './builtin/specialExpressions/let'
+export * from './builtin/specialExpressions/loop'
+export * from './builtin/specialExpressions/loops'
+export * from './builtin/specialExpressions/match'
+export * from './builtin/specialExpressions/object'
+export * from './builtin/specialExpressions/or'
+export * from './builtin/specialExpressions/parallel'
+export * from './builtin/specialExpressions/perform'
+export * from './builtin/specialExpressions/qq'
+export * from './builtin/specialExpressions/race'
+export * from './builtin/specialExpressions/recur'
+export * from './builtin/specialExpressions/settled'
+
+// Builtin modules
+export * from './builtin/modules/interface'
+export { assertModule } from './builtin/modules/assertion'
+export { astModule } from './builtin/modules/ast'
+export { bitwiseUtilsModule } from './builtin/modules/bitwise'
+export { collectionUtilsModule } from './builtin/modules/collection'
+export { convertModule } from './builtin/modules/convert'
+export { handlerModule } from './builtin/modules/effectHandler'
+export { functionalUtilsModule } from './builtin/modules/functional'
+export { gridModule } from './builtin/modules/grid'
+export { jsonModule } from './builtin/modules/json'
+export { linearAlgebraModule } from './builtin/modules/linear-algebra'
+export { macrosModule } from './builtin/modules/macros'
+export { mathUtilsModule } from './builtin/modules/math'
+export { matrixModule } from './builtin/modules/matrix'
+export { numberTheoryModule } from './builtin/modules/number-theory'
+export { sequenceUtilsModule } from './builtin/modules/sequence'
+export { stringUtilsModule } from './builtin/modules/string'
+export * from './builtin/modules/test'
+export { timeModule } from './builtin/modules/time'
+export { vectorModule } from './builtin/modules/vector'
+
+// Engine-only utilities
+export * from './utils'
+export * from './interop'
+export * from './maybePromise'
+export * from './docString/generateDocString'
+
+// Suspendable runtime entry points
+export * from './resume'
+export * from './retrigger'
+export * from './scopeToGlobalContext'
+
+// Symbol analysis
+export * from './getUndefinedSymbols'

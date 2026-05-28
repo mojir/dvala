@@ -17,6 +17,7 @@
     "typecheck": "tsgo -p ./tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@mojir/dvala-engine": "workspace:*",
     "@mojir/dvala-core-tooling": "workspace:*",
     "@mojir/dvala-workspace-backend": "workspace:*"
   }

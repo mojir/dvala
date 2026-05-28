@@ -1,1 +1,1 @@
-export { linearAlgebraModule } from '../builtin/modules/linear-algebra'
+export { linearAlgebraModule } from '@mojir/dvala-engine'

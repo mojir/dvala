@@ -1,6 +1,6 @@
 import type { SpecialExpressionName } from '@mojir/dvala-types'
-import { normalExpressions, normalExpressionTypes } from '../builtin/normalExpressions'
-import type { AndNode } from '../builtin/specialExpressions/and'
+import { normalExpressions, normalExpressionTypes } from '@mojir/dvala-engine'
+import type { AndNode } from '@mojir/dvala-engine'
 import { specialExpressionTypes } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '@mojir/dvala-types'

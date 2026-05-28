@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
 import { DvalaError, RecurSignal } from '@mojir/dvala-types'
-import { functionalUtilsModule } from '../../../src/builtin/modules/functional'
+import { functionalUtilsModule } from '@mojir/dvala-engine'
 
 describe('functional functions.', () => {
   for (const dvala of [

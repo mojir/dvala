@@ -1,4 +1,4 @@
-import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'
+import type { ObjectEntry, ObjectNode } from '@mojir/dvala-engine'
 import { NodeTypes } from '@mojir/dvala-types'
 import { ParseError } from '@mojir/dvala-types'
 import {

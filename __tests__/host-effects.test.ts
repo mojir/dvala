@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { hostHandler } from '../src/evaluator/effectTypes'
+import { hostHandler } from '@mojir/dvala-engine'
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
 

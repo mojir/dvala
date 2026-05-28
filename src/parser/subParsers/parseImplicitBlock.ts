@@ -2,7 +2,7 @@ import { isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '@mojir/dvala-types'
 import { ParseError } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'
-import type { DoNode } from '../../builtin/specialExpressions/block'
+import type { DoNode } from '@mojir/dvala-engine'
 import type { ParserContext } from '../ParserContext'
 import { withSourceCodeInfo } from '../helpers'
 
