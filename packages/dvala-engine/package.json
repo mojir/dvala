@@ -1,0 +1,19 @@
+{
+  "name": "@mojir/dvala-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TS implementation of the Dvala runtime contract — evaluator + builtins (KMP is a second impl)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsgo -p ./tsconfig.json",
+    "typecheck": "tsgo -p ./tsconfig.json --noEmit"
+  }
+}

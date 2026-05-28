@@ -127,6 +127,8 @@ importers:
         specifier: workspace:*
         version: link:../..
 
+  packages/dvala-engine: {}
+
   packages/dvala-mcp-server:
     dependencies:
       '@mojir/dvala':
