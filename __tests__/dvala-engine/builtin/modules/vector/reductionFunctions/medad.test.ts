@@ -1,0 +1,39 @@
+import { describe, expect, it } from 'vitest'
+import { createDvala } from '@mojir/dvala'
+import { vectorModule } from '@mojir/dvala-engine'
+import { DvalaError } from '@mojir/dvala-types'
+
+const dvala = createDvala({ modules: [vectorModule] })
+
+// Helper to run vec module functions with the new import syntax
+function runVec(code: string): unknown {
+  // Add module import prefix to function calls
+  const modifiedCode = `let v = import("vector"); v.${code}`
+  return dvala.run(modifiedCode)
+}
+
+describe('medad', () => {
+  it('should calculate the median absolute deviation of a vector', () => {
+    expect(runVec('medad([1, 2, 3])')).toEqual(1.4826)
+    expect(runVec('medad([1, 2, 2, 3, 5, 15, 50])')).toEqual(2.9652)
+    expect(() => runVec('medad([])')).toThrowError(DvalaError)
+  })
+  it('should calculate the moving median absolute deviation of a vector', () => {
+    expect(runVec('movingMedad([1, 2, 3, 4, 5, 6], 1)')).toEqual([0, 0, 0, 0, 0, 0])
+    expect(runVec('movingMedad([1, 2, 4, 7, 11], 3)')).toEqual([1.4826, 2.9652, 4.4478])
+    expect(runVec('movingMedad([1, -2, -3], 2)')).toEqual([2.2239, 0.7413])
+    expect(() => runVec('movingMedad([1], 100)')).toThrow(DvalaError)
+    expect(() => runVec('movingMedad([], 1)')).toThrowError(DvalaError)
+  })
+  it('should calculate the centered moving median absolute deviation of a vector with padding', () => {
+    expect(runVec('centeredMovingMedad([1, 2, 3, 4, 5], 3)')).toEqual([null, 1.4826, 1.4826, 1.4826, null])
+    expect(runVec('centeredMovingMedad([1, -2, -3], 2)')).toEqual([null, 2.2239, 0.7413])
+    expect(() => runVec('centeredMovingMedad([1], 100)')).toThrow(DvalaError)
+    expect(() => runVec('centeredMovingMedad([], 1)')).toThrowError(DvalaError)
+  })
+  it('should calculate the running median absolute deviation of a vector', () => {
+    expect(runVec('runningMedad([1, 2, 3])')).toEqual([0, 0.7413, 1.4826])
+    expect(runVec('runningMedad([1, -2, -3])')).toEqual([0, 2.2239, 1.4826])
+    expect(() => runVec('runningMedad([])')).toThrowError(DvalaError)
+  })
+})

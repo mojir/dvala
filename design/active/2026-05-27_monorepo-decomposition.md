@@ -109,7 +109,15 @@ The boundary-decisions interview is **closed**. Lock these answers; do not re-li
 #### Then execute
 As a dedicated pass on its own branch → PR (foundation-style), with sweep-before-verify throughout.
 
-### Remaining after the engine extraction
+### PR G followups (next, before core-tooling)
+
+PR G shipped (#202, merged 2026-05-28). Three known followups, attacking in order:
+
+- **PR H — move cyclic engine tests to `__tests__/`.** ~70 engine test files import `@mojir/dvala` (umbrella) for `createDvala` (68) or `getUndefinedSymbols` (2). They're integration tests of the host running engine code; architecturally they belong at host level. Moves them to `__tests__/`, updates imports (engine internals via `@mojir/dvala-engine`, host orchestrator stays `@mojir/dvala`), then removes engine's `@mojir/dvala` devDep. Clears the workspace cyclic-deps warning. Foundation for PR I.
+- **PR I — engine rolldown bundling.** Engine dist currently has raw `.dvala` imports (tsgo doesn't inline) — bench uses a tsx loader workaround. Add rolldown config for engine mirroring root's `.dvala` plugin so `packages/dvala-engine/dist/index.js` is self-contained. Drop the loader.
+- **PR J — full reference-types relocation (deferred PR D).** Move `FunctionReference`, `EffectReference`, `Argument`, `TypedValue`, `CommonReference`, `Variant` + the 13 ApiName sub-unions and `api.ts` machinery from `reference/` into engine. `reference/` re-imports. Delete `packages/dvala-engine/src/reference-shapes.ts`. Confirms `reference → engine` as the only direction.
+
+### Remaining after the followups
 `core-tooling` ownership (move parser/cst/formatter/typecheck/LS into `dvala-core-tooling`), dissolve `@mojir/dvala` (re-point clients, drop bundles, pause npm), Turborepo per-package.
 
 ### Hard constraint

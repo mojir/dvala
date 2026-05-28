@@ -135,16 +135,9 @@ importers:
 
   packages/dvala-engine:
     dependencies:
-      '@mojir/dvala-runtime':
-        specifier: workspace:*
-        version: link:../dvala-runtime
       '@mojir/dvala-types':
         specifier: workspace:*
         version: link:../dvala-types
-    devDependencies:
-      '@mojir/dvala':
-        specifier: workspace:*
-        version: link:../..
 
   packages/dvala-mcp-server:
     dependencies:

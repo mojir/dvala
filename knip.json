@@ -4,15 +4,12 @@
     "packages/dvala-runtime/src/types/run.ts": ["types"]
   },
   "workspaces": {
-    "packages/dvala-types": {
-      "entry": ["src/**/*.ts"],
-      "project": ["src/**/*.ts"]
-    },
     ".": {
       "entry": [
         "src/index.ts",
         "src/full.ts",
         "src/bundler.ts",
+        "src/tooling.ts",
         "src/internal.ts",
         "src/testFramework/index.ts",
         "src/modules/*.ts",
@@ -38,12 +35,16 @@
       ],
       "ignoreDependencies": ["@vscode/vsce", "serve"]
     },
+    "packages/dvala-types": {
+      "entry": ["src/**/*.ts"],
+      "project": ["src/**/*.ts"]
+    },
     "packages/dvala-runtime": {
       "entry": ["src/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-engine": {
-      "entry": ["src/index.ts", "src/**/*.test.ts"],
+      "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-workspace-backend": {
