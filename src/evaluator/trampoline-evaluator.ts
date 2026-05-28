@@ -57,7 +57,6 @@ import {
 import { reconstructCallStack } from './callStack'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '@mojir/dvala-types'
-import { parse, parseToAst } from '../parser'
 import type {
   Ast,
   AstNode,
@@ -85,10 +84,8 @@ import type {
   UserDefinedFunction,
 } from '@mojir/dvala-types'
 import { bindingTargetTypes } from '@mojir/dvala-types'
-import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { reservedSymbolRecord } from '@mojir/dvala-types'
 import type { SourceCodeInfo } from '@mojir/dvala-types'
-import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined } from '@mojir/dvala-types'
 import {
   isBuiltinSymbolNode,
@@ -775,11 +772,12 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         const resolvedPathWithExt = resolvedPath.endsWith('.dvala') ? resolvedPath : `${resolvedPath}.dvala`
         // Use the shared allocateNodeId and debug flag from the context stack so that
         // runtime imports get unique nodeIds and source map entries for coverage tracking.
-        const tokenStream = tokenize(source, env.debug, env.debug ? resolvedPathWithExt : undefined)
-        const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-        const ast = env.allocateNodeId
-          ? parseToAst(minified, env.allocateNodeId)
-          : { body: parse(minified), sourceMap: undefined }
+        const parseSource = asNonUndefined(env.parseSource, sourceCodeInfo)
+        const ast = parseSource(source, {
+          debug: env.debug,
+          filePath: env.debug ? resolvedPathWithExt : undefined,
+          allocateNodeId: env.allocateNodeId,
+        })
         // Merge the imported file's source map into the accumulated one
         if (ast.sourceMap && env.sourceMap) {
           const sourceOffset = env.sourceMap.sources.length
@@ -828,9 +826,8 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       if (dvalaModule.source) {
         // Cache parsed nodes on the module to avoid re-parsing (which would allocate new node IDs)
         if (!dvalaModule._cachedNodes) {
-          dvalaModule._cachedNodes = parse(
-            minifyTokenStream(tokenize(dvalaModule.source, false, undefined), { removeWhiteSpace: true }),
-          )
+          const parseSource = asNonUndefined(env.parseSource, sourceCodeInfo)
+          dvalaModule._cachedNodes = parseSource(dvalaModule.source).body
         }
         const nodes = dvalaModule._cachedNodes
         const sourceEnv = env.create({})

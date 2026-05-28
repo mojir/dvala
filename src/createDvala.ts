@@ -1,6 +1,7 @@
 import { AutoCompleter } from './AutoCompleter/AutoCompleter'
 import type { DvalaModule } from './builtin/modules/interface'
 import type { FileResolver } from './evaluator/ContextStack'
+import type { ParseSource } from './evaluator/interface'
 import type { RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
 import type { Ast } from '@mojir/dvala-types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
@@ -11,6 +12,9 @@ import type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime
 import { createRuntimeRunner } from './runtime/createRuntimeRunner'
 import { createAstBuilder } from './runtime/createAstBuilder'
 import { scopeToGlobalContext } from './runtime/scopeToGlobalContext'
+import { parseToAst } from './parser'
+import { minifyTokenStream } from './tokenizer/minifyTokenStream'
+import { tokenize } from './tokenizer/tokenize'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
@@ -84,8 +88,18 @@ export interface DvalaRunner {
   ) => TypecheckResult
 }
 
+/**
+ * Host implementation of the `ParseSource` capability — the seam that lets the
+ * engine compile source → Ast without depending on the parser directly.
+ */
+const parseSource: ParseSource = (source, opts = {}) => {
+  const tokens = tokenize(source, opts.debug ?? false, opts.filePath)
+  const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
+  return parseToAst(minified, opts.allocateNodeId)
+}
+
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
-  initCoreDvalaSources()
+  initCoreDvalaSources(parseSource)
   // Per-instance node ID counter — ensures unique IDs within this runner.
   // Can be overridden via options.nodeIdAllocator for cross-instance coordination.
   let nodeIdCounter = 0
@@ -122,6 +136,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       factoryFileResolverBaseDir,
       debug,
       allocateNodeId,
+      parseSource,
       buildAst: astBuilder.buildAst,
       emitTypeDiagnostics,
       scopeToGlobalContext,
