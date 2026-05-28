@@ -14,6 +14,7 @@
       "@mojir/dvala/tooling": ["./src/tooling.ts"],
       "@mojir/dvala-runtime": ["./packages/dvala-runtime/src/index.ts"],
       "@mojir/dvala-types": ["./packages/dvala-types/src/index.ts"],
+      "@mojir/dvala-engine": ["./packages/dvala-engine/src/index.ts"],
       "@mojir/dvala-core-tooling": ["./packages/dvala-core-tooling/src/index.ts"],
       "@mojir/dvala-workspace-backend": ["./packages/dvala-workspace-backend/src/index.ts"],
       "@mojir/dvala-workspace-backend/runtime": ["./packages/dvala-workspace-backend/src/runtime/index.ts"],
