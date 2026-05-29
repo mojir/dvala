@@ -1,13 +1,11 @@
 /**
- * Full tooling bundle entry — language service, typechecker, analysis helpers,
- * and completion-builder utilities for IDE/LS packages.
+ * Public surface of `@mojir/dvala-core-tooling`: language service, typechecker,
+ * formatter, parser/tokenizer, AutoCompleter, prettyPrint — every primitive
+ * an IDE/LS package needs to operate on Dvala source.
  *
- * This file is the rolldown input for `dist/tooling.js` / `dist/tooling.esm.js`
- * and is the target of the `@mojir/dvala/tooling` subpath export.
- *
- * The standalone functions shared with the minimal bundle live in
- * `./standaloneTooling` to keep `reference/index.ts` out of the minimal bundle
- * entry (`src/index.ts`).
+ * The standalone subset (no `reference/`-data dependency) lives in
+ * `./standaloneTooling` so test-framework consumers can pull it without
+ * dragging the reference catalogue.
  */
 
 import type { TokenStream } from './tokenizer/tokenize'
@@ -68,6 +66,11 @@ export type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 
 // Debugger (used by the host orchestrator + the vscode debug adapter)
 export { Debugger } from './debugger/Debugger'
+export type { DebugStoppedEvent } from './debugger/Debugger'
+export { findNodeIdForLine, getNodeEndLine, getNodeFile, getNodeLine } from './debugger/SourceMapUtils'
+
+// Node-environment workspace indexer (used by the vscode extension)
+export { loadFile, nodeResolveImport } from './languageService/nodeWorkspaceIndexer'
 
 // Pretty printer (used by the host as a ContextStack capability, and by tools)
 export { prettyPrint } from './prettyPrint'

@@ -8,6 +8,7 @@ import {
   sanitizeDisplayType,
 } from '../../../packages/dvala-core-tooling/src/typechecker/infer'
 import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/index'
+import type { Type } from '../../../packages/dvala-core-tooling/src/typechecker/types'
 import { typeToString } from '../../../packages/dvala-core-tooling/src/typechecker/types'
 import * as path from 'path'
 import * as fs from 'fs'
@@ -17,7 +18,7 @@ function getHoverTypeStringAt(
   line: number,
   col: number,
 ): string | undefined {
-  let bestType: (typeof result.typeMap extends Map<number, infer T> ? T : never) | undefined
+  let bestType: Type | undefined
   let bestSize = Infinity
 
   for (const [nodeId, type] of result.typeMap) {
