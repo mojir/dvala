@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { createDvala as createDvalaRaw } from '@mojir/dvala'
-import { parseToAst } from '../../../packages/dvala-core-tooling/src/parser'
-import { minifyTokenStream } from '../../../packages/dvala-core-tooling/src/tokenizer/minifyTokenStream'
-import { tokenize } from '../../../packages/dvala-core-tooling/src/tokenizer/tokenize'
+import { parseToAst } from '@mojir/dvala-core-tooling'
+import { minifyTokenStream } from '@mojir/dvala-core-tooling'
+import { tokenize } from '@mojir/dvala-core-tooling'
 import { FOLD_ENABLED } from '../../../packages/dvala-core-tooling/src/typechecker/foldToggle'
 import { expandType } from '../../../packages/dvala-core-tooling/src/typechecker/infer'
-import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/simplify'
-import type { TypeDiagnostic } from '../../../packages/dvala-core-tooling/src/typechecker/typecheck'
-import { typecheckExpr } from '../../../packages/dvala-core-tooling/src/typechecker/typecheck'
+import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/index'
+import type { TypeDiagnostic } from '@mojir/dvala-core-tooling'
+import { typecheckExpr } from '@mojir/dvala-core-tooling'
 import { typeToString } from '../../../packages/dvala-core-tooling/src/typechecker/types'
 
 /**
@@ -916,7 +916,7 @@ describe('typecheck — optional record fields', () => {
 
   it('typeToString displays the `?` marker for optional fields', async () => {
     // Exercise the display path through a parse-roundtrip check.
-    const { parseTypeAnnotation } = await import('./parseType')
+    const { parseTypeAnnotation } = await import('../../../packages/dvala-core-tooling/src/typechecker/parseType')
     const t = parseTypeAnnotation('{name: String, age?: Number}')
     expect(typeToString(t)).toBe('{name: String, age?: Number}')
   })

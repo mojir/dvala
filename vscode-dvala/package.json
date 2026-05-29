@@ -207,6 +207,7 @@
     "@types/vscode": "^1.109.0"
   },
   "dependencies": {
+    "@mojir/dvala-core-tooling": "workspace:*",
     "@mojir/dvala-engine": "workspace:*",
     "@vscode/debugadapter": "^1.68.0",
     "@vscode/debugprotocol": "^1.68.0"

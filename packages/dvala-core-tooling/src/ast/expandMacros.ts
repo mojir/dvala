@@ -20,11 +20,7 @@ export interface MacroEvalRunner {
 }
 
 export interface MacroEvalDvalaFactory {
-  (opts: {
-    fileResolver?: FileResolver
-    fileResolverBaseDir?: string
-    typecheck?: boolean
-  }): MacroEvalRunner
+  (opts: { fileResolver?: FileResolver; fileResolverBaseDir?: string; typecheck?: boolean }): MacroEvalRunner
 }
 
 export interface MacroExpandOptions {

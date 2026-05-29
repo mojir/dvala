@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 
 function extractDvalaCodeBlocks(): { code: string; lineNumber: number; blockIndex: number }[] {
   const readmeContent = readFileSync(join(process.cwd(), 'README.md'), 'utf-8')

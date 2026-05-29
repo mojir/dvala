@@ -9,7 +9,6 @@
         "src/index.ts",
         "src/full.ts",
         "src/bundler.ts",
-        "src/tooling.ts",
         "src/internal.ts",
         "src/testFramework/index.ts",
         "src/modules/*.ts",
@@ -56,7 +55,7 @@
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-core-tooling": {
-      "entry": ["src/index.ts"],
+      "entry": ["src/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-cli": {

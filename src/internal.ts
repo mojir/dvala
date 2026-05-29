@@ -19,18 +19,18 @@
 // ── Typechecker ──────────────────────────────────────────────────────────
 // Needed by the LS worker (diagnostics, hover) and the playground
 // (typecheck-and-report).
-export { typecheck, typecheckExpr } from './typechecker/typecheck'
-export type { TypeDiagnostic, TypecheckResult } from './typechecker/typecheck'
+export { typecheck, typecheckExpr } from '@mojir/dvala-core-tooling'
+export type { TypeDiagnostic, TypecheckResult } from '@mojir/dvala-core-tooling'
 
 // ── Language service ─────────────────────────────────────────────────────
 // WorkspaceIndex is pure data manipulation (zero filesystem/path access)
 // and is safe to import from a Web Worker.
-export { WorkspaceIndex } from './languageService/WorkspaceIndex'
-export type { ResolveImport } from './languageService/WorkspaceIndex'
+export { WorkspaceIndex } from '@mojir/dvala-core-tooling'
+export type { ResolveImport } from '@mojir/dvala-core-tooling'
 
 // ── Evaluator internals ──────────────────────────────────────────────────
 // Types and helpers needed by runtime adapters (workspace-backend, CLI).
-export { Debugger } from './debugger/Debugger'
+export { Debugger } from '@mojir/dvala-core-tooling'
 export { deserializeFromObject } from '@mojir/dvala-engine'
 export type { ContextStack } from '@mojir/dvala-engine'
 export type { ContinuationStack } from '@mojir/dvala-engine'

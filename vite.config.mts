@@ -4,7 +4,6 @@ import { defineConfig } from 'vitest/config'
 
 const dvalaEntry = fileURLToPath(new URL('./src/index.ts', import.meta.url))
 const dvalaBundlerEntry = fileURLToPath(new URL('./src/bundler.ts', import.meta.url))
-const dvalaToolingEntry = fileURLToPath(new URL('./src/tooling.ts', import.meta.url))
 const runtimePackageEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/index.ts', import.meta.url))
 const dvalaTypesEntry = fileURLToPath(new URL('./packages/dvala-types/src/index.ts', import.meta.url))
 const dvalaEngineEntry = fileURLToPath(new URL('./packages/dvala-engine/src/index.ts', import.meta.url))
@@ -22,7 +21,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@mojir/dvala/bundler': dvalaBundlerEntry,
-      '@mojir/dvala/tooling': dvalaToolingEntry,
       '@mojir/dvala': dvalaEntry,
       '@mojir/dvala-runtime/artifacts': runtimeArtifactsEntry,
       '@mojir/dvala-runtime': runtimePackageEntry,

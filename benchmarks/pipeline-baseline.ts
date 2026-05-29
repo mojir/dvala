@@ -95,13 +95,13 @@ import { performance } from 'node:perf_hooks'
 // being populated to classify type-guard calls (e.g. `isNumber`).
 // eslint-disable-next-line ts/no-require-imports, ts/no-var-requires
 const { createDvala, parseTokenStream, tokenizeSource } = require('../dist/index.js') as typeof import('../src/createDvala') & {
-  parseTokenStream: typeof import('../src/tooling').parseTokenStream
-  tokenizeSource: typeof import('../src/tooling').tokenizeSource
+  parseTokenStream: typeof import('@mojir/dvala-core-tooling').parseTokenStream
+  tokenizeSource: typeof import('@mojir/dvala-core-tooling').tokenizeSource
 }
-import { parseTypeAnnotation } from '../src/typechecker/parseType'
-import { solveRefinedSubtype } from '../src/typechecker/refinementSolver'
-import { simplify } from '../src/typechecker/simplify'
-import { NumberType, StringType, atom, literal } from '../src/typechecker/types'
+import { parseTypeAnnotation } from '../packages/dvala-core-tooling/src/typechecker/parseType'
+import { solveRefinedSubtype } from '../packages/dvala-core-tooling/src/typechecker/refinementSolver'
+import { simplify } from '../packages/dvala-core-tooling/src/typechecker/simplify'
+import { NumberType, StringType, atom, literal } from '../packages/dvala-core-tooling/src/typechecker/types'
 
 // Each measurement collects this many outer runs and reports the median.
 // 5 is a tradeoff: enough samples for the median to filter out the

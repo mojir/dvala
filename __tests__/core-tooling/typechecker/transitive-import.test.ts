@@ -2,8 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { createDvala } from '@mojir/dvala'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { FOLD_ENABLED } from '../../../packages/dvala-core-tooling/src/typechecker/foldToggle'
-import { expandType, expandTypeForDisplay, sanitizeDisplayType } from '../../../packages/dvala-core-tooling/src/typechecker/infer'
-import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/simplify'
+import {
+  expandType,
+  expandTypeForDisplay,
+  sanitizeDisplayType,
+} from '../../../packages/dvala-core-tooling/src/typechecker/infer'
+import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/index'
 import { typeToString } from '../../../packages/dvala-core-tooling/src/typechecker/types'
 import * as path from 'path'
 import * as fs from 'fs'

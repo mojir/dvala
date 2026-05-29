@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { treeShake } from '../../src/ast/treeShake'
+import { treeShake } from '@mojir/dvala-core-tooling'
 import { NodeTypes } from '@mojir/dvala-types'
 import { createDvala } from '../../src/createDvala'
-import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
-import { tokenize } from '../../src/tokenizer/tokenize'
-import { parseToAst } from '../../src/parser'
+import { minifyTokenStream } from '@mojir/dvala-core-tooling'
+import { tokenize } from '@mojir/dvala-core-tooling'
+import { parseToAst } from '@mojir/dvala-core-tooling'
 import type { Ast } from '@mojir/dvala-types'
 
 function parse(source: string): Ast {

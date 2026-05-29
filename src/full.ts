@@ -2,14 +2,14 @@
 // Full entry point: re-exports everything from the minimal entry plus
 // all modules, reference data, and API helpers.
 
-import { initReferenceData } from './initReferenceData'
+import { initReferenceData } from '@mojir/dvala-core-tooling'
 
 export * from './index'
 
 initReferenceData()
 
 // All built-in modules (convenience re-export)
-export { allBuiltinModules } from './allModules'
+export { allBuiltinModules } from '@mojir/dvala-core-tooling'
 
 // Individual module re-exports
 export { assertModule } from '@mojir/dvala-engine'

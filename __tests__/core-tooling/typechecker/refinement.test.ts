@@ -5,11 +5,21 @@ import { createDvala } from '@mojir/dvala'
 import type { AstNode } from '@mojir/dvala-types'
 import { getBuiltinType, initBuiltinTypes } from '../../../packages/dvala-core-tooling/src/typechecker/builtinTypes'
 import { expandTypeForDisplay } from '../../../packages/dvala-core-tooling/src/typechecker/infer'
-import { parseTypeAnnotation, RefinementError, TypeParseError } from '../../../packages/dvala-core-tooling/src/typechecker/parseType'
+import {
+  parseTypeAnnotation,
+  RefinementError,
+  TypeParseError,
+} from '../../../packages/dvala-core-tooling/src/typechecker/parseType'
 import { solveRefinedSubtype } from '../../../packages/dvala-core-tooling/src/typechecker/refinementSolver'
-import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/simplify'
+import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/index'
 import { isSubtype } from '../../../packages/dvala-core-tooling/src/typechecker/subtype'
-import { NumberType, StringType, typeEquals, typeToString, type Type } from '../../../packages/dvala-core-tooling/src/typechecker/types'
+import {
+  NumberType,
+  StringType,
+  typeEquals,
+  typeToString,
+  type Type,
+} from '../../../packages/dvala-core-tooling/src/typechecker/types'
 
 // Populate the builtin-type cache so `isTypeGuard('isNumber')` returns
 // true — the fragment-checker calls it while classifying relation

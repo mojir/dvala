@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '@mojir/dvala'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
-import { Debugger } from '../../../packages/dvala-core-tooling/src/debugger/Debugger'
+import { Debugger } from '@mojir/dvala-core-tooling'
 
 describe('Debugger', () => {
   const d = createDvala({ modules: allBuiltinModules })

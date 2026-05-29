@@ -13,14 +13,14 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { normalExpressions } from '@mojir/dvala-engine'
 import { specialExpressions } from '@mojir/dvala-engine'
 import { specialExpressionTypes } from '@mojir/dvala-types'
 import type { DataType } from '@mojir/dvala-engine'
 import { isDataType, isFunctionDocs } from '@mojir/dvala-engine'
 import { allReference } from '../reference'
-import { initReferenceData } from '../src/initReferenceData'
+import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
 
 const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })

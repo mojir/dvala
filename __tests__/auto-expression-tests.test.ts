@@ -11,10 +11,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { normalExpressions } from '@mojir/dvala-engine'
 import type { ExampleEntry, TypedValue } from '@mojir/dvala-engine'
-import { initReferenceData } from '../src/initReferenceData'
+import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
 
 /** Extract the code string from an ExampleEntry, or return null if it should be skipped (noRun). */

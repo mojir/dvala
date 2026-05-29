@@ -16,7 +16,7 @@ import {
 } from '../../../reference/format'
 import { allBuiltinModules, parseTokenStream, tokenizeSource } from '@mojir/dvala-core-tooling'
 import { createDvala } from '@mojir/dvala'
-import { initReferenceData } from '../../../src/initReferenceData'
+import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
 
 export function createMcpServer(): McpServer {

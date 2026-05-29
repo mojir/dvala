@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vites
 import { createDvala } from '../../src/createDvala'
 import type { UserError } from '@mojir/dvala-types'
 import { DvalaError, MatchError } from '@mojir/dvala-types'
-import { getUndefinedSymbols } from '../../src/tooling'
+import { getUndefinedSymbols } from '@mojir/dvala-core-tooling'
 
 const dvala = createDvala()
 const dvalaDebug = createDvala({ debug: true })

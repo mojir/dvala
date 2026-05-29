@@ -205,7 +205,7 @@
   },
   "wireit": {
     "lint": {
-      "command": "pnpm --filter @mojir/dvala-engine run build && oxfmt . && oxlint --fix .",
+      "command": "pnpm --filter @mojir/dvala-engine run build && pnpm --filter @mojir/dvala-core-tooling run build && oxfmt . && oxlint --fix .",
       "files": [
         "packages/dvala-runtime/src/**/*.ts",
         "packages/dvala-runtime/package.json",
@@ -244,7 +244,7 @@
       "output": []
     },
     "lint:no-fix": {
-      "command": "pnpm --filter @mojir/dvala-engine run build && oxfmt --check . && oxlint .",
+      "command": "pnpm --filter @mojir/dvala-engine run build && pnpm --filter @mojir/dvala-core-tooling run build && oxfmt --check . && oxlint .",
       "files": [
         "packages/dvala-runtime/src/**/*.ts",
         "packages/dvala-runtime/package.json",
@@ -525,6 +525,7 @@
     }
   },
   "dependencies": {
+    "@mojir/dvala-core-tooling": "workspace:*",
     "@mojir/dvala-engine": "workspace:*",
     "@mojir/dvala-runtime": "workspace:*",
     "@mojir/dvala-types": "workspace:*",

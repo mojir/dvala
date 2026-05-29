@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../../src/createDvala'
-import { expandMacros } from '../../src/ast/expandMacros'
-import { tokenize } from '../../src/tokenizer/tokenize'
-import { minifyTokenStream } from '../../src/tokenizer/minifyTokenStream'
-import { parseToAst } from '../../src/parser'
+import { expandMacros } from '@mojir/dvala-core-tooling'
+import { tokenize } from '@mojir/dvala-core-tooling'
+import { minifyTokenStream } from '@mojir/dvala-core-tooling'
+import { parseToAst } from '@mojir/dvala-core-tooling'
 import type { Ast } from '@mojir/dvala-types'
 
 function parse(source: string): Ast {

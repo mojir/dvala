@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '@mojir/dvala'
 import type { BuiltinNormalExpressions } from '@mojir/dvala-engine'
-import { allBuiltinModules } from '@mojir/dvala/tooling'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { assertModule } from '@mojir/dvala-engine'
 import { gridModule } from '@mojir/dvala-engine'
 import type { DvalaModule } from '@mojir/dvala-engine'

@@ -36,6 +36,7 @@ export { tokenize } from './tokenizer/tokenize'
 export { minifyTokenStream } from './tokenizer/minifyTokenStream'
 export { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from './symbolPatterns'
 export { splitSegments } from './parser/subParsers/parseTemplateString'
+export { isSymbolicOperator } from './tokenizer/operators'
 
 // Language service
 export { WorkspaceIndex } from './languageService/WorkspaceIndex'
@@ -56,9 +57,29 @@ export type { TypeDiagnostic, TypecheckResult } from './typechecker/typecheck'
 
 // Modules + AST utilities
 export { allBuiltinModules } from './allModules'
+export { initReferenceData } from './initReferenceData'
 export { expandMacros } from './ast/expandMacros'
 export type { MacroEvalDvalaFactory, MacroEvalRunner, MacroExpandOptions } from './ast/expandMacros'
 export { treeShake } from './ast/treeShake'
+
+// AutoCompleter (class + types for IDE consumers)
+export { AutoCompleter } from './AutoCompleter/AutoCompleter'
+export type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
+
+// Debugger (used by the host orchestrator + the vscode debug adapter)
+export { Debugger } from './debugger/Debugger'
+
+// Pretty printer (used by the host as a ContextStack capability, and by tools)
+export { prettyPrint } from './prettyPrint'
+
+// Token types + assertion helpers (host re-exports, bundlers, test inspectors)
+export type { Token, TokenType } from './tokenizer/token'
+export {
+  assertEffectNameToken,
+  asEffectNameToken,
+  assertTemplateStringToken,
+  asTemplateStringToken,
+} from './tokenizer/token'
 
 // REPL utilities
 export { applyReplBinding, executeReplLine } from './shared/replCore'

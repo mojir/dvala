@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { parse, parseToAst as parseProgramAst } from '../../../packages/dvala-core-tooling/src/parser'
-import { tokenize } from '../../../packages/dvala-core-tooling/src/tokenizer/tokenize'
-import { minifyTokenStream } from '../../../packages/dvala-core-tooling/src/tokenizer/minifyTokenStream'
+import { parse, parseToAst as parseProgramAst } from '@mojir/dvala-core-tooling'
+import { tokenize } from '@mojir/dvala-core-tooling'
+import { minifyTokenStream } from '@mojir/dvala-core-tooling'
 import { builtin } from '@mojir/dvala-engine'
 import { createDvala as createDvalaRaw } from '@mojir/dvala'
 
@@ -58,7 +58,7 @@ import {
   TypeInferenceError,
 } from '../../../packages/dvala-core-tooling/src/typechecker/infer'
 import { parseTypeAnnotation } from '../../../packages/dvala-core-tooling/src/typechecker/parseType'
-import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/simplify'
+import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/index'
 import { isSubtype } from '../../../packages/dvala-core-tooling/src/typechecker/subtype'
 import {
   getBuiltinType,

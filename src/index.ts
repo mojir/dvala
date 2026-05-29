@@ -17,7 +17,7 @@ export { type DvalaFunction } from '@mojir/dvala-types'
 export type { Context } from '@mojir/dvala-engine'
 export type { Ast } from '@mojir/dvala-types'
 export type { SourceCodeInfo } from '@mojir/dvala-types'
-export type { Token, TokenType } from './tokenizer/token'
+export type { Token, TokenType } from '@mojir/dvala-core-tooling'
 export { normalExpressionKeys, specialExpressionKeys } from '@mojir/dvala-engine'
 export type { DvalaModule } from '@mojir/dvala-engine'
 export type { Any } from '@mojir/dvala-types'
@@ -30,8 +30,8 @@ export { isAtom, isEffect, isRegularExpression } from '@mojir/dvala-types'
 export { asUnknownRecord } from '@mojir/dvala-types'
 export type { UnknownRecord } from '@mojir/dvala-types'
 export type { ExampleEntry } from '@mojir/dvala-engine'
-export { prettyPrint } from './prettyPrint'
-export type { AutoCompleter, AutoCompleterParams } from './AutoCompleter/AutoCompleter'
+export { prettyPrint } from '@mojir/dvala-core-tooling'
+export type { AutoCompleter, AutoCompleterParams } from '@mojir/dvala-core-tooling'
 
 // Effects — standalone resume/retrigger functions and types
 export { resume } from '@mojir/dvala-engine'
@@ -65,5 +65,5 @@ export {
   getUndefinedSymbols,
   getAutoCompleter,
   formatSource,
-} from './standaloneTooling'
-export type { TokenStream } from './standaloneTooling'
+} from '@mojir/dvala-core-tooling'
+export type { TokenStream } from '@mojir/dvala-core-tooling'

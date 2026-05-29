@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { moduleReference } from '../reference'
 import type { FunctionReference } from '../reference/index'
 

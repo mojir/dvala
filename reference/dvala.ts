@@ -19,7 +19,11 @@
  * re-running `npm run format-snippets` brings them back into sync.
  */
 
-import { format } from '../src/formatter/format'
+// Direct file import (bypasses the core-tooling index) to avoid a load-time
+// cycle: core-tooling's index transitively pulls in completionBuilder which
+// imports reference/, so going through the package entry would re-enter this
+// module before format is bound.
+import { format } from '../packages/dvala-core-tooling/src/formatter/format'
 
 export function dvala(strings: TemplateStringsArray, ...values: unknown[]): string {
   // Use String.raw to avoid interpreting escape sequences inside the Dvala code.

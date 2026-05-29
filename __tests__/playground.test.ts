@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '@mojir/dvala-engine'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import {
   getAutoCompleter,
   getUndefinedSymbols,
@@ -22,7 +22,7 @@ import {
   parseTokenStreamRecoverable,
   tokenizeSource,
   untokenize,
-} from '../src/tooling'
+} from '@mojir/dvala-core-tooling'
 import { StateHistory } from '../apps/playground-www/src/StateHistory'
 import type { HistoryEntry, HistoryStatus } from '../apps/playground-www/src/StateHistory'
 import { stringifyValue } from '../common/utils'

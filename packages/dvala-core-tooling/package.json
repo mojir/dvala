@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Core tooling boundary scaffold for Dvala",
+  "description": "Tokenizer, parser, CST, formatter, typechecker, language service, and tooling primitives — TS-only, host-independent.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,6 +17,8 @@
     "typecheck": "tsgo -p ./tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@mojir/dvala": "workspace:*"
+    "@mojir/dvala-engine": "workspace:*",
+    "@mojir/dvala-types": "workspace:*",
+    "@mojir/dvala-runtime": "workspace:*"
   }
 }

@@ -15,7 +15,7 @@ import { examples } from '../../reference/examples'
 import { isBookSection, chapters, bookItems } from '../../reference/book'
 import { allAppRoutes } from '../../common/appRoutes'
 import { buildReferenceData } from '../../common/buildReferenceData'
-import { allBuiltinModules } from '../../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 
 const DOC_DIR = path.resolve(__dirname, '../../docs')
 const BASE_URL = 'https://mojir.github.io/dvala'
