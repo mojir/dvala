@@ -56,7 +56,7 @@ import mainTestTemplate from './templates/main.test.dvala'
 import { getCliModules } from './js-interop/Cli'
 import { createCliRuntimeClient, createFileResolver } from './runtimeClient'
 import type { TypeDiagnostic } from '@mojir/dvala-core-tooling'
-import { initReferenceData } from '../../../src/initReferenceData'
+import { initReferenceData } from '@mojir/dvala-core-tooling'
 import { createDvala } from '@mojir/dvala'
 initReferenceData()
 
@@ -304,7 +304,7 @@ switch (config.subcommand) {
       const absolutePath = path.resolve(resolved.rootDir, resolved.config.entry)
       let result = bundle(absolutePath, { sourceMap })
       if (doExpandMacros) {
-        result = { ...result, ast: expandMacros(result.ast) }
+        result = { ...result, ast: expandMacros(result.ast, { createDvala }) }
       }
       if (doTreeShake) {
         result = { ...result, ast: treeShake(result.ast) }

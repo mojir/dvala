@@ -1,13 +1,11 @@
 /**
- * Full tooling bundle entry — language service, typechecker, analysis helpers,
- * and completion-builder utilities for IDE/LS packages.
+ * Public surface of `@mojir/dvala-core-tooling`: language service, typechecker,
+ * formatter, parser/tokenizer, AutoCompleter, prettyPrint — every primitive
+ * an IDE/LS package needs to operate on Dvala source.
  *
- * This file is the rolldown input for `dist/tooling.js` / `dist/tooling.esm.js`
- * and is the target of the `@mojir/dvala/tooling` subpath export.
- *
- * The standalone functions shared with the minimal bundle live in
- * `./standaloneTooling` to keep `reference/index.ts` out of the minimal bundle
- * entry (`src/index.ts`).
+ * The standalone subset (no `reference/`-data dependency) lives in
+ * `./standaloneTooling` so test-framework consumers can pull it without
+ * dragging the reference catalogue.
  */
 
 import type { TokenStream } from './tokenizer/tokenize'
@@ -36,6 +34,7 @@ export { tokenize } from './tokenizer/tokenize'
 export { minifyTokenStream } from './tokenizer/minifyTokenStream'
 export { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from './symbolPatterns'
 export { splitSegments } from './parser/subParsers/parseTemplateString'
+export { isSymbolicOperator } from './tokenizer/operators'
 
 // Language service
 export { WorkspaceIndex } from './languageService/WorkspaceIndex'
@@ -56,8 +55,37 @@ export type { TypeDiagnostic, TypecheckResult } from './typechecker/typecheck'
 
 // Modules + AST utilities
 export { allBuiltinModules } from './allModules'
+export { initReferenceData } from './initReferenceData'
 export { expandMacros } from './ast/expandMacros'
+export type { MacroEvalDvalaFactory, MacroEvalRunner, MacroExpandOptions } from './ast/expandMacros'
 export { treeShake } from './ast/treeShake'
+
+// AutoCompleter (class + types for IDE consumers)
+export { AutoCompleter } from './AutoCompleter/AutoCompleter'
+export type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
+
+// Debugger (used by the host orchestrator + the vscode debug adapter)
+export { Debugger } from './debugger/Debugger'
+export type { DebugStoppedEvent } from './debugger/Debugger'
+export { findNodeIdForLine, getNodeEndLine, getNodeFile, getNodeLine } from './debugger/SourceMapUtils'
+
+// NOTE: nodeWorkspaceIndexer (loadFile, nodeResolveImport) is intentionally
+// NOT re-exported here — it imports `node:fs`/`node:path` and would poison
+// every browser-target consumer's bundle (Vite worker, playground iife) with
+// unresolved node-built-ins that kill the worker at load time. Node-side
+// consumers (vscode-dvala) import it directly from the file.
+
+// Pretty printer (used by the host as a ContextStack capability, and by tools)
+export { prettyPrint } from './prettyPrint'
+
+// Token types + assertion helpers (host re-exports, bundlers, test inspectors)
+export type { Token, TokenType } from './tokenizer/token'
+export {
+  assertEffectNameToken,
+  asEffectNameToken,
+  assertTemplateStringToken,
+  asTemplateStringToken,
+} from './tokenizer/token'
 
 // REPL utilities
 export { applyReplBinding, executeReplLine } from './shared/replCore'

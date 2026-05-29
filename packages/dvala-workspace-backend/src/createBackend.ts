@@ -17,6 +17,7 @@ import {
   formatSource,
   tokenizeSource,
   typecheck,
+  type MacroEvalDvalaFactory,
 } from '@mojir/dvala-core-tooling'
 import { allReference, isFunctionReference } from '../../../reference/index'
 
@@ -66,6 +67,12 @@ import type {
 export interface CreateBackendOptions {
   documents?: BackendDocumentStore
   runtime?: BackendRuntimeAdapter
+  /**
+   * Host factory used by the typechecker to evaluate macro definitions so that
+   * macro calls receive concrete types. Without it, macro expansion is skipped
+   * during type inference and macro-using sites are typed as Unknown.
+   */
+  createDvala?: MacroEvalDvalaFactory
 }
 
 const PLAYGROUND_FOLDER = '.dvala-playground'
@@ -287,7 +294,12 @@ function getImportCompletionItems(
   return items
 }
 
-function computeTypecheckResult(source: string, path: string, documents?: BackendDocumentStore) {
+function computeTypecheckResult(
+  source: string,
+  path: string,
+  documents?: BackendDocumentStore,
+  createDvala?: MacroEvalDvalaFactory,
+) {
   const tokens = tokenizeSource(source, true, path)
   try {
     const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
@@ -300,15 +312,20 @@ function computeTypecheckResult(source: string, path: string, documents?: Backen
             fileResolverBaseDir: runtimeBaseDir(path),
           }
         : {}),
+      createDvala,
     })
   } catch {
     return { diagnostics: [], typeMap: new Map(), sourceMap: undefined }
   }
 }
 
-function computeHoverResult(request: BackendHoverRequest, documents: BackendDocumentStore): string | undefined {
+function computeHoverResult(
+  request: BackendHoverRequest,
+  documents: BackendDocumentStore,
+  createDvala?: MacroEvalDvalaFactory,
+): string | undefined {
   if (request.source === undefined) return undefined
-  const typecheckResult = computeTypecheckResult(request.source, request.path, documents)
+  const typecheckResult = computeTypecheckResult(request.source, request.path, documents, createDvala)
   const wordRange =
     request.startColumn !== undefined && request.endColumn !== undefined
       ? {
@@ -763,7 +780,12 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const typecheckResult = computeTypecheckResult(openDocument.source, openDocument.path, documents)
+        const typecheckResult = computeTypecheckResult(
+          openDocument.source,
+          openDocument.path,
+          documents,
+          options.createDvala,
+        )
         const typeDiagnostics = buildTypeDiagnostics(typecheckResult)
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
@@ -890,6 +912,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             source: request.source ?? openDocument?.source,
           },
           documents,
+          options.createDvala,
         )
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)

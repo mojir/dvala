@@ -4,7 +4,7 @@ import { globSync } from 'glob'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 
 interface CodeBlock {
   code: string

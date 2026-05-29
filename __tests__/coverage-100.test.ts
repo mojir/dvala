@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { AssertionError, DvalaError } from '@mojir/dvala-types'
-import { getAutoCompleter, getUndefinedSymbols } from '../src/tooling'
-import { AutoCompleter } from '../src/AutoCompleter/AutoCompleter'
+import { getAutoCompleter, getUndefinedSymbols } from '@mojir/dvala-core-tooling'
+import { AutoCompleter } from '@mojir/dvala-core-tooling'
 import { resume } from '@mojir/dvala-engine'
 import { retrigger } from '@mojir/dvala-engine'
 import { mathUtilsModule } from '@mojir/dvala-engine'
@@ -12,12 +12,12 @@ import {
   asEffectNameToken,
   assertTemplateStringToken,
   asTemplateStringToken,
-} from '../src/tokenizer/token'
+} from '@mojir/dvala-core-tooling'
 import { asUserDefinedSymbolNode } from '@mojir/dvala-types'
-import { splitSegments } from '../src/parser/subParsers/parseTemplateString'
-import { tokenizeSource } from '../src/tooling'
+import { splitSegments } from '@mojir/dvala-core-tooling'
+import { tokenizeSource } from '@mojir/dvala-core-tooling'
 import type { Snapshot } from '@mojir/dvala-engine'
-import { initReferenceData } from '../src/initReferenceData'
+import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
 
 const dvala = createDvala({ disableAutoCheckpoint: true })

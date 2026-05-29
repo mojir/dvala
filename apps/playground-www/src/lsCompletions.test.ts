@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { FileSymbols, SymbolDef } from '../../../src/languageService/types'
+import type { FileSymbols, SymbolDef } from '@mojir/dvala-core-tooling'
 import {
   getImportCompletionItems,
   getImportCompletionPrefix,

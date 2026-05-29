@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { allBuiltinModules } from '../allModules'
-import { createDvala } from '../createDvala'
-import type { SymbolDef } from '../languageService/types'
-import type { Position, Range } from './types'
-import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from './typeDisplay'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
+import { createDvala } from '@mojir/dvala'
+import type { SymbolDef } from '@mojir/dvala-core-tooling'
+import type { Position, Range } from '@mojir/dvala-core-tooling'
+import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '@mojir/dvala-core-tooling'
 
 const dvala = createDvala({ modules: allBuiltinModules, debug: true })
 

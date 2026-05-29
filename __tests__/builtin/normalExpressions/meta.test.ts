@@ -4,7 +4,7 @@ import { getMetaNormalExpression } from '@mojir/dvala-engine'
 import type { ContextStack } from '@mojir/dvala-engine'
 import { FUNCTION_SYMBOL } from '@mojir/dvala-types'
 import { PersistentVector } from '@mojir/dvala-types'
-import { initReferenceData } from '../../../src/initReferenceData'
+import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
 
 describe('misc functions', () => {

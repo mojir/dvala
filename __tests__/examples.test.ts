@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Any } from '@mojir/dvala-types'
 import { createDvala } from '../src/createDvala'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { EXAMPLE_DESCRIPTION_MAX_LENGTH, examples } from '../reference/examples'
-import { tokenizeSource, parseTokenStream } from '../src/tooling'
+import { tokenizeSource, parseTokenStream } from '@mojir/dvala-core-tooling'
 import type { HandlerRegistration } from '@mojir/dvala-engine'
 
 /**

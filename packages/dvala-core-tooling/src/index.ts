@@ -1,1 +1,1 @@
-export * from '@mojir/dvala/tooling'
+export * from './tooling'

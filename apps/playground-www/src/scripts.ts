@@ -13,7 +13,7 @@ import {
   asUnknownRecord,
   type DvalaErrorJSON,
 } from '../../../src'
-import { initReferenceData } from '../../../src/initReferenceData'
+import { initReferenceData } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules, formatSource, getUndefinedSymbols, type TypeDiagnostic } from '@mojir/dvala-core-tooling'
 import {
   RIGHT_PANEL_TOOL_TABS,

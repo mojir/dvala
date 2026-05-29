@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { getUndefinedSymbols, tokenizeSource } from '../src/tooling'
+import { getUndefinedSymbols, tokenizeSource } from '@mojir/dvala-core-tooling'
 
 const d = createDvala()
 const run = (src: string, scope?: Record<string, unknown>) => d.run(src, { scope })

@@ -1,4 +1,4 @@
-import { AutoCompleter } from './AutoCompleter/AutoCompleter'
+import { AutoCompleter } from '@mojir/dvala-core-tooling'
 import type { DvalaModule } from '@mojir/dvala-engine'
 import type { FileResolver } from '@mojir/dvala-engine'
 import type { ParseSource } from '@mojir/dvala-engine'
@@ -6,16 +6,16 @@ import type { RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
 import type { Ast } from '@mojir/dvala-types'
 import { initCoreDvalaSources } from '@mojir/dvala-engine'
 import type { DvalaBundle } from './bundler/interface'
-import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './standaloneTooling'
-import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } from './typechecker/typecheck'
+import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from '@mojir/dvala-core-tooling'
+import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } from '@mojir/dvala-core-tooling'
 import type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
 import { createRuntimeRunner } from './runtime/createRuntimeRunner'
 import { createAstBuilder } from './runtime/createAstBuilder'
 import { scopeToGlobalContext } from '@mojir/dvala-engine'
-import { prettyPrint } from './prettyPrint'
-import { parseToAst } from './parser'
-import { minifyTokenStream } from './tokenizer/minifyTokenStream'
-import { tokenize } from './tokenizer/tokenize'
+import { prettyPrint } from '@mojir/dvala-core-tooling'
+import { parseToAst } from '@mojir/dvala-core-tooling'
+import { minifyTokenStream } from '@mojir/dvala-core-tooling'
+import { tokenize } from '@mojir/dvala-core-tooling'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
@@ -165,6 +165,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         fileResolver: factoryFileResolver,
         fileResolverBaseDir: typecheckOptions?.fileResolverBaseDir ?? factoryFileResolverBaseDir,
         fold: typecheckOptions?.fold,
+        createDvala,
       })
     },
   }

@@ -12,7 +12,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { format } from '../src/formatter/format'
+import { formatSource } from '@mojir/dvala-core-tooling'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 let changed = 0
@@ -33,7 +33,7 @@ function report(rel: string, didChange: boolean): void {
 
 function formatDvalaFile(filePath: string): void {
   const original = fs.readFileSync(filePath, 'utf-8')
-  const formatted = format(original.trimEnd())
+  const formatted = formatSource(original.trimEnd())
   if (formatted !== original) {
     fs.writeFileSync(filePath, formatted, 'utf-8')
     report(path.relative(root, filePath), true)
@@ -64,7 +64,7 @@ function formatMarkdownFile(filePath: string): void {
       const options = fence.slice('```dvala'.length).trim()
       if (options.split(',').map((s: string) => s.trim()).includes('no-run')) return match
       const trimmed = body.trimEnd()
-      const formatted = format(trimmed).trimEnd()
+      const formatted = formatSource(trimmed).trimEnd()
       return `${fence}${formatted}\n\`\`\``
     },
   )

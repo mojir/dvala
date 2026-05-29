@@ -6,20 +6,15 @@
   "workspaces": {
     ".": {
       "entry": [
-        "src/index.ts",
-        "src/full.ts",
-        "src/bundler.ts",
-        "src/tooling.ts",
-        "src/internal.ts",
-        "src/testFramework/index.ts",
-        "src/modules/*.ts",
+        "src/**/*.ts",
         "cli/src/cli.ts",
         "mcp-server/src/server.ts",
         "playground-builder/src/buildPlaygroundSite.ts",
+        "reference/**/*.ts",
+        "common/**/*.ts",
         "scripts/*.{ts,mjs}",
         "benchmarks/*.ts",
         "__tests__/**/*.test.ts",
-        "src/**/*.test.ts",
         "e2e/**/*.spec.ts"
       ],
       "project": [
@@ -44,19 +39,19 @@
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-engine": {
-      "entry": ["src/index.ts"],
+      "entry": ["src/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-workspace-backend": {
-      "entry": ["src/index.ts"],
+      "entry": ["src/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-mcp-server": {
-      "entry": ["src/index.ts"],
+      "entry": ["src/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-core-tooling": {
-      "entry": ["src/index.ts"],
+      "entry": ["src/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-cli": {

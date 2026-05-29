@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { parse } from '../src/parser'
-import { prettyPrint } from '../src/prettyPrint'
-import { minifyTokenStream } from '../src/tokenizer/minifyTokenStream'
-import { tokenize } from '../src/tokenizer/tokenize'
+import { parse } from '@mojir/dvala-core-tooling'
+import { prettyPrint } from '@mojir/dvala-core-tooling'
+import { minifyTokenStream } from '@mojir/dvala-core-tooling'
+import { tokenize } from '@mojir/dvala-core-tooling'
 
 // Helper: parse code to AST, then pretty-print it.
 // minifyTokenStream strips whitespace so the parser can handle all syntax forms.

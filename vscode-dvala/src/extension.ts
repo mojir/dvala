@@ -4,19 +4,23 @@ import * as vscode from 'vscode'
 import { allReference, isFunctionReference, isCustomReference } from '../../reference/index'
 import type { Reference } from '../../reference/index'
 import { createDvala } from '../../src/createDvala'
-import { allBuiltinModules } from '../../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '@mojir/dvala-engine'
-import { WorkspaceIndex } from '../../src/languageService'
-import type { SymbolDef } from '../../src/languageService'
-import { loadFile as loadIndexedFile, nodeResolveImport } from '../../src/languageService/nodeWorkspaceIndexer'
+import { WorkspaceIndex } from '@mojir/dvala-core-tooling'
+import type { SymbolDef } from '@mojir/dvala-core-tooling'
+// Direct file import (bypasses the core-tooling index) because
+// nodeWorkspaceIndexer pulls in `node:fs`/`node:path` — exporting it from
+// core-tooling's index would poison every browser-target consumer's bundle
+// (the playground LS worker breaks at load time on `node:fs`).
 import {
-  buildBuiltinCompletions,
-  symbolDefToCompletion as toSharedCompletion,
-} from '../../src/shared/completionBuilder'
-import type { CompletionItem as SharedCompletionItem } from '../../src/shared/completionBuilder'
-import type { Diagnostic as SharedDiagnostic } from '../../src/shared/types'
-import { formatSource } from '../../src/tooling'
+  loadFile as loadIndexedFile,
+  nodeResolveImport,
+} from '../../packages/dvala-core-tooling/src/languageService/nodeWorkspaceIndexer'
+import { buildBuiltinCompletions, symbolDefToCompletion as toSharedCompletion } from '@mojir/dvala-core-tooling'
+import type { CompletionItem as SharedCompletionItem } from '@mojir/dvala-core-tooling'
+import type { Diagnostic as SharedDiagnostic } from '@mojir/dvala-core-tooling'
+import { formatSource } from '@mojir/dvala-core-tooling'
 
 import { BackendDiagnosticsClient } from './backendDiagnosticsClient'
 

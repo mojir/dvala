@@ -1,4 +1,4 @@
-import { createBackend } from '../../src/internal'
+import { createBackend, createDvala } from '../../src/internal'
 import type { DvalaBackend } from '../../packages/dvala-workspace-backend/src/index'
 import type {
   BackendCompletionRequest,
@@ -23,7 +23,7 @@ export class BackendDiagnosticsClient {
   private nextRequestId = 1
   private readonly mirroredDocuments = new Map<string, BackendTextDocument>()
 
-  constructor(backend: DvalaBackend = createBackend()) {
+  constructor(backend: DvalaBackend = createBackend({ createDvala })) {
     this.backend = backend
   }
 

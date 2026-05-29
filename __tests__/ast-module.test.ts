@@ -4,7 +4,7 @@ import { astModule } from '@mojir/dvala-engine'
 import { createContextStack } from '@mojir/dvala-engine'
 import { evaluateNode } from '@mojir/dvala-engine'
 import { TypeError as DvalaTypeError } from '@mojir/dvala-types'
-import { prettyPrint } from '../src/prettyPrint'
+import { prettyPrint } from '@mojir/dvala-core-tooling'
 
 const dvala = createDvala({ modules: [astModule] })
 const run = (code: string) => dvala.run(code)

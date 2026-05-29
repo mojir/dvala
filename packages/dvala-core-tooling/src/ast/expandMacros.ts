@@ -1,5 +1,4 @@
 import { NodeTypes } from '@mojir/dvala-types'
-import { createDvala } from '../createDvala'
 import type { FileResolver } from '@mojir/dvala-engine'
 import { hostHandler } from '@mojir/dvala-engine'
 import { prettyPrint } from '../prettyPrint'
@@ -8,12 +7,32 @@ import { isMacroFunction } from '@mojir/dvala-types'
 import { fromJS } from '@mojir/dvala-engine'
 import type { Any } from '@mojir/dvala-types'
 import { PersistentVector } from '@mojir/dvala-types'
+import type { RuntimeHandlers } from '@mojir/dvala-runtime'
 
-interface MacroExpandOptions {
+/**
+ * Minimal evaluator surface needed by macro expansion. The Dvala host
+ * (`createDvala`) returns a runner that structurally satisfies this. Injecting
+ * the factory here keeps `expandMacros` free of any host-package import — so
+ * this module can live in the tooling layer without depending on the host.
+ */
+export interface MacroEvalRunner {
+  run: (source: string, options?: { effectHandlers?: RuntimeHandlers }) => unknown
+}
+
+export interface MacroEvalDvalaFactory {
+  (opts: { fileResolver?: FileResolver; fileResolverBaseDir?: string; typecheck?: boolean }): MacroEvalRunner
+}
+
+export interface MacroExpandOptions {
   /** File resolver for cross-file macro imports (e.g. let { double } = import("./macros")) */
   fileResolver?: FileResolver
   /** Base directory for resolving relative imports in macro evaluation */
   fileResolverBaseDir?: string
+  /**
+   * Factory for constructing the macro-evaluation runtime. Required to expand
+   * macros; without it, the AST is returned unchanged (graceful skip).
+   */
+  createDvala?: MacroEvalDvalaFactory
 }
 
 /**
@@ -44,6 +63,10 @@ export function expandMacros(ast: Ast, options?: MacroExpandOptions): Ast {
 
   // Phase 2: Evaluate macro definitions (and import statements) to get macro functions.
   // When file resolution is available, imported macros are discovered too.
+  const createDvala = options?.createDvala
+  if (!createDvala) {
+    return ast
+  }
   const dvala = createDvala({
     fileResolver: options?.fileResolver,
     fileResolverBaseDir: options?.fileResolverBaseDir,
@@ -168,7 +191,7 @@ function extractMacroDefName(node: AstNode): string | null {
 function processNodes(
   nodes: AstNode[],
   macros: Map<string, unknown>,
-  dvala: ReturnType<typeof createDvala>,
+  dvala: MacroEvalRunner,
   positions: SourceMap['positions'] | undefined,
 ): AstNode[] {
   return nodes.map(node => expandNodeRecursive(node, macros, dvala, positions))
@@ -178,7 +201,7 @@ function processNodes(
 function expandNodeRecursive(
   node: AstNode,
   macros: Map<string, unknown>,
-  dvala: ReturnType<typeof createDvala>,
+  dvala: MacroEvalRunner,
   positions: SourceMap['positions'] | undefined,
 ): AstNode {
   const [type, payload, nodeId] = node
@@ -262,7 +285,7 @@ function stampNestedPositions(items: unknown[], pos: SourceMapPosition, position
 function recurseInto(
   value: unknown,
   macros: Map<string, unknown>,
-  dvala: ReturnType<typeof createDvala>,
+  dvala: MacroEvalRunner,
   positions: SourceMap['positions'] | undefined,
 ): unknown {
   if (!Array.isArray(value)) return value

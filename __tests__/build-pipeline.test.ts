@@ -2,13 +2,13 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { bundle } from '../src/bundler'
-import { expandMacros } from '../src/ast/expandMacros'
-import { treeShake } from '../src/ast/treeShake'
+import { expandMacros } from '@mojir/dvala-core-tooling'
+import { treeShake } from '@mojir/dvala-core-tooling'
 import { serializeBundle, deserializeBundle } from '../src/bundler/serialize'
 import { findConfig } from '../src/config'
-import { parseToAst } from '../src/parser'
-import { tokenize } from '../src/tokenizer/tokenize'
-import { minifyTokenStream } from '../src/tokenizer/minifyTokenStream'
+import { parseToAst } from '@mojir/dvala-core-tooling'
+import { tokenize } from '@mojir/dvala-core-tooling'
+import { minifyTokenStream } from '@mojir/dvala-core-tooling'
 
 const exampleProjectDir = path.resolve(__dirname, '../examples/project')
 
@@ -54,7 +54,7 @@ describe('build pipeline', () => {
     const resolved = findConfig(exampleProjectDir)!
     const entryPath = path.resolve(resolved.rootDir, resolved.config.entry)
     const result = bundle(entryPath)
-    const expanded = { ...result, ast: expandMacros(result.ast) }
+    const expanded = { ...result, ast: expandMacros(result.ast, { createDvala }) }
 
     const dvala = createDvala()
     const raw = dvala.run(expanded) as Record<string, unknown>
@@ -103,7 +103,7 @@ describe('build pipeline', () => {
     const resolved = findConfig(exampleProjectDir)!
     const entryPath = path.resolve(resolved.rootDir, resolved.config.entry)
     const bundled = bundle(entryPath)
-    const expanded = { ...bundled, ast: expandMacros(bundled.ast) }
+    const expanded = { ...bundled, ast: expandMacros(bundled.ast, { createDvala }) }
 
     // The expanded bundle should have no macro Call nodes for "double" or "withDefault"
     const json = JSON.stringify(expanded.ast.body)
@@ -151,7 +151,7 @@ describe('build pipeline', () => {
     const ast = parseToAst(tokens, () => id++)
     const fakeBundle = { version: 1 as const, ast }
 
-    const expanded = { ...fakeBundle, ast: expandMacros(fakeBundle.ast) }
+    const expanded = { ...fakeBundle, ast: expandMacros(fakeBundle.ast, { createDvala }) }
     const shaken = { ...expanded, ast: treeShake(expanded.ast) }
 
     const expandedSize = JSON.stringify(expanded.ast.body).length

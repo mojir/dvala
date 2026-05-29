@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { MatchError } from '@mojir/dvala-types'
-import { getUndefinedSymbols } from '../src/tooling'
+import { getUndefinedSymbols } from '@mojir/dvala-core-tooling'
 
 describe('pattern matching (match)', () => {
   const dvala = createDvala()

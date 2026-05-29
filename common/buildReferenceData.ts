@@ -12,7 +12,7 @@
 import { apiReference, effectReference, getLinkName, moduleReference } from '../reference'
 import { coreCategoryDescriptions, coreCategories } from '../reference/api'
 import { examples } from '../reference/examples'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { version } from '../package.json'
 import type { ReferenceData, SearchEntry } from './referenceData'
 

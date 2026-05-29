@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { parse, parseToAst as parseProgramAst } from '../parser'
-import { tokenize } from '../tokenizer/tokenize'
-import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
+import { parse, parseToAst as parseProgramAst } from '@mojir/dvala-core-tooling'
+import { tokenize } from '@mojir/dvala-core-tooling'
+import { minifyTokenStream } from '@mojir/dvala-core-tooling'
 import { builtin } from '@mojir/dvala-engine'
-import { createDvala as createDvalaRaw } from '../createDvala'
+import { createDvala as createDvalaRaw } from '@mojir/dvala'
 
 /**
  * Test-local `createDvala` that transparently rewrites `if true`/`if false`
@@ -20,7 +20,7 @@ function createDvala(options?: Parameters<typeof createDvalaRaw>[0]) {
       origTypecheck(fixtureWithOpaqueIfCond(source), opts),
   })
 }
-import type { EffectSet, Type } from './types'
+import type { EffectSet, Type } from '../../../packages/dvala-core-tooling/src/typechecker/types'
 import {
   NumberType,
   StringType,
@@ -43,7 +43,7 @@ import {
   effectSet,
   effectSetWithRowVar,
   typeToString,
-} from './types'
+} from '../../../packages/dvala-core-tooling/src/typechecker/types'
 import {
   InferenceContext,
   TypeEnv,
@@ -56,19 +56,19 @@ import {
   freshenAnnotationVars,
   sanitizeDisplayType,
   TypeInferenceError,
-} from './infer'
-import { parseTypeAnnotation } from './parseType'
-import { simplify } from './simplify'
-import { isSubtype } from './subtype'
+} from '../../../packages/dvala-core-tooling/src/typechecker/infer'
+import { parseTypeAnnotation } from '../../../packages/dvala-core-tooling/src/typechecker/parseType'
+import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/index'
+import { isSubtype } from '../../../packages/dvala-core-tooling/src/typechecker/subtype'
 import {
   getBuiltinType,
   initBuiltinTypes,
   isTypeGuard,
   registerModuleType,
   resetBuiltinTypeCache,
-} from './builtinTypes'
-import { declareEffect } from './effectTypes'
-import { allBuiltinModules } from '../allModules'
+} from '../../../packages/dvala-core-tooling/src/typechecker/builtinTypes'
+import { declareEffect } from '../../../packages/dvala-core-tooling/src/typechecker/effectTypes'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 
 // Initialize builtin type cache once before all tests
 beforeAll(() => {

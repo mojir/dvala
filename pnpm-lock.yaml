@@ -11,6 +11,9 @@ importers:
 
   .:
     dependencies:
+      '@mojir/dvala-core-tooling':
+        specifier: workspace:*
+        version: link:packages/dvala-core-tooling
       '@mojir/dvala-engine':
         specifier: workspace:*
         version: link:packages/dvala-engine
@@ -102,6 +105,9 @@ importers:
 
   apps/playground-www:
     dependencies:
+      '@mojir/dvala':
+        specifier: workspace:*
+        version: link:../..
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../../packages/dvala-core-tooling
@@ -129,9 +135,15 @@ importers:
 
   packages/dvala-core-tooling:
     dependencies:
-      '@mojir/dvala':
+      '@mojir/dvala-engine':
         specifier: workspace:*
-        version: link:../..
+        version: link:../dvala-engine
+      '@mojir/dvala-runtime':
+        specifier: workspace:*
+        version: link:../dvala-runtime
+      '@mojir/dvala-types':
+        specifier: workspace:*
+        version: link:../dvala-types
 
   packages/dvala-engine:
     dependencies:
@@ -160,6 +172,9 @@ importers:
 
   vscode-dvala:
     dependencies:
+      '@mojir/dvala-core-tooling':
+        specifier: workspace:*
+        version: link:../packages/dvala-core-tooling
       '@mojir/dvala-engine':
         specifier: workspace:*
         version: link:../packages/dvala-engine

@@ -102,25 +102,6 @@ export default defineConfig([
     ],
     plugins,
   },
-  // Tooling (language service, typechecker, analysis helpers — for IDE/LS packages)
-  {
-    input: 'src/tooling.ts',
-    output: [
-      {
-        file: 'dist/tooling.esm.js',
-        format: 'esm',
-        sourcemap: true,
-        minify: true,
-      },
-      {
-        file: 'dist/tooling.js',
-        format: 'cjs',
-        sourcemap: true,
-        minify: true,
-      },
-    ],
-    plugins,
-  },
   // Bundler (file module bundler, requires Node.js fs)
   {
     input: 'src/bundler.ts',

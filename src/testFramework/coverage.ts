@@ -1,9 +1,9 @@
 import fs from 'node:fs'
 import { minimatch } from 'minimatch'
 import type { SourceMap } from '@mojir/dvala-types'
-import { tokenize } from '../tokenizer/tokenize'
-import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
-import { parseToAst } from '../parser'
+import { tokenize } from '@mojir/dvala-core-tooling'
+import { minifyTokenStream } from '@mojir/dvala-core-tooling'
+import { parseToAst } from '@mojir/dvala-core-tooling'
 import type { TestRunResult } from './result'
 
 /**

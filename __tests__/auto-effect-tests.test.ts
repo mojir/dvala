@@ -16,7 +16,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { resume as baseResume } from '@mojir/dvala-engine'
 import type { ResumeOptions } from '@mojir/dvala-engine'
 // Wrapper that disables auto-checkpoint by default (tests care about value, not snapshots)
@@ -30,7 +30,7 @@ import { isDataType } from '@mojir/dvala-engine'
 import type { Any } from '@mojir/dvala-types'
 import { fromJS } from '@mojir/dvala-engine'
 import { allReference } from '../reference'
-import { initReferenceData } from '../src/initReferenceData'
+import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
 
 const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })

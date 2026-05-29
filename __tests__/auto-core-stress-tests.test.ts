@@ -19,9 +19,15 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '@mojir/dvala-engine'
-import { allBuiltinModules } from '../src/allModules'
+import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { MatchError } from '@mojir/dvala-types'
-import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../src/tooling'
+import {
+  getAutoCompleter,
+  getUndefinedSymbols,
+  parseTokenStream,
+  tokenizeSource,
+  untokenize,
+} from '@mojir/dvala-core-tooling'
 
 const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
 const dvalaDebug = createDvala({ modules: allBuiltinModules, debug: true, disableAutoCheckpoint: true })
