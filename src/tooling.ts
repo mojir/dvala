@@ -57,6 +57,7 @@ export type { TypeDiagnostic, TypecheckResult } from './typechecker/typecheck'
 // Modules + AST utilities
 export { allBuiltinModules } from './allModules'
 export { expandMacros } from './ast/expandMacros'
+export type { MacroEvalDvalaFactory, MacroEvalRunner, MacroExpandOptions } from './ast/expandMacros'
 export { treeShake } from './ast/treeShake'
 
 // REPL utilities

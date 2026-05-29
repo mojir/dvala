@@ -159,7 +159,7 @@ export function createCliRuntimeClient(options: CreateCliRuntimeClientOptions): 
     },
   }
 
-  const backend = createBackend({ runtime })
+  const backend = createBackend({ runtime, createDvala })
 
   return {
     run: (program: string | DvalaBundle, filePath?: string) =>

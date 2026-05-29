@@ -15,7 +15,7 @@ function parse(source: string): Ast {
 describe('expandMacros', () => {
   it('expands a simple macro', () => {
     const ast = parse('let double = macro (x) -> quote $^{x} + $^{x} end; double(21)')
-    const expanded = expandMacros(ast)
+    const expanded = expandMacros(ast, { createDvala })
 
     // Definition kept, call expanded to 21 + 21
     expect(expanded.body.length).toBe(2) // let double = ...; <expanded>
@@ -29,7 +29,7 @@ describe('expandMacros', () => {
 
   it('keeps macro definition but expands calls', () => {
     const ast = parse('let m = macro (x) -> x; m(42)')
-    const expanded = expandMacros(ast)
+    const expanded = expandMacros(ast, { createDvala })
 
     // Definition is kept (treeshaking removes it later), call is expanded
     expect(expanded.body.length).toBe(2) // let m = macro... ; <expanded>
@@ -46,7 +46,7 @@ describe('expandMacros', () => {
       let addTwo = macro (x) -> quote addOne($^{x}) + 1 end;
       addTwo(10)
     `)
-    const expanded = expandMacros(ast)
+    const expanded = expandMacros(ast, { createDvala })
 
     const dvala = createDvala()
     expect(dvala.run({ version: 1, ast: expanded })).toBe(12)
@@ -54,7 +54,7 @@ describe('expandMacros', () => {
 
   it('leaves non-macro code untouched', () => {
     const ast = parse('let x = 42; x + 1')
-    const expanded = expandMacros(ast)
+    const expanded = expandMacros(ast, { createDvala })
 
     expect(expanded.body.length).toBe(ast.body.length)
     const dvala = createDvala()
@@ -64,7 +64,7 @@ describe('expandMacros', () => {
   it('leaves runtime-dependent macros unexpanded', () => {
     // This macro references a variable that doesn't exist at build time
     const ast = parse('let m = macro (x) -> quote $^{x} + runtimeValue end; m(1)')
-    const expanded = expandMacros(ast)
+    const expanded = expandMacros(ast, { createDvala })
 
     // The macro expansion will succeed (it just constructs AST),
     // but the expanded code references runtimeValue
@@ -77,13 +77,13 @@ describe('expandMacros', () => {
     const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
     const ast = parseToAst(minified)
 
-    const expanded = expandMacros(ast)
+    const expanded = expandMacros(ast, { createDvala })
     expect(expanded.sourceMap).toBe(ast.sourceMap) // same reference, not copied
   })
 
   it('handles identity macro', () => {
     const ast = parse('let id = macro (x) -> x; id(let y = 42); y')
-    const expanded = expandMacros(ast)
+    const expanded = expandMacros(ast, { createDvala })
 
     const dvala = createDvala()
     expect(dvala.run({ version: 1, ast: expanded })).toBe(42)

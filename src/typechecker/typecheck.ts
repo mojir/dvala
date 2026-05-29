@@ -37,7 +37,7 @@ import {
 } from './parseType'
 import { installPreludeAliases } from './prelude'
 import { builtin } from '@mojir/dvala-engine'
-import { expandMacros } from '../ast/expandMacros'
+import { expandMacros, type MacroEvalDvalaFactory } from '../ast/expandMacros'
 import { verifyAssertionFunctionBodies } from './assertsBodyVerify'
 
 // ---------------------------------------------------------------------------
@@ -82,6 +82,12 @@ interface TypecheckOptions {
    * See design/archive/2026-04-16_constant-folding-in-types.md.
    */
   fold?: boolean
+  /**
+   * Host factory used to evaluate macro definitions during the macro-expansion
+   * pass that runs before type inference. Without it, macro calls remain
+   * unexpanded (typed as their result of `macroexpand`, i.e. Unknown).
+   */
+  createDvala?: MacroEvalDvalaFactory
 }
 
 interface CachedFileTypeResult {
@@ -119,7 +125,15 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
   // Expand macros before type inference so macro calls get concrete types
   const resolver = options?.fileResolver
   const baseDir = options?.fileResolverBaseDir ?? '.'
-  const expandedAst = expandMacros(ast, resolver ? { fileResolver: resolver, fileResolverBaseDir: baseDir } : undefined)
+  const createDvala = options?.createDvala
+  const expandedAst = expandMacros(
+    ast,
+    resolver
+      ? { fileResolver: resolver, fileResolverBaseDir: baseDir, createDvala }
+      : createDvala
+        ? { createDvala }
+        : undefined,
+  )
   const sourceMap = expandedAst.sourceMap ?? ast.sourceMap
   const diagnostics: TypeDiagnostic[] = []
   const reportedImportDiagnostics = new Set<string>()
@@ -158,7 +172,11 @@ export function typecheck(ast: Ast, options?: TypecheckOptions): TypecheckResult
           // Expand macros before type inference so macro calls get concrete types.
           // Pass the file resolver so cross-file macros (e.g. import("./macros")) are discovered.
           const nestedDir = resolveImportedFileDir(fromDir, importPath)
-          const importedAst = expandMacros(rawAst, { fileResolver: resolver, fileResolverBaseDir: nestedDir })
+          const importedAst = expandMacros(rawAst, {
+            fileResolver: resolver,
+            fileResolverBaseDir: nestedDir,
+            createDvala,
+          })
           const importCtx = new InferenceContext()
           importCtx.sourceMap = importedAst.sourceMap ?? rawAst.sourceMap
           importCtx.resolveFileType = makeResolveFileType(nestedDir)

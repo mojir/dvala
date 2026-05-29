@@ -74,6 +74,7 @@
  */
 
 import { createBackend } from '@mojir/dvala-workspace-backend'
+import { createDvala } from '@mojir/dvala'
 import type {
   PlaygroundCompletionErrorMessage as CompletionErrorMessage,
   PlaygroundCompletionResultMessage as CompletionResultMessage,
@@ -91,7 +92,7 @@ import type {
 
 // ── Worker state ──────────────────────────────────────────────────────────────
 
-const backend = createBackend()
+const backend = createBackend({ createDvala })
 
 /** Active request cancellation flags, keyed by requestId. */
 const cancelledRequests = new Map<number, boolean>()

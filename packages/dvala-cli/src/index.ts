@@ -304,7 +304,7 @@ switch (config.subcommand) {
       const absolutePath = path.resolve(resolved.rootDir, resolved.config.entry)
       let result = bundle(absolutePath, { sourceMap })
       if (doExpandMacros) {
-        result = { ...result, ast: expandMacros(result.ast) }
+        result = { ...result, ast: expandMacros(result.ast, { createDvala }) }
       }
       if (doTreeShake) {
         result = { ...result, ast: treeShake(result.ast) }

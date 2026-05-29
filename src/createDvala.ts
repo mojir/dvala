@@ -165,6 +165,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         fileResolver: factoryFileResolver,
         fileResolverBaseDir: typecheckOptions?.fileResolverBaseDir ?? factoryFileResolverBaseDir,
         fold: typecheckOptions?.fold,
+        createDvala,
       })
     },
   }
