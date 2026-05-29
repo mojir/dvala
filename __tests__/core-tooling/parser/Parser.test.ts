@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from 'vitest'
-import { createDvala } from '../createDvala'
-import { getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../tooling'
+import { createDvala } from '@mojir/dvala'
+import { getUndefinedSymbols, parseTokenStream, tokenizeSource } from '@mojir/dvala-core-tooling'
 import { NodeTypes } from '@mojir/dvala-types'
 import { DvalaError, MatchError } from '@mojir/dvala-types'
 import { mathUtilsModule } from '@mojir/dvala-engine'

@@ -1,15 +1,15 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { builtin } from '@mojir/dvala-engine'
 import { NodeTypes } from '@mojir/dvala-types'
-import { createDvala } from '../createDvala'
+import { createDvala } from '@mojir/dvala'
 import type { AstNode } from '@mojir/dvala-types'
-import { getBuiltinType, initBuiltinTypes } from './builtinTypes'
-import { expandTypeForDisplay } from './infer'
-import { parseTypeAnnotation, RefinementError, TypeParseError } from './parseType'
-import { solveRefinedSubtype } from './refinementSolver'
-import { simplify } from './simplify'
-import { isSubtype } from './subtype'
-import { NumberType, StringType, typeEquals, typeToString, type Type } from './types'
+import { getBuiltinType, initBuiltinTypes } from '../../../packages/dvala-core-tooling/src/typechecker/builtinTypes'
+import { expandTypeForDisplay } from '../../../packages/dvala-core-tooling/src/typechecker/infer'
+import { parseTypeAnnotation, RefinementError, TypeParseError } from '../../../packages/dvala-core-tooling/src/typechecker/parseType'
+import { solveRefinedSubtype } from '../../../packages/dvala-core-tooling/src/typechecker/refinementSolver'
+import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/simplify'
+import { isSubtype } from '../../../packages/dvala-core-tooling/src/typechecker/subtype'
+import { NumberType, StringType, typeEquals, typeToString, type Type } from '../../../packages/dvala-core-tooling/src/typechecker/types'
 
 // Populate the builtin-type cache so `isTypeGuard('isNumber')` returns
 // true — the fragment-checker calls it while classifying relation
