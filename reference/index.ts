@@ -1,15 +1,15 @@
 import type { SpecialExpressionName } from '@mojir/dvala-types'
-import type { BuiltinNormalExpressions, ExampleEntry, FunctionDocs, SpecialExpressionDocs } from '@mojir/dvala-engine'
+import type { BuiltinNormalExpressions, FunctionDocs, SpecialExpressionDocs } from '@mojir/dvala-engine'
 import type { DvalaModule } from '@mojir/dvala-engine'
+import type { CustomReference, EffectReference, FunctionReference, Reference } from '@mojir/dvala-engine'
+import { isFunctionReference } from '@mojir/dvala-engine'
 import type {
   ArrayApiName,
   AssertionApiName,
   BitwiseApiName,
-  Category,
   CollectionApiName,
   CoreApiName,
   CoreNormalExpressionName,
-  DataType,
   FunctionalApiName,
   MathApiName,
   MetaApiName,
@@ -193,97 +193,28 @@ function specialExpressionDocsToReference(): Record<
 
 const specialExpressionsReference = specialExpressionDocsToReference()
 
-export interface TypedValue {
-  type: DataType[] | DataType
-  rest?: true
-  array?: true
-}
-
-type NormalExpressionArgument = TypedValue & {
-  description?: string
-}
-
-export type Argument = NormalExpressionArgument
-
-interface Variant {
-  argumentNames: string[]
-}
-
-export interface CommonReference<T extends Category> {
-  title: string
-  category: T
-  examples: ExampleEntry[]
-  description: string
-  seeAlso?: string[]
-}
-export type FunctionReference<T extends Category = Category> = CommonReference<T> & {
-  returns: TypedValue
-  args: Record<string, Argument>
-  variants: Variant[]
-  noOperatorDocumentation?: true
-  _isOperator?: boolean
-  _prefereOperator?: boolean
-}
-
-export type CustomReference<T extends Category = Category> = CommonReference<T> & {
-  customVariants: string[]
-  details?: [string, string, string | undefined][]
-}
-
-export interface ShorthandReference extends CommonReference<'shorthand'> {
-  shorthand: true
-}
-
-export interface DatatypeReference extends CommonReference<'datatype'> {
-  datatype: true
-}
-
-// Prelude aliases (refined types declared in src/prelude.dvala). Carry a
-// `definition` string so `dvala doc Positive` can show the alias body
-// alongside the description.
-export interface PreludeReference extends CommonReference<'prelude'> {
-  prelude: true
-  definition: string
-}
-
-export interface EffectReference extends CommonReference<'effect' | 'playground-effect'> {
-  effect: true
-  args: Record<string, Argument>
-  returns: TypedValue
-  variants: Variant[]
-}
-
-export type Reference<T extends Category = Category> =
-  | FunctionReference<T>
-  | CustomReference<T>
-  | ShorthandReference
-  | DatatypeReference
-  | PreludeReference
-  | EffectReference
-
-export function isFunctionReference<T extends Category>(ref: Reference<T>): ref is FunctionReference<T> {
-  return 'returns' in ref && 'args' in ref && 'variants' in ref && !('effect' in ref)
-}
-
-export function isCustomReference<T extends Category>(ref: Reference<T>): ref is CustomReference<T> {
-  return 'customVariants' in ref
-}
-
-export function isShorthandReference<T extends Category>(ref: Reference<T>): ref is ShorthandReference {
-  return 'shorthand' in ref
-}
-
-export function isDatatypeReference<T extends Category>(ref: Reference<T>): ref is DatatypeReference {
-  return 'datatype' in ref
-}
-
-export function isPreludeReference<T extends Category>(ref: Reference<T>): ref is PreludeReference {
-  return 'prelude' in ref
-}
-
-export function isEffectReference<T extends Category>(ref: Reference<T>): ref is EffectReference {
-  return 'effect' in ref
-}
+// Reference type family lives in @mojir/dvala-engine. Re-export here so
+// existing consumers of `from '../reference'` (etc.) keep working.
+export type {
+  Argument,
+  CommonReference,
+  CustomReference,
+  DatatypeReference,
+  EffectReference,
+  FunctionReference,
+  PreludeReference,
+  Reference,
+  ShorthandReference,
+  TypedValue,
+} from '@mojir/dvala-engine'
+export {
+  isCustomReference,
+  isDatatypeReference,
+  isEffectReference,
+  isFunctionReference,
+  isPreludeReference,
+  isShorthandReference,
+} from '@mojir/dvala-engine'
 
 export const normalExpressionReference: Record<CoreNormalExpressionName, FunctionReference> = {
   // Core categories — all derived from co-located docs

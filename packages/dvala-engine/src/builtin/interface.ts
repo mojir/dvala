@@ -129,7 +129,7 @@ export type Argument = TypedValue & {
   description?: string
 }
 
-interface Variant {
+export interface Variant {
   argumentNames: string[]
 }
 
