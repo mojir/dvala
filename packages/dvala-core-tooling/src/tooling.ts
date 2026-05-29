@@ -69,8 +69,11 @@ export { Debugger } from './debugger/Debugger'
 export type { DebugStoppedEvent } from './debugger/Debugger'
 export { findNodeIdForLine, getNodeEndLine, getNodeFile, getNodeLine } from './debugger/SourceMapUtils'
 
-// Node-environment workspace indexer (used by the vscode extension)
-export { loadFile, nodeResolveImport } from './languageService/nodeWorkspaceIndexer'
+// NOTE: nodeWorkspaceIndexer (loadFile, nodeResolveImport) is intentionally
+// NOT re-exported here — it imports `node:fs`/`node:path` and would poison
+// every browser-target consumer's bundle (Vite worker, playground iife) with
+// unresolved node-built-ins that kill the worker at load time. Node-side
+// consumers (vscode-dvala) import it directly from the file.
 
 // Pretty printer (used by the host as a ContextStack capability, and by tools)
 export { prettyPrint } from './prettyPrint'

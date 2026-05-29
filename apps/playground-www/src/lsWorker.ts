@@ -74,7 +74,6 @@
  */
 
 import { createBackend } from '@mojir/dvala-workspace-backend'
-import { createDvala } from '@mojir/dvala'
 import type {
   PlaygroundCompletionErrorMessage as CompletionErrorMessage,
   PlaygroundCompletionResultMessage as CompletionResultMessage,
@@ -92,7 +91,14 @@ import type {
 
 // ── Worker state ──────────────────────────────────────────────────────────────
 
-const backend = createBackend({ createDvala })
+// NOTE: `createBackend({ createDvala })` would enable macro expansion during
+// the worker's typecheck pass — but importing `@mojir/dvala` into the worker
+// pulls in the host's full closure (createDvala host + runtime + bundler +
+// modules), which inflates the worker bundle considerably. The main-thread
+// typecheck (via `getDvala().typecheck(...)`) keeps macro typing intact, so
+// the only degradation is hover/completion types over macro-using code in
+// the LS worker. Re-enable if that becomes a real pain.
+const backend = createBackend()
 
 /** Active request cancellation flags, keyed by requestId. */
 const cancelledRequests = new Map<number, boolean>()
