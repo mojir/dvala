@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { FOLD_ENABLED } from '../../../packages/dvala-core-tooling/src/typechecker/foldToggle'
 import {

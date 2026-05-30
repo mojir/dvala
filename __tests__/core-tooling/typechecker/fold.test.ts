@@ -28,7 +28,7 @@ afterEach(() => {
 // Helper: typecheck a source snippet, return the inferred type of the LAST
 // top-level expression node as a display string.
 async function inferLastTypeString(source: string): Promise<string> {
-  const { createDvala } = await import('@mojir/dvala')
+  const { createDvala } = await import('@mojir/dvala-core-tooling')
   const { expandType, typeVarObjectIdForDisplay: _unused } =
     (await import('../../../packages/dvala-core-tooling/src/typechecker/infer')) as unknown as {
       expandType: (t: unknown) => unknown
@@ -79,7 +79,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
 
   it('emits a @dvala.error warning when fold surfaces an effect', async () => {
     stubFoldOn()
-    const { createDvala } = await import('@mojir/dvala')
+    const { createDvala } = await import('@mojir/dvala-core-tooling')
     const dvala = createDvala()
     const result = dvala.typecheck('1 / 0')
     const warnings = result.diagnostics.filter(d => d.severity === 'warning')
@@ -206,7 +206,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
   describe('match guard-literal pruning (C9)', () => {
     it('skips a case whose guard folds to literal(false) and emits a redundant warning', async () => {
       stubFoldOn()
-      const { createDvala } = await import('@mojir/dvala')
+      const { createDvala } = await import('@mojir/dvala-core-tooling')
       const dvala = createDvala()
       const result = dvala.typecheck(`
         match 42
@@ -223,7 +223,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
 
     it('does not prune a case whose guard folds to literal(true)', async () => {
       stubFoldOn()
-      const { createDvala } = await import('@mojir/dvala')
+      const { createDvala } = await import('@mojir/dvala-core-tooling')
       const dvala = createDvala()
       const result = dvala.typecheck(`
         match 42
@@ -238,7 +238,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
 
     it('a false-guard case leaves the remainder unhandled — exhaustiveness can fail', async () => {
       stubFoldOn()
-      const { createDvala } = await import('@mojir/dvala')
+      const { createDvala } = await import('@mojir/dvala-core-tooling')
       const dvala = createDvala()
       // The `case :a` arm is pruned (false guard), leaving :a | :b
       // unhandled with no wildcard fallback. Non-exhaustive match.
@@ -255,7 +255,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
 
     it('does not prune when fold is off — dead guards only warned via existing redundancy machinery', async () => {
       stubFoldOff()
-      const { createDvala } = await import('@mojir/dvala')
+      const { createDvala } = await import('@mojir/dvala-core-tooling')
       const dvala = createDvala()
       const result = dvala.typecheck(`
         match 42
@@ -327,7 +327,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
 
     it('silently bails when a capture is not reconstructible (no warning)', async () => {
       stubFoldOn()
-      const { createDvala } = await import('@mojir/dvala')
+      const { createDvala } = await import('@mojir/dvala-core-tooling')
       const dvala = createDvala()
       // `randomBase` has a non-literal type (Number), so fold can't
       // reconstruct it. The fold bails silently — no spurious warning.
@@ -343,7 +343,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
 
     it('still surfaces @dvala.error when a user function provably fails', async () => {
       stubFoldOn()
-      const { createDvala } = await import('@mojir/dvala')
+      const { createDvala } = await import('@mojir/dvala-core-tooling')
       const dvala = createDvala()
       const result = dvala.typecheck(`
         let reciprocal = (x) -> 1 / x;
@@ -364,7 +364,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
   describe('TypecheckOptions.fold — per-call override', () => {
     it('fold:true folds even when env default is off', async () => {
       stubFoldOff()
-      const { createDvala } = await import('@mojir/dvala')
+      const { createDvala } = await import('@mojir/dvala-core-tooling')
       const { expandType } = await import('../../../packages/dvala-core-tooling/src/typechecker/infer')
       const { simplify } = await import('../../../packages/dvala-core-tooling/src/typechecker/simplify')
       const { typeToString } = await import('../../../packages/dvala-core-tooling/src/typechecker/types')
@@ -377,7 +377,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
 
     it('fold:false suppresses folding even when env default is on', async () => {
       stubFoldOn()
-      const { createDvala } = await import('@mojir/dvala')
+      const { createDvala } = await import('@mojir/dvala-core-tooling')
       const { expandType } = await import('../../../packages/dvala-core-tooling/src/typechecker/infer')
       const { simplify } = await import('../../../packages/dvala-core-tooling/src/typechecker/simplify')
       const { typeToString } = await import('../../../packages/dvala-core-tooling/src/typechecker/types')
@@ -390,7 +390,7 @@ describe('inferExpr fold integration — DVALA_FOLD=1', () => {
 
     it('undefined option falls back to env default', async () => {
       stubFoldOn()
-      const { createDvala } = await import('@mojir/dvala')
+      const { createDvala } = await import('@mojir/dvala-core-tooling')
       const { expandType } = await import('../../../packages/dvala-core-tooling/src/typechecker/infer')
       const { simplify } = await import('../../../packages/dvala-core-tooling/src/typechecker/simplify')
       const { typeToString } = await import('../../../packages/dvala-core-tooling/src/typechecker/types')

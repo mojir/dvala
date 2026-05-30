@@ -2,13 +2,12 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
-const dvalaEntry = fileURLToPath(new URL('./src/index.ts', import.meta.url))
-const dvalaBundlerEntry = fileURLToPath(new URL('./src/bundler.ts', import.meta.url))
 const runtimePackageEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/index.ts', import.meta.url))
 const dvalaTypesEntry = fileURLToPath(new URL('./packages/dvala-types/src/index.ts', import.meta.url))
 const dvalaEngineEntry = fileURLToPath(new URL('./packages/dvala-engine/src/index.ts', import.meta.url))
 const runtimeArtifactsEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/artifacts/index.ts', import.meta.url))
 const coreToolingEntry = fileURLToPath(new URL('./packages/dvala-core-tooling/src/index.ts', import.meta.url))
+const testFrameworkEntry = fileURLToPath(new URL('./packages/dvala-test-framework/src/index.ts', import.meta.url))
 const workspaceBackendEntry = fileURLToPath(new URL('./packages/dvala-workspace-backend/src/index.ts', import.meta.url))
 const workspaceBackendRuntimeEntry = fileURLToPath(
   new URL('./packages/dvala-workspace-backend/src/runtime/index.ts', import.meta.url),
@@ -20,13 +19,12 @@ const workspaceBackendPlaygroundProtocolEntry = fileURLToPath(
 export default defineConfig({
   resolve: {
     alias: {
-      '@mojir/dvala/bundler': dvalaBundlerEntry,
-      '@mojir/dvala': dvalaEntry,
       '@mojir/dvala-runtime/artifacts': runtimeArtifactsEntry,
       '@mojir/dvala-runtime': runtimePackageEntry,
       '@mojir/dvala-types': dvalaTypesEntry,
       '@mojir/dvala-engine': dvalaEngineEntry,
       '@mojir/dvala-core-tooling': coreToolingEntry,
+      '@mojir/dvala-test-framework': testFrameworkEntry,
       '@mojir/dvala-workspace-backend/adapters/playground-worker-protocol': workspaceBackendPlaygroundProtocolEntry,
       '@mojir/dvala-workspace-backend/runtime': workspaceBackendRuntimeEntry,
       '@mojir/dvala-workspace-backend': workspaceBackendEntry,
@@ -74,13 +72,11 @@ export default defineConfig({
         'mcp-server/**',
         '**/interface.ts',
         '**/types.ts',
-        'src/index.ts',
-        'src/standaloneTooling.ts',
-        'src/full.ts',
-        'src/modules/**',
-        'src/bundler.ts',
-        'src/evaluator/frames.ts',
-        'src/evaluator/step.ts',
+        'packages/dvala-core-tooling/src/standaloneTooling.ts',
+        'packages/dvala-core-tooling/src/tooling.ts',
+        'packages/dvala-core-tooling/src/index.ts',
+        'packages/dvala-engine/src/evaluator/frames.ts',
+        'packages/dvala-engine/src/evaluator/step.ts',
         'playwright.config.ts',
       ],
     },

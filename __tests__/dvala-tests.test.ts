@@ -11,9 +11,9 @@
 import { globSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { runTestFile } from '../src/testFramework'
-import { isSuccess } from '../src/testFramework/result'
-import { formatConsole } from '../src/testFramework/formatConsole'
+import { runTestFile } from '@mojir/dvala-test-framework'
+import { isSuccess } from '@mojir/dvala-test-framework'
+import { formatConsole } from '@mojir/dvala-test-framework'
 
 const dvalaTestFiles = globSync('src/**/*.test.dvala', { cwd: path.resolve(__dirname, '..') }).map(f =>
   path.resolve(__dirname, '..', f),

@@ -10,7 +10,7 @@
  * 3. Module function coverage — same tests for module expressions
  */
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { normalExpressions } from '@mojir/dvala-engine'
 import type { ExampleEntry, TypedValue } from '@mojir/dvala-engine'

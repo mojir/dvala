@@ -13,6 +13,7 @@ packages/*/src/**/*.d.ts
 .tmp-cli-test
 docs
 .wireit
+benchmarks/build/
 node_modules
 test-report.xml
 .DS_Store

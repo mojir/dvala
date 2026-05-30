@@ -6,8 +6,8 @@ import type { FileResolver } from '@mojir/dvala-engine'
 import type { Context, ParseSource, PrettyPrint } from '@mojir/dvala-engine'
 import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from '@mojir/dvala-engine'
 import type { Ast, SourceMap } from '@mojir/dvala-types'
-import type { DvalaBundle } from '../bundler/interface'
-import { isDvalaBundle } from '../bundler/interface'
+import type { DvalaBundle } from '../../bundler/interface'
+import { isDvalaBundle } from '../../bundler/interface'
 import { toJS } from '@mojir/dvala-engine'
 
 interface RuntimeExecutionRunner {

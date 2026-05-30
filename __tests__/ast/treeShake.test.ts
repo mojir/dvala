@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { treeShake } from '@mojir/dvala-core-tooling'
 import { NodeTypes } from '@mojir/dvala-types'
-import { createDvala } from '../../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { minifyTokenStream } from '@mojir/dvala-core-tooling'
 import { tokenize } from '@mojir/dvala-core-tooling'
 import { parseToAst } from '@mojir/dvala-core-tooling'

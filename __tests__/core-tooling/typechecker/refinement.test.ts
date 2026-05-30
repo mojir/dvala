@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { builtin } from '@mojir/dvala-engine'
 import { NodeTypes } from '@mojir/dvala-types'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import type { AstNode } from '@mojir/dvala-types'
 import { getBuiltinType, initBuiltinTypes } from '../../../packages/dvala-core-tooling/src/typechecker/builtinTypes'
 import { expandTypeForDisplay } from '../../../packages/dvala-core-tooling/src/typechecker/infer'

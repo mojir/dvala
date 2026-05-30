@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Any } from '@mojir/dvala-types'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { EXAMPLE_DESCRIPTION_MAX_LENGTH, examples } from '../reference/examples'
 import { tokenizeSource, parseTokenStream } from '@mojir/dvala-core-tooling'

@@ -1,4 +1,4 @@
-import type { ExampleEntry } from '../../../src'
+import type { ExampleEntry } from '@mojir/dvala-engine'
 import type { EffectReference } from '../../../reference'
 import type { PlaygroundAPI } from './playgroundAPI'
 

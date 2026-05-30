@@ -12,7 +12,7 @@
  * 5. Operator form equivalence — f(a, b) same as a f b
  */
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { normalExpressions } from '@mojir/dvala-engine'
 import { specialExpressions } from '@mojir/dvala-engine'

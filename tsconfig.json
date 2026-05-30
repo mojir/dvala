@@ -9,12 +9,11 @@
     "module": "es2020" /* Include 'undefined' in index signature results */,
     "moduleResolution": "bundler" /* Bundler-style resolution; matches rolldown/vitest/esbuild. */,
     "paths": {
-      "@mojir/dvala": ["./src/index.ts"],
-      "@mojir/dvala/bundler": ["./src/bundler.ts"],
       "@mojir/dvala-runtime": ["./packages/dvala-runtime/src/index.ts"],
       "@mojir/dvala-types": ["./packages/dvala-types/src/index.ts"],
       "@mojir/dvala-engine": ["./packages/dvala-engine/src/index.ts"],
       "@mojir/dvala-core-tooling": ["./packages/dvala-core-tooling/src/index.ts"],
+      "@mojir/dvala-test-framework": ["./packages/dvala-test-framework/src/index.ts"],
       "@mojir/dvala-workspace-backend": ["./packages/dvala-workspace-backend/src/index.ts"],
       "@mojir/dvala-workspace-backend/runtime": ["./packages/dvala-workspace-backend/src/runtime/index.ts"],
       "@mojir/dvala-workspace-backend/adapters/playground-worker-protocol": [
@@ -45,6 +44,6 @@
     "isolatedModules": true /* Enables emit interoperability between CommonJS and ES Modules via creation of module objects for all imports. Implies 'allowSyntheticDefaultImports'. */,
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "types/**/*", "cli/**/*", "common/clojureDocs.ts"],
+  "include": ["types/**/*", "cli/**/*", "common/clojureDocs.ts"],
   "exclude": ["**/*.test.ts", "__tests__"]
 }

@@ -1,4 +1,5 @@
-import type { Any, EffectHandler, HandlerRegistration } from '../../../src'
+import type { Any } from '@mojir/dvala-types'
+import type { EffectHandler, HandlerRegistration } from '@mojir/dvala-engine'
 import type { PlaygroundAPI } from './playgroundAPI'
 
 type ApiValue = PlaygroundAPI[keyof PlaygroundAPI]

@@ -1,5 +1,6 @@
-import { createBackend, createDvala } from '../../src/internal'
-import type { DvalaBackend } from '../../packages/dvala-workspace-backend/src/index'
+import { createBackend } from '@mojir/dvala-workspace-backend'
+import type { DvalaBackend } from '@mojir/dvala-workspace-backend'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import type {
   BackendCompletionRequest,
   BackendCompletionResult,

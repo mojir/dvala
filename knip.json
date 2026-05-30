@@ -6,7 +6,6 @@
   "workspaces": {
     ".": {
       "entry": [
-        "src/**/*.ts",
         "cli/src/cli.ts",
         "mcp-server/src/server.ts",
         "playground-builder/src/buildPlaygroundSite.ts",
@@ -18,7 +17,6 @@
         "e2e/**/*.spec.ts"
       ],
       "project": [
-        "src/**/*.ts",
         "common/**/*.ts",
         "cli/src/**/*.ts",
         "mcp-server/src/**/*.ts",
@@ -51,6 +49,10 @@
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-core-tooling": {
+      "entry": ["src/**/*.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/dvala-test-framework": {
       "entry": ["src/**/*.ts"],
       "project": ["src/**/*.ts"]
     },

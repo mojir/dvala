@@ -1,7 +1,11 @@
 /* eslint-disable no-console */
 
 import type { Reference } from '../../../reference'
-import { bundle, deserializeBundle, serializeBundle } from '@mojir/dvala/bundler'
+import { deserializeBundle, serializeBundle } from '@mojir/dvala-core-tooling'
+// `bundle()` is the Node-only file walker (imports node:fs/path) — kept out of
+// core-tooling's public surface so browser-target bundles don't try to resolve
+// node built-ins. Pulled directly here.
+import { bundle } from '../../dvala-core-tooling/src/bundler/index'
 import fs from 'node:fs'
 import path from 'node:path'
 import { stringifyValue } from '../../../common/utils'
@@ -24,20 +28,21 @@ import {
   polishSymbolCharacterClass,
   polishSymbolFirstCharacterClass,
 } from '@mojir/dvala-core-tooling'
-import type { DvalaBundle, UnknownRecord } from '@mojir/dvala'
-import { normalExpressionKeys, specialExpressionKeys, hostHandler } from '@mojir/dvala'
-import type { CoverageConfig, CoverageReporter, ResolvedConfig } from '../../../src/config'
-import { findConfig } from '../../../src/config'
-import { runTestFile, runTestSuite } from '../../../src/testFramework'
+import type { DvalaBundle } from '@mojir/dvala-core-tooling'
+import type { UnknownRecord } from '@mojir/dvala-types'
+import { normalExpressionKeys, specialExpressionKeys, hostHandler } from '@mojir/dvala-engine'
+import type { CoverageConfig, CoverageReporter, ResolvedConfig } from './config'
+import { findConfig } from './config'
+import { runTestFile, runTestSuite } from '@mojir/dvala-test-framework'
 import { globSync } from 'glob'
-import type { CoverageFilter } from '../../../src/testFramework/coverage'
-import { computeCoverageSummary, generateSuiteLcov } from '../../../src/testFramework/coverage'
-import { generateCoverageHtmlFiles } from '../../../src/testFramework/coverageHtml'
-import type { TestRunResult } from '../../../src/testFramework/result'
-import { formatTap } from '../../../src/testFramework/formatTap'
-import { formatConsole } from '../../../src/testFramework/formatConsole'
-import { formatHtml } from '../../../src/testFramework/formatHtml'
-import { formatJunit } from '../../../src/testFramework/formatJunit'
+import type { CoverageFilter } from '@mojir/dvala-test-framework'
+import { computeCoverageSummary, generateSuiteLcov } from '@mojir/dvala-test-framework'
+import { generateCoverageHtmlFiles } from '@mojir/dvala-test-framework'
+import type { TestRunResult } from '@mojir/dvala-test-framework'
+import { formatTap } from '@mojir/dvala-test-framework'
+import { formatConsole } from '@mojir/dvala-test-framework'
+import { formatHtml } from '@mojir/dvala-test-framework'
+import { formatJunit } from '@mojir/dvala-test-framework'
 import {
   applyReplBinding,
   executeReplLine,
@@ -57,7 +62,7 @@ import { getCliModules } from './js-interop/Cli'
 import { createCliRuntimeClient, createFileResolver } from './runtimeClient'
 import type { TypeDiagnostic } from '@mojir/dvala-core-tooling'
 import { initReferenceData } from '@mojir/dvala-core-tooling'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 initReferenceData()
 
 const useColor = !process.env.NO_COLOR

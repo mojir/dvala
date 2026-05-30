@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 
 describe('object literals', () => {
   for (const dvala of [createDvala(), createDvala({ debug: true })]) {

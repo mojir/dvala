@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { DvalaError, ReferenceError } from '@mojir/dvala-types'
-import { Cache } from '../src/Cache'
+// Cache is intentionally NOT on core-tooling's public surface (LRU helper used
+// only by createAstBuilder) — pull it directly.
+import { Cache } from '../packages/dvala-core-tooling/src/host/Cache'
 import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, untokenize } from '@mojir/dvala-core-tooling'
 import type { Ast } from '@mojir/dvala-types'
 import { NodeTypes } from '@mojir/dvala-types'

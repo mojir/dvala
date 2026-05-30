@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TestData } from '../../testUtils'
 import { checkTestData, createTestData } from '../../testUtils'
-import { createDvala } from '../../../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { sequenceUtilsModule } from '@mojir/dvala-engine'
 import { vectorModule } from '@mojir/dvala-engine'
 import { DvalaError } from '@mojir/dvala-types'

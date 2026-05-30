@@ -4,7 +4,7 @@ import { runTestFile } from './index'
 import { computeCoverageSummary, generateLcov, generateSuiteLcov } from './coverage'
 import type { FileCoverageSummary } from './coverage'
 
-const exampleProjectDir = path.resolve(__dirname, '../../examples/project')
+const exampleProjectDir = path.resolve(__dirname, '../../../examples/project')
 
 /**
  * Run a test file from the example project with coverage enabled

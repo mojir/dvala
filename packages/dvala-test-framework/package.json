@@ -1,0 +1,26 @@
+{
+  "name": "@mojir/dvala-test-framework",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Node-only test runner for Dvala — used by the CLI's `dvala test` command.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsgo -p ./tsconfig.json",
+    "typecheck": "tsgo -p ./tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mojir/dvala-core-tooling": "workspace:*",
+    "@mojir/dvala-engine": "workspace:*",
+    "@mojir/dvala-types": "workspace:*",
+    "glob": "^13.0.6",
+    "minimatch": "^10.2.5"
+  }
+}

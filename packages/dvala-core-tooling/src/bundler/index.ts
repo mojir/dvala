@@ -1,9 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { NodeTypes } from '@mojir/dvala-types'
-import { tokenize } from '@mojir/dvala-core-tooling'
-import { minifyTokenStream } from '@mojir/dvala-core-tooling'
-import { parseToAst } from '@mojir/dvala-core-tooling'
+import { tokenize } from '../tokenizer/tokenize'
+import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
+import { parseToAst } from '../parser'
 import type { Ast, AstNode, SourceMap } from '@mojir/dvala-types'
 import type { DvalaBundle } from './interface'
 

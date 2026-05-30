@@ -15,7 +15,7 @@ import {
   lookupDoc,
 } from '../../../reference/format'
 import { allBuiltinModules, parseTokenStream, tokenizeSource } from '@mojir/dvala-core-tooling'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
 

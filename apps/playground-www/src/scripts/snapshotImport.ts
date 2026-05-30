@@ -1,5 +1,4 @@
-import type { Snapshot } from '../../../../src'
-
+import type { Snapshot } from '@mojir/dvala-engine'
 import type { TerminalSnapshotEntry } from '../snapshotStorage'
 
 interface SnapshotImportDeps {

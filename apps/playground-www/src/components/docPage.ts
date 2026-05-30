@@ -1,5 +1,4 @@
-import type { ExampleEntry } from '../../../../src'
-
+import type { ExampleEntry } from '@mojir/dvala-engine'
 /**
  * Renders a single reference doc page for /ref/<linkName>.
  * Looks up the reference in window.referenceData.api or window.referenceData.modules.

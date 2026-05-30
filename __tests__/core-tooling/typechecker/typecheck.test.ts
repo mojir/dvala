@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
-import { createDvala as createDvalaRaw } from '@mojir/dvala'
+import { createDvala as createDvalaRaw } from '@mojir/dvala-core-tooling'
 import { parseToAst } from '@mojir/dvala-core-tooling'
 import { minifyTokenStream } from '@mojir/dvala-core-tooling'
 import { tokenize } from '@mojir/dvala-core-tooling'

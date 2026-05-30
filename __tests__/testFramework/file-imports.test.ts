@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { runTestFile } from '../../src/testFramework'
-import { isSuccess } from '../../src/testFramework/result'
+import { runTestFile } from '@mojir/dvala-test-framework'
+import { isSuccess } from '@mojir/dvala-test-framework'
 
 const examplesDir = path.resolve(__dirname, '../../examples/project/tests')
 

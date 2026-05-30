@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 
 const dvala = createDvala()
 

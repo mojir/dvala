@@ -5,8 +5,8 @@
  * - All other effects cause no output to be shown
  */
 
-import { createDvala } from '../../../src'
-import type { EffectContext, HandlerRegistration } from '../../../src'
+import { createDvala } from '@mojir/dvala-core-tooling'
+import type { EffectContext, HandlerRegistration } from '@mojir/dvala-engine'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { stringifyValue } from '../../../common/utils'
 

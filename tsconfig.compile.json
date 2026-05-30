@@ -6,12 +6,12 @@
   "references": [{ "path": "./packages/dvala-runtime" }],
   "include": [
     "types/**/*",
-    "src/**/*",
     "packages/dvala-mcp-server/**/*",
     "packages/dvala-core-tooling/**/*",
     "packages/dvala-engine/**/*",
     "packages/dvala-workspace-backend/**/*",
     "packages/dvala-cli/**/*",
+    "packages/dvala-test-framework/**/*",
     "apps/playground-www/**/*",
     "__tests__/**/*.test.ts",
     "cli/**/*",

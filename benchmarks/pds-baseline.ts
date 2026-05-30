@@ -28,9 +28,8 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { performance } from 'node:perf_hooks'
-// Import from built dist to avoid tsx issues with .dvala files in src
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { createDvala } = require('../dist/index.js') as typeof import('../src/createDvala')
+// tsx + scripts/tsx-dvala-loader.cjs handles .dvala stdlib transitively.
+import { createDvala } from '@mojir/dvala-core-tooling'
 
 // ---------------------------------------------------------------------------
 // Benchmark infrastructure

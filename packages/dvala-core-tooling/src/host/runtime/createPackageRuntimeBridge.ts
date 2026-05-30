@@ -1,4 +1,4 @@
-import type { DvalaBundle } from '../bundler/interface'
+import type { DvalaBundle } from '../../bundler/interface'
 import {
   createPackageRuntimeBridge as createPackageRuntimeBridgePackage,
   type ArtifactCompatibilityBridge,

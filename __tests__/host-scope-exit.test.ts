@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 
 const dvala = createDvala()
 
@@ -405,7 +405,7 @@ describe('host scope-exit runtime restrictions', () => {
   })
 
   it('cleanups are strictly per-dvala-instance (two instances do not share state)', async () => {
-    const { createDvala: createDvalaLocal } = await import('../src/createDvala')
+    const { createDvala: createDvalaLocal } = await import('@mojir/dvala-core-tooling')
     const dvalaA = createDvalaLocal()
     const dvalaB = createDvalaLocal()
     const logA: string[] = []

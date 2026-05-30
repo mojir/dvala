@@ -12,7 +12,7 @@
  * stable as the playground UI evolves.
  */
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import type { RunResult } from '@mojir/dvala-engine'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import {

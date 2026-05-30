@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { globSync } from 'glob'
 import path from 'node:path'
-import { createDvala } from '../createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { createTestCollector, createTestModule } from '@mojir/dvala-engine'
 import type { TestEntry } from '@mojir/dvala-engine'
@@ -188,3 +188,15 @@ function readDvalaFile(dvalaPath: string): string {
 
   return fs.readFileSync(dvalaPath, { encoding: 'utf-8' })
 }
+
+// Public surface — re-exports so consumers can import from '@mojir/dvala-test-framework'
+// without reaching into internal modules.
+export type { TestCaseResult, TestRunResult, TestSuiteResult } from './result'
+export { isSuccess, isSuiteSuccess } from './result'
+export type { CoverageFilter, FileCoverageSummary } from './coverage'
+export { computeCoverageSummary, generateLcov, generateSuiteLcov } from './coverage'
+export { generateCoverageHtmlFiles } from './coverageHtml'
+export { formatConsole } from './formatConsole'
+export { getErrorYaml, formatTap } from './formatTap'
+export { formatHtml } from './formatHtml'
+export { formatJunit } from './formatJunit'

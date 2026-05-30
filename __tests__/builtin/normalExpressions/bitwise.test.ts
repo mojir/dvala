@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../../../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { DvalaError } from '@mojir/dvala-types'
 import { bitwiseUtilsModule } from '@mojir/dvala-engine'
 

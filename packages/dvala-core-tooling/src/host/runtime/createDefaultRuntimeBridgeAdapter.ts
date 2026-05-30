@@ -1,4 +1,4 @@
-import type { DvalaBundle } from '../bundler/interface'
+import type { DvalaBundle } from '../../bundler/interface'
 import type { DvalaModule } from '@mojir/dvala-engine'
 import type { CreateDvalaOptions } from '../createDvala'
 import {
