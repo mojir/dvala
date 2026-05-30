@@ -1,6 +1,6 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalDependencies": ["tsconfig.json", "vscode-dvala/tsconfig.json"],
+  "globalDependencies": ["tsconfig.json", "vscode-dvala/tsconfig.json", "rolldown.plugins.mjs"],
   "globalPassThroughEnv": ["DVALA_FOLD"],
   "ui": "stream",
   "tasks": {
