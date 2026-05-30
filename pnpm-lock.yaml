@@ -20,6 +20,9 @@ importers:
       '@mojir/dvala-runtime':
         specifier: workspace:*
         version: link:packages/dvala-runtime
+      '@mojir/dvala-test-framework':
+        specifier: workspace:*
+        version: link:packages/dvala-test-framework
       '@mojir/dvala-types':
         specifier: workspace:*
         version: link:packages/dvala-types
@@ -63,9 +66,6 @@ importers:
       knip:
         specifier: ^6.7.0
         version: 6.7.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)
-      minimatch:
-        specifier: ^10.2.5
-        version: 10.2.5
       monaco-editor:
         specifier: ^0.55.1
         version: 0.55.1
@@ -190,6 +190,9 @@ importers:
       '@mojir/dvala-engine':
         specifier: workspace:*
         version: link:../packages/dvala-engine
+      '@mojir/dvala-workspace-backend':
+        specifier: workspace:*
+        version: link:../packages/dvala-workspace-backend
       '@vscode/debugadapter':
         specifier: ^1.68.0
         version: 1.68.0

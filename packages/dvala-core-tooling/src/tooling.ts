@@ -95,12 +95,7 @@ export type { ReplBinding } from './shared/replCore'
 // bridge (`@mojir/dvala-runtime`-shape wrapper). These are the entry points
 // for anyone running Dvala source through the TS implementation.
 export { createDvala } from './host/createDvala'
-export type {
-  CreateDvalaOptions,
-  DvalaRunAsyncOptions,
-  DvalaRunOptions,
-  DvalaRunner,
-} from './host/createDvala'
+export type { CreateDvalaOptions, DvalaRunAsyncOptions, DvalaRunOptions, DvalaRunner } from './host/createDvala'
 export { createPackageRuntimeBridge } from './host/runtime/createPackageRuntimeBridge'
 export type {
   CreatePackageRuntimeBridgeOptions,

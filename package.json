@@ -91,7 +91,6 @@
     "happy-dom": "^20.9.0",
     "highlight.js": "^11.11.1",
     "knip": "^6.7.0",
-    "minimatch": "^10.2.5",
     "monaco-editor": "^0.55.1",
     "open-cli": "^9.0.0",
     "oxfmt": "^0.47.0",
@@ -396,6 +395,7 @@
     "@mojir/dvala-core-tooling": "workspace:*",
     "@mojir/dvala-engine": "workspace:*",
     "@mojir/dvala-runtime": "workspace:*",
+    "@mojir/dvala-test-framework": "workspace:*",
     "@mojir/dvala-types": "workspace:*",
     "@vue/reactivity": "^3.5.33",
     "marked": "^18.0.2"
