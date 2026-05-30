@@ -8,18 +8,6 @@
     ] /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019', 'ES2020', or 'ESNEXT'. */,
     "module": "es2020" /* Include 'undefined' in index signature results */,
     "moduleResolution": "bundler" /* Bundler-style resolution; matches rolldown/vitest/esbuild. */,
-    "paths": {
-      "@mojir/dvala-runtime": ["./packages/dvala-runtime/src/index.ts"],
-      "@mojir/dvala-types": ["./packages/dvala-types/src/index.ts"],
-      "@mojir/dvala-engine": ["./packages/dvala-engine/src/index.ts"],
-      "@mojir/dvala-core-tooling": ["./packages/dvala-core-tooling/src/index.ts"],
-      "@mojir/dvala-test-framework": ["./packages/dvala-test-framework/src/index.ts"],
-      "@mojir/dvala-workspace-backend": ["./packages/dvala-workspace-backend/src/index.ts"],
-      "@mojir/dvala-workspace-backend/runtime": ["./packages/dvala-workspace-backend/src/runtime/index.ts"],
-      "@mojir/dvala-workspace-backend/adapters/playground-worker-protocol": [
-        "./packages/dvala-workspace-backend/src/adapters/playgroundWorkerProtocol.ts"
-      ]
-    },
     "resolveJsonModule": true /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', 'es2020', or 'ESNext'. */,
     "typeRoots": ["./node_modules/@types", "./types"] /* List of library files to be included in the compilation. */,
     "types": ["node"],

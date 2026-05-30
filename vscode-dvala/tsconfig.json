@@ -7,19 +7,7 @@
     "outDir": "out",
     "sourceMap": true,
     "skipLibCheck": true,
-    "typeRoots": ["../node_modules/@types", "../types"],
-    "paths": {
-      "@mojir/dvala-runtime": ["../packages/dvala-runtime/src/index.ts"],
-      "@mojir/dvala-types": ["../packages/dvala-types/src/index.ts"],
-      "@mojir/dvala-engine": ["../packages/dvala-engine/src/index.ts"],
-      "@mojir/dvala-core-tooling": ["../packages/dvala-core-tooling/src/index.ts"],
-      "@mojir/dvala-test-framework": ["../packages/dvala-test-framework/src/index.ts"],
-      "@mojir/dvala-workspace-backend": ["../packages/dvala-workspace-backend/src/index.ts"],
-      "@mojir/dvala-workspace-backend/runtime": ["../packages/dvala-workspace-backend/src/runtime/index.ts"],
-      "@mojir/dvala-workspace-backend/adapters/playground-worker-protocol": [
-        "../packages/dvala-workspace-backend/src/adapters/playgroundWorkerProtocol.ts"
-      ]
-    }
+    "typeRoots": ["../node_modules/@types", "../types"]
   },
   "references": [{ "path": "../packages/dvala-runtime" }],
   "include": ["src", "../types"],

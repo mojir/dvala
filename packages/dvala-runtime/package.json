@@ -21,7 +21,7 @@
     }
   },
   "scripts": {
-    "build": "tsgo -p ./tsconfig.json",
+    "build": "rolldown -c ./rolldown.config.mjs && tsgo -p ./tsconfig.json --emitDeclarationOnly",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit"
   }
 }

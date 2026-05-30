@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Shared Dvala type vocabulary (AST, values, tokens, constants) — dependency-free leaf",
+  "description": "Shared Dvala type vocabulary (AST, values, tokens, constants) \u2014 dependency-free leaf",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsgo -p ./tsconfig.json",
+    "build": "rolldown -c ./rolldown.config.mjs && tsgo -p ./tsconfig.json --emitDeclarationOnly",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit"
   }
 }

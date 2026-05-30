@@ -13,10 +13,12 @@
     }
   },
   "scripts": {
-    "build": "tsgo -p ./tsconfig.json",
+    "build": "rolldown -c ./rolldown.config.mjs && tsgo -p ./tsconfig.json --emitDeclarationOnly",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@mojir/dvala-core-tooling": "workspace:*"
+    "@mojir/dvala-core-tooling": "workspace:*",
+    "@mojir/dvala-engine": "workspace:*",
+    "@mojir/dvala-types": "workspace:*"
   }
 }

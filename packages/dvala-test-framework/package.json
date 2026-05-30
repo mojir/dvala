@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Node-only test runner for Dvala — used by the CLI's `dvala test` command.",
+  "description": "Node-only test runner for Dvala \u2014 used by the CLI's `dvala test` command.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsgo -p ./tsconfig.json",
+    "build": "rolldown -c ./rolldown.config.mjs && tsgo -p ./tsconfig.json --emitDeclarationOnly",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit"
   },
   "dependencies": {

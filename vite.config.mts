@@ -2,6 +2,15 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
+// Vitest-only aliases that route cross-package imports to SOURCE so that the
+// in-test identity of every shared class (DvalaError, WorkspaceIndex, etc.)
+// matches the identity inside source files. Without these, a test using
+// `expect(...).toThrow(DvalaError)` reaches dist's DvalaError while source
+// throws source's DvalaError and the `instanceof` check fails.
+//
+// Production code is unaffected — tsconfig.json no longer carries these paths,
+// so non-test consumers resolve through pnpm's node_modules → each package's
+// dist/index.js entry.
 const runtimePackageEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/index.ts', import.meta.url))
 const dvalaTypesEntry = fileURLToPath(new URL('./packages/dvala-types/src/index.ts', import.meta.url))
 const dvalaEngineEntry = fileURLToPath(new URL('./packages/dvala-engine/src/index.ts', import.meta.url))
@@ -23,6 +32,7 @@ export default defineConfig({
       '@mojir/dvala-runtime': runtimePackageEntry,
       '@mojir/dvala-types': dvalaTypesEntry,
       '@mojir/dvala-engine': dvalaEngineEntry,
+      '@mojir/dvala-core-tooling/node': fileURLToPath(new URL('./packages/dvala-core-tooling/src/languageService/nodeWorkspaceIndexer.ts', import.meta.url)),
       '@mojir/dvala-core-tooling': coreToolingEntry,
       '@mojir/dvala-test-framework': testFrameworkEntry,
       '@mojir/dvala-workspace-backend/adapters/playground-worker-protocol': workspaceBackendPlaygroundProtocolEntry,

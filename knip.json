@@ -42,11 +42,13 @@
     },
     "packages/dvala-workspace-backend": {
       "entry": ["src/**/*.ts"],
-      "project": ["src/**/*.ts"]
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@mojir/dvala-types"]
     },
     "packages/dvala-mcp-server": {
       "entry": ["src/**/*.ts"],
-      "project": ["src/**/*.ts"]
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@mojir/dvala-engine", "@mojir/dvala-types"]
     },
     "packages/dvala-core-tooling": {
       "entry": ["src/**/*.ts"],

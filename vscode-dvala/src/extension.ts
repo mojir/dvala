@@ -9,14 +9,10 @@ import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '@mojir/dvala-engine'
 import { WorkspaceIndex } from '@mojir/dvala-core-tooling'
 import type { SymbolDef } from '@mojir/dvala-core-tooling'
-// Direct file import (bypasses the core-tooling index) because
-// nodeWorkspaceIndexer pulls in `node:fs`/`node:path` — exporting it from
-// core-tooling's index would poison every browser-target consumer's bundle
-// (the playground LS worker breaks at load time on `node:fs`).
-import {
-  loadFile as loadIndexedFile,
-  nodeResolveImport,
-} from '../../packages/dvala-core-tooling/src/languageService/nodeWorkspaceIndexer'
+// Node-side subpath export — the node-fs/path-using workspace indexer ships
+// as a separate bundle (@mojir/dvala-core-tooling/node) so it doesn't poison
+// browser-target consumers of the main entry.
+import { loadFile as loadIndexedFile, nodeResolveImport } from '@mojir/dvala-core-tooling/node'
 import { buildBuiltinCompletions, symbolDefToCompletion as toSharedCompletion } from '@mojir/dvala-core-tooling'
 import type { CompletionItem as SharedCompletionItem } from '@mojir/dvala-core-tooling'
 import type { Diagnostic as SharedDiagnostic } from '@mojir/dvala-core-tooling'
