@@ -3,16 +3,9 @@ import './styles.css'
 import { stringifyValue } from '../../../common/utils'
 import type { Example } from '../../../reference/examples'
 import { getLinkName } from '../../../reference'
-import {
-  type Any,
-  createDvala,
-  type EffectContext,
-  type EffectHandler,
-  type HandlerRegistration,
-  type Snapshot,
-  asUnknownRecord,
-  type DvalaErrorJSON,
-} from '../../../src'
+import { type Any, asUnknownRecord, type DvalaErrorJSON } from '@mojir/dvala-types'
+import { createDvala } from '@mojir/dvala-core-tooling'
+import { type EffectContext, type EffectHandler, type HandlerRegistration, type Snapshot } from '@mojir/dvala-engine'
 import { initReferenceData } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules, formatSource, getUndefinedSymbols, type TypeDiagnostic } from '@mojir/dvala-core-tooling'
 import {

@@ -1,8 +1,6 @@
-import { allBuiltinModules } from '@mojir/dvala-core-tooling'
-import { createDvala, resume, retrigger, extractCheckpointSnapshots } from '../../../../src'
-import { Debugger, deserializeFromObject } from '../../../../src/internal'
-import type { ContextStack } from '../../../../src/internal'
-import type { ContinuationStack } from '../../../../src/internal'
+import { allBuiltinModules, createDvala, Debugger } from '@mojir/dvala-core-tooling'
+import { resume, retrigger, extractCheckpointSnapshots, deserializeFromObject } from '@mojir/dvala-engine'
+import type { ContextStack, ContinuationStack } from '@mojir/dvala-engine'
 import type { RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
 import type { BackendDocumentStore } from '../documentStore'

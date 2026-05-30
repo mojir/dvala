@@ -3,8 +3,8 @@
 // modals). The interactive editor uses Monaco; this is a no-runtime fallback
 // for places that just need to display code.
 
-import { normalExpressionKeys, specialExpressionKeys, standardEffectNames } from '../../../src'
-import type { Token } from '../../../src'
+import { normalExpressionKeys, specialExpressionKeys, standardEffectNames } from '@mojir/dvala-engine'
+import type { Token } from '@mojir/dvala-core-tooling'
 import { splitSegments, tokenizeSource } from '@mojir/dvala-core-tooling'
 import { playgroundEffectReference } from './playgroundEffects'
 

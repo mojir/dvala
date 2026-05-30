@@ -9,8 +9,6 @@
     "skipLibCheck": true,
     "typeRoots": ["../node_modules/@types", "../types"],
     "paths": {
-      "@mojir/dvala": ["../src/index.ts"],
-      "@mojir/dvala/bundler": ["../src/bundler.ts"],
       "@mojir/dvala-runtime": ["../packages/dvala-runtime/src/index.ts"],
       "@mojir/dvala-types": ["../packages/dvala-types/src/index.ts"],
       "@mojir/dvala-engine": ["../packages/dvala-engine/src/index.ts"],

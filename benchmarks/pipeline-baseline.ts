@@ -80,28 +80,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import * as os from 'node:os'
 import { performance } from 'node:perf_hooks'
 
-// Hybrid imports:
-//   - `createDvala`, `parseTokenStream`, `tokenizeSource` from `dist/full.js`
-//     (the built bundle that includes all modules + reference data + docs).
-//     Importing from `src/` would transitively pull in .dvala stdlib files,
-//     which tsx can't parse without the vite plugin. The minimal bundle
-//     (`dist/index.js`) strips docs and now transitively pulls reference/
-//     through core-tooling, so it fails to load — full.js is the safe
-//     entry that has everything initialized.
-//   - Typechecker internals (`parseTypeAnnotation`, `solveRefinedSubtype`,
-//     `simplify`, type constructors) from `packages/dvala-core-tooling/src/typechecker/*.ts`.
-//     The typechecker subtree doesn't import any .dvala files, so tsx
-//     handles it directly. Required because the bundle doesn't expose
-//     these internals.
+// Imports resolve to core-tooling source via tsconfig paths + the tsx
+// `--require ./scripts/tsx-dvala-loader.cjs` loader, which handles the
+// `.dvala` stdlib files transitively pulled in by createDvala.
 //
-// Calling `createDvala()` once at startup populates the builtin-type
-// cache as a side effect; the typechecker internals depend on it
-// being populated to classify type-guard calls (e.g. `isNumber`).
-// eslint-disable-next-line ts/no-require-imports, ts/no-var-requires
-const { createDvala, parseTokenStream, tokenizeSource } = require('../dist/full.js') as typeof import('../src/createDvala') & {
-  parseTokenStream: typeof import('@mojir/dvala-core-tooling').parseTokenStream
-  tokenizeSource: typeof import('@mojir/dvala-core-tooling').tokenizeSource
-}
+// Calling `createDvala()` once at startup populates the builtin-type cache
+// as a side effect; the typechecker internals depend on it being populated
+// to classify type-guard calls (e.g. `isNumber`).
+import { createDvala, parseTokenStream, tokenizeSource, initReferenceData } from '@mojir/dvala-core-tooling'
+initReferenceData()
 import { parseTypeAnnotation } from '../packages/dvala-core-tooling/src/typechecker/parseType'
 import { solveRefinedSubtype } from '../packages/dvala-core-tooling/src/typechecker/refinementSolver'
 import { simplify } from '../packages/dvala-core-tooling/src/typechecker/simplify'

@@ -1,4 +1,5 @@
-import type { BuiltinNormalExpressions, DvalaModule, Any } from '../../../../../../src'
+import type { BuiltinNormalExpressions, DvalaModule } from '@mojir/dvala-engine'
+import type { Any } from '@mojir/dvala-types'
 import type { Arity } from '@mojir/dvala-types'
 import process from 'node:process'
 

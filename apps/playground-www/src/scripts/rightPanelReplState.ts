@@ -1,4 +1,5 @@
-import { toJS, isAtom, isEffect, isRegularExpression, isDvalaFunction } from '../../../../src'
+import { toJS } from '@mojir/dvala-engine'
+import { isAtom, isEffect, isRegularExpression, isDvalaFunction } from '@mojir/dvala-types'
 import type { ReplBinding } from '@mojir/dvala-core-tooling'
 
 interface ReplSessionFingerprint {

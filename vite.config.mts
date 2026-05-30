@@ -2,8 +2,6 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
-const dvalaEntry = fileURLToPath(new URL('./src/index.ts', import.meta.url))
-const dvalaBundlerEntry = fileURLToPath(new URL('./src/bundler.ts', import.meta.url))
 const runtimePackageEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/index.ts', import.meta.url))
 const dvalaTypesEntry = fileURLToPath(new URL('./packages/dvala-types/src/index.ts', import.meta.url))
 const dvalaEngineEntry = fileURLToPath(new URL('./packages/dvala-engine/src/index.ts', import.meta.url))
@@ -21,8 +19,6 @@ const workspaceBackendPlaygroundProtocolEntry = fileURLToPath(
 export default defineConfig({
   resolve: {
     alias: {
-      '@mojir/dvala/bundler': dvalaBundlerEntry,
-      '@mojir/dvala': dvalaEntry,
       '@mojir/dvala-runtime/artifacts': runtimeArtifactsEntry,
       '@mojir/dvala-runtime': runtimePackageEntry,
       '@mojir/dvala-types': dvalaTypesEntry,
@@ -76,13 +72,11 @@ export default defineConfig({
         'mcp-server/**',
         '**/interface.ts',
         '**/types.ts',
-        'src/index.ts',
-        'src/standaloneTooling.ts',
-        'src/full.ts',
-        'src/modules/**',
-        'src/bundler.ts',
-        'src/evaluator/frames.ts',
-        'src/evaluator/step.ts',
+        'packages/dvala-core-tooling/src/standaloneTooling.ts',
+        'packages/dvala-core-tooling/src/tooling.ts',
+        'packages/dvala-core-tooling/src/index.ts',
+        'packages/dvala-engine/src/evaluator/frames.ts',
+        'packages/dvala-engine/src/evaluator/step.ts',
         'playwright.config.ts',
       ],
     },

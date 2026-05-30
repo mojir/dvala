@@ -1,6 +1,7 @@
 {
-  "name": "@mojir/dvala",
+  "name": "dvala-monorepo",
   "version": "0.4.2",
+  "private": true,
   "engines": {
     "node": ">=22 <23"
   },
@@ -14,7 +15,7 @@
       "keytar"
     ]
   },
-  "description": "A suspendable, time-traveling functional language for JavaScript with algebraic effects",
+  "description": "Monorepo root for Dvala — a suspendable, time-traveling functional language for JavaScript with algebraic effects. Sub-packages live under packages/* and apps/*; this root no longer ships an importable package.",
   "author": "Albert Mojir",
   "license": "MIT",
   "repository": {
@@ -38,99 +39,6 @@
     "lisp",
     "clojure"
   ],
-  "exports": {
-    ".": {
-      "types": "./dist/src/index.d.ts",
-      "import": "./dist/index.esm.js",
-      "require": "./dist/index.js"
-    },
-    "./full": {
-      "types": "./dist/src/full.d.ts",
-      "import": "./dist/full.esm.js",
-      "require": "./dist/full.js"
-    },
-    "./bundler": {
-      "types": "./dist/src/bundler.d.ts",
-      "import": "./dist/bundler.esm.js",
-      "require": "./dist/bundler.js"
-    },
-    "./modules/assertion": {
-      "types": "./dist/src/modules/assertion.d.ts",
-      "import": "./dist/modules/assertion.esm.js",
-      "require": "./dist/modules/assertion.js"
-    },
-    "./modules/grid": {
-      "types": "./dist/src/modules/grid.d.ts",
-      "import": "./dist/modules/grid.esm.js",
-      "require": "./dist/modules/grid.js"
-    },
-    "./modules/vector": {
-      "types": "./dist/src/modules/vector.d.ts",
-      "import": "./dist/modules/vector.esm.js",
-      "require": "./dist/modules/vector.js"
-    },
-    "./modules/linear-algebra": {
-      "types": "./dist/src/modules/linear-algebra.d.ts",
-      "import": "./dist/modules/linear-algebra.esm.js",
-      "require": "./dist/modules/linear-algebra.js"
-    },
-    "./modules/matrix": {
-      "types": "./dist/src/modules/matrix.d.ts",
-      "import": "./dist/modules/matrix.esm.js",
-      "require": "./dist/modules/matrix.js"
-    },
-    "./modules/number-theory": {
-      "types": "./dist/src/modules/number-theory.d.ts",
-      "import": "./dist/modules/number-theory.esm.js",
-      "require": "./dist/modules/number-theory.js"
-    },
-    "./modules/math": {
-      "types": "./dist/src/modules/math.d.ts",
-      "import": "./dist/modules/math.esm.js",
-      "require": "./dist/modules/math.js"
-    },
-    "./modules/functional": {
-      "types": "./dist/src/modules/functional.d.ts",
-      "import": "./dist/modules/functional.esm.js",
-      "require": "./dist/modules/functional.js"
-    },
-    "./modules/string": {
-      "types": "./dist/src/modules/string.d.ts",
-      "import": "./dist/modules/string.esm.js",
-      "require": "./dist/modules/string.js"
-    },
-    "./modules/collection": {
-      "types": "./dist/src/modules/collection.d.ts",
-      "import": "./dist/modules/collection.esm.js",
-      "require": "./dist/modules/collection.js"
-    },
-    "./modules/sequence": {
-      "types": "./dist/src/modules/sequence.d.ts",
-      "import": "./dist/modules/sequence.esm.js",
-      "require": "./dist/modules/sequence.js"
-    },
-    "./modules/bitwise": {
-      "types": "./dist/src/modules/bitwise.d.ts",
-      "import": "./dist/modules/bitwise.esm.js",
-      "require": "./dist/modules/bitwise.js"
-    },
-    "./modules/convert": {
-      "types": "./dist/src/modules/convert.d.ts",
-      "import": "./dist/modules/convert.esm.js",
-      "require": "./dist/modules/convert.js"
-    }
-  },
-  "main": "dist/index.js",
-  "module": "dist/index.esm.js",
-  "iife": "dist/dvala.iife.js",
-  "types": "dist/src/index.d.ts",
-  "bin": {
-    "dvala": "dist/cli/cli.js",
-    "dvala-mcp": "dist/mcp-server/server.js"
-  },
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "preinstall": "npx -y only-allow pnpm",
     "test": "wireit",
@@ -147,7 +55,6 @@
     "clean-dvala": "rm -rf dist build packages/dvala-runtime/dist packages/dvala-workspace-backend/dist packages/dvala-mcp-server/dist packages/dvala-core-tooling/dist packages/dvala-cli/dist apps/playground-www/dist",
     "clean-playground": "rm -rf playground-builder/build apps/playground-www/build",
     "build": "wireit",
-    "build-dvala": "wireit",
     "build-cli": "wireit",
     "build-mcp": "wireit",
     "build-playground-www": "wireit",
@@ -155,8 +62,8 @@
     "build-book": "wireit",
     "build-vscode-ext": "wireit",
     "dvala": "node ./dist/cli/cli.js",
-    "benchmarks:pds": "pnpm run build-dvala && npx tsx --require ./scripts/tsx-dvala-loader.cjs --loader ./scripts/tsx-dvala-loader-hooks.mjs benchmarks/pds-baseline.ts",
-    "benchmarks:run": "pnpm run build-dvala && npx tsx --require ./scripts/tsx-dvala-loader.cjs --loader ./scripts/tsx-dvala-loader-hooks.mjs benchmarks/pipeline-baseline.ts",
+    "benchmarks:pds": "npx tsx --require ./scripts/tsx-dvala-loader.cjs --loader ./scripts/tsx-dvala-loader-hooks.mjs benchmarks/pds-baseline.ts",
+    "benchmarks:run": "npx tsx --require ./scripts/tsx-dvala-loader.cjs --loader ./scripts/tsx-dvala-loader-hooks.mjs benchmarks/pipeline-baseline.ts",
     "install-hooks": "git config core.hooksPath .githooks && echo 'git hooks installed: core.hooksPath=.githooks'",
     "uninstall-hooks": "git config --unset core.hooksPath && echo 'git hooks uninstalled: core.hooksPath unset'",
     "demo": "node scripts/demo-link.mjs",
@@ -223,7 +130,6 @@
         "apps/playground-www/src/**/*.ts",
         "apps/playground-www/package.json",
         "apps/playground-www/tsconfig.json",
-        "src/**/*.ts",
         "common/**/*.ts",
         "cli/src/**/*.ts",
         "mcp-server/src/**/*.ts",
@@ -262,7 +168,6 @@
         "apps/playground-www/src/**/*.ts",
         "apps/playground-www/package.json",
         "apps/playground-www/tsconfig.json",
-        "src/**/*.ts",
         "common/**/*.ts",
         "cli/src/**/*.ts",
         "mcp-server/src/**/*.ts",
@@ -292,7 +197,6 @@
         "packages/dvala-workspace-backend/package.json",
         "apps/playground-www/src/**/*.ts",
         "apps/playground-www/package.json",
-        "src/**/*.ts",
         "common/**/*.ts",
         "cli/src/**/*.ts",
         "mcp-server/src/**/*.ts",
@@ -334,7 +238,6 @@
         "apps/playground-www/src/**/*.ts",
         "apps/playground-www/package.json",
         "apps/playground-www/tsconfig.json",
-        "src/**/*.ts",
         "common/**/*.ts",
         "cli/src/**/*.ts",
         "mcp-server/src/**/*.ts",
@@ -356,7 +259,6 @@
       "files": [
         "packages/dvala-runtime/src/**",
         "packages/dvala-workspace-backend/src/**",
-        "src/**",
         "common/**",
         "__tests__/**",
         "reference/**",
@@ -372,7 +274,6 @@
       "files": [
         "packages/dvala-runtime/src/**",
         "packages/dvala-workspace-backend/src/**",
-        "src/**",
         "common/**",
         "__tests__/**",
         "reference/**",
@@ -387,35 +288,12 @@
     },
     "build": {
       "dependencies": [
-        "build-dvala",
         "build-cli",
         "build-mcp",
         "build-playground-www",
         "build-playground",
         "build-vscode-ext"
       ]
-    },
-    "build-dvala": {
-      "command": "pnpm --filter @mojir/dvala-runtime run build && rolldown -c rolldown.config.mjs && tsgo -p tsconfig.json --emitDeclarationOnly --declarationDir dist",
-      "files": [
-        "packages/dvala-runtime/src/**",
-        "packages/dvala-runtime/package.json",
-        "packages/dvala-runtime/tsconfig.json",
-        "src/**",
-        "common/**",
-        "reference/**/*.ts",
-        "rolldown.config.mjs",
-        "rolldown.plugins.mjs",
-        "tsconfig.json",
-        "package.json"
-      ],
-      "output": [
-        "packages/dvala-runtime/dist/**",
-        "dist/**",
-        "!dist/cli/**",
-        "!dist/mcp-server/**"
-      ],
-      "clean": "if-file-deleted"
     },
     "build-cli": {
       "command": "rolldown -c rolldown.config.cli.mjs && chmod +x dist/cli/cli.js",
@@ -424,7 +302,6 @@
         "packages/dvala-cli/package.json",
         "packages/dvala-cli/tsconfig.json",
         "cli/src/**",
-        "src/**",
         "common/**",
         "rolldown.config.cli.mjs",
         "rolldown.plugins.mjs",
@@ -442,7 +319,6 @@
         "packages/dvala-mcp-server/package.json",
         "packages/dvala-mcp-server/tsconfig.json",
         "mcp-server/src/**",
-        "src/**",
         "common/**",
         "rolldown.config.mcp-server.mjs",
         "rolldown.plugins.mjs",
@@ -471,7 +347,6 @@
         "playground-builder/src/**",
         "apps/playground-www/src/**",
         "apps/playground-www/public/**",
-        "src/**",
         "common/**",
         "reference/**/*.ts",
         "book/**",
@@ -491,7 +366,6 @@
     "build-book": {
       "command": "node scripts/generate-pdf.mjs",
       "dependencies": [
-        "build-dvala",
         "build-playground"
       ],
       "files": [
@@ -509,7 +383,6 @@
         "vscode-dvala/src/**",
         "vscode-dvala/package.json",
         "vscode-dvala/build.mjs",
-        "src/**",
         "common/**",
         "package.json"
       ],

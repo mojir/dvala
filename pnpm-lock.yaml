@@ -105,9 +105,6 @@ importers:
 
   apps/playground-www:
     dependencies:
-      '@mojir/dvala':
-        specifier: workspace:*
-        version: link:../..
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../../packages/dvala-core-tooling
@@ -120,9 +117,6 @@ importers:
 
   packages/dvala-cli:
     dependencies:
-      '@mojir/dvala':
-        specifier: workspace:*
-        version: link:../..
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../dvala-core-tooling
@@ -156,9 +150,6 @@ importers:
 
   packages/dvala-mcp-server:
     dependencies:
-      '@mojir/dvala':
-        specifier: workspace:*
-        version: link:../..
       '@mojir/dvala-core-tooling':
         specifier: workspace:*
         version: link:../dvala-core-tooling
