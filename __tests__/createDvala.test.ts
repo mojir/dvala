@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import path from 'node:path'
-import { createDvala } from '../src/createDvala'
-import { bundle } from '../src/bundler'
+import { createDvala } from '@mojir/dvala-core-tooling'
+import { bundle } from '../packages/dvala-core-tooling/src/bundler/index'
 import { mathUtilsModule } from '@mojir/dvala-engine'
 import type { DvalaModule } from '@mojir/dvala-engine'
-import type { DvalaBundle } from '../src/bundler/interface'
+import type { DvalaBundle } from '../packages/dvala-core-tooling/src/bundler/interface'
 import type { Any } from '@mojir/dvala-types'
 
 const customTypedModule: DvalaModule = {

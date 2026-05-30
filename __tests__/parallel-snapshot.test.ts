@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { resume as baseResume } from '@mojir/dvala-engine'
 import { retrigger } from '@mojir/dvala-engine'
 import type { Handlers, Snapshot } from '@mojir/dvala-engine'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { collectionUtilsModule } from '@mojir/dvala-engine'
 
 const dvala = createDvala({ debug: true, modules: [collectionUtilsModule] })

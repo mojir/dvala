@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import type { Handlers } from '@mojir/dvala-engine'
 import { astModule } from '@mojir/dvala-engine'
 import { macrosModule } from '@mojir/dvala-engine'

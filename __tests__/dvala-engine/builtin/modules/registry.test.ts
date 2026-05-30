@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import type { BuiltinNormalExpressions } from '@mojir/dvala-engine'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { assertModule } from '@mojir/dvala-engine'

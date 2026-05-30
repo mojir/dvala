@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import type { SymbolDef } from '@mojir/dvala-core-tooling'
 import type { Position, Range } from '@mojir/dvala-core-tooling'
 import { findTypeAtDefinition, findTypeAtPosition, formatHoverType } from '@mojir/dvala-core-tooling'

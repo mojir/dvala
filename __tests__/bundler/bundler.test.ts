@@ -1,9 +1,9 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { bundle } from '../../src/bundler'
-import { isDvalaBundle } from '../../src/bundler/interface'
-import { serializeBundle, deserializeBundle } from '../../src/bundler/serialize'
-import { createDvala } from '../../src/createDvala'
+import { bundle } from '../../packages/dvala-core-tooling/src/bundler/index'
+import { isDvalaBundle } from '../../packages/dvala-core-tooling/src/bundler/interface'
+import { serializeBundle, deserializeBundle } from '../../packages/dvala-core-tooling/src/bundler/serialize'
+import { createDvala } from '@mojir/dvala-core-tooling'
 
 const fixturesDir = path.resolve(__dirname, 'fixtures')
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { astModule } from '@mojir/dvala-engine'
 import { createContextStack } from '@mojir/dvala-engine'
 import { evaluateNode } from '@mojir/dvala-engine'

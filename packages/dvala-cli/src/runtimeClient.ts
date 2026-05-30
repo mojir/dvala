@@ -9,8 +9,10 @@ import type {
 } from '@mojir/dvala-workspace-backend'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import type { TypeDiagnostic } from '@mojir/dvala-core-tooling'
-import { createDvala, retrigger, resume } from '@mojir/dvala'
-import type { DvalaBundle, DvalaModule } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
+import { retrigger, resume } from '@mojir/dvala-engine'
+import type { DvalaBundle } from '@mojir/dvala-core-tooling'
+import type { DvalaModule } from '@mojir/dvala-engine'
 import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
 export function createFileResolver(): (importPath: string, fromDir: string) => string {

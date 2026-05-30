@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resume as resumeContinuation } from '@mojir/dvala-engine'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 
 const dvala = createDvala()
 

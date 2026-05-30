@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
-import { createDvala } from '../../../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { DvalaError, RecurSignal } from '@mojir/dvala-types'
 import { functionalUtilsModule } from '@mojir/dvala-engine'
 

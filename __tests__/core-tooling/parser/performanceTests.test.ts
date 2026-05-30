@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { describe, it } from 'vitest'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { parseTokenStream, tokenizeSource } from '@mojir/dvala-core-tooling'
 import { evaluate } from '@mojir/dvala-engine'
 import { createContextStack } from '@mojir/dvala-engine'

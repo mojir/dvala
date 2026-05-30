@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getUndefinedSymbols } from '@mojir/dvala'
-
+import { getUndefinedSymbols } from '@mojir/dvala-core-tooling'
 describe('analyze', () => {
   it('unresolvedIdentifiers', () => {
     expect(getUndefinedSymbols('a + 10')).toEqual(new Set(['a']))

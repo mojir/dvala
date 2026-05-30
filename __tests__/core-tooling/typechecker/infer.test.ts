@@ -3,8 +3,7 @@ import { parse, parseToAst as parseProgramAst } from '@mojir/dvala-core-tooling'
 import { tokenize } from '@mojir/dvala-core-tooling'
 import { minifyTokenStream } from '@mojir/dvala-core-tooling'
 import { builtin } from '@mojir/dvala-engine'
-import { createDvala as createDvalaRaw } from '@mojir/dvala'
-
+import { createDvala as createDvalaRaw } from '@mojir/dvala-core-tooling'
 /**
  * Test-local `createDvala` that transparently rewrites `if true`/`if false`
  * fixture conditions to an effectful opaque (see `fixtureWithOpaqueIfCond`).

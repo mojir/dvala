@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import type { Any } from '@mojir/dvala-types'
 import { parse } from '@mojir/dvala-core-tooling'
 import type { AstNode } from '@mojir/dvala-types'

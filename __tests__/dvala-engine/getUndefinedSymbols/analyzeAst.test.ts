@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getUndefinedSymbols } from '@mojir/dvala'
-
+import { getUndefinedSymbols } from '@mojir/dvala-core-tooling'
 describe('analyze', () => {
   describe('getUndefinedSymbols.', () => {
     it('example', () => {

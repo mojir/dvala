@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { createPackageRuntimeBridge } from '../src/runtime/createPackageRuntimeBridge'
-import { toRuntimeResumeOptions } from '../src/runtime/createDefaultRuntimeBridgeAdapter'
+import { createPackageRuntimeBridge } from '../packages/dvala-core-tooling/src/host/runtime/createPackageRuntimeBridge'
+import { toRuntimeResumeOptions } from '../packages/dvala-core-tooling/src/host/runtime/createDefaultRuntimeBridgeAdapter'
 import type { DvalaModule } from '@mojir/dvala-engine'
 import type { HandlerRegistration, Snapshot } from '@mojir/dvala-engine'
-import type { DvalaBundle } from '../src/bundler/interface'
+import type { DvalaBundle } from '../packages/dvala-core-tooling/src/bundler/interface'
 import type { ProgramArtifactEnvelope, SnapshotArtifactEnvelope } from '../packages/dvala-runtime/src/artifacts/types'
 import type { RuntimeHost, RuntimeIdentity } from '../packages/dvala-runtime/src/types/runtime'
 

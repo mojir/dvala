@@ -25,7 +25,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
 

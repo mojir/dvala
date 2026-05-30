@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CallStackEntry } from '@mojir/dvala-types'
-import { createDvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { DvalaError } from '@mojir/dvala-types'
 import { formatCallStack } from '@mojir/dvala-engine'
 

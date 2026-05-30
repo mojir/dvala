@@ -15,7 +15,7 @@
  * 11. Effect-related normal expressions consistency
  */
 import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { resume as baseResume } from '@mojir/dvala-engine'
 import type { ResumeOptions } from '@mojir/dvala-engine'
