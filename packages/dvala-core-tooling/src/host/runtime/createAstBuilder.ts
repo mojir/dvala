@@ -1,8 +1,8 @@
 import { Cache } from '../Cache'
-import { parseToAst } from '@mojir/dvala-core-tooling'
+import { parseToAst } from '../../parser'
 import type { Ast, SourceMap } from '@mojir/dvala-types'
-import { minifyTokenStream } from '@mojir/dvala-core-tooling'
-import { tokenize } from '@mojir/dvala-core-tooling'
+import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
+import { tokenize } from '../../tokenizer/tokenize'
 
 interface CreateAstBuilderOptions {
   debug: boolean

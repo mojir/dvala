@@ -22,8 +22,8 @@ export { normalExpressionKeys, specialExpressionKeys } from '@mojir/dvala-engine
 export type { DvalaModule } from '@mojir/dvala-engine'
 export type { Any } from '@mojir/dvala-types'
 export { fromJS, toJS } from '@mojir/dvala-engine'
-export type { DvalaBundle } from './bundler/interface'
-export { isDvalaBundle } from './bundler/interface'
+export type { DvalaBundle } from '@mojir/dvala-core-tooling'
+export { isDvalaBundle } from '@mojir/dvala-core-tooling'
 export { type DvalaError, isDvalaError, type DvalaErrorJSON } from '@mojir/dvala-types'
 export { isGrid, isMatrix, isVector } from '@mojir/dvala-types'
 export { isAtom, isEffect, isRegularExpression } from '@mojir/dvala-types'
@@ -51,11 +51,11 @@ export type {
 export { standardEffectNames } from '@mojir/dvala-engine'
 
 // Factory API
-export { createDvala } from './createDvala'
-export type { CreateDvalaOptions, DvalaRunOptions, DvalaRunAsyncOptions, DvalaRunner } from './createDvala'
+export { createDvala } from '@mojir/dvala-core-tooling'
+export type { CreateDvalaOptions, DvalaRunOptions, DvalaRunAsyncOptions, DvalaRunner } from '@mojir/dvala-core-tooling'
 export type { FileResolver } from '@mojir/dvala-engine'
-export { createPackageRuntimeBridge } from './runtime/createPackageRuntimeBridge'
-export type { CreatePackageRuntimeBridgeOptions, RuntimeArtifactBridge } from './runtime/createPackageRuntimeBridge'
+export { createPackageRuntimeBridge } from '@mojir/dvala-core-tooling'
+export type { CreatePackageRuntimeBridgeOptions, RuntimeArtifactBridge } from '@mojir/dvala-core-tooling'
 
 // Standalone tooling
 export {

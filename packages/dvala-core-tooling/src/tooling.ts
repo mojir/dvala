@@ -90,3 +90,26 @@ export {
 // REPL utilities
 export { applyReplBinding, executeReplLine } from './shared/replCore'
 export type { ReplBinding } from './shared/replCore'
+
+// Host orchestrator — the public createDvala factory and the package-runtime
+// bridge (`@mojir/dvala-runtime`-shape wrapper). These are the entry points
+// for anyone running Dvala source through the TS implementation.
+export { createDvala } from './host/createDvala'
+export type {
+  CreateDvalaOptions,
+  DvalaRunAsyncOptions,
+  DvalaRunOptions,
+  DvalaRunner,
+} from './host/createDvala'
+export { createPackageRuntimeBridge } from './host/runtime/createPackageRuntimeBridge'
+export type {
+  CreatePackageRuntimeBridgeOptions,
+  RuntimeArtifactBridge,
+} from './host/runtime/createPackageRuntimeBridge'
+
+// Bundle artifact types + serializers (browser-safe). The `bundle()` file
+// walker in ./bundler/index.ts imports `node:fs`/`node:path` and is NOT
+// re-exported — Node-side consumers (CLI) import it directly from the file.
+export { isDvalaBundle } from './bundler/interface'
+export type { DvalaBundle } from './bundler/interface'
+export { serializeBundle, deserializeBundle } from './bundler/serialize'

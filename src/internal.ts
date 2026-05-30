@@ -41,7 +41,7 @@ export type { ContinuationStack } from '@mojir/dvala-engine'
 export type { DvalaBackend } from '../packages/dvala-workspace-backend/src/DvalaBackend'
 export { createBackend } from '../packages/dvala-workspace-backend/src/createBackend'
 export type { CreateBackendOptions } from '../packages/dvala-workspace-backend/src/createBackend'
-export { createDvala } from './createDvala'
+export { createDvala } from '@mojir/dvala-core-tooling'
 export type {
   PlaygroundCancelRequestMessage,
   PlaygroundCloseDocumentMessage,

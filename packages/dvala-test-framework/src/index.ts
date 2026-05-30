@@ -1,9 +1,7 @@
 import fs from 'node:fs'
 import { globSync } from 'glob'
 import path from 'node:path'
-// Temporary relative import — commit 4 of the umbrella-dissolution PR re-points
-// this to '@mojir/dvala-core-tooling' once createDvala lives there.
-import { createDvala } from '../../../src/createDvala'
+import { createDvala } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { createTestCollector, createTestModule } from '@mojir/dvala-engine'
 import type { TestEntry } from '@mojir/dvala-engine'
