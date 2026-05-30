@@ -1,6 +1,6 @@
 # Monorepo Decomposition — Clean One-Directional Packages
 
-**Status:** Active — accepted; topology, tooling, and sequencing decided 2026-05-27
+**Status:** Done — Definition of Done reached 2026-05-30 (PRs #202–#209)
 **Created:** 2026-05-27 (supersedes the earlier "per-package wireit orchestration" framing)
 
 ## Goal
