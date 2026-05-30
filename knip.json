@@ -54,6 +54,10 @@
       "entry": ["src/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
+    "packages/dvala-test-framework": {
+      "entry": ["src/**/*.ts"],
+      "project": ["src/**/*.ts"]
+    },
     "packages/dvala-cli": {
       "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"]

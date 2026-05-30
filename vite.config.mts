@@ -9,6 +9,7 @@ const dvalaTypesEntry = fileURLToPath(new URL('./packages/dvala-types/src/index.
 const dvalaEngineEntry = fileURLToPath(new URL('./packages/dvala-engine/src/index.ts', import.meta.url))
 const runtimeArtifactsEntry = fileURLToPath(new URL('./packages/dvala-runtime/src/artifacts/index.ts', import.meta.url))
 const coreToolingEntry = fileURLToPath(new URL('./packages/dvala-core-tooling/src/index.ts', import.meta.url))
+const testFrameworkEntry = fileURLToPath(new URL('./packages/dvala-test-framework/src/index.ts', import.meta.url))
 const workspaceBackendEntry = fileURLToPath(new URL('./packages/dvala-workspace-backend/src/index.ts', import.meta.url))
 const workspaceBackendRuntimeEntry = fileURLToPath(
   new URL('./packages/dvala-workspace-backend/src/runtime/index.ts', import.meta.url),
@@ -27,6 +28,7 @@ export default defineConfig({
       '@mojir/dvala-types': dvalaTypesEntry,
       '@mojir/dvala-engine': dvalaEngineEntry,
       '@mojir/dvala-core-tooling': coreToolingEntry,
+      '@mojir/dvala-test-framework': testFrameworkEntry,
       '@mojir/dvala-workspace-backend/adapters/playground-worker-protocol': workspaceBackendPlaygroundProtocolEntry,
       '@mojir/dvala-workspace-backend/runtime': workspaceBackendRuntimeEntry,
       '@mojir/dvala-workspace-backend': workspaceBackendEntry,

@@ -129,6 +129,9 @@ importers:
       '@mojir/dvala-runtime':
         specifier: workspace:*
         version: link:../dvala-runtime
+      '@mojir/dvala-test-framework':
+        specifier: workspace:*
+        version: link:../dvala-test-framework
       '@mojir/dvala-workspace-backend':
         specifier: workspace:*
         version: link:../dvala-workspace-backend
@@ -161,6 +164,24 @@ importers:
         version: link:../dvala-core-tooling
 
   packages/dvala-runtime: {}
+
+  packages/dvala-test-framework:
+    dependencies:
+      '@mojir/dvala-core-tooling':
+        specifier: workspace:*
+        version: link:../dvala-core-tooling
+      '@mojir/dvala-engine':
+        specifier: workspace:*
+        version: link:../dvala-engine
+      '@mojir/dvala-types':
+        specifier: workspace:*
+        version: link:../dvala-types
+      glob:
+        specifier: ^13.0.6
+        version: 13.0.6
+      minimatch:
+        specifier: ^10.2.5
+        version: 10.2.5
 
   packages/dvala-types: {}
 
