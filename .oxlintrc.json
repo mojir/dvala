@@ -6,7 +6,6 @@
     "perf": "warn"
   },
   "ignorePatterns": [
-    ".wireit",
     "dist",
     "build",
     "e2e",
