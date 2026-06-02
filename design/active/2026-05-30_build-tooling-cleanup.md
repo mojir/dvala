@@ -6,8 +6,8 @@
 **Progress:**
 
 - ✅ PR 1 (#211) — Turbo cache-key gap for `rolldown.plugins.mjs` closed.
-- 🔄 PR 2 — wireit residue + dead config (this PR).
-- ⏳ PR 3 — retarget pre-push hook.
+- ✅ PR 2 (#213) — wireit residue purged; `.prettierignore` → `.oxfmtignore` rename (NOT dead — load-bearing for `oxfmt`).
+- 🔄 PR 3 — retarget pre-push hook (this PR).
 - ⏳ PR 4 — coverage exclusions, build-pattern note, transitive deps.
 
 ## Purpose
@@ -45,12 +45,12 @@ This is the only P0 item in this doc. Land it first, in isolation.
 **Decision needed.** Three options:
 
 - **A. Retarget broadly.** `SOURCE_PATHS=('packages/' 'apps/')`. Hook becomes useful again at the cost of bench runs on touches that don't affect perf.
-- **B. Retarget narrowly.** Watch only `packages/dvala-engine/src/` and `packages/dvala-runtime/src/` — the packages the pipeline benchmark actually exercises. Fewer false positives; matches what the benchmark measures.
+- **B'. Retarget narrowly (corrected).** Watch `packages/dvala-core-tooling/src/` + `packages/dvala-engine/src/` + `packages/dvala-runtime/src/` — the three packages the pipeline benchmark actually exercises (`core-tooling` directly via tokenize/parse/typecheck/refinement-solver imports; engine + runtime transitively via `createDvala`). The original lean (engine + runtime only) missed `core-tooling`, which would silently skip the gate on tokenizer/parser/typechecker regressions — the very problem this PR fixes.
 - **C. Remove.** If the bench-row gate is no longer valued, delete the hook and the `install-hooks` / `uninstall-hooks` scripts.
 
-**Lean.** Option B. The lockfile and Playwright-image-version checks elsewhere in the script are independent of `SOURCE_PATHS` and worth keeping regardless of which path is taken.
+**Decision.** Option B' (taken in PR 3). The lockfile and Playwright-image-version checks elsewhere in the script are independent of `SOURCE_PATHS` and worth keeping regardless of which path is taken.
 
-**Definition of done.** A commit that touches `packages/dvala-engine/src/` (and only that) on a fresh HEAD triggers the bench gate.
+**Definition of done.** A commit that touches `packages/dvala-core-tooling/src/` (and only that) on a fresh HEAD triggers the bench gate.
 
 ### 3. Purge wireit residue (P1)
 

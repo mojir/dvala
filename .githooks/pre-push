@@ -29,11 +29,17 @@ PLAYWRIGHT_WORKFLOWS=(
   '.github/workflows/publish.yml'
 )
 
-# Files that, when changed, demand a fresh perf row. Anything under
-# `src/` plausibly affects pipeline timing — broader is safer than
-# missing a regression. Use `--no-verify` for non-perf-relevant pushes.
+# Files that, when changed, demand a fresh perf row. The pipeline bench
+# (tokenize → parse → typecheck → run) lives in `benchmarks/pipeline-
+# baseline.ts` and exercises core-tooling directly + engine + runtime
+# transitively via `createDvala`. Anything outside those three packages
+# (UI, CLI, MCP server, etc.) can't move the numbers, so we don't gate
+# on them. Use `--no-verify` for non-perf-relevant pushes within these
+# packages.
 SOURCE_PATHS=(
-  'src/'
+  'packages/dvala-core-tooling/src/'
+  'packages/dvala-engine/src/'
+  'packages/dvala-runtime/src/'
 )
 
 HISTORY_FILE='benchmarks/pipeline-history.json'
