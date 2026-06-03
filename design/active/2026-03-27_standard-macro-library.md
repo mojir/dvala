@@ -1,11 +1,17 @@
 # Standard Macro Library
 
-**Status:** Ready to implement (refreshed 2026-04-20)
+**Status:** First milestone shipped (#63); second milestone (`assert`, `curry`, `time`, `lazy`) still pending.
 **Created:** 2026-03-27
 
-## First milestone
+## Progress
 
-Ship `trace`, `unless`, `tap`, `dbg`, `cond` as the initial batch. These exercise three distinct macro patterns (function-wrap, condition-wrap, variadic conditional) and have no external dependencies. `assert`, `curry`, `time`, `lazy` follow in a second commit once the module scaffolding exists.
+- ✅ **First milestone shipped in PR #63** (commit `43206ab1`): `trace`, `unless`, `tap`, `dbg`, `cond` live at [packages/dvala-engine/src/builtin/modules/macros/macros.dvala](../../packages/dvala-engine/src/builtin/modules/macros/macros.dvala).
+- ⏳ **Second milestone pending:** `assert`, `curry`, `time`, `lazy`. Module scaffolding from the first milestone is reusable; remaining work is per-macro implementation + tests + book entries.
+- 🔒 **Deferred** (unchanged): `memoize` (needs `@dvala.cache.*` effect family that doesn't exist yet), `validate` (probably better as a runtime function than a macro).
+
+## First milestone (shipped)
+
+Shipped `trace`, `unless`, `tap`, `dbg`, `cond` as the initial batch. These exercise three distinct macro patterns (function-wrap, condition-wrap, variadic conditional) and have no external dependencies. `assert`, `curry`, `time`, `lazy` follow in a second commit once the module scaffolding exists.
 
 ## Overview
 
