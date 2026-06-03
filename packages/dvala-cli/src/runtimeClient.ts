@@ -174,15 +174,6 @@ export function createCliRuntimeClient(options: CreateCliRuntimeClientOptions): 
       ),
 
     async runAsync(program: string | DvalaBundle, filePath?: string, effectHandlers?: RuntimeHandlers) {
-      if (typeof program !== 'string') {
-        return runner.runAsync(
-          program,
-          options.pure
-            ? { scope: options.context, pure: true, filePath }
-            : { scope: options.context, filePath, effectHandlers },
-        )
-      }
-
       const started = await backend.startSession({
         requestId: Date.now(),
         source: program,
