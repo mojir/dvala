@@ -3,8 +3,6 @@ import * as path from 'node:path'
 import * as vscode from 'vscode'
 import { allReference, isFunctionReference, isCustomReference } from '../../reference/index'
 import type { Reference } from '../../reference/index'
-import { createDvala } from '@mojir/dvala-core-tooling'
-import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '@mojir/dvala-engine'
 import { WorkspaceIndex } from '@mojir/dvala-core-tooling'
@@ -16,7 +14,6 @@ import { loadFile as loadIndexedFile, nodeResolveImport } from '@mojir/dvala-cor
 import { buildBuiltinCompletions, symbolDefToCompletion as toSharedCompletion } from '@mojir/dvala-core-tooling'
 import type { CompletionItem as SharedCompletionItem } from '@mojir/dvala-core-tooling'
 import type { Diagnostic as SharedDiagnostic } from '@mojir/dvala-core-tooling'
-import { formatSource } from '@mojir/dvala-core-tooling'
 
 import { BackendDiagnosticsClient } from './backendDiagnosticsClient'
 
@@ -196,14 +193,17 @@ function getStatusBarItem(): vscode.StatusBarItem {
   return statusBarItem
 }
 
-async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<void> {
+async function runCode(
+  code: string,
+  label: string,
+  backendDiagnostics: BackendDiagnosticsClient,
+  uri?: vscode.Uri,
+): Promise<void> {
   const channel = getOutputChannel()
   channel.clear()
   channel.show(true)
   channel.appendLine(`Running ${label}`)
   channel.appendLine('─'.repeat(50))
-
-  const dvala = createDvala({ modules: allBuiltinModules, debug: true })
 
   const handlers: Handlers = [
     {
@@ -290,7 +290,13 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
 
   const collection = getDiagnosticCollection()
   try {
-    const runResult = await dvala.runAsync(code, { effectHandlers: handlers })
+    const started = await backendDiagnostics.startSession({
+      source: code,
+      effectHandlers: handlers,
+      debug: true,
+    })
+    if (!started.ok) throw new Error(started.error.message)
+    const runResult = started.runResult
     if (runResult.type === 'error') throw runResult.error
     const value = runResult.type === 'completed' ? runResult.value : runResult.snapshot
     channel.appendLine(`=> ${stringifyValue(value, false)}`)
@@ -329,7 +335,7 @@ export function activate(context: vscode.ExtensionContext): void {
     editor.document.save().then(() => {
       const code = editor.document.getText()
       const label = path.basename(editor.document.uri.fsPath)
-      void runCode(code, label, editor.document.uri)
+      void runCode(code, label, backendDiagnostics, editor.document.uri)
     })
   })
 
@@ -388,7 +394,7 @@ export function activate(context: vscode.ExtensionContext): void {
       return
     }
 
-    void runCode(code, `block at line ${fenceStart + 1}`)
+    void runCode(code, `block at line ${fenceStart + 1}`, backendDiagnostics)
   })
 
   const runSelection = vscode.commands.registerCommand('dvala.runSelection', () => {
@@ -410,7 +416,7 @@ export function activate(context: vscode.ExtensionContext): void {
       ? path.basename(editor.document.uri.fsPath)
       : `selection (${selection.start.line + 1}:${selection.start.character + 1}–${selection.end.line + 1}:${selection.end.character + 1})`
 
-    void runCode(code, label)
+    void runCode(code, label, backendDiagnostics)
   })
 
   const completionProvider = vscode.languages.registerCompletionItemProvider('dvala', {
@@ -843,12 +849,17 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Document formatting provider — powers Format Document (Shift+Alt+F / Shift+Option+F)
   const formattingProvider = vscode.languages.registerDocumentFormattingEditProvider('dvala', {
-    provideDocumentFormattingEdits(document) {
+    async provideDocumentFormattingEdits(document) {
       const source = document.getText()
-      const formatted = formatSource(source)
-      if (formatted === source) return []
+      const result = await backendDiagnostics.requestFormatting({
+        path: document.uri.fsPath,
+        source,
+        version: document.version,
+      })
+      if (!result.ok) return []
+      if (result.formatted === source) return []
       const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(source.length))
-      return [vscode.TextEdit.replace(fullRange, formatted)]
+      return [vscode.TextEdit.replace(fullRange, result.formatted)]
     },
   })
 

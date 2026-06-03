@@ -7,10 +7,14 @@ import type {
   BackendDiagnosticsResult,
   BackendDocumentSymbolsRequest,
   BackendDocumentSymbolsResult,
+  BackendFormattingRequest,
+  BackendFormattingResult,
   BackendHoverRequest,
   BackendHoverResult,
   BackendNavigationRequest,
   BackendNavigationResult,
+  BackendSessionStartRequest,
+  BackendSessionStartResult,
   BackendSignatureHelpRequest,
   BackendSignatureHelpResult,
   BackendTextDocument,
@@ -138,6 +142,20 @@ export class BackendDiagnosticsClient {
     request: Omit<BackendWorkspaceSymbolsRequest, 'requestId'>,
   ): Promise<BackendWorkspaceSymbolsResult> {
     return this.backend.requestWorkspaceSymbols({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async requestFormatting(request: Omit<BackendFormattingRequest, 'requestId'>): Promise<BackendFormattingResult> {
+    return this.backend.requestFormatting({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async startSession(request: Omit<BackendSessionStartRequest, 'requestId'>): Promise<BackendSessionStartResult> {
+    return this.backend.startSession({
       requestId: this.createRequestId(),
       ...request,
     })
