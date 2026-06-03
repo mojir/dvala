@@ -95,8 +95,6 @@ describe('createBackend', () => {
     expect(result).toEqual({
       ok: false,
       requestId: 7,
-      path: 'main.dvala',
-      version: 1,
       error: {
         kind: 'resync-required',
         message: 'Backend document mirror missing or stale for main.dvala',
@@ -118,8 +116,6 @@ describe('createBackend', () => {
     expect(result).toEqual({
       ok: false,
       requestId: 9,
-      path: 'main.dvala',
-      version: 1,
       error: {
         kind: 'resync-required',
         message: 'Backend document mirror missing or stale for main.dvala',
@@ -145,6 +141,7 @@ describe('createBackend', () => {
       ok: false,
       error: {
         kind: 'resync-required',
+        message: 'Backend document mirror missing or stale for main.dvala',
         path: 'main.dvala',
       },
     })
@@ -1288,7 +1285,6 @@ describe('createBackend', () => {
     ).resolves.toEqual({
       ok: false,
       requestId: 44,
-      path: 'main.dvala',
       error: {
         kind: 'runtime-failed',
         message: 'adapter boom',
@@ -1339,8 +1335,6 @@ describe('createBackend', () => {
     expect(cancelled).toEqual({
       ok: false,
       requestId: 100,
-      path: 'main.dvala',
-      version: 1,
       error: {
         kind: 'cancelled',
         message: 'Backend diagnostics request cancelled',
@@ -1404,7 +1398,6 @@ describe('createBackend', () => {
     await expect(startedPromise).resolves.toEqual({
       ok: false,
       requestId: 101,
-      path: 'main.dvala',
       error: {
         kind: 'cancelled',
         message: 'Backend session start request cancelled',
@@ -1439,7 +1432,6 @@ describe('createBackend', () => {
     ).resolves.toEqual({
       ok: false,
       requestId: 102,
-      path: 'main.dvala',
       error: {
         kind: 'cancelled',
         message: 'Backend session start request cancelled',

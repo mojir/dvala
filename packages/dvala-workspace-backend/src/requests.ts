@@ -1,3 +1,29 @@
+// =============================================================================
+// Backend request / result contract — transport-stable surface.
+//
+// Every type exported from this file is part of the contract that flows across
+// the backend boundary: worker-protocol adapters, LSP, custom RPC, and direct
+// in-process consumers (CLI, VS Code extension, playground). Adding,
+// renaming, or reshaping anything here is a transport-visible change.
+//
+// Anything backend-internal (handler-specific state, intermediate caches,
+// runtime adapter shapes) stays in `createBackend.ts` / `runtime/` and is
+// translated to one of these shapes before crossing the boundary.
+//
+// Outcome envelope (canonical):
+//   - Correlated operations (have a `requestId`): return
+//     `{ ok: true, requestId, ...payload } | BackendRequestFailure`.
+//   - Uncorrelated operations (document sync, session inspection): return
+//     `{ ok: true, ...payload } | BackendFailure`. BackendFailure carries
+//     `error` but no `requestId` because the operation isn't request-numbered.
+//   - `BackendAccepted` is the uncorrelated success counterpart (just
+//     `{ ok: true }`), used by `BackendDocumentSyncResult`.
+//
+// Error kinds are a finite, locked set — see `BACKEND_REQUEST_ERROR_KINDS`.
+// Producing a new kind requires extending that array; clients that switch on
+// `error.kind` rely on it being exhaustive.
+// =============================================================================
+
 import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
 import type { CompletionItem, Diagnostic } from '@mojir/dvala-core-tooling'
@@ -22,11 +48,11 @@ export interface BackendWorkspaceSnapshotFile {
 
 export const BACKEND_REQUEST_ERROR_KINDS = [
   'cancelled',
-  'not-found',
   'invalid-request',
   'analysis-failed',
   'runtime-failed',
   'resync-required',
+  'session-not-found',
 ] as const
 
 export type BackendRequestErrorKind = (typeof BACKEND_REQUEST_ERROR_KINDS)[number]
@@ -37,27 +63,20 @@ export interface BackendRequestError {
   path?: string
 }
 
-export interface BackendRequestFailure {
+export interface BackendFailure {
   ok: false
-  requestId: BackendRequestId
-  path?: string
-  version?: BackendDocumentVersion
   error: BackendRequestError
+}
+
+export interface BackendRequestFailure extends BackendFailure {
+  requestId: BackendRequestId
 }
 
 export interface BackendAccepted {
   ok: true
 }
 
-export interface BackendResyncRequired {
-  ok: false
-  error: {
-    kind: 'resync-required'
-    path: string
-  }
-}
-
-export type BackendDocumentSyncResult = BackendAccepted | BackendResyncRequired
+export type BackendDocumentSyncResult = BackendAccepted | BackendFailure
 
 // Document update invariants:
 // - openDocument seeds the canonical source/version mirror.
@@ -342,13 +361,18 @@ export type BackendSessionResumeResult =
     }
   | BackendRequestFailure
 
-export interface BackendSessionInspectionResult {
-  ok: true
-  sessionId: string
-  status: 'running' | 'suspended' | 'completed' | 'failed' | 'missing'
-  lastUpdatedAt?: number
-}
+export type BackendSessionStatus = 'running' | 'suspended' | 'completed' | 'failed'
+
+export type BackendSessionInspectionResult =
+  | {
+      ok: true
+      sessionId: string
+      status: BackendSessionStatus
+      lastUpdatedAt?: number
+    }
+  | BackendFailure
 
 export interface BackendCancelResult {
   ok: true
+  requestId: BackendRequestId
 }

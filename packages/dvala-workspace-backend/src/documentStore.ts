@@ -2,9 +2,9 @@ import type {
   BackendAccepted,
   BackendDocumentSyncResult,
   BackendDocumentVersion,
+  BackendFailure,
   BackendPersistFileRequest,
   BackendRemoveFileRequest,
-  BackendResyncRequired,
   BackendTextDocument,
   BackendWorkspaceSnapshotFile,
 } from './requests'
@@ -26,11 +26,12 @@ export interface BackendDocumentStore {
 
 const accepted: BackendAccepted = { ok: true }
 
-function resyncRequired(path: string): BackendResyncRequired {
+function resyncRequired(path: string): BackendFailure {
   return {
     ok: false,
     error: {
       kind: 'resync-required',
+      message: `Backend document mirror missing or stale for ${path}`,
       path,
     },
   }

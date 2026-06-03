@@ -92,14 +92,11 @@ function requestFailure(
   requestId: BackendRequestId,
   error: BackendRequestFailure['error'],
   path?: string,
-  version?: BackendDocumentVersion,
 ): BackendRequestFailure {
   return {
     ok: false,
     requestId,
-    ...(path ? { path } : {}),
-    ...(version !== undefined ? { version } : {}),
-    error,
+    error: path && !error.path ? { ...error, path } : error,
   }
 }
 
@@ -743,7 +740,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
 
@@ -759,7 +755,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend diagnostics request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -776,7 +771,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend diagnostics request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -798,7 +792,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
     },
@@ -811,7 +804,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend formatting request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -825,7 +817,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
               path: request.path,
             },
             request.path,
-            request.version,
           )
         }
 
@@ -836,7 +827,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend formatting request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -858,7 +848,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
     },
@@ -871,7 +860,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend hover request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -885,7 +873,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
               path: request.path,
             },
             request.path,
-            request.version,
           )
         }
 
@@ -903,7 +890,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend hover request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -925,7 +911,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
     },
@@ -941,7 +926,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
 
@@ -964,7 +948,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
     },
@@ -980,7 +963,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
 
@@ -1003,7 +985,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
     },
@@ -1046,7 +1027,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend completion request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -1060,7 +1040,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
               path: request.path,
             },
             request.path,
-            request.version,
           )
         }
 
@@ -1077,7 +1056,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend completion request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -1099,7 +1077,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
     },
@@ -1112,7 +1089,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend navigation request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -1126,7 +1102,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
               path: request.path,
             },
             request.path,
-            request.version,
           )
         }
 
@@ -1143,7 +1118,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             request.requestId,
             { kind: 'cancelled', message: 'Backend navigation request cancelled', path: request.path },
             request.path,
-            request.version,
           )
         }
 
@@ -1166,7 +1140,6 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
-          request.version,
         )
       }
     },
@@ -1260,7 +1233,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
 
     async cancelRequest(requestId: BackendRequestId): Promise<BackendCancelResult> {
       cancelledRequests.set(requestId, true)
-      return { ok: true }
+      return { ok: true, requestId }
     },
   }
 }
