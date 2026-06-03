@@ -1,14 +1,14 @@
 # Build & Tooling Cleanup
 
-**Status:** Active
+**Status:** Done — Definition of Done reached 2026-06-03 (PRs #211, #213, #214, #215)
 **Created:** 2026-05-30
 
 **Progress:**
 
 - ✅ PR 1 (#211) — Turbo cache-key gap for `rolldown.plugins.mjs` closed.
 - ✅ PR 2 (#213) — wireit residue purged; `.prettierignore` → `.oxfmtignore` rename (NOT dead — load-bearing for `oxfmt`).
-- 🔄 PR 3 — retarget pre-push hook (this PR).
-- ⏳ PR 4 — coverage exclusions, build-pattern note, transitive deps.
+- ✅ PR 3 (#214) — pre-push hook retargeted to core-tooling + engine + runtime (option B', corrected from doc's original B).
+- ✅ PR 4 (#215) — coverage exclusions audited; build-pattern documented; transitive deps fixed.
 
 ## Purpose
 
@@ -86,7 +86,9 @@ Most workspace packages build via `rolldown + tsgo --emitDeclarationOnly`. `@moj
 
 `dvala-mcp-server` and `dvala-workspace-backend` consume packages they don't declare in `package.json` (silenced via `knip#ignoreDependencies`). pnpm resolves them transitively, so it works — but the implicit coupling is a footgun under future restructures.
 
-**Fix.** Declare the missing `@mojir/*` workspace deps in each `package.json`. Drop the corresponding `ignoreDependencies` entries in [knip.json](../../knip.json).
+**Audit finding (PR 4).** The doc overstated the gap. Both packages already declared `core-tooling`, `engine`, and `types`. The actual missing entry was `@mojir/dvala-runtime` — externalized in both rolldown configs but absent from both `package.json` files. The `knip#ignoreDependencies` entries are NOT redundant: they silence "declared-but-not-directly-imported" warnings for transitive externals (e.g. `mcp-server` declares `engine`/`runtime`/`types` for the bundled output's runtime resolution, but only directly imports from `core-tooling`).
+
+**Fix (PR 4).** Add `@mojir/dvala-runtime` to both `package.json` files. Extend `mcp-server`'s `ignoreDependencies` to include `@mojir/dvala-runtime` (still indirect). Leave `workspace-backend`'s ignore as-is (`types` only — engine + runtime ARE directly imported).
 
 ---
 

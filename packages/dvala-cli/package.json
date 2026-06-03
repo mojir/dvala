@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "CLI subproject scaffold for Dvala",
+  "//": "Asymmetric build: plain tsgo (no rolldown). This package is a final-binary tail node — the root rolldown.config.cli.mjs bundles it after typecheck. See .github/AGENTS.md > Build conventions.",
   "scripts": {
     "build": "tsgo -p ./tsconfig.json",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit"

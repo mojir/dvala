@@ -156,6 +156,9 @@ importers:
       '@mojir/dvala-engine':
         specifier: workspace:*
         version: link:../dvala-engine
+      '@mojir/dvala-runtime':
+        specifier: workspace:*
+        version: link:../dvala-runtime
       '@mojir/dvala-types':
         specifier: workspace:*
         version: link:../dvala-types
@@ -190,6 +193,9 @@ importers:
       '@mojir/dvala-engine':
         specifier: workspace:*
         version: link:../dvala-engine
+      '@mojir/dvala-runtime':
+        specifier: workspace:*
+        version: link:../dvala-runtime
       '@mojir/dvala-types':
         specifier: workspace:*
         version: link:../dvala-types

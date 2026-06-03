@@ -63,31 +63,58 @@ export default defineConfig({
     isolate: false,
     coverage: {
       exclude: [
-        '*.js',
-        '**/*.dvala',
-        '__tests__/**',
-        'types/**',
-        '**/*.test.ts',
-        'playground-builder/**',
-        'apps/playground-www/**',
-        'reference/**',
+        // Build artifacts and third-party.
         'dist/**',
         'node_modules/**',
-        'build/**',
-        'cli/**',
-        'docs/**',
-        'common/**',
-        'scripts/**',
-        'vscode-dvala/**',
-        'mcp-server/**',
+
+        // Test files and helpers — they shouldn't count toward their own coverage.
+        '__tests__/**',
+        '**/*.test.ts',
+
+        // Non-TS source: .dvala stdlib and root-level loose .js scripts.
+        '*.js',
+        '**/*.dvala',
+
+        // Type-only modules — no executable code to cover. Sweeping patterns
+        // cover the canonical naming convention (interface.ts / types.ts).
+        'types/**',
         '**/interface.ts',
         '**/types.ts',
+
+        // Tooling / build scripts — not product code; exercised by build runs
+        // rather than unit tests.
+        'scripts/**',
+        'playground-builder/**',
+
+        // Bundle entry points (thin wrappers around package exports). Their
+        // behavior is covered transitively by the underlying package tests.
+        'cli/**',
+        'mcp-server/**',
+        'packages/dvala-core-tooling/src/index.ts',
         'packages/dvala-core-tooling/src/standaloneTooling.ts',
         'packages/dvala-core-tooling/src/tooling.ts',
-        'packages/dvala-core-tooling/src/index.ts',
+
+        // Frontend / extension code — covered by Playwright e2e, not vitest.
+        'apps/playground-www/**',
+        'vscode-dvala/**',
+
+        // Generated / data-only reference surface (book content, API mirror).
+        'reference/**',
+
+        // Shared utilities partially covered by utils.test.ts; rest is glue.
+        // Keep excluded for now; revisit if coverage policy tightens.
+        'common/**',
+
+        // Playwright config — not exercised by vitest at all.
+        'playwright.config.ts',
+
+        // Specific carve-outs: evaluator entry/step driver are covered via the
+        // trampoline-evaluator test surface rather than direct unit tests.
         'packages/dvala-engine/src/evaluator/frames.ts',
         'packages/dvala-engine/src/evaluator/step.ts',
-        'playwright.config.ts',
+
+        // Docs dir contains no TS; pattern is a safety net for future drift.
+        'docs/**',
       ],
     },
   },

@@ -94,6 +94,16 @@ Single root `pnpm-lock.yaml` covers both members. `pnpm install` at the root ins
 
 **Versioning:** the release workflow ([release.yml](.github/workflows/release.yml)) bumps the root version, syncs it to `vscode-dvala/package.json`, and runs `pnpm install --lockfile-only` to refresh the lockfile's `importers.vscode-dvala` entry. Don't manually edit version fields.
 
+## Build conventions
+
+Workspace packages build through Turborepo (`turbo run build`), but the per-package build script is **not uniform** — there are two shapes:
+
+- **Library packages** (`dvala-types`, `dvala-runtime`, `dvala-engine`, `dvala-core-tooling`, `dvala-test-framework`, `dvala-workspace-backend`, `dvala-mcp-server`) use `rolldown -c ./rolldown.config.mjs && tsgo -p ./tsconfig.json --emitDeclarationOnly`. Rolldown bundles each package's `dist/index.js`; tsgo emits the `.d.ts` files alongside. Cross-package consumers resolve through `node_modules` → bundled `dist/`.
+
+- **Final-binary tail nodes** (`dvala-cli`, `dvala-playground-www`) use plain `tsgo -p ./tsconfig.json`. No per-package rolldown step. These packages are bundled by **root-level** rolldown configs (`rolldown.config.cli.mjs`, `rolldown.config.playground-www.mjs`) *after* their package subgraph finishes building. The plain-tsgo step exists so downstream packages can still import from them during typecheck; the actual binary/bundle is produced at the root layer.
+
+If you're adding a new package, default to the library shape. Only use plain tsgo if the package is a leaf consumer that's never imported by another workspace package — at which point the root-level bundler is the right place to produce its final artifact. Both `dvala-cli/package.json` and `apps/playground-www/package.json` carry a `"//"` field pointing back to this section.
+
 ## TS Coding Conventions
 
 - Do not shadow variables

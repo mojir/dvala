@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Playground web app boundary scaffold for Dvala",
+  "//": "Asymmetric build: plain tsgo (no rolldown). This package is a final-binary tail node — the root rolldown.config.playground-www.mjs bundles it after typecheck. See .github/AGENTS.md > Build conventions.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
