@@ -1,6 +1,6 @@
 # Build & Tooling Cleanup
 
-**Status:** Active
+**Status:** Done — Definition of Done reached 2026-06-03 (PRs #211, #213, #214, #215)
 **Created:** 2026-05-30
 
 **Progress:**
@@ -8,7 +8,7 @@
 - ✅ PR 1 (#211) — Turbo cache-key gap for `rolldown.plugins.mjs` closed.
 - ✅ PR 2 (#213) — wireit residue purged; `.prettierignore` → `.oxfmtignore` rename (NOT dead — load-bearing for `oxfmt`).
 - ✅ PR 3 (#214) — pre-push hook retargeted to core-tooling + engine + runtime (option B', corrected from doc's original B).
-- 🔄 PR 4 — coverage exclusions audited; build-pattern documented; transitive deps fixed (this PR).
+- ✅ PR 4 (#215) — coverage exclusions audited; build-pattern documented; transitive deps fixed.
 
 ## Purpose
 
