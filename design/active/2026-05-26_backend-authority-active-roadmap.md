@@ -17,14 +17,13 @@ The long-term vision remains the standalone north-star in [2026-05-06_dvala-back
 
 ## What has shipped
 
-- `packages/dvala-runtime` extracted as a real workspace package (host-facing run/suspend/resume surface + evaluator cluster first slice).
-- `pnpm` workspace with `packages/*` and `apps/*`; shared release train owned at the root.
-- Package scaffolds promoted and adopted: `dvala-core-tooling`, `dvala-workspace-backend`, `dvala-cli`, `dvala-mcp-server`.
-- Monorepo package-boundary work complete (deep `../../../src/` imports routed through facades; package-name imports; structural minimal/tooling bundle split). See archived [2026-05-26_monorepo-package-boundary-strategy.md](../archive/2026-05-26_monorepo-package-boundary-strategy.md).
-- Backend source boundary (`src/backend/`) owns document authority, analysis requests, and one runtime-session seam.
-- Analysis seam proven (diagnostics, formatting, hover, completion, navigation behind backend authority).
-- Runtime-session seam proven (`startSession`, `resumeSnapshot`, `inspectSession`, `stopSession`, snapshot inspection + backend-owned `validateSnapshot`).
-- First consumers migrated to the workspace-backend package shims: CLI runtime client, VS Code diagnostics client, playground LS worker + runtime backend.
+- **Monorepo decomposition complete** (PRs #202–#209, May 2026): root `src/` no longer exists. 8 real packages under `packages/*` (`dvala-types`, `dvala-runtime`, `dvala-engine`, `dvala-core-tooling`, `dvala-test-framework`, `dvala-workspace-backend`, `dvala-cli`, `dvala-mcp-server`) plus `apps/playground-www`. Build orchestration via Turborepo; per-package rolldown + tsgo `--emitDeclarationOnly`. See archived [2026-05-27_monorepo-decomposition.md](../archive/2026-05-27_monorepo-decomposition.md) and [2026-05-26_monorepo-package-boundary-strategy.md](../archive/2026-05-26_monorepo-package-boundary-strategy.md).
+- **Runtime/engine split landed.** `packages/dvala-runtime` holds the portable contract (run/resume entry, artifacts, capabilities); `packages/dvala-engine` holds the TS implementation of that contract (evaluator, builtins, interop). Both packages have **zero external imports** — they're self-contained, so the boundary adapters from the first extraction (parser/types dependency, `DvalaBundle` compat shape) are gone.
+- **Backend authority lives in `packages/dvala-workspace-backend`.** Owns document lifecycle, analysis requests, and runtime-session lifecycle. Was originally seeded under root `src/backend/` and promoted to its own package 2026-05-13.
+- **Analysis seam proven** (diagnostics, formatting, hover, completion, navigation routed through backend authority).
+- **Runtime-session seam proven** (`startSession`, `resumeSnapshot`, `inspectSession`, `stopSession`, snapshot inspection + backend-owned `validateSnapshot`).
+- **First consumers migrated to the workspace-backend package:** CLI runtime client, VS Code diagnostics client, playground LS worker + runtime backend, MCP server boundary, dvala-cli boundary.
+- **Build & tooling post-decomp cleanup complete** (PRs #211, #213, #214, #215, May–June 2026). See archived [2026-05-30_build-tooling-cleanup.md](../archive/2026-05-30_build-tooling-cleanup.md).
 
 ## Active workstreams
 
@@ -46,15 +45,16 @@ These are the temporary compatibility seams explicitly marked for removal in the
 - **Fully retire the `workspaceFiles` compatibility payloads** in completion/navigation. Currently only isolated behind backend-internal translation; the backend-owned persisted-file model should make them unnecessary.
 - **Settle the result/error type taxonomy:** decide which backend result and error types are shared directly with transports vs. kept backend-internal and translated by adapters. Lock the `ok: true | false` outcome shape and the finite error `kind` set as the canonical contract.
 
-### 3. Complete `dvala-runtime` ownership
+### 3. Decide the `dvala-runtime` vs `dvala-engine` contract surface
 
-Finish pulling remaining runtime-semantic code out of root `src/` and into `packages/dvala-runtime`, so the package is the complete, self-contained portable engine (the KMP target) with no runtime logic stranded behind temporary adapters.
+The original blockers under this workstream — the parser/types adapter and the `DvalaBundle` compat shape — are resolved by the monorepo decomposition. `packages/dvala-runtime/src/` has zero external imports; same for `packages/dvala-engine/src/`. Code-ownership is done.
 
-- Resolve the temporary boundary adapters from the first extraction: the narrow dependency on `src/parser/types.ts` for evaluator-owned AST types, and the `DvalaBundle`-shape compatibility input.
-- Decide which remaining evaluator-adjacent responsibilities still in root (or reachable only via root) should move into the package.
-- Keep the dependency direction strict: runtime below workspace backend below adapters below clients.
+What remains is **decisional**, not a refactor: is the surface of `dvala-runtime` (run/resume entry, artifacts, capabilities, `runtimeExecutor` boundary) the right contract for a second implementation (KMP target)? Specifically:
 
-This is an internal refactor (code ownership), distinct from external publishability (parked below). It supports the long-term portable-runtime / KMP goal in the vision doc.
+- Are there responsibilities currently in `dvala-engine` (evaluator internals, builtin module dispatch, interop) that belong in the portable `dvala-runtime` contract instead, so a second implementation only has to re-implement the engine, not redefine the contract?
+- Conversely, is anything in `dvala-runtime` actually impl-specific and should move to `dvala-engine`?
+
+This is open work, not a code blocker. Pick it up when a concrete forcing function appears — a real KMP slice, or a second hypothetical impl makes a specific gap visible. Until then, keep the dependency direction strict: `dvala-runtime` ← `dvala-engine` ← `dvala-workspace-backend` ← adapters ← clients.
 
 ## Parked — await a concrete forcing function
 
