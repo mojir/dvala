@@ -5,14 +5,14 @@ import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest
 
 describe('the cli-fs Integration Tests', () => {
   const testDir = path.join(__dirname, 'test_temp')
-  const dvalaCliPath = path.join(__dirname, '../../dist/cli/cli.js') // Adjust path as needed
+  const dvalaCliPath = path.join(__dirname, '../dist/cli.cjs') // Adjust path as needed
 
   beforeAll(() => {
     // Build the CLI first
     if (!fs.existsSync(dvalaCliPath)) {
       try {
-        execSync('npm run build-cli', {
-          cwd: path.join(__dirname, '../..'), // Adjust to project root
+        execSync('pnpm --filter @mojir/dvala-cli bundle', {
+          cwd: path.join(__dirname, '../../..'), // Adjust to project root
           stdio: 'pipe',
         })
       } catch (error: any) {

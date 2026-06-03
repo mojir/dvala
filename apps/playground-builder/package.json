@@ -1,0 +1,16 @@
+{
+  "name": "@mojir/dvala-playground-builder",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Playground site assembler — bundles the static site (book + reference + examples) around the playground-www bundle.",
+  "//": "Asymmetric build: plain tsgo (no rolldown). Bundling is done by the per-package rolldown.bundle.config.mjs invoked via the `bundle` Turbo task. See .github/AGENTS.md > Build conventions.",
+  "scripts": {
+    "build": "tsgo -p ./tsconfig.json",
+    "typecheck": "tsgo -p ./tsconfig.json --noEmit",
+    "bundle": "rolldown -c ./rolldown.bundle.config.mjs && cd ../.. && node ./apps/playground-builder/dist/buildPlaygroundSite.cjs"
+  },
+  "dependencies": {
+    "@mojir/dvala-core-tooling": "workspace:*"
+  }
+}

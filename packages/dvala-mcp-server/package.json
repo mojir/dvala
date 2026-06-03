@@ -15,7 +15,8 @@
   "scripts": {
     "build": "rolldown -c ./rolldown.config.mjs && tsgo -p ./tsconfig.json --emitDeclarationOnly",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit",
-    "inspect": "npx @modelcontextprotocol/inspector node ../../dist/mcp-server/server.js"
+    "bundle": "rolldown -c ./rolldown.bundle.config.mjs && chmod +x ./dist/server.cjs",
+    "inspect": "npx @modelcontextprotocol/inspector node ./dist/server.cjs"
   },
   "dependencies": {
     "@mojir/dvala-core-tooling": "workspace:*",

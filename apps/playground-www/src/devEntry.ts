@@ -8,7 +8,7 @@
  *
  * 1. `window.referenceData` — the production `index.html` injects this
  *    inline before `playground.js` loads (see
- *    [playground-builder/src/buildPlaygroundSite.ts](../../playground-builder/src/buildPlaygroundSite.ts)
+ *    [playground-builder/src/buildPlaygroundSite.ts](../playground-builder/src/buildPlaygroundSite.ts)
  *    `writeIndexPage`). Reference data is built at module load and
  *    assigned synchronously so it's available to all imported modules
  *    on first use.

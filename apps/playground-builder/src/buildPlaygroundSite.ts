@@ -8,16 +8,16 @@ import {
   isCustomReference,
   isEffectReference,
   moduleReference,
-} from '../../reference'
-import type { Reference } from '../../reference'
-import { coreCategories } from '../../reference/api'
-import { examples } from '../../reference/examples'
-import { isBookSection, chapters, bookItems } from '../../reference/book'
-import { allAppRoutes } from '../../common/appRoutes'
-import { buildReferenceData } from '../../common/buildReferenceData'
+} from '../../../reference'
+import type { Reference } from '../../../reference'
+import { coreCategories } from '../../../reference/api'
+import { examples } from '../../../reference/examples'
+import { isBookSection, chapters, bookItems } from '../../../reference/book'
+import { allAppRoutes } from '../../../common/appRoutes'
+import { buildReferenceData } from '../../../common/buildReferenceData'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 
-const DOC_DIR = path.resolve(__dirname, '../../docs')
+const DOC_DIR = path.resolve(__dirname, '../../../docs')
 const BASE_URL = 'https://mojir.github.io/dvala'
 
 // All references lookup (for seeAlso links in stub pages)
@@ -573,27 +573,27 @@ function setupDocDir() {
 }
 
 function copyAssets() {
-  fs.cpSync(path.join(__dirname, '../../apps/playground-www/public/'), path.join(DOC_DIR), { recursive: true })
+  fs.cpSync(path.join(__dirname, '../../../apps/playground-www/public/'), path.join(DOC_DIR), { recursive: true })
   // styles.css lives under src/ and is imported by scripts.ts; Vite's HMR
   // handles it in dev mode. For production, rolldown stubs the CSS import
   // (cssStubPlugin), so we copy the file manually alongside the rest of
   // the public/ assets.
-  fs.copyFileSync(path.join(__dirname, '../../apps/playground-www/src/styles.css'), path.join(DOC_DIR, 'styles.css'))
+  fs.copyFileSync(path.join(__dirname, '../../../apps/playground-www/src/styles.css'), path.join(DOC_DIR, 'styles.css'))
   // Monaco's prebuilt stylesheet — production rolldown can't bundle CSS, so we
   // ship it as a separate static asset and `<link>` it from the HTML template.
   fs.copyFileSync(
-    path.join(__dirname, '../../node_modules/monaco-editor/min/vs/editor/editor.main.css'),
+    path.join(__dirname, '../../../node_modules/monaco-editor/min/vs/editor/editor.main.css'),
     path.join(DOC_DIR, 'monaco-editor.css'),
   )
-  const jsFile = path.join(__dirname, '../../apps/playground-www/build/playground.js')
-  const mapFile = path.join(__dirname, '../../apps/playground-www/build/playground.js.map')
-  const lsWorkerFile = path.join(__dirname, '../../apps/playground-www/build/lsWorker.js')
-  const lsWorkerMapFile = path.join(__dirname, '../../apps/playground-www/build/lsWorker.js.map')
+  const jsFile = path.join(__dirname, '../../../apps/playground-www/build/playground.js')
+  const mapFile = path.join(__dirname, '../../../apps/playground-www/build/playground.js.map')
+  const lsWorkerFile = path.join(__dirname, '../../../apps/playground-www/build/lsWorker.js')
+  const lsWorkerMapFile = path.join(__dirname, '../../../apps/playground-www/build/lsWorker.js.map')
   let jsContent = fs.readFileSync(jsFile, 'utf8')
   if (fs.existsSync(mapFile)) {
     const map = JSON.parse(fs.readFileSync(mapFile, 'utf8'))
-    const buildDir = path.resolve(__dirname, '../../apps/playground-www/build')
-    const docsDir = path.resolve(__dirname, '../../docs')
+    const buildDir = path.resolve(__dirname, '../../../apps/playground-www/build')
+    const docsDir = path.resolve(__dirname, '../../../docs')
     map.sources = map.sources.map((source: string) => {
       const abs = path.resolve(buildDir, source)
       return path.relative(docsDir, abs)

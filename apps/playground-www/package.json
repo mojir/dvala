@@ -16,6 +16,7 @@
   "scripts": {
     "build": "tsgo -p ./tsconfig.json",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit",
+    "bundle": "rolldown -c ./rolldown.bundle.config.mjs",
     "dev": "vite --config ./vite.config.mjs"
   },
   "dependencies": {

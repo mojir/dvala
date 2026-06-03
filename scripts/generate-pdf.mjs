@@ -27,7 +27,7 @@ const { version } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 
 // ---------------------------------------------------------------------------
 import { createRequire } from 'node:module'
 const _require = createRequire(import.meta.url)
-const { tokenizeSource: tokenize, normalExpressionKeys: normalKeys, specialExpressionKeys: specialKeys } = _require(path.join(ROOT, 'dist/index.js'))
+const { tokenizeSource: tokenize, normalExpressionKeys: normalKeys, specialExpressionKeys: specialKeys } = _require(path.join(ROOT, 'packages/dvala-core-tooling/dist/index.js'))
 
 const normalExpressionSet = new Set(normalKeys)
 const specialExpressionSet = new Set(specialKeys)
@@ -197,7 +197,7 @@ function parseChapters() {
 // ---------------------------------------------------------------------------
 // Dvala evaluator — runs code through the CLI, returns output or null
 // ---------------------------------------------------------------------------
-const CLI = path.join(ROOT, 'dist/cli/cli.js')
+const CLI = path.join(ROOT, 'packages/dvala-cli/dist/cli.cjs')
 const cliAvailable = fs.existsSync(CLI)
 
 function evaluate(code) {

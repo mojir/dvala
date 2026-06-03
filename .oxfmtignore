@@ -8,11 +8,11 @@ node_modules
 test-results
 .vscode
 .claude
-cli/__tests__/arg-test-fixtures
+packages/dvala-cli/__tests__/arg-test-fixtures
 
-playground-builder/build
-playground-www/build
-playground-www/public
+apps/playground-builder/dist
+apps/playground-www/build
+apps/playground-www/public
 public
 images
 syntaxes
@@ -34,7 +34,7 @@ rolldown.plugins.mjs
 vite.config.mts
 vitest.setup.ts
 
-playground-builder/src/components/tutorials
+apps/playground-builder/src/components/tutorials
 scripts
 benchmarks
 .githooks

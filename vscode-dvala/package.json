@@ -203,7 +203,7 @@
     ]
   },
   "scripts": {
-    "build": "node ./build.mjs"
+    "bundle": "node ./build.mjs"
   },
   "devDependencies": {
     "@types/node": "^25.3.5",

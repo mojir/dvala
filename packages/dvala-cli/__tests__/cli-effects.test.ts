@@ -15,8 +15,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const dvalaCliPath = path.join(__dirname, '../../dist/cli/cli.js')
-const exampleProjectDir = path.join(__dirname, '../../examples/project')
+const dvalaCliPath = path.join(__dirname, '../dist/cli.cjs')
+const exampleProjectDir = path.join(__dirname, '../../../examples/project')
 
 /**
  * Spawn the REPL, send a Dvala expression that wraps the result in a known marker,

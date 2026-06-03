@@ -18,9 +18,9 @@
     "CLAUDE.md",
     "docs",
     "design",
-    "playground-builder/src/components/tutorials",
-    "playground-builder/build",
-    "playground-www/build",
+    "apps/playground-builder/src/components/tutorials",
+    "apps/playground-builder/dist",
+    "apps/playground-www/build",
     "scripts",
     "vscode-dvala",
     "benchmarks"

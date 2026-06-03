@@ -8,14 +8,14 @@ import * as path from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 describe('CLI commands', () => {
-  const dvalaCliPath = path.join(__dirname, '../../dist/cli/cli.js')
-  const exampleProjectDir = path.join(__dirname, '../../examples/project')
-  const tmpDir = path.join(__dirname, '../../.tmp-cli-test')
+  const dvalaCliPath = path.join(__dirname, '../dist/cli.cjs')
+  const exampleProjectDir = path.join(__dirname, '../../../examples/project')
+  const tmpDir = path.join(__dirname, '../../../.tmp-cli-test')
 
   beforeAll(() => {
     if (!fs.existsSync(dvalaCliPath)) {
-      execSync('npm run build-cli', {
-        cwd: path.join(__dirname, '../..'),
+      execSync('pnpm --filter @mojir/dvala-cli bundle', {
+        cwd: path.join(__dirname, '../../..'),
         stdio: 'pipe',
       })
     }
@@ -26,7 +26,7 @@ describe('CLI commands', () => {
     return execSync(`node '${dvalaCliPath}' ${args}`, {
       encoding: 'utf8',
       stdio: 'pipe',
-      cwd: cwd ?? path.join(__dirname, '../..'),
+      cwd: cwd ?? path.join(__dirname, '../../..'),
       env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
     }).trim()
   }

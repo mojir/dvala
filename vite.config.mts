@@ -84,7 +84,7 @@ export default defineConfig({
         // Tooling / build scripts — not product code; exercised by build runs
         // rather than unit tests.
         'scripts/**',
-        'playground-builder/**',
+        'apps/playground-builder/**',
 
         // Bundle entry points (thin wrappers around package exports). Their
         // behavior is covered transitively by the underlying package tests.
