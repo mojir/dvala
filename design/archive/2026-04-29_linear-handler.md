@@ -1,6 +1,6 @@
 # Linear handler — host-style effect handler in Dvala syntax
 
-**Status:** v1 implemented on the `design/linear-handler` branch (parser + AST + return-as-resume + barrier-crossing + book chapter). Ready to PR to main.
+**Status:** Done — v1 shipped in #152 (merged 2026-04-29). Playground 23e follow-up that adopts `linear handler` for the boundary wrap shipped in #153 (merged 2026-04-29). Memory tags this as final v1 scope.
 **Created:** 2026-04-29
 
 ## Goal
