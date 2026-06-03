@@ -64,8 +64,12 @@ export type BackendDocumentSyncResult = BackendAccepted | BackendResyncRequired
 // - updateDocument requires previousVersion to match the backend mirror.
 // - mismatch returns resync-required; callers must re-open with a fresh snapshot.
 
-export interface BackendReplaceWorkspaceSnapshotRequest {
-  files: readonly BackendWorkspaceSnapshotFile[]
+export interface BackendPersistFileRequest {
+  file: BackendWorkspaceSnapshotFile
+}
+
+export interface BackendRemoveFileRequest {
+  path: string
 }
 
 export interface BackendDiagnosticsRequest {

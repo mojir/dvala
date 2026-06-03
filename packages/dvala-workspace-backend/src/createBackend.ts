@@ -745,8 +745,12 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
       documents.close(path)
     },
 
-    async replaceWorkspaceSnapshot(request): Promise<void> {
-      documents.replaceWorkspaceSnapshot(request)
+    async persistFile(request): Promise<void> {
+      documents.persistFile(request)
+    },
+
+    async removeFile(request): Promise<void> {
+      documents.removeFile(request)
     },
 
     async requestDiagnostics(request: BackendDiagnosticsRequest): Promise<BackendDiagnosticsResult> {

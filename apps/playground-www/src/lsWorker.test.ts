@@ -301,8 +301,8 @@ describe('lsWorker document sync', () => {
     })
 
     await dispatch(worker, {
-      type: 'replaceWorkspaceSnapshot',
-      files: [{ path: 'lib.dvala', code: 'let value = 2\n{ value }' }],
+      type: 'persistFile',
+      file: { path: 'lib.dvala', code: 'let value = 2\n{ value }' },
     })
 
     await dispatch(worker, {
@@ -339,8 +339,8 @@ describe('lsWorker document sync', () => {
     })
 
     await dispatch(worker, {
-      type: 'replaceWorkspaceSnapshot',
-      files: [{ path: 'lib.dvala', code: 'let stale = 1\n{ stale }' }],
+      type: 'persistFile',
+      file: { path: 'lib.dvala', code: 'let stale = 1\n{ stale }' },
     })
 
     await dispatch(worker, {
