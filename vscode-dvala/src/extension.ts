@@ -5,15 +5,10 @@ import { allReference, isFunctionReference, isCustomReference } from '../../refe
 import type { Reference } from '../../reference/index'
 import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '@mojir/dvala-engine'
-import { WorkspaceIndex } from '@mojir/dvala-core-tooling'
-import type { SymbolDef } from '@mojir/dvala-core-tooling'
-// Node-side subpath export — the node-fs/path-using workspace indexer ships
-// as a separate bundle (@mojir/dvala-core-tooling/node) so it doesn't poison
-// browser-target consumers of the main entry.
-import { loadFile as loadIndexedFile, nodeResolveImport } from '@mojir/dvala-core-tooling/node'
 import { buildBuiltinCompletions, symbolDefToCompletion as toSharedCompletion } from '@mojir/dvala-core-tooling'
 import type { CompletionItem as SharedCompletionItem } from '@mojir/dvala-core-tooling'
 import type { Diagnostic as SharedDiagnostic } from '@mojir/dvala-core-tooling'
+import type { BackendSymbolKind } from '../../packages/dvala-workspace-backend/src/index'
 
 import { BackendDiagnosticsClient } from './backendDiagnosticsClient'
 
@@ -155,7 +150,7 @@ function toVsLocation(file: string, line: number, column: number): vscode.Locati
   return new vscode.Location(vscode.Uri.file(file), new vscode.Position(Math.max(0, line - 1), Math.max(0, column - 1)))
 }
 
-function backendSymbolKindToVs(kind: SymbolDef['kind']): vscode.SymbolKind {
+function backendSymbolKindToVs(kind: BackendSymbolKind): vscode.SymbolKind {
   switch (kind) {
     case 'function':
       return vscode.SymbolKind.Function
@@ -490,7 +485,14 @@ export function activate(context: vscode.ExtensionContext): void {
 
       const range = document.getWordRangeAtPosition(position, DVALA_WORD_PATTERN)
       const word = range ? document.getText(range) : undefined
-      const symbol = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, position.line + 1, position.character + 1)
+      const symbolResult = await backendDiagnostics.requestSymbolAtPosition({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        line: position.line + 1,
+        column: position.character + 1,
+      })
+      const symbol = symbolResult.ok ? symbolResult.symbol : undefined
       const ref = word && !symbol ? (allReference[word] ?? referenceByTitle[word]) : undefined
 
       const hoverResult = await backendDiagnostics.requestHover({
@@ -581,7 +583,6 @@ export function activate(context: vscode.ExtensionContext): void {
   // Language Service: workspace index, document symbols, diagnostics
   // ---------------------------------------------------------------------------
 
-  const workspaceIndex = new WorkspaceIndex()
   const backendDiagnostics = new BackendDiagnosticsClient()
   const lsDiagnostics = vscode.languages.createDiagnosticCollection('dvala-ls')
   const typeDiagnostics = vscode.languages.createDiagnosticCollection('dvala-types')
@@ -616,11 +617,9 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   }
 
-  /** Update the workspace index for a document and refresh diagnostics. */
+  /** Clear stale run diagnostics for a document and refresh backend diagnostics. */
   function indexDocument(document: vscode.TextDocument): void {
     if (document.languageId !== 'dvala') return
-    const filePath = document.uri.fsPath
-    workspaceIndex.updateFile(filePath, document.getText(), nodeResolveImport)
     // Clear stale run diagnostics whenever the document changes or is re-opened.
     // Runtime diagnostics are snapshot-specific and quickly become misleading
     // once the source has changed.
@@ -667,25 +666,6 @@ export function activate(context: vscode.ExtensionContext): void {
   }
   void ensureBackendWorkspaceSnapshot()
 
-  // Lazy full-workspace scan — ensures every .dvala file on disk is in the
-  // index, not just the ones the user has opened. Required for cross-file
-  // rename / find-references to reach files that have never been opened.
-  // Fires at most once per session; subsequent calls are no-ops behind the
-  // `fullyIndexed` flag, and the filesystem watcher below keeps the index
-  // current from then on. Reads from disk (source omitted); open documents
-  // that already have dirty buffer content stay authoritative because
-  // `WorkspaceIndex` caches by content hash and skips re-parsing unchanged
-  // input.
-  let fullyIndexed = false
-  async function ensureWorkspaceIndexed(): Promise<void> {
-    if (fullyIndexed) return
-    const uris = await vscode.workspace.findFiles('**/*.dvala', '**/node_modules/**')
-    for (const uri of uris) {
-      loadIndexedFile(workspaceIndex, uri.fsPath)
-    }
-    fullyIndexed = true
-  }
-
   // Re-index on document change (debounced)
   const onDidChange = vscode.workspace.onDidChangeTextDocument(event => {
     if (event.document.languageId !== 'dvala') return
@@ -708,28 +688,21 @@ export function activate(context: vscode.ExtensionContext): void {
     void backendDiagnostics.closeDocument(doc.uri.fsPath)
   })
 
-  // Keep the index live for files that are never opened in an editor. The
-  // watcher complements `onDidOpen` / `onDidChangeTextDocument`, which only
-  // fire for open documents — without it, renaming a saved-but-never-opened
-  // file on disk would leave stale `reverseImports` entries pointing at an
-  // outdated version.
+  // Mark the backend snapshot stale on any .dvala file system change. The
+  // next analysis request triggers refreshBackendWorkspaceSnapshot(), which
+  // re-reads all matching files and syncs them to the backend's persisted-
+  // file store. Open documents carry their authoritative content through
+  // onDidChangeTextDocument; this watcher catches changes to files that
+  // aren't currently open in an editor.
   const dvalaWatcher = vscode.workspace.createFileSystemWatcher('**/*.dvala')
-  const onFsCreate = dvalaWatcher.onDidCreate(uri => {
+  const onFsCreate = dvalaWatcher.onDidCreate(() => {
     backendWorkspaceSnapshotStale = true
-    loadIndexedFile(workspaceIndex, uri.fsPath)
   })
-  const onFsChange = dvalaWatcher.onDidChange(uri => {
+  const onFsChange = dvalaWatcher.onDidChange(() => {
     backendWorkspaceSnapshotStale = true
-    // Open documents carry their authoritative content through
-    // onDidChangeTextDocument — skip the disk read so we don't clobber a
-    // dirty buffer with the saved-on-disk version.
-    const openDoc = vscode.workspace.textDocuments.find(d => d.uri.fsPath === uri.fsPath)
-    if (openDoc) return
-    loadIndexedFile(workspaceIndex, uri.fsPath)
   })
-  const onFsDelete = dvalaWatcher.onDidDelete(uri => {
+  const onFsDelete = dvalaWatcher.onDidDelete(() => {
     backendWorkspaceSnapshotStale = true
-    workspaceIndex.invalidateFile(uri.fsPath)
   })
 
   // Reference provider — Find All References (Shift+F12)
@@ -754,9 +727,16 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Rename provider — F2 to rename a symbol across the workspace
   const renameProvider = vscode.languages.registerRenameProvider('dvala', {
-    prepareRename(document, position) {
+    async prepareRename(document, position) {
       indexDocument(document)
-      const symbol = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, position.line + 1, position.character + 1)
+      const symbolResult = await backendDiagnostics.requestSymbolAtPosition({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        line: position.line + 1,
+        column: position.character + 1,
+      })
+      const symbol = symbolResult.ok ? symbolResult.symbol : undefined
       if (!symbol) throw new Error('Cannot rename this element')
 
       // Find the word range at the cursor position
