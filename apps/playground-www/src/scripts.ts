@@ -379,8 +379,12 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
       },
       runCode: async code => {
         // `playground.exec.run(code)` is freeform user code — resolves
-        // imports relative to the workspace root.
-        const result = await getDvala().runAsync(code, { scope: {}, effectHandlers: [], pure: false })
+        // imports relative to the workspace root, routed through the
+        // backend authority (same path as the playground's Run button).
+        const result = await runPlaygroundSessionThroughBackend({
+          source: code,
+          workspaceFiles: getWorkspaceFiles(),
+        })
         if (result.type === 'error') throw result.error
         if (result.type === 'suspended') throw new Error('File suspended')
         return result.value
