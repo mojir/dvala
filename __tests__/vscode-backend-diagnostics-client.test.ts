@@ -16,7 +16,8 @@ import type {
   BackendHoverResult,
   BackendNavigationRequest,
   BackendNavigationResult,
-  BackendReplaceWorkspaceSnapshotRequest,
+  BackendPersistFileRequest,
+  BackendRemoveFileRequest,
   BackendSignatureHelpRequest,
   BackendSignatureHelpResult,
   BackendSessionInspectionResult,
@@ -95,7 +96,7 @@ describe('BackendDiagnosticsClient', () => {
   it('passes workspace snapshot files through to backend-owned import diagnostics', async () => {
     const client = new BackendDiagnosticsClient(createBackend())
 
-    await client.replaceWorkspaceSnapshot([{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }])
+    await client.syncWorkspaceSnapshot([{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }])
     await client.syncDocument({
       path: 'main.dvala',
       source: 'let { exported } = import("./lib"); exported',
@@ -113,7 +114,7 @@ describe('BackendDiagnosticsClient', () => {
   it('returns imported hover information through the backend-backed client', async () => {
     const client = new BackendDiagnosticsClient(createBackend())
 
-    await client.replaceWorkspaceSnapshot([{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }])
+    await client.syncWorkspaceSnapshot([{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }])
     await client.syncDocument({
       path: 'main.dvala',
       source: 'let { exported } = import("./lib"); exported',
@@ -139,7 +140,7 @@ describe('BackendDiagnosticsClient', () => {
   it('returns backend-owned import path completions through the client', async () => {
     const client = new BackendDiagnosticsClient(createBackend())
 
-    await client.replaceWorkspaceSnapshot([{ path: 'utils/math.dvala', code: 'let value = 1' }])
+    await client.syncWorkspaceSnapshot([{ path: 'utils/math.dvala', code: 'let value = 1' }])
     const result = await client.requestCompletion({
       path: 'main.dvala',
       source: 'let lib = import("./u")',
@@ -164,7 +165,7 @@ describe('BackendDiagnosticsClient', () => {
   it('returns backend-owned import definition navigation through the client', async () => {
     const client = new BackendDiagnosticsClient(createBackend())
 
-    await client.replaceWorkspaceSnapshot([{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }])
+    await client.syncWorkspaceSnapshot([{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }])
     const source = 'let lib = import("./lib")'
     const result = await client.requestNavigation({
       path: 'main.dvala',
@@ -235,7 +236,7 @@ describe('BackendDiagnosticsClient', () => {
   it('returns backend-owned workspace symbols through the client', async () => {
     const client = new BackendDiagnosticsClient(createBackend())
 
-    await client.replaceWorkspaceSnapshot([{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }])
+    await client.syncWorkspaceSnapshot([{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }])
     const result = await client.requestWorkspaceSymbols({ query: 'exp' })
 
     expect(result.ok).toBe(true)
@@ -257,7 +258,8 @@ function createResyncingBackend(overrides: {
       return { ok: true }
     },
     async closeDocument(): Promise<void> {},
-    async replaceWorkspaceSnapshot(_: BackendReplaceWorkspaceSnapshotRequest): Promise<void> {},
+    async persistFile(_: BackendPersistFileRequest): Promise<void> {},
+    async removeFile(_: BackendRemoveFileRequest): Promise<void> {},
     async requestDiagnostics(request: BackendDiagnosticsRequest): Promise<BackendDiagnosticsResult> {
       return overrides.requestDiagnostics(request)
     },

@@ -56,9 +56,7 @@ describe('createBackend', () => {
 
   it('resolves imported bindings before emitting backend-owned unresolved-symbol diagnostics', async () => {
     const backend = createBackend()
-    await backend.replaceWorkspaceSnapshot({
-      files: [{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }],
-    })
+    await backend.persistFile({ file: { path: 'lib.dvala', code: 'let exported = 1; { exported }' } })
     await backend.openDocument({
       path: 'main.dvala',
       source: 'let { exported } = import("./lib"); exported',
@@ -289,9 +287,7 @@ describe('createBackend', () => {
 
   it('computes imported hover information through the backend-owned workspace state', async () => {
     const backend = createBackend()
-    await backend.replaceWorkspaceSnapshot({
-      files: [{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }],
-    })
+    await backend.persistFile({ file: { path: 'lib.dvala', code: 'let exported = 1; { exported }' } })
 
     const source = 'let { exported } = import("./lib"); exported'
     const result = await backend.requestHover({
@@ -381,9 +377,7 @@ describe('createBackend', () => {
 
   it('uses the backend-owned workspace snapshot for import path completions when callers omit workspaceFiles', async () => {
     const backend = createBackend()
-    await backend.replaceWorkspaceSnapshot({
-      files: [{ path: 'utils/math.dvala', code: 'let value = 1' }],
-    })
+    await backend.persistFile({ file: { path: 'utils/math.dvala', code: 'let value = 1' } })
 
     const result = await backend.requestCompletion({
       requestId: 18,
@@ -483,9 +477,7 @@ describe('createBackend', () => {
 
   it('uses the backend-owned workspace snapshot for import definition navigation when callers omit workspaceFiles', async () => {
     const backend = createBackend()
-    await backend.replaceWorkspaceSnapshot({
-      files: [{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }],
-    })
+    await backend.persistFile({ file: { path: 'lib.dvala', code: 'let exported = 1; { exported }' } })
 
     const definition = await backend.requestNavigation({
       requestId: 20,
@@ -520,9 +512,7 @@ describe('createBackend', () => {
 
   it('uses unsaved open documents for cross-file rename when callers omit workspaceFiles', async () => {
     const backend = createBackend()
-    await backend.replaceWorkspaceSnapshot({
-      files: [{ path: 'lib.dvala', code: 'let stale = 1\n{ stale }' }],
-    })
+    await backend.persistFile({ file: { path: 'lib.dvala', code: 'let stale = 1\n{ stale }' } })
     await backend.openDocument({
       path: 'lib.dvala',
       source: 'let fresh = 1\n{ fresh }',
@@ -562,9 +552,7 @@ describe('createBackend', () => {
   it('does not let compatibility workspaceFiles override backend-owned open document state', async () => {
     const backend = createBackend()
 
-    await backend.replaceWorkspaceSnapshot({
-      files: [{ path: 'lib.dvala', code: 'let stale = 1\n{ stale }' }],
-    })
+    await backend.persistFile({ file: { path: 'lib.dvala', code: 'let stale = 1\n{ stale }' } })
     await backend.openDocument({
       path: 'lib.dvala',
       source: 'let fresh = 1\n{ fresh }',
@@ -666,9 +654,7 @@ describe('createBackend', () => {
 
   it('returns workspace symbols through the backend-owned state', async () => {
     const backend = createBackend()
-    await backend.replaceWorkspaceSnapshot({
-      files: [{ path: 'lib.dvala', code: 'let exported = 1; { exported }' }],
-    })
+    await backend.persistFile({ file: { path: 'lib.dvala', code: 'let exported = 1; { exported }' } })
     await backend.openDocument({ path: 'main.dvala', source: 'let answer = 42', version: 11 })
 
     const result = await backend.requestWorkspaceSymbols({
@@ -917,9 +903,7 @@ describe('createBackend', () => {
   it('uses backend-owned workspace overlays when starting a session', async () => {
     const backend = createBackend()
 
-    await backend.replaceWorkspaceSnapshot({
-      files: [{ path: 'lib.dvala', code: 'let value = 1; { value }' }],
-    })
+    await backend.persistFile({ file: { path: 'lib.dvala', code: 'let value = 1; { value }' } })
     await backend.openDocument({ path: 'lib.dvala', source: 'let value = 41; { value }', version: 2 })
 
     const result = await backend.startSession({
@@ -1124,9 +1108,7 @@ describe('createBackend', () => {
   it('rejects imports into the playground state folder for runtime sessions', async () => {
     const backend = createBackend()
 
-    await backend.replaceWorkspaceSnapshot({
-      files: [{ path: '.dvala-playground/secret.dvala', code: '41' }],
-    })
+    await backend.persistFile({ file: { path: '.dvala-playground/secret.dvala', code: '41' } })
 
     const result = await backend.startSession({
       requestId: 27,

@@ -592,7 +592,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     })
 
-    await backendDiagnostics.replaceWorkspaceSnapshot(files)
+    await backendDiagnostics.syncWorkspaceSnapshot(files)
     backendWorkspaceSnapshotStale = false
   }
 

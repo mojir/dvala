@@ -2,7 +2,8 @@ import type {
   BackendAccepted,
   BackendDocumentSyncResult,
   BackendDocumentVersion,
-  BackendReplaceWorkspaceSnapshotRequest,
+  BackendPersistFileRequest,
+  BackendRemoveFileRequest,
   BackendResyncRequired,
   BackendTextDocument,
   BackendWorkspaceSnapshotFile,
@@ -14,7 +15,8 @@ export interface BackendDocumentStore {
   open(document: BackendOpenDocument): void
   update(document: BackendOpenDocument, previousVersion: BackendDocumentVersion): BackendDocumentSyncResult
   close(path: string): void
-  replaceWorkspaceSnapshot(request: BackendReplaceWorkspaceSnapshotRequest): void
+  persistFile(request: BackendPersistFileRequest): void
+  removeFile(request: BackendRemoveFileRequest): void
   getOpenDocuments(): readonly BackendOpenDocument[]
   getOpenDocument(path: string): BackendOpenDocument | undefined
   getWorkspaceDocument(path: string): BackendWorkspaceSnapshotFile | undefined
@@ -61,11 +63,12 @@ export function createInMemoryDocumentStore(): BackendDocumentStore {
       openDocuments.delete(path)
     },
 
-    replaceWorkspaceSnapshot(request: BackendReplaceWorkspaceSnapshotRequest): void {
-      workspaceSnapshot.clear()
-      for (const file of request.files) {
-        workspaceSnapshot.set(file.path, file)
-      }
+    persistFile(request: BackendPersistFileRequest): void {
+      workspaceSnapshot.set(request.file.path, request.file)
+    },
+
+    removeFile(request: BackendRemoveFileRequest): void {
+      workspaceSnapshot.delete(request.path)
     },
 
     getOpenDocuments(): readonly BackendOpenDocument[] {

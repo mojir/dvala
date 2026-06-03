@@ -161,8 +161,13 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
       return
     }
 
-    case 'replaceWorkspaceSnapshot': {
-      await backend.replaceWorkspaceSnapshot({ files: msg.files })
+    case 'persistFile': {
+      await backend.persistFile({ file: msg.file })
+      return
+    }
+
+    case 'removeFile': {
+      await backend.removeFile({ path: msg.path })
       return
     }
 

@@ -14,15 +14,27 @@ function nextRequestId(): number {
   return requestCounter
 }
 
-function toBackendWorkspaceFiles(workspaceFiles: readonly RuntimeWorkspaceFile[]) {
-  return workspaceFiles.map(file => ({
-    path: file.path,
-    code: file.code,
-  }))
-}
+// Mirrors what the backend currently has, so each sync sends only the diff
+// (additions, modifications, removals) rather than re-uploading the whole
+// workspace. Backend persisted-file state survives across sync calls.
+let lastSyncedToBackend = new Map<string, string>()
 
 async function syncWorkspaceSnapshot(workspaceFiles: readonly RuntimeWorkspaceFile[]): Promise<void> {
-  await runtimeBackend.replaceWorkspaceSnapshot({ files: toBackendWorkspaceFiles(workspaceFiles) })
+  const next = new Map(workspaceFiles.map(file => [file.path, file.code]))
+
+  for (const path of lastSyncedToBackend.keys()) {
+    if (!next.has(path)) {
+      await runtimeBackend.removeFile({ path })
+    }
+  }
+
+  for (const [path, code] of next) {
+    if (lastSyncedToBackend.get(path) !== code) {
+      await runtimeBackend.persistFile({ file: { path, code } })
+    }
+  }
+
+  lastSyncedToBackend = next
 }
 
 function unwrapRuntimeResult(

@@ -14,7 +14,8 @@ import type {
   BackendHoverResult,
   BackendNavigationRequest,
   BackendNavigationResult,
-  BackendReplaceWorkspaceSnapshotRequest,
+  BackendPersistFileRequest,
+  BackendRemoveFileRequest,
   BackendSignatureHelpRequest,
   BackendSignatureHelpResult,
   BackendSnapshotInspectionRequest,
@@ -41,7 +42,8 @@ export interface DvalaBackend {
     previousVersion: BackendDocumentVersion,
   ): Promise<BackendDocumentSyncResult>
   closeDocument(path: string): Promise<void>
-  replaceWorkspaceSnapshot(request: BackendReplaceWorkspaceSnapshotRequest): Promise<void>
+  persistFile(request: BackendPersistFileRequest): Promise<void>
+  removeFile(request: BackendRemoveFileRequest): Promise<void>
 
   requestDiagnostics(request: BackendDiagnosticsRequest): Promise<BackendDiagnosticsResult>
   requestFormatting(request: BackendFormattingRequest): Promise<BackendFormattingResult>

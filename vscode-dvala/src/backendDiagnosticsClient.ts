@@ -23,6 +23,10 @@ export class BackendDiagnosticsClient {
   private readonly backend: DvalaBackend
   private nextRequestId = 1
   private readonly mirroredDocuments = new Map<string, BackendTextDocument>()
+  // Mirrors what the backend currently has, so syncWorkspaceSnapshot sends
+  // only the diff (persistFile / removeFile) rather than re-uploading the
+  // whole workspace on every refresh.
+  private lastSyncedSnapshot = new Map<string, string>()
 
   constructor(backend: DvalaBackend = createBackend({ createDvala })) {
     this.backend = backend
@@ -51,8 +55,22 @@ export class BackendDiagnosticsClient {
     await this.backend.closeDocument(path)
   }
 
-  async replaceWorkspaceSnapshot(files: readonly BackendWorkspaceSnapshotFile[]): Promise<void> {
-    await this.backend.replaceWorkspaceSnapshot({ files })
+  async syncWorkspaceSnapshot(files: readonly BackendWorkspaceSnapshotFile[]): Promise<void> {
+    const next = new Map(files.map(file => [file.path, file.code]))
+
+    for (const path of this.lastSyncedSnapshot.keys()) {
+      if (!next.has(path)) {
+        await this.backend.removeFile({ path })
+      }
+    }
+
+    for (const [path, code] of next) {
+      if (this.lastSyncedSnapshot.get(path) !== code) {
+        await this.backend.persistFile({ file: { path, code } })
+      }
+    }
+
+    this.lastSyncedSnapshot = next
   }
 
   async requestDiagnostics(path: string, version: number): Promise<BackendDiagnosticsResult> {

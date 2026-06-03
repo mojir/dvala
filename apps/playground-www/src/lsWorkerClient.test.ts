@@ -154,11 +154,9 @@ describe('lsWorkerClient lifecycle', () => {
     client.registerModel('main.dvala', model as never)
 
     expect(workerInstances).toHaveLength(1)
+    // No workspace-sync messages when the workspace is empty: delta-based sync
+    // sends only persistFile/removeFile for actual diffs.
     expect(workerInstances[0]!.messages).toEqual([
-      {
-        type: 'replaceWorkspaceSnapshot',
-        files: [],
-      },
       {
         type: 'openDocument',
         path: 'main.dvala',
@@ -288,10 +286,8 @@ describe('lsWorkerClient lifecycle', () => {
   it('syncs workspace snapshot changes to the worker', () => {
     client.initLspWorker()
 
-    expect(workerInstances[0]!.messages[0]).toEqual({
-      type: 'replaceWorkspaceSnapshot',
-      files: [],
-    })
+    // Initial workspace is empty → no sync messages emitted.
+    expect(workerInstances[0]!.messages).toEqual([])
 
     setWorkspaceFilesState([
       {
@@ -305,8 +301,8 @@ describe('lsWorkerClient lifecycle', () => {
     ])
 
     expect(workerInstances[0]!.messages.at(-1)).toEqual({
-      type: 'replaceWorkspaceSnapshot',
-      files: [{ path: 'utils/math.dvala', code: 'let value = 1' }],
+      type: 'persistFile',
+      file: { path: 'utils/math.dvala', code: 'let value = 1' },
     })
   })
 
@@ -483,11 +479,8 @@ describe('lsWorkerClient lifecycle', () => {
     client.requestDiagnosticsForTesting('main.dvala', 5)
 
     expect(workerInstances).toHaveLength(2)
+    // No workspace-sync messages on respawn when the workspace is empty.
     expect(workerInstances[1]!.messages).toEqual([
-      {
-        type: 'replaceWorkspaceSnapshot',
-        files: [],
-      },
       {
         type: 'openDocument',
         path: 'main.dvala',

@@ -27,9 +27,14 @@ export interface PlaygroundCloseDocumentMessage {
   path: string
 }
 
-export interface PlaygroundReplaceWorkspaceSnapshotMessage {
-  type: 'replaceWorkspaceSnapshot'
-  files: PlaygroundWorkspaceSnapshotFile[]
+export interface PlaygroundPersistFileMessage {
+  type: 'persistFile'
+  file: PlaygroundWorkspaceSnapshotFile
+}
+
+export interface PlaygroundRemoveFileMessage {
+  type: 'removeFile'
+  path: string
 }
 
 export interface PlaygroundRequestDiagnosticsMessage {
@@ -89,7 +94,8 @@ export type PlaygroundWorkerInMessage =
   | PlaygroundOpenDocumentMessage
   | PlaygroundUpdateDocumentMessage
   | PlaygroundCloseDocumentMessage
-  | PlaygroundReplaceWorkspaceSnapshotMessage
+  | PlaygroundPersistFileMessage
+  | PlaygroundRemoveFileMessage
   | PlaygroundRequestDiagnosticsMessage
   | PlaygroundRequestFormattingMessage
   | PlaygroundRequestHoverMessage

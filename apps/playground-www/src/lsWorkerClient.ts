@@ -32,7 +32,7 @@ import type {
   PlaygroundWorkerOutMessage,
 } from '@mojir/dvala-workspace-backend/adapters/playground-worker-protocol'
 import { findCallContext } from '@mojir/dvala-core-tooling'
-import { getWorkspaceFiles, onWorkspaceFilesChanged, type WorkspaceFile } from './fileStorage'
+import { getWorkspaceFiles, onWorkspaceFilesChanged } from './fileStorage'
 import { folderFromPath, isInPlaygroundFolder } from './filePath'
 import { HANDLERS_FILE_PATH } from './handlersBuffer'
 import { resolvePlaygroundPath } from './playgroundFileResolver'
@@ -367,15 +367,33 @@ function syncRegisteredModelsToWorker(w: Worker): void {
   }
 }
 
-function toWorkerWorkspaceFiles(workspaceFiles: readonly WorkspaceFile[]) {
-  return workspaceFiles.map(file => ({ path: file.path, code: file.code }))
+// Mirrors what the active worker currently has, so we only post deltas
+// (persistFile / removeFile) rather than re-uploading the whole workspace
+// on every change. Reset to empty whenever the worker is swapped — the new
+// worker starts with no persisted-file state, so every current file is sent
+// as a fresh persistFile on its first sync.
+let lastSyncedToWorker = new Map<string, string>()
+
+function resetWorkerSyncState(): void {
+  lastSyncedToWorker = new Map()
 }
 
 function syncWorkspaceSnapshotToWorker(w: Worker): void {
-  w.postMessage({
-    type: 'replaceWorkspaceSnapshot',
-    files: toWorkerWorkspaceFiles(getWorkspaceFiles()),
-  })
+  const next = new Map(getWorkspaceFiles().map(file => [file.path, file.code]))
+
+  for (const path of lastSyncedToWorker.keys()) {
+    if (!next.has(path)) {
+      w.postMessage({ type: 'removeFile', path })
+    }
+  }
+
+  for (const [path, code] of next) {
+    if (lastSyncedToWorker.get(path) !== code) {
+      w.postMessage({ type: 'persistFile', file: { path, code } })
+    }
+  }
+
+  lastSyncedToWorker = next
 }
 
 function handleWorkerError(): void {
@@ -607,6 +625,7 @@ function createWorker(): Worker {
   const nextWorker = new LsWorker()
   nextWorker.onerror = () => handleWorkerError()
   nextWorker.onmessage = event => handleWorkerMessage(event)
+  resetWorkerSyncState()
   syncWorkspaceSnapshotToWorker(nextWorker)
   syncRegisteredModelsToWorker(nextWorker)
   return nextWorker
