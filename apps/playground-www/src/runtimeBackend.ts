@@ -48,6 +48,7 @@ export async function runPlaygroundSessionThroughBackend(args: {
   path?: string
   source: string
   workspaceFiles: readonly RuntimeWorkspaceFile[]
+  scope?: Record<string, unknown>
   effectHandlers?: RuntimeHandlers
   debug?: boolean
   pure?: boolean
@@ -60,6 +61,7 @@ export async function runPlaygroundSessionThroughBackend(args: {
       requestId: nextRequestId(),
       path: args.path,
       source: args.source,
+      ...(args.scope ? { scope: args.scope } : {}),
       ...(args.debug ? { debug: true } : {}),
       ...(args.effectHandlers ? { effectHandlers: args.effectHandlers } : {}),
       ...(args.pure ? { pure: true } : {}),

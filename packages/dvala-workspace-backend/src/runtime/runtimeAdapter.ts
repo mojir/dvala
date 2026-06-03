@@ -195,11 +195,13 @@ export function createBackendRuntimeAdapter(documents: BackendDocumentStore): Ba
       const runOptions = request.pure
         ? {
             pure: true as const,
+            ...(request.scope ? { scope: request.scope } : {}),
             ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
             ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),
             ...(request.path ? { filePath: request.path } : {}),
           }
         : {
+            ...(request.scope ? { scope: request.scope } : {}),
             ...(request.effectHandlers ? { effectHandlers: request.effectHandlers } : {}),
             ...(request.disableAutoCheckpoint ? { disableAutoCheckpoint: true } : {}),
             ...(request.terminalSnapshot ? { terminalSnapshot: true } : {}),

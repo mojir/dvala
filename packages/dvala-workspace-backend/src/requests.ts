@@ -351,6 +351,8 @@ export interface BackendSessionStartRequest {
   requestId: BackendRequestId
   path?: string
   source: string | DvalaBundle
+  /** Initial JS-level bindings to seed the session with. */
+  scope?: Record<string, unknown>
   effectHandlers?: RuntimeHandlers
   debug?: boolean
   pure?: boolean

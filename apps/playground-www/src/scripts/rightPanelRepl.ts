@@ -1,10 +1,9 @@
 import { stringifyValue } from '../../../../common/utils'
-import { createDvala } from '@mojir/dvala-core-tooling'
 import { type HandlerRegistration, type RunResult, type Snapshot, toJS } from '@mojir/dvala-engine'
-import { applyReplBinding, executeReplLine, type ReplBinding, allBuiltinModules } from '@mojir/dvala-core-tooling'
+import { applyReplBinding, executeReplLine, type ReplBinding } from '@mojir/dvala-core-tooling'
 import { getHandlersCode, wrapWithBoundaryHandler } from '../handlersBuffer'
 import { getWorkspaceFiles } from '../fileStorage'
-import { playgroundFileResolver } from '../playgroundFileResolver'
+import { runPlaygroundSessionThroughBackend } from '../runtimeBackend'
 import { getState } from '../state'
 import { getActiveTabKind, openOrFocusSnapshotTab } from './tabs'
 import type { TerminalSnapshotEntry } from '../snapshotStorage'
@@ -210,19 +209,16 @@ async function runPlaygroundReplCode(params: {
   runLocation: { filePath?: string; fileResolverBaseDir: string }
   addOutput: (entry: ReplOutputEntry) => void
 }): Promise<RunResult> {
-  const { filePath, fileResolverBaseDir } = params.runLocation
-  const dvala = createDvala({
-    debug: getState('debug'),
-    modules: allBuiltinModules,
-    fileResolver: playgroundFileResolver,
-    fileResolverBaseDir,
-  })
-  return dvala.runAsync(wrapWithBoundaryHandler(params.expression), {
+  const { filePath } = params.runLocation
+  return runPlaygroundSessionThroughBackend({
+    source: wrapWithBoundaryHandler(params.expression),
+    workspaceFiles: getWorkspaceFiles(),
     scope: params.scope,
     effectHandlers: getEffectHandlers(params.addOutput),
+    debug: getState('debug'),
     disableAutoCheckpoint: getState('disable-auto-checkpoint'),
     terminalSnapshot: true,
-    filePath,
+    ...(filePath ? { path: filePath } : {}),
   })
 }
 
