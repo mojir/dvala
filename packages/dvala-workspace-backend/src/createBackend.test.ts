@@ -316,6 +316,7 @@ describe('createBackend', () => {
 
   it('deduplicates completion labels across local scope and imported exports through the backend', async () => {
     const backend = createBackend()
+    await backend.persistFile({ file: { path: 'lib.dvala', code: 'let value = 2\n{ value }' } })
 
     const result = await backend.requestCompletion({
       requestId: 15,
@@ -326,7 +327,6 @@ describe('createBackend', () => {
       column: 4,
       prefix: 'val',
       importPrefix: null,
-      workspaceFiles: [{ path: 'lib.dvala', code: 'let value = 2\n{ value }' }],
     })
 
     expect(result).toEqual(
@@ -344,6 +344,7 @@ describe('createBackend', () => {
 
   it('returns workspace import path completions through the backend', async () => {
     const backend = createBackend()
+    await backend.persistFile({ file: { path: 'utils/math.dvala', code: 'let value = 1' } })
 
     const result = await backend.requestCompletion({
       requestId: 17,
@@ -354,7 +355,6 @@ describe('createBackend', () => {
       column: 22,
       prefix: '',
       importPrefix: './u',
-      workspaceFiles: [{ path: 'utils/math.dvala', code: 'let value = 1' }],
     })
 
     expect(result).toEqual(
@@ -375,7 +375,7 @@ describe('createBackend', () => {
     }
   })
 
-  it('uses the backend-owned workspace snapshot for import path completions when callers omit workspaceFiles', async () => {
+  it('uses the backend-owned workspace snapshot for import path completions', async () => {
     const backend = createBackend()
     await backend.persistFile({ file: { path: 'utils/math.dvala', code: 'let value = 1' } })
 
@@ -419,7 +419,6 @@ describe('createBackend', () => {
       version: 7,
       line: 1,
       column: 19,
-      workspaceFiles: [],
     })
 
     expect(definition).toEqual(
@@ -450,7 +449,6 @@ describe('createBackend', () => {
       line: 1,
       column: 19,
       newName: 'result',
-      workspaceFiles: [],
     })
 
     expect(rename).toEqual(
@@ -475,7 +473,7 @@ describe('createBackend', () => {
     }
   })
 
-  it('uses the backend-owned workspace snapshot for import definition navigation when callers omit workspaceFiles', async () => {
+  it('uses the backend-owned workspace snapshot for import definition navigation', async () => {
     const backend = createBackend()
     await backend.persistFile({ file: { path: 'lib.dvala', code: 'let exported = 1; { exported }' } })
 
@@ -510,7 +508,7 @@ describe('createBackend', () => {
     }
   })
 
-  it('uses unsaved open documents for cross-file rename when callers omit workspaceFiles', async () => {
+  it('uses unsaved open documents for cross-file rename', async () => {
     const backend = createBackend()
     await backend.persistFile({ file: { path: 'lib.dvala', code: 'let stale = 1\n{ stale }' } })
     await backend.openDocument({
@@ -549,7 +547,7 @@ describe('createBackend', () => {
     }
   })
 
-  it('does not let compatibility workspaceFiles override backend-owned open document state', async () => {
+  it('uses the open document source instead of the persisted file when both exist', async () => {
     const backend = createBackend()
 
     await backend.persistFile({ file: { path: 'lib.dvala', code: 'let stale = 1\n{ stale }' } })
@@ -568,7 +566,6 @@ describe('createBackend', () => {
       line: 1,
       column: 7,
       newName: 'renamed',
-      workspaceFiles: [{ path: 'lib.dvala', code: 'let stale = 1\n{ stale }' }],
     })
 
     expect(rename).toEqual(
@@ -675,6 +672,7 @@ describe('createBackend', () => {
 
   it('resolves cross-file references through the backend workspace snapshot', async () => {
     const backend = createBackend()
+    await backend.persistFile({ file: { path: 'lib.dvala', code: 'let fresh = 1\n{ fresh }' } })
 
     const result = await backend.requestNavigation({
       requestId: 21,
@@ -684,7 +682,6 @@ describe('createBackend', () => {
       version: 8,
       line: 1,
       column: 7,
-      workspaceFiles: [{ path: 'lib.dvala', code: 'let fresh = 1\n{ fresh }' }],
     })
 
     expect(result).toEqual(

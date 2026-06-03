@@ -35,10 +35,10 @@
  *   This does not depend on the mirrored file state, but still uses
  *   `requestId` correlation so stale replies can be dropped on the main
  *   thread.
- * - `requestNavigation(path, source, sourceVersion, position, workspaceFiles)`:
- *   resolve definition / references / rename queries from a source snapshot
- *   plus a workspace file snapshot. This lets navigation move onto the
- *   worker before the worker owns a long-lived workspace index.
+ * - `requestNavigation(path, source, sourceVersion, position)`: resolve
+ *   definition / references / rename queries from a source snapshot. Cross-
+ *   file resolution uses the backend's persisted workspace state, not a
+ *   per-request payload.
  * - `cancelRequest(requestId)`: cancel an in-flight request. The worker
  *   checks a `cancelled` flag at well-known yield points (after parse,
  *   after typecheck) and drops the result if set.
@@ -339,7 +339,6 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
         column: msg.column,
         prefix: msg.prefix,
         importPrefix: msg.importPrefix,
-        workspaceFiles: msg.workspaceFiles,
       })
 
       if (!result.ok && result.error.kind === 'resync-required') {
