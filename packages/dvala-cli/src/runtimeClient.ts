@@ -142,9 +142,12 @@ export function createCliRuntimeClient(options: CreateCliRuntimeClientOptions): 
       const status = sessions.get(sessionId)
       if (!status) {
         return {
-          ok: true as const,
-          sessionId,
-          status: 'missing' as const,
+          ok: false as const,
+          error: {
+            kind: 'session-not-found' as const,
+            message: `No runtime session for id ${sessionId}`,
+            path: sessionId,
+          },
         }
       }
 

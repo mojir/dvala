@@ -58,8 +58,6 @@ describe('BackendDiagnosticsClient', () => {
           return {
             ok: false,
             requestId: request.requestId,
-            path: request.path,
-            version: request.version,
             error: {
               kind: 'resync-required',
               message: `Backend document mirror missing or stale for ${request.path}`,
@@ -315,11 +313,18 @@ function createResyncingBackend(overrides: {
       }
     },
     async inspectSession(): Promise<BackendSessionInspectionResult> {
-      return { ok: true, sessionId: 'test', status: 'missing' }
+      return {
+        ok: false,
+        error: {
+          kind: 'session-not-found',
+          message: 'No runtime session for id test',
+          path: 'test',
+        },
+      }
     },
     async stopSession(): Promise<void> {},
-    async cancelRequest(): Promise<BackendCancelResult> {
-      return { ok: true }
+    async cancelRequest(requestId): Promise<BackendCancelResult> {
+      return { ok: true, requestId }
     },
   }
 }

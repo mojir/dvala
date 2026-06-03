@@ -11,6 +11,7 @@ import type {
   BackendSessionInspectionResult,
   BackendSessionResumeRequest,
   BackendSessionStartRequest,
+  BackendSessionStatus,
 } from '../requests'
 
 interface BackendRuntimeSessionHandle {
@@ -29,7 +30,7 @@ export interface BackendRuntimeAdapter {
 }
 
 interface BackendRuntimeSessionRecord {
-  status: BackendSessionInspectionResult['status']
+  status: BackendSessionStatus
   lastUpdatedAt: number
 }
 
@@ -93,7 +94,7 @@ function createRuntimeRunner(documents: BackendDocumentStore, path?: string, deb
   })
 }
 
-function statusFromRunResult(result: RuntimeRunResult): BackendSessionInspectionResult['status'] {
+function statusFromRunResult(result: RuntimeRunResult): BackendSessionStatus {
   switch (result.type) {
     case 'suspended':
       return 'suspended'
@@ -179,7 +180,7 @@ export function createBackendRuntimeAdapter(documents: BackendDocumentStore): Ba
     return `backend-session-${sessionCounter}`
   }
 
-  function updateSession(sessionId: string, status: BackendSessionInspectionResult['status']): void {
+  function updateSession(sessionId: string, status: BackendSessionStatus): void {
     sessions.set(sessionId, {
       status,
       lastUpdatedAt: Date.now(),
@@ -261,9 +262,12 @@ export function createBackendRuntimeAdapter(documents: BackendDocumentStore): Ba
       }
 
       return {
-        ok: true,
-        sessionId,
-        status: 'missing',
+        ok: false,
+        error: {
+          kind: 'session-not-found',
+          message: `No runtime session for id ${sessionId}`,
+          path: sessionId,
+        },
       }
     },
 
