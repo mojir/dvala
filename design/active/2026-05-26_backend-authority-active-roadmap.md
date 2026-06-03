@@ -26,18 +26,21 @@ The long-term vision remains the standalone north-star in [2026-05-06_dvala-back
 - **Build & tooling post-decomp cleanup complete** (PRs #211, #213, #214, #215, May–June 2026). See archived [2026-05-30_build-tooling-cleanup.md](../archive/2026-05-30_build-tooling-cleanup.md).
 - **Backend-boundary cleanup backlog complete** (PRs #217, #218, #219, June 2026): per-file `persistFile`/`removeFile` mutations replace `replaceWorkspaceSnapshot`; `workspaceFiles` compatibility payloads retired; canonical result/error envelope locked.
 - **Script organization + Turbo parallelization** (PRs #220, #221, June 2026): per-package scripts own their work; root `build` is now a single `turbo run bundle`; final-binary rolldown configs moved out of the repo root into their owning packages; loose `cli/`, `mcp-server/`, `playground-builder/` directories absorbed (`playground-builder/` promoted to `apps/playground-builder/`).
+- **Thin-client conversion complete across CLI, VS Code, and playground** (PRs #224, #225, #226, #227, #228, June 2026): every covered async run/analysis path flows through the backend authority. Sync `run`, REPL preload, doc generation, and the VS Code debug adapter stay direct per the explicit carve-out in PR #223.
 
 ## Active workstreams
 
-### 1. Finish making clients thin (Phases C / D / E)
+### 1. Finish making clients thin (Phases C / D / E) — ✅ done 2026-06-03
 
-Each client now has a first backend seam, but none is yet a pure thin client. The goal is the [2026-05-06](2026-05-06_dvala-backend-authority.md) end-state: clients own transport, state sync, and rendering only — no embedded Dvala semantics.
+All covered async run/analysis paths across CLI, VS Code, and the playground flow through the backend authority. Carved-out surfaces (sync `run`, REPL preload, doc generation, debug adapter) consume `dvala-engine` / `dvala-core-tooling` directly per the boundary in PR #223.
 
-- **C — Playground.** `lsWorker` is an adapter over the backend and `runtimeBackend` uses `createBackend`. Remaining: route any playground-owned runtime orchestration / inspection surfaces through backend session + inspection APIs so the playground is purely a frontend.
-- **D — VS Code.** Diagnostics + analysis features (hover, completion, navigation, signature help, document/workspace symbols) route through the backend. Remaining: route the **run-file/block/selection commands** and **format command** through `backend.startSession` / `backend.requestFormatting`. The extension's local `WorkspaceIndex` parallel state is a separate D2 follow-up (needs a new `getSymbolAtPosition` backend API or equivalent). The **debug adapter** (`vscode-dvala/src/debugAdapter.ts`) is **explicitly out of D's scope** — converting it to thin-client would need a whole new backend DAP-style API (breakpoints, stepping, evaluate-in-context for active sessions). Its own substantial project.
-- **E — CLI.** `runAsync` string-program path routes through `createBackend().startSession(...)` with backend resume/inspect/stop. Remaining: bring the **async bundle-execution path** (currently a direct `runner.runAsync(bundle, ...)` fallback) behind the backend.
+- ✅ **E1** — CLI async bundle path through backend (PR #224). `BackendSessionStartRequest.source` widened to `string | DvalaBundle`; CLI's `runtimeClient.runAsync` no longer bypasses on bundle inputs.
+- ✅ **D1** — VS Code Run File / Run Block / Run Selection commands + Format Document routed through `backend.startSession` / `backend.requestFormatting` (PR #225). New `startSession` + `requestFormatting` wrappers on `BackendDiagnosticsClient`.
+- ✅ **D2** — VS Code local `WorkspaceIndex` removed (PR #226). New `requestSymbolAtPosition` backend API + client wrapper covers the hover / `prepareRename` "is there a user symbol?" checks. Dead `ensureWorkspaceIndexed` cleaned up.
+- ✅ **C1** — Playground `playground.exec.run(code)` API routed through `runPlaygroundSessionThroughBackend` (PR #227).
+- ✅ **C2** — Playground REPL line execution routed through backend (PR #228). `BackendSessionStartRequest.scope?` added so the REPL's scope-threading state has an API surface; runtime adapter and playground helper forward it.
 
-Definition of done: for each client, no covered run/analysis path composes Dvala semantics directly from root surfaces; all go through the backend authority.
+**Explicitly out of D's scope** (parked for a future, separate project): the **debug adapter** (`vscode-dvala/src/debugAdapter.ts`, ~1150 lines) still uses `createDvala` directly. Converting it to thin-client would need a whole new backend DAP-style API — breakpoints, stepping, evaluate-in-context for active sessions. That's a substantial design + implementation track, not workstream 1 territory.
 
 #### What "covered" excludes (explicit carve-out)
 
