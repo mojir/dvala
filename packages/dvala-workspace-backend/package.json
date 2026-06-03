@@ -27,6 +27,7 @@
   "dependencies": {
     "@mojir/dvala-core-tooling": "workspace:*",
     "@mojir/dvala-engine": "workspace:*",
+    "@mojir/dvala-runtime": "workspace:*",
     "@mojir/dvala-types": "workspace:*"
   }
 }
