@@ -202,6 +202,9 @@
       }
     ]
   },
+  "scripts": {
+    "build": "node ./build.mjs"
+  },
   "devDependencies": {
     "@types/node": "^25.3.5",
     "@types/vscode": "^1.109.0"
