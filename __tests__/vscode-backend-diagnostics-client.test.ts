@@ -20,6 +20,8 @@ import type {
   BackendRemoveFileRequest,
   BackendSignatureHelpRequest,
   BackendSignatureHelpResult,
+  BackendSymbolAtPositionRequest,
+  BackendSymbolAtPositionResult,
   BackendSessionInspectionResult,
   BackendSnapshotBindingsInspectionResult,
   BackendSnapshotInspectionResult,
@@ -271,6 +273,9 @@ function createResyncingBackend(overrides: {
       throw new Error('not implemented')
     },
     async requestDocumentSymbols(_: BackendDocumentSymbolsRequest): Promise<BackendDocumentSymbolsResult> {
+      throw new Error('not implemented')
+    },
+    async requestSymbolAtPosition(_: BackendSymbolAtPositionRequest): Promise<BackendSymbolAtPositionResult> {
       throw new Error('not implemented')
     },
     async requestWorkspaceSymbols(_: BackendWorkspaceSymbolsRequest): Promise<BackendWorkspaceSymbolsResult> {

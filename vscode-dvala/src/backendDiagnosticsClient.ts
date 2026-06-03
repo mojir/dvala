@@ -17,6 +17,8 @@ import type {
   BackendSessionStartResult,
   BackendSignatureHelpRequest,
   BackendSignatureHelpResult,
+  BackendSymbolAtPositionRequest,
+  BackendSymbolAtPositionResult,
   BackendTextDocument,
   BackendWorkspaceSnapshotFile,
   BackendWorkspaceSymbolsRequest,
@@ -133,6 +135,15 @@ export class BackendDiagnosticsClient {
     request: Omit<BackendDocumentSymbolsRequest, 'requestId'>,
   ): Promise<BackendDocumentSymbolsResult> {
     return this.backend.requestDocumentSymbols({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async requestSymbolAtPosition(
+    request: Omit<BackendSymbolAtPositionRequest, 'requestId'>,
+  ): Promise<BackendSymbolAtPositionResult> {
+    return this.backend.requestSymbolAtPosition({
       requestId: this.createRequestId(),
       ...request,
     })

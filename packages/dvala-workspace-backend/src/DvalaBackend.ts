@@ -18,6 +18,8 @@ import type {
   BackendRemoveFileRequest,
   BackendSignatureHelpRequest,
   BackendSignatureHelpResult,
+  BackendSymbolAtPositionRequest,
+  BackendSymbolAtPositionResult,
   BackendSnapshotInspectionRequest,
   BackendSnapshotInspectionResult,
   BackendSnapshotBindingsInspectionRequest,
@@ -50,6 +52,7 @@ export interface DvalaBackend {
   requestHover(request: BackendHoverRequest): Promise<BackendHoverResult>
   requestSignatureHelp(request: BackendSignatureHelpRequest): Promise<BackendSignatureHelpResult>
   requestDocumentSymbols(request: BackendDocumentSymbolsRequest): Promise<BackendDocumentSymbolsResult>
+  requestSymbolAtPosition(request: BackendSymbolAtPositionRequest): Promise<BackendSymbolAtPositionResult>
   requestWorkspaceSymbols(request: BackendWorkspaceSymbolsRequest): Promise<BackendWorkspaceSymbolsResult>
   requestCompletion(request: BackendCompletionRequest): Promise<BackendCompletionResult>
   requestNavigation(request: BackendNavigationRequest): Promise<BackendNavigationResult>

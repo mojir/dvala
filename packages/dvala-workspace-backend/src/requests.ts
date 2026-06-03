@@ -205,6 +205,30 @@ export type BackendDocumentSymbolsResult =
     }
   | BackendRequestFailure
 
+export interface BackendSymbolAtPositionRequest {
+  requestId: BackendRequestId
+  path: string
+  source?: string
+  version: BackendDocumentVersion
+  line: number
+  column: number
+}
+
+export interface BackendSymbolAtPosition {
+  name: string
+  onKey?: boolean
+}
+
+export type BackendSymbolAtPositionResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      path: string
+      version: BackendDocumentVersion
+      symbol?: BackendSymbolAtPosition
+    }
+  | BackendRequestFailure
+
 export interface BackendWorkspaceSymbolsRequest {
   requestId: BackendRequestId
   query: string

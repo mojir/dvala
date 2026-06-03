@@ -34,6 +34,8 @@ import type {
   BackendDocumentVersion,
   BackendDocumentSymbolsRequest,
   BackendDocumentSymbolsResult,
+  BackendSymbolAtPositionRequest,
+  BackendSymbolAtPositionResult,
   BackendFormattingRequest,
   BackendFormattingResult,
   BackendHoverRequest,
@@ -975,6 +977,51 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           path: request.path,
           version: request.version,
           symbols: index.getDocumentSymbols(request.path).map(toBackendDocumentSymbol),
+        }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+    },
+
+    async requestSymbolAtPosition(request: BackendSymbolAtPositionRequest): Promise<BackendSymbolAtPositionResult> {
+      const openDocument = documents.getOpenDocument(request.path)
+      if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'resync-required',
+            message: `Backend document mirror missing or stale for ${request.path}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+
+      try {
+        const index = new WorkspaceIndex()
+        indexBackendDocuments(request.path, documents, index)
+        const symbolAtPos = index.getSymbolAtPosition(request.path, request.line, request.column)
+        return {
+          ok: true,
+          requestId: request.requestId,
+          path: request.path,
+          version: request.version,
+          ...(symbolAtPos
+            ? {
+                symbol: {
+                  name: symbolAtPos.name,
+                  ...(symbolAtPos.onKey ? { onKey: true } : {}),
+                },
+              }
+            : {}),
         }
       } catch (error) {
         return requestFailure(

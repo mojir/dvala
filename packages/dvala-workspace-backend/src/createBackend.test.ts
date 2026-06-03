@@ -646,6 +646,43 @@ describe('createBackend', () => {
     }
   })
 
+  it('returns the symbol at a position through the backend', async () => {
+    const backend = createBackend()
+    const source = 'let answer = 42;\nlet add = (a, b) -> a + b;'
+    await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+    const onDef = await backend.requestSymbolAtPosition({
+      requestId: 50,
+      path: 'main.dvala',
+      source,
+      version: 1,
+      line: 1,
+      column: 5,
+    })
+    expect(onDef).toEqual(expect.objectContaining({ ok: true, requestId: 50, path: 'main.dvala', version: 1 }))
+    if (onDef.ok) expect(onDef.symbol).toEqual({ name: 'answer' })
+
+    const onRef = await backend.requestSymbolAtPosition({
+      requestId: 51,
+      path: 'main.dvala',
+      source,
+      version: 1,
+      line: 2,
+      column: 21,
+    })
+    if (onRef.ok) expect(onRef.symbol).toEqual({ name: 'a' })
+
+    const onWhitespace = await backend.requestSymbolAtPosition({
+      requestId: 52,
+      path: 'main.dvala',
+      source,
+      version: 1,
+      line: 1,
+      column: 1,
+    })
+    if (onWhitespace.ok) expect(onWhitespace.symbol).toBeUndefined()
+  })
+
   it('returns workspace symbols through the backend-owned state', async () => {
     const backend = createBackend()
     await backend.persistFile({ file: { path: 'lib.dvala', code: 'let exported = 1; { exported }' } })
