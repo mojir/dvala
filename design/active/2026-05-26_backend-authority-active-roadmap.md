@@ -35,9 +35,19 @@ Each client now has a first backend seam, but none is yet a pure thin client. Th
 
 - **C — Playground.** `lsWorker` is an adapter over the backend and `runtimeBackend` uses `createBackend`. Remaining: route any playground-owned runtime orchestration / inspection surfaces through backend session + inspection APIs so the playground is purely a frontend.
 - **D — VS Code.** Diagnostics client routes through the backend. Remaining: move the rest of the extension's embedded semantic logic behind backend capabilities; reduce the extension to transport bootstrap, capability registration, and panel/view rendering.
-- **E — CLI.** `runAsync` string-program path routes through `createBackend().startSession(...)` with backend resume/inspect/stop. Remaining: bring the bundle-execution path (currently a direct fallback) behind the backend and remove the direct `createDvala()` semantic fallback for covered paths.
+- **E — CLI.** `runAsync` string-program path routes through `createBackend().startSession(...)` with backend resume/inspect/stop. Remaining: bring the **async bundle-execution path** (currently a direct `runner.runAsync(bundle, ...)` fallback) behind the backend.
 
 Definition of done: for each client, no covered run/analysis path composes Dvala semantics directly from root surfaces; all go through the backend authority.
+
+#### What "covered" excludes (explicit carve-out)
+
+The architecture targets **long-lived async lifecycle** — sessions, suspend/resume, snapshot inspection, request correlation, cancellation, stale-result suppression. Backend authority adds no value to surfaces that don't have those concerns. The following stay outside the architecture by design:
+
+- **Sync `run()` (`dvala.run('1 + 1')`)** — single-shot, can't suspend (sync can't unwind a continuation), no correlation/lifecycle. This is the JS-embedding affordance ("Dvala as a calculator / rule engine / config DSL") and depends on staying sync. The async backend can't preserve that ergonomic.
+- **REPL preload paths** — internal CLI state; not a covered run/analysis path.
+- **Documentation/example generation** (`cliDocumentation/getCliFunctionExamples.ts`) — build-time tooling, not a runtime surface.
+
+These surfaces still consume `dvala-engine` / `dvala-core-tooling` directly. The "one source of semantic authority" invariant is preserved at the package level (only `dvala-engine` evaluates code) — backend authority adds the lifecycle wrapper on top for surfaces that need it.
 
 ### 2. Backend-boundary cleanup backlog — ✅ done 2026-06-03
 
