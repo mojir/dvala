@@ -24,6 +24,8 @@ The long-term vision remains the standalone north-star in [2026-05-06_dvala-back
 - **Runtime-session seam proven** (`startSession`, `resumeSnapshot`, `inspectSession`, `stopSession`, snapshot inspection + backend-owned `validateSnapshot`).
 - **First consumers migrated to the workspace-backend package:** CLI runtime client, VS Code diagnostics client, playground LS worker + runtime backend, MCP server boundary, dvala-cli boundary.
 - **Build & tooling post-decomp cleanup complete** (PRs #211, #213, #214, #215, May–June 2026). See archived [2026-05-30_build-tooling-cleanup.md](../archive/2026-05-30_build-tooling-cleanup.md).
+- **Backend-boundary cleanup backlog complete** (PRs #217, #218, #219, June 2026): per-file `persistFile`/`removeFile` mutations replace `replaceWorkspaceSnapshot`; `workspaceFiles` compatibility payloads retired; canonical result/error envelope locked.
+- **Script organization + Turbo parallelization** (PRs #220, #221, June 2026): per-package scripts own their work; root `build` is now a single `turbo run bundle`; final-binary rolldown configs moved out of the repo root into their owning packages; loose `cli/`, `mcp-server/`, `playground-builder/` directories absorbed (`playground-builder/` promoted to `apps/playground-builder/`).
 
 ## Active workstreams
 
@@ -37,13 +39,13 @@ Each client now has a first backend seam, but none is yet a pure thin client. Th
 
 Definition of done: for each client, no covered run/analysis path composes Dvala semantics directly from root surfaces; all go through the backend authority.
 
-### 2. Backend-boundary cleanup backlog
+### 2. Backend-boundary cleanup backlog — ✅ done 2026-06-03
 
-These are the temporary compatibility seams explicitly marked for removal in the archived API-first doc. They are the most concrete near-term work.
+All three items shipped:
 
-- **Retire `replaceWorkspaceSnapshot(files)`** in favor of explicit persisted-file mutations on the document store.
-- **Fully retire the `workspaceFiles` compatibility payloads** in completion/navigation. Currently only isolated behind backend-internal translation; the backend-owned persisted-file model should make them unnecessary.
-- **Settle the result/error type taxonomy:** decide which backend result and error types are shared directly with transports vs. kept backend-internal and translated by adapters. Lock the `ok: true | false` outcome shape and the finite error `kind` set as the canonical contract.
+- ✅ **`replaceWorkspaceSnapshot(files)` retired** — PR #217. Backend now exposes per-file `persistFile` / `removeFile` mutations; each client (playground LS worker, playground runtime, VS Code diagnostics) maintains a delta-tracking mirror so only changes get posted.
+- ✅ **`workspaceFiles` compatibility payloads retired** — PR #218. Dropped from `BackendCompletionRequest` + `BackendNavigationRequest`; `resolveAnalysisWorkspaceSnapshot` deleted; call sites read directly from the backend-owned document store.
+- ✅ **Result/error type taxonomy locked** — PR #219. Canonical envelope: `BackendFailure { ok: false, error: BackendRequestError }` + `BackendRequestFailure extends BackendFailure { requestId }` for correlated ops. Locked finite error-kind set (`cancelled`, `invalid-request`, `analysis-failed`, `runtime-failed`, `resync-required`, `session-not-found`). Contract documented in [packages/dvala-workspace-backend/src/requests.ts](../../packages/dvala-workspace-backend/src/requests.ts).
 
 ### 3. Decide the `dvala-runtime` vs `dvala-engine` contract surface
 

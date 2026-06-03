@@ -1,11 +1,19 @@
 # Bounded Refinement Types — Implementation Plan
 
-**Status:** Proposed — implementation plan. Tier B (bounded refinements) is the chosen scope.
+**Status:** Phases 1–2.6 shipped (PR #111). Phase 3 (linear arithmetic) + Phase 4 (boundary validation) still ahead. Open must-decide: bare-primitive lenience (Phase 2 follow-up).
 **Created:** 2026-04-23
 **Last updated:** 2026-04-24 (readiness-pass interview: Phase 1 narrowed to parse + reject only; predicate AST reuses Dvala `AstNode`; `count(var)` validation uses subtype query; tagged `RefinementError` with `kind` field; Phase 1 rejection-fixture list locked)
 **Supersedes design-time decision:** Type-system plan decision #15 parked refinement types as "Phase D+, don't do now". This doc reopens the question and picks a concrete direction.
-**Requires (Phase 0):** Generic upper-bound syntax (`T: U`) — **Phase 0a shipped 2026-04-24** (type-alias bounds + annotation-scoped function bounds). Phase 0b (let-binding-scoped `<T>`) remains deferred. See `2026-04-24_upper-bounds.md`. Phase 1 of refinements can now start; the declaration-time fragment check for `count(var)` on sequence-bounded generics is supported.
-**References:** `2026-04-12_type-system.md` (set-theoretic foundation, decision #15), `2026-04-13_bundle-type-metadata.md` (manifest / host boundary validation), `2026-04-23_type-level-computation.md` (sibling Phase D track)
+**Requires (Phase 0):** Generic upper-bound syntax (`T: U`) — **Phase 0a shipped 2026-04-24** (type-alias bounds + annotation-scoped function bounds). Phase 0b (let-binding-scoped `<T>`) remains deferred. See `2026-04-24_upper-bounds.md`.
+**References:** `2026-04-12_type-system.md` (set-theoretic foundation, decision #15), `2026-04-13_bundle-type-metadata.md` (manifest / host boundary validation).
+
+## Progress
+
+- ✅ **Phase 0a** — generic upper-bounds (`T: U`) shipped 2026-04-24.
+- ✅ **Phases 1–2.6** — parser, fragment check, interval/finite-domain solver, propagation through destructuring + match, scoped narrowing — shipped through PR #111.
+- ⏳ **Phase 2 open question** — bare-primitive lenience. Decision still needed.
+- ⏳ **Phase 3** — linear-arithmetic solver (Fourier-Motzkin / simplex). Adds propagation through symbolic computation (`let y = x + 1` where `x : Positive`).
+- ⏳ **Phase 4** — boundary validation (host → Dvala value coercion against refinement contracts).
 
 ---
 

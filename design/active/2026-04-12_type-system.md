@@ -1,6 +1,6 @@
 # Dvala Type System — Set-Theoretic with Algebraic Subtyping
 
-**Status:** Accepted
+**Status:** Accepted (architecture). Phase A (set-theoretic value types) + Phase B (effect sets) shipped. Phase C row-variables shipped 2026-04-20 (PRs #54–#61, `effect-row-variables-phase-{a,b,c,d}`). Phase D splits into refinement-types (Phases 1–2.6 shipped via PR #111; Phases 3–4 pending — see [`2026-04-23_refinement-types.md`](2026-04-23_refinement-types.md)) and type-level-computation (parked, archived 2026-06-03 to `design/archive/`).
 **Created:** 2026-04-12
 **Supersedes:** `2026-03-30_type-system.md`, `2026-04-12_set-theoretic-type-system.md`
 **References:** [MLsub (Dolan 2017)](https://dl.acm.org/doi/10.1145/3093333.3009882), [Simple-sub (Parreaux 2020)](https://dl.acm.org/doi/10.1145/3409006), [Elixir type system (Castagna et al. 2023)](https://arxiv.org/abs/2306.06391), [Ballerina semantic subtyping](https://ballerina.io/why-ballerina/flexibly-typed/), [CDuce (Castagna & Frisch)](https://www.cduce.org/)
