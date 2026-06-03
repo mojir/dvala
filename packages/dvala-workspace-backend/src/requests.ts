@@ -26,7 +26,7 @@
 
 import type { RuntimeHandlers, RuntimeRunResult, RuntimeSnapshot } from '@mojir/dvala-runtime'
 
-import type { CompletionItem, Diagnostic } from '@mojir/dvala-core-tooling'
+import type { CompletionItem, Diagnostic, DvalaBundle } from '@mojir/dvala-core-tooling'
 
 export type BackendRequestId = number
 
@@ -326,7 +326,7 @@ export type BackendNavigationResult =
 export interface BackendSessionStartRequest {
   requestId: BackendRequestId
   path?: string
-  source: string
+  source: string | DvalaBundle
   effectHandlers?: RuntimeHandlers
   debug?: boolean
   pure?: boolean
