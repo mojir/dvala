@@ -4,7 +4,7 @@
  * Production builds still go through rolldown
  * ([rolldown.config.playground-www.mjs](../../rolldown.config.playground-www.mjs))
  * and the static-site generator
- * ([playground-builder/src/buildPlaygroundSite.ts](../../playground-builder/src/buildPlaygroundSite.ts)).
+ * ([playground-builder/src/buildPlaygroundSite.ts](../playground-builder/src/buildPlaygroundSite.ts)).
  * Vite is *only* used for `pnpm run dev` so we get HMR, fast iteration,
  * and stack traces that resolve to source instead of bundled output.
  *

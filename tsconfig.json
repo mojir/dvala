@@ -32,6 +32,6 @@
     "isolatedModules": true /* Enables emit interoperability between CommonJS and ES Modules via creation of module objects for all imports. Implies 'allowSyntheticDefaultImports'. */,
     "skipLibCheck": true
   },
-  "include": ["types/**/*", "cli/**/*", "common/clojureDocs.ts"],
+  "include": ["types/**/*", "common/clojureDocs.ts"],
   "exclude": ["**/*.test.ts", "__tests__"]
 }

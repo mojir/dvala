@@ -1,13 +1,13 @@
 import { defineConfig } from 'rolldown'
-import { dvalaSourcePlugin } from './rolldown.plugins.mjs'
+import { dvalaSourcePlugin } from '../../rolldown.plugins.mjs'
 
 export default defineConfig([
   {
-    input: 'cli/src/cli.ts',
+    input: './src/bin.ts',
     external: ['node:fs', 'node:path', 'node:os', 'node:readline'],
     output: [
       {
-        file: 'dist/cli/cli.js',
+        file: './dist/cli.cjs',
         format: 'cjs',
       },
     ],

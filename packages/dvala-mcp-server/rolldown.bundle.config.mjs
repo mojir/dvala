@@ -1,9 +1,9 @@
 import { defineConfig } from 'rolldown'
-import { dvalaSourcePlugin } from './rolldown.plugins.mjs'
+import { dvalaSourcePlugin } from '../../rolldown.plugins.mjs'
 
 export default defineConfig([
   {
-    input: 'mcp-server/src/server.ts',
+    input: './src/bin.ts',
     external: [
       'node:fs',
       'node:path',
@@ -29,7 +29,7 @@ export default defineConfig([
     ],
     output: [
       {
-        file: 'dist/mcp-server/server.js',
+        file: './dist/server.cjs',
         format: 'cjs',
         banner: '#!/usr/bin/env node',
       },

@@ -4,7 +4,7 @@
       "type": "stdio",
       "command": "node",
       "args": [
-        "${workspaceFolder}/dist/mcp-server/server.js"
+        "${workspaceFolder}/packages/dvala-mcp-server/dist/server.cjs"
       ]
     }
   }

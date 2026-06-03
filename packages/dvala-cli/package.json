@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsgo -p ./tsconfig.json",
     "typecheck": "tsgo -p ./tsconfig.json --noEmit",
-    "start": "node ../../dist/cli/cli.js"
+    "bundle": "rolldown -c ./rolldown.bundle.config.mjs && chmod +x ./dist/cli.cjs",
+    "start": "node ./dist/cli.cjs"
   },
   "dependencies": {
     "@mojir/dvala-core-tooling": "workspace:*",

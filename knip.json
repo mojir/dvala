@@ -6,9 +6,6 @@
   "workspaces": {
     ".": {
       "entry": [
-        "cli/src/cli.ts",
-        "mcp-server/src/server.ts",
-        "playground-builder/src/buildPlaygroundSite.ts",
         "reference/**/*.ts",
         "common/**/*.ts",
         "scripts/*.{ts,mjs}",
@@ -18,15 +15,16 @@
       ],
       "project": [
         "common/**/*.ts",
-        "cli/src/**/*.ts",
-        "mcp-server/src/**/*.ts",
-        "playground-builder/src/**/*.ts",
         "reference/**/*.ts",
         "__tests__/**/*.ts",
         "benchmarks/**/*.ts",
         "scripts/**/*.{ts,mjs}"
       ],
       "ignoreDependencies": ["@vscode/vsce", "serve"]
+    },
+    "apps/playground-builder": {
+      "entry": ["src/**/*.ts"],
+      "project": ["src/**/*.ts"]
     },
     "packages/dvala-types": {
       "entry": ["src/**/*.ts"],
@@ -59,7 +57,7 @@
       "project": ["src/**/*.ts"]
     },
     "packages/dvala-cli": {
-      "entry": ["src/index.ts"],
+      "entry": ["src/index.ts", "src/bin.ts"],
       "project": ["src/**/*.ts"]
     },
     "apps/playground-www": {

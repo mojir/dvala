@@ -4,14 +4,14 @@ import * as path from 'node:path'
 import { beforeAll, describe, expect, test } from 'vitest'
 
 describe('cLI argument parsing', () => {
-  const dvalaCliPath = path.join(__dirname, '../../dist/cli/cli.js')
+  const dvalaCliPath = path.join(__dirname, '../dist/cli.cjs')
   const fixturesDir = path.join(__dirname, 'arg-test-fixtures')
 
   beforeAll(() => {
     if (!fs.existsSync(dvalaCliPath)) {
       try {
-        execSync('npm run build-cli', {
-          cwd: path.join(__dirname, '../..'),
+        execSync('pnpm --filter @mojir/dvala-cli bundle', {
+          cwd: path.join(__dirname, '../../..'),
           stdio: 'pipe',
         })
       } catch (error: any) {

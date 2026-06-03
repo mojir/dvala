@@ -1,5 +1,5 @@
 import process from 'node:process'
-import { runMcpServer } from '../../packages/dvala-mcp-server/src/index'
+import { runMcpServer } from './index'
 
 runMcpServer().catch(error => {
   // eslint-disable-next-line no-console

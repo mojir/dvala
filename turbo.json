@@ -9,6 +9,16 @@
       "inputs": ["src/**", "package.json", "tsconfig.json", "rolldown.config.mjs"],
       "outputs": ["dist/**"]
     },
+    "bundle": {
+      "dependsOn": ["build"],
+      "inputs": ["src/**", "package.json", "rolldown.bundle.config.mjs", "build.mjs"],
+      "outputs": ["dist/**", "build/**", "out/**"]
+    },
+    "@mojir/dvala-playground-builder#bundle": {
+      "dependsOn": ["build", "@mojir/dvala-playground-www#bundle"],
+      "inputs": ["src/**", "package.json", "rolldown.bundle.config.mjs"],
+      "outputs": ["dist/**", "../../docs/**"]
+    },
     "typecheck": {
       "dependsOn": ["^build"],
       "inputs": ["src/**", "package.json", "tsconfig.json"],
