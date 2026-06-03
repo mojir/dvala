@@ -247,7 +247,6 @@ export interface BackendCompletionRequest {
   column: number
   prefix: string
   importPrefix: string | null
-  workspaceFiles?: readonly BackendWorkspaceSnapshotFile[]
 }
 
 export type BackendCompletionResult =
@@ -291,7 +290,6 @@ export interface BackendNavigationRequest {
   line: number
   column: number
   newName?: string
-  workspaceFiles?: readonly BackendWorkspaceSnapshotFile[]
 }
 
 export type BackendNavigationResult =

@@ -605,27 +605,6 @@ function getEffectiveWorkspaceSnapshot(documents: BackendDocumentStore): readonl
   return [...snapshot.values()]
 }
 
-function resolveAnalysisWorkspaceSnapshot(
-  documents: BackendDocumentStore,
-  compatibilityFiles?: readonly BackendWorkspaceSnapshotFile[],
-): readonly BackendWorkspaceSnapshotFile[] {
-  const resolved = new Map<string, BackendWorkspaceSnapshotFile>()
-
-  // Backend-owned state is canonical.
-  for (const file of getEffectiveWorkspaceSnapshot(documents)) {
-    resolved.set(file.path, file)
-  }
-
-  // Compatibility payloads only fill missing files for legacy callers.
-  for (const file of compatibilityFiles ?? []) {
-    if (!resolved.has(file.path)) {
-      resolved.set(file.path, file)
-    }
-  }
-
-  return [...resolved.values()]
-}
-
 function toBackendDocumentSymbol(def: SymbolDef): BackendDocumentSymbol {
   return {
     name: def.name,
@@ -1090,7 +1069,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             ...request,
             source: request.source ?? openDocument?.source,
           },
-          resolveAnalysisWorkspaceSnapshot(documents, request.workspaceFiles),
+          getEffectiveWorkspaceSnapshot(documents),
         )
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
@@ -1156,7 +1135,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             ...request,
             source: request.source ?? openDocument?.source,
           },
-          resolveAnalysisWorkspaceSnapshot(documents, request.workspaceFiles),
+          getEffectiveWorkspaceSnapshot(documents),
         )
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)

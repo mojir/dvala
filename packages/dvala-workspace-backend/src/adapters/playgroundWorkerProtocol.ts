@@ -71,7 +71,6 @@ export interface PlaygroundRequestCompletionMessage {
   column: number
   prefix: string
   importPrefix: string | null
-  workspaceFiles: PlaygroundWorkspaceSnapshotFile[]
 }
 
 export interface PlaygroundRequestNavigationMessage {
