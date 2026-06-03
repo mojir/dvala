@@ -88,7 +88,7 @@ Why: the rendered `.md` table is the at-a-glance regression signal during PR rev
 The repo is a **pnpm workspace** ([pnpm-workspace.yaml](pnpm-workspace.yaml)). Members:
 
 - **`.` (root)** — the `@mojir/dvala` package (engine, CLI, MCP server, playground builder, playground-www).
-- **`vscode-dvala/`** — the VS Code extension (separate publish surface; built into a `.vsix` via `pnpm run build-vscode-ext`).
+- **`vscode-dvala/`** — the VS Code extension (separate publish surface; built into a `.vsix` via `turbo run build --filter=dvala`, which runs `node ./build.mjs` inside the extension package).
 
 Single root `pnpm-lock.yaml` covers both members. `pnpm install` at the root installs everything; never run install inside `vscode-dvala/` directly.
 

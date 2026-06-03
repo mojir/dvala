@@ -1,12 +1,20 @@
 import * as esbuild from 'esbuild'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// Resolve paths from this file's location, not from cwd — so the script works
+// whether invoked from the repo root (`turbo run build --filter=dvala`) or
+// from inside vscode-dvala/ (`pnpm run build`).
+const extensionRoot = dirname(fileURLToPath(import.meta.url))
+const repoRoot = resolve(extensionRoot, '..')
 
 // Version sync is now handled by `pnpm -r version` in release.yml — the
 // extension's package.json is bumped in lockstep with the root via the
 // workspace, so no runtime sync is needed here. Read the version once
 // for the .vsix filename.
-const extPkg = JSON.parse(readFileSync('vscode-dvala/package.json', 'utf-8'))
+const extPkg = JSON.parse(readFileSync(join(extensionRoot, 'package.json'), 'utf-8'))
 
 const sharedOptions = {
   bundle: true,
@@ -17,6 +25,7 @@ const sharedOptions = {
   target: 'node18',
   loader: { '.dvala': 'text' },
   logLevel: 'info',
+  absWorkingDir: repoRoot,
 }
 
 await Promise.all([
@@ -32,9 +41,12 @@ await Promise.all([
   }),
 ])
 
-execSync(`../node_modules/.bin/vsce package --no-dependencies --out out/dvala-${extPkg.version}.vsix`, {
-  cwd: 'vscode-dvala',
-  stdio: 'inherit',
-})
+execSync(
+  `${join(repoRoot, 'node_modules/.bin/vsce')} package --no-dependencies --out out/dvala-${extPkg.version}.vsix`,
+  {
+    cwd: extensionRoot,
+    stdio: 'inherit',
+  },
+)
 
 console.log(`\nTo install: code --install-extension vscode-dvala/out/dvala-${extPkg.version}.vsix`)
