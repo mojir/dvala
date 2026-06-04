@@ -847,6 +847,84 @@ function isAstNode(value: unknown): value is AstNode {
   return Array.isArray(value) && typeof value[0] === 'string' && typeof value[value.length - 1] === 'number'
 }
 
+// AST node types that don't make sense to "extract to a variable":
+// statements, containers, structural leaves that only appear inside
+// other nodes (Builtin = callee, BindingTarget = LHS of let, etc.),
+// and template-internal nodes. Anything else is an expression value
+// we can name and reference.
+//
+// `Sym` is excluded too — even at REFERENCE positions, extracting a
+// bare identifier (`let extracted = x; extracted + 1`) is a degenerate
+// rename, not a useful refactor. More importantly, walkAst descends
+// into BindingTarget arrays and visits the inner SymNode at DEFINITION
+// sites, where extracting the binding name produces broken output
+// (`let extracted = answer; let extracted = 1 + 2` — references its
+// own name AND collides). Skipping all Syms is the simpler fix; the
+// cursor falls back to the enclosing expression instead.
+const NON_EXTRACTABLE_NODE_TYPES = new Set<string>([
+  NodeTypes.Let,
+  NodeTypes.Block,
+  NodeTypes.Binding,
+  NodeTypes.Sym,
+  NodeTypes.Builtin,
+  NodeTypes.Special,
+  NodeTypes.Reserved,
+  NodeTypes.Effect,
+  NodeTypes.Spread,
+  NodeTypes.Splice,
+  NodeTypes.InlinedData,
+  // BindingTarget shapes — internal AST artifacts, never user expressions.
+  'symbol',
+  'array',
+  'object',
+  'rest',
+  'literal',
+  'wildcard',
+])
+
+// Walk the AST + source map and return the SMALLEST extractable
+// expression whose range contains the cursor position. "Smallest" is
+// measured byte-distance (multi-line nodes are weighted by line count
+// to keep a deep multi-line node from beating a tight single-line one).
+// Cursor positions are 1-based; source map ranges are 0-based with
+// exclusive end. The cursor "touches" the boundary, so we treat
+// start ≤ cursor ≤ end as containment.
+function findSmallestExtractableNode(
+  ast: readonly AstNode[],
+  sourceMap: Map<number, SourceMapPosition> | undefined,
+  line: number,
+  column: number,
+): { startLine: number; startColumn: number; endLine: number; endColumn: number } | null {
+  if (!sourceMap) return null
+  let best: { startLine: number; startColumn: number; endLine: number; endColumn: number } | null = null
+  let bestSize = Infinity
+  walkAst(ast, node => {
+    if (typeof node[0] !== 'string' || NON_EXTRACTABLE_NODE_TYPES.has(node[0])) return
+    const pos = sourceMap.get(node[node.length - 1] as number)
+    if (!pos) return
+    const startLine = pos.start[0] + 1
+    const startColumn = pos.start[1] + 1
+    const endLine = pos.end[0] + 1
+    const endColumn = pos.end[1] + 1
+    const contains =
+      (line > startLine || (line === startLine && column >= startColumn)) &&
+      (line < endLine || (line === endLine && column <= endColumn))
+    if (!contains) return
+    // Multi-line nodes get an artificially large size so a tight
+    // single-line expression on the inside wins over a multi-line
+    // container that happens to also cover the cursor. 1M is chosen
+    // as comfortably greater than any plausible source-line width;
+    // raising it doesn't change ordering as long as it stays above
+    // realistic column deltas.
+    const size = (endLine - startLine) * 1_000_000 + (endColumn - startColumn)
+    if (size < bestSize) {
+      bestSize = size
+      best = { startLine, startColumn, endLine, endColumn }
+    }
+  })
+  return best
+}
+
 // Walk every AST node reachable from the given top-level list, invoking
 // `visit` on each one. Handles arbitrary payload nesting — Match cases
 // (a depth-3 structure where each case is `[BindingTarget, body, guard]`),
@@ -1623,40 +1701,48 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           }
         }
 
-        // Refactor: extract variable. Triggered when the user has a
-        // non-zero-width selection. We trust the selection as-is rather
-        // than aligning to an AST node — Dvala source maps for binary
-        // operators don't cover the full expression text (e.g. `1 + 2`'s
-        // Call node has a range starting at the operator, not the first
-        // operand), so AST-based alignment would silently expand
-        // selections in surprising ways. The user is responsible for
-        // selecting a syntactically sensible region; the action runs even
-        // if the selection isn't an expression, on the theory that
-        // refactor.* actions only fire from Cmd+. and that's a deliberate
-        // invocation.
+        // Refactor: extract variable.
+        //
+        // Two trigger paths:
+        //  1. Non-empty selection — trust the user's exact range. They
+        //     selected this text deliberately; refactor.* actions only
+        //     fire from Cmd+. so the selection isn't accidental.
+        //  2. Zero-width cursor — AST-align: find the smallest extractable
+        //     expression containing the cursor and extract that. Now that
+        //     binary-op Call ranges span the full expression (parser fix,
+        //     PR #237), this is a reliable UX win: cursor on `1` in
+        //     `1 + 2` extracts just `1`; cursor on `+` extracts `1 + 2`.
         const hasNonEmptySelection =
           request.startLine < request.endLine ||
           (request.startLine === request.endLine && request.endColumn > request.startColumn)
-        if (hasNonEmptySelection) {
+        const extractRange = hasNonEmptySelection
+          ? {
+              startLine: request.startLine,
+              startColumn: request.startColumn,
+              endLine: request.endLine,
+              endColumn: request.endColumn,
+            }
+          : findSmallestExtractableNode(ast.body, typecheckResult.sourceMap, request.startLine, request.startColumn)
+        if (extractRange) {
           const refactorEdits = computeExtractVariableEdit({
             source: effectiveSource,
-            expressionStartLine: request.startLine,
-            expressionStartColumn: request.startColumn,
-            expressionEndLine: request.endLine,
-            expressionEndColumn: request.endColumn,
-            // v1: insert above the selection's start line. Multi-line
+            expressionStartLine: extractRange.startLine,
+            expressionStartColumn: extractRange.startColumn,
+            expressionEndLine: extractRange.endLine,
+            expressionEndColumn: extractRange.endColumn,
+            // v1: insert above the expression's start line. Multi-line
             // statements with the selection mid-block aren't handled
             // specially — the user can move the inserted line after if
             // it lands in an awkward spot.
-            statementStartLine: request.startLine,
-            statementStartColumn: request.startColumn,
+            statementStartLine: extractRange.startLine,
+            statementStartColumn: extractRange.startColumn,
           })
           if (refactorEdits) {
             // Title carries a preview of the extracted text so the menu
             // entry tells the user which span they're acting on.
             const exprText = effectiveSource
               .split('\n')
-              [request.startLine - 1]!.slice(request.startColumn - 1, request.endColumn - 1)
+              [extractRange.startLine - 1]!.slice(extractRange.startColumn - 1, extractRange.endColumn - 1)
             const previewText = exprText.length > 40 ? `${exprText.slice(0, 37)}...` : exprText
             actions.push({
               title: `Extract '${previewText}' to variable`,
@@ -1664,15 +1750,18 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
               edits: [refactorEdits.letInsertion, refactorEdits.expressionReplacement],
             })
           }
-
-          // Refactor: extract function. Same selection-trust strategy as
-          // extract-variable. Free-variable analysis: any reference whose
-          // resolved def lives OUTSIDE the selection becomes a parameter.
-          // Dedup is keyed on the symbol's NAME — two shadowing bindings
-          // sharing a name collapse into a single parameter. That's a v1
-          // simplification; the extracted call site would resolve the
-          // single arg back to whichever binding is visible at the
-          // insertion point. Disambiguating shadowed names is a v2 polish.
+        }
+        // Refactor: extract function. Only fires on non-empty selections —
+        // there's no "AST-align" path here because the natural extract-fn
+        // unit is "a block of statements," and statement boundaries aren't
+        // easily inferable from a cursor position. Free-variable analysis:
+        // any reference whose resolved def lives OUTSIDE the selection
+        // becomes a parameter. Dedup is keyed on the symbol's NAME — two
+        // shadowing bindings sharing a name collapse into a single
+        // parameter. That's a v1 simplification; the extracted call site
+        // would resolve the single arg back to whichever binding is visible
+        // at the insertion point. Disambiguating shadowed names is a v2 polish.
+        if (hasNonEmptySelection) {
           const positionInsideSelection = (line: number, column: number): boolean =>
             (line > request.startLine || (line === request.startLine && column >= request.startColumn)) &&
             (line < request.endLine || (line === request.endLine && column < request.endColumn))

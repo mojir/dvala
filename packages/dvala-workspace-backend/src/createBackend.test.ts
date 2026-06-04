@@ -1214,17 +1214,13 @@ describe('createBackend', () => {
       expect(action.edits[1]?.newText).toBe('extracted()')
     })
 
-    it('does not offer extract-variable for a zero-width cursor (no selection)', async () => {
+    it('aligns extract-variable to the literal under a zero-width cursor', async () => {
       const backend = createBackend()
       const source = 'let answer = 1 + 2'
       await backend.openDocument({ path: 'main.dvala', source, version: 1 })
 
-      // Cursor without a selection — extract has nothing to act on. We
-      // intentionally trust whatever the user selected for v1 (the
-      // Dvala AST source-map quirk for binary ops makes AST-aligned
-      // extraction unreliable; see project_parser_source_map_ranges
-      // memory). Zero-width selection is the one case we still
-      // reliably reject.
+      // Cursor on `1` (column 14). The smallest extractable expression
+      // there is the `Num 1` literal itself, so we extract just that.
       const result = await backend.requestCodeActions({
         requestId: 206,
         path: 'main.dvala',
@@ -1233,6 +1229,124 @@ describe('createBackend', () => {
         startColumn: 14,
         endLine: 1,
         endColumn: 14,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const extractActions = result.actions.filter(a => a.kind === 'refactor.extract' && a.title.includes('variable'))
+      expect(extractActions).toHaveLength(1)
+      const action = extractActions[0]!
+      expect(action.title).toContain("Extract '1'")
+      // First edit inserts above the literal; second replaces just `1`.
+      expect(action.edits[0]?.newText).toBe('let extracted = 1;\n')
+      expect(action.edits[1]).toMatchObject({
+        startLine: 1,
+        startColumn: 14,
+        endLine: 1,
+        endColumn: 15,
+        newText: 'extracted',
+      })
+    })
+
+    it('aligns to the enclosing binary expression when the cursor is on the operator', async () => {
+      const backend = createBackend()
+      const source = 'let answer = 1 + 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      // Cursor on `+` (column 16). No leaf literal lives there — the
+      // smallest containing expression is the full `1 + 2` Call.
+      const result = await backend.requestCodeActions({
+        requestId: 214,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 16,
+        endLine: 1,
+        endColumn: 16,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const extractActions = result.actions.filter(a => a.kind === 'refactor.extract' && a.title.includes('variable'))
+      expect(extractActions).toHaveLength(1)
+      const action = extractActions[0]!
+      expect(action.title).toContain("Extract '1 + 2'")
+      expect(action.edits[0]?.newText).toBe('let extracted = 1 + 2;\n')
+    })
+
+    it('does not offer extract-variable when the cursor is on a binding name', async () => {
+      const backend = createBackend()
+      // Regression: cursor at `answer` def site previously extracted the
+      // bare Sym, producing broken output (`let extracted = answer; let
+      // extracted = 1 + 2` — self-reference + name collision). Sym is now
+      // excluded from extractable types, so the cursor falls back to the
+      // enclosing Let — which is also excluded — and no action is offered.
+      const source = 'let answer = 1 + 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 216,
+        path: 'main.dvala',
+        version: 1,
+        // Cursor on `answer` (column 5).
+        startLine: 1,
+        startColumn: 5,
+        endLine: 1,
+        endColumn: 5,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const extractActions = result.actions.filter(a => a.kind === 'refactor.extract')
+      expect(extractActions).toHaveLength(0)
+    })
+
+    it('extracts the enclosing expression when the cursor lands on whitespace inside it', async () => {
+      const backend = createBackend()
+      // Column 17 is the space between `+` and `2` — inside the Call's
+      // range but on no leaf. Defensive coverage that whitespace-inside-
+      // an-expression still produces a sensible extraction (the Call wins
+      // because no smaller leaf touches it).
+      const source = 'let answer = 1 + 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 217,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 17,
+        endLine: 1,
+        endColumn: 17,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const extractActions = result.actions.filter(a => a.kind === 'refactor.extract' && a.title.includes('variable'))
+      expect(extractActions).toHaveLength(1)
+      expect(extractActions[0]!.title).toContain("Extract '1 + 2'")
+    })
+
+    it('does not offer extract-variable when the cursor is on a non-expression keyword', async () => {
+      const backend = createBackend()
+      const source = 'let answer = 1 + 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      // Cursor on the `let` keyword (column 1). Let is a statement, not
+      // an expression, and our extractable-types set excludes it — no
+      // smaller expression contains that column either.
+      const result = await backend.requestCodeActions({
+        requestId: 215,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 1,
         diagnostics: [],
       })
 
