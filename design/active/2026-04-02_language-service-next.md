@@ -80,6 +80,7 @@ The heavier items (code actions, call hierarchy) should wait until after the lig
 1. **Extract variable** — select expression → `let <name> = <expr>` inserted before current statement
 2. **Inline variable** — cursor on `let x = <expr>` → replace all references with `<expr>`, remove binding
 3. **Extract function** — select block → `let <name> = (<free vars>) -> do <selected> end` with free variable analysis from scope ranges
+4. **Insert match catchall** — quick-fix attached to the `Non-exhaustive match` diagnostic (shipped in the non-exhaustive-match → compile-error change, 2026-06-04). Inserts `case _ then perform(@dvala.error, "<message>") end` at the end of the case list. (Deferred from the Q5 v1 ship to keep that PR scoped to the typechecker.)
 
 **Approach:**
 - Register a `CodeActionProvider`

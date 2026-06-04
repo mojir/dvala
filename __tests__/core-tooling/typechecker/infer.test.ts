@@ -781,6 +781,143 @@ describe('inference — exhaustiveness', () => {
     `),
     ).not.toThrow()
   })
+
+  // ---------------------------------------------------------------------------
+  // Non-trackable scrutinees — strict catchall requirement (2026-06-04)
+  // ---------------------------------------------------------------------------
+  //
+  // For shapes the typechecker can't enumerate (Number, String, generic
+  // Array, refined, generic Var), structural exhaustiveness is impossible.
+  // The user must opt out of the rule with an explicit catchall — an
+  // unguarded `case _` / `case <symbol>`, or a guard the fold pass reduces
+  // to `Literal(true)`. Guarded catchalls otherwise don't count.
+
+  // The fixtures below obtain bare-primitive scrutinees via opaque effect
+  // performs — without that opacity, the constant folder reduces `5` /
+  // `"x"` to literals at the type level, routing the match through the
+  // existing trackable-remainder check instead of the new non-trackable
+  // path. An effect-typed perform is the standard "I'm a Number but the
+  // typechecker can't see my value" shape (same pattern the fold tests use
+  // via `fixtureWithOpaqueIfCond`).
+
+  it('non-exhaustive match on bare Number rejects without a catchall', () => {
+    expect(() =>
+      inferProgram(`
+      effect @ext(Null) -> Number;
+      let n = perform(@ext, null);
+      match n
+        case 0 then 0
+        case 1 then 1
+      end
+    `),
+    ).toThrow(/Non-exhaustive match — cannot prove every value/)
+  })
+
+  it('non-exhaustive match on bare String rejects without a catchall', () => {
+    expect(() =>
+      inferProgram(`
+      effect @ext(Null) -> String;
+      let s = perform(@ext, null);
+      match s
+        case "hi" then 1
+      end
+    `),
+    ).toThrow('Non-exhaustive match')
+  })
+
+  it('accepts a wildcard catchall on a non-trackable scrutinee', () => {
+    expect(() =>
+      inferProgram(`
+      effect @ext(Null) -> Number;
+      let n = perform(@ext, null);
+      match n
+        case 0 then :zero
+        case _ then :nonzero
+      end
+    `),
+    ).not.toThrow()
+  })
+
+  it('accepts a bare-symbol catchall on a non-trackable scrutinee', () => {
+    // `case name then ...` binds the whole remainder — equivalent to `case
+    // _ then ...` with a binding name. Counts as a catchall.
+    expect(() =>
+      inferProgram(`
+      effect @ext(Null) -> Number;
+      let n = perform(@ext, null);
+      match n
+        case 0 then 0
+        case other then other + 1
+      end
+    `),
+    ).not.toThrow()
+  })
+
+  it('accepts a fold-true guard as a catchall', () => {
+    // The fold pass already reduces `!false` to `Literal(true)`. Per Q3,
+    // any guard the fold reduces to Literal(true) is treated as catchall —
+    // not just literal `true`.
+    expect(() =>
+      inferProgram(`
+      effect @ext(Null) -> Number;
+      let n = perform(@ext, null);
+      match n
+        case 0 then 0
+        case _ when !false then 1
+      end
+    `),
+    ).not.toThrow()
+  })
+
+  it('rejects when only guarded clauses cover a non-trackable scrutinee (Q1 — partition guards do not count in v1)', () => {
+    // `n > 0 || n <= 0` partitions Number but the solver doesn't model
+    // that yet. Per Q1, partition guards don't count as exhaustive in v1
+    // — the user adds an explicit `case _` (typically panicking, since
+    // they "know" the guard pair is total). Phase 3 (linear arithmetic)
+    // sharpens this later without breaking code that already passes.
+    expect(() =>
+      inferProgram(`
+      effect @ext(Null) -> Number;
+      let n = perform(@ext, null);
+      match n
+        case x when x > 0 then 1
+        case x when x <= 0 then -1
+      end
+    `),
+    ).toThrow('Non-exhaustive match')
+  })
+
+  it('rejects a guarded catchall whose guard does not fold to true', () => {
+    // `case _ when isNumber(n)` — the guard typechecks but the fold pass
+    // doesn't reduce it to Literal(true), so it doesn't count as a
+    // catchall. (The runtime might decide it's true, but the typechecker
+    // can't prove it without leaving the fragment.)
+    expect(() =>
+      inferProgram(`
+      effect @ext(Null) -> Number;
+      let n = perform(@ext, null);
+      match n
+        case 0 then 0
+        case _ when isNumber(n) then 1
+      end
+    `),
+    ).toThrow('Non-exhaustive match')
+  })
+
+  it('accepts a catchall that follows specific cases on a non-trackable scrutinee', () => {
+    expect(() =>
+      inferProgram(`
+      effect @ext(Null) -> Number;
+      let n = perform(@ext, null);
+      match n
+        case 0 then :none
+        case 1 then :low
+        case 2 then :medium
+        case _ then :high
+      end
+    `),
+    ).not.toThrow()
+  })
 })
 
 // ---------------------------------------------------------------------------

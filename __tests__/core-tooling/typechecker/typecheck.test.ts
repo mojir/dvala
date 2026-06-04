@@ -3690,3 +3690,152 @@ describe('typecheckExpr', () => {
     expect(result.type).toBeDefined()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Non-exhaustive match → compile error (2026-06-04)
+// ---------------------------------------------------------------------------
+//
+// Closes section B of the "if it compiles it runs" inventory. For shapes
+// the typechecker can't structurally enumerate (Number, String, Array<T>,
+// Refined, generic Var, …) the user must add an explicit catchall — an
+// unguarded `case _` / `case <symbol>` clause, or one whose guard the fold
+// pass reduces to `Literal(true)`. End-to-end tests via dvala.typecheck so
+// we cover the same path the CLI / playground / VS Code extension see.
+describe('typecheck — non-exhaustive match strict catchall (2026-06-04)', () => {
+  const dvala = createDvala()
+
+  // Each test wraps the match in a function and *calls* it, so the
+  // parameter's Var picks up its concrete bound from the call site. Without
+  // the call, the param remains a free Var (no bounds yet) and the match
+  // sees a Never scrutinee — every case fires "Redundant match case"
+  // instead of the exhaustiveness check.
+
+  it('rejects bare-primitive scrutinee (Number) without a catchall', () => {
+    const result = dvala.typecheck(`
+      let f = (n: Number) -> match n
+        case 0 then 0
+        case 1 then 1
+      end;
+      f(5)
+    `)
+    const exhaustiveness = result.diagnostics.filter(d => /Non-exhaustive match/.test(d.message))
+    expect(exhaustiveness.length).toBeGreaterThan(0)
+  })
+
+  it('rejects bare-primitive scrutinee (String) without a catchall', () => {
+    const result = dvala.typecheck(`
+      let f = (s: String) -> match s
+        case "hi" then 1
+      end;
+      f("hello")
+    `)
+    const exhaustiveness = result.diagnostics.filter(d => /Non-exhaustive match/.test(d.message))
+    expect(exhaustiveness.length).toBeGreaterThan(0)
+  })
+
+  it('rejects bare-Array scrutinee without a catchall', () => {
+    const result = dvala.typecheck(`
+      let f = (xs: Number[]) -> match xs
+        case [] then 0
+      end;
+      f([1, 2])
+    `)
+    const exhaustiveness = result.diagnostics.filter(d => /Non-exhaustive match/.test(d.message))
+    expect(exhaustiveness.length).toBeGreaterThan(0)
+  })
+
+  it('accepts when an explicit catchall is present', () => {
+    const result = dvala.typecheck(`
+      let f = (n: Number) -> match n
+        case 0 then 0
+        case 1 then 1
+        case _ then -1
+      end;
+      f(5)
+    `)
+    const errors = result.diagnostics.filter(d => d.severity === 'error')
+    expect(errors).toHaveLength(0)
+  })
+
+  it('accepts a bare-symbol catchall', () => {
+    // `case name then ...` binds the whole remainder — equivalent to `case _`
+    // with a binding name. Counts as a catchall.
+    const result = dvala.typecheck(`
+      let f = (n: Number) -> match n
+        case 0 then 0
+        case other then other + 1
+      end;
+      f(5)
+    `)
+    const errors = result.diagnostics.filter(d => d.severity === 'error')
+    expect(errors).toHaveLength(0)
+  })
+
+  it('accepts a guard the fold reduces to Literal(true) as a catchall (Q3)', () => {
+    // The fold pass reduces `!false` to `Literal(true)`. The catchall
+    // detection treats fold-true guards the same as unguarded catchalls.
+    const result = dvala.typecheck(`
+      let f = (n: Number) -> match n
+        case 0 then 0
+        case _ when !false then 1
+      end;
+      f(5)
+    `)
+    const errors = result.diagnostics.filter(d => d.severity === 'error')
+    expect(errors).toHaveLength(0)
+  })
+
+  it('rejects when only partition guards cover a non-trackable scrutinee (Q1)', () => {
+    // `n > 0 || n <= 0` partitions Number but the solver doesn't model
+    // this in v1. Phase 3 (linear arithmetic) sharpens this later; for
+    // now the user adds an explicit catchall.
+    const result = dvala.typecheck(`
+      let f = (n: Number) -> match n
+        case x when x > 0 then 1
+        case x when x <= 0 then -1
+      end;
+      f(5)
+    `)
+    const exhaustiveness = result.diagnostics.filter(d => /Non-exhaustive match/.test(d.message))
+    expect(exhaustiveness.length).toBeGreaterThan(0)
+  })
+
+  it('rejects when a guarded catchall is non-fold-true', () => {
+    // `case _ when isNumber(n)` — the guard typechecks but the fold pass
+    // doesn't reduce it to `Literal(true)`. It doesn't count as a catchall.
+    const result = dvala.typecheck(`
+      let f = (n: Number) -> match n
+        case 0 then 0
+        case _ when isNumber(n) then 1
+      end;
+      f(5)
+    `)
+    const exhaustiveness = result.diagnostics.filter(d => /Non-exhaustive match/.test(d.message))
+    expect(exhaustiveness.length).toBeGreaterThan(0)
+  })
+
+  it('keeps existing trackable-remainder errors working (atom union)', () => {
+    // Pre-existing behavior unchanged: the `:ok | :error` union is
+    // trackable, so the typechecker can name the specific unhandled atom.
+    const result = dvala.typecheck(`
+      let x = if true then :ok else :error end;
+      match x
+        case :ok then 1
+      end
+    `)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+    expect(result.diagnostics.some(d => /unhandled/.test(d.message))).toBe(true)
+  })
+
+  it('accepts a Boolean match — Boolean expands to true | false (still trackable)', () => {
+    const result = dvala.typecheck(`
+      let f = (b: Boolean) -> match b
+        case true then 1
+        case false then 0
+      end;
+      f(true)
+    `)
+    const errors = result.diagnostics.filter(d => d.severity === 'error')
+    expect(errors).toHaveLength(0)
+  })
+})
