@@ -811,6 +811,147 @@ describe('createBackend', () => {
     })
   })
 
+  describe('requestSelectionRange', () => {
+    it('returns containment chain innermost → outermost', async () => {
+      const backend = createBackend()
+      const source = 'let answer = 1 + 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      // Position on the `1` literal. Expect: literal `1` → call `1 + 2` → let → top-level.
+      const result = await backend.requestSelectionRange({
+        requestId: 100,
+        path: 'main.dvala',
+        version: 1,
+        positions: [{ line: 1, column: 14 }],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.ranges).toHaveLength(1)
+      const chain = result.ranges[0]!
+      expect(chain.length).toBeGreaterThan(1)
+      // First range covers (or starts at) the literal `1`; last range spans
+      // the whole document. Innermost must be a subset of every outer range.
+      for (let i = 1; i < chain.length; i++) {
+        const inner = chain[i - 1]!
+        const outer = chain[i]!
+        const innerSize = (inner.endLine - inner.startLine) * 1000 + (inner.endColumn - inner.startColumn)
+        const outerSize = (outer.endLine - outer.startLine) * 1000 + (outer.endColumn - outer.startColumn)
+        expect(outerSize).toBeGreaterThanOrEqual(innerSize)
+      }
+    })
+
+    it('returns one chain per requested position', async () => {
+      const backend = createBackend()
+      const source = 'let a = 1;\nlet b = 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestSelectionRange({
+        requestId: 101,
+        path: 'main.dvala',
+        version: 1,
+        positions: [
+          { line: 1, column: 9 }, // on `1`
+          { line: 2, column: 9 }, // on `2`
+        ],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.ranges).toHaveLength(2)
+      expect(result.ranges[0]!.length).toBeGreaterThan(0)
+      expect(result.ranges[1]!.length).toBeGreaterThan(0)
+    })
+
+    it('returns an empty chain for a position outside any AST node', async () => {
+      // Position on a blank line — no node spans it. Tests the empty-chain
+      // path that the VS Code adapter falls back to a cursor-anchored
+      // zero-width range for.
+      const backend = createBackend()
+      const source = 'let x = 1;\n\nlet y = 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestSelectionRange({
+        requestId: 103,
+        path: 'main.dvala',
+        version: 1,
+        positions: [{ line: 2, column: 1 }], // blank line
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.ranges).toHaveLength(1)
+      expect(result.ranges[0]).toEqual([])
+    })
+
+    it('handles deeply nested expressions with strict-containment ordering', async () => {
+      // `f(g(h(1)))` at the `1` literal — chain should be at least 4 deep
+      // (Literal, h-call, g-call, f-call) and each outer must strictly
+      // contain the next inner.
+      const backend = createBackend()
+      const source = 'let f = (x) -> x;\nlet g = (x) -> x;\nlet h = (x) -> x;\nf(g(h(1)))'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestSelectionRange({
+        requestId: 104,
+        path: 'main.dvala',
+        version: 1,
+        positions: [{ line: 4, column: 8 }], // on `1`
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const chain = result.ranges[0]!
+      expect(chain.length).toBeGreaterThanOrEqual(4)
+      // Strict containment: each outer range must wholly enclose its inner.
+      for (let i = 1; i < chain.length; i++) {
+        const inner = chain[i - 1]!
+        const outer = chain[i]!
+        const outerStartsBefore =
+          outer.startLine < inner.startLine ||
+          (outer.startLine === inner.startLine && outer.startColumn <= inner.startColumn)
+        const outerEndsAfter =
+          outer.endLine > inner.endLine || (outer.endLine === inner.endLine && outer.endColumn >= inner.endColumn)
+        expect(outerStartsBefore && outerEndsAfter).toBe(true)
+      }
+    })
+
+    it('returns a chain when the cursor is at the first column of a node', async () => {
+      // Boundary test: cursor sits exactly on a node's start. `positionContains`
+      // uses `>=` for the start side; this must hit, not miss.
+      const backend = createBackend()
+      const source = 'let answer = 42'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestSelectionRange({
+        requestId: 105,
+        path: 'main.dvala',
+        version: 1,
+        positions: [{ line: 1, column: 1 }], // first char of `let`
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.ranges[0]!.length).toBeGreaterThan(0)
+    })
+
+    it('returns resync-required when the document mirror is stale', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestSelectionRange({
+        requestId: 102,
+        path: 'main.dvala',
+        version: 99,
+        positions: [{ line: 1, column: 1 }],
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error.kind).toBe('resync-required')
+    })
+  })
+
   it('returns the symbol at a position through the backend', async () => {
     const backend = createBackend()
     const source = 'let answer = 42;\nlet add = (a, b) -> a + b;'

@@ -15,6 +15,7 @@ import type { Diagnostic as SharedDiagnostic } from '@mojir/dvala-core-tooling'
 import type { BackendSymbolKind } from '../../packages/dvala-workspace-backend/src/index'
 
 import { BackendDiagnosticsClient } from './backendDiagnosticsClient'
+import { linkSelectionRangeChains, type LinkedSelectionRange } from './selectionRangeAdapter'
 
 // Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
 const DVALA_WORD_PATTERN = /[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*/
@@ -900,6 +901,44 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
+  // Convert a linked-range tree (plain data, from the testable adapter
+  // helper) into VS Code's `SelectionRange`. Walks the parent chain so the
+  // outer-most node's wrapper is built first, then inner nodes wrap with
+  // that as their parent — matching VS Code's "parent points outward"
+  // convention.
+  const toVsSelectionRange = (linked: LinkedSelectionRange): vscode.SelectionRange => {
+    const range = new vscode.Range(
+      Math.max(0, linked.startLine - 1),
+      Math.max(0, linked.startColumn - 1),
+      Math.max(0, linked.endLine - 1),
+      Math.max(0, linked.endColumn - 1),
+    )
+    return new vscode.SelectionRange(range, linked.parent ? toVsSelectionRange(linked.parent) : undefined)
+  }
+
+  // Selection Range — Alt+Shift+→ expands selection to the enclosing AST
+  // node; Alt+Shift+← shrinks. Backend returns the containment chain
+  // (innermost → outermost) as a flat list; we link them into VS Code's
+  // nested SelectionRange shape here.
+  const selectionRangeProvider = vscode.languages.registerSelectionRangeProvider('dvala', {
+    async provideSelectionRanges(document, positions) {
+      indexDocument(document)
+      await syncBackendAnalysisDocument(document)
+
+      const result = await backendDiagnostics.requestSelectionRange({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        positions: positions.map(p => ({ line: p.line + 1, column: p.character + 1 })),
+      })
+      if (!result.ok) return []
+
+      const cursors = positions.map(p => ({ line: p.line + 1, column: p.character + 1 }))
+      const linked = linkSelectionRangeChains(result.ranges, cursors)
+      return linked.map(toVsSelectionRange)
+    },
+  })
+
   // Document formatting provider — powers Format Document (Shift+Alt+F / Shift+Option+F)
   const formattingProvider = vscode.languages.registerDocumentFormattingEditProvider('dvala', {
     async provideDocumentFormattingEdits(document) {
@@ -928,6 +967,7 @@ export function activate(context: vscode.ExtensionContext): void {
     referenceProvider,
     renameProvider,
     documentSymbolProvider,
+    selectionRangeProvider,
     semanticTokensProvider,
     workspaceSymbolProvider,
     lsDiagnostics,

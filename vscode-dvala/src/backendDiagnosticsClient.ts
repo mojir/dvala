@@ -17,6 +17,8 @@ import type {
   BackendSessionStartResult,
   BackendInlayHintsRequest,
   BackendInlayHintsResult,
+  BackendSelectionRangeRequest,
+  BackendSelectionRangeResult,
   BackendSemanticTokensRequest,
   BackendSemanticTokensResult,
   BackendSignatureHelpRequest,
@@ -155,6 +157,15 @@ export class BackendDiagnosticsClient {
 
   async requestInlayHints(request: Omit<BackendInlayHintsRequest, 'requestId'>): Promise<BackendInlayHintsResult> {
     return this.backend.requestInlayHints({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async requestSelectionRange(
+    request: Omit<BackendSelectionRangeRequest, 'requestId'>,
+  ): Promise<BackendSelectionRangeResult> {
+    return this.backend.requestSelectionRange({
       requestId: this.createRequestId(),
       ...request,
     })
