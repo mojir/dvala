@@ -646,6 +646,171 @@ describe('createBackend', () => {
     }
   })
 
+  describe('requestSemanticTokens', () => {
+    it('emits tokens with kinds derived from the symbol table', async () => {
+      const backend = createBackend()
+      const source = 'let answer = 42;\nlet add = (a, b) -> a + b;\nadd(answer, 1)'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestSemanticTokens({
+        requestId: 80,
+        path: 'main.dvala',
+        version: 1,
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      // Defs: `answer` (variable, decl), `add` (function, decl), `a` (parameter, decl), `b` (parameter, decl).
+      // Refs: `add` (function), `answer` (variable), `a` (parameter), `b` (parameter).
+      // Tokens are sorted by (line, column).
+      const summary = result.tokens.map(t => ({
+        line: t.line,
+        col: t.startColumn,
+        type: t.tokenType,
+        decl: t.modifiers.includes('declaration'),
+      }))
+      expect(summary).toEqual([
+        { line: 1, col: 5, type: 'variable', decl: true }, // let answer
+        { line: 2, col: 5, type: 'function', decl: true }, // let add
+        { line: 2, col: 12, type: 'parameter', decl: true }, // (a, …)
+        { line: 2, col: 15, type: 'parameter', decl: true }, // (…, b)
+        { line: 2, col: 21, type: 'parameter', decl: false }, // a in a + b
+        { line: 2, col: 25, type: 'parameter', decl: false }, // b in a + b
+        { line: 3, col: 1, type: 'function', decl: false }, // add(...)
+        { line: 3, col: 5, type: 'variable', decl: false }, // answer in arg
+      ])
+    })
+
+    it('colors a whole-import binding as namespace', async () => {
+      const backend = createBackend()
+      const source = 'let math = import("math");\nmath'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestSemanticTokens({
+        requestId: 81,
+        path: 'main.dvala',
+        version: 1,
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const mathDef = result.tokens.find(t => t.line === 1 && t.startColumn === 5)
+      expect(mathDef?.tokenType).toBe('namespace')
+      expect(mathDef?.modifiers).toContain('declaration')
+    })
+
+    it('refines a destructured-import binding via type info (Position E)', async () => {
+      // `sin` from the math module is a Function — color as `function`,
+      // NOT `namespace`. The whole-module-binding case above stays
+      // `namespace` because there's no destructured key.
+      const backend = createBackend()
+      const source = 'let { sin } = import("math");\nsin(0)'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestSemanticTokens({
+        requestId: 82,
+        path: 'main.dvala',
+        version: 1,
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const sinDef = result.tokens.find(t => t.line === 1 && t.startColumn === 7)
+      expect(sinDef?.tokenType).toBe('function')
+      expect(sinDef?.modifiers).toContain('declaration')
+    })
+
+    it('returns resync-required when the document mirror is stale', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestSemanticTokens({
+        requestId: 83,
+        path: 'main.dvala',
+        version: 99,
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error.kind).toBe('resync-required')
+    })
+  })
+
+  describe('requestInlayHints', () => {
+    it('emits parameter-name hints at user-function call sites', async () => {
+      const backend = createBackend()
+      const source = 'let add = (a, b) -> a + b;\nadd(1, 2)'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestInlayHints({
+        requestId: 90,
+        path: 'main.dvala',
+        version: 1,
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      // `add(1, 2)` — both args get hints; line 2, columns 5 (`1`) and 8 (`2`).
+      expect(result.hints).toEqual([
+        { line: 2, column: 5, label: 'a:' },
+        { line: 2, column: 8, label: 'b:' },
+      ])
+    })
+
+    it('skips self-documenting arguments (arg name matches param name)', async () => {
+      const backend = createBackend()
+      const source = 'let add = (a, b) -> a + b;\nlet a = 1;\nlet b = 2;\nadd(a, b)'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestInlayHints({
+        requestId: 91,
+        path: 'main.dvala',
+        version: 1,
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      // Both args are Sym refs matching their param names — no hints.
+      expect(result.hints).toEqual([])
+    })
+
+    it('emits hints for builtin function calls using the reference catalog', async () => {
+      const backend = createBackend()
+      const source = 'max(3, 7)'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestInlayHints({
+        requestId: 92,
+        path: 'main.dvala',
+        version: 1,
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      // `max` is a builtin; its first variant has argumentNames. Expect at
+      // least one hint with a `:`-suffixed label.
+      expect(result.hints.length).toBeGreaterThan(0)
+      for (const hint of result.hints) {
+        expect(hint.label).toMatch(/:$/)
+      }
+    })
+
+    it('returns resync-required when the document mirror is stale', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestInlayHints({
+        requestId: 93,
+        path: 'main.dvala',
+        version: 99,
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error.kind).toBe('resync-required')
+    })
+  })
+
   it('returns the symbol at a position through the backend', async () => {
     const backend = createBackend()
     const source = 'let answer = 42;\nlet add = (a, b) -> a + b;'

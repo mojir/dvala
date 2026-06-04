@@ -11,6 +11,7 @@
  */
 
 import { MAX_INLINE_ENTRIES, MAX_WIDTH } from './formatter/config'
+import { isDvalaIdentifierName } from './tokenizer/identifierName'
 import { TypeError } from '@mojir/dvala-types'
 
 const INDENT_SIZE = 2
@@ -361,7 +362,7 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
   // Smart rewrite: safe dot access — get(obj, "key") → obj?.key
   if (fnNode[0] === NodeTypes.Builtin && fnNode[1] === 'get' && argNodes.length === 2) {
     const keyNode = argNodes[1]!
-    if (keyNode[0] === NodeTypes.Str && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(keyNode[1] as string)) {
+    if (keyNode[0] === NodeTypes.Str && isDvalaIdentifierName(keyNode[1] as string)) {
       return `${printNode(argNodes[0]!, ind)}?.${keyNode[1]}`
     }
   }
@@ -714,7 +715,7 @@ function formatObjectEntry(entry: unknown[], ind: number): string {
   const [keyNode, valueNode] = entry as [AstNode, AstNode]
   if (keyNode[0] === NodeTypes.Str) {
     const key = keyNode[1] as string
-    const isIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
+    const isIdentifier = isDvalaIdentifierName(key)
     // Shorthand: { x: x } → { x } when key and value are the same identifier.
     if (isIdentifier && valueNode[0] === NodeTypes.Sym && valueNode[1] === key) {
       return key

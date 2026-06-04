@@ -5,7 +5,11 @@ import { allReference, isFunctionReference, isCustomReference } from '../../refe
 import type { Reference } from '../../reference/index'
 import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '@mojir/dvala-engine'
-import { buildBuiltinCompletions, symbolDefToCompletion as toSharedCompletion } from '@mojir/dvala-core-tooling'
+import {
+  buildBuiltinCompletions,
+  isDvalaIdentifierName,
+  symbolDefToCompletion as toSharedCompletion,
+} from '@mojir/dvala-core-tooling'
 import type { CompletionItem as SharedCompletionItem } from '@mojir/dvala-core-tooling'
 import type { Diagnostic as SharedDiagnostic } from '@mojir/dvala-core-tooling'
 import type { BackendSymbolKind } from '../../packages/dvala-workspace-backend/src/index'
@@ -748,7 +752,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     async provideRenameEdits(document, position, newName) {
       // Validate that newName is a valid Dvala identifier
-      if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(newName)) {
+      if (!isDvalaIdentifierName(newName)) {
         throw new Error(`'${newName}' is not a valid identifier`)
       }
 
@@ -827,6 +831,75 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
+  // Semantic Tokens — fine-grained syntax coloring driven by the symbol table.
+  // The TextMate grammar can't distinguish a `function` from a `parameter`
+  // from a destructured import; the backend's symbol table + type info can.
+  // VS Code wants LSP-style delta-encoded integer tuples: every token is
+  // (Δline, Δcol-from-previous-token-on-same-line, length, typeIdx, modBits).
+  // The portable backend result lists tokens as plain objects sorted by
+  // (line, startColumn); we delta-encode here at the boundary.
+  const semanticTokenTypes = ['variable', 'function', 'macro', 'parameter', 'namespace'] as const
+  const semanticTokenModifiers = ['declaration'] as const
+  const semanticTokensLegend = new vscode.SemanticTokensLegend([...semanticTokenTypes], [...semanticTokenModifiers])
+  const semanticTokensProvider = vscode.languages.registerDocumentSemanticTokensProvider(
+    'dvala',
+    {
+      async provideDocumentSemanticTokens(document) {
+        indexDocument(document)
+        await syncBackendAnalysisDocument(document)
+
+        const result = await backendDiagnostics.requestSemanticTokens({
+          path: document.uri.fsPath,
+          source: document.getText(),
+          version: document.version,
+        })
+        if (!result.ok) return new vscode.SemanticTokens(new Uint32Array(0))
+
+        const builder = new vscode.SemanticTokensBuilder(semanticTokensLegend)
+        for (const token of result.tokens) {
+          const typeIdx = semanticTokenTypes.indexOf(token.tokenType)
+          if (typeIdx < 0) continue
+          // Backend emits 1-based line/column; VS Code expects 0-based.
+          const line = Math.max(0, token.line - 1)
+          const startCol = Math.max(0, token.startColumn - 1)
+          let modBits = 0
+          for (const modifier of token.modifiers) {
+            const modIdx = semanticTokenModifiers.indexOf(modifier as (typeof semanticTokenModifiers)[number])
+            if (modIdx >= 0) modBits |= 1 << modIdx
+          }
+          builder.push(line, startCol, token.length, typeIdx, modBits)
+        }
+        return builder.build()
+      },
+    },
+    semanticTokensLegend,
+  )
+
+  // Inlay Hints — parameter-name labels at call sites, e.g.
+  // `add(/*a:*/ 1, /*b:*/ 2)`. Backend filters out self-documenting args
+  // (where the arg's identifier already matches the param name) and skips
+  // operator builtins so `a + b` doesn't grow inline punctuation.
+  const inlayHintsProvider = vscode.languages.registerInlayHintsProvider('dvala', {
+    async provideInlayHints(document) {
+      indexDocument(document)
+      await syncBackendAnalysisDocument(document)
+
+      const result = await backendDiagnostics.requestInlayHints({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+      })
+      if (!result.ok) return []
+
+      return result.hints.map(hint => {
+        const position = new vscode.Position(Math.max(0, hint.line - 1), Math.max(0, hint.column - 1))
+        const inlay = new vscode.InlayHint(position, hint.label, vscode.InlayHintKind.Parameter)
+        inlay.paddingRight = true
+        return inlay
+      })
+    },
+  })
+
   // Document formatting provider — powers Format Document (Shift+Alt+F / Shift+Option+F)
   const formattingProvider = vscode.languages.registerDocumentFormattingEditProvider('dvala', {
     async provideDocumentFormattingEdits(document) {
@@ -855,6 +928,7 @@ export function activate(context: vscode.ExtensionContext): void {
     referenceProvider,
     renameProvider,
     documentSymbolProvider,
+    semanticTokensProvider,
     workspaceSymbolProvider,
     lsDiagnostics,
     typeDiagnostics,

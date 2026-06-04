@@ -18,6 +18,10 @@ import type {
   BackendNavigationResult,
   BackendPersistFileRequest,
   BackendRemoveFileRequest,
+  BackendInlayHintsRequest,
+  BackendInlayHintsResult,
+  BackendSemanticTokensRequest,
+  BackendSemanticTokensResult,
   BackendSignatureHelpRequest,
   BackendSignatureHelpResult,
   BackendSymbolAtPositionRequest,
@@ -273,6 +277,12 @@ function createResyncingBackend(overrides: {
       throw new Error('not implemented')
     },
     async requestDocumentSymbols(_: BackendDocumentSymbolsRequest): Promise<BackendDocumentSymbolsResult> {
+      throw new Error('not implemented')
+    },
+    async requestSemanticTokens(_: BackendSemanticTokensRequest): Promise<BackendSemanticTokensResult> {
+      throw new Error('not implemented')
+    },
+    async requestInlayHints(_: BackendInlayHintsRequest): Promise<BackendInlayHintsResult> {
       throw new Error('not implemented')
     },
     async requestSymbolAtPosition(_: BackendSymbolAtPositionRequest): Promise<BackendSymbolAtPositionResult> {

@@ -15,6 +15,10 @@ import type {
   BackendNavigationResult,
   BackendSessionStartRequest,
   BackendSessionStartResult,
+  BackendInlayHintsRequest,
+  BackendInlayHintsResult,
+  BackendSemanticTokensRequest,
+  BackendSemanticTokensResult,
   BackendSignatureHelpRequest,
   BackendSignatureHelpResult,
   BackendSymbolAtPositionRequest,
@@ -135,6 +139,22 @@ export class BackendDiagnosticsClient {
     request: Omit<BackendDocumentSymbolsRequest, 'requestId'>,
   ): Promise<BackendDocumentSymbolsResult> {
     return this.backend.requestDocumentSymbols({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async requestSemanticTokens(
+    request: Omit<BackendSemanticTokensRequest, 'requestId'>,
+  ): Promise<BackendSemanticTokensResult> {
+    return this.backend.requestSemanticTokens({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async requestInlayHints(request: Omit<BackendInlayHintsRequest, 'requestId'>): Promise<BackendInlayHintsResult> {
+    return this.backend.requestInlayHints({
       requestId: this.createRequestId(),
       ...request,
     })
