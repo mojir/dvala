@@ -852,10 +852,20 @@ function isAstNode(value: unknown): value is AstNode {
 // other nodes (Builtin = callee, BindingTarget = LHS of let, etc.),
 // and template-internal nodes. Anything else is an expression value
 // we can name and reference.
+//
+// `Sym` is excluded too — even at REFERENCE positions, extracting a
+// bare identifier (`let extracted = x; extracted + 1`) is a degenerate
+// rename, not a useful refactor. More importantly, walkAst descends
+// into BindingTarget arrays and visits the inner SymNode at DEFINITION
+// sites, where extracting the binding name produces broken output
+// (`let extracted = answer; let extracted = 1 + 2` — references its
+// own name AND collides). Skipping all Syms is the simpler fix; the
+// cursor falls back to the enclosing expression instead.
 const NON_EXTRACTABLE_NODE_TYPES = new Set<string>([
   NodeTypes.Let,
   NodeTypes.Block,
   NodeTypes.Binding,
+  NodeTypes.Sym,
   NodeTypes.Builtin,
   NodeTypes.Special,
   NodeTypes.Reserved,
@@ -902,7 +912,10 @@ function findSmallestExtractableNode(
     if (!contains) return
     // Multi-line nodes get an artificially large size so a tight
     // single-line expression on the inside wins over a multi-line
-    // container that happens to also cover the cursor.
+    // container that happens to also cover the cursor. 1M is chosen
+    // as comfortably greater than any plausible source-line width;
+    // raising it doesn't change ordering as long as it stays above
+    // realistic column deltas.
     const size = (endLine - startLine) * 1_000_000 + (endColumn - startColumn)
     if (size < bestSize) {
       bestSize = size
