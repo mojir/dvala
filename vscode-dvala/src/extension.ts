@@ -978,6 +978,8 @@ export function activate(context: vscode.ExtensionContext): void {
             message: d.message,
             startLine: d.range.start.line + 1,
             startColumn: d.range.start.character + 1,
+            endLine: d.range.end.line + 1,
+            endColumn: d.range.end.character + 1,
           })),
         })
         if (!result.ok) return []
@@ -1007,7 +1009,9 @@ export function activate(context: vscode.ExtensionContext): void {
                 ref =>
                   ref.message === d.message &&
                   ref.startLine === d.range.start.line + 1 &&
-                  ref.startColumn === d.range.start.character + 1,
+                  ref.startColumn === d.range.start.character + 1 &&
+                  ref.endLine === d.range.end.line + 1 &&
+                  ref.endColumn === d.range.end.character + 1,
               ),
             )
           }
@@ -1016,6 +1020,13 @@ export function activate(context: vscode.ExtensionContext): void {
       },
     },
     {
+      // Advertised kinds — VS Code uses this to decide which providers to
+      // invoke for a given trigger. When the refactor.* actions land
+      // (extract var, inline var, extract function), the corresponding
+      // `vscode.CodeActionKind.RefactorExtract` / `.RefactorInline` entries
+      // must be added here too — otherwise they're silently dropped even
+      // though `BackendCodeActionKind` accepts them and `codeActionKindToVs`
+      // maps them.
       providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
     },
   )

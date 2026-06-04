@@ -46,18 +46,21 @@ export function computeCatchallEdit(source: string, matchRange: MatchNodeRange):
   // keyword starts at column `endColumn - 3` on `endLine`.
   const endLineIndex = matchRange.endLine - 1
   if (endLineIndex < 0 || endLineIndex >= lines.length) return null
-  const endLine = lines[endLineIndex]!
+  // `endLineText` is the source contents of the line; `matchRange.endLine`
+  // is the 1-based line number. Distinct names so the indent-sampling code
+  // below doesn't look like it's slicing the number.
+  const endLineText = lines[endLineIndex]!
   const endKeywordStartColumn = matchRange.endColumn - 3
   if (endKeywordStartColumn < 1) return null
-  // Sanity check: the three characters before endColumn on endLine should be `end`.
-  // If they aren't, sourceMap and source are out of sync; bail.
+  // Sanity check: the three characters before endColumn on this line should
+  // be `end`. If they aren't, sourceMap and source are out of sync; bail.
   const startIndex = endKeywordStartColumn - 1
-  if (endLine.slice(startIndex, startIndex + 3) !== 'end') return null
+  if (endLineText.slice(startIndex, startIndex + 3) !== 'end') return null
 
   // Use the `end` line's indent + 2 spaces as the case indent. Matches the
   // common formatter convention; users with non-default formatting can
   // reformat after the insertion.
-  const endIndentMatch = /^\s*/.exec(endLine)
+  const endIndentMatch = /^\s*/.exec(endLineText)
   const endIndent = endIndentMatch ? endIndentMatch[0] : ''
   const caseIndent = `${endIndent}  `
 

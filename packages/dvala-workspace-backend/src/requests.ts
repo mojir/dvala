@@ -315,10 +315,19 @@ export interface BackendTextEdit {
   newText: string
 }
 
+// Identifies a diagnostic for code-action attachment. The full
+// (line, column) range is included rather than just the start so two
+// diagnostics that happen to start at the same position but cover
+// different spans don't collide. All four positions are 1-based; endLine
+// / endColumn are exclusive (`endColumn === startColumn` for zero-width
+// diagnostics, which the typechecker doesn't currently emit but the type
+// allows).
 export interface BackendCodeActionDiagnosticRef {
   message: string
   startLine: number
   startColumn: number
+  endLine: number
+  endColumn: number
 }
 
 export interface BackendCodeAction {
