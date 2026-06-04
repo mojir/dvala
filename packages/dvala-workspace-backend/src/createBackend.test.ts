@@ -860,9 +860,12 @@ describe('createBackend', () => {
 
       expect(result.ok).toBe(true)
       if (!result.ok) return
-      expect(result.actions).toHaveLength(1)
-      const action = result.actions[0]!
-      expect(action.kind).toBe('quickfix')
+      // The selection passed alongside the diagnostic is non-empty, so
+      // extract-variable / extract-function may also fire — filter to the
+      // quickfix we're actually asserting on.
+      const quickfixes = result.actions.filter(a => a.kind === 'quickfix')
+      expect(quickfixes).toHaveLength(1)
+      const action = quickfixes[0]!
       expect(action.title).toContain('catchall')
       expect(action.fixesDiagnostics?.[0]?.message).toContain('Non-exhaustive match')
       expect(action.edits).toHaveLength(1)
@@ -965,6 +968,218 @@ describe('createBackend', () => {
       // the outer match's `end` (line 6). The inner end is indented by 2.
       expect(edit.startLine).toBe(5)
       expect(edit.newText).toMatch(/^    /) // outer indent (2) + case indent (2) = 4 spaces
+    })
+
+    it('offers an extract-variable refactor for an expression selection', async () => {
+      const backend = createBackend()
+      const source = 'let answer = 1 + 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      // Select `1 + 2` (columns 14..19 exclusive end). No diagnostics.
+      const result = await backend.requestCodeActions({
+        requestId: 205,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 14,
+        endLine: 1,
+        endColumn: 19,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      // Both extract-variable and extract-function fire on a non-empty
+      // selection; filter to the variable one. The user picks from the
+      // Cmd+. menu which they want.
+      const extractActions = result.actions.filter(a => a.kind === 'refactor.extract' && a.title.includes('variable'))
+      expect(extractActions).toHaveLength(1)
+      const action = extractActions[0]!
+      expect(action.title).toContain('Extract')
+      expect(action.edits).toHaveLength(2)
+      // First edit: insert `let extracted = 1 + 2;\n` above line 1.
+      expect(action.edits[0]).toMatchObject({
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 1,
+        newText: 'let extracted = 1 + 2;\n',
+      })
+      // Second edit: replace the selection with `extracted`.
+      expect(action.edits[1]).toMatchObject({
+        startLine: 1,
+        startColumn: 14,
+        endLine: 1,
+        endColumn: 19,
+        newText: 'extracted',
+      })
+    })
+
+    it('offers an inline-variable refactor when the cursor is on a let binding name', async () => {
+      const backend = createBackend()
+      const source = 'let answer = 42;\nanswer + 1'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 207,
+        path: 'main.dvala',
+        version: 1,
+        // Cursor on `answer` def site (line 1, column 5).
+        startLine: 1,
+        startColumn: 5,
+        endLine: 1,
+        endColumn: 5,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const inlineActions = result.actions.filter(a => a.kind === 'refactor.inline')
+      expect(inlineActions).toHaveLength(1)
+      const action = inlineActions[0]!
+      expect(action.title).toBe("Inline variable 'answer'")
+      // First edit removes the let line. Subsequent edits replace each
+      // reference with the value text (`42` — numeric literal, no parens).
+      expect(action.edits[0]).toMatchObject({
+        startLine: 1,
+        startColumn: 1,
+        endLine: 2,
+        endColumn: 1,
+        newText: '',
+      })
+      const refEdits = action.edits.slice(1)
+      expect(refEdits).toHaveLength(1)
+      expect(refEdits[0]).toMatchObject({ newText: '42' })
+    })
+
+    it('does not offer inline-variable when the binding has zero references', async () => {
+      const backend = createBackend()
+      const source = 'let unused = 42'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 208,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 5,
+        endLine: 1,
+        endColumn: 5,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const inlineActions = result.actions.filter(a => a.kind === 'refactor.inline')
+      expect(inlineActions).toHaveLength(0)
+    })
+
+    it('does not offer inline-variable for destructuring bindings (v1 restriction)', async () => {
+      const backend = createBackend()
+      const source = 'let { x } = obj;\nx + 1'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 209,
+        path: 'main.dvala',
+        version: 1,
+        // Cursor on `x` inside the destructure.
+        startLine: 1,
+        startColumn: 7,
+        endLine: 1,
+        endColumn: 7,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const inlineActions = result.actions.filter(a => a.kind === 'refactor.inline')
+      expect(inlineActions).toHaveLength(0)
+    })
+
+    it('offers an extract-function refactor for a selection with no free variables', async () => {
+      const backend = createBackend()
+      const source = 'let answer = 1 + 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 210,
+        path: 'main.dvala',
+        version: 1,
+        // Select `1 + 2` (cols 14..19, end exclusive).
+        startLine: 1,
+        startColumn: 14,
+        endLine: 1,
+        endColumn: 19,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const fnActions = result.actions.filter(a => a.kind === 'refactor.extract' && a.title.includes('function'))
+      expect(fnActions).toHaveLength(1)
+      const action = fnActions[0]!
+      // First edit: insert the let extracted = () -> do ... end; line.
+      expect(action.edits[0]?.newText).toBe('let extracted = () -> do\n  1 + 2\nend;\n')
+      // Second edit: replace selection with a parameterless call.
+      expect(action.edits[1]?.newText).toBe('extracted()')
+    })
+
+    it('extracts free variables as function parameters and call arguments', async () => {
+      const backend = createBackend()
+      // `x` and `y` are function parameters. Selecting `x + y` should
+      // turn them into params of the extracted function (their defs live
+      // outside the selection, at the lambda signature).
+      const source = 'let f = (x, y) -> x + y'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 211,
+        path: 'main.dvala',
+        version: 1,
+        // Select `x + y` (cols 19..24, end exclusive).
+        startLine: 1,
+        startColumn: 19,
+        endLine: 1,
+        endColumn: 24,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const fnActions = result.actions.filter(a => a.kind === 'refactor.extract' && a.title.includes('function'))
+      expect(fnActions).toHaveLength(1)
+      const action = fnActions[0]!
+      expect(action.edits[0]?.newText).toContain('let extracted = (x, y) -> do')
+      expect(action.edits[1]?.newText).toBe('extracted(x, y)')
+    })
+
+    it('does not offer extract-variable for a zero-width cursor (no selection)', async () => {
+      const backend = createBackend()
+      const source = 'let answer = 1 + 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      // Cursor without a selection — extract has nothing to act on. We
+      // intentionally trust whatever the user selected for v1 (the
+      // Dvala AST source-map quirk for binary ops makes AST-aligned
+      // extraction unreliable; see project_parser_source_map_ranges
+      // memory). Zero-width selection is the one case we still
+      // reliably reject.
+      const result = await backend.requestCodeActions({
+        requestId: 206,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 14,
+        endLine: 1,
+        endColumn: 14,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const extractActions = result.actions.filter(a => a.kind === 'refactor.extract')
+      expect(extractActions).toHaveLength(0)
     })
 
     it('returns resync-required when the document mirror is stale', async () => {

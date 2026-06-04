@@ -23,6 +23,9 @@ import {
 import { NodeTypes, type AstNode, type SourceMapPosition } from '@mojir/dvala-types'
 import { allReference, isFunctionReference } from '../../../reference/index'
 import { computeCatchallEdit } from './catchallQuickFix'
+import { computeExtractVariableEdit } from './extractVariableEdit'
+import { computeExtractFunctionEdit } from './extractFunctionEdit'
+import { computeInlineVariableEdits, type InlineReferenceLocation } from './inlineVariableEdit'
 
 import type { DvalaBackend } from './DvalaBackend'
 import { createInMemoryDocumentStore, type BackendDocumentStore } from './documentStore'
@@ -661,6 +664,67 @@ function isCallableType(type: MaybeCallable): boolean {
 // actions handler to locate the match an exhaustiveness-diagnostic refers
 // to. Returns `null` when no Match wraps the position; the caller skips
 // this action for that diagnostic.
+// Find the Let AST node whose simple-symbol binding matches `def`'s
+// location, and return the source ranges needed by the inline-variable
+// refactor (the let's full range + the value expression's range).
+// Returns `null` if no such Let exists, the binding isn't a simple-symbol
+// shape, or any of the ranges are missing from the source map.
+function findEnclosingLetRanges(
+  ast: readonly AstNode[],
+  sourceMap: Map<number, SourceMapPosition> | undefined,
+  def: SymbolDef,
+): {
+  letStartLine: number
+  letStartColumn: number
+  letEndLine: number
+  letEndColumn: number
+  valueStartLine: number
+  valueStartColumn: number
+  valueEndLine: number
+  valueEndColumn: number
+} | null {
+  if (!sourceMap) return null
+  let result: ReturnType<typeof findEnclosingLetRanges> | null = null
+  walkAst(ast, node => {
+    if (result) return
+    if (node[0] !== NodeTypes.Let || !Array.isArray(node[1])) return
+    const [bindingTarget, valueExpr] = node[1] as [AstNode, AstNode]
+    // Simple-symbol binding only: `bindingTargetTypes.symbol` shape =
+    // ['symbol', [SymNode, default?], nodeId]. We don't handle
+    // destructuring (array / object), rest, or literal patterns — the
+    // refactor's semantics there are different ("inline one element" /
+    // "inline one field" each need their own design).
+    // BindingTarget is typed as `AstNode` here but `bindingTarget[0]` is a
+    // BindingTargetType (`'symbol' | 'array' | 'object' | …`), not a
+    // NodeType. The cast bypasses the type-incompat check; the value
+    // is a string at runtime regardless.
+    if ((bindingTarget[0] as string) !== 'symbol' || !Array.isArray(bindingTarget[1])) return
+    const symNode = (bindingTarget[1] as [AstNode, AstNode | undefined])[0]
+    if (symNode[0] !== NodeTypes.Sym || symNode[1] !== def.name) return
+    // Match by source position rather than nodeId — the symbol-table
+    // builder registers the def with the SymNode's nodeId, but the
+    // bindingTarget itself has a different nodeId, and various consumers
+    // pick differently. Position is the stable identifier.
+    const symPos = sourceMap.get(symNode[symNode.length - 1] as number)
+    if (!symPos) return
+    if (symPos.start[0] + 1 !== def.location.line || symPos.start[1] + 1 !== def.location.column) return
+    const letPos = sourceMap.get(node[node.length - 1] as number)
+    const valuePos = sourceMap.get(valueExpr[valueExpr.length - 1] as number)
+    if (!letPos || !valuePos) return
+    result = {
+      letStartLine: letPos.start[0] + 1,
+      letStartColumn: letPos.start[1] + 1,
+      letEndLine: letPos.end[0] + 1,
+      letEndColumn: letPos.end[1] + 1,
+      valueStartLine: valuePos.start[0] + 1,
+      valueStartColumn: valuePos.start[1] + 1,
+      valueEndLine: valuePos.end[0] + 1,
+      valueEndColumn: valuePos.end[1] + 1,
+    }
+  })
+  return result
+}
+
 function findEnclosingMatchRange(
   ast: readonly AstNode[],
   sourceMap: Map<number, SourceMapPosition> | undefined,
@@ -1483,6 +1547,162 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
               },
             ],
           })
+        }
+
+        // Refactor: inline variable. Triggered when the cursor sits on
+        // the def site of a `let x = expr;` binding. We bail if the
+        // binding isn't a simple-symbol `let` (destructuring, function
+        // values, handlers — anything more complex than a single Sym on
+        // the LHS), or if the `let` doesn't occupy its own source line
+        // (mid-statement positioning would require either inserting the
+        // value text inline or computing a partial-line removal range,
+        // both of which are v2 polish).
+        const inlineIndex = new WorkspaceIndex()
+        indexBackendDocuments(request.path, documents, inlineIndex)
+        // `findDefinition` only matches REFERENCE positions — it follows a
+        // reference back to its def. For inline-variable we also want to
+        // trigger when the cursor sits ON the def site. Fall back to
+        // scanning `fileSymbols.definitions` for a def whose location spans
+        // the cursor (start ≤ cursor < start + name.length).
+        const inlineFileSymbols = inlineIndex.getFileSymbols(request.path)
+        let cursorDef = inlineIndex.findDefinition(request.path, request.startLine, request.startColumn)
+        if (!cursorDef && inlineFileSymbols) {
+          cursorDef =
+            inlineFileSymbols.definitions.find(
+              d =>
+                d.location.line === request.startLine &&
+                request.startColumn >= d.location.column &&
+                request.startColumn < d.location.column + d.name.length,
+            ) ?? null
+        }
+        if (cursorDef && cursorDef.kind === 'variable') {
+          const letInfo = findEnclosingLetRanges(ast.body, typecheckResult.sourceMap, cursorDef)
+          if (letInfo) {
+            const sourceLines = effectiveSource.split('\n')
+            const letLineText = sourceLines[letInfo.letStartLine - 1]
+            // v1 restriction: let must occupy its own line. The `letStartLine`
+            // and `letEndLine` are equal, and the line's trimmed contents
+            // start at the let.
+            const letOccupiesLine =
+              letLineText !== undefined &&
+              letInfo.letStartLine === letInfo.letEndLine &&
+              letLineText.slice(0, letInfo.letStartColumn - 1).trim() === ''
+            if (letOccupiesLine) {
+              const valueLine = sourceLines[letInfo.valueStartLine - 1]
+              if (valueLine !== undefined && letInfo.valueStartLine === letInfo.valueEndLine) {
+                const valueText = valueLine.slice(letInfo.valueStartColumn - 1, letInfo.valueEndColumn - 1)
+                const fileSymbolsForInline = inlineIndex.getFileSymbols(request.path)
+                const references: InlineReferenceLocation[] = (fileSymbolsForInline?.references ?? [])
+                  .filter(ref => ref.resolvedDef === cursorDef)
+                  .map(ref => ({ line: ref.location.line, column: ref.location.column, length: ref.name.length }))
+                const inlineEdits = computeInlineVariableEdits({
+                  source: effectiveSource,
+                  // Remove the whole line including its trailing newline by
+                  // ranging from start-of-line through start-of-next-line.
+                  letRemoveStartLine: letInfo.letStartLine,
+                  letRemoveStartColumn: 1,
+                  letRemoveEndLine: letInfo.letStartLine + 1,
+                  letRemoveEndColumn: 1,
+                  valueText,
+                  references,
+                })
+                if (inlineEdits) {
+                  actions.push({
+                    title: `Inline variable '${cursorDef.name}'`,
+                    kind: 'refactor.inline',
+                    edits: inlineEdits,
+                  })
+                }
+              }
+            }
+          }
+        }
+
+        // Refactor: extract variable. Triggered when the user has a
+        // non-zero-width selection. We trust the selection as-is rather
+        // than aligning to an AST node — Dvala source maps for binary
+        // operators don't cover the full expression text (e.g. `1 + 2`'s
+        // Call node has a range starting at the operator, not the first
+        // operand), so AST-based alignment would silently expand
+        // selections in surprising ways. The user is responsible for
+        // selecting a syntactically sensible region; the action runs even
+        // if the selection isn't an expression, on the theory that
+        // refactor.* actions only fire from Cmd+. and that's a deliberate
+        // invocation.
+        const hasNonEmptySelection =
+          request.startLine < request.endLine ||
+          (request.startLine === request.endLine && request.endColumn > request.startColumn)
+        if (hasNonEmptySelection) {
+          const refactorEdits = computeExtractVariableEdit({
+            source: effectiveSource,
+            expressionStartLine: request.startLine,
+            expressionStartColumn: request.startColumn,
+            expressionEndLine: request.endLine,
+            expressionEndColumn: request.endColumn,
+            // v1: insert above the selection's start line. Multi-line
+            // statements with the selection mid-block aren't handled
+            // specially — the user can move the inserted line after if
+            // it lands in an awkward spot.
+            statementStartLine: request.startLine,
+            statementStartColumn: request.startColumn,
+          })
+          if (refactorEdits) {
+            // Title carries a preview of the extracted text so the menu
+            // entry tells the user which span they're acting on.
+            const exprText = effectiveSource
+              .split('\n')
+              [request.startLine - 1]!.slice(request.startColumn - 1, request.endColumn - 1)
+            const previewText = exprText.length > 40 ? `${exprText.slice(0, 37)}...` : exprText
+            actions.push({
+              title: `Extract '${previewText}' to variable`,
+              kind: 'refactor.extract',
+              edits: [refactorEdits.letInsertion, refactorEdits.expressionReplacement],
+            })
+          }
+
+          // Refactor: extract function. Same selection-trust strategy as
+          // extract-variable. Free-variable analysis: any reference whose
+          // resolved def lives OUTSIDE the selection becomes a parameter.
+          // We dedupe by name and preserve appearance order (the order
+          // refs show up while walking the selection range).
+          const fnIndex = new WorkspaceIndex()
+          indexBackendDocuments(request.path, documents, fnIndex)
+          const fnFileSymbols = fnIndex.getFileSymbols(request.path)
+          const positionInsideSelection = (line: number, column: number): boolean =>
+            (line > request.startLine || (line === request.startLine && column >= request.startColumn)) &&
+            (line < request.endLine || (line === request.endLine && column < request.endColumn))
+          const freeVars: string[] = []
+          const seenFreeVars = new Set<string>()
+          for (const ref of fnFileSymbols?.references ?? []) {
+            if (!ref.resolvedDef) continue
+            if (!positionInsideSelection(ref.location.line, ref.location.column)) continue
+            // Def inside the selection means the binding is local to the
+            // extracted body — not a free variable.
+            if (positionInsideSelection(ref.resolvedDef.location.line, ref.resolvedDef.location.column)) continue
+            if (seenFreeVars.has(ref.name)) continue
+            seenFreeVars.add(ref.name)
+            freeVars.push(ref.name)
+          }
+          const fnEdits = computeExtractFunctionEdit({
+            source: effectiveSource,
+            selectionStartLine: request.startLine,
+            selectionStartColumn: request.startColumn,
+            selectionEndLine: request.endLine,
+            selectionEndColumn: request.endColumn,
+            freeVars,
+          })
+          if (fnEdits) {
+            const fnSelectionText = effectiveSource
+              .split('\n')
+              [request.startLine - 1]!.slice(request.startColumn - 1, request.endColumn - 1)
+              .trim()
+            const fnPreview = fnSelectionText.length > 40 ? `${fnSelectionText.slice(0, 37)}...` : fnSelectionText
+            actions.push({
+              title: fnPreview ? `Extract '${fnPreview}' to function` : 'Extract selection to function',
+              kind: 'refactor.extract',
+              edits: [fnEdits.letInsertion, fnEdits.selectionReplacement],
+            })
+          }
         }
 
         return { ok: true, requestId: request.requestId, path: request.path, version: request.version, actions }

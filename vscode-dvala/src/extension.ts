@@ -1021,13 +1021,14 @@ export function activate(context: vscode.ExtensionContext): void {
     },
     {
       // Advertised kinds — VS Code uses this to decide which providers to
-      // invoke for a given trigger. When the refactor.* actions land
-      // (extract var, inline var, extract function), the corresponding
-      // `vscode.CodeActionKind.RefactorExtract` / `.RefactorInline` entries
-      // must be added here too — otherwise they're silently dropped even
-      // though `BackendCodeActionKind` accepts them and `codeActionKindToVs`
-      // maps them.
-      providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
+      // invoke for a given trigger. Quickfix fires from the lightbulb on
+      // diagnostics; the refactor.* kinds fire from the Cmd+. / right-click
+      // refactor menu on selections.
+      providedCodeActionKinds: [
+        vscode.CodeActionKind.QuickFix,
+        vscode.CodeActionKind.RefactorExtract,
+        vscode.CodeActionKind.RefactorInline,
+      ],
     },
   )
 
