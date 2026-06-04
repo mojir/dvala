@@ -15,6 +15,7 @@ import type { Diagnostic as SharedDiagnostic } from '@mojir/dvala-core-tooling'
 import type { BackendSymbolKind } from '../../packages/dvala-workspace-backend/src/index'
 
 import { BackendDiagnosticsClient } from './backendDiagnosticsClient'
+import { linkSelectionRangeChains, type LinkedSelectionRange } from './selectionRangeAdapter'
 
 // Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
 const DVALA_WORD_PATTERN = /[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*/
@@ -900,6 +901,21 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
+  // Convert a linked-range tree (plain data, from the testable adapter
+  // helper) into VS Code's `SelectionRange`. Walks the parent chain so the
+  // outer-most node's wrapper is built first, then inner nodes wrap with
+  // that as their parent — matching VS Code's "parent points outward"
+  // convention.
+  const toVsSelectionRange = (linked: LinkedSelectionRange): vscode.SelectionRange => {
+    const range = new vscode.Range(
+      Math.max(0, linked.startLine - 1),
+      Math.max(0, linked.startColumn - 1),
+      Math.max(0, linked.endLine - 1),
+      Math.max(0, linked.endColumn - 1),
+    )
+    return new vscode.SelectionRange(range, linked.parent ? toVsSelectionRange(linked.parent) : undefined)
+  }
+
   // Selection Range — Alt+Shift+→ expands selection to the enclosing AST
   // node; Alt+Shift+← shrinks. Backend returns the containment chain
   // (innermost → outermost) as a flat list; we link them into VS Code's
@@ -917,21 +933,9 @@ export function activate(context: vscode.ExtensionContext): void {
       })
       if (!result.ok) return []
 
-      return result.ranges.map(chain => {
-        // Link innermost → outermost into nested SelectionRange objects.
-        let parent: vscode.SelectionRange | undefined
-        for (let i = chain.length - 1; i >= 0; i--) {
-          const r = chain[i]!
-          const range = new vscode.Range(
-            Math.max(0, r.startLine - 1),
-            Math.max(0, r.startColumn - 1),
-            Math.max(0, r.endLine - 1),
-            Math.max(0, r.endColumn - 1),
-          )
-          parent = new vscode.SelectionRange(range, parent)
-        }
-        return parent ?? new vscode.SelectionRange(new vscode.Range(positions[0]!, positions[0]!))
-      })
+      const cursors = positions.map(p => ({ line: p.line + 1, column: p.character + 1 }))
+      const linked = linkSelectionRangeChains(result.ranges, cursors)
+      return linked.map(toVsSelectionRange)
     },
   })
 

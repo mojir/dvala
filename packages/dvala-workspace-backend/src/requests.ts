@@ -311,6 +311,8 @@ export interface BackendSelectionRangeRequest {
   path: string
   source?: string
   version: BackendDocumentVersion
+  // 1-based — matches the convention used by every other backend
+  // position/range field. Multi-cursor requests send one entry per cursor.
   positions: readonly { line: number; column: number }[]
 }
 

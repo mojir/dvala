@@ -721,13 +721,13 @@ function positionContains(pos: SourceMapPosition, line: number, column: number):
 }
 
 function rangeSize(pos: SourceMapPosition): number {
-  // Approximate "size" by the line span × a large constant + column delta on
-  // the last line, so multi-line nodes always rank larger than single-line
-  // ones. Exact char count would need the source text; this is enough to
-  // order containment chains correctly.
+  // Approximate "size" by the line span × a large constant + column delta,
+  // so multi-line nodes always rank larger than single-line ones. Exact
+  // char count would need the source text; this is enough to order
+  // containment chains correctly.
   const lineSpan = pos.end[0] - pos.start[0]
   if (lineSpan === 0) return pos.end[1] - pos.start[1]
-  return lineSpan * 1_000_000 + pos.end[1] + (pos.start[1] === 0 ? 0 : -pos.start[1])
+  return lineSpan * 1_000_000 + pos.end[1] - pos.start[1]
 }
 
 // Walk the AST, find every Call node, and emit a parameter-name inlay hint
