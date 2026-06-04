@@ -939,6 +939,98 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
+  // Map portable code-action kinds to VS Code's kind enum. `quickfix`
+  // attaches to diagnostics; `refactor.extract` / `refactor.inline` show
+  // up under the "Refactor…" submenu.
+  const codeActionKindToVs = (kind: 'quickfix' | 'refactor.extract' | 'refactor.inline'): vscode.CodeActionKind => {
+    switch (kind) {
+      case 'quickfix':
+        return vscode.CodeActionKind.QuickFix
+      case 'refactor.extract':
+        return vscode.CodeActionKind.RefactorExtract
+      case 'refactor.inline':
+        return vscode.CodeActionKind.RefactorInline
+    }
+  }
+
+  // Code Actions — quick fixes and refactorings via Cmd+. / Ctrl+. The
+  // VS Code API gives us a range + the diagnostics intersecting it; we
+  // forward both to the backend. Today's only action is the catchall
+  // quick-fix for non-exhaustive match diagnostics; extract / inline /
+  // extract-function will join when the refactor.* track lands.
+  const codeActionProvider = vscode.languages.registerCodeActionsProvider(
+    'dvala',
+    {
+      async provideCodeActions(document, range, context) {
+        if (context.diagnostics.length === 0) return []
+        indexDocument(document)
+        await syncBackendAnalysisDocument(document)
+
+        const result = await backendDiagnostics.requestCodeActions({
+          path: document.uri.fsPath,
+          source: document.getText(),
+          version: document.version,
+          startLine: range.start.line + 1,
+          startColumn: range.start.character + 1,
+          endLine: range.end.line + 1,
+          endColumn: range.end.character + 1,
+          diagnostics: context.diagnostics.map(d => ({
+            message: d.message,
+            startLine: d.range.start.line + 1,
+            startColumn: d.range.start.character + 1,
+            endLine: d.range.end.line + 1,
+            endColumn: d.range.end.character + 1,
+          })),
+        })
+        if (!result.ok) return []
+
+        return result.actions.map(action => {
+          const vsAction = new vscode.CodeAction(action.title, codeActionKindToVs(action.kind))
+          const workspaceEdit = new vscode.WorkspaceEdit()
+          for (const edit of action.edits) {
+            const editRange = new vscode.Range(
+              Math.max(0, edit.startLine - 1),
+              Math.max(0, edit.startColumn - 1),
+              Math.max(0, edit.endLine - 1),
+              Math.max(0, edit.endColumn - 1),
+            )
+            if (edit.startLine === edit.endLine && edit.startColumn === edit.endColumn) {
+              workspaceEdit.insert(document.uri, editRange.start, edit.newText)
+            } else {
+              workspaceEdit.replace(document.uri, editRange, edit.newText)
+            }
+          }
+          vsAction.edit = workspaceEdit
+          if (action.fixesDiagnostics) {
+            // Attach to the originating diagnostics so Cmd+. on the squiggle
+            // picks up this action.
+            vsAction.diagnostics = context.diagnostics.filter(d =>
+              action.fixesDiagnostics?.some(
+                ref =>
+                  ref.message === d.message &&
+                  ref.startLine === d.range.start.line + 1 &&
+                  ref.startColumn === d.range.start.character + 1 &&
+                  ref.endLine === d.range.end.line + 1 &&
+                  ref.endColumn === d.range.end.character + 1,
+              ),
+            )
+          }
+          return vsAction
+        })
+      },
+    },
+    {
+      // Advertised kinds — VS Code uses this to decide which providers to
+      // invoke for a given trigger. When the refactor.* actions land
+      // (extract var, inline var, extract function), the corresponding
+      // `vscode.CodeActionKind.RefactorExtract` / `.RefactorInline` entries
+      // must be added here too — otherwise they're silently dropped even
+      // though `BackendCodeActionKind` accepts them and `codeActionKindToVs`
+      // maps them.
+      providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
+    },
+  )
+
   // Document formatting provider — powers Format Document (Shift+Alt+F / Shift+Option+F)
   const formattingProvider = vscode.languages.registerDocumentFormattingEditProvider('dvala', {
     async provideDocumentFormattingEdits(document) {
@@ -967,6 +1059,7 @@ export function activate(context: vscode.ExtensionContext): void {
     referenceProvider,
     renameProvider,
     documentSymbolProvider,
+    codeActionProvider,
     selectionRangeProvider,
     semanticTokensProvider,
     workspaceSymbolProvider,

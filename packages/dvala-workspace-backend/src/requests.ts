@@ -292,6 +292,82 @@ export type BackendInlayHintsResult =
     }
   | BackendRequestFailure
 
+// Code actions — quick fixes and refactorings offered via Cmd+./Ctrl+.
+// in VS Code. Two trigger shapes:
+//   - Quick-fix: triggered by a diagnostic intersecting the cursor. The
+//     request carries the diagnostics list so the backend can match its
+//     fixes against specific messages (e.g. "Non-exhaustive match" → offer
+//     insert-catchall).
+//   - Refactor: triggered by selection or cursor position alone (extract
+//     variable, inline variable, etc.). v1 only ships quick-fixes; the
+//     refactor.* kinds are reserved for follow-up.
+//
+// Each action carries the edits it would apply. Edits are encoded as plain
+// text replacements with portable (line, column) positions — converted
+// into LSP / VS Code `WorkspaceEdit` shape at the editor adapter boundary.
+export type BackendCodeActionKind = 'quickfix' | 'refactor.extract' | 'refactor.inline'
+
+export interface BackendTextEdit {
+  startLine: number // 1-based
+  startColumn: number // 1-based
+  endLine: number // 1-based
+  endColumn: number // 1-based, exclusive (== startColumn for pure insertions)
+  newText: string
+}
+
+// Identifies a diagnostic for code-action attachment. The full
+// (line, column) range is included rather than just the start so two
+// diagnostics that happen to start at the same position but cover
+// different spans don't collide. All four positions are 1-based; endLine
+// / endColumn are exclusive (`endColumn === startColumn` for zero-width
+// diagnostics, which the typechecker doesn't currently emit but the type
+// allows).
+export interface BackendCodeActionDiagnosticRef {
+  message: string
+  startLine: number
+  startColumn: number
+  endLine: number
+  endColumn: number
+}
+
+export interface BackendCodeAction {
+  title: string
+  kind: BackendCodeActionKind
+  edits: readonly BackendTextEdit[]
+  // Diagnostics this action resolves. Only present for quick-fixes — the
+  // editor uses this to attach the action to the matching diagnostic so
+  // Cmd+. on the diagnostic picks it up.
+  fixesDiagnostics?: readonly BackendCodeActionDiagnosticRef[]
+}
+
+export interface BackendCodeActionsRequest {
+  requestId: BackendRequestId
+  path: string
+  source?: string
+  version: BackendDocumentVersion
+  // Selection range the action is being requested for. For a bare cursor,
+  // start === end. For quick-fixes triggered by a diagnostic squiggle, this
+  // is the diagnostic's range.
+  startLine: number
+  startColumn: number
+  endLine: number
+  endColumn: number
+  // Diagnostics intersecting the range — VS Code passes these in
+  // `CodeActionContext.diagnostics`. The backend matches its quick-fixes
+  // against specific messages.
+  diagnostics: readonly BackendCodeActionDiagnosticRef[]
+}
+
+export type BackendCodeActionsResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      path: string
+      version: BackendDocumentVersion
+      actions: readonly BackendCodeAction[]
+    }
+  | BackendRequestFailure
+
 // Selection range — Alt+Shift+→ / ← in VS Code expands/shrinks the
 // selection by semantic units. For each requested position we return a
 // list of ranges innermost → outermost: the smallest AST node containing

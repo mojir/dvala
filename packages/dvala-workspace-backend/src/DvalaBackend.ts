@@ -16,6 +16,8 @@ import type {
   BackendNavigationResult,
   BackendPersistFileRequest,
   BackendRemoveFileRequest,
+  BackendCodeActionsRequest,
+  BackendCodeActionsResult,
   BackendInlayHintsRequest,
   BackendInlayHintsResult,
   BackendSelectionRangeRequest,
@@ -58,6 +60,7 @@ export interface DvalaBackend {
   requestHover(request: BackendHoverRequest): Promise<BackendHoverResult>
   requestSignatureHelp(request: BackendSignatureHelpRequest): Promise<BackendSignatureHelpResult>
   requestDocumentSymbols(request: BackendDocumentSymbolsRequest): Promise<BackendDocumentSymbolsResult>
+  requestCodeActions(request: BackendCodeActionsRequest): Promise<BackendCodeActionsResult>
   requestInlayHints(request: BackendInlayHintsRequest): Promise<BackendInlayHintsResult>
   requestSelectionRange(request: BackendSelectionRangeRequest): Promise<BackendSelectionRangeResult>
   requestSemanticTokens(request: BackendSemanticTokensRequest): Promise<BackendSemanticTokensResult>

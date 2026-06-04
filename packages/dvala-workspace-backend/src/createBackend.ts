@@ -22,6 +22,7 @@ import {
 } from '@mojir/dvala-core-tooling'
 import { NodeTypes, type AstNode, type SourceMapPosition } from '@mojir/dvala-types'
 import { allReference, isFunctionReference } from '../../../reference/index'
+import { computeCatchallEdit } from './catchallQuickFix'
 
 import type { DvalaBackend } from './DvalaBackend'
 import { createInMemoryDocumentStore, type BackendDocumentStore } from './documentStore'
@@ -42,6 +43,9 @@ import type {
   BackendFormattingResult,
   BackendHoverRequest,
   BackendHoverResult,
+  BackendCodeAction,
+  BackendCodeActionsRequest,
+  BackendCodeActionsResult,
   BackendInlayHint,
   BackendInlayHintsRequest,
   BackendInlayHintsResult,
@@ -651,6 +655,35 @@ function isCallableType(type: MaybeCallable): boolean {
   return false
 }
 
+// Walk the AST to find the smallest (innermost) Match node whose range
+// contains the given (1-based) position. Returns just the range info the
+// catchall-quick-fix helper needs — endLine / endColumn. Used by the code-
+// actions handler to locate the match an exhaustiveness-diagnostic refers
+// to. Returns `null` when no Match wraps the position; the caller skips
+// this action for that diagnostic.
+function findEnclosingMatchRange(
+  ast: readonly AstNode[],
+  sourceMap: Map<number, SourceMapPosition> | undefined,
+  line: number,
+  column: number,
+): { endLine: number; endColumn: number } | null {
+  if (!sourceMap) return null
+  // Position is 1-based; sourceMap stores 0-based. Compare in 0-based space.
+  const targetLine = line - 1
+  const targetCol = column - 1
+  let best: { pos: SourceMapPosition; size: number } | undefined
+  walkAst(ast, node => {
+    if (node[0] !== NodeTypes.Match) return
+    const nodeId = node[node.length - 1] as number
+    const pos = sourceMap.get(nodeId)
+    if (!pos || !positionContains(pos, targetLine, targetCol)) return
+    const size = rangeSize(pos)
+    if (!best || size < best.size) best = { pos, size }
+  })
+  if (!best) return null
+  return { endLine: best.pos.end[0] + 1, endColumn: best.pos.end[1] + 1 }
+}
+
 // Walk the AST and collect every node whose source range contains the
 // given position. Returns the containment chain innermost → outermost,
 // converted to portable `BackendSelectionRange` shape. VS Code's
@@ -666,25 +699,13 @@ function collectSelectionRanges(
   const targetLine = position.line - 1
   const targetCol = position.column - 1
   const containing: SourceMapPosition[] = []
-  const visit = (node: AstNode): void => {
+  walkAst(ast, node => {
     const nodeId = node[node.length - 1] as number
     const pos = sourceMap.get(nodeId)
     if (pos && positionContains(pos, targetLine, targetCol)) {
       containing.push(pos)
     }
-    const payload = node[1]
-    if (Array.isArray(payload)) {
-      for (const child of payload) {
-        if (isAstNode(child)) visit(child)
-        else if (Array.isArray(child)) {
-          for (const grand of child) {
-            if (isAstNode(grand)) visit(grand)
-          }
-        }
-      }
-    }
-  }
-  for (const node of ast) visit(node)
+  })
   // Sort by range size — innermost (smallest) first. Stable sort preserves
   // sibling order when ranges happen to be equal (rare but possible after
   // collapsed-source edge cases).
@@ -748,38 +769,44 @@ function collectCallInlayHints(
   refByNodeId: Map<number, FileSymbols['references'][number]>,
   out: BackendInlayHint[],
 ): void {
-  const visit = (node: AstNode): void => {
-    if (node[0] === NodeTypes.Call && Array.isArray(node[1])) {
-      const [callee, args] = node[1] as [AstNode, AstNode[]]
-      const params = paramNamesForCallee(callee, refByNodeId)
-      if (params) emitArgHints(args, params, sourceMap, out)
-      visit(callee)
-      for (const arg of args) visit(arg)
-      return
-    }
-    // Walk through every payload child shallowly. Most special-expression
-    // nodes hold their sub-expressions in either array-of-nodes or single-
-    // node payloads; iterating the payload's structural children covers the
-    // common shapes (Block, If, Let, Function bodies, etc.) without a full
-    // visitor table. Non-AST payload entries (strings/numbers/etc.) are
-    // filtered by isAstNode.
-    const payload = node[1]
-    if (Array.isArray(payload)) {
-      for (const child of payload) {
-        if (isAstNode(child)) visit(child)
-        else if (Array.isArray(child)) {
-          for (const grand of child) {
-            if (isAstNode(grand)) visit(grand)
-          }
-        }
-      }
-    }
-  }
-  for (const node of ast) visit(node)
+  walkAst(ast, node => {
+    if (node[0] !== NodeTypes.Call || !Array.isArray(node[1])) return
+    const [callee, args] = node[1] as [AstNode, AstNode[]]
+    const params = paramNamesForCallee(callee, refByNodeId)
+    if (params) emitArgHints(args, params, sourceMap, out)
+  })
 }
 
 function isAstNode(value: unknown): value is AstNode {
   return Array.isArray(value) && typeof value[0] === 'string' && typeof value[value.length - 1] === 'number'
+}
+
+// Walk every AST node reachable from the given top-level list, invoking
+// `visit` on each one. Handles arbitrary payload nesting — Match cases
+// (a depth-3 structure where each case is `[BindingTarget, body, guard]`),
+// destructuring-binding defaults (AstNodes buried inside BindingTarget
+// payloads), and any future shape that nests AstNodes more than two levels
+// deep. The previous per-site loops only descended two levels and missed
+// Match case bodies, so nested-match scenarios went unvisited — see the
+// regression tests for nested catchall quick-fixes, selection-range chains,
+// and inlay hints for the user-facing consequences.
+function walkAst(nodes: readonly AstNode[], visit: (node: AstNode) => void): void {
+  for (const node of nodes) walkAstNode(node, visit)
+}
+
+function walkAstNode(node: AstNode, visit: (node: AstNode) => void): void {
+  visit(node)
+  descendAstChildren(node[1], visit)
+}
+
+function descendAstChildren(value: unknown, visit: (node: AstNode) => void): void {
+  if (isAstNode(value)) {
+    walkAstNode(value, visit)
+    return
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) descendAstChildren(item, visit)
+  }
 }
 
 function paramNamesForCallee(
@@ -1390,6 +1417,75 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         const hints: BackendInlayHint[] = []
         collectCallInlayHints(ast.body, typecheckResult.sourceMap, refByNodeId, hints)
         return { ok: true, requestId: request.requestId, path: request.path, version: request.version, hints }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+    },
+
+    async requestCodeActions(request: BackendCodeActionsRequest): Promise<BackendCodeActionsResult> {
+      const openDocument = documents.getOpenDocument(request.path)
+      if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'resync-required',
+            message: `Backend document mirror missing or stale for ${request.path}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+
+      try {
+        const effectiveSource = request.source ?? openDocument?.source ?? ''
+        const ast = parseToAst(
+          minifyTokenStream(tokenizeSource(effectiveSource, true, request.path), { removeWhiteSpace: true }),
+        )
+        const effectiveVersion = openDocument?.version ?? request.version
+        const typecheckResult = getOrComputeTypecheck(request.path, effectiveSource, effectiveVersion)
+        const actions: BackendCodeAction[] = []
+
+        // Quick-fix: "Insert catchall" for `Non-exhaustive match` diagnostics.
+        // The diagnostic carries enough position info; we find the Match AST
+        // node containing the diagnostic's start, then ask the helper for an
+        // edit that adds `case _ then perform(@dvala.error, ...)` before
+        // the closing `end`. One diagnostic → one action (no fan-out yet).
+        for (const diagnostic of request.diagnostics) {
+          if (!diagnostic.message.startsWith('Non-exhaustive match')) continue
+          const matchRange = findEnclosingMatchRange(
+            ast.body,
+            typecheckResult.sourceMap,
+            diagnostic.startLine,
+            diagnostic.startColumn,
+          )
+          if (!matchRange) continue
+          const edit = computeCatchallEdit(effectiveSource, matchRange)
+          if (!edit) continue
+          actions.push({
+            title: "Add 'case _ then perform(@dvala.error, ...)' catchall",
+            kind: 'quickfix',
+            edits: [edit],
+            fixesDiagnostics: [
+              {
+                message: diagnostic.message,
+                startLine: diagnostic.startLine,
+                startColumn: diagnostic.startColumn,
+                endLine: diagnostic.endLine,
+                endColumn: diagnostic.endColumn,
+              },
+            ],
+          })
+        }
+
+        return { ok: true, requestId: request.requestId, path: request.path, version: request.version, actions }
       } catch (error) {
         return requestFailure(
           request.requestId,

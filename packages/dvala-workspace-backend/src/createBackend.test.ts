@@ -795,6 +795,28 @@ describe('createBackend', () => {
       }
     })
 
+    // B1 regression: function calls inside a match case body were
+    // invisible to the inlay-hints walker pre-walkAst. The helper hint
+    // here lives inside a `case _ then add(...)` body.
+    it('emits hints for call sites inside match case bodies', async () => {
+      const backend = createBackend()
+      const source = 'let add = (a, b) -> a + b;\nlet f = (x: Number) -> match x\n  case _ then add(1, 2)\nend;\nf(5)'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestInlayHints({
+        requestId: 94,
+        path: 'main.dvala',
+        version: 1,
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      // `add(1, 2)` inside the case body — both args should get hints.
+      const insideCase = result.hints.filter(h => h.line === 3)
+      expect(insideCase).toHaveLength(2)
+      expect(insideCase.map(h => h.label)).toEqual(['a:', 'b:'])
+    })
+
     it('returns resync-required when the document mirror is stale', async () => {
       const backend = createBackend()
       await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
@@ -803,6 +825,161 @@ describe('createBackend', () => {
         requestId: 93,
         path: 'main.dvala',
         version: 99,
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error.kind).toBe('resync-required')
+    })
+  })
+
+  describe('requestCodeActions', () => {
+    it("offers an 'insert catchall' quick-fix for a Non-exhaustive match diagnostic", async () => {
+      const backend = createBackend()
+      const source = 'let f = (n: Number) -> match n\n  case 0 then 0\n  case 1 then 1\nend;\nf(5)'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 200,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 24,
+        endLine: 1,
+        endColumn: 31,
+        diagnostics: [
+          {
+            message: 'Non-exhaustive match — cannot prove every value of Number is covered',
+            startLine: 1,
+            startColumn: 24,
+            endLine: 1,
+            endColumn: 31,
+          },
+        ],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.actions).toHaveLength(1)
+      const action = result.actions[0]!
+      expect(action.kind).toBe('quickfix')
+      expect(action.title).toContain('catchall')
+      expect(action.fixesDiagnostics?.[0]?.message).toContain('Non-exhaustive match')
+      expect(action.edits).toHaveLength(1)
+      const edit = action.edits[0]!
+      // The edit inserts before the line containing `end` (line 4, column 1).
+      expect(edit.startLine).toBe(4)
+      expect(edit.startColumn).toBe(1)
+      expect(edit.endLine).toBe(4)
+      expect(edit.endColumn).toBe(1)
+      expect(edit.newText).toMatch(/case _ then perform\(@dvala\.error, "unhandled match case"\)\n$/)
+      expect(edit.newText).toMatch(/^  /) // two-space indent for the new case
+    })
+
+    it('returns no actions when the diagnostic message is not a Non-exhaustive match', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 201,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 1,
+        diagnostics: [{ message: 'Some other diagnostic', startLine: 1, startColumn: 1, endLine: 1, endColumn: 1 }],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.actions).toHaveLength(0)
+    })
+
+    it('returns no actions when the diagnostic position is not inside any match', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 202,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 1,
+        diagnostics: [{ message: 'Non-exhaustive match', startLine: 1, startColumn: 1, endLine: 1, endColumn: 1 }],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.actions).toHaveLength(0)
+    })
+
+    // Regression for B1: prior to extracting the shared `walkAst` helper,
+    // the per-site walker only descended two payload levels. A `MatchCase`
+    // tuple `[BindingTarget, body, guard]` sits at depth 3 from the outer
+    // Match's payload, so case body AstNodes — including any nested Match
+    // inside them — were never visited. The quick-fix would either target
+    // the outer match (if one existed) or return no action, never the
+    // inner non-exhaustive match the user was actually working on.
+    it('finds the innermost match when a non-exhaustive match is nested inside another case body', async () => {
+      const backend = createBackend()
+      const source = [
+        'let f = (x: Number) -> match x',
+        '  case 0 then 0',
+        '  case _ then match x',
+        '    case 1 then 1',
+        '  end',
+        'end;',
+        'f(2)',
+      ].join('\n')
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 204,
+        path: 'main.dvala',
+        version: 1,
+        // Position on the inner match's `case 1` line (line 4). The inner
+        // match starts on line 3 at the `match x` after `then`.
+        startLine: 4,
+        startColumn: 5,
+        endLine: 4,
+        endColumn: 5,
+        diagnostics: [
+          {
+            message: 'Non-exhaustive match — cannot prove every value of Number is covered',
+            startLine: 4,
+            startColumn: 5,
+            endLine: 4,
+            endColumn: 10,
+          },
+        ],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.actions).toHaveLength(1)
+      const edit = result.actions[0]!.edits[0]!
+      // The catchall must insert at the INNER match's `end` (line 5), not
+      // the outer match's `end` (line 6). The inner end is indented by 2.
+      expect(edit.startLine).toBe(5)
+      expect(edit.newText).toMatch(/^    /) // outer indent (2) + case indent (2) = 4 spaces
+    })
+
+    it('returns resync-required when the document mirror is stale', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 203,
+        path: 'main.dvala',
+        version: 99,
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 1,
+        diagnostics: [],
       })
 
       expect(result.ok).toBe(false)
@@ -914,6 +1091,33 @@ describe('createBackend', () => {
           outer.endLine > inner.endLine || (outer.endLine === inner.endLine && outer.endColumn >= inner.endColumn)
         expect(outerStartsBefore && outerEndsAfter).toBe(true)
       }
+    })
+
+    // Same B1 regression as the code-actions nested-match test: the
+    // shared `walkAst` helper now descends into Match case body AstNodes,
+    // so selection-range chains correctly include nodes from inside case
+    // bodies. Pre-fix, a cursor on a `1` inside a nested case body would
+    // skip every AST node deeper than two payload levels.
+    it('includes nodes from inside nested match case bodies in the containment chain', async () => {
+      const backend = createBackend()
+      const source = 'let f = (x: Number) -> match x\n  case _ then match x\n    case 1 then 1\n  end\nend'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestSelectionRange({
+        requestId: 106,
+        path: 'main.dvala',
+        version: 1,
+        positions: [{ line: 3, column: 18 }], // on the trailing `1` literal
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const chain = result.ranges[0]!
+      // The chain should include nodes inside the inner case body — at
+      // minimum the innermost literal, the case body, the inner match,
+      // and the outer match. Pre-walkAst fix, this chain was empty or
+      // had only the outermost let.
+      expect(chain.length).toBeGreaterThanOrEqual(3)
     })
 
     it('returns a chain when the cursor is at the first column of a node', async () => {
