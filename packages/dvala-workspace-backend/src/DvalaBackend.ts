@@ -18,6 +18,8 @@ import type {
   BackendRemoveFileRequest,
   BackendInlayHintsRequest,
   BackendInlayHintsResult,
+  BackendSelectionRangeRequest,
+  BackendSelectionRangeResult,
   BackendSemanticTokensRequest,
   BackendSemanticTokensResult,
   BackendSignatureHelpRequest,
@@ -57,6 +59,7 @@ export interface DvalaBackend {
   requestSignatureHelp(request: BackendSignatureHelpRequest): Promise<BackendSignatureHelpResult>
   requestDocumentSymbols(request: BackendDocumentSymbolsRequest): Promise<BackendDocumentSymbolsResult>
   requestInlayHints(request: BackendInlayHintsRequest): Promise<BackendInlayHintsResult>
+  requestSelectionRange(request: BackendSelectionRangeRequest): Promise<BackendSelectionRangeResult>
   requestSemanticTokens(request: BackendSemanticTokensRequest): Promise<BackendSemanticTokensResult>
   requestSymbolAtPosition(request: BackendSymbolAtPositionRequest): Promise<BackendSymbolAtPositionResult>
   requestWorkspaceSymbols(request: BackendWorkspaceSymbolsRequest): Promise<BackendWorkspaceSymbolsResult>

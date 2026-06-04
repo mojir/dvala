@@ -45,6 +45,9 @@ import type {
   BackendInlayHint,
   BackendInlayHintsRequest,
   BackendInlayHintsResult,
+  BackendSelectionRange,
+  BackendSelectionRangeRequest,
+  BackendSelectionRangeResult,
   BackendSemanticToken,
   BackendSemanticTokenType,
   BackendSemanticTokensRequest,
@@ -646,6 +649,85 @@ function isCallableType(type: MaybeCallable): boolean {
     return type.lowerBounds.every(isCallableType)
   }
   return false
+}
+
+// Walk the AST and collect every node whose source range contains the
+// given position. Returns the containment chain innermost → outermost,
+// converted to portable `BackendSelectionRange` shape. VS Code's
+// `SelectionRangeProvider` rebuilds these into a linked list so Alt+Shift+→
+// steps through them.
+function collectSelectionRanges(
+  ast: readonly AstNode[],
+  sourceMap: Map<number, SourceMapPosition> | undefined,
+  position: { line: number; column: number },
+): BackendSelectionRange[] {
+  if (!sourceMap) return []
+  // Position is 1-based; sourceMap stores 0-based. Compare in 0-based space.
+  const targetLine = position.line - 1
+  const targetCol = position.column - 1
+  const containing: SourceMapPosition[] = []
+  const visit = (node: AstNode): void => {
+    const nodeId = node[node.length - 1] as number
+    const pos = sourceMap.get(nodeId)
+    if (pos && positionContains(pos, targetLine, targetCol)) {
+      containing.push(pos)
+    }
+    const payload = node[1]
+    if (Array.isArray(payload)) {
+      for (const child of payload) {
+        if (isAstNode(child)) visit(child)
+        else if (Array.isArray(child)) {
+          for (const grand of child) {
+            if (isAstNode(grand)) visit(grand)
+          }
+        }
+      }
+    }
+  }
+  for (const node of ast) visit(node)
+  // Sort by range size — innermost (smallest) first. Stable sort preserves
+  // sibling order when ranges happen to be equal (rare but possible after
+  // collapsed-source edge cases).
+  containing.sort((a, b) => rangeSize(a) - rangeSize(b))
+  // Deduplicate consecutive identical ranges (degenerate AST nodes that
+  // share their parent's exact span — e.g. single-statement Block).
+  const result: BackendSelectionRange[] = []
+  let prev: BackendSelectionRange | undefined
+  for (const pos of containing) {
+    const range: BackendSelectionRange = {
+      startLine: pos.start[0] + 1,
+      startColumn: pos.start[1] + 1,
+      endLine: pos.end[0] + 1,
+      endColumn: pos.end[1] + 1,
+    }
+    if (
+      !prev ||
+      prev.startLine !== range.startLine ||
+      prev.startColumn !== range.startColumn ||
+      prev.endLine !== range.endLine ||
+      prev.endColumn !== range.endColumn
+    ) {
+      result.push(range)
+      prev = range
+    }
+  }
+  return result
+}
+
+function positionContains(pos: SourceMapPosition, line: number, column: number): boolean {
+  const afterStart = line > pos.start[0] || (line === pos.start[0] && column >= pos.start[1])
+  const beforeEnd = line < pos.end[0] || (line === pos.end[0] && column <= pos.end[1])
+  return afterStart && beforeEnd
+}
+
+function rangeSize(pos: SourceMapPosition): number {
+  // Approximate "size" by the line span × a large constant + column delta on
+  // the last line, so multi-line nodes always rank larger than single-line
+  // ones. Exact char count would need the source text; this is enough to
+  // order containment chains correctly.
+  const lineSpan = pos.end[0] - pos.start[0]
+  if (lineSpan === 0) return pos.end[1] - pos.start[1]
+  return lineSpan * 1_000_000 + pos.end[1] + (pos.start[1] === 0 ? 0 : -pos.start[1])
 }
 
 // Walk the AST, find every Call node, and emit a parameter-name inlay hint
@@ -1308,6 +1390,48 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         const hints: BackendInlayHint[] = []
         collectCallInlayHints(ast.body, typecheckResult.sourceMap, refByNodeId, hints)
         return { ok: true, requestId: request.requestId, path: request.path, version: request.version, hints }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+    },
+
+    async requestSelectionRange(request: BackendSelectionRangeRequest): Promise<BackendSelectionRangeResult> {
+      const openDocument = documents.getOpenDocument(request.path)
+      if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'resync-required',
+            message: `Backend document mirror missing or stale for ${request.path}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+
+      try {
+        const effectiveSource = request.source ?? openDocument?.source ?? ''
+        const effectiveVersion = openDocument?.version ?? request.version
+        // The cache already has the sourceMap we need from any prior request
+        // at this version (diagnostics, hover, etc.). First call here pays
+        // for the typecheck; subsequent semantic-tokens / inlay-hints calls
+        // at the same version hit free.
+        const typecheckResult = getOrComputeTypecheck(request.path, effectiveSource, effectiveVersion)
+        const ast = parseToAst(
+          minifyTokenStream(tokenizeSource(effectiveSource, true, request.path), { removeWhiteSpace: true }),
+        )
+        const ranges = request.positions.map(position =>
+          collectSelectionRanges(ast.body, typecheckResult.sourceMap, position),
+        )
+        return { ok: true, requestId: request.requestId, path: request.path, version: request.version, ranges }
       } catch (error) {
         return requestFailure(
           request.requestId,

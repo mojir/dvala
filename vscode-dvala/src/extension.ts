@@ -900,6 +900,41 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
+  // Selection Range — Alt+Shift+→ expands selection to the enclosing AST
+  // node; Alt+Shift+← shrinks. Backend returns the containment chain
+  // (innermost → outermost) as a flat list; we link them into VS Code's
+  // nested SelectionRange shape here.
+  const selectionRangeProvider = vscode.languages.registerSelectionRangeProvider('dvala', {
+    async provideSelectionRanges(document, positions) {
+      indexDocument(document)
+      await syncBackendAnalysisDocument(document)
+
+      const result = await backendDiagnostics.requestSelectionRange({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        positions: positions.map(p => ({ line: p.line + 1, column: p.character + 1 })),
+      })
+      if (!result.ok) return []
+
+      return result.ranges.map(chain => {
+        // Link innermost → outermost into nested SelectionRange objects.
+        let parent: vscode.SelectionRange | undefined
+        for (let i = chain.length - 1; i >= 0; i--) {
+          const r = chain[i]!
+          const range = new vscode.Range(
+            Math.max(0, r.startLine - 1),
+            Math.max(0, r.startColumn - 1),
+            Math.max(0, r.endLine - 1),
+            Math.max(0, r.endColumn - 1),
+          )
+          parent = new vscode.SelectionRange(range, parent)
+        }
+        return parent ?? new vscode.SelectionRange(new vscode.Range(positions[0]!, positions[0]!))
+      })
+    },
+  })
+
   // Document formatting provider — powers Format Document (Shift+Alt+F / Shift+Option+F)
   const formattingProvider = vscode.languages.registerDocumentFormattingEditProvider('dvala', {
     async provideDocumentFormattingEdits(document) {
@@ -928,6 +963,7 @@ export function activate(context: vscode.ExtensionContext): void {
     referenceProvider,
     renameProvider,
     documentSymbolProvider,
+    selectionRangeProvider,
     semanticTokensProvider,
     workspaceSymbolProvider,
     lsDiagnostics,

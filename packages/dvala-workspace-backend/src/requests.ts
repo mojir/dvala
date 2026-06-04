@@ -292,6 +292,39 @@ export type BackendInlayHintsResult =
     }
   | BackendRequestFailure
 
+// Selection range — Alt+Shift+→ / ← in VS Code expands/shrinks the
+// selection by semantic units. For each requested position we return a
+// list of ranges innermost → outermost: the smallest AST node containing
+// the position, then its parent, then grandparent, up to the document
+// root. VS Code's `SelectionRangeProvider` wraps these into a linked list.
+//
+// Multiple positions per request because VS Code supports multi-cursor.
+export interface BackendSelectionRange {
+  startLine: number // 1-based
+  startColumn: number // 1-based, inclusive
+  endLine: number // 1-based
+  endColumn: number // 1-based, exclusive (one past the last character)
+}
+
+export interface BackendSelectionRangeRequest {
+  requestId: BackendRequestId
+  path: string
+  source?: string
+  version: BackendDocumentVersion
+  positions: readonly { line: number; column: number }[]
+}
+
+export type BackendSelectionRangeResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      path: string
+      version: BackendDocumentVersion
+      // One entry per requested position. Each entry is innermost → outermost.
+      ranges: readonly (readonly BackendSelectionRange[])[]
+    }
+  | BackendRequestFailure
+
 export interface BackendWorkspaceSymbolsRequest {
   requestId: BackendRequestId
   query: string

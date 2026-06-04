@@ -811,6 +811,75 @@ describe('createBackend', () => {
     })
   })
 
+  describe('requestSelectionRange', () => {
+    it('returns containment chain innermost → outermost', async () => {
+      const backend = createBackend()
+      const source = 'let answer = 1 + 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      // Position on the `1` literal. Expect: literal `1` → call `1 + 2` → let → top-level.
+      const result = await backend.requestSelectionRange({
+        requestId: 100,
+        path: 'main.dvala',
+        version: 1,
+        positions: [{ line: 1, column: 14 }],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.ranges).toHaveLength(1)
+      const chain = result.ranges[0]!
+      expect(chain.length).toBeGreaterThan(1)
+      // First range covers (or starts at) the literal `1`; last range spans
+      // the whole document. Innermost must be a subset of every outer range.
+      for (let i = 1; i < chain.length; i++) {
+        const inner = chain[i - 1]!
+        const outer = chain[i]!
+        const innerSize = (inner.endLine - inner.startLine) * 1000 + (inner.endColumn - inner.startColumn)
+        const outerSize = (outer.endLine - outer.startLine) * 1000 + (outer.endColumn - outer.startColumn)
+        expect(outerSize).toBeGreaterThanOrEqual(innerSize)
+      }
+    })
+
+    it('returns one chain per requested position', async () => {
+      const backend = createBackend()
+      const source = 'let a = 1;\nlet b = 2'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestSelectionRange({
+        requestId: 101,
+        path: 'main.dvala',
+        version: 1,
+        positions: [
+          { line: 1, column: 9 }, // on `1`
+          { line: 2, column: 9 }, // on `2`
+        ],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.ranges).toHaveLength(2)
+      expect(result.ranges[0]!.length).toBeGreaterThan(0)
+      expect(result.ranges[1]!.length).toBeGreaterThan(0)
+    })
+
+    it('returns resync-required when the document mirror is stale', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestSelectionRange({
+        requestId: 102,
+        path: 'main.dvala',
+        version: 99,
+        positions: [{ line: 1, column: 1 }],
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error.kind).toBe('resync-required')
+    })
+  })
+
   it('returns the symbol at a position through the backend', async () => {
     const backend = createBackend()
     const source = 'let answer = 42;\nlet add = (a, b) -> a + b;'

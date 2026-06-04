@@ -20,6 +20,8 @@ import type {
   BackendRemoveFileRequest,
   BackendInlayHintsRequest,
   BackendInlayHintsResult,
+  BackendSelectionRangeRequest,
+  BackendSelectionRangeResult,
   BackendSemanticTokensRequest,
   BackendSemanticTokensResult,
   BackendSignatureHelpRequest,
@@ -283,6 +285,9 @@ function createResyncingBackend(overrides: {
       throw new Error('not implemented')
     },
     async requestInlayHints(_: BackendInlayHintsRequest): Promise<BackendInlayHintsResult> {
+      throw new Error('not implemented')
+    },
+    async requestSelectionRange(_: BackendSelectionRangeRequest): Promise<BackendSelectionRangeResult> {
       throw new Error('not implemented')
     },
     async requestSymbolAtPosition(_: BackendSymbolAtPositionRequest): Promise<BackendSymbolAtPositionResult> {
