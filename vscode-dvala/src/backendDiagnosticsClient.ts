@@ -15,6 +15,8 @@ import type {
   BackendNavigationResult,
   BackendSessionStartRequest,
   BackendSessionStartResult,
+  BackendCodeActionsRequest,
+  BackendCodeActionsResult,
   BackendInlayHintsRequest,
   BackendInlayHintsResult,
   BackendSelectionRangeRequest,
@@ -166,6 +168,13 @@ export class BackendDiagnosticsClient {
     request: Omit<BackendSelectionRangeRequest, 'requestId'>,
   ): Promise<BackendSelectionRangeResult> {
     return this.backend.requestSelectionRange({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async requestCodeActions(request: Omit<BackendCodeActionsRequest, 'requestId'>): Promise<BackendCodeActionsResult> {
+    return this.backend.requestCodeActions({
       requestId: this.createRequestId(),
       ...request,
     })

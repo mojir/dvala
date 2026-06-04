@@ -811,6 +811,108 @@ describe('createBackend', () => {
     })
   })
 
+  describe('requestCodeActions', () => {
+    it("offers an 'insert catchall' quick-fix for a Non-exhaustive match diagnostic", async () => {
+      const backend = createBackend()
+      const source = 'let f = (n: Number) -> match n\n  case 0 then 0\n  case 1 then 1\nend;\nf(5)'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 200,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 24,
+        endLine: 1,
+        endColumn: 31,
+        diagnostics: [
+          {
+            message: 'Non-exhaustive match — cannot prove every value of Number is covered',
+            startLine: 1,
+            startColumn: 24,
+          },
+        ],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.actions).toHaveLength(1)
+      const action = result.actions[0]!
+      expect(action.kind).toBe('quickfix')
+      expect(action.title).toContain('catchall')
+      expect(action.fixesDiagnostics?.[0]?.message).toContain('Non-exhaustive match')
+      expect(action.edits).toHaveLength(1)
+      const edit = action.edits[0]!
+      // The edit inserts before the line containing `end` (line 4, column 1).
+      expect(edit.startLine).toBe(4)
+      expect(edit.startColumn).toBe(1)
+      expect(edit.endLine).toBe(4)
+      expect(edit.endColumn).toBe(1)
+      expect(edit.newText).toMatch(/case _ then perform\(@dvala\.error, "unhandled match case"\)\n$/)
+      expect(edit.newText).toMatch(/^  /) // two-space indent for the new case
+    })
+
+    it('returns no actions when the diagnostic message is not a Non-exhaustive match', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 201,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 1,
+        diagnostics: [{ message: 'Some other diagnostic', startLine: 1, startColumn: 1 }],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.actions).toHaveLength(0)
+    })
+
+    it('returns no actions when the diagnostic position is not inside any match', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 202,
+        path: 'main.dvala',
+        version: 1,
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 1,
+        diagnostics: [{ message: 'Non-exhaustive match', startLine: 1, startColumn: 1 }],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.actions).toHaveLength(0)
+    })
+
+    it('returns resync-required when the document mirror is stale', async () => {
+      const backend = createBackend()
+      await backend.openDocument({ path: 'main.dvala', source: 'let x = 1', version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 203,
+        path: 'main.dvala',
+        version: 99,
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 1,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error.kind).toBe('resync-required')
+    })
+  })
+
   describe('requestSelectionRange', () => {
     it('returns containment chain innermost → outermost', async () => {
       const backend = createBackend()

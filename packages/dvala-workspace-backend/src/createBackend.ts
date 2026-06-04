@@ -22,6 +22,7 @@ import {
 } from '@mojir/dvala-core-tooling'
 import { NodeTypes, type AstNode, type SourceMapPosition } from '@mojir/dvala-types'
 import { allReference, isFunctionReference } from '../../../reference/index'
+import { computeCatchallEdit } from './catchallQuickFix'
 
 import type { DvalaBackend } from './DvalaBackend'
 import { createInMemoryDocumentStore, type BackendDocumentStore } from './documentStore'
@@ -42,6 +43,9 @@ import type {
   BackendFormattingResult,
   BackendHoverRequest,
   BackendHoverResult,
+  BackendCodeAction,
+  BackendCodeActionsRequest,
+  BackendCodeActionsResult,
   BackendInlayHint,
   BackendInlayHintsRequest,
   BackendInlayHintsResult,
@@ -649,6 +653,49 @@ function isCallableType(type: MaybeCallable): boolean {
     return type.lowerBounds.every(isCallableType)
   }
   return false
+}
+
+// Walk the AST to find the smallest (innermost) Match node whose range
+// contains the given (1-based) position. Returns just the range info the
+// catchall-quick-fix helper needs — endLine / endColumn. Used by the code-
+// actions handler to locate the match an exhaustiveness-diagnostic refers
+// to. Returns `null` when no Match wraps the position; the caller skips
+// this action for that diagnostic.
+function findEnclosingMatchRange(
+  ast: readonly AstNode[],
+  sourceMap: Map<number, SourceMapPosition> | undefined,
+  line: number,
+  column: number,
+): { endLine: number; endColumn: number } | null {
+  if (!sourceMap) return null
+  // Position is 1-based; sourceMap stores 0-based. Compare in 0-based space.
+  const targetLine = line - 1
+  const targetCol = column - 1
+  let best: { pos: SourceMapPosition; size: number } | undefined
+  const visit = (node: AstNode): void => {
+    if (node[0] === NodeTypes.Match) {
+      const nodeId = node[node.length - 1] as number
+      const pos = sourceMap.get(nodeId)
+      if (pos && positionContains(pos, targetLine, targetCol)) {
+        const size = rangeSize(pos)
+        if (!best || size < best.size) best = { pos, size }
+      }
+    }
+    const payload = node[1]
+    if (Array.isArray(payload)) {
+      for (const child of payload) {
+        if (isAstNode(child)) visit(child)
+        else if (Array.isArray(child)) {
+          for (const grand of child) {
+            if (isAstNode(grand)) visit(grand)
+          }
+        }
+      }
+    }
+  }
+  for (const node of ast) visit(node)
+  if (!best) return null
+  return { endLine: best.pos.end[0] + 1, endColumn: best.pos.end[1] + 1 }
 }
 
 // Walk the AST and collect every node whose source range contains the
@@ -1390,6 +1437,69 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         const hints: BackendInlayHint[] = []
         collectCallInlayHints(ast.body, typecheckResult.sourceMap, refByNodeId, hints)
         return { ok: true, requestId: request.requestId, path: request.path, version: request.version, hints }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+    },
+
+    async requestCodeActions(request: BackendCodeActionsRequest): Promise<BackendCodeActionsResult> {
+      const openDocument = documents.getOpenDocument(request.path)
+      if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'resync-required',
+            message: `Backend document mirror missing or stale for ${request.path}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+
+      try {
+        const effectiveSource = request.source ?? openDocument?.source ?? ''
+        const ast = parseToAst(
+          minifyTokenStream(tokenizeSource(effectiveSource, true, request.path), { removeWhiteSpace: true }),
+        )
+        const effectiveVersion = openDocument?.version ?? request.version
+        const typecheckResult = getOrComputeTypecheck(request.path, effectiveSource, effectiveVersion)
+        const actions: BackendCodeAction[] = []
+
+        // Quick-fix: "Insert catchall" for `Non-exhaustive match` diagnostics.
+        // The diagnostic carries enough position info; we find the Match AST
+        // node containing the diagnostic's start, then ask the helper for an
+        // edit that adds `case _ then perform(@dvala.error, ...)` before
+        // the closing `end`. One diagnostic → one action (no fan-out yet).
+        for (const diagnostic of request.diagnostics) {
+          if (!diagnostic.message.startsWith('Non-exhaustive match')) continue
+          const matchRange = findEnclosingMatchRange(
+            ast.body,
+            typecheckResult.sourceMap,
+            diagnostic.startLine,
+            diagnostic.startColumn,
+          )
+          if (!matchRange) continue
+          const edit = computeCatchallEdit(effectiveSource, matchRange)
+          if (!edit) continue
+          actions.push({
+            title: "Add 'case _ then perform(@dvala.error, ...)' catchall",
+            kind: 'quickfix',
+            edits: [edit],
+            fixesDiagnostics: [
+              { message: diagnostic.message, startLine: diagnostic.startLine, startColumn: diagnostic.startColumn },
+            ],
+          })
+        }
+
+        return { ok: true, requestId: request.requestId, path: request.path, version: request.version, actions }
       } catch (error) {
         return requestFailure(
           request.requestId,
