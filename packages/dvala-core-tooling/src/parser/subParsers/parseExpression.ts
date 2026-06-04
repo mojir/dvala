@@ -20,6 +20,7 @@ import {
   exponentiationPrecedence,
   fromBinaryOperatorToNode,
   isAtExpressionEnd,
+  nodeStartDebugInfo,
   withSourceCodeInfo,
 } from '../helpers'
 import { getPrecedence } from '../getPrecedence'
@@ -174,7 +175,13 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         : withSourceCodeInfo([NodeTypes.Builtin, name, 0], operator[2], ctx)
       ctx.advance()
       const right = parseExpression(ctx, newPrecedece)
-      left = fromBinaryOperatorToNode(operator, symbol, left, right, operator[2], ctx)
+      // Range for the wrapping Call/And/Or/Qq node starts at the LEFT
+      // operand, not the operator. setNodeEnd inside fromBinaryOperatorToNode
+      // closes it at the rightmost consumed token, so the final range spans
+      // the full binary expression. (Fallback to operator position only when
+      // the source map is unavailable — typecheck-only no-source-map parses.)
+      const callRangeStart = nodeStartDebugInfo(left, ctx) ?? operator[2]
+      left = fromBinaryOperatorToNode(operator, symbol, left, right, callRangeStart, ctx)
       ctx.builder?.endNode()
     } else if (isSymbolToken(operator)) {
       if (!isFunctionOperator(operator[1])) {
