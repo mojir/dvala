@@ -1,5 +1,6 @@
 import {
   allBuiltinModules,
+  isDvalaIdentifierName,
   WorkspaceIndex,
   type ResolveImport,
   type FileSymbols,
@@ -19,6 +20,7 @@ import {
   typecheck,
   type MacroEvalDvalaFactory,
 } from '@mojir/dvala-core-tooling'
+import { NodeTypes, type AstNode, type SourceMapPosition } from '@mojir/dvala-types'
 import { allReference, isFunctionReference } from '../../../reference/index'
 
 import type { DvalaBackend } from './DvalaBackend'
@@ -40,6 +42,13 @@ import type {
   BackendFormattingResult,
   BackendHoverRequest,
   BackendHoverResult,
+  BackendInlayHint,
+  BackendInlayHintsRequest,
+  BackendInlayHintsResult,
+  BackendSemanticToken,
+  BackendSemanticTokenType,
+  BackendSemanticTokensRequest,
+  BackendSemanticTokensResult,
   BackendSignatureHelpRequest,
   BackendSignatureHelpSignature,
   BackendSignatureHelpResult,
@@ -320,11 +329,9 @@ function computeTypecheckResult(
 
 function computeHoverResult(
   request: BackendHoverRequest,
-  documents: BackendDocumentStore,
-  createDvala?: MacroEvalDvalaFactory,
+  typecheckResult: ReturnType<typeof computeTypecheckResult>,
 ): string | undefined {
   if (request.source === undefined) return undefined
-  const typecheckResult = computeTypecheckResult(request.source, request.path, documents, createDvala)
   const wordRange =
     request.startColumn !== undefined && request.endColumn !== undefined
       ? {
@@ -613,6 +620,151 @@ function toBackendDocumentSymbol(def: SymbolDef): BackendDocumentSymbol {
   }
 }
 
+// Is the inferred type one a user would call like a function? Used by the
+// semantic-tokens layer to refine destructured-import bindings — `let { sin
+// } = import("math")` should color `sin` as a function because `math.sin`
+// is `(Number) -> Number & (Number[]) -> Number[] & ...`, an intersection
+// of function types. Three shapes show up in practice:
+//   - `Function` / `AnyFunction` — the simple case.
+//   - `Inter` of callable members — overload-set shape (math.sin's "function
+//     for Number, function for Number[], …").
+//   - `Var` with callable lower bounds — what `findTypeAtPosition` returns
+//     at a reference site (the variable that *holds* the type, not the
+//     resolved shape).
+// Deeper unions of callables are out of scope until we hit them in practice.
+type MaybeCallable = {
+  tag: string
+  members?: readonly MaybeCallable[]
+  lowerBounds?: readonly MaybeCallable[]
+}
+function isCallableType(type: MaybeCallable): boolean {
+  if (type.tag === 'Function' || type.tag === 'AnyFunction') return true
+  if (type.tag === 'Inter' && type.members && type.members.length > 0) {
+    return type.members.every(isCallableType)
+  }
+  if (type.tag === 'Var' && type.lowerBounds && type.lowerBounds.length > 0) {
+    return type.lowerBounds.every(isCallableType)
+  }
+  return false
+}
+
+// Walk the AST, find every Call node, and emit a parameter-name inlay hint
+// at each argument position. Two callee shapes resolve to parameter names:
+//
+//   - Sym callee resolving to a user-defined function/macro: name list lives
+//     on the SymbolDef's `params`.
+//   - Builtin callee: name list lives on `allReference[name].args` (we use
+//     the first variant — overload-disambiguated hints are out of scope
+//     until we can pick the matching variant from argument types).
+//
+// Skip arguments that are bare symbol references matching their param name
+// (`add(a, b)` doesn't need labels — they're self-documenting). The label
+// reads `name:` to match VS Code's parameter-hint convention.
+function collectCallInlayHints(
+  ast: readonly AstNode[],
+  sourceMap: Map<number, SourceMapPosition> | undefined,
+  refByNodeId: Map<number, FileSymbols['references'][number]>,
+  out: BackendInlayHint[],
+): void {
+  const visit = (node: AstNode): void => {
+    if (node[0] === NodeTypes.Call && Array.isArray(node[1])) {
+      const [callee, args] = node[1] as [AstNode, AstNode[]]
+      const params = paramNamesForCallee(callee, refByNodeId)
+      if (params) emitArgHints(args, params, sourceMap, out)
+      visit(callee)
+      for (const arg of args) visit(arg)
+      return
+    }
+    // Walk through every payload child shallowly. Most special-expression
+    // nodes hold their sub-expressions in either array-of-nodes or single-
+    // node payloads; iterating the payload's structural children covers the
+    // common shapes (Block, If, Let, Function bodies, etc.) without a full
+    // visitor table. Non-AST payload entries (strings/numbers/etc.) are
+    // filtered by isAstNode.
+    const payload = node[1]
+    if (Array.isArray(payload)) {
+      for (const child of payload) {
+        if (isAstNode(child)) visit(child)
+        else if (Array.isArray(child)) {
+          for (const grand of child) {
+            if (isAstNode(grand)) visit(grand)
+          }
+        }
+      }
+    }
+  }
+  for (const node of ast) visit(node)
+}
+
+function isAstNode(value: unknown): value is AstNode {
+  return Array.isArray(value) && typeof value[0] === 'string' && typeof value[value.length - 1] === 'number'
+}
+
+function paramNamesForCallee(
+  callee: AstNode,
+  refByNodeId: Map<number, FileSymbols['references'][number]>,
+): readonly string[] | null {
+  if (callee[0] === NodeTypes.Sym) {
+    const ref = refByNodeId.get(callee[2])
+    const params = ref?.resolvedDef?.params
+    return params && params.length > 0 ? params : null
+  }
+  if (callee[0] === NodeTypes.Builtin) {
+    const name = callee[1] as string
+    // Skip operator builtins (`+`, `==`, `&&`, …). They lower to Call nodes
+    // but emit as infix syntax; param-name hints on operator arguments are
+    // noise (`a + b` → `xs: a + b` reads as garbled punctuation). The
+    // identifier-name predicate excludes any builtin whose name isn't a
+    // valid Dvala identifier — which is exactly the operator set.
+    if (!isDvalaIdentifierName(name)) return null
+    const ref = allReference[name]
+    if (ref && isFunctionReference(ref)) {
+      const variant = ref.variants[0]
+      return variant && variant.argumentNames.length > 0 ? variant.argumentNames : null
+    }
+  }
+  return null
+}
+
+function emitArgHints(
+  args: readonly AstNode[],
+  params: readonly string[],
+  sourceMap: Map<number, SourceMapPosition> | undefined,
+  out: BackendInlayHint[],
+): void {
+  if (!sourceMap) return
+  for (let i = 0; i < args.length && i < params.length; i++) {
+    const arg = args[i]!
+    const paramName = params[i]!
+    // Skip self-documenting arg: `add(a, b)` — the variable name already
+    // matches the param, the hint would be visual noise.
+    if (arg[0] === NodeTypes.Sym && arg[1] === paramName) continue
+    const pos = sourceMap.get(arg[arg.length - 1] as number)
+    if (!pos) continue
+    out.push({ line: pos.start[0] + 1, column: pos.start[1] + 1, label: `${paramName}:` })
+  }
+}
+
+// SymbolDef.kind values map to LSP-standard semantic-token types. `handler`
+// is a regular `variable` to the editor (its handler-ness shows up via the
+// symbol's documentation, not coloring); `import` becomes `namespace` so
+// imported aliases get the same theme treatment as module references.
+function symbolKindToTokenType(kind: SymbolDef['kind']): BackendSemanticTokenType {
+  switch (kind) {
+    case 'function':
+      return 'function'
+    case 'macro':
+      return 'macro'
+    case 'parameter':
+      return 'parameter'
+    case 'import':
+      return 'namespace'
+    case 'handler':
+    case 'variable':
+      return 'variable'
+  }
+}
+
 function computeSignatureHelpResult(request: BackendSignatureHelpRequest, documents: BackendDocumentStore) {
   const callCtx = findSharedCallContext(request.source, { line: request.line, column: request.column })
   if (!callCtx) return { activeParameter: 0, signatures: [] as const }
@@ -656,6 +808,33 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
   const documents = options.documents ?? createInMemoryDocumentStore()
   const runtime = options.runtime ?? createBackendRuntimeAdapter(documents)
   const cancelledRequests = new Map<BackendRequestId, boolean>()
+
+  // Per-document typecheck cache, keyed by path. Stores the last-computed
+  // typecheck result for the given (path, version). A cache hit at the
+  // current version is shared across requests at that version (diagnostics,
+  // hover, semantic tokens, inlay hints) — so a single keystroke pays for at
+  // most one full typecheck regardless of how many features ask for type info.
+  //
+  // Invalidation policy: any document mutation (open / update / close /
+  // persistFile / removeFile) clears the whole cache. Cross-file imports
+  // mean a sibling file's edit can invalidate this file's typecheck, and
+  // tracking that dependency precisely is more machinery than the simple
+  // "wipe on any mutation" policy buys us. The same-version multi-feature
+  // amortisation — the headline win — survives that.
+  type CachedTypecheck = ReturnType<typeof computeTypecheckResult>
+  const typecheckCache = new Map<string, { version: BackendDocumentVersion; result: CachedTypecheck }>()
+
+  function getOrComputeTypecheck(path: string, source: string, version: BackendDocumentVersion): CachedTypecheck {
+    const cached = typecheckCache.get(path)
+    if (cached && cached.version === version) return cached.result
+    const result = computeTypecheckResult(source, path, documents, options.createDvala)
+    typecheckCache.set(path, { version, result })
+    return result
+  }
+
+  function invalidateTypecheckCache(): void {
+    typecheckCache.clear()
+  }
 
   function runtimeCancelledFailure(requestId: BackendRequestId, message: string, path?: string): BackendRequestFailure {
     clearCancelledRequest(cancelledRequests, requestId)
@@ -713,22 +892,28 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
   return {
     async openDocument(document: BackendTextDocument): Promise<void> {
       documents.open(document)
+      invalidateTypecheckCache()
     },
 
     async updateDocument(document: BackendTextDocument, previousVersion: BackendDocumentVersion) {
-      return documents.update(document, previousVersion)
+      const result = documents.update(document, previousVersion)
+      invalidateTypecheckCache()
+      return result
     },
 
     async closeDocument(path: string): Promise<void> {
       documents.close(path)
+      invalidateTypecheckCache()
     },
 
     async persistFile(request): Promise<void> {
       documents.persistFile(request)
+      invalidateTypecheckCache()
     },
 
     async removeFile(request): Promise<void> {
       documents.removeFile(request)
+      invalidateTypecheckCache()
     },
 
     async requestDiagnostics(request: BackendDiagnosticsRequest): Promise<BackendDiagnosticsResult> {
@@ -760,12 +945,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const typecheckResult = computeTypecheckResult(
-          openDocument.source,
-          openDocument.path,
-          documents,
-          options.createDvala,
-        )
+        const typecheckResult = getOrComputeTypecheck(openDocument.path, openDocument.source, openDocument.version)
         const typeDiagnostics = buildTypeDiagnostics(typecheckResult)
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
@@ -878,14 +1058,14 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           )
         }
 
-        const inferredType = computeHoverResult(
-          {
-            ...request,
-            source: request.source ?? openDocument?.source,
-          },
-          documents,
-          options.createDvala,
-        )
+        const effectiveSource = request.source ?? openDocument?.source
+        const effectiveVersion = openDocument?.version ?? request.version
+        const inferredType = effectiveSource
+          ? computeHoverResult(
+              { ...request, source: effectiveSource },
+              getOrComputeTypecheck(request.path, effectiveSource, effectiveVersion),
+            )
+          : undefined
         if (isCancelled(cancelledRequests, request.requestId)) {
           clearCancelledRequest(cancelledRequests, request.requestId)
           return requestFailure(
@@ -978,6 +1158,156 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           version: request.version,
           symbols: index.getDocumentSymbols(request.path).map(toBackendDocumentSymbol),
         }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+    },
+
+    async requestSemanticTokens(request: BackendSemanticTokensRequest): Promise<BackendSemanticTokensResult> {
+      const openDocument = documents.getOpenDocument(request.path)
+      if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'resync-required',
+            message: `Backend document mirror missing or stale for ${request.path}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+
+      try {
+        const index = new WorkspaceIndex()
+        indexBackendDocuments(request.path, documents, index)
+        const fileSymbols = index.getFileSymbols(request.path)
+        if (!fileSymbols) {
+          return {
+            ok: true,
+            requestId: request.requestId,
+            path: request.path,
+            version: request.version,
+            tokens: [],
+          }
+        }
+
+        // Position E (type-info-aware): a destructured-import binding
+        // (`let { foo } = import("math")`) holds whatever `math.foo` is,
+        // not the module itself. The symbol table tags it kind="import",
+        // but coloring it as "namespace" would be wrong — `foo` is a
+        // function or variable.
+        //
+        // We refine via the typechecker's typeMap. The destructure-key
+        // node itself doesn't have a typeMap entry (the typechecker
+        // records types at reference Sym nodes, not destructure keys), so
+        // we precompute one reference nodeId per def and look the type up
+        // via that. Using nodeId directly (rather than position) avoids
+        // the position-based ambiguity where `sin(0)` shares its start
+        // with the callee `sin` and `findTypeAtPosition` would return the
+        // call expression's result type instead of the callee's.
+        const effectiveSource = request.source ?? openDocument?.source ?? ''
+        const effectiveVersion = openDocument?.version ?? request.version
+        const typecheckResult = getOrComputeTypecheck(request.path, effectiveSource, effectiveVersion)
+        const firstRefNodeByDef = new Map<SymbolDef, number>()
+        for (const ref of fileSymbols.references) {
+          if (!ref.resolvedDef || firstRefNodeByDef.has(ref.resolvedDef)) continue
+          firstRefNodeByDef.set(ref.resolvedDef, ref.nodeId)
+        }
+        const resolveTokenType = (def: SymbolDef): BackendSemanticTokenType => {
+          if (def.kind !== 'import' || def.importedName === undefined) return symbolKindToTokenType(def.kind)
+          const refNode = firstRefNodeByDef.get(def)
+          if (refNode === undefined) return 'variable'
+          const inferred = typecheckResult.typeMap.get(refNode)
+          if (inferred && isCallableType(inferred)) return 'function'
+          return 'variable'
+        }
+
+        // Walk every definition + reference in the file and emit a portable
+        // token tagged with the symbol's kind. Sorting by (line, startColumn)
+        // lets the VS Code adapter delta-encode without an extra sort pass.
+        const tokens: BackendSemanticToken[] = []
+        for (const def of fileSymbols.definitions) {
+          tokens.push({
+            line: def.location.line,
+            startColumn: def.location.column,
+            length: def.name.length,
+            tokenType: resolveTokenType(def),
+            modifiers: ['declaration'],
+          })
+        }
+        for (const ref of fileSymbols.references) {
+          if (!ref.resolvedDef) continue // unresolved — leave to the TextMate fallback
+          tokens.push({
+            line: ref.location.line,
+            startColumn: ref.location.column,
+            length: ref.name.length,
+            tokenType: resolveTokenType(ref.resolvedDef),
+            modifiers: [],
+          })
+        }
+        tokens.sort((a, b) => a.line - b.line || a.startColumn - b.startColumn)
+
+        return {
+          ok: true,
+          requestId: request.requestId,
+          path: request.path,
+          version: request.version,
+          tokens,
+        }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+    },
+
+    async requestInlayHints(request: BackendInlayHintsRequest): Promise<BackendInlayHintsResult> {
+      const openDocument = documents.getOpenDocument(request.path)
+      if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'resync-required',
+            message: `Backend document mirror missing or stale for ${request.path}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+
+      try {
+        const effectiveSource = request.source ?? openDocument?.source ?? ''
+        const effectiveVersion = openDocument?.version ?? request.version
+        const index = new WorkspaceIndex()
+        indexBackendDocuments(request.path, documents, index)
+        const fileSymbols = index.getFileSymbols(request.path)
+        if (!fileSymbols) {
+          return { ok: true, requestId: request.requestId, path: request.path, version: request.version, hints: [] }
+        }
+        // The typecheck-cached sourceMap maps nodeId → position. We parse
+        // afresh here because the typecheck result doesn't hand back the AST.
+        const ast = parseToAst(
+          minifyTokenStream(tokenizeSource(effectiveSource, true, request.path), { removeWhiteSpace: true }),
+        )
+        const typecheckResult = getOrComputeTypecheck(request.path, effectiveSource, effectiveVersion)
+        const refByNodeId = new Map(fileSymbols.references.map(ref => [ref.nodeId, ref]))
+        const hints: BackendInlayHint[] = []
+        collectCallInlayHints(ast.body, typecheckResult.sourceMap, refByNodeId, hints)
+        return { ok: true, requestId: request.requestId, path: request.path, version: request.version, hints }
       } catch (error) {
         return requestFailure(
           request.requestId,

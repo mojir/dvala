@@ -229,6 +229,69 @@ export type BackendSymbolAtPositionResult =
     }
   | BackendRequestFailure
 
+// Portable semantic-token shape — one entry per identifier occurrence in the
+// document. The VS Code adapter encodes these into LSP's delta-line / delta-
+// char integer stream before handing to `DocumentSemanticTokensProvider`.
+// The `tokenType` set is the union of LSP standard types we actually emit;
+// new types extend it. Modifiers stay simple (just `declaration` for now —
+// the `def site` vs `reference site` distinction is what the editor uses to
+// theme declarations differently).
+export type BackendSemanticTokenType = 'variable' | 'function' | 'macro' | 'parameter' | 'namespace'
+
+export type BackendSemanticTokenModifier = 'declaration'
+
+export interface BackendSemanticToken {
+  line: number // 1-based — the VS Code adapter converts to 0-based + delta-encodes
+  startColumn: number // 1-based
+  length: number
+  tokenType: BackendSemanticTokenType
+  modifiers: readonly BackendSemanticTokenModifier[]
+}
+
+export interface BackendSemanticTokensRequest {
+  requestId: BackendRequestId
+  path: string
+  source?: string
+  version: BackendDocumentVersion
+}
+
+export type BackendSemanticTokensResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      path: string
+      version: BackendDocumentVersion
+      tokens: readonly BackendSemanticToken[]
+    }
+  | BackendRequestFailure
+
+// Inlay hint — a non-editable label rendered inline at a source position.
+// v1 emits parameter-name hints at call sites: `add(/*a:*/ 1, /*b:*/ 2)`.
+// Type-decorated labels (`/*a: Number:*/ 1`) reuse this shape and are a
+// follow-up once we want the extra column real estate.
+export interface BackendInlayHint {
+  line: number // 1-based
+  column: number // 1-based, the hint renders before this position
+  label: string
+}
+
+export interface BackendInlayHintsRequest {
+  requestId: BackendRequestId
+  path: string
+  source?: string
+  version: BackendDocumentVersion
+}
+
+export type BackendInlayHintsResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      path: string
+      version: BackendDocumentVersion
+      hints: readonly BackendInlayHint[]
+    }
+  | BackendRequestFailure
+
 export interface BackendWorkspaceSymbolsRequest {
   requestId: BackendRequestId
   query: string
