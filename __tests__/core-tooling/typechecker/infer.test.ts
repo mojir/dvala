@@ -853,17 +853,20 @@ describe('inference — exhaustiveness', () => {
     ).not.toThrow()
   })
 
-  it('accepts a fold-true guard as a catchall', () => {
-    // The fold pass already reduces `!false` to `Literal(true)`. Per Q3,
-    // any guard the fold reduces to Literal(true) is treated as catchall —
-    // not just literal `true`.
+  it('accepts a literal-true guard as a catchall', () => {
+    // Q3: a guard the typechecker reduces to `Literal(true)` is treated as
+    // a catchall. Use bare `when true` here — it infers directly to
+    // `Literal(true)` regardless of `DVALA_FOLD`. (Fold-dependent shapes
+    // like `when !false` only reach Literal(true) under fold=1; the CI
+    // matrix runs under both modes, so this test sticks to the always-true
+    // shape.)
     expect(() =>
       inferProgram(`
       effect @ext(Null) -> Number;
       let n = perform(@ext, null);
       match n
         case 0 then 0
-        case _ when !false then 1
+        case _ when true then 1
       end
     `),
     ).not.toThrow()

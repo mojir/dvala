@@ -2049,23 +2049,30 @@ export function inferExpr(node: AstNode, ctx: InferenceContext, env: TypeEnv, ty
           if (guard) {
             const guardType = inferExpr(guard, ctx, caseEnv, typeMap)
             constrainBoolean(ctx, guardType, guard[2], 'The `match` guard (`when`)')
+            const expandedGuard = expandType(guardType)
             // C9: a guard that folds to literal(false) makes this case
             // unreachable. Skip the body so its type doesn't contribute to
             // the result, and do NOT subtract consumedType from remaining —
             // the pattern shape is still unhandled, so exhaustiveness
-            // correctly fires if no other case covers it. Symmetric to the
-            // existing redundant-pattern warning (decision #6).
-            if (ctx.foldEnabled) {
-              const expandedGuard = expandType(guardType)
-              if (expandedGuard.tag === 'Literal' && expandedGuard.value === false) {
-                ctx.deferError(
-                  new TypeInferenceError('Redundant match case — guard is always false', pattern[2], 'warning'),
-                )
-                continue
-              }
-              if (expandedGuard.tag === 'Literal' && expandedGuard.value === true) {
-                guardFoldsToTrue = true
-              }
+            // correctly fires if no other case covers it. Gated on
+            // foldEnabled because the redundancy warning's stakes are
+            // observation-only — under fold=off the warning intentionally
+            // doesn't fire (decision #6 / project_compile_implies_run).
+            if (ctx.foldEnabled && expandedGuard.tag === 'Literal' && expandedGuard.value === false) {
+              ctx.deferError(
+                new TypeInferenceError('Redundant match case — guard is always false', pattern[2], 'warning'),
+              )
+              continue
+            }
+            // Literal-true catchall detection runs in both fold modes. The
+            // throw-vs-accept decision in the exhaustiveness check below
+            // must NOT diverge between DVALA_FOLD=0 and DVALA_FOLD=1 — the
+            // CI matrix enforces parity. Bare `when true` infers directly
+            // to `Literal(true)` (no fold needed); arithmetic-folded shapes
+            // like `when !false` only reach Literal(true) under fold=1 and
+            // are tested separately.
+            if (expandedGuard.tag === 'Literal' && expandedGuard.value === true) {
+              guardFoldsToTrue = true
             }
             const guardNarrowings = extractIfNarrowings(guard, caseEnv)
             if (guardNarrowings) {

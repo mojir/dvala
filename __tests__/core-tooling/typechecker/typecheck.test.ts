@@ -3771,13 +3771,15 @@ describe('typecheck — non-exhaustive match strict catchall (2026-06-04)', () =
     expect(errors).toHaveLength(0)
   })
 
-  it('accepts a guard the fold reduces to Literal(true) as a catchall (Q3)', () => {
-    // The fold pass reduces `!false` to `Literal(true)`. The catchall
-    // detection treats fold-true guards the same as unguarded catchalls.
+  it('accepts a literal-true guard as a catchall (Q3)', () => {
+    // The catchall detection treats any guard typed as `Literal(true)`
+    // as a catchall. Bare `when true` is the always-on shape — it works
+    // under both `DVALA_FOLD=0` and `=1` because the literal types
+    // directly, no fold pass needed.
     const result = dvala.typecheck(`
       let f = (n: Number) -> match n
         case 0 then 0
-        case _ when !false then 1
+        case _ when true then 1
       end;
       f(5)
     `)
