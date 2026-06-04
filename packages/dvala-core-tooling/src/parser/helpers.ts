@@ -100,6 +100,24 @@ export function getSymbolName(symbol: SymbolNode): string {
   return symbol[1]
 }
 
+/**
+ * Get the start position of an already-parsed AstNode as TokenDebugInfo,
+ * by looking it up in the source map. Used by binary-op parsing so the
+ * wrapping `Call` / `And` / `Or` / `Qq` node's range starts at the LEFT
+ * operand's first token rather than the operator (which would skew the
+ * range and break LS features that rely on full-expression spans).
+ * Returns undefined if the node isn't in the source map (typecheck-only
+ * or no-source-map parse).
+ */
+export function nodeStartDebugInfo(node: AstNode, ctx: ParserContext): TokenDebugInfo | undefined {
+  const sourceMap = ctx.sourceMap
+  if (!sourceMap) return undefined
+  const nodeId = node[node.length - 1] as number
+  const pos = sourceMap.positions.get(nodeId)
+  if (!pos) return undefined
+  return [pos.start[0], pos.start[1]]
+}
+
 export function createNamedNormalExpressionNode(
   symbolNode: BuiltinSymbolNode | UserDefinedSymbolNode,
   params: AstNode[],
