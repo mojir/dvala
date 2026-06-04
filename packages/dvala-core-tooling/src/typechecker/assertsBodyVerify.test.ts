@@ -338,6 +338,125 @@ describe('verifyAssertionFunctionBodies', () => {
     expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
   })
 
+  // Q2.5 polish (2026-06-04): match-on-derived-expression. The
+  // scrutinee `x + 1` isn't the asserted parameter directly, so
+  // pattern-binding substitution doesn't fire — but a body that
+  // references the OUTER parameter by name still proves the predicate.
+  // The verifier shouldn't reject this case (it would have under a
+  // naive "scrutinee must be a Sym" precondition).
+  it('accepts match-on-derived-expression when the body proves via the outer parameter', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x + 1
+          case n then assert(x > 0)
+          case _ then assert(x > 0)
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
+  it('rejects match-on-derived-expression when the body only references the case binding', () => {
+    // `n` aliases `x + 1`, not `x`. `assert(n > 0)` proves `n > 0`,
+    // which is `(x + 1) > 0` — that does NOT establish `x > 0`. Pin
+    // the conservative behavior so a future "fold the derived shape"
+    // extension is a deliberate decision, not a silent expansion of
+    // the scope.
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x + 1
+          case n then assert(n > 0)
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
+  })
+
+  // Guard decomposition (Q2.4 polish, 2026-06-04): a guard `P && Q`
+  // establishes both P and Q, so it should satisfy a target that's a
+  // subset of those conjuncts. Without the extension, the structural
+  // equality check on prettyPrinted form rejects `x > 0 && x < 100` as
+  // a guard for target `x > 0`.
+  it('accepts compound guard whose conjunction implies the target predicate', () => {
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case _ when x > 0 && x < 100 then x
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
+  it('accepts compound guard where the target is also a conjunction (subset)', () => {
+    // Guard `x > 0 && x < 100 && x != 50` covers every conjunct of
+    // the target `x > 0 && x < 100`. Accept.
+    const ast = parseProgram(`
+      let assertBounded: (x: Number) -> asserts {x | x > 0 && x < 100} = (x) ->
+        match x
+          case _ when x > 0 && x < 100 && x != 50 then x
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
+  it('rejects compound guard that does not cover the target', () => {
+    // Guard `x < 100` doesn't include `x > 0` — the target conjunct is
+    // missing from the guard's conjunct set.
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case _ when x < 100 then x
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.some(d => d.message.includes('does not prove'))).toBe(true)
+  })
+
+  // Destructuring / wildcard / literal patterns DON'T introduce a
+  // single-name alias for the scrutinee, so `applyCaseBinderAlias`
+  // leaves info untouched. Predicates referring to the OUTER parameter
+  // by its original name still match — this is the right end-state
+  // (destructuring binds element/field names, not the whole), pinned
+  // here so future refactors don't accidentally try to alias them.
+  it('accepts destructuring patterns when predicates still reference the outer parameter', () => {
+    // The scrutinee is `[x]` (not the asserted param directly), so the
+    // pattern-binding-alias path doesn't fire — but the body still
+    // references `x`, and `assert(x > 0)` proves the predicate via the
+    // original info.
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match [x]
+          case [a] then assert(x > 0)
+          case _ then assert(x > 0)
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
+  it('accepts literal pattern when the body still proves via the outer parameter', () => {
+    // `case 0 then assert(x > 0)` — the literal pattern doesn't bind a
+    // new name, so the outer parameter `x` remains the predicate target.
+    const ast = parseProgram(`
+      let assertPositive: (x: Number) -> asserts {x | x > 0} = (x) ->
+        match x
+          case 0 then assert(x > 0)
+          case _ then assert(x > 0)
+        end;
+      1
+    `)
+    const diagnostics = verifyAssertionFunctionBodies(ast)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+
   // Nested match — match inside another match. Verifies recursion
   // works through the matchProves helper for both outer and inner.
   it('accepts nested match where every leaf case proves the predicate', () => {

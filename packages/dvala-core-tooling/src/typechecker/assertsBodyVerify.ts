@@ -494,7 +494,20 @@ function isExactBuiltinAssert(node: AstNode, info: AssertionFunctionInfo): boole
 }
 
 function predicateMatchesTarget(node: AstNode, info: AssertionFunctionInfo): boolean {
-  return prettyPrint(node).trim() === prettyPrint(info.asserts.predicate).trim()
+  if (prettyPrint(node).trim() === prettyPrint(info.asserts.predicate).trim()) return true
+  // Decomposition: a guard of `P && Q` establishes both P and Q. If the
+  // target predicate is one of those conjuncts (or itself a sub-conjunction
+  // of them), the guard suffices. Flatten both sides into conjunct lists and
+  // require every target conjunct to be present in the guard's conjunct set.
+  const guardConjuncts = flattenConjuncts(node).map(c => prettyPrint(c).trim())
+  if (guardConjuncts.length === 1) return false // already covered by the direct compare above
+  const targetConjuncts = flattenConjuncts(info.asserts.predicate).map(c => prettyPrint(c).trim())
+  return targetConjuncts.every(t => guardConjuncts.includes(t))
+}
+
+function flattenConjuncts(node: AstNode): AstNode[] {
+  if (node[0] !== NodeTypes.And || !Array.isArray(node[1])) return [node]
+  return (node[1] as AstNode[]).flatMap(flattenConjuncts)
 }
 
 function walkAstChildren(node: AstNode, ast: Ast, diagnostics: TypeDiagnostic[], allowNestedFunctions: boolean): void {

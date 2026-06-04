@@ -936,24 +936,19 @@ export function constrain(ctx: InferenceContext, lhs: Type, rhs: Type): void {
   // --- Union on the right: lhs must be <: at least one member ---
   // Try each member; if one succeeds, we're done.
   if (rhs.tag === 'Union') {
-    // For concrete types, try to find a matching member
-    const errors: TypeInferenceError[] = []
     for (const m of rhs.members) {
       try {
         constrain(ctx, lhs, m)
         return
       } catch (e) {
-        if (e instanceof TypeInferenceError) {
-          errors.push(e)
-        } else {
-          throw e
-        }
+        if (!(e instanceof TypeInferenceError)) throw e
       }
     }
-    throw (
-      errors[errors.length - 1] ??
-      new TypeInferenceError(`${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`)
-    )
+    // Report against the union as a whole. Surfacing only the last member's
+    // failure (the previous behavior) misled users into thinking only one
+    // member was being considered — e.g. `Number` vs `Positive | NonZero`
+    // would print "is not a subtype of NonZero" without mentioning Positive.
+    throw new TypeInferenceError(`${typeToString(lhs)} is not a subtype of ${typeToString(rhs)}`)
   }
 
   // --- Intersection on the right: lhs must be <: each member ---

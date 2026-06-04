@@ -40,10 +40,8 @@ export function solveRefinedSubtype(source: Type, target: Extract<Type, { tag: '
   const targetDomain = applyIntegralConstraint(analyzeRefinementPredicate(target.predicate, target.binder), target.base)
   if (!targetDomain) return { tag: 'OutOfFragment' }
 
-  const sourceDomain = extractSourceDomain(source)
-  if (!sourceDomain || sourceDomain.subject !== targetDomain.subject) {
-    return { tag: 'OutOfFragment' }
-  }
+  const sourceDomain = extractSourceDomain(source, targetDomain.subject)
+  if (!sourceDomain) return { tag: 'OutOfFragment' }
 
   if (isDomainEmpty(sourceDomain)) return { tag: 'Proved' }
   if (isDomainSubset(sourceDomain, targetDomain)) return { tag: 'Proved' }
@@ -53,44 +51,129 @@ export function solveRefinedSubtype(source: Type, target: Extract<Type, { tag: '
 }
 
 export function simplifyRefinedType(refined: Extract<Type, { tag: 'Refined' }>): Type | null {
-  const domain = applyIntegralConstraint(analyzeRefinementPredicate(refined.predicate, refined.binder), refined.base)
-  if (!domain) return null
-  if (isDomainEmpty(domain)) return { tag: 'Never' }
+  const predicateDomain = applyIntegralConstraint(
+    analyzeRefinementPredicate(refined.predicate, refined.binder),
+    refined.base,
+  )
+  if (!predicateDomain) return null
+  if (isDomainEmpty(predicateDomain)) return { tag: 'Never' }
 
-  const baseVerdict = solveRefinedSubtype(refined.base, refined)
-  if (baseVerdict.tag === 'Proved') return refined.base
-  if (baseVerdict.tag === 'Disproved') return { tag: 'Never' }
+  // Compare against the base's natural domain on the predicate's subject.
+  // Two collapses are possible:
+  //   - base ⊆ predicate → the refinement is a no-op, simplify to base
+  //   - base ∩ predicate = ∅ → no value of base satisfies the predicate, Never
+  // Otherwise the refinement genuinely filters; leave it unsimplified.
+  const baseDomain = extractSourceDomain(refined.base, predicateDomain.subject)
+  if (!baseDomain) return null
+
+  if (isDomainSubset(baseDomain, predicateDomain)) return refined.base
+
+  const intersection = intersectDomains(baseDomain, predicateDomain)
+  if (intersection && isDomainEmpty(intersection)) return { tag: 'Never' }
+
   return null
 }
 
-function extractSourceDomain(source: Type): Domain | null {
+function extractSourceDomain(source: Type, subject: DomainSubject): Domain | null {
   if (source.tag === 'Refined') {
     const refinedDomain = applyIntegralConstraint(
       analyzeRefinementPredicate(source.predicate, source.binder),
       source.base,
     )
-    if (!refinedDomain) return null
+    if (!refinedDomain || refinedDomain.subject !== subject) return null
 
-    const singletonBase = singletonDomainFromType(source.base)
-    if (!singletonBase || singletonBase.subject !== refinedDomain.subject) return refinedDomain
+    // Precondition: `source.base` is not itself `Refined` — `simplify` merges
+    // nested `Refined(Refined(...))` into a single `Refined` before any solver
+    // call. `bareSourceDomain` does not recurse, so a stacked refinement would
+    // lose its inner predicate here.
+    const baseDomain = bareSourceDomain(source.base, subject)
+    if (!baseDomain) return refinedDomain
 
-    return intersectDomains(singletonBase, refinedDomain)
+    return intersectDomains(baseDomain, refinedDomain)
   }
 
-  return singletonDomainFromType(source)
+  return bareSourceDomain(source, subject)
 }
 
-function singletonDomainFromType(source: Type): Domain | null {
+// Map a bare (non-Refined) source type to its full domain on the requested
+// subject. The Phase 2 must-decide resolved 2026-06-03 to "model primitive
+// domains, strict by default" (Option B): bare `Number`, `Integer`, `String`,
+// `Boolean`, plus sequence/array/tuple types, all carry their natural
+// domains here so the solver can disprove subtype claims like
+// `Number <: Number & {n | n > 2}` (witness 0) instead of bailing to
+// OutOfFragment (which the subtype pass-through accepted, silently).
+function bareSourceDomain(source: Type, subject: DomainSubject): Domain | null {
   if (source.tag === 'Literal' || source.tag === 'Atom') {
-    return { kind: 'set', subject: 'self', values: [source] }
+    return subject === 'self' ? { kind: 'set', subject: 'self', values: [source] } : null
   }
-  if (source.tag === 'Primitive' && source.name === 'Null') {
-    return { kind: 'set', subject: 'self', values: [NullType] }
+  if (source.tag === 'Primitive') {
+    if (source.name === 'Null') {
+      return subject === 'self' ? { kind: 'set', subject: 'self', values: [NullType] } : null
+    }
+    if (subject === 'self') {
+      if (source.name === 'Number') return fullRealInterval('self', false)
+      if (source.name === 'Integer') return fullRealInterval('self', true)
+      if (source.name === 'Boolean') return { kind: 'set', subject: 'self', values: [literal(true), literal(false)] }
+      return null
+    }
+    // subject === 'count': only String has a count among primitives
+    return source.name === 'String' ? fullSequenceCountDomain(0, undefined) : null
+  }
+  // Sequence/Array/Tuple types: their count domain reflects the
+  // statically-known length bounds. Subject 'self' isn't modeled (we
+  // don't model individual element identity).
+  if (subject !== 'count') return null
+  if (source.tag === 'Array') return fullSequenceCountDomain(0, undefined)
+  if (source.tag === 'Tuple') {
+    return { kind: 'set', subject: 'count', values: [literal(source.elements.length)] }
+  }
+  if (source.tag === 'Sequence') {
+    return fullSequenceCountDomain(source.minLength, source.maxLength)
   }
   return null
 }
 
+function fullRealInterval(subject: DomainSubject, integral: boolean): Domain {
+  return { kind: 'interval', subject, integral, min: null, minInclusive: false, max: null, maxInclusive: false }
+}
+
+function fullSequenceCountDomain(minLength: number, maxLength: number | undefined): Domain {
+  return {
+    kind: 'interval',
+    subject: 'count',
+    integral: true,
+    min: minLength,
+    minInclusive: true,
+    max: maxLength ?? null,
+    maxInclusive: maxLength !== undefined,
+  }
+}
+
 function analyzeRefinementPredicate(node: AstNode, binder: string): Domain | null {
+  // Bare binder reference — accepted by the fragment-checker since
+  // 2026-06-04 as a shorthand for `binder == true`. Translate to the
+  // singleton domain `{true}` on subject 'self'. The Sym case here mirrors
+  // the fragment-checker's acceptance: a non-binder Sym wouldn't reach
+  // the solver (it'd be rejected at parse time).
+  if (node[0] === NodeTypes.Sym && (node[1] as string) === binder) {
+    return { kind: 'set', subject: 'self', values: [literal(true)] }
+  }
+
+  // Unary `!` against the bare binder — `{cond | !cond}` means `cond ==
+  // false`. Same translation pattern as the bare-Sym case.
+  if (node[0] === NodeTypes.Call && Array.isArray(node[1])) {
+    const [callee, args] = node[1] as [AstNode, AstNode[]]
+    if (
+      callee[0] === NodeTypes.Builtin &&
+      (callee[1] as string) === '!' &&
+      args.length === 1 &&
+      args[0]![0] === NodeTypes.Sym &&
+      (args[0]![1] as string) === binder
+    ) {
+      return { kind: 'set', subject: 'self', values: [literal(false)] }
+    }
+  }
+
   if (node[0] === NodeTypes.And && Array.isArray(node[1])) {
     const operands = node[1] as AstNode[]
     let current: Domain | null = null
@@ -630,7 +713,19 @@ function pickWitnessOutside(sourceType: Type, source: Domain, target: Domain): T
     return literal(singleNumericValueDomain(source)!)
   }
 
-  const candidates = intervalWitnessCandidates(sourceInterval, target)
+  const base = sourceType.tag === 'Refined' ? sourceType.base : sourceType
+  // Combine interval-shape candidates with type-aware ones (`0/1/2/3` for
+  // count subjects, etc.) so the witness search covers cases where the
+  // useful witness sits outside the bounds the interval shape suggests —
+  // e.g. intervalExclusion source `[0,∞)int \ {1}` against target set
+  // `{0, 2}` on count: a valid witness is `3`, which only appears in the
+  // type-aware list, not in intervalWitnessCandidates' min/max ± delta.
+  const candidates = [
+    ...intervalWitnessCandidates(sourceInterval, target),
+    ...witnessCandidatesForDomain(base, source.subject)
+      .map(value => numericLiteralValue(value))
+      .filter((value): value is number => value !== null),
+  ]
   for (const candidate of candidates) {
     if (domainContainsNumber(source, candidate) && !domainContainsNumber(target, candidate)) {
       return literal(candidate)

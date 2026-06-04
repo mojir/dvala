@@ -88,6 +88,15 @@ function check(s: Type, t: Type, visited: Set<string>): boolean {
 }
 
 function checkBody(s: Type, t: Type, visited: Set<string>): boolean {
+  // --- Alias: transparent, expand before any type-shape dispatch ---
+  //
+  // Must run before the Refined branch below: otherwise `Refined<...> <:
+  // Alias("Positive")` hits stage 1 of the Refined dispatch and erases the
+  // source's refinement (Alias.tag !== 'Refined'), reducing to a strictly
+  // weaker check than the user wrote.
+  if (s.tag === 'Alias') return check(s.expanded, t, visited)
+  if (t.tag === 'Alias') return check(s, t.expanded, visited)
+
   // --- Refined on either side ---
   //
   // Three-stage policy (order matters — each stage preempts the next):
@@ -124,7 +133,8 @@ function checkBody(s: Type, t: Type, visited: Set<string>): boolean {
   //   - `Refined(Number, n, n > 0) <: Refined(Number, n, n > -1)` —
   //     fold bails (no literal source); solver compares intervals; Proved.
   //   - `Number <: Refined(Number, n, n > 0)` — fold bails; solver
-  //     can't extract a domain from a bare `Number`; pass-through `true`.
+  //     models bare `Number` as `(-∞, ∞)`, finds witness 0, disproves
+  //     (Phase 2 must-decide closed 2026-06-04, Option B / strict-by-default).
   //   - `Refined(Number, ...) <: Number` — stage 1: erases to `Number <: Number`.
   if (s.tag === 'Refined') {
     if (t.tag !== 'Refined') return check(s.base, t, visited)
@@ -186,10 +196,6 @@ function checkBody(s: Type, t: Type, visited: Set<string>): boolean {
     // !S <: T is hard in general (requires complement reasoning).
     return false
   }
-
-  // --- Alias: transparent, compare expanded form ---
-  if (s.tag === 'Alias') return check(s.expanded, t, visited)
-  if (t.tag === 'Alias') return check(s, t.expanded, visited)
 
   // --- Recursive types: unfold one step ---
   if (s.tag === 'Recursive') return check(unfoldRecursive(s), t, visited)

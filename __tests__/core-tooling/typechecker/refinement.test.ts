@@ -14,7 +14,11 @@ import { solveRefinedSubtype } from '../../../packages/dvala-core-tooling/src/ty
 import { simplify } from '../../../packages/dvala-core-tooling/src/typechecker/index'
 import { isSubtype } from '../../../packages/dvala-core-tooling/src/typechecker/subtype'
 import {
+  BooleanType,
+  IntegerType,
+  NullType,
   NumberType,
+  sequence,
   StringType,
   typeEquals,
   typeToString,
@@ -75,6 +79,12 @@ describe('refinement types — Phase 1', () => {
       'String & {s | count(s) > 0}',
       'String & {s | count(s) == 0}',
       'String & {s | count(s) >= 3 && count(s) <= 10}',
+      // Bare-binder and `!binder` (accepted since 2026-06-04). Only
+      // meaningful when the base is Boolean; for other bases the type
+      // collapses to `Never` downstream (solver-side check), but the
+      // shape itself is in the fragment.
+      'Boolean & {cond | cond}',
+      'Boolean & {cond | !cond}',
     ]
     for (const input of cases) {
       it(`accepts: ${input}`, () => {
@@ -85,8 +95,12 @@ describe('refinement types — Phase 1', () => {
 
   describe('rejected shapes', () => {
     const cases: { input: string; kind: 'fragment' | 'predicate-type'; match: RegExp }[] = [
-      // Non-Boolean body — predicate-type kind.
-      { input: 'Number & {x | x}', kind: 'predicate-type', match: /bare identifier/i },
+      // Non-Boolean body — predicate-type kind. (Bare-binder `{x | x}` is
+      // accepted by the fragment-checker since 2026-06-04 — treated as
+      // `x == true`. Mismatched base types are caught downstream by the
+      // solver / simplification, not by fragment-check.)
+      // A non-binder identifier is still rejected.
+      { input: 'Number & {x | other}', kind: 'predicate-type', match: /bare identifier/i },
       { input: 'Number & {x | 42}', kind: 'predicate-type', match: /literal/i },
       // Arithmetic — fragment kind, with the operator named. The
       // LHS-arithmetic message explicitly points at Phase 3 (linear
@@ -358,9 +372,14 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       expect(isSubtype(positive, smallPositive)).toBe(false)
     })
 
-    it('non-literal sources still pass through to the base', () => {
+    it('rejects bare-primitive sources against refined targets (strict-by-default, 2026-06-04)', () => {
+      // Phase 2 must-decide (resolved): bare `Number` against `Positive`
+      // disproves with witness 0. Previously this accepted via the inert
+      // OutOfFragment pass-through; under the strict-by-default change in
+      // `extractSourceDomain`, `Number` carries its full real domain so
+      // the solver finds a witness and rejects.
       const pos = parseTypeAnnotation('Number & {n | n > 0}')
-      expect(isSubtype(NumberType, pos)).toBe(true)
+      expect(isSubtype(NumberType, pos)).toBe(false)
     })
 
     it('pass-through does not change base-level mismatches: `"hi"` not subtype of `Positive`', () => {
@@ -1050,28 +1069,146 @@ describe('refinement types — Phase 2.1 Refined node', () => {
       expect(verdict.tag).toBe('OutOfFragment')
     })
 
-    it('non-Refined source against Refined target without analyzable domain bails', () => {
-      // `Number <: Refined(Number, n, n > 0)` — source is the bare
-      // primitive `Number`, no domain to extract from. Solver bails.
-      // The subtype check falls through to inert pass-through (returns
-      // `true`); we assert on the solver's verdict directly so the
-      // bail path itself is pinned.
+    it('bare-primitive source against refined target disproves (2026-06-04 strict-by-default)', () => {
+      // `Number <: Refined(Number, n, n > 0)` — Phase 2 must-decide
+      // resolved 2026-06-04 in favour of Option B. `extractSourceDomain`
+      // now models bare `Number` as the full real interval `(-∞, ∞)`, so
+      // the solver finds witness 0 and disproves instead of bailing.
       const target = parseTypeAnnotation('Number & {n | n > 0}')
       if (target.tag !== 'Refined') throw new Error('expected Refined')
       const verdict = solveRefinedSubtype(NumberType, target)
-      expect(verdict.tag).toBe('OutOfFragment')
+      expect(verdict.tag).toBe('Disproved')
     })
 
     it('isSubtype falls through to true when the solver bails', () => {
-      // End-to-end pin: when the solver bails, the user-visible behavior
-      // is the inert pass-through accept (because base subtyping already
-      // succeeded). This is a deliberate Phase 2.3 choice — Phase 2.4+
-      // can flip these to false as the solver scope expands.
+      // End-to-end pin: when the solver bails (disjunction of intervals,
+      // mixed subjects, etc. — cases the current domain abstraction can't
+      // model), the user-visible behavior is the inert pass-through accept.
+      // Phase 3 (linear arithmetic) can flip these to definite verdicts as
+      // the solver scope expands.
       const target = parseTypeAnnotation('Number & {n | n > 0 || n < -5}')
-      // Number itself, when checked against an OutOfFragment target,
-      // passes via inert pass-through (base check `Number <: Number`
-      // succeeds, then solver bail → return true).
       expect(isSubtype(NumberType, target)).toBe(true)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // Phase 2 must-decide — strict-by-default for bare primitive sources
+  // (resolved 2026-06-04, Option B)
+  // ---------------------------------------------------------------------------
+  //
+  // Pre-2026-06-04 the solver treated bare primitives (`Number`, `Integer`,
+  // `String`, `Boolean`, plus Array / Tuple / Sequence) as undecidable
+  // domains: `extractSourceDomain` returned `null`, the verdict was
+  // `OutOfFragment`, and the subtype check accepted via inert pass-through.
+  // That trade-off chose definition-time ergonomics over "if it compiles
+  // it runs"; the user picked Option B (model the natural domain, reject
+  // on disprove) to align with the soundness principle. These tests pin
+  // the new behavior; they would all have been "accepted" before the flip.
+  describe('Phase 2 must-decide — strict-by-default bare-primitive domains', () => {
+    it('rejects bare Number against `Positive`', () => {
+      const dvala = createDvala()
+      const result = dvala.typecheck('let x: Number & {n | n > 0} = (1 + 1) - 2; x')
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('disproves bare Integer against a positive-integer target', () => {
+      const target = parseTypeAnnotation('Integer & {n | n > 0}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(IntegerType, target)
+      expect(verdict.tag).toBe('Disproved')
+    })
+
+    it('disproves bare String against `count(s) > 0`', () => {
+      const target = parseTypeAnnotation('String & {s | count(s) > 0}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(StringType, target)
+      expect(verdict.tag).toBe('Disproved')
+    })
+
+    it('disproves bare Boolean against a finite-set target excluding one member', () => {
+      const target = parseTypeAnnotation('Boolean & {b | b == true}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(BooleanType, target)
+      expect(verdict.tag).toBe('Disproved')
+    })
+
+    it('disproves bare Array<Number> against `NonEmpty<Array<Number>>`', () => {
+      const source = parseTypeAnnotation('Number[]')
+      const target = parseTypeAnnotation('Number[] & {xs | count(xs) > 0}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+    })
+
+    it('disproves bare Tuple against a tuple-length-mismatched count target', () => {
+      // Tuples carry an exact known length — `[Number, Number]` has count=2.
+      // Asking for count > 5 disproves with witness 2.
+      const source = parseTypeAnnotation('[Number, Number]')
+      const target = parseTypeAnnotation('[Number, Number] & {t | count(t) > 5}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Disproved')
+    })
+
+    it('proves bare Tuple against a matching count target', () => {
+      // Companion to the previous test — count=2 IS the singleton domain,
+      // so `count(t) >= 2` is satisfied vacuously.
+      const source = parseTypeAnnotation('[Number, Number]')
+      const target = parseTypeAnnotation('[Number, Number] & {t | count(t) >= 2}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Proved')
+    })
+
+    it('bare-binder predicate `{cond | cond}` solves as `cond == true`', () => {
+      // Q2.2 polish (2026-06-04): the fragment-checker accepts `{cond |
+      // cond}` and the solver translates it to set{true} on subject 'self'.
+      // For a Boolean source, this disproves with witness `false`.
+      const target = parseTypeAnnotation('Boolean & {cond | cond}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(BooleanType, target)
+      expect(verdict.tag).toBe('Disproved')
+    })
+
+    it('bare-binder predicate proves against a literal `true`', () => {
+      const target = parseTypeAnnotation('Boolean & {cond | cond}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype({ tag: 'Literal', value: true }, target)
+      expect(verdict.tag).toBe('Proved')
+    })
+
+    it('`{cond | !cond}` solves as `cond == false`', () => {
+      const target = parseTypeAnnotation('Boolean & {cond | !cond}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      // false satisfies `!cond` (cond == false), so Proved.
+      const verdict = solveRefinedSubtype({ tag: 'Literal', value: false }, target)
+      expect(verdict.tag).toBe('Proved')
+      // true does not satisfy `!cond`, so Disproved.
+      const verdict2 = solveRefinedSubtype({ tag: 'Literal', value: true }, target)
+      expect(verdict2.tag).toBe('Disproved')
+    })
+
+    it('proves a Sequence with explicit minLength against a count predicate at that bound', () => {
+      // Sequence types arrive via internal normalisation (no user-facing
+      // annotation syntax) — construct one directly to exercise the
+      // `bareSourceDomain` branch for `Sequence`. A min-length-1 sequence
+      // is a subtype of `count(xs) > 0`.
+      const source = sequence([NumberType], NumberType, 1)
+      const target = parseTypeAnnotation('Number[] & {xs | count(xs) > 0}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(source, target)
+      expect(verdict.tag).toBe('Proved')
+    })
+
+    it('null still produces a self-singleton domain (regression — Null was already modeled before Option B)', () => {
+      // Pre-Option-B baseline: Null was the only primitive modeled as a
+      // singleton set on subject 'self'. This test pins that path so the
+      // refactor that extended the model to the other primitives didn't
+      // silently drop the Null case.
+      const target = parseTypeAnnotation('Null & {x | x == null}')
+      if (target.tag !== 'Refined') throw new Error('expected Refined')
+      const verdict = solveRefinedSubtype(NullType, target)
+      expect(verdict.tag).toBe('Proved')
     })
   })
 })
@@ -1100,12 +1237,6 @@ describe('refinement types — Phase 2.1 Refined node', () => {
 describe('refinement types — Phase 2.5a (assert narrowing)', () => {
   const dvala = createDvala()
 
-  // The Phase 2.3 solver bails to inert "accept" when it can't extract
-  // a domain from a bare-primitive source (e.g. checking `Number` against
-  // `Number & P`). That makes downstream subtype checks an unreliable
-  // observable for narrowing — both narrowed and un-narrowed sources
-  // pass inertly, so the diagnostic stream looks the same.
-  //
   // Phase 2.5a's contract is structural: AFTER an `assert(P)` statement,
   // the env's binding for the asserted variable is a `Refined` type
   // wrapping the variable's pre-assert type. We pin this directly via
@@ -1815,6 +1946,21 @@ describe('refinement types — Phase 2.6 (solver-aware constrain)', () => {
         f(0)
       `)
       expect(result.diagnostics.length).toBeGreaterThan(0)
+    })
+
+    it('union-of-Refined diagnostic mentions the whole union, not just the last member', () => {
+      // Previously the constrain helper threw `errors[errors.length - 1]`
+      // when no union member matched, so the user saw "not a subtype of
+      // <last-member>" and could be misled into thinking only one member
+      // was being considered. The diagnostic now reports the union shape.
+      const result = dvala.typecheck(`
+        let f = (x: Number & {n | n > 0} | Number & {n | n < -10}) -> x;
+        f(0)
+      `)
+      expect(result.diagnostics.length).toBeGreaterThan(0)
+      const message = result.diagnostics[0]!.message
+      expect(message).toContain('n > 0')
+      expect(message).toContain('n < -10')
     })
 
     it('accepts argument inside the first Refined member', () => {
