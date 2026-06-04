@@ -1,6 +1,6 @@
 # Non-exhaustive match → compile error
 
-**Status:** Draft
+**Status:** Implemented (PR #231, pending merge — moves to `design/shipped/` after merge)
 **Created:** 2026-06-04
 
 ## Goal
@@ -125,6 +125,13 @@ The runtime `MatchError` path stays. Compile-time rejection is the new gate; the
 - **Q5: Book-chapter examples currently relying on implicit fall-through?** Audit step (not a decision). Run `pnpm run check` after the typechecker change; add catchalls where required.
 - **Q6: Generic scrutinees in a function signature?** **Require catchall.** Same as Q2. Bound-aware exhaustiveness (e.g. `T: Atom` enumerated) is deferred to the same Phase-3-shaped follow-up as Q1.
 - **Q7: Error wording — unified vs split?** **Unified.** One `Non-exhaustive match` error class, suffix branches on context: `... unhandled: <remaining type>` for trackable, `... cannot prove every value of <scrutinee type> is covered; add 'case _ then ...' to handle the rest` for non-trackable.
+
+## Edge cases (covered by the implementation)
+
+- **Zero-case match** (`match x end` with no cases): handled by the existing `cases.length === 0` short-circuit at the top of the match handler — the inferer treats it as structurally degenerate and rejects. No interaction with the new catchall logic.
+- **Catchall with a fold-false guard** (`case _ when false then ...`): the fold-false `continue` path skips the case before the `sawCatchall` flag is set, so the catchall doesn't count. The exhaustiveness error fires correctly (the user gets both the redundant-guard warning and the non-exhaustive error).
+- **Catchall whose body has type `Never`** (e.g. `case _ then perform(@dvala.error, "...")`): still counts as a catchall — the rule is about coverage of the scrutinee, not return type.
+- **Refined-type scrutinees** (`x: Number & {n | n > 0}`): `isTrackableMatchRemainder` returns false for `Refined`, so the new check fires. The user must add a catchall — the refinement narrows the source domain but doesn't make the domain enumerable.
 
 ---
 

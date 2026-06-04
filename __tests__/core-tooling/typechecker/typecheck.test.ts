@@ -3800,6 +3800,23 @@ describe('typecheck — non-exhaustive match strict catchall (2026-06-04)', () =
     expect(exhaustiveness.length).toBeGreaterThan(0)
   })
 
+  it('rejects when a catchall is fold-false-guarded (catchall does not fire)', () => {
+    // `case _ when false then ...` — the fold pass reduces `false` to
+    // `Literal(false)`, the clause is skipped via the redundant-guard
+    // `continue` path BEFORE the catchall flag is set. The catchall
+    // therefore doesn't count and the exhaustiveness error fires. Pins
+    // the boundary between "catchall present" and "catchall fires."
+    const result = dvala.typecheck(`
+      let f = (n: Number) -> match n
+        case 0 then 0
+        case _ when false then 1
+      end;
+      f(5)
+    `)
+    const exhaustiveness = result.diagnostics.filter(d => /Non-exhaustive match/.test(d.message))
+    expect(exhaustiveness.length).toBeGreaterThan(0)
+  })
+
   it('rejects when a guarded catchall is non-fold-true', () => {
     // `case _ when isNumber(n)` — the guard typechecks but the fold pass
     // doesn't reduce it to `Literal(true)`. It doesn't count as a catchall.
