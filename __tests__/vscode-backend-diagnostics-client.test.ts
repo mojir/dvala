@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import type { DvalaBackend } from '../packages/dvala-workspace-backend/src/index'
 import type {
+  BackendCallHierarchyIncomingCallsRequest,
+  BackendCallHierarchyIncomingCallsResult,
+  BackendCallHierarchyOutgoingCallsRequest,
+  BackendCallHierarchyOutgoingCallsResult,
+  BackendCallHierarchyPrepareRequest,
+  BackendCallHierarchyPrepareResult,
   BackendCancelResult,
   BackendCompletionRequest,
   BackendCompletionResult,
@@ -305,6 +311,21 @@ function createResyncingBackend(overrides: {
       throw new Error('not implemented')
     },
     async requestNavigation(_: BackendNavigationRequest): Promise<BackendNavigationResult> {
+      throw new Error('not implemented')
+    },
+    async requestCallHierarchyPrepare(
+      _: BackendCallHierarchyPrepareRequest,
+    ): Promise<BackendCallHierarchyPrepareResult> {
+      throw new Error('not implemented')
+    },
+    async requestCallHierarchyIncomingCalls(
+      _: BackendCallHierarchyIncomingCallsRequest,
+    ): Promise<BackendCallHierarchyIncomingCallsResult> {
+      throw new Error('not implemented')
+    },
+    async requestCallHierarchyOutgoingCalls(
+      _: BackendCallHierarchyOutgoingCallsRequest,
+    ): Promise<BackendCallHierarchyOutgoingCallsResult> {
       throw new Error('not implemented')
     },
     async startSession(_: BackendSessionStartRequest): Promise<BackendSessionStartResult> {

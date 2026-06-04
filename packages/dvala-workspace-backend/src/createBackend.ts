@@ -26,6 +26,15 @@ import { computeCatchallEdit } from './catchallQuickFix'
 import { computeExtractVariableEdit } from './extractVariableEdit'
 import { computeExtractFunctionEdit } from './extractFunctionEdit'
 import { computeInlineVariableEdits, type InlineReferenceLocation } from './inlineVariableEdit'
+import {
+  CALLABLE_DEF_KINDS,
+  collectCallableFrames,
+  findEnclosingCallableFrame,
+  walkCallSites,
+  type CallableFrame,
+} from './callHierarchy'
+// `CallableFrame` is consumed by the module-private helpers below
+// (`callableFrameToBackendItem`, `fileScopeCallHierarchyItem`).
 
 import type { DvalaBackend } from './DvalaBackend'
 import { createInMemoryDocumentStore, type BackendDocumentStore } from './documentStore'
@@ -46,6 +55,16 @@ import type {
   BackendFormattingResult,
   BackendHoverRequest,
   BackendHoverResult,
+  BackendCallHierarchyCallSite,
+  BackendCallHierarchyIncomingCall,
+  BackendCallHierarchyIncomingCallsRequest,
+  BackendCallHierarchyIncomingCallsResult,
+  BackendCallHierarchyItem,
+  BackendCallHierarchyOutgoingCall,
+  BackendCallHierarchyOutgoingCallsRequest,
+  BackendCallHierarchyOutgoingCallsResult,
+  BackendCallHierarchyPrepareRequest,
+  BackendCallHierarchyPrepareResult,
   BackendCodeAction,
   BackendCodeActionsRequest,
   BackendCodeActionsResult,
@@ -463,6 +482,53 @@ function indexBackendDocuments(
   for (const importedPath of fileSymbols.imports.values()) {
     if (seen.has(importedPath)) continue
     indexBackendDocuments(importedPath, documents, index, seen)
+  }
+}
+
+// Enumerate every file the document store knows about — open documents
+// + workspace snapshot. Used by call hierarchy to scope incoming-calls
+// across the whole workspace, not just the item's home file.
+function listAllKnownPaths(documents: BackendDocumentStore): string[] {
+  const paths = new Set<string>()
+  for (const doc of documents.getOpenDocuments()) paths.add(doc.path)
+  for (const file of documents.getWorkspaceSnapshot()) paths.add(file.path)
+  return Array.from(paths)
+}
+
+function callableFrameToBackendItem(frame: CallableFrame, file: string): BackendCallHierarchyItem {
+  return {
+    name: frame.name,
+    kind: frame.kind,
+    file,
+    startLine: frame.letStartLine,
+    startColumn: frame.letStartColumn,
+    endLine: frame.letEndLine,
+    endColumn: frame.letEndColumn,
+    selectionStartLine: frame.defLine,
+    selectionStartColumn: frame.defColumn,
+    selectionEndLine: frame.defLine,
+    selectionEndColumn: frame.defColumn + frame.name.length,
+  }
+}
+
+// Synthetic CallHierarchyItem for refs that don't sit inside any named
+// callable (e.g. top-level `main()` invocations). VS Code accepts any
+// (name, range) pair; we use the file basename as a name to keep the
+// tree readable.
+function fileScopeCallHierarchyItem(filePath: string): BackendCallHierarchyItem {
+  const basename = filePath.split('/').pop() ?? filePath
+  return {
+    name: `<${basename}>`,
+    kind: 'function',
+    file: filePath,
+    startLine: 1,
+    startColumn: 1,
+    endLine: 1,
+    endColumn: 1,
+    selectionStartLine: 1,
+    selectionStartColumn: 1,
+    selectionEndLine: 1,
+    selectionEndColumn: 1,
   }
 }
 
@@ -1740,9 +1806,8 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           if (refactorEdits) {
             // Title carries a preview of the extracted text so the menu
             // entry tells the user which span they're acting on.
-            const exprText = effectiveSource
-              .split('\n')
-              [extractRange.startLine - 1]!.slice(extractRange.startColumn - 1, extractRange.endColumn - 1)
+            const extractLine = effectiveSource.split('\n')[extractRange.startLine - 1]!
+            const exprText = extractLine.slice(extractRange.startColumn - 1, extractRange.endColumn - 1)
             const previewText = exprText.length > 40 ? `${exprText.slice(0, 37)}...` : exprText
             actions.push({
               title: `Extract '${previewText}' to variable`,
@@ -1786,10 +1851,8 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             freeVars,
           })
           if (fnEdits) {
-            const fnSelectionText = effectiveSource
-              .split('\n')
-              [request.startLine - 1]!.slice(request.startColumn - 1, request.endColumn - 1)
-              .trim()
+            const fnLine = effectiveSource.split('\n')[request.startLine - 1]!
+            const fnSelectionText = fnLine.slice(request.startColumn - 1, request.endColumn - 1).trim()
             const fnPreview = fnSelectionText.length > 40 ? `${fnSelectionText.slice(0, 37)}...` : fnSelectionText
             actions.push({
               title: fnPreview ? `Extract '${fnPreview}' to function` : 'Extract selection to function',
@@ -1851,6 +1914,243 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
             path: request.path,
           },
           request.path,
+        )
+      }
+    },
+
+    async requestCallHierarchyPrepare(
+      request: BackendCallHierarchyPrepareRequest,
+    ): Promise<BackendCallHierarchyPrepareResult> {
+      const openDocument = documents.getOpenDocument(request.path)
+      if (request.source === undefined && (!openDocument || openDocument.version !== request.version)) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'resync-required',
+            message: `Backend document mirror missing or stale for ${request.path}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+      try {
+        const effectiveSource = request.source ?? openDocument?.source ?? ''
+        const effectiveVersion = openDocument?.version ?? request.version
+        const typecheckResult = getOrComputeTypecheck(request.path, effectiveSource, effectiveVersion)
+        const ast = parseToAst(
+          minifyTokenStream(tokenizeSource(effectiveSource, true, request.path), { removeWhiteSpace: true }),
+        )
+        const index = new WorkspaceIndex()
+        indexBackendDocuments(request.path, documents, index)
+        const fileSymbols = index.getFileSymbols(request.path)
+        // Cursor can be on a reference (resolve via findDefinition) or
+        // directly on a def site (fall back to scanning definitions).
+        let cursorDef = index.findDefinition(request.path, request.line, request.column)
+        if (!cursorDef && fileSymbols) {
+          cursorDef =
+            fileSymbols.definitions.find(
+              d =>
+                d.location.line === request.line &&
+                request.column >= d.location.column &&
+                request.column < d.location.column + d.name.length,
+            ) ?? null
+        }
+        const items: BackendCallHierarchyItem[] = []
+        if (cursorDef && CALLABLE_DEF_KINDS.has(cursorDef.kind)) {
+          const frames = collectCallableFrames(ast.body, typecheckResult.sourceMap, fileSymbols)
+          const frame = frames.find(
+            f => f.defLine === cursorDef!.location.line && f.defColumn === cursorDef!.location.column,
+          )
+          // We need the frame to expose the full Let range. Without it we
+          // could still emit an item using just the def location, but the
+          // VS Code panel won't highlight the body — so skip.
+          if (frame) {
+            items.push(callableFrameToBackendItem(frame, cursorDef.location.file))
+          }
+        }
+        return { ok: true, requestId: request.requestId, path: request.path, version: request.version, items }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.path,
+          },
+          request.path,
+        )
+      }
+    },
+
+    async requestCallHierarchyIncomingCalls(
+      request: BackendCallHierarchyIncomingCallsRequest,
+    ): Promise<BackendCallHierarchyIncomingCallsResult> {
+      try {
+        const index = new WorkspaceIndex()
+        indexBackendDocuments(request.item.file, documents, index)
+        // Walk every indexed file's references. For each that resolves
+        // back to the requested item's def site, find the enclosing
+        // callable frame in that file and group the call site under it.
+        // Refs at top-level get bucketed under a synthetic file-scope
+        // item (no enclosing callable).
+        const groups = new Map<string, BackendCallHierarchyIncomingCall>()
+        // Iterate every file the document store knows about so we
+        // catch cross-file callers, not just refs in the item's home
+        // file. Each file is indexed on demand so that this handler
+        // works the first time it's called for a given workspace.
+        for (const filePath of listAllKnownPaths(documents)) {
+          indexBackendDocuments(filePath, documents, index)
+          const fileSymbols = index.getFileSymbols(filePath)
+          if (!fileSymbols) continue
+          const matchingRefs = fileSymbols.references.filter(
+            ref =>
+              ref.resolvedDef &&
+              ref.resolvedDef.location.file === request.item.file &&
+              ref.resolvedDef.location.line === request.item.selectionStartLine &&
+              ref.resolvedDef.location.column === request.item.selectionStartColumn,
+          )
+          if (matchingRefs.length === 0) continue
+          // Parse once per file to compute callable frames + source-map
+          // ranges for the refs themselves.
+          const source = documents.getEffectiveSource(filePath)
+          if (source === undefined) continue
+          const docVersion = documents.getOpenDocument(filePath)?.version ?? 0
+          const typecheckResult = getOrComputeTypecheck(filePath, source, docVersion)
+          const ast = parseToAst(minifyTokenStream(tokenizeSource(source, true, filePath), { removeWhiteSpace: true }))
+          const frames = collectCallableFrames(ast.body, typecheckResult.sourceMap, fileSymbols)
+          for (const ref of matchingRefs) {
+            const enclosing = findEnclosingCallableFrame(frames, ref.location.line, ref.location.column)
+            const fromItem: BackendCallHierarchyItem = enclosing
+              ? callableFrameToBackendItem(enclosing, filePath)
+              : fileScopeCallHierarchyItem(filePath)
+            const key = `${fromItem.file}::${fromItem.name}::${fromItem.selectionStartLine}:${fromItem.selectionStartColumn}`
+            const existing = groups.get(key)
+            const callRange = {
+              startLine: ref.location.line,
+              startColumn: ref.location.column,
+              endLine: ref.location.line,
+              endColumn: ref.location.column + ref.name.length,
+            }
+            if (existing) {
+              ;(existing.fromRanges as BackendCallHierarchyCallSite[]).push(callRange)
+            } else {
+              groups.set(key, { from: fromItem, fromRanges: [callRange] })
+            }
+          }
+        }
+        return {
+          ok: true,
+          requestId: request.requestId,
+          version: request.version,
+          calls: Array.from(groups.values()),
+        }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.item.file,
+          },
+          request.item.file,
+        )
+      }
+    },
+
+    async requestCallHierarchyOutgoingCalls(
+      request: BackendCallHierarchyOutgoingCallsRequest,
+    ): Promise<BackendCallHierarchyOutgoingCallsResult> {
+      try {
+        const source = documents.getEffectiveSource(request.item.file)
+        if (source === undefined) {
+          return {
+            ok: true,
+            requestId: request.requestId,
+            version: request.version,
+            calls: [],
+          }
+        }
+        const docVersion = documents.getOpenDocument(request.item.file)?.version ?? request.version
+        const typecheckResult = getOrComputeTypecheck(request.item.file, source, docVersion)
+        const ast = parseToAst(
+          minifyTokenStream(tokenizeSource(source, true, request.item.file), { removeWhiteSpace: true }),
+        )
+        const index = new WorkspaceIndex()
+        indexBackendDocuments(request.item.file, documents, index)
+        const fileSymbols = index.getFileSymbols(request.item.file)
+        if (!fileSymbols || !typecheckResult.sourceMap) {
+          return { ok: true, requestId: request.requestId, version: request.version, calls: [] }
+        }
+        const frames = collectCallableFrames(ast.body, typecheckResult.sourceMap, fileSymbols)
+        const sourceFrame = frames.find(
+          f => f.defLine === request.item.selectionStartLine && f.defColumn === request.item.selectionStartColumn,
+        )
+        if (!sourceFrame) {
+          return { ok: true, requestId: request.requestId, version: request.version, calls: [] }
+        }
+        // Find the Function/Macro/Handler subtree corresponding to the
+        // source frame, then walk its body looking for Call sites whose
+        // callee is a Sym that resolves to a callable def.
+        const refByNodeId = new Map(fileSymbols.references.map(ref => [ref.nodeId, ref]))
+        const calls = new Map<string, BackendCallHierarchyOutgoingCall>()
+        for (const callSite of walkCallSites(ast.body, typecheckResult.sourceMap)) {
+          // Filter to call sites inside the source frame's body range.
+          const startLine = callSite.callRange.start[0] + 1
+          const startColumn = callSite.callRange.start[1] + 1
+          const insideSource =
+            (startLine > sourceFrame.bodyStartLine ||
+              (startLine === sourceFrame.bodyStartLine && startColumn >= sourceFrame.bodyStartColumn)) &&
+            (startLine < sourceFrame.bodyEndLine ||
+              (startLine === sourceFrame.bodyEndLine && startColumn <= sourceFrame.bodyEndColumn))
+          if (!insideSource) continue
+          const ref = refByNodeId.get(callSite.calleeNodeId)
+          if (!ref?.resolvedDef) continue
+          const def = ref.resolvedDef
+          if (!CALLABLE_DEF_KINDS.has(def.kind)) continue
+          // Resolve the def's home file frames to build the `to` item.
+          // If the def lives in a different file, parse + index that
+          // file (already indexed by indexBackendDocuments above).
+          const defFileSource = documents.getEffectiveSource(def.location.file)
+          if (defFileSource === undefined) continue
+          const defFileVersion = documents.getOpenDocument(def.location.file)?.version ?? 0
+          const defTypecheck = getOrComputeTypecheck(def.location.file, defFileSource, defFileVersion)
+          const defAst = parseToAst(
+            minifyTokenStream(tokenizeSource(defFileSource, true, def.location.file), { removeWhiteSpace: true }),
+          )
+          const defFileSymbols = index.getFileSymbols(def.location.file)
+          const defFrames = collectCallableFrames(defAst.body, defTypecheck.sourceMap, defFileSymbols)
+          const defFrame = defFrames.find(f => f.defLine === def.location.line && f.defColumn === def.location.column)
+          if (!defFrame) continue
+          const toItem = callableFrameToBackendItem(defFrame, def.location.file)
+          const key = `${toItem.file}::${toItem.name}::${toItem.selectionStartLine}:${toItem.selectionStartColumn}`
+          const callRange = {
+            startLine,
+            startColumn,
+            endLine: callSite.callRange.end[0] + 1,
+            endColumn: callSite.callRange.end[1] + 1,
+          }
+          const existing = calls.get(key)
+          if (existing) {
+            ;(existing.fromRanges as BackendCallHierarchyCallSite[]).push(callRange)
+          } else {
+            calls.set(key, { to: toItem, fromRanges: [callRange] })
+          }
+        }
+        return {
+          ok: true,
+          requestId: request.requestId,
+          version: request.version,
+          calls: Array.from(calls.values()),
+        }
+      } catch (error) {
+        return requestFailure(
+          request.requestId,
+          {
+            kind: 'analysis-failed',
+            message: error instanceof Error ? error.message : `${error}`,
+            path: request.item.file,
+          },
+          request.item.file,
         )
       }
     },
