@@ -1995,6 +1995,12 @@ export function inferExpr(node: AstNode, ctx: InferenceContext, env: TypeEnv, ty
         const checkExhaustiveness = isTrackableMatchRemainder(remainingType)
 
         const branchTypes: Type[] = []
+        // Records whether any clause acts as an explicit catchall — an
+        // unguarded `case _` / `case <symbol>`, or one whose guard folds to
+        // `Literal(true)`. The post-loop exhaustiveness check accepts the
+        // match if either (a) the structural subtract reduces remainingType
+        // to Never, or (b) the user wrote an explicit catchall.
+        let sawCatchall = false
         for (const [pattern, body, guard] of cases) {
           const caseEnv = env.child()
           const { matchedType, consumedType } = analyzeMatchCase(pattern, remainingType, guard, env)
@@ -2039,28 +2045,48 @@ export function inferExpr(node: AstNode, ctx: InferenceContext, env: TypeEnv, ty
           // silently lenient-accept (OutOfFragment) instead of being
           // explicitly proved.
           let bodyEnv = caseEnv
+          let guardFoldsToTrue = false
           if (guard) {
             const guardType = inferExpr(guard, ctx, caseEnv, typeMap)
             constrainBoolean(ctx, guardType, guard[2], 'The `match` guard (`when`)')
+            const expandedGuard = expandType(guardType)
             // C9: a guard that folds to literal(false) makes this case
             // unreachable. Skip the body so its type doesn't contribute to
             // the result, and do NOT subtract consumedType from remaining —
             // the pattern shape is still unhandled, so exhaustiveness
-            // correctly fires if no other case covers it. Symmetric to the
-            // existing redundant-pattern warning (decision #6).
-            if (ctx.foldEnabled) {
-              const expandedGuard = expandType(guardType)
-              if (expandedGuard.tag === 'Literal' && expandedGuard.value === false) {
-                ctx.deferError(
-                  new TypeInferenceError('Redundant match case — guard is always false', pattern[2], 'warning'),
-                )
-                continue
-              }
+            // correctly fires if no other case covers it. Gated on
+            // foldEnabled because the redundancy warning's stakes are
+            // observation-only — under fold=off the warning intentionally
+            // doesn't fire (decision #6 / project_compile_implies_run).
+            if (ctx.foldEnabled && expandedGuard.tag === 'Literal' && expandedGuard.value === false) {
+              ctx.deferError(
+                new TypeInferenceError('Redundant match case — guard is always false', pattern[2], 'warning'),
+              )
+              continue
+            }
+            // Literal-true catchall detection runs in both fold modes. The
+            // throw-vs-accept decision in the exhaustiveness check below
+            // must NOT diverge between DVALA_FOLD=0 and DVALA_FOLD=1 — the
+            // CI matrix enforces parity. Bare `when true` infers directly
+            // to `Literal(true)` (no fold needed); arithmetic-folded shapes
+            // like `when !false` only reach Literal(true) under fold=1 and
+            // are tested separately.
+            if (expandedGuard.tag === 'Literal' && expandedGuard.value === true) {
+              guardFoldsToTrue = true
             }
             const guardNarrowings = extractIfNarrowings(guard, caseEnv)
             if (guardNarrowings) {
               bodyEnv = narrowEnv(caseEnv, guardNarrowings.whenTrue)
             }
+          }
+
+          // Catchall detection. Wildcard and bare-symbol patterns bind the
+          // entire remainder; with no guard (or a guard the fold reduces to
+          // `Literal(true)`) the clause definitely fires for any unmatched
+          // value. Destructuring / literal patterns constrain shape, so
+          // they're never catchalls regardless of their guard.
+          if (isCatchallPattern(pattern) && (!guard || guardFoldsToTrue)) {
+            sawCatchall = true
           }
 
           // Infer body type in the case scope
@@ -2071,9 +2097,22 @@ export function inferExpr(node: AstNode, ctx: InferenceContext, env: TypeEnv, ty
           remainingType = simplify(subtractType(remainingType, consumedType))
         }
 
-        // Exhaustiveness only fires for match spaces we can track precisely.
-        if (checkExhaustiveness && remainingType.tag !== 'Never') {
-          throw new TypeInferenceError(`Non-exhaustive match — unhandled: ${typeToString(remainingType)}`, nodeId)
+        // Exhaustiveness — non-exhaustive matches throw `MatchError` at
+        // runtime, contradicting "if it compiles it runs." Two failure
+        // modes share a unified diagnostic:
+        //   - trackable scrutinee + structural remainder is not Never → the
+        //     specific unhandled type is named.
+        //   - non-trackable scrutinee (Number/String/Array/Refined/Var/…) →
+        //     no structural certainty; the only way to opt out of the rule
+        //     is an explicit catchall.
+        if (remainingType.tag !== 'Never' && !sawCatchall) {
+          // Tailored hints per arm — listing "add a case for each unhandled
+          // value" only makes sense when the unhandled type IS enumerable;
+          // for a bare `Number` there are no specific values to list.
+          const message = checkExhaustiveness
+            ? `Non-exhaustive match — unhandled: ${typeToString(remainingType)}. Add a case for each unhandled value, or 'case _ then ...' to handle the rest.`
+            : `Non-exhaustive match — cannot prove every value of ${typeToString(matchType)} is covered. Add 'case _ then ...' to handle the rest.`
+          throw new TypeInferenceError(message, nodeId)
         }
 
         result = branchTypes.length > 0 ? union(...branchTypes) : Never
@@ -4554,6 +4593,26 @@ function normalizeTrackableMatchSpace(type: Type): Type {
   }
 
   return expanded
+}
+
+/**
+ * A clause's pattern is a "catchall" for the post-loop exhaustiveness
+ * check iff it's a wildcard (`case _`) or a bare symbol (`case name`).
+ * Destructuring (`case [a, b]`, `case {x}`) and literal (`case 5`)
+ * patterns constrain shape and are never catchalls. The caller pairs
+ * this with the clause's guard: a guard the fold pass reduces to
+ * `Literal(true)` is treated as no guard.
+ *
+ * Top-level `rest` patterns (`case ...x`) are also runtime catchalls
+ * but they're handled via the structural-subtract path, not this flag:
+ * `matchedTypeForPattern` returns the whole remaining type as
+ * `consumedType`, so `remainingType` reaches `Never` after the subtract
+ * and the exhaustiveness check accepts via the `remainingType.tag ===
+ * 'Never'` arm without consulting `sawCatchall`.
+ */
+function isCatchallPattern(pattern: AstNode): boolean {
+  const kind = pattern[0] as string
+  return kind === 'wildcard' || kind === 'symbol'
 }
 
 function isTrackableMatchRemainder(type: Type): boolean {
