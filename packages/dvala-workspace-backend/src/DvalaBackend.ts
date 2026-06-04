@@ -16,6 +16,12 @@ import type {
   BackendNavigationResult,
   BackendPersistFileRequest,
   BackendRemoveFileRequest,
+  BackendCallHierarchyIncomingCallsRequest,
+  BackendCallHierarchyIncomingCallsResult,
+  BackendCallHierarchyOutgoingCallsRequest,
+  BackendCallHierarchyOutgoingCallsResult,
+  BackendCallHierarchyPrepareRequest,
+  BackendCallHierarchyPrepareResult,
   BackendCodeActionsRequest,
   BackendCodeActionsResult,
   BackendInlayHintsRequest,
@@ -68,6 +74,13 @@ export interface DvalaBackend {
   requestWorkspaceSymbols(request: BackendWorkspaceSymbolsRequest): Promise<BackendWorkspaceSymbolsResult>
   requestCompletion(request: BackendCompletionRequest): Promise<BackendCompletionResult>
   requestNavigation(request: BackendNavigationRequest): Promise<BackendNavigationResult>
+  requestCallHierarchyPrepare(request: BackendCallHierarchyPrepareRequest): Promise<BackendCallHierarchyPrepareResult>
+  requestCallHierarchyIncomingCalls(
+    request: BackendCallHierarchyIncomingCallsRequest,
+  ): Promise<BackendCallHierarchyIncomingCallsResult>
+  requestCallHierarchyOutgoingCalls(
+    request: BackendCallHierarchyOutgoingCallsRequest,
+  ): Promise<BackendCallHierarchyOutgoingCallsResult>
 
   startSession(request: BackendSessionStartRequest): Promise<BackendSessionStartResult>
   resumeSnapshot(request: BackendSessionResumeRequest): Promise<BackendSessionResumeResult>

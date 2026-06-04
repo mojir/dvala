@@ -15,6 +15,12 @@ import type {
   BackendNavigationResult,
   BackendSessionStartRequest,
   BackendSessionStartResult,
+  BackendCallHierarchyIncomingCallsRequest,
+  BackendCallHierarchyIncomingCallsResult,
+  BackendCallHierarchyOutgoingCallsRequest,
+  BackendCallHierarchyOutgoingCallsResult,
+  BackendCallHierarchyPrepareRequest,
+  BackendCallHierarchyPrepareResult,
   BackendCodeActionsRequest,
   BackendCodeActionsResult,
   BackendInlayHintsRequest,
@@ -175,6 +181,33 @@ export class BackendDiagnosticsClient {
 
   async requestCodeActions(request: Omit<BackendCodeActionsRequest, 'requestId'>): Promise<BackendCodeActionsResult> {
     return this.backend.requestCodeActions({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async requestCallHierarchyPrepare(
+    request: Omit<BackendCallHierarchyPrepareRequest, 'requestId'>,
+  ): Promise<BackendCallHierarchyPrepareResult> {
+    return this.backend.requestCallHierarchyPrepare({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async requestCallHierarchyIncomingCalls(
+    request: Omit<BackendCallHierarchyIncomingCallsRequest, 'requestId'>,
+  ): Promise<BackendCallHierarchyIncomingCallsResult> {
+    return this.backend.requestCallHierarchyIncomingCalls({
+      requestId: this.createRequestId(),
+      ...request,
+    })
+  }
+
+  async requestCallHierarchyOutgoingCalls(
+    request: Omit<BackendCallHierarchyOutgoingCallsRequest, 'requestId'>,
+  ): Promise<BackendCallHierarchyOutgoingCallsResult> {
+    return this.backend.requestCallHierarchyOutgoingCalls({
       requestId: this.createRequestId(),
       ...request,
     })

@@ -368,6 +368,108 @@ export type BackendCodeActionsResult =
     }
   | BackendRequestFailure
 
+// Call hierarchy — VS Code's "Show Call Hierarchy" action. Three
+// separate requests mirror the LSP shape:
+//  - prepare(position): identify the callable at the cursor
+//  - incoming(item): find every call site of `item`, grouped by caller
+//  - outgoing(item): walk `item`'s body, find what it calls, grouped by callee
+// Each call returns hierarchical `CallHierarchyItem`s + the precise
+// source ranges of the call sites for VS Code's tree rendering.
+export interface BackendCallHierarchyItem {
+  name: string
+  kind: 'function' | 'macro' | 'handler'
+  file: string
+  // 1-based start/end of the binding's full range (includes the LHS
+  // `name` and the entire RHS lambda/macro/handler expression). VS Code
+  // shows this as the item's "range".
+  startLine: number
+  startColumn: number
+  endLine: number
+  endColumn: number
+  // 1-based selection range — just the name token. VS Code highlights
+  // this when the user navigates to the item.
+  selectionStartLine: number
+  selectionStartColumn: number
+  selectionEndLine: number
+  selectionEndColumn: number
+}
+
+export interface BackendCallHierarchyCallSite {
+  startLine: number
+  startColumn: number
+  endLine: number
+  endColumn: number
+}
+
+export interface BackendCallHierarchyPrepareRequest {
+  requestId: BackendRequestId
+  path: string
+  source?: string
+  version: BackendDocumentVersion
+  line: number
+  column: number
+}
+
+export type BackendCallHierarchyPrepareResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      path: string
+      version: BackendDocumentVersion
+      items: readonly BackendCallHierarchyItem[]
+    }
+  | BackendRequestFailure
+
+// `item` identifies the callable across the wire — we re-resolve it on
+// the backend by matching name + def location. Round-tripping the
+// portable item shape keeps the protocol stable across LSP-style
+// transports later on.
+export interface BackendCallHierarchyIncomingCallsRequest {
+  requestId: BackendRequestId
+  // Document version is the version of the item's home file, NOT the
+  // file the request is dispatched from. VS Code re-issues these as
+  // the user expands the tree, so the version is whatever the editor
+  // last synced for that file.
+  version: BackendDocumentVersion
+  item: BackendCallHierarchyItem
+}
+
+export interface BackendCallHierarchyIncomingCall {
+  from: BackendCallHierarchyItem
+  // One or more call-site ranges inside `from` that target the item.
+  fromRanges: readonly BackendCallHierarchyCallSite[]
+}
+
+export type BackendCallHierarchyIncomingCallsResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      version: BackendDocumentVersion
+      calls: readonly BackendCallHierarchyIncomingCall[]
+    }
+  | BackendRequestFailure
+
+export interface BackendCallHierarchyOutgoingCallsRequest {
+  requestId: BackendRequestId
+  version: BackendDocumentVersion
+  item: BackendCallHierarchyItem
+}
+
+export interface BackendCallHierarchyOutgoingCall {
+  to: BackendCallHierarchyItem
+  // One or more call-site ranges INSIDE the source item that target `to`.
+  fromRanges: readonly BackendCallHierarchyCallSite[]
+}
+
+export type BackendCallHierarchyOutgoingCallsResult =
+  | {
+      ok: true
+      requestId: BackendRequestId
+      version: BackendDocumentVersion
+      calls: readonly BackendCallHierarchyOutgoingCall[]
+    }
+  | BackendRequestFailure
+
 // Selection range — Alt+Shift+→ / ← in VS Code expands/shrinks the
 // selection by semantic units. For each requested position we return a
 // list of ranges innermost → outermost: the smallest AST node containing

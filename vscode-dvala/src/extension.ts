@@ -12,7 +12,11 @@ import {
 } from '@mojir/dvala-core-tooling'
 import type { CompletionItem as SharedCompletionItem } from '@mojir/dvala-core-tooling'
 import type { Diagnostic as SharedDiagnostic } from '@mojir/dvala-core-tooling'
-import type { BackendSymbolKind } from '../../packages/dvala-workspace-backend/src/index'
+import type {
+  BackendCallHierarchyCallSite,
+  BackendCallHierarchyItem,
+  BackendSymbolKind,
+} from '../../packages/dvala-workspace-backend/src/index'
 
 import { BackendDiagnosticsClient } from './backendDiagnosticsClient'
 import { linkSelectionRangeChains, type LinkedSelectionRange } from './selectionRangeAdapter'
@@ -1032,6 +1036,85 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   )
 
+  // Call Hierarchy — VS Code's right-click "Show Call Hierarchy" panel.
+  // Three lifecycle calls map onto the backend's three requests. We keep
+  // a WeakMap from VS Code's CallHierarchyItem objects back to the
+  // backend's portable item shape so subsequent incoming/outgoing calls
+  // (which only get the VS Code item, not the original cursor position)
+  // can round-trip the backend identity.
+  const callHierarchyBackendItems = new WeakMap<vscode.CallHierarchyItem, BackendCallHierarchyItem>()
+  const backendItemToVs = (item: BackendCallHierarchyItem): vscode.CallHierarchyItem => {
+    const vsItem = new vscode.CallHierarchyItem(
+      vscode.SymbolKind.Function,
+      item.name,
+      item.kind,
+      vscode.Uri.file(item.file),
+      new vscode.Range(
+        Math.max(0, item.startLine - 1),
+        Math.max(0, item.startColumn - 1),
+        Math.max(0, item.endLine - 1),
+        Math.max(0, item.endColumn - 1),
+      ),
+      new vscode.Range(
+        Math.max(0, item.selectionStartLine - 1),
+        Math.max(0, item.selectionStartColumn - 1),
+        Math.max(0, item.selectionEndLine - 1),
+        Math.max(0, item.selectionEndColumn - 1),
+      ),
+    )
+    callHierarchyBackendItems.set(vsItem, item)
+    return vsItem
+  }
+  const callSiteToVsRange = (callSite: BackendCallHierarchyCallSite): vscode.Range =>
+    new vscode.Range(
+      Math.max(0, callSite.startLine - 1),
+      Math.max(0, callSite.startColumn - 1),
+      Math.max(0, callSite.endLine - 1),
+      Math.max(0, callSite.endColumn - 1),
+    )
+  const callHierarchyProvider = vscode.languages.registerCallHierarchyProvider('dvala', {
+    async prepareCallHierarchy(document, position) {
+      indexDocument(document)
+      await syncBackendAnalysisDocument(document)
+      const result = await backendDiagnostics.requestCallHierarchyPrepare({
+        path: document.uri.fsPath,
+        source: document.getText(),
+        version: document.version,
+        line: position.line + 1,
+        column: position.character + 1,
+      })
+      if (!result.ok) return undefined
+      return result.items.map(backendItemToVs)
+    },
+
+    async provideCallHierarchyIncomingCalls(item) {
+      const backendItem = callHierarchyBackendItems.get(item)
+      if (!backendItem) return []
+      const result = await backendDiagnostics.requestCallHierarchyIncomingCalls({
+        version: 0, // Document version is bookkeeping; backend uses the home file's currently-mirrored version.
+        item: backendItem,
+      })
+      if (!result.ok) return []
+      return result.calls.map(
+        call =>
+          new vscode.CallHierarchyIncomingCall(backendItemToVs(call.from), call.fromRanges.map(callSiteToVsRange)),
+      )
+    },
+
+    async provideCallHierarchyOutgoingCalls(item) {
+      const backendItem = callHierarchyBackendItems.get(item)
+      if (!backendItem) return []
+      const result = await backendDiagnostics.requestCallHierarchyOutgoingCalls({
+        version: 0,
+        item: backendItem,
+      })
+      if (!result.ok) return []
+      return result.calls.map(
+        call => new vscode.CallHierarchyOutgoingCall(backendItemToVs(call.to), call.fromRanges.map(callSiteToVsRange)),
+      )
+    },
+  })
+
   // Document formatting provider — powers Format Document (Shift+Alt+F / Shift+Option+F)
   const formattingProvider = vscode.languages.registerDocumentFormattingEditProvider('dvala', {
     async provideDocumentFormattingEdits(document) {
@@ -1063,6 +1146,7 @@ export function activate(context: vscode.ExtensionContext): void {
     codeActionProvider,
     selectionRangeProvider,
     semanticTokensProvider,
+    callHierarchyProvider,
     workspaceSymbolProvider,
     lsDiagnostics,
     typeDiagnostics,
