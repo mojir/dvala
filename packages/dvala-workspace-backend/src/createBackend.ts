@@ -664,11 +664,26 @@ function isCallableType(type: MaybeCallable): boolean {
 // actions handler to locate the match an exhaustiveness-diagnostic refers
 // to. Returns `null` when no Match wraps the position; the caller skips
 // this action for that diagnostic.
-// Find the Let AST node whose simple-symbol binding matches `def`'s
-// location, and return the source ranges needed by the inline-variable
-// refactor (the let's full range + the value expression's range).
-// Returns `null` if no such Let exists, the binding isn't a simple-symbol
-// shape, or any of the ranges are missing from the source map.
+/**
+ * Find the Let AST node whose simple-symbol binding matches `def`'s
+ * location, and return the source ranges needed by the inline-variable
+ * refactor (the let's full range + the value expression's range).
+ *
+ * Returns `null` if no such Let exists, the binding isn't a simple-symbol
+ * shape, or any of the ranges are missing from the source map.
+ *
+ * Constraints:
+ *  - Simple-symbol bindings only — `['symbol', [SymNode, default?], nodeId]`.
+ *    Destructuring (array / object), rest, and literal patterns are out of
+ *    scope: "inline one element" / "inline one field" each need their own
+ *    refactor design.
+ *  - Match is on the SymNode's source POSITION, not its nodeId — the
+ *    symbol-table builder registers the def with the SymNode's nodeId,
+ *    but the bindingTarget itself has a different nodeId, and various
+ *    consumers pick differently. Position is the stable identifier.
+ *  - `bindingTarget[0]` is a BindingTargetType (`'symbol' | 'array' | …`),
+ *    not a NodeType — the `as string` cast is intentional.
+ */
 function findEnclosingLetRanges(
   ast: readonly AstNode[],
   sourceMap: Map<number, SourceMapPosition> | undefined,
@@ -689,22 +704,9 @@ function findEnclosingLetRanges(
     if (result) return
     if (node[0] !== NodeTypes.Let || !Array.isArray(node[1])) return
     const [bindingTarget, valueExpr] = node[1] as [AstNode, AstNode]
-    // Simple-symbol binding only: `bindingTargetTypes.symbol` shape =
-    // ['symbol', [SymNode, default?], nodeId]. We don't handle
-    // destructuring (array / object), rest, or literal patterns — the
-    // refactor's semantics there are different ("inline one element" /
-    // "inline one field" each need their own design).
-    // BindingTarget is typed as `AstNode` here but `bindingTarget[0]` is a
-    // BindingTargetType (`'symbol' | 'array' | 'object' | …`), not a
-    // NodeType. The cast bypasses the type-incompat check; the value
-    // is a string at runtime regardless.
     if ((bindingTarget[0] as string) !== 'symbol' || !Array.isArray(bindingTarget[1])) return
     const symNode = (bindingTarget[1] as [AstNode, AstNode | undefined])[0]
     if (symNode[0] !== NodeTypes.Sym || symNode[1] !== def.name) return
-    // Match by source position rather than nodeId — the symbol-table
-    // builder registers the def with the SymNode's nodeId, but the
-    // bindingTarget itself has a different nodeId, and various consumers
-    // pick differently. Position is the stable identifier.
     const symPos = sourceMap.get(symNode[symNode.length - 1] as number)
     if (!symPos) return
     if (symPos.start[0] + 1 !== def.location.line || symPos.start[1] + 1 !== def.location.column) return
@@ -1516,6 +1518,12 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         const effectiveVersion = openDocument?.version ?? request.version
         const typecheckResult = getOrComputeTypecheck(request.path, effectiveSource, effectiveVersion)
         const actions: BackendCodeAction[] = []
+        // Built once and shared by inline-variable + extract-function. Both
+        // refactors need fileSymbols (definitions/references with scope
+        // resolution); rebuilding the index for each would double the cost
+        // of every code-action request on non-trivial files.
+        const codeActionsIndex = new WorkspaceIndex()
+        indexBackendDocuments(request.path, documents, codeActionsIndex)
 
         // Quick-fix: "Insert catchall" for `Non-exhaustive match` diagnostics.
         // The diagnostic carries enough position info; we find the Match AST
@@ -1557,18 +1565,16 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         // (mid-statement positioning would require either inserting the
         // value text inline or computing a partial-line removal range,
         // both of which are v2 polish).
-        const inlineIndex = new WorkspaceIndex()
-        indexBackendDocuments(request.path, documents, inlineIndex)
         // `findDefinition` only matches REFERENCE positions — it follows a
         // reference back to its def. For inline-variable we also want to
         // trigger when the cursor sits ON the def site. Fall back to
         // scanning `fileSymbols.definitions` for a def whose location spans
         // the cursor (start ≤ cursor < start + name.length).
-        const inlineFileSymbols = inlineIndex.getFileSymbols(request.path)
-        let cursorDef = inlineIndex.findDefinition(request.path, request.startLine, request.startColumn)
-        if (!cursorDef && inlineFileSymbols) {
+        const codeActionsFileSymbols = codeActionsIndex.getFileSymbols(request.path)
+        let cursorDef = codeActionsIndex.findDefinition(request.path, request.startLine, request.startColumn)
+        if (!cursorDef && codeActionsFileSymbols) {
           cursorDef =
-            inlineFileSymbols.definitions.find(
+            codeActionsFileSymbols.definitions.find(
               d =>
                 d.location.line === request.startLine &&
                 request.startColumn >= d.location.column &&
@@ -1591,8 +1597,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
               const valueLine = sourceLines[letInfo.valueStartLine - 1]
               if (valueLine !== undefined && letInfo.valueStartLine === letInfo.valueEndLine) {
                 const valueText = valueLine.slice(letInfo.valueStartColumn - 1, letInfo.valueEndColumn - 1)
-                const fileSymbolsForInline = inlineIndex.getFileSymbols(request.path)
-                const references: InlineReferenceLocation[] = (fileSymbolsForInline?.references ?? [])
+                const references: InlineReferenceLocation[] = (codeActionsFileSymbols?.references ?? [])
                   .filter(ref => ref.resolvedDef === cursorDef)
                   .map(ref => ({ line: ref.location.line, column: ref.location.column, length: ref.name.length }))
                 const inlineEdits = computeInlineVariableEdits({
@@ -1663,17 +1668,17 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           // Refactor: extract function. Same selection-trust strategy as
           // extract-variable. Free-variable analysis: any reference whose
           // resolved def lives OUTSIDE the selection becomes a parameter.
-          // We dedupe by name and preserve appearance order (the order
-          // refs show up while walking the selection range).
-          const fnIndex = new WorkspaceIndex()
-          indexBackendDocuments(request.path, documents, fnIndex)
-          const fnFileSymbols = fnIndex.getFileSymbols(request.path)
+          // Dedup is keyed on the symbol's NAME — two shadowing bindings
+          // sharing a name collapse into a single parameter. That's a v1
+          // simplification; the extracted call site would resolve the
+          // single arg back to whichever binding is visible at the
+          // insertion point. Disambiguating shadowed names is a v2 polish.
           const positionInsideSelection = (line: number, column: number): boolean =>
             (line > request.startLine || (line === request.startLine && column >= request.startColumn)) &&
             (line < request.endLine || (line === request.endLine && column < request.endColumn))
           const freeVars: string[] = []
           const seenFreeVars = new Set<string>()
-          for (const ref of fnFileSymbols?.references ?? []) {
+          for (const ref of codeActionsFileSymbols?.references ?? []) {
             if (!ref.resolvedDef) continue
             if (!positionInsideSelection(ref.location.line, ref.location.column)) continue
             // Def inside the selection means the binding is local to the

@@ -1154,6 +1154,66 @@ describe('createBackend', () => {
       expect(action.edits[1]?.newText).toBe('extracted(x, y)')
     })
 
+    it('dedupes repeated free-variable refs by name (one ref per name in params)', async () => {
+      const backend = createBackend()
+      // `x` is the only param; it appears twice inside the selection. The
+      // extracted function should take a single `x` parameter, not two.
+      const source = 'let f = (x) -> x * x'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 212,
+        path: 'main.dvala',
+        version: 1,
+        // Select `x * x` (cols 16..21, end exclusive).
+        startLine: 1,
+        startColumn: 16,
+        endLine: 1,
+        endColumn: 21,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const fnActions = result.actions.filter(a => a.kind === 'refactor.extract' && a.title.includes('function'))
+      expect(fnActions).toHaveLength(1)
+      const action = fnActions[0]!
+      // Single `x` param, single `x` arg — not `(x, x)` / `(x, x)`.
+      expect(action.edits[0]?.newText).toContain('let extracted = (x) -> do')
+      expect(action.edits[1]?.newText).toBe('extracted(x)')
+    })
+
+    it('excludes refs whose def lives inside the selection from the free-vars list', async () => {
+      const backend = createBackend()
+      // `inner` is both defined AND referenced inside the selection — it
+      // is local to the extracted body, NOT a free variable. The
+      // extracted function should be parameterless.
+      const source = 'let outer = do let inner = 42; inner + 1 end'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const result = await backend.requestCodeActions({
+        requestId: 213,
+        path: 'main.dvala',
+        version: 1,
+        // Select `let inner = 42; inner + 1` (cols 16..41, end exclusive).
+        startLine: 1,
+        startColumn: 16,
+        endLine: 1,
+        endColumn: 41,
+        diagnostics: [],
+      })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const fnActions = result.actions.filter(a => a.kind === 'refactor.extract' && a.title.includes('function'))
+      expect(fnActions).toHaveLength(1)
+      const action = fnActions[0]!
+      // No params: the def-inside-selection check kept `inner` out of the
+      // free-vars list.
+      expect(action.edits[0]?.newText).toContain('let extracted = () -> do')
+      expect(action.edits[1]?.newText).toBe('extracted()')
+    })
+
     it('does not offer extract-variable for a zero-width cursor (no selection)', async () => {
       const backend = createBackend()
       const source = 'let answer = 1 + 2'
