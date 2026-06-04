@@ -76,6 +76,33 @@ describe('parseExpression — source-map ranges for binary ops', () => {
     expect(pos!.end).toEqual([0, 14])
   })
 
+  it('right-associative `^` keeps both inner and outer Call ranges anchored at their leftmost operand', () => {
+    // `2 ^ 3 ^ 2` parses right-associatively as `2 ^ (3 ^ 2)`. The inner
+    // `3 ^ 2` Call should span (col 12 → 17); the outer `2 ^ (3 ^ 2)` Call
+    // should span (col 8 → 17). The fix relies on the LEFT operand having
+    // a correct start position, so right-associative wrapping is the
+    // edge case worth verifying explicitly.
+    const { body, sourceMap } = parseWithSourceMap('let p = 2 ^ 3 ^ 2')
+    // Walk all Call nodes and collect them in source order.
+    const calls: AstNode[] = []
+    function collectCalls(n: AstNode | AstNode[]): void {
+      if (!Array.isArray(n)) return
+      if (typeof n[0] === 'string' && n[0] === NodeTypes.Call) calls.push(n as AstNode)
+      for (const child of n) {
+        if (Array.isArray(child)) collectCalls(child as AstNode)
+      }
+    }
+    collectCalls(body)
+    expect(calls).toHaveLength(2)
+    // Outer Call is found first (parent before child during depth-first walk).
+    const outerPos = positionOf(calls[0]!, sourceMap)
+    const innerPos = positionOf(calls[1]!, sourceMap)
+    expect(outerPos!.start).toEqual([0, 8])
+    expect(outerPos!.end).toEqual([0, 17])
+    expect(innerPos!.start).toEqual([0, 12])
+    expect(innerPos!.end).toEqual([0, 17])
+  })
+
   it('pipe `a |> f` desugars to a Call whose range covers both sides', () => {
     // `a |> f` becomes `f(a)` at parse time; the synthesized Call's range
     // should still cover from `a` (the source-side LEFT) through `f`.
