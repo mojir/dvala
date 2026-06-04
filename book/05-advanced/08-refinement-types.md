@@ -100,6 +100,111 @@ Current restrictions:
 
 If the checker cannot prove the helper's contract, the function is rejected rather than treated as an unchecked `assume`.
 
+## Strictness model — "if it compiles it runs"
+
+Refinement subtyping is strict by default. If the solver determines that a source type could carry a value the refinement would exclude, the assignment is rejected at compile time.
+
+```dvala no-run
+// Typecheck error: a bare Number could be 0, but Positive excludes 0.
+let f = (raw: Number) -> do
+  let p: Positive = raw;
+  p;
+end;
+f(5);
+```
+
+Three patterns close the gap:
+
+**1. Tighten the upstream type.** Push the refinement back to where the value originates.
+
+```dvala
+let toPositive: (n: Number) -> Positive = (n) -> do
+  assert(n > 0);
+  n;
+end;
+let p: Positive = toPositive(5);
+p;
+```
+
+**2. Narrow at the use site with `assert`.**
+
+```dvala
+let x: Number = 7;
+assert(x > 0);
+let p: Positive = x;
+p;
+```
+
+**3. Pattern-match with a guard.**
+
+```dvala
+let usePositive = (p: Positive) -> p;
+let x: Number = 7;
+match x
+  case n when n > 0 then usePositive(n)
+  case _ then 0
+end;
+```
+
+When the solver can't decide a refinement (e.g. disjunctions of intervals like `n > 10 || n < -5`, or relational predicates between two variables), the call is accepted inertly. That conservative fallback is what's left of the older lenience after the strict-by-default switch. As the solver scope expands in later phases, more of those cases will move from "accepted inertly" to "decided".
+
+## Worked examples
+
+### Validation pipeline
+
+A common shape is "untrusted input → checked → typed-positive value":
+
+```dvala
+type Score = Integer & {n | 0 <= n && n <= 100};
+let validateScore: (raw: Number) -> Score = (raw) -> do
+  assert(0 <= raw);
+  assert(raw <= 100);
+  raw;
+end;
+let ingest = (name: String, raw: Number) -> { name, score: validateScore(raw) };
+ingest("alice", 85);
+```
+
+The `assert` calls narrow `raw` to `Number & {n | 0 <= n}` then to `Number & {n | 0 <= n && n <= 100}` — which the solver recognises as a subtype of `Score`.
+
+### Safe arithmetic at API boundaries
+
+```dvala
+let safeDiv: (a: Number, b: NonZero) -> Number = (a, b) -> a / b;
+
+let divideIfPositive = (a: Number, b: Number) -> match b
+  case n when n != 0 then safeDiv(a, n)
+  case _ then 0
+end;
+```
+
+The guard `n != 0` narrows `n` to `NonZero` for the body. Without the guard the call wouldn't typecheck, because `Number` itself doesn't satisfy `NonZero`.
+
+### Building a non-empty result
+
+```dvala
+let firstChar: (s: String & { s | count (s) > 0 }) -> String = (s) -> s[0];
+let safeFirst = (s: String) -> match s
+  case t when count(t) > 0 then firstChar(t)
+  case _ then ""
+end;
+safeFirst("hello");
+```
+
+`count(t) > 0` is in the fragment, so the guard narrows `t` to `String & { s | count(s) > 0 }` and the call is accepted. (The prelude exports `NonEmpty<String>` as an alias for the same shape. The Dvala formatter currently spaces refinement-predicate type annotations differently from other contexts — that quirk is unrelated to refinement semantics.)
+
 ## What's enforced today
 
-The static analysis is intentionally conservative: when the solver can't decide a refinement holds, the call is accepted to avoid false positives. As the solver matures, refinement violations will become more strictly enforced at call sites.
+- Bare primitives (`Number`, `Integer`, `String`, `Boolean`) carry their natural domain — `Number` is `(-∞, ∞)`, `Integer` is `ℤ`, `String` is "count ≥ 0", `Boolean` is `{true, false}`.
+- Sequences (`Array<T>`, tuples, `Sequence(min, max)`) carry their statically-known length bounds — `[Number, Number]` against `count > 5` is rejected with witness 2.
+- Literal sources fold-discharge: `let x: Positive = 5` succeeds because `5 > 0` reduces to `true`.
+- Refined sources compose: `Refined<Number, x, x > 5>` is a subtype of `Refined<Number, n, n > 2>` because `(5, ∞) ⊂ (2, ∞)`.
+- Multi-refinement merging collapses `Number & {n | n > 0} & {n | n < 100}` to a single conjunction at the type level.
+- Boolean predicates accept the trivial form: `Boolean & {cond | cond}` and `Boolean & {cond | !cond}` are in the fragment.
+
+Out of scope today (deferred to Phase 3+):
+
+- Disjunctions of intervals (`n > 10 || n < -5`) — accepted inertly.
+- Multi-variable / relational predicates (`a > b`) — Phase 3.
+- Arithmetic on refined variables (`n + 1`, `n * n`) — Phase 3.
+- Cross-field record refinements (`{r | r.min <= r.max}`) — Phase 3.

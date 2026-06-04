@@ -83,9 +83,14 @@ function checkBooleanExpr(node: AstNode, binder: string, source: string, positio
       return
     }
     case NodeTypes.Sym: {
-      // Bare var reference `{x | x}` — not a Boolean expression. This is
-      // the `predicate-type` branch from the design doc: no coercion, a
-      // var on its own isn't a predicate.
+      // A bare reference to the binder is accepted as a Boolean predicate —
+      // semantically equivalent to `binder == true` (only meaningful when
+      // the base type is Boolean; the solver / type system rejects the
+      // mismatch when it isn't). Lets users write the trivial form
+      // `asserts {cond | cond}` instead of `{cond | cond == true}`.
+      // Any other identifier (a free variable that isn't the binder) is
+      // still rejected — predicates may only constrain the binder.
+      if ((node[1] as string) === binder) return
       throw new RefinementError(
         `Refinement predicate must be a Boolean expression; got a bare identifier '${node[1] as string}'. ` +
           'Use a relation (e.g. `x != 0`), a type-guard call (e.g. `isNumber(x)`), or a Boolean composition of those.',
