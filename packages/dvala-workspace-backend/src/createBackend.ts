@@ -56,11 +56,9 @@ import type {
   BackendHoverRequest,
   BackendHoverResult,
   BackendCallHierarchyCallSite,
-  BackendCallHierarchyIncomingCall,
   BackendCallHierarchyIncomingCallsRequest,
   BackendCallHierarchyIncomingCallsResult,
   BackendCallHierarchyItem,
-  BackendCallHierarchyOutgoingCall,
   BackendCallHierarchyOutgoingCallsRequest,
   BackendCallHierarchyOutgoingCallsResult,
   BackendCallHierarchyPrepareRequest,
@@ -1985,6 +1983,12 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     async requestCallHierarchyIncomingCalls(
       request: BackendCallHierarchyIncomingCallsRequest,
     ): Promise<BackendCallHierarchyIncomingCallsResult> {
+      // Incoming/outgoing don't validate `request.version` against the
+      // home file's mirrored version. VS Code keeps Call Hierarchy items
+      // alive across edits (the panel doesn't auto-refresh); requiring a
+      // version match would force the panel to throw away its tree on
+      // every keystroke. If the item's positions drift, the worst case
+      // is missing or extra refs in the next expand — acceptable for v1.
       try {
         const index = new WorkspaceIndex()
         indexBackendDocuments(request.item.file, documents, index)
@@ -1993,7 +1997,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         // callable frame in that file and group the call site under it.
         // Refs at top-level get bucketed under a synthetic file-scope
         // item (no enclosing callable).
-        const groups = new Map<string, BackendCallHierarchyIncomingCall>()
+        const groups = new Map<string, { from: BackendCallHierarchyItem; fromRanges: BackendCallHierarchyCallSite[] }>()
         // Iterate every file the document store knows about so we
         // catch cross-file callers, not just refs in the item's home
         // file. Each file is indexed on demand so that this handler
@@ -2002,13 +2006,31 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           indexBackendDocuments(filePath, documents, index)
           const fileSymbols = index.getFileSymbols(filePath)
           if (!fileSymbols) continue
-          const matchingRefs = fileSymbols.references.filter(
-            ref =>
-              ref.resolvedDef &&
+          const matchingRefs = fileSymbols.references.filter(ref => {
+            if (!ref.resolvedDef) return false
+            // Direct match: ref resolves to the item's def site in the
+            // item's home file.
+            if (
               ref.resolvedDef.location.file === request.item.file &&
               ref.resolvedDef.location.line === request.item.selectionStartLine &&
-              ref.resolvedDef.location.column === request.item.selectionStartColumn,
-          )
+              ref.resolvedDef.location.column === request.item.selectionStartColumn
+            ) {
+              return true
+            }
+            // Through-import match: destructured imports like
+            // `let { f } = import("./lib")` create a local import-kind
+            // def. Refs to that local def are effectively refs to the
+            // original — follow one hop back to the source.
+            if (
+              ref.resolvedDef.kind === 'import' &&
+              ref.resolvedDef.importPath !== undefined &&
+              ref.resolvedDef.importedName === request.item.name
+            ) {
+              const importedFrom = fileSymbols.imports.get(ref.resolvedDef.importPath)
+              if (importedFrom === request.item.file) return true
+            }
+            return false
+          })
           if (matchingRefs.length === 0) continue
           // Parse once per file to compute callable frames + source-map
           // ranges for the refs themselves.
@@ -2025,14 +2047,14 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
               : fileScopeCallHierarchyItem(filePath)
             const key = `${fromItem.file}::${fromItem.name}::${fromItem.selectionStartLine}:${fromItem.selectionStartColumn}`
             const existing = groups.get(key)
-            const callRange = {
+            const callRange: BackendCallHierarchyCallSite = {
               startLine: ref.location.line,
               startColumn: ref.location.column,
               endLine: ref.location.line,
               endColumn: ref.location.column + ref.name.length,
             }
             if (existing) {
-              ;(existing.fromRanges as BackendCallHierarchyCallSite[]).push(callRange)
+              existing.fromRanges.push(callRange)
             } else {
               groups.set(key, { from: fromItem, fromRanges: [callRange] })
             }
@@ -2060,6 +2082,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
     async requestCallHierarchyOutgoingCalls(
       request: BackendCallHierarchyOutgoingCallsRequest,
     ): Promise<BackendCallHierarchyOutgoingCallsResult> {
+      // See requestCallHierarchyIncomingCalls for the no-resync-check rationale.
       try {
         const source = documents.getEffectiveSource(request.item.file)
         if (source === undefined) {
@@ -2081,6 +2104,27 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         if (!fileSymbols || !typecheckResult.sourceMap) {
           return { ok: true, requestId: request.requestId, version: request.version, calls: [] }
         }
+        // Cache parse + frames per def-home file so a function with N
+        // calls into the same other file doesn't re-parse it N times.
+        // Source-file lookups dominate the per-call-site work; the cache
+        // collapses N → 1 for the common "calls all live in the same
+        // module" pattern.
+        const fileFramesCache = new Map<string, readonly CallableFrame[]>()
+        const getFramesFor = (file: string): readonly CallableFrame[] | null => {
+          const cached = fileFramesCache.get(file)
+          if (cached) return cached
+          const fileSource = documents.getEffectiveSource(file)
+          if (fileSource === undefined) return null
+          const fileVersion = documents.getOpenDocument(file)?.version ?? 0
+          const fileTypecheck = getOrComputeTypecheck(file, fileSource, fileVersion)
+          const fileAst = parseToAst(
+            minifyTokenStream(tokenizeSource(fileSource, true, file), { removeWhiteSpace: true }),
+          )
+          const fileFileSymbols = index.getFileSymbols(file)
+          const frames = collectCallableFrames(fileAst.body, fileTypecheck.sourceMap, fileFileSymbols)
+          fileFramesCache.set(file, frames)
+          return frames
+        }
         const frames = collectCallableFrames(ast.body, typecheckResult.sourceMap, fileSymbols)
         const sourceFrame = frames.find(
           f => f.defLine === request.item.selectionStartLine && f.defColumn === request.item.selectionStartColumn,
@@ -2091,8 +2135,11 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
         // Find the Function/Macro/Handler subtree corresponding to the
         // source frame, then walk its body looking for Call sites whose
         // callee is a Sym that resolves to a callable def.
+        // Seed the cache with the source file's frames since we already
+        // computed them above.
+        fileFramesCache.set(request.item.file, frames)
         const refByNodeId = new Map(fileSymbols.references.map(ref => [ref.nodeId, ref]))
-        const calls = new Map<string, BackendCallHierarchyOutgoingCall>()
+        const calls = new Map<string, { to: BackendCallHierarchyItem; fromRanges: BackendCallHierarchyCallSite[] }>()
         for (const callSite of walkCallSites(ast.body, typecheckResult.sourceMap)) {
           // Filter to call sites inside the source frame's body range.
           const startLine = callSite.callRange.start[0] + 1
@@ -2107,23 +2154,13 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           if (!ref?.resolvedDef) continue
           const def = ref.resolvedDef
           if (!CALLABLE_DEF_KINDS.has(def.kind)) continue
-          // Resolve the def's home file frames to build the `to` item.
-          // If the def lives in a different file, parse + index that
-          // file (already indexed by indexBackendDocuments above).
-          const defFileSource = documents.getEffectiveSource(def.location.file)
-          if (defFileSource === undefined) continue
-          const defFileVersion = documents.getOpenDocument(def.location.file)?.version ?? 0
-          const defTypecheck = getOrComputeTypecheck(def.location.file, defFileSource, defFileVersion)
-          const defAst = parseToAst(
-            minifyTokenStream(tokenizeSource(defFileSource, true, def.location.file), { removeWhiteSpace: true }),
-          )
-          const defFileSymbols = index.getFileSymbols(def.location.file)
-          const defFrames = collectCallableFrames(defAst.body, defTypecheck.sourceMap, defFileSymbols)
+          const defFrames = getFramesFor(def.location.file)
+          if (!defFrames) continue
           const defFrame = defFrames.find(f => f.defLine === def.location.line && f.defColumn === def.location.column)
           if (!defFrame) continue
           const toItem = callableFrameToBackendItem(defFrame, def.location.file)
           const key = `${toItem.file}::${toItem.name}::${toItem.selectionStartLine}:${toItem.selectionStartColumn}`
-          const callRange = {
+          const callRange: BackendCallHierarchyCallSite = {
             startLine,
             startColumn,
             endLine: callSite.callRange.end[0] + 1,
@@ -2131,7 +2168,7 @@ export function createBackend(options: CreateBackendOptions = {}): DvalaBackend 
           }
           const existing = calls.get(key)
           if (existing) {
-            ;(existing.fromRanges as BackendCallHierarchyCallSite[]).push(callRange)
+            existing.fromRanges.push(callRange)
           } else {
             calls.set(key, { to: toItem, fromRanges: [callRange] })
           }

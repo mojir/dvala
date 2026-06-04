@@ -1547,6 +1547,83 @@ describe('createBackend', () => {
       if (!result.ok) return
       expect(result.calls).toHaveLength(0)
     })
+
+    it('does not detect recursive self-calls (symbol-table limitation, not a call-hierarchy bug)', async () => {
+      const backend = createBackend()
+      // Self-recursive references resolve to `null` in the symbol table
+      // today — the let-binding name isn't yet in scope for its own RHS
+      // at the LS layer, even though it works at runtime. This test
+      // locks in the current behavior so a future LS fix to track
+      // let-recursion has a clear signal to flip. When that lands,
+      // incoming/outgoing should both return one self-edge.
+      const source = 'let fact = (n) -> if n <= 1 then 1 else n * fact(n - 1) end'
+      await backend.openDocument({ path: 'main.dvala', source, version: 1 })
+
+      const prepResult = await backend.requestCallHierarchyPrepare({
+        requestId: 320,
+        path: 'main.dvala',
+        version: 1,
+        line: 1,
+        column: 5,
+      })
+      if (!prepResult.ok) throw new Error('prepare failed')
+      const item = prepResult.items[0]!
+
+      const outgoing = await backend.requestCallHierarchyOutgoingCalls({
+        requestId: 321,
+        version: 1,
+        item,
+      })
+      expect(outgoing.ok).toBe(true)
+      if (!outgoing.ok) return
+      expect(outgoing.calls).toHaveLength(0)
+
+      const incoming = await backend.requestCallHierarchyIncomingCalls({
+        requestId: 322,
+        version: 1,
+        item,
+      })
+      expect(incoming.ok).toBe(true)
+      if (!incoming.ok) return
+      expect(incoming.calls).toHaveLength(0)
+    })
+
+    it('finds incoming calls from another file', async () => {
+      const backend = createBackend()
+      // File A defines `target`; file B imports and calls it. Incoming-calls
+      // of `target` should include the call site in file B.
+      await backend.openDocument({ path: 'lib.dvala', source: 'let target = -> 42; { target }', version: 1 })
+      await backend.openDocument({
+        path: 'main.dvala',
+        source: 'let { target } = import("./lib");\ntarget()',
+        version: 1,
+      })
+
+      const prepResult = await backend.requestCallHierarchyPrepare({
+        requestId: 323,
+        path: 'lib.dvala',
+        version: 1,
+        // Cursor on `target` def in lib.dvala (line 1, column 5).
+        line: 1,
+        column: 5,
+      })
+      if (!prepResult.ok) throw new Error('prepare failed')
+      expect(prepResult.items).toHaveLength(1)
+      const item = prepResult.items[0]!
+
+      const incoming = await backend.requestCallHierarchyIncomingCalls({
+        requestId: 324,
+        version: 1,
+        item,
+      })
+
+      expect(incoming.ok).toBe(true)
+      if (!incoming.ok) return
+      // The call site in main.dvala should appear. The "from" item is a
+      // synthetic file-scope item (top-level call, no enclosing function).
+      const callerFiles = incoming.calls.map(c => c.from.file).sort()
+      expect(callerFiles).toContain('main.dvala')
+    })
   })
 
   describe('requestSelectionRange', () => {

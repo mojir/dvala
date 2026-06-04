@@ -1,17 +1,18 @@
 // Pure-function support for the call hierarchy LS feature. Three
-// operations mirror the VS Code Call Hierarchy provider API:
+// exports back the three VS Code Call Hierarchy operations:
 //
-//  - resolveCallableAt(line, column) — returns the SymbolDef of the
-//    callable (function / macro / handler) at the cursor. Cursor can
-//    be on a reference OR a def site.
-//  - findCallableAtPositionInScope(line, column, ast, sourceMap) — walks
-//    the AST + source map and returns the smallest "callable frame"
-//    (the binding range + body range + name) whose body contains the
-//    position. Used by incoming-calls to group call sites by the
-//    enclosing function.
-//  - walkCallSitesInBody(body, sourceMap, fileSymbols, callableKinds) —
-//    walks an AST subtree and yields every Sym-callee Call site along
-//    with the resolved def. Used by outgoing-calls.
+//  - collectCallableFrames(ast, sourceMap, fileSymbols) — walks the
+//    AST and returns every `let name = (params) -> body` shape (plus
+//    macro / handler analogues) as a CallableFrame, recording both
+//    the outer Let range and the inner body range. Used by all three
+//    Call Hierarchy operations to map between source positions and
+//    named callables.
+//  - findEnclosingCallableFrame(frames, line, column) — smallest
+//    frame whose body contains a position. Used by incoming-calls to
+//    group each call site under its enclosing function.
+//  - walkCallSites(node, sourceMap) — generator that yields every
+//    Call site with a Sym callee + the call's source range. Used by
+//    outgoing-calls to list "what does this function call?".
 //
 // Pure: takes raw AST + source map + symbol table, no backend or
 // VS Code coupling. Promotes to dvala-core-tooling/src/shared/ when
