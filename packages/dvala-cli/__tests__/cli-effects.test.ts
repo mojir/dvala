@@ -40,6 +40,11 @@ function replEval(code: string, answers: string[] = [], cliArgs: string[] = []):
     let stdout = ''
     let sentCode = false
     let answerIdx = 0
+    let quitSent = false
+
+    // The child can close stdin as it exits; a write that races with that loses
+    // the pipe. Swallow the benign EPIPE instead of crashing the test process.
+    child.stdin.on('error', () => {})
 
     child.stdout.on('data', (data: Buffer) => {
       const chunk = data.toString()
@@ -59,8 +64,10 @@ function replEval(code: string, answers: string[] = [], cliArgs: string[] = []):
         return
       }
 
-      // When the result marker appears, quit
-      if (sentCode && stdout.includes(':END>>')) {
+      // When the result marker appears, quit — but only once (the data handler
+      // fires on every chunk, and the marker stays in the accumulated stdout).
+      if (sentCode && !quitSent && stdout.includes(':END>>')) {
+        quitSent = true
         child.stdin.write(':quit\n')
       }
     })
