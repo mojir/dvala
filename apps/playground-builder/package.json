@@ -11,6 +11,7 @@
     "bundle": "rolldown -c ./rolldown.bundle.config.mjs && cd ../.. && node ./apps/playground-builder/dist/buildPlaygroundSite.cjs"
   },
   "dependencies": {
+    "@mojir/dvala-common": "workspace:*",
     "@mojir/dvala-core-tooling": "workspace:*"
   }
 }

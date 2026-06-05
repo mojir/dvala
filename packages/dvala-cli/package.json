@@ -12,6 +12,7 @@
     "start": "node ./dist/cli.cjs"
   },
   "dependencies": {
+    "@mojir/dvala-common": "workspace:*",
     "@mojir/dvala-core-tooling": "workspace:*",
     "@mojir/dvala-runtime": "workspace:*",
     "@mojir/dvala-test-framework": "workspace:*",

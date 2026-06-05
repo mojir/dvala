@@ -1,5 +1,5 @@
 import type { ExampleEntry } from '@mojir/dvala-engine'
-import type { EffectReference } from '../../../reference'
+import type { EffectReference } from '@mojir/dvala-core-tooling/reference'
 import type { PlaygroundAPI } from './playgroundAPI'
 
 // Derive camelCase effect names from PlaygroundAPI at the type level

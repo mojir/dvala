@@ -31,4 +31,24 @@ export default defineConfig([
     external: [...externalDeps, '@mojir/dvala-core-tooling'],
     output: { file: './dist/node.js', format: 'esm', sourcemap: true },
   },
+  // `bundle()` is the node-only file walker (imports node:fs/path), exposed via
+  // the `@mojir/dvala-core-tooling/bundler` subpath. Like `/node`, browser-target
+  // consumers never touch it; node-side consumers (CLI, the VS Code debug
+  // adapter) opt in explicitly.
+  {
+    input: './src/bundler/index.ts',
+    external: externalDeps,
+    output: { file: './dist/bundler/index.js', format: 'esm', sourcemap: true },
+  },
+  // The canonical API reference registry, exposed via the
+  // `@mojir/dvala-core-tooling/reference[/*]` subpath exports. It lives here
+  // (rather than its own package) because it and the tooling are mutually
+  // dependent: reference uses the formatter + tokenizer, while the language
+  // service uses the reference registry for completions. `book` reads markdown
+  // via node:fs and is only imported from node contexts.
+  ...['index', 'api', 'book', 'datatype', 'examples', 'format'].map((name) => ({
+    input: `./src/reference/${name}.ts`,
+    external: externalDeps,
+    output: { file: `./dist/reference/${name}.js`, format: 'esm', sourcemap: true },
+  })),
 ])

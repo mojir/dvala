@@ -8,13 +8,13 @@ import {
   isCustomReference,
   isEffectReference,
   moduleReference,
-} from '../../../reference'
-import type { Reference } from '../../../reference'
-import { coreCategories } from '../../../reference/api'
-import { examples } from '../../../reference/examples'
-import { isBookSection, chapters, bookItems } from '../../../reference/book'
-import { allAppRoutes } from '../../../common/appRoutes'
-import { buildReferenceData } from '../../../common/buildReferenceData'
+} from '@mojir/dvala-core-tooling/reference'
+import type { Reference } from '@mojir/dvala-core-tooling/reference'
+import { coreCategories } from '@mojir/dvala-core-tooling/reference/api'
+import { examples } from '@mojir/dvala-core-tooling/reference/examples'
+import { isBookSection, chapters, bookItems } from '@mojir/dvala-core-tooling/reference/book'
+import { allAppRoutes } from '@mojir/dvala-common/appRoutes'
+import { buildReferenceData } from '@mojir/dvala-common/buildReferenceData'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 
 const DOC_DIR = path.resolve(__dirname, '../../../docs')

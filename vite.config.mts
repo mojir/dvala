@@ -35,6 +35,16 @@ const workspaceBackendRuntimeEntry = fileURLToPath(
 const workspaceBackendPlaygroundProtocolEntry = fileURLToPath(
   new URL('./packages/dvala-workspace-backend/src/adapters/playgroundWorkerProtocol.ts', import.meta.url),
 )
+const referenceEntry = fileURLToPath(new URL('./packages/dvala-core-tooling/src/reference/index.ts', import.meta.url))
+const referenceSubpath = (name: string) =>
+  fileURLToPath(new URL(`./packages/dvala-core-tooling/src/reference/${name}.ts`, import.meta.url))
+const commonSubpath = (name: string) =>
+  fileURLToPath(new URL(`./packages/dvala-common/src/${name}.ts`, import.meta.url))
+
+// Root monorepo version, injected as the __DVALA_VERSION__ build-time constant
+// (mirrors the rolldown define in packages/dvala-common). buildReferenceData
+// uses it instead of importing the root package.json across package boundaries.
+const dvalaVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 
 export default defineConfig({
   resolve: {
@@ -44,12 +54,28 @@ export default defineConfig({
       '@mojir/dvala-types': dvalaTypesEntry,
       '@mojir/dvala-engine': dvalaEngineEntry,
       '@mojir/dvala-core-tooling/node': fileURLToPath(new URL('./packages/dvala-core-tooling/src/languageService/nodeWorkspaceIndexer.ts', import.meta.url)),
+      '@mojir/dvala-core-tooling/bundler': fileURLToPath(new URL('./packages/dvala-core-tooling/src/bundler/index.ts', import.meta.url)),
+      // Reference subpaths must precede the bare core-tooling alias — alias
+      // matching is prefix-based and first-match-wins.
+      '@mojir/dvala-core-tooling/reference/api': referenceSubpath('api'),
+      '@mojir/dvala-core-tooling/reference/book': referenceSubpath('book'),
+      '@mojir/dvala-core-tooling/reference/datatype': referenceSubpath('datatype'),
+      '@mojir/dvala-core-tooling/reference/examples': referenceSubpath('examples'),
+      '@mojir/dvala-core-tooling/reference/format': referenceSubpath('format'),
+      '@mojir/dvala-core-tooling/reference': referenceEntry,
       '@mojir/dvala-core-tooling': coreToolingEntry,
       '@mojir/dvala-test-framework': testFrameworkEntry,
       '@mojir/dvala-workspace-backend/adapters/playground-worker-protocol': workspaceBackendPlaygroundProtocolEntry,
       '@mojir/dvala-workspace-backend/runtime': workspaceBackendRuntimeEntry,
       '@mojir/dvala-workspace-backend': workspaceBackendEntry,
+      '@mojir/dvala-common/utils': commonSubpath('utils'),
+      '@mojir/dvala-common/appRoutes': commonSubpath('appRoutes'),
+      '@mojir/dvala-common/referenceData': commonSubpath('referenceData'),
+      '@mojir/dvala-common/buildReferenceData': commonSubpath('buildReferenceData'),
     },
+  },
+  define: {
+    __DVALA_VERSION__: JSON.stringify(dvalaVersion),
   },
   plugins: [
     {

@@ -23,7 +23,7 @@
 // cycle: core-tooling's index transitively pulls in completionBuilder which
 // imports reference/, so going through the package entry would re-enter this
 // module before format is bound.
-import { format } from '../packages/dvala-core-tooling/src/formatter/format'
+import { format } from '../formatter/format'
 
 export function dvala(strings: TemplateStringsArray, ...values: unknown[]): string {
   // Use String.raw to avoid interpreting escape sequences inside the Dvala code.

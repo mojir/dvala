@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declarationDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*"],
+  "files": ["../../types/dvala-source.d.ts", "../../types/globals.d.ts"],
+  "exclude": ["**/*.test.ts", "__tests__"]
+}

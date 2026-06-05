@@ -9,12 +9,14 @@
  * imported from `reference/`.
  */
 
-import { apiReference, effectReference, getLinkName, moduleReference } from '../reference'
-import { coreCategoryDescriptions, coreCategories } from '../reference/api'
-import { examples } from '../reference/examples'
+import { apiReference, effectReference, getLinkName, moduleReference } from '@mojir/dvala-core-tooling/reference'
+import { coreCategoryDescriptions, coreCategories } from '@mojir/dvala-core-tooling/reference/api'
+import { examples } from '@mojir/dvala-core-tooling/reference/examples'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
-import { version } from '../package.json'
 import type { ReferenceData, SearchEntry } from './referenceData'
+
+// Monorepo version, replaced at build time (see rolldown define + vitest define).
+const version = __DVALA_VERSION__
 
 export function buildReferenceData(): ReferenceData {
   const shortDescRegExp = /(.*?) {2}\n|\n\n|$/

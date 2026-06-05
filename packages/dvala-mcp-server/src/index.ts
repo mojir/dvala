@@ -3,7 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 
 import { version } from '../../../package.json'
-import { stringifyValue } from '../../../common/utils'
+import { stringifyValue } from '@mojir/dvala-common/utils'
 import {
   formatDoc,
   formatExamples,
@@ -13,7 +13,7 @@ import {
   listModuleExpressions,
   listModules,
   lookupDoc,
-} from '../../../reference/format'
+} from '@mojir/dvala-core-tooling/reference/format'
 import { allBuiltinModules, parseTokenStream, tokenizeSource } from '@mojir/dvala-core-tooling'
 import { createDvala } from '@mojir/dvala-core-tooling'
 import { initReferenceData } from '@mojir/dvala-core-tooling'

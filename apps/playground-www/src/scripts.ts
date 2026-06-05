@@ -1,8 +1,8 @@
 /* eslint-disable no-console */
 import './styles.css'
-import { stringifyValue } from '../../../common/utils'
-import type { Example } from '../../../reference/examples'
-import { getLinkName } from '../../../reference'
+import { stringifyValue } from '@mojir/dvala-common/utils'
+import type { Example } from '@mojir/dvala-core-tooling/reference/examples'
+import { getLinkName } from '@mojir/dvala-core-tooling/reference'
 import { type Any, asUnknownRecord, type DvalaErrorJSON } from '@mojir/dvala-types'
 import { createDvala } from '@mojir/dvala-core-tooling'
 import { type EffectContext, type EffectHandler, type HandlerRegistration, type Snapshot } from '@mojir/dvala-engine'

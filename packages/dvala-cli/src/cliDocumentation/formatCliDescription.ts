@@ -1,8 +1,8 @@
-import type { FunctionReference, Reference } from '../../../../reference'
+import type { FunctionReference, Reference } from '@mojir/dvala-core-tooling/reference'
 import type { Colorizer } from '../colorizer'
-import { createFormatter } from '../../../../common/createFormatter'
-import { findAllOccurrences } from '../../../../common/utils'
-import { isFunctionReference } from '../../../../reference'
+import { createFormatter } from '../createFormatter'
+import { findAllOccurrences } from '@mojir/dvala-common/utils'
+import { isFunctionReference } from '@mojir/dvala-core-tooling/reference'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '@mojir/dvala-core-tooling'
 import { createVariableRule, getMdRules } from '../cliFormatterRules'
 

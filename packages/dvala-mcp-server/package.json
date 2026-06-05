@@ -19,6 +19,7 @@
     "inspect": "npx @modelcontextprotocol/inspector node ./dist/server.cjs"
   },
   "dependencies": {
+    "@mojir/dvala-common": "workspace:*",
     "@mojir/dvala-core-tooling": "workspace:*",
     "@mojir/dvala-engine": "workspace:*",
     "@mojir/dvala-runtime": "workspace:*",

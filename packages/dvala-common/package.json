@@ -1,0 +1,33 @@
+{
+  "name": "@mojir/dvala-common",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared helpers used across the CLI, MCP server, and playground apps (utils, app routes, reference-data builders).",
+  "exports": {
+    "./utils": {
+      "types": "./dist/utils.d.ts",
+      "import": "./dist/utils.js"
+    },
+    "./appRoutes": {
+      "types": "./dist/appRoutes.d.ts",
+      "import": "./dist/appRoutes.js"
+    },
+    "./referenceData": {
+      "types": "./dist/referenceData.d.ts",
+      "import": "./dist/referenceData.js"
+    },
+    "./buildReferenceData": {
+      "types": "./dist/buildReferenceData.d.ts",
+      "import": "./dist/buildReferenceData.js"
+    }
+  },
+  "scripts": {
+    "build": "rolldown -c ./rolldown.config.mjs && tsgo -p ./tsconfig.json --emitDeclarationOnly",
+    "typecheck": "tsgo -p ./tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mojir/dvala-core-tooling": "workspace:*",
+    "@mojir/dvala-types": "workspace:*"
+  }
+}

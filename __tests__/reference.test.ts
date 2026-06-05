@@ -10,7 +10,7 @@ import {
   isShorthandReference,
   moduleReference,
   normalExpressionReference,
-} from '../reference'
+} from '@mojir/dvala-core-tooling/reference'
 import { normalExpressionKeys, specialExpressionKeys, specialExpressions } from '@mojir/dvala-engine'
 import { isUnknownRecord } from '@mojir/dvala-types'
 import { canBeOperator } from '@mojir/dvala-types'
@@ -20,10 +20,10 @@ import { createDvala } from '@mojir/dvala-core-tooling'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
 import { MODULE_DESCRIPTION_MAX_LENGTH } from '@mojir/dvala-engine'
 import { specialExpressionTypes } from '@mojir/dvala-types'
-import { type ApiName, categories } from '../reference/api'
+import { type ApiName, categories } from '@mojir/dvala-core-tooling/reference/api'
 import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
-import { getExamples, chapters } from '../reference/book'
+import { getExamples, chapters } from '@mojir/dvala-core-tooling/reference/book'
 import type { HandlerRegistration } from '@mojir/dvala-engine'
 import type { Any } from '@mojir/dvala-types'
 

@@ -3,7 +3,7 @@
  * Combines the landing with feature overview (formerly the About page).
  */
 
-import type { ReferenceData } from '../../../../common/referenceData'
+import type { ReferenceData } from '@mojir/dvala-common/referenceData'
 import { href } from '../router'
 import { bookIcon, codeIcon, githubIcon, labIcon, playIcon } from '../icons'
 import { getPageHeader } from '../utils'

@@ -5,7 +5,7 @@
  * (served at /) and on GitHub Pages (served at /dvala/).
  */
 
-import { allAppRoutes } from '../../../common/appRoutes'
+import { allAppRoutes } from '@mojir/dvala-common/appRoutes'
 
 /** Known top-level app paths — anything else is treated as a sub-path of the base. */
 const APP_ROOTS = allAppRoutes.map(r => `/${r}`)

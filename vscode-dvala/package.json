@@ -210,6 +210,7 @@
     "@types/vscode": "^1.109.0"
   },
   "dependencies": {
+    "@mojir/dvala-common": "workspace:*",
     "@mojir/dvala-core-tooling": "workspace:*",
     "@mojir/dvala-engine": "workspace:*",
     "@mojir/dvala-workspace-backend": "workspace:*",

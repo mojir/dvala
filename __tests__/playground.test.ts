@@ -25,8 +25,8 @@ import {
 } from '@mojir/dvala-core-tooling'
 import { StateHistory } from '../apps/playground-www/src/StateHistory'
 import type { HistoryEntry, HistoryStatus } from '../apps/playground-www/src/StateHistory'
-import { stringifyValue } from '../common/utils'
-import { examples } from '../reference/examples'
+import { stringifyValue } from '@mojir/dvala-common/utils'
+import { examples } from '@mojir/dvala-core-tooling/reference/examples'
 
 // ---------------------------------------------------------------------------
 // Helpers – mirror the playground's own patterns
@@ -418,7 +418,7 @@ describe('autoCompleter', () => {
 
 describe('app routes coverage', () => {
   it('stubRoutes and dynamicOnlyRoutes together cover all allAppRoutes', async () => {
-    const { allAppRoutes, stubRoutes, dynamicOnlyRoutes } = await import('../common/appRoutes')
+    const { allAppRoutes, stubRoutes, dynamicOnlyRoutes } = await import('@mojir/dvala-common/appRoutes')
     const covered = new Set([...stubRoutes, ...dynamicOnlyRoutes])
     for (const route of allAppRoutes) {
       expect(covered.has(route), `Route "${route}" is in allAppRoutes but not in stubRoutes or dynamicOnlyRoutes`).toBe(

@@ -20,8 +20,9 @@
     "dev": "vite --config ./vite.config.mjs"
   },
   "dependencies": {
-    "@mojir/dvala-engine": "workspace:*",
+    "@mojir/dvala-common": "workspace:*",
     "@mojir/dvala-core-tooling": "workspace:*",
+    "@mojir/dvala-engine": "workspace:*",
     "@mojir/dvala-workspace-backend": "workspace:*"
   }
 }
