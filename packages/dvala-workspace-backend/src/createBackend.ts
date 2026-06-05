@@ -21,7 +21,7 @@ import {
   type MacroEvalDvalaFactory,
 } from '@mojir/dvala-core-tooling'
 import { NodeTypes, type AstNode, type SourceMapPosition } from '@mojir/dvala-types'
-import { allReference, isFunctionReference } from '../../../reference/index'
+import { allReference, isFunctionReference } from '@mojir/dvala-core-tooling/reference'
 import { computeCatchallEdit } from './catchallQuickFix'
 import { computeExtractVariableEdit } from './extractVariableEdit'
 import { computeExtractFunctionEdit } from './extractFunctionEdit'

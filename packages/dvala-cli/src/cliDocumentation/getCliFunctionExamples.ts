@@ -1,6 +1,6 @@
-import type { Reference } from '../../../../reference'
+import type { Reference } from '@mojir/dvala-core-tooling/reference'
 import type { Colorizer } from '../colorizer'
-import { stringifyValue } from '../../../../common/utils'
+import { stringifyValue } from '@mojir/dvala-common/utils'
 import { createDvala } from '@mojir/dvala-core-tooling'
 import { getDvalaFormatter } from '../cliFormatterRules'
 

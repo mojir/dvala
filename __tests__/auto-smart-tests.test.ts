@@ -19,7 +19,7 @@ import { specialExpressions } from '@mojir/dvala-engine'
 import { specialExpressionTypes } from '@mojir/dvala-types'
 import type { DataType } from '@mojir/dvala-engine'
 import { isDataType, isFunctionDocs } from '@mojir/dvala-engine'
-import { allReference } from '../reference'
+import { allReference } from '@mojir/dvala-core-tooling/reference'
 import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
 

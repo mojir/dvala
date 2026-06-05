@@ -1,16 +1,16 @@
 /* eslint-disable no-console */
 
-import type { Reference } from '../../../reference'
+import type { Reference } from '@mojir/dvala-core-tooling/reference'
 import { deserializeBundle, serializeBundle } from '@mojir/dvala-core-tooling'
 // `bundle()` is the Node-only file walker (imports node:fs/path) — kept out of
 // core-tooling's public surface so browser-target bundles don't try to resolve
 // node built-ins. Pulled directly here.
-import { bundle } from '../../dvala-core-tooling/src/bundler/index'
+import { bundle } from '@mojir/dvala-core-tooling/bundler'
 import fs from 'node:fs'
 import path from 'node:path'
-import { stringifyValue } from '../../../common/utils'
+import { stringifyValue } from '@mojir/dvala-common/utils'
 import { version } from '../../../package.json'
-import { apiReference, isFunctionReference } from '../../../reference'
+import { apiReference, isFunctionReference } from '@mojir/dvala-core-tooling/reference'
 import {
   formatDoc,
   formatExamples,
@@ -20,7 +20,7 @@ import {
   listModuleExpressions,
   listModules,
   lookupDoc,
-} from '../../../reference/format'
+} from '@mojir/dvala-core-tooling/reference/format'
 import {
   allBuiltinModules,
   expandMacros,

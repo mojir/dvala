@@ -63,7 +63,7 @@ import { specialExpressionTypes } from '@mojir/dvala-types'
 import { allStandardEffectDefinitions } from '@mojir/dvala-engine'
 // Direct file import — see comment in reference/dvala.ts about the
 // reference ↔ core-tooling load-time cycle.
-import { isSymbolicOperator } from '../packages/dvala-core-tooling/src/tokenizer/operators'
+import { isSymbolicOperator } from '../tokenizer/operators'
 import { canBeOperator } from '@mojir/dvala-types'
 import { datatype } from './datatype'
 import { prelude } from './prelude'

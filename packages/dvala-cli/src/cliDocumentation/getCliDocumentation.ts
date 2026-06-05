@@ -1,6 +1,6 @@
 import type { Colorizer } from '../colorizer'
-import { apiReference, isFunctionReference } from '../../../../reference'
-import { isCoreApiName } from '../../../../reference/api'
+import { apiReference, isFunctionReference } from '@mojir/dvala-core-tooling/reference'
+import { isCoreApiName } from '@mojir/dvala-core-tooling/reference/api'
 import { formatCliDescription } from './formatCliDescription'
 import { getArgumentInfo } from './getCliArgumentInfo'
 import { getCliFunctionExamples } from './getCliFunctionExamples'

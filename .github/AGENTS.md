@@ -79,7 +79,8 @@ Why: the rendered `.md` table is the at-a-glance regression signal during PR rev
 - Built-ins: `src/builtin/core/` (normal expressions), `src/builtin/specialExpressions/`
 - Modules: `src/builtin/modules/<name>/`
 - Shared: `src/prettyPrint.ts` (smart AST formatter, used by Dvala + playground)
-- Reference data: `reference/index.ts` (derived from co-located docs)
+- Reference data: `packages/dvala-core-tooling/src/reference/` (derived from co-located docs; exposed via the `@mojir/dvala-core-tooling/reference[/api|/book|/datatype|/examples|/format]` subpath exports — it lives in core-tooling because reference and the tooling are mutually dependent)
+- Shared helpers: `packages/dvala-common/` (`@mojir/dvala-common/{utils,appRoutes,referenceData,buildReferenceData}`) — used by the CLI, MCP server, and playground apps
 - Tests: `__tests__/` (integration), `src/**/*.test.ts` (unit), `e2e/` (playwright)
 - Playground: `playground-www/src/` — see Playground Architecture below
 
@@ -98,7 +99,7 @@ Single root `pnpm-lock.yaml` covers both members. `pnpm install` at the root ins
 
 Workspace packages build through Turborepo (`turbo run build`), but the per-package build script is **not uniform** — there are two shapes:
 
-- **Library packages** (`dvala-types`, `dvala-runtime`, `dvala-engine`, `dvala-core-tooling`, `dvala-test-framework`, `dvala-workspace-backend`, `dvala-mcp-server`) use `rolldown -c ./rolldown.config.mjs && tsgo -p ./tsconfig.json --emitDeclarationOnly`. Rolldown bundles each package's `dist/index.js`; tsgo emits the `.d.ts` files alongside. Cross-package consumers resolve through `node_modules` → bundled `dist/`.
+- **Library packages** (`dvala-types`, `dvala-runtime`, `dvala-engine`, `dvala-core-tooling`, `dvala-common`, `dvala-test-framework`, `dvala-workspace-backend`, `dvala-mcp-server`) use `rolldown -c ./rolldown.config.mjs && tsgo -p ./tsconfig.json --emitDeclarationOnly`. Rolldown bundles each package's `dist/index.js`; tsgo emits the `.d.ts` files alongside. Cross-package consumers resolve through `node_modules` → bundled `dist/`.
 
 - **Final-binary tail nodes** (`dvala-cli`, `dvala-playground-www`) use plain `tsgo -p ./tsconfig.json`. No per-package rolldown step. These packages are bundled by **root-level** rolldown configs (`rolldown.config.cli.mjs`, `rolldown.config.playground-www.mjs`) *after* their package subgraph finishes building. The plain-tsgo step exists so downstream packages can still import from them during typecheck; the actual binary/bundle is produced at the root layer.
 

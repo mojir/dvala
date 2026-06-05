@@ -8,8 +8,8 @@
  *   /ref/:linkName    — individual doc page (handled by docPage.ts)
  */
 
-import type { ReferenceData } from '../../../../common/referenceData'
-import { makeLinkName } from '../../../../reference'
+import type { ReferenceData } from '@mojir/dvala-common/referenceData'
+import { makeLinkName } from '@mojir/dvala-core-tooling/reference'
 import { playgroundEffectReference } from '../playgroundEffects'
 import { href } from '../router'
 import { hamburgerIcon } from '../icons'

@@ -1,9 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as vscode from 'vscode'
-import { allReference, isFunctionReference, isCustomReference } from '../../reference/index'
-import type { Reference } from '../../reference/index'
-import { stringifyValue } from '../../common/utils'
+import { allReference, isFunctionReference, isCustomReference } from '@mojir/dvala-core-tooling/reference'
+import type { Reference } from '@mojir/dvala-core-tooling/reference'
+import { stringifyValue } from '@mojir/dvala-common/utils'
 import type { Handlers } from '@mojir/dvala-engine'
 import {
   buildBuiltinCompletions,
@@ -16,7 +16,7 @@ import type {
   BackendCallHierarchyCallSite,
   BackendCallHierarchyItem,
   BackendSymbolKind,
-} from '../../packages/dvala-workspace-backend/src/index'
+} from '@mojir/dvala-workspace-backend'
 
 import { BackendDiagnosticsClient } from './backendDiagnosticsClient'
 import { linkSelectionRangeChains, type LinkedSelectionRange } from './selectionRangeAdapter'

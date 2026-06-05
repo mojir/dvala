@@ -19,7 +19,7 @@
  *    surface here so those handlers keep working.
  */
 
-import { buildReferenceData } from '../../../common/buildReferenceData'
+import { buildReferenceData } from '@mojir/dvala-common/buildReferenceData'
 import * as Playground from './playground'
 
 declare global {

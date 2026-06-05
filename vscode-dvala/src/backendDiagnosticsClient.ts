@@ -37,7 +37,7 @@ import type {
   BackendWorkspaceSnapshotFile,
   BackendWorkspaceSymbolsRequest,
   BackendWorkspaceSymbolsResult,
-} from '../../packages/dvala-workspace-backend/src/index'
+} from '@mojir/dvala-workspace-backend'
 
 export class BackendDiagnosticsClient {
   private readonly backend: DvalaBackend

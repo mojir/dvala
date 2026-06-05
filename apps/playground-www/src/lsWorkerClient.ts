@@ -12,8 +12,8 @@
 import * as monaco from 'monaco-editor'
 // eslint-disable-next-line import/default
 import LsWorker from './lsWorker?worker'
-import { allReference, isCustomReference, isFunctionReference } from '../../../reference/index'
-import type { Reference } from '../../../reference/index'
+import { allReference, isCustomReference, isFunctionReference } from '@mojir/dvala-core-tooling/reference'
+import type { Reference } from '@mojir/dvala-core-tooling/reference'
 import { WorkspaceIndex } from '@mojir/dvala-core-tooling'
 import type {
   PlaygroundCompletionErrorMessage,

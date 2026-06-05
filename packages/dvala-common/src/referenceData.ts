@@ -1,5 +1,5 @@
-import type { Reference } from '../reference'
-import type { Example } from '../reference/examples'
+import type { Reference } from '@mojir/dvala-core-tooling/reference'
+import type { Example } from '@mojir/dvala-core-tooling/reference/examples'
 
 export interface SearchEntry {
   title: string

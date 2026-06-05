@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
-import { moduleReference } from '../reference'
-import type { FunctionReference } from '../reference/index'
+import { moduleReference } from '@mojir/dvala-core-tooling/reference'
+import type { FunctionReference } from '@mojir/dvala-core-tooling/reference'
 
 // Enforce: category must match the expected category for all module functions
 // Module name → category mapping (most modules use name as category)

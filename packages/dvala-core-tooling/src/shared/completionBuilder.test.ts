@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Reference } from '../../../../reference/index'
+import type { Reference } from '../reference'
 import type { SymbolDef } from '../languageService/types'
 import { buildBuiltinCompletions, referenceToCompletion, symbolDefToCompletion } from './completionBuilder'
 

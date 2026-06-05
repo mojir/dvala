@@ -4,8 +4,8 @@
  *   /examples/:id    — individual example detail page
  */
 
-import type { Example } from '../../../../reference/examples'
-import type { ReferenceData } from '../../../../common/referenceData'
+import type { Example } from '@mojir/dvala-core-tooling/reference/examples'
+import type { ReferenceData } from '@mojir/dvala-common/referenceData'
 import { href } from '../router'
 import { hamburgerIcon, playIcon } from '../icons'
 import { renderCodeBlock } from '../renderCodeBlock'

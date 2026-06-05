@@ -29,7 +29,7 @@ import { qualifiedNameMatchesPattern, findMatchingHandlers } from '@mojir/dvala-
 import { isDataType } from '@mojir/dvala-engine'
 import type { Any } from '@mojir/dvala-types'
 import { fromJS } from '@mojir/dvala-engine'
-import { allReference } from '../reference'
+import { allReference } from '@mojir/dvala-core-tooling/reference'
 import { initReferenceData } from '@mojir/dvala-core-tooling'
 initReferenceData()
 

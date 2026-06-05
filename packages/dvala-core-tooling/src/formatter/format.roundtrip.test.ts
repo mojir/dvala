@@ -14,7 +14,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { extractCodeBlocks } from '../../../../reference/book'
+import { extractCodeBlocks } from '../reference/book'
 import { format } from './format'
 
 const root = path.resolve(import.meta.dirname, '../../../..')

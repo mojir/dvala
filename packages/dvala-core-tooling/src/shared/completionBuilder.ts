@@ -14,8 +14,8 @@
  * support snippets can fall back to the raw `label`.
  */
 
-import { allReference, isFunctionReference } from '../../../../reference/index'
-import type { Reference } from '../../../../reference/index'
+import { allReference, isFunctionReference } from '../reference'
+import type { Reference } from '../reference'
 import type { SymbolDef } from '../languageService/types'
 
 export interface CompletionItem {

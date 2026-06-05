@@ -1,4 +1,4 @@
-import { stringifyValue } from '../../../../common/utils'
+import { stringifyValue } from '@mojir/dvala-common/utils'
 import { type HandlerRegistration, type RunResult, type Snapshot, toJS } from '@mojir/dvala-engine'
 import { applyReplBinding, executeReplLine, type ReplBinding } from '@mojir/dvala-core-tooling'
 import { getHandlersCode, wrapWithBoundaryHandler } from '../handlersBuffer'

@@ -14,6 +14,34 @@
     "./node": {
       "types": "./dist/languageService/nodeWorkspaceIndexer.d.ts",
       "import": "./dist/node.js"
+    },
+    "./bundler": {
+      "types": "./dist/bundler/index.d.ts",
+      "import": "./dist/bundler/index.js"
+    },
+    "./reference": {
+      "types": "./dist/reference/index.d.ts",
+      "import": "./dist/reference/index.js"
+    },
+    "./reference/api": {
+      "types": "./dist/reference/api.d.ts",
+      "import": "./dist/reference/api.js"
+    },
+    "./reference/book": {
+      "types": "./dist/reference/book.d.ts",
+      "import": "./dist/reference/book.js"
+    },
+    "./reference/datatype": {
+      "types": "./dist/reference/datatype.d.ts",
+      "import": "./dist/reference/datatype.js"
+    },
+    "./reference/examples": {
+      "types": "./dist/reference/examples.d.ts",
+      "import": "./dist/reference/examples.js"
+    },
+    "./reference/format": {
+      "types": "./dist/reference/format.d.ts",
+      "import": "./dist/reference/format.js"
     }
   },
   "scripts": {
@@ -22,7 +50,7 @@
   },
   "dependencies": {
     "@mojir/dvala-engine": "workspace:*",
-    "@mojir/dvala-types": "workspace:*",
-    "@mojir/dvala-runtime": "workspace:*"
+    "@mojir/dvala-runtime": "workspace:*",
+    "@mojir/dvala-types": "workspace:*"
   }
 }

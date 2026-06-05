@@ -1,4 +1,4 @@
-import type { FunctionReference } from '../../../../reference'
+import type { FunctionReference } from '@mojir/dvala-core-tooling/reference'
 import type { Colorizer } from '../colorizer'
 import { formatCliDescription } from './formatCliDescription'
 import { getCliType } from './getCliType'

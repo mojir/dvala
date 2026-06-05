@@ -1,4 +1,4 @@
-import type { Reference } from '../../../../reference'
+import type { Reference } from '@mojir/dvala-core-tooling/reference'
 import type { Colorizer } from '../colorizer'
 
 export function getCliTitle(fmt: Colorizer, reference: Reference) {

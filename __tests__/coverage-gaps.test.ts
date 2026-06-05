@@ -33,7 +33,7 @@ import { collectionUtilsModule } from '@mojir/dvala-engine'
 import { gridModule } from '@mojir/dvala-engine'
 import { someSequential } from '@mojir/dvala-engine'
 import { generateDocString } from '@mojir/dvala-engine'
-import type { EffectReference } from '../reference'
+import type { EffectReference } from '@mojir/dvala-core-tooling/reference'
 
 /**
  * Tests targeting uncovered lines in the trampoline's recursive evaluator paths,

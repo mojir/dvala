@@ -1,6 +1,6 @@
-import type { TextFormatter } from '../../../common/createFormatter'
+import type { TextFormatter } from './createFormatter'
 import type { Colorizer } from './colorizer'
-import { createFormatter } from '../../../common/createFormatter'
+import { createFormatter } from './createFormatter'
 import {
   splitSegments,
   polishSymbolCharacterClass,

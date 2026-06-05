@@ -1,4 +1,4 @@
-import { effectReference, normalExpressionReference } from '../../../reference/index'
+import { effectReference, normalExpressionReference } from './reference'
 import { setEffectReference, setNormalExpressionReference } from '@mojir/dvala-engine'
 
 export function initReferenceData(): void {

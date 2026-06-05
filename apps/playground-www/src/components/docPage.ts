@@ -6,9 +6,9 @@ import type { ExampleEntry } from '@mojir/dvala-engine'
  */
 
 import { marked } from 'marked'
-import type { ReferenceData } from '../../../../common/referenceData'
-import type { Reference } from '../../../../reference'
-import { isFunctionReference, isCustomReference, makeLinkName } from '../../../../reference'
+import type { ReferenceData } from '@mojir/dvala-common/referenceData'
+import type { Reference } from '@mojir/dvala-core-tooling/reference'
+import { isFunctionReference, isCustomReference, makeLinkName } from '@mojir/dvala-core-tooling/reference'
 import { playgroundEffectReference } from '../playgroundEffects'
 import { href } from '../router'
 import { renderCodeBlock } from '../renderCodeBlock'
