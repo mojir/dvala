@@ -2,6 +2,17 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
+// Node 26 ships a native, inert `localStorage` global (Web Storage API, gated
+// behind `--localstorage-file`). Under vitest's happy-dom environment it
+// shadows happy-dom's `window.localStorage`, so DOM-env tests that use bare
+// `localStorage` see `undefined`. Disabling Node's Web Storage lets happy-dom's
+// implementation be the global again. This config module is loaded by the main
+// vitest process before it forks its test workers, so appending the flag to
+// NODE_OPTIONS here propagates it to every worker (where the env is set up).
+if (!process.env.NODE_OPTIONS?.includes('--no-experimental-webstorage')) {
+  process.env.NODE_OPTIONS = `${process.env.NODE_OPTIONS ?? ''} --no-experimental-webstorage`.trim()
+}
+
 // Vitest-only aliases that route cross-package imports to SOURCE so that the
 // in-test identity of every shared class (DvalaError, WorkspaceIndex, etc.)
 // matches the identity inside source files. Without these, a test using

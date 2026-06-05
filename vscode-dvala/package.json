@@ -206,7 +206,7 @@
     "bundle": "node ./build.mjs"
   },
   "devDependencies": {
-    "@types/node": "^25.3.5",
+    "@types/node": "^25.9.1",
     "@types/vscode": "^1.109.0"
   },
   "dependencies": {

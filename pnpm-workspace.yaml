@@ -2,3 +2,14 @@ packages:
   - packages/*
   - apps/*
   - vscode-dvala
+
+# Migrated from the package.json "pnpm" field, which pnpm 11 no longer reads.
+overrides:
+  file-type: ^21.3.2
+
+# pnpm 11 replaced onlyBuiltDependencies/neverBuiltDependencies with a single
+# allowBuilds map (package matcher -> allow/deny running install scripts).
+allowBuilds:
+  '@vscode/vsce-sign': true
+  esbuild: true
+  keytar: true
