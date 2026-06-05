@@ -41,11 +41,6 @@ const referenceSubpath = (name: string) =>
 const commonSubpath = (name: string) =>
   fileURLToPath(new URL(`./packages/dvala-common/src/${name}.ts`, import.meta.url))
 
-// Root monorepo version, injected as the __DVALA_VERSION__ build-time constant
-// (mirrors the rolldown define in packages/dvala-common). buildReferenceData
-// uses it instead of importing the root package.json across package boundaries.
-const dvalaVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
-
 export default defineConfig({
   resolve: {
     alias: {
@@ -73,9 +68,6 @@ export default defineConfig({
       '@mojir/dvala-common/referenceData': commonSubpath('referenceData'),
       '@mojir/dvala-common/buildReferenceData': commonSubpath('buildReferenceData'),
     },
-  },
-  define: {
-    __DVALA_VERSION__: JSON.stringify(dvalaVersion),
   },
   plugins: [
     {

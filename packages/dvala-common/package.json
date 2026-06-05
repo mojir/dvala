@@ -4,7 +4,13 @@
   "private": true,
   "type": "module",
   "description": "Shared helpers used across the CLI, MCP server, and playground apps (utils, app routes, reference-data builders).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./utils": {
       "types": "./dist/utils.d.ts",
       "import": "./dist/utils.js"
