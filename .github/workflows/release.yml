@@ -32,7 +32,7 @@ jobs:
       # provides no value.
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 26
 
       # Bump version on the root (npm package) and sync to the vscode-dvala
       # workspace member. `pnpm install --lockfile-only` then refreshes

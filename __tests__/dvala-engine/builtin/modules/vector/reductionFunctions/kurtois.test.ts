@@ -12,6 +12,20 @@ function runVec(code: string): unknown {
   return dvala.run(modifiedCode)
 }
 
+// Floating-point statistical outputs differ in the last ~1-2 ulps across V8
+// versions (surfaced by the Node 22 -> 26 upgrade). Compare these vectors
+// element-wise with tolerance rather than exact equality; null entries
+// (insufficient-window markers) must still match exactly.
+function expectVectorCloseTo(actual: unknown, expected: (number | null)[], precision = 8): void {
+  expect(Array.isArray(actual)).toBe(true)
+  const arr = actual as (number | null)[]
+  expect(arr).toHaveLength(expected.length)
+  expected.forEach((value, index) => {
+    if (value === null) expect(arr[index]).toBeNull()
+    else expect(arr[index]).toBeCloseTo(value, precision)
+  })
+}
+
 describe('kurtios functions', () => {
   describe('kurtosis', () => {
     it('should calculate the kurtosis of a vector', () => {
@@ -27,10 +41,11 @@ describe('kurtios functions', () => {
       expect(() => runVec('movingKurtosis([1, 2, 3], 3)')).toThrowError(DvalaError)
     })
     it('should calculate the centered moving kurtosis of a vector with padding', () => {
-      expect(runVec('centeredMovingKurtosis([1, 2, 3, 6, 12, 50], 4, 0, 100)')).toEqual([
-        1.628099173553719, 1.6399999999999995, 2, 1.9301427627902248, 2.251903931956012, 1.7465040094373023,
-      ])
-      expect(runVec('centeredMovingKurtosis([1, 2, 3, 6, 12, 50], 4)')).toEqual([
+      expectVectorCloseTo(
+        runVec('centeredMovingKurtosis([1, 2, 3, 6, 12, 50], 4, 0, 100)'),
+        [1.628099173553719, 1.6399999999999995, 2, 1.9301427627902248, 2.251903931956012, 1.7465040094373023],
+      )
+      expectVectorCloseTo(runVec('centeredMovingKurtosis([1, 2, 3, 6, 12, 50], 4)'), [
         null,
         null,
         2,
@@ -41,7 +56,7 @@ describe('kurtios functions', () => {
       expect(() => runVec('centeredMovingKurtosis([1, 2, 3], 3)')).toThrowError(DvalaError)
     })
     it('should calculate the running kurtosis of a vector', () => {
-      expect(runVec('runningKurtosis([1, 2, 3, 6, 12, 50])')).toEqual([
+      expectVectorCloseTo(runVec('runningKurtosis([1, 2, 3, 6, 12, 50])'), [
         null,
         null,
         null,
@@ -62,17 +77,21 @@ describe('kurtios functions', () => {
       expect(() => runVec('sampleKurtosis([])')).toThrowError(DvalaError)
     })
     it('should calculate the moving sample kurtosis of a vector', () => {
-      expect(runVec('movingSampleKurtosis([1, 2, 3, 6, 12, 50], 4)')).toEqual([
-        14.999999999999998, 14.476070720926687, 16.88927948967009,
-      ])
+      expectVectorCloseTo(
+        runVec('movingSampleKurtosis([1, 2, 3, 6, 12, 50], 4)'),
+        [14.999999999999998, 14.476070720926687, 16.88927948967009],
+      )
       expect(() => runVec('movingSampleKurtosis([1, 2, 3], 3)')).toThrowError(DvalaError)
     })
     it('should calculate the centered moving sample kurtosis of a vector with padding', () => {
-      expect(runVec('centeredMovingSampleKurtosis([1, 2, 3, 6, 12, 50], 4, 0, 100)')).toEqual([
-        12.210743801652894, 12.299999999999999, 14.999999999999998, 14.476070720926687, 16.88927948967009,
-        13.098780070779771,
-      ])
-      expect(runVec('centeredMovingSampleKurtosis([1, 2, 3, 6, 12, 50], 4)')).toEqual([
+      expectVectorCloseTo(
+        runVec('centeredMovingSampleKurtosis([1, 2, 3, 6, 12, 50], 4, 0, 100)'),
+        [
+          12.210743801652894, 12.299999999999999, 14.999999999999998, 14.476070720926687, 16.88927948967009,
+          13.098780070779771,
+        ],
+      )
+      expectVectorCloseTo(runVec('centeredMovingSampleKurtosis([1, 2, 3, 6, 12, 50], 4)'), [
         null,
         null,
         14.999999999999998,
@@ -83,7 +102,7 @@ describe('kurtios functions', () => {
       expect(() => runVec('centeredMovingSampleKurtosis([1, 2, 3], 3)')).toThrowError(DvalaError)
     })
     it('should calculate the running sample kurtosis of a vector', () => {
-      expect(runVec('runningSampleKurtosis([1, 2, 3, 6, 12, 50])')).toEqual([
+      expectVectorCloseTo(runVec('runningSampleKurtosis([1, 2, 3, 6, 12, 50])'), [
         null,
         null,
         null,
@@ -104,16 +123,18 @@ describe('kurtios functions', () => {
       expect(() => runVec('excessKurtosis([])')).toThrowError(DvalaError)
     })
     it('should calculate the moving excess kurtosis of a vector', () => {
-      expect(runVec('movingExcessKurtosis([1, 2, 3, 6, 12, 50], 4)')).toEqual([
-        -1, -1.0698572372097752, -0.7480960680439881,
-      ])
+      expectVectorCloseTo(
+        runVec('movingExcessKurtosis([1, 2, 3, 6, 12, 50], 4)'),
+        [-1, -1.0698572372097752, -0.7480960680439881],
+      )
       expect(() => runVec('movingExcessKurtosis([1, 2, 3], 3)')).toThrowError(DvalaError)
     })
     it('should calculate the centered moving excess kurtosis of a vector with padding', () => {
-      expect(runVec('centeredMovingExcessKurtosis([1, 2, 3, 6, 12, 50], 4, 0, 100)')).toEqual([
-        -1.371900826446281, -1.3600000000000005, -1, -1.0698572372097752, -0.7480960680439881, -1.2534959905626977,
-      ])
-      expect(runVec('centeredMovingExcessKurtosis([1, 2, 3, 6, 12, 50], 4)')).toEqual([
+      expectVectorCloseTo(
+        runVec('centeredMovingExcessKurtosis([1, 2, 3, 6, 12, 50], 4, 0, 100)'),
+        [-1.371900826446281, -1.3600000000000005, -1, -1.0698572372097752, -0.7480960680439881, -1.2534959905626977],
+      )
+      expectVectorCloseTo(runVec('centeredMovingExcessKurtosis([1, 2, 3, 6, 12, 50], 4)'), [
         null,
         null,
         -1,
@@ -124,7 +145,7 @@ describe('kurtios functions', () => {
       expect(() => runVec('centeredMovingExcessKurtosis([1, 2, 3], 3)')).toThrowError(DvalaError)
     })
     it('should calculate the running excess kurtosis of a vector', () => {
-      expect(runVec('runningExcessKurtosis([1, 2, 3, 6, 12, 50])')).toEqual([
+      expectVectorCloseTo(runVec('runningExcessKurtosis([1, 2, 3, 6, 12, 50])'), [
         null,
         null,
         null,
@@ -145,17 +166,21 @@ describe('kurtios functions', () => {
       expect(() => runVec('sampleExcessKurtosis([])')).toThrowError(DvalaError)
     })
     it('should calculate the moving sample excess kurtosis of a vector', () => {
-      expect(runVec('movingSampleExcessKurtosis([1, 2, 3, 6, 12, 50], 4)')).toEqual([
-        1.4999999999999982, 0.9760707209266872, 3.3892794896700913,
-      ])
+      expectVectorCloseTo(
+        runVec('movingSampleExcessKurtosis([1, 2, 3, 6, 12, 50], 4)'),
+        [1.4999999999999982, 0.9760707209266872, 3.3892794896700913],
+      )
       expect(() => runVec('movingSampleExcessKurtosis([1, 2, 3], 3)')).toThrowError(DvalaError)
     })
     it('should calculate the centered moving sample excess kurtosis of a vector with padding', () => {
-      expect(runVec('centeredMovingSampleExcessKurtosis([1, 2, 3, 6, 12, 50], 4, 0, 100)')).toEqual([
-        -1.2892561983471058, -1.200000000000001, 1.4999999999999982, 0.9760707209266872, 3.3892794896700913,
-        -0.401219929220229,
-      ])
-      expect(runVec('centeredMovingSampleExcessKurtosis([1, 2, 3, 6, 12, 50], 4)')).toEqual([
+      expectVectorCloseTo(
+        runVec('centeredMovingSampleExcessKurtosis([1, 2, 3, 6, 12, 50], 4, 0, 100)'),
+        [
+          -1.2892561983471058, -1.200000000000001, 1.4999999999999982, 0.9760707209266872, 3.3892794896700913,
+          -0.401219929220229,
+        ],
+      )
+      expectVectorCloseTo(runVec('centeredMovingSampleExcessKurtosis([1, 2, 3, 6, 12, 50], 4)'), [
         null,
         null,
         1.4999999999999982,
@@ -166,7 +191,7 @@ describe('kurtios functions', () => {
       expect(() => runVec('centeredMovingSampleExcessKurtosis([1, 2, 3], 3)')).toThrowError(DvalaError)
     })
     it('should calculate the running sample excess kurtosis of a vector', () => {
-      expect(runVec('runningSampleExcessKurtosis([1, 2, 3, 6, 12, 50])')).toEqual([
+      expectVectorCloseTo(runVec('runningSampleExcessKurtosis([1, 2, 3, 6, 12, 50])'), [
         null,
         null,
         null,
