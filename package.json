@@ -42,7 +42,7 @@
     "check": "pnpm run lint && pnpm run typecheck && pnpm run knip && pnpm run build && pnpm run test",
     "check:no-fix": "pnpm run lint:no-fix && pnpm run typecheck && pnpm run knip && pnpm run test",
     "clean": "pnpm run clean-dvala && rm -rf docs/* .turbo .wireit coverage test-results vscode-dvala/out .cache",
-    "clean-dvala": "rm -rf dist build packages/dvala-runtime/dist packages/dvala-workspace-backend/dist packages/dvala-mcp-server/dist packages/dvala-core-tooling/dist packages/dvala-cli/dist packages/dvala-test-framework/dist packages/dvala-types/dist packages/dvala-engine/dist apps/playground-www/dist apps/playground-www/build apps/playground-builder/dist",
+    "clean-dvala": "rm -rf dist build packages/dvala-runtime/dist packages/dvala-workspace-backend/dist packages/dvala-mcp-server/dist packages/dvala-core-tooling/dist packages/dvala-common/dist packages/dvala-cli/dist packages/dvala-test-framework/dist packages/dvala-types/dist packages/dvala-engine/dist apps/playground-www/dist apps/playground-www/build apps/playground-builder/dist",
     "build": "turbo run bundle",
     "build-book": "pnpm run build && node scripts/generate-pdf.mjs",
     "dvala": "pnpm --filter @mojir/dvala-cli start",

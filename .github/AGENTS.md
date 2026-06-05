@@ -41,6 +41,20 @@ Run `pnpm run check` after any medium or larger code change. Use the `/check` sk
 
 When piping CLI output through `tail`/`cat`/`grep`, prepend `NO_COLOR=1` so ANSI escape codes don't pollute the captured output (applies to `vitest`, `oxlint`, etc.).
 
+### Avoiding "green locally, red in CI"
+
+Your local tree is usually fully built; CI starts cold. A pass on a warm tree can hide real failures. Two traps that have bitten us:
+
+- **Partial-build type resolution.** `lint` / `lint:no-fix` only pre-build `@mojir/dvala-engine`, `@mojir/dvala-core-tooling`, and `@mojir/dvala-common` (plus their deps). oxlint's type-aware pass resolves other packages from their `dist/*.d.ts`. If a linted file imports a package that *isn't* in that filter (e.g. a newly added one, or a consumer above those in the graph) its types resolve to `any`/error and you'll see `'X' is an 'error' type that acts as 'any'`. Fix: add the package to the lint `--filter`. **Locally this only reproduces from a cold tree** — a prior full build leaves the `.d.ts` lying around and masks it.
+- **Spawned-process / timing races.** Tests that drive a child process (e.g. the CLI REPL writing to stdin) can pass locally and `EPIPE`/flake under CI load. Guard the I/O (swallow benign shutdown errors, act once) rather than trusting a few green local runs.
+
+**For any change that touches the build graph** (new/moved package, new subpath export, changed `rootDir`/`tsconfig` includes), reproduce CI cold before claiming green:
+
+```bash
+pnpm run clean-dvala && NO_COLOR=1 pnpm run lint:no-fix   # catches the partial-build trap
+pnpm run clean-dvala && NO_COLOR=1 pnpm run check
+```
+
 ### Tooling stack
 
 | Tool | Used for | Command |

@@ -13,10 +13,12 @@ import { apiReference, effectReference, getLinkName, moduleReference } from '@mo
 import { coreCategoryDescriptions, coreCategories } from '@mojir/dvala-core-tooling/reference/api'
 import { examples } from '@mojir/dvala-core-tooling/reference/examples'
 import { allBuiltinModules } from '@mojir/dvala-core-tooling'
+// The monorepo version shown in the playground. Reading the workspace-root
+// manifest (a .json data import, exempt from tsgo's rootDir check) mirrors how
+// the CLI sources it — simpler than threading a build-time define through every
+// bundler that compiles this file.
+import { version } from '../../../package.json'
 import type { ReferenceData, SearchEntry } from './referenceData'
-
-// Monorepo version, replaced at build time (see rolldown define + vitest define).
-const version = __DVALA_VERSION__
 
 export function buildReferenceData(): ReferenceData {
   const shortDescRegExp = /(.*?) {2}\n|\n\n|$/

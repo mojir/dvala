@@ -2,9 +2,8 @@
 
 import type { Reference } from '@mojir/dvala-core-tooling/reference'
 import { deserializeBundle, serializeBundle } from '@mojir/dvala-core-tooling'
-// `bundle()` is the Node-only file walker (imports node:fs/path) — kept out of
-// core-tooling's public surface so browser-target bundles don't try to resolve
-// node built-ins. Pulled directly here.
+// `bundle()` is the Node-only file walker (imports node:fs/path), exposed via
+// the dedicated `/bundler` subpath so browser-target bundles never pull it in.
 import { bundle } from '@mojir/dvala-core-tooling/bundler'
 import fs from 'node:fs'
 import path from 'node:path'

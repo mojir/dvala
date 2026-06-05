@@ -46,9 +46,26 @@ export default defineConfig([
   // dependent: reference uses the formatter + tokenizer, while the language
   // service uses the reference registry for completions. `book` reads markdown
   // via node:fs and is only imported from node contexts.
-  ...['index', 'api', 'book', 'datatype', 'examples', 'format'].map((name) => ({
-    input: `./src/reference/${name}.ts`,
+  //
+  // A single multi-entry build (not one per subpath) so the formatter/tokenizer
+  // the entries share is emitted once into a chunk rather than duplicated into
+  // each of dist/reference/{datatype,examples,format}.js.
+  {
+    input: {
+      'reference/index': './src/reference/index.ts',
+      'reference/api': './src/reference/api.ts',
+      'reference/book': './src/reference/book.ts',
+      'reference/datatype': './src/reference/datatype.ts',
+      'reference/examples': './src/reference/examples.ts',
+      'reference/format': './src/reference/format.ts',
+    },
     external: externalDeps,
-    output: { file: `./dist/reference/${name}.js`, format: 'esm', sourcemap: true },
-  })),
+    output: {
+      dir: './dist',
+      entryFileNames: '[name].js',
+      chunkFileNames: 'reference/_chunks/[name].js',
+      format: 'esm',
+      sourcemap: true,
+    },
+  },
 ])
