@@ -87,8 +87,27 @@
         "varsIgnorePattern": "^_",
         "caughtErrorsIgnorePattern": "^_"
       }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@mojir/*/src/**", "**/packages/*/**", "**/apps/*/**"],
+            "message": "Import a workspace package through its public entry ('@mojir/dvala-<pkg>' or a declared subpath export like '/reference'), not by reaching into its directory (src/, dist/, package.json, .dvala/.json files). Cross-package deep imports break tsgo's rootDir check on emit — see issue #245. (Reading the workspace-root package.json is fine; that's not a cross-package reach.)"
+          }
+        ]
+      }
     ]
   },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/__tests__/**"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
   "options": {
     "typeAware": true
   }
