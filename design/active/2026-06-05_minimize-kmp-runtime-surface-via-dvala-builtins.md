@@ -183,6 +183,12 @@ Concretely:
 - Which builtins are **performance-critical enough** to keep native even though
   they're expressible in Dvala? What does the pipeline bench say about the cost
   of moving the big collection HOFs to `.dvala`?
+  - **First data point (predicates slice, see the inventory's Outcome section):**
+    a `.dvala` predicate costs **~4–5× a native call** (~0.8–1.0 µs absolute extra)
+    in a tight loop; no pipeline-level regression since the bench corpus doesn't
+    call them. Decision was to ship all 9 anyway — consistent with `map`/`filter`/
+    `reduce` already being `.dvala`. Treat ~4–5× as the working perf budget per
+    trivial-body builtin; re-measure the hotter PORT\* set before moving it.
 - Does any builtin rely on TS-specific value identity / host capabilities
   (e.g. `prettyPrint` via capability, RNG, time) that complicate a `.dvala`
   rewrite?

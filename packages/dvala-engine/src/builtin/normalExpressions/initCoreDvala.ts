@@ -10,6 +10,7 @@ import sequenceSource from '../core/sequence.dvala'
 import functionalSource from '../core/functional.dvala'
 import errorSource from '../core/error.dvala'
 import objectSource from '../core/object.dvala'
+import predicatesSource from '../core/predicates.dvala'
 import { normalExpressions } from '.'
 
 const coreDvalaSources: Record<string, string> = {
@@ -18,6 +19,7 @@ const coreDvalaSources: Record<string, string> = {
   sequence: sequenceSource,
   functional: functionalSource,
   object: objectSource,
+  predicates: predicatesSource,
 }
 
 export function initCoreDvalaSources(parseSource: ParseSource): void {

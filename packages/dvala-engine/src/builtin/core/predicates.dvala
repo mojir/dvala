@@ -1,0 +1,36 @@
+// Core predicate builtins implemented in Dvala.
+//
+// First slice of the "minimize KMP runtime surface" migration: these
+// predicates are pure compositions of already-native primitives (arithmetic,
+// comparison, `count`, `isNull`, `isInteger`), so moving them out of TS means a
+// second runtime (KMP) inherits them for free once it can evaluate this AST.
+//
+// docs + arity stay in predicates.ts (mirrors collection.dvala / sequence.dvala);
+// the TS `evaluate` there is a throw-stub fallback.
+//
+// Behaviour is kept identical to the former native implementations, including
+// the "throw on non-finite / non-number" contract:
+//   - `abs` and `%` reject non-numbers (RuntimeError) and non-finite results
+//     (ArithmeticError) — both are DvalaError subclasses — so they reproduce the
+//     native `assertNumber(x, { finite: true })` guard.
+//   - `isZero` keeps the EPSILON tolerance (1e-10, mirrors EPSILON in utils.ts).
+//
+// `isInteger` deliberately stays native: its `Infinity`/`NaN` -> `false`
+// (no-throw) behaviour can't be expressed here, since `floor`/`%` throw on those.
+{
+  isZero: (x) -> abs(x) < 1e-10,
+  isPos: (x) -> do
+    abs(x); // force the finite-number check; matches native assertNumber(finite)
+    x > 0;
+  end,
+  isNeg: (x) -> do
+    abs(x); // force the finite-number check; matches native assertNumber(finite)
+    x < 0;
+  end,
+  isEven: (x) -> (x % 2) == 0,
+  isOdd: (x) -> ((x % 2) != 0) && isInteger(x),
+  isEmpty: (x) -> isNull(x) || (count(x) == 0),
+  isNotEmpty: (x) -> !(isNull(x)) && (count(x) > 0),
+  isTrue: (x) -> x == true,
+  isFalse: (x) -> x == false,
+};
