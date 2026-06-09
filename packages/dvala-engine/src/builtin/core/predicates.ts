@@ -1,9 +1,8 @@
 import { isDvalaFunction, isMacroFunction } from '@mojir/dvala-types'
-import { assertColl, isArr, isAtom, isColl, isEffect, isObj, isRegularExpression, isSeq } from '@mojir/dvala-types'
-import { assertNumber, isNumber } from '@mojir/dvala-types'
+import { isArr, isAtom, isColl, isEffect, isObj, isRegularExpression, isSeq } from '@mojir/dvala-types'
+import { isNumber } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 import { isGrid, isMatrix, isVector } from '@mojir/dvala-types'
-import { EPSILON } from '../../utils'
 import { toFixedArity } from '@mojir/dvala-types'
 
 export const predicatesNormalExpression: BuiltinNormalExpressions = {
@@ -200,9 +199,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
   },
 
   isZero: {
-    evaluate: ([value], sourceCodeInfo): boolean => {
-      assertNumber(value, sourceCodeInfo, { finite: true })
-      return Math.abs(value) < EPSILON
+    evaluate: () => {
+      throw new Error('isZero is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -218,9 +216,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
   },
 
   isPos: {
-    evaluate: ([first], sourceCodeInfo): boolean => {
-      assertNumber(first, sourceCodeInfo, { finite: true })
-      return first > 0
+    evaluate: () => {
+      throw new Error('isPos is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -236,9 +233,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
   },
 
   isNeg: {
-    evaluate: ([first], sourceCodeInfo): boolean => {
-      assertNumber(first, sourceCodeInfo, { finite: true })
-      return first < 0
+    evaluate: () => {
+      throw new Error('isNeg is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -254,9 +250,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
   },
 
   isEven: {
-    evaluate: ([first], sourceCodeInfo): boolean => {
-      assertNumber(first, sourceCodeInfo, { finite: true })
-      return first % 2 === 0
+    evaluate: () => {
+      throw new Error('isEven is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -272,9 +267,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
   },
 
   isOdd: {
-    evaluate: ([first], sourceCodeInfo): boolean => {
-      assertNumber(first, sourceCodeInfo, { finite: true })
-      return isNumber(first, { integer: true }) && first % 2 !== 0
+    evaluate: () => {
+      throw new Error('isOdd is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -446,8 +440,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
   },
 
   isTrue: {
-    evaluate: ([value]): boolean => {
-      return value === true
+    evaluate: () => {
+      throw new Error('isTrue is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -463,8 +457,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
   },
 
   isFalse: {
-    evaluate: ([value]): boolean => {
-      return value === false
+    evaluate: () => {
+      throw new Error('isFalse is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -480,16 +474,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
   },
 
   isEmpty: {
-    evaluate: ([coll], sourceCodeInfo): boolean => {
-      if (coll === null) return true
-
-      assertColl(coll, sourceCodeInfo)
-      if (typeof coll === 'string') return coll.length === 0
-
-      // PersistentVector and PersistentMap both expose `.size`
-      if (isArr(coll)) return coll.size === 0
-
-      return coll.size === 0
+    evaluate: () => {
+      throw new Error('isEmpty is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -512,16 +498,8 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
     },
   },
   isNotEmpty: {
-    evaluate: ([coll], sourceCodeInfo): boolean => {
-      if (coll === null) return false
-
-      assertColl(coll, sourceCodeInfo)
-      if (typeof coll === 'string') return coll.length > 0
-
-      // PersistentVector and PersistentMap both expose `.size`
-      if (isArr(coll)) return coll.size > 0
-
-      return coll.size > 0
+    evaluate: () => {
+      throw new Error('isNotEmpty is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {

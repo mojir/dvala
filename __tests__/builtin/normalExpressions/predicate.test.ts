@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '@mojir/dvala-core-tooling'
 import { DvalaError } from '@mojir/dvala-types'
+import { EPSILON } from '@mojir/dvala-engine'
 
 describe('predicates', () => {
   for (const dvala of [createDvala(), createDvala({ debug: true })]) {
@@ -139,6 +140,14 @@ describe('predicates', () => {
         expect(() => dvala.run('isZero(null)')).toThrow(DvalaError)
         expect(() => dvala.run('isZero({})')).toThrow(DvalaError)
         expect(() => dvala.run('isZero([])')).toThrow(DvalaError)
+      })
+
+      // isZero ships as .dvala with a hardcoded `1e-10` threshold; this guards
+      // it against silently drifting from the canonical EPSILON in utils.ts
+      // (there is no way to inject the TS constant into the .dvala source).
+      it('tolerance tracks the EPSILON constant', () => {
+        expect(dvala.run(`isZero(${EPSILON * 0.9})`)).toBe(true)
+        expect(dvala.run(`isZero(${EPSILON * 1.1})`)).toBe(false)
       })
     })
 
