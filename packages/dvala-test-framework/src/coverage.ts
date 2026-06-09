@@ -176,16 +176,23 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
       if (!byLine.has(pos.start[0])) byLine.set(pos.start[0], 0)
     }
 
-    // Record actual hit counts from the coverageMap
+    // Record actual hit counts from the coverageMap.
     for (const [nodeId, count] of result.coverageMap) {
       const pos = result.sourceMap.positions.get(nodeId)
       if (!pos) continue
       const sourceMeta = result.sourceMap.sources[pos.source]
       if (!sourceMeta?.path || sourceMeta.path === '<anonymous>') continue
 
+      // Merge hit counts into the "found" set only for non-structural-leaf nodes.
+      // The evaluator's onNodeEval fires on a BROADER set than the parser's
+      // `structuralLeaf` (e.g. it records binding-target nodes the parser marks as
+      // leaves), so a recorded hit may land on a leaf position. Adding those to
+      // exprHits would inflate `exprsFound` past the real expression count and make
+      // it non-deterministic across runs — so skip leaves for the expression metric.
       const exprHits = exprHitsByPath.get(sourceMeta.path)
-      if (exprHits) exprHits.set(nodeId, Math.max(exprHits.get(nodeId) ?? 0, count))
+      if (exprHits && !pos.structuralLeaf) exprHits.set(nodeId, Math.max(exprHits.get(nodeId) ?? 0, count))
 
+      // Line coverage counts any hit node on the line (leaf or not).
       const byLine = byPath.get(sourceMeta.path)
       if (byLine) {
         const line = pos.start[0]
