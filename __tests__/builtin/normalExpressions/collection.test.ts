@@ -105,6 +105,11 @@ describe('collection functions', () => {
       expect(() => dvala.run('reduce(+)')).toThrow(DvalaError)
       expect(() => dvala.run('reduce()')).toThrow(DvalaError)
       expect(() => dvala.run('reduce(1, +2)')).toThrow(DvalaError)
+      // Correct arity but a non-collection first arg: reaches reduce's `else`
+      // guard (perform @dvala.error "Expected collection") rather than failing
+      // arity validation first. Exercises the otherwise-untested error branch.
+      expect(() => dvala.run('reduce(42, +, 0)')).toThrow('Expected collection')
+      expect(() => dvala.run('reduce(true, +, 0)')).toThrow('Expected collection')
     })
   })
 

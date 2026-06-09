@@ -1,6 +1,7 @@
 dist
 build
 coverage
+coverage-dvala
 # in-source build artifacts (tsgo emits alongside .ts when outDir is absent or when run manually)
 src/**/*.js
 src/**/*.d.ts

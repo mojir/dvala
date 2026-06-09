@@ -177,6 +177,7 @@ If no arguments are provided \`null\` is returned.`,
 
   mergeWith: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('mergeWith is implemented in Dvala')
     },
     arity: { min: 2 },

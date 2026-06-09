@@ -5921,7 +5921,7 @@ export function tick(
  * Throws if any step produces a Promise (i.e., an async operation was
  * encountered in a synchronous context).
  */
-export function runSyncTrampoline(initial: Step, effectHandlers?: Handlers): Any {
+export function runSyncTrampoline(initial: Step, effectHandlers?: Handlers, snapshotState?: SnapshotState): Any {
   let step: Step | Promise<Step> = initial
   for (;;) {
     if (step instanceof Promise) {
@@ -5930,7 +5930,7 @@ export function runSyncTrampoline(initial: Step, effectHandlers?: Handlers): Any
     if (step.type === 'Value' && step.k === null) {
       return step.value
     }
-    step = tick(step, effectHandlers)
+    step = tick(step, effectHandlers, undefined, snapshotState)
   }
 }
 
@@ -5938,7 +5938,7 @@ export function runSyncTrampoline(initial: Step, effectHandlers?: Handlers): Any
  * Run the trampoline asynchronously to completion.
  * Awaits any Promise<Step> that surfaces from async operations.
  */
-export async function runAsyncTrampoline(initial: Step): Promise<Any> {
+export async function runAsyncTrampoline(initial: Step, snapshotState?: SnapshotState): Promise<Any> {
   let step: Step | Promise<Step> = initial
   for (;;) {
     if (step instanceof Promise) {
@@ -5947,7 +5947,7 @@ export async function runAsyncTrampoline(initial: Step): Promise<Any> {
     if (step.type === 'Value' && step.k === null) {
       return step.value
     }
-    step = tick(step)
+    step = tick(step, undefined, undefined, snapshotState)
   }
 }
 
@@ -6001,23 +6001,38 @@ function mergeSourceMap(contextStack: ContextStack, sourceMap: SourceMap | undef
 }
 
 /**
+ * Build a minimal SnapshotState carrying only an onNodeEval hook — for coverage
+ * tracking on the sync (and sync-effects) paths, which otherwise pass no
+ * snapshotState. No checkpointing fields are set, so the snapshot machinery
+ * stays inert; only the per-node coverage hook fires.
+ */
+function coverageSnapshotState(onNodeEval: SnapshotState['onNodeEval']): SnapshotState {
+  return { snapshots: [], nextSnapshotIndex: 0, executionId: generateUUID(), onNodeEval }
+}
+
+/**
  * Evaluate an AST using the trampoline.
  * Returns the final value synchronously, or a Promise if async operations
  * are involved (e.g., native JS functions returning Promises).
  */
-export function evaluate(ast: Ast, contextStack: ContextStack): MaybePromise<Any> {
+export function evaluate(
+  ast: Ast,
+  contextStack: ContextStack,
+  onNodeEval?: SnapshotState['onNodeEval'],
+): MaybePromise<Any> {
   mergeSourceMap(contextStack, ast.sourceMap)
+  const snapshotState = onNodeEval ? coverageSnapshotState(onNodeEval) : undefined
   const initial = buildInitialStep(ast.body, contextStack)
   // Try synchronous first; if a Promise surfaces, switch to async
   try {
-    return runSyncTrampoline(initial)
+    return runSyncTrampoline(initial, undefined, snapshotState)
   } catch (error) {
     if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
       // An async operation was encountered — re-run with the async trampoline.
       // We must rebuild the initial step since the sync attempt may have
       // partially mutated frames.
       const freshInitial = buildInitialStep(ast.body, contextStack)
-      return runAsyncTrampoline(freshInitial)
+      return runAsyncTrampoline(freshInitial, snapshotState)
     }
     throw error
   }
@@ -6107,15 +6122,21 @@ export async function evaluateWithEffects(
  * is used). Handlers may call `resume(value)`, `fail(msg?)`, or `next()`.
  * Calling `suspend()` will throw a runtime error.
  */
-export function evaluateWithSyncEffects(ast: Ast, contextStack: ContextStack, effectHandlers?: Handlers): Any {
+export function evaluateWithSyncEffects(
+  ast: Ast,
+  contextStack: ContextStack,
+  effectHandlers?: Handlers,
+  onNodeEval?: SnapshotState['onNodeEval'],
+): Any {
   mergeSourceMap(contextStack, ast.sourceMap)
+  const snapshotState = onNodeEval ? coverageSnapshotState(onNodeEval) : undefined
   const initial = buildInitialStep(ast.body, contextStack)
   try {
-    return runSyncTrampoline(initial, effectHandlers)
+    return runSyncTrampoline(initial, effectHandlers, snapshotState)
   } catch (error) {
     if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
       const freshInitial = buildInitialStep(ast.body, contextStack)
-      return runSyncTrampoline(freshInitial, effectHandlers)
+      return runSyncTrampoline(freshInitial, effectHandlers, snapshotState)
     }
     throw error
   }

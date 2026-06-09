@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { runTestFile } from './index'
+import type { SourceMap } from '@mojir/dvala-types'
 import { computeCoverageSummary, generateLcov, generateSuiteLcov } from './coverage'
 import type { FileCoverageSummary } from './coverage'
 
@@ -71,6 +72,31 @@ describe('dvala code coverage', () => {
     for (const s of summaries) {
       expect(s.path.startsWith('/')).toBe(true)
     }
+  })
+})
+
+describe('computeCoverageSummary expression counting', () => {
+  it('does not let a recorded structural-leaf node inflate exprsFound', () => {
+    // The evaluator's onNodeEval records a broader set than the parser's
+    // `structuralLeaf` (e.g. binding-target nodes), so a hit can land on a leaf
+    // position. Such a hit must NOT enter the found set, or exprsFound inflates
+    // and wobbles across runs. Here node 2 is a leaf that was "hit" — it should
+    // be ignored; only the single non-leaf node 1 counts.
+    const sourceMap: SourceMap = {
+      sources: [{ path: '/lib.dvala', content: 'a\nb\n' }],
+      positions: new Map([
+        [1, { source: 0, start: [0, 0], end: [0, 1] }],
+        [2, { source: 0, start: [1, 0], end: [1, 1], structuralLeaf: true }],
+      ]),
+    }
+    const coverageMap = new Map([
+      [1, 3],
+      [2, 7],
+    ])
+    const [summary] = computeCoverageSummary([{ filePath: 't', results: [], coverageMap, sourceMap }])
+    expect(summary!.exprsFound).toBe(1)
+    expect(summary!.exprsHit).toBe(1)
+    expect(summary!.uncoveredExprs).toEqual([])
   })
 })
 

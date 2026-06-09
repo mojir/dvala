@@ -32,7 +32,7 @@
   "scripts": {
     "preinstall": "npx -y only-allow pnpm",
     "test": "turbo run build && vitest run",
-    "test:coverage": "turbo run build && vitest run --coverage",
+    "test:coverage": "turbo run build && DVALA_COVERAGE=1 vitest run --coverage",
     "test:changed": "vitest run --changed",
     "vitest": "vitest",
     "lint": "turbo run build --filter=@mojir/dvala-engine --filter=@mojir/dvala-core-tooling --filter=@mojir/dvala-common && oxfmt --ignore-path=.oxfmtignore . && oxlint --fix .",

@@ -200,6 +200,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
 
   isZero: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('isZero is implemented in Dvala')
     },
     arity: toFixedArity(1),
@@ -217,6 +218,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
 
   isPos: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('isPos is implemented in Dvala')
     },
     arity: toFixedArity(1),
@@ -234,6 +236,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
 
   isNeg: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('isNeg is implemented in Dvala')
     },
     arity: toFixedArity(1),
@@ -251,6 +254,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
 
   isEven: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('isEven is implemented in Dvala')
     },
     arity: toFixedArity(1),
@@ -268,6 +272,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
 
   isOdd: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('isOdd is implemented in Dvala')
     },
     arity: toFixedArity(1),
@@ -441,6 +446,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
 
   isTrue: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('isTrue is implemented in Dvala')
     },
     arity: toFixedArity(1),
@@ -458,6 +464,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
 
   isFalse: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('isFalse is implemented in Dvala')
     },
     arity: toFixedArity(1),
@@ -475,6 +482,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
 
   isEmpty: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('isEmpty is implemented in Dvala')
     },
     arity: toFixedArity(1),
@@ -499,6 +507,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
   },
   isNotEmpty: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('isNotEmpty is implemented in Dvala')
     },
     arity: toFixedArity(1),

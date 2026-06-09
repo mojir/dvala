@@ -83,6 +83,9 @@ export default defineConfig({
   test: {
     exclude: ['e2e/**', '.wireit/**', '**/node_modules/**'],
     setupFiles: ['./vitest.setup.ts'],
+    // Inert unless DVALA_COVERAGE=1 — emits the separate `.dvala` builtin union
+    // coverage report (coverage-dvala/) after the run. See vitest.global-coverage.ts.
+    globalSetup: ['./vitest.global-coverage.ts'],
     // Share module cache across files within a worker. Drops cumulative import
     // time from ~48s to ~15s and trims wall-clock by ~17% on this suite. Safe
     // because `vitest.setup.ts` runs per-worker (so its console/stdout mocks
@@ -95,6 +98,9 @@ export default defineConfig({
         // Build artifacts and third-party.
         'dist/**',
         'node_modules/**',
+
+        // Separate `.dvala` builtin coverage report (its own surface, not TS).
+        'coverage-dvala/**',
 
         // Test files and helpers — they shouldn't count toward their own coverage.
         '__tests__/**',

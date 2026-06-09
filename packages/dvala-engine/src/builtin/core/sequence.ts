@@ -351,6 +351,7 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
   },
   some: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('some is implemented in Dvala')
     },
     arity: toFixedArity(2),
@@ -402,6 +403,7 @@ some(
   },
   sort: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('sort is implemented in Dvala')
     },
     arity: { min: 1, max: 2 },
@@ -553,6 +555,7 @@ sort(
   },
   takeWhile: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('takeWhile is implemented in Dvala')
     },
     arity: toFixedArity(2),
@@ -584,6 +587,7 @@ sort(
   },
   dropWhile: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('dropWhile is implemented in Dvala')
     },
     arity: toFixedArity(2),
