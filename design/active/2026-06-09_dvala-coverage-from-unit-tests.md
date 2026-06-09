@@ -6,10 +6,12 @@
 ## Implementation status (2026-06-09)
 
 Built on branch `dvala-coverage-from-unit-tests`. Result: the 6 **core** builtin
-`.dvala` files report **216/216 lines (100%)** and **~1147/1150 expressions (99.7%)**
+`.dvala` files report **216/216 lines (100%)** and **~489/491 expressions (~99.6%)**
 from the existing TS unit suite, as a separate `coverage-dvala/` report (LCOV + HTML +
 text), folded into `test:coverage` (`DVALA_COVERAGE=1`) and uploaded as its own CI
-artifact. The c8 TS report is unchanged.
+artifact. The report pinpoints uncovered expressions (`line:col` + snippet in the
+summary, highlighted spans + amber "partial" lines in the HTML). The c8 TS report is
+unchanged.
 
 Open questions resolved:
 
@@ -24,10 +26,17 @@ Known limitations / follow-ups:
 - **Scope is CORE builtins only.** `initCoreDvalaSources` loads only `core/*.dvala`; the
   module `.dvala` files (`modules/*/*.dvala`, decision 6 wanted them too) are not yet
   measured. The report's include glob is already `builtin/**/*.dvala`, ready for them.
-- **±2-expression wobble in the total** (ratio stays 99.7%/100%): `structuralLeaf`
-  classification depends on registry state at parse time, and the cross-worker merge
-  picks one worker's canonical map. Attribution is correct (the canonical is the same
-  parse that assigns `dvalaImpl`); full determinism would need a pinned parse state.
+- **Denominator is stable (491);** a small residual **numerator** wobble (~±1%, e.g.
+  484↔489 of 491 hit) remains. It's the suite's own `isolate:false` inter-file
+  flakiness — a few builtin expressions are exercised only by flaky/order-sensitive
+  paths. The direction is safe (the union under-reports = false-negative only, never
+  false-positive) and any marker is confirmable deterministically via
+  `createDvala({ coverage: true })`. It would only matter if the % were promoted to a
+  CI gate (decision 5 = report-only); a gate would need an isolated coverage run or a
+  tolerance. *(An earlier denominator instability — 491↔~1147 — was a real bug, since
+  fixed: the parser's `structuralLeaf` set is broader than the evaluator's onNodeEval
+  skip set, so recorded binding-target hits inflated `exprsFound`; `computeCoverageSummary`
+  now guards the hit-merge on `!structuralLeaf`.)*
 
 ## Goal
 

@@ -6001,11 +6001,6 @@ function mergeSourceMap(contextStack: ContextStack, sourceMap: SourceMap | undef
 }
 
 /**
- * Evaluate an AST using the trampoline.
- * Returns the final value synchronously, or a Promise if async operations
- * are involved (e.g., native JS functions returning Promises).
- */
-/**
  * Build a minimal SnapshotState carrying only an onNodeEval hook — for coverage
  * tracking on the sync (and sync-effects) paths, which otherwise pass no
  * snapshotState. No checkpointing fields are set, so the snapshot machinery
@@ -6015,6 +6010,11 @@ function coverageSnapshotState(onNodeEval: SnapshotState['onNodeEval']): Snapsho
   return { snapshots: [], nextSnapshotIndex: 0, executionId: generateUUID(), onNodeEval }
 }
 
+/**
+ * Evaluate an AST using the trampoline.
+ * Returns the final value synchronously, or a Promise if async operations
+ * are involved (e.g., native JS functions returning Promises).
+ */
 export function evaluate(
   ast: Ast,
   contextStack: ContextStack,

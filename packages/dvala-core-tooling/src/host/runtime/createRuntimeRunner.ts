@@ -75,8 +75,9 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
         prettyPrint: options.prettyPrint,
       })
 
-      // Instance-level coverage hook (createDvala({ coverage: true })). It forces
-      // debug on the instance, so source maps are already accumulated.
+      // Instance-level coverage hook — set under `coverage: true` (which forces debug,
+      // so source maps are accumulated) or `DVALA_COVERAGE=1` (record-only, no forced
+      // debug — it only reads node[2] against the global canonical source map).
       const onNodeEval = options.factoryOnNodeEval
 
       if (isDvalaBundle(source)) {

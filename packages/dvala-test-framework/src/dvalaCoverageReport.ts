@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { SourceMap } from '@mojir/dvala-types'
+import type { SourceMap, SourceMapPosition } from '@mojir/dvala-types'
 import { computeCoverageSummary, generateLcov } from './coverage'
 import { generateCoverageHtmlFiles } from './coverageHtml'
 import type { TestRunResult } from './result'
@@ -15,8 +15,8 @@ import type { TestRunResult } from './result'
 
 /** Output directory for the rendered `.dvala` report (sibling of c8's `coverage/`). */
 export const DVALA_COVERAGE_DIR = path.resolve(process.cwd(), 'coverage-dvala')
-/** Scratch directory for per-worker dumps; removed after the report is written. */
-const WORKERS_DIR = path.join(DVALA_COVERAGE_DIR, '.workers')
+/** Scratch directory (under the report dir) for per-worker dumps; removed after the report. */
+const workersDir = (reportDir: string): string => path.join(reportDir, '.workers')
 
 /** Glob scope for the report — engine builtins only (see design decision 6). */
 const INCLUDE = ['packages/dvala-engine/src/builtin/**/*.dvala']
@@ -24,7 +24,7 @@ const INCLUDE = ['packages/dvala-engine/src/builtin/**/*.dvala']
 interface WorkerDump {
   counts: [number, number][]
   sources: SourceMap['sources']
-  positions: [number, SourceMap['positions'] extends Map<number, infer P> ? P : never][]
+  positions: [number, SourceMapPosition][]
 }
 
 /**
@@ -37,7 +37,11 @@ interface WorkerDump {
  * unlike `process.on('exit')` whose timing vs. globalSetup teardown is unspecified
  * for pooled workers). Sync; no-op when there's nothing to report.
  */
-export function dumpWorkerCoverage(coverageMap: Map<number, number>, sourceMap: SourceMap | undefined): void {
+export function dumpWorkerCoverage(
+  coverageMap: Map<number, number>,
+  sourceMap: SourceMap | undefined,
+  reportDir: string = DVALA_COVERAGE_DIR,
+): void {
   if (!sourceMap || coverageMap.size === 0) return
 
   const counts: [number, number][] = []
@@ -46,13 +50,14 @@ export function dumpWorkerCoverage(coverageMap: Map<number, number>, sourceMap: 
   }
   if (counts.length === 0) return
 
-  fs.mkdirSync(WORKERS_DIR, { recursive: true })
+  const dir = workersDir(reportDir)
+  fs.mkdirSync(dir, { recursive: true })
   const dump: WorkerDump = {
     counts,
     sources: sourceMap.sources,
     positions: [...sourceMap.positions],
   }
-  fs.writeFileSync(path.join(WORKERS_DIR, `${process.pid}.json`), JSON.stringify(dump))
+  fs.writeFileSync(path.join(dir, `${process.pid}.json`), JSON.stringify(dump))
 }
 
 /**
@@ -61,15 +66,16 @@ export function dumpWorkerCoverage(coverageMap: Map<number, number>, sourceMap: 
  * `undefined` when no dumps were produced (nothing exercised builtins). Idempotent
  * enough to run once from a teardown hook.
  */
-export function writeDvalaCoverageReport(): string | undefined {
-  if (!fs.existsSync(WORKERS_DIR)) return undefined
-  const files = fs.readdirSync(WORKERS_DIR).filter(f => f.endsWith('.json'))
+export function writeDvalaCoverageReport(reportDir: string = DVALA_COVERAGE_DIR): string | undefined {
+  const dumpsDir = workersDir(reportDir)
+  if (!fs.existsSync(dumpsDir)) return undefined
+  const files = fs.readdirSync(dumpsDir).filter(f => f.endsWith('.json'))
   if (files.length === 0) return undefined
 
   const coverageMap = new Map<number, number>()
   let sourceMap: SourceMap | undefined
   for (const file of files) {
-    const dump = JSON.parse(fs.readFileSync(path.join(WORKERS_DIR, file), 'utf-8')) as WorkerDump
+    const dump = JSON.parse(fs.readFileSync(path.join(dumpsDir, file), 'utf-8')) as WorkerDump
     for (const [id, count] of dump.counts) {
       coverageMap.set(id, (coverageMap.get(id) ?? 0) + count)
     }
@@ -81,12 +87,12 @@ export function writeDvalaCoverageReport(): string | undefined {
   const result: TestRunResult = { filePath: '<dvala-union>', results: [], coverageMap, sourceMap }
   const summaries = computeCoverageSummary([result], { include: INCLUDE, exclude: [] })
 
-  fs.mkdirSync(DVALA_COVERAGE_DIR, { recursive: true })
-  fs.writeFileSync(path.join(DVALA_COVERAGE_DIR, 'lcov.info'), generateLcov(coverageMap, sourceMap))
+  fs.mkdirSync(reportDir, { recursive: true })
+  fs.writeFileSync(path.join(reportDir, 'lcov.info'), generateLcov(coverageMap, sourceMap))
 
   // HTML tree (relative builtin paths resolve against cwd inside the generator).
   for (const [rel, content] of generateCoverageHtmlFiles(summaries, process.cwd())) {
-    const out = path.join(DVALA_COVERAGE_DIR, rel)
+    const out = path.join(reportDir, rel)
     fs.mkdirSync(path.dirname(out), { recursive: true })
     fs.writeFileSync(out, content)
   }
@@ -115,10 +121,10 @@ export function writeDvalaCoverageReport(): string | undefined {
     `lines ${totals.lh}/${totals.lf} (${pct(totals.lh, totals.lf)}%)  ` +
     `exprs ${totals.eh}/${totals.ef} (${pct(totals.eh, totals.ef)}%)`
   const summaryText = `${header}\n\n${lines.join('\n')}\n`
-  fs.writeFileSync(path.join(DVALA_COVERAGE_DIR, 'summary.txt'), summaryText)
+  fs.writeFileSync(path.join(reportDir, 'summary.txt'), summaryText)
 
   // Clean up scratch dumps; leave the report in place.
-  fs.rmSync(WORKERS_DIR, { recursive: true, force: true })
+  fs.rmSync(dumpsDir, { recursive: true, force: true })
 
   return header
 }
