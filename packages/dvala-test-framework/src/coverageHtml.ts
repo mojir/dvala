@@ -231,13 +231,30 @@ function filePage(
   const linePct = pct(summary.linesHit, summary.linesFound)
   const exprPct = pct(summary.exprsHit, summary.exprsFound)
 
+  // Group uncovered-expression spans by their start line so each line can mark the
+  // exact ranges that were never evaluated — even when the line itself is covered.
+  const uncoveredByLine = new Map<number, [number, number][]>()
+  for (const e of summary.uncoveredExprs) {
+    const ln = e.start[0]
+    const lineText = sourceLines[ln] ?? ''
+    // Clamp end column to this line (multi-line nodes highlight to end of start line).
+    const endCol = e.end[0] === ln ? e.end[1] : lineText.length
+    const ranges = uncoveredByLine.get(ln) ?? []
+    ranges.push([e.start[1], Math.max(endCol, e.start[1] + 1)])
+    uncoveredByLine.set(ln, ranges)
+  }
+
   const lineRows = sourceLines
     .map((line, i) => {
       const lineNum = i // 0-based
       const hits = summary.lineHits.get(lineNum)
-      const rowClass = hits === undefined ? 'neutral' : hits > 0 ? 'covered' : 'uncovered'
+      const ranges = uncoveredByLine.get(lineNum)
+      // A line with uncovered expressions but a positive line-hit count is PARTIAL
+      // (amber) — the line ran, but some sub-expression on it never did.
+      const rowClass = hits === undefined ? 'neutral' : hits === 0 ? 'uncovered' : ranges ? 'partial' : 'covered'
       const hitsCell = hits === undefined ? '' : `${hits}`
-      return `<tr class="${rowClass}"><td class="ln">${i + 1}</td><td class="hits">${hitsCell}</td><td class="src"><pre>${esc(line)}</pre></td></tr>`
+      const src = ranges ? highlightRanges(line, ranges) : esc(line)
+      return `<tr class="${rowClass}"><td class="ln">${i + 1}</td><td class="hits">${hitsCell}</td><td class="src"><pre>${src}</pre></td></tr>`
     })
     .join('\n')
 
@@ -285,6 +302,35 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+/**
+ * Render a source line with the given character ranges wrapped in an
+ * `uncovered-expr` span. Overlapping/nested ranges (an uncovered node containing
+ * another) are merged so the emitted HTML stays well-formed. Each segment is
+ * escaped independently.
+ */
+function highlightRanges(line: string, ranges: [number, number][]): string {
+  // Merge overlapping ranges, clamped to the line bounds.
+  const sorted = ranges
+    .map(([s, e]) => [Math.max(0, Math.min(s, line.length)), Math.max(0, Math.min(e, line.length))] as [number, number])
+    .sort((a, b) => a[0] - b[0])
+  const merged: [number, number][] = []
+  for (const [s, e] of sorted) {
+    const last = merged[merged.length - 1]
+    if (last && s <= last[1]) last[1] = Math.max(last[1], e)
+    else merged.push([s, e])
+  }
+
+  let out = ''
+  let cursor = 0
+  for (const [s, e] of merged) {
+    out += esc(line.slice(cursor, s))
+    out += `<span class="uncovered-expr">${esc(line.slice(s, e))}</span>`
+    cursor = e
+  }
+  out += esc(line.slice(cursor))
+  return out
+}
+
 // --- Shared CSS ---
 
 const CSS = `
@@ -328,6 +374,12 @@ table.source tr.covered { background: #0d1f14; }
 table.source tr.uncovered { background: #1f0d0d; }
 table.source tr.uncovered td.ln,
 table.source tr.uncovered td.hits { color: #f85149; }
+/* Partial: the line ran, but some expression on it never did. */
+table.source tr.partial { background: #1f1a0d; }
+table.source tr.partial td.ln,
+table.source tr.partial td.hits { color: #d29922; }
 table.source tr.neutral { background: transparent; }
+/* The exact never-evaluated sub-expression. */
+.uncovered-expr { background: #5a1e1e; color: #ffdcd6; border-radius: 2px; box-shadow: 0 0 0 1px #f85149 inset; }
 
 `

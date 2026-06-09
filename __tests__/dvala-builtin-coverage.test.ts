@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '@mojir/dvala-core-tooling'
-import { computeCoverageSummary, generateLcov } from '@mojir/dvala-test-framework'
+import { computeCoverageSummary, generateCoverageHtmlFiles, generateLcov } from '@mojir/dvala-test-framework'
 
 const PREDICATES = 'packages/dvala-engine/src/builtin/core/predicates.dvala'
 
@@ -32,6 +32,34 @@ describe('.dvala builtin coverage', () => {
     expect(pred).toBeDefined()
     expect(pred!.exprsFound).toBeGreaterThan(pred!.exprsHit) // not everything is exercised
     expect(pred!.exprsHit).toBeGreaterThan(0)
+
+    // Uncovered expressions are pinpointed precisely: one entry per unhit node,
+    // each carrying a span + snippet — the actionable signal on covered lines.
+    expect(pred!.uncoveredExprs).toHaveLength(pred!.exprsFound - pred!.exprsHit)
+    for (const e of pred!.uncoveredExprs) {
+      expect(e.start[0]).toBeGreaterThanOrEqual(0)
+      expect(e.start[1]).toBeGreaterThanOrEqual(0)
+      expect(typeof e.text).toBe('string')
+    }
+    // Sorted top-to-bottom, left-to-right.
+    const keys = pred!.uncoveredExprs.map(e => e.start[0] * 10000 + e.start[1])
+    expect(keys).toEqual([...keys].sort((a, b) => a - b))
+  })
+
+  it('highlights uncovered expression spans in the HTML file page', () => {
+    const dvala = createDvala({ coverage: true, typecheck: false })
+    dvala.run('isEven(2)') // exercises one predicate; many others stay uncovered
+
+    const cov = dvala.getCoverage()!
+    const summaries = computeCoverageSummary(
+      [{ filePath: 'x', results: [], coverageMap: cov.coverageMap, sourceMap: cov.sourceMap }],
+      { include: ['packages/dvala-engine/src/builtin/**/*.dvala'], exclude: [] },
+    )
+    const files = generateCoverageHtmlFiles(summaries, process.cwd())
+    const predHtml = [...files].find(([p]) => p.endsWith('predicates.dvala.html'))?.[1] ?? ''
+    // The exact never-evaluated sub-expressions are wrapped + partial lines marked.
+    expect(predHtml).toContain('uncovered-expr')
+    expect(predHtml).toContain('class="partial"')
   })
 
   it('returns undefined coverage when not opted in', () => {

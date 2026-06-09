@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { minimatch } from 'minimatch'
-import type { SourceMap } from '@mojir/dvala-types'
+import type { SourceMap, SourceMapPosition } from '@mojir/dvala-types'
 import { tokenize } from '@mojir/dvala-core-tooling'
 import { minifyTokenStream } from '@mojir/dvala-core-tooling'
 import { parseToAst } from '@mojir/dvala-core-tooling'
@@ -67,6 +67,20 @@ export function generateSuiteLcov(results: TestRunResult[]): string {
     .join('')
 }
 
+/**
+ * An expression (AST node) that was found in the source map but never evaluated.
+ * Carries the exact span so reports can pinpoint it even on an otherwise-covered
+ * line — the real signal for `.dvala`, where one line packs many branchy nodes.
+ */
+export interface UncoveredExpr {
+  /** 0-based [line, column] start of the node. */
+  start: [number, number]
+  /** 0-based [line, column] end of the node. */
+  end: [number, number]
+  /** Single-line source snippet of the node (truncated), for at-a-glance context. */
+  text: string
+}
+
 export interface FileCoverageSummary {
   path: string
   linesHit: number
@@ -77,6 +91,8 @@ export interface FileCoverageSummary {
   exprsHit: number
   /** 1-based line numbers that were never hit */
   uncoveredLines: number[]
+  /** Expressions found but never evaluated — located precisely (span + snippet). */
+  uncoveredExprs: UncoveredExpr[]
   /** 0-based line → max hit count across all test runs. 0 = found but never hit. */
   lineHits: Map<number, number>
   /** Source file content, when available */
@@ -119,6 +135,8 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
   //   exprHits: nodeId → max hit count (0 = seen but never evaluated)
   const byPath = new Map<string, Map<number, number>>()
   const exprHitsByPath = new Map<string, Map<number, number>>()
+  // nodeId → position, so uncovered expressions can be located precisely.
+  const exprPosByPath = new Map<string, Map<number, SourceMapPosition>>()
   const sourceByPath = new Map<string, string>()
 
   for (const result of results) {
@@ -142,6 +160,13 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
         exprHitsByPath.set(sourceMeta.path, exprHits)
       }
       if (!exprHits.has(nodeId)) exprHits.set(nodeId, 0)
+
+      let exprPos = exprPosByPath.get(sourceMeta.path)
+      if (!exprPos) {
+        exprPos = new Map()
+        exprPosByPath.set(sourceMeta.path, exprPos)
+      }
+      if (!exprPos.has(nodeId)) exprPos.set(nodeId, pos)
 
       let byLine = byPath.get(sourceMeta.path)
       if (!byLine) {
@@ -177,6 +202,7 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
       if (!stats) continue
       byPath.set(filePath, stats.byLine)
       exprHitsByPath.set(filePath, stats.byExpr)
+      exprPosByPath.set(filePath, stats.byExprPos)
       sourceByPath.set(filePath, stats.source)
     }
   }
@@ -193,6 +219,20 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
       const exprsFound = exprHits.size
       const exprsHit = [...exprHits.values()].filter(c => c > 0).length
       const source = sourceByPath.get(filePath)
+      const exprPos = exprPosByPath.get(filePath)
+
+      // Locate every never-hit expression: span + a single-line snippet.
+      const uncoveredExprs: UncoveredExpr[] = []
+      if (exprPos) {
+        for (const [nodeId, count] of exprHits) {
+          if (count > 0) continue
+          const pos = exprPos.get(nodeId)
+          if (!pos) continue
+          uncoveredExprs.push({ start: pos.start, end: pos.end, text: snippetFor(source, pos) })
+        }
+        // Sort by position so the report reads top-to-bottom, left-to-right.
+        uncoveredExprs.sort((a, b) => a.start[0] - b.start[0] || a.start[1] - b.start[1])
+      }
 
       return {
         path: filePath,
@@ -201,6 +241,7 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
         exprsFound,
         exprsHit,
         uncoveredLines,
+        uncoveredExprs,
         lineHits: byLine,
         source,
       }
@@ -208,12 +249,31 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
 }
 
 /**
+ * Extract a single-line snippet for a node span from the file source. Returns the
+ * exact text for a same-line node, or the first line + `…` for a multi-line node.
+ * Truncated to keep summaries scannable. Empty string when source is unavailable.
+ */
+function snippetFor(source: string | undefined, pos: SourceMapPosition): string {
+  if (!source) return ''
+  const lines = source.split('\n')
+  const line = lines[pos.start[0]]
+  if (line === undefined) return ''
+  const sameLine = pos.end[0] === pos.start[0]
+  const raw = sameLine ? line.slice(pos.start[1], pos.end[1]) : `${line.slice(pos.start[1])}…`
+  const text = raw.trim()
+  return text.length > 60 ? `${text.slice(0, 57)}…` : text
+}
+
+/**
  * Parse a .dvala file and return its line and expression maps initialised to 0.
  * Used for files that were never evaluated during tests (all: true mode).
  */
-function parseFileStats(
-  filePath: string,
-): { byLine: Map<number, number>; byExpr: Map<number, number>; source: string } | null {
+function parseFileStats(filePath: string): {
+  byLine: Map<number, number>
+  byExpr: Map<number, number>
+  byExprPos: Map<number, SourceMapPosition>
+  source: string
+} | null {
   try {
     const source = fs.readFileSync(filePath, 'utf-8')
     const tokenStream = tokenize(source, /* debug */ true, filePath)
@@ -224,6 +284,7 @@ function parseFileStats(
 
     const byLine = new Map<number, number>()
     const byExpr = new Map<number, number>()
+    const byExprPos = new Map<number, SourceMapPosition>()
 
     for (const [nodeId, pos] of ast.sourceMap.positions) {
       // Only count nodes belonging to this file (source index 0 — the only source)
@@ -231,11 +292,12 @@ function parseFileStats(
       // Structural leaves are never tracked by onNodeEval — exclude from expr counts
       if (pos.structuralLeaf) continue
       byExpr.set(nodeId, 0)
+      byExprPos.set(nodeId, pos)
       const line = pos.start[0]
       if (!byLine.has(line)) byLine.set(line, 0)
     }
 
-    return { byLine, byExpr, source }
+    return { byLine, byExpr, byExprPos, source }
   } catch {
     return null
   }

@@ -91,11 +91,15 @@ export function writeDvalaCoverageReport(): string | undefined {
     fs.writeFileSync(out, content)
   }
 
-  // Text summary.
-  const lines = summaries.map(
-    s =>
-      `${s.path}  lines ${s.linesHit}/${s.linesFound}  exprs ${s.exprsHit}/${s.exprsFound}${s.uncoveredLines.length ? `  (uncovered: ${s.uncoveredLines.join(', ')})` : ''}`,
-  )
+  // Text summary. For each file, the headline counts followed by the precise
+  // location (line:col) + snippet of every uncovered expression — the actionable
+  // signal, since uncovered exprs often sit on otherwise-covered lines.
+  const lines = summaries.map(s => {
+    const head = `${s.path}  lines ${s.linesHit}/${s.linesFound}  exprs ${s.exprsHit}/${s.exprsFound}`
+    if (s.exprsHit === s.exprsFound) return head
+    const detail = s.uncoveredExprs.map(e => `    ${s.path}:${e.start[0] + 1}:${e.start[1] + 1}  ${e.text}`).join('\n')
+    return `${head}\n${detail}`
+  })
   const totals = summaries.reduce(
     (acc, s) => ({
       lh: acc.lh + s.linesHit,

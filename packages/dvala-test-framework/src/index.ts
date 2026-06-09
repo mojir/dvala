@@ -193,7 +193,7 @@ function readDvalaFile(dvalaPath: string): string {
 // without reaching into internal modules.
 export type { TestCaseResult, TestRunResult, TestSuiteResult } from './result'
 export { isSuccess, isSuiteSuccess } from './result'
-export type { CoverageFilter, FileCoverageSummary } from './coverage'
+export type { CoverageFilter, FileCoverageSummary, UncoveredExpr } from './coverage'
 export { computeCoverageSummary, generateLcov, generateSuiteLcov } from './coverage'
 export { generateCoverageHtmlFiles } from './coverageHtml'
 export { DVALA_COVERAGE_DIR, dumpWorkerCoverage, writeDvalaCoverageReport } from './dvalaCoverageReport'
