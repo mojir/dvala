@@ -9,6 +9,7 @@ import { assertFunctionLike } from '@mojir/dvala-types'
 export const functionalNormalExpression: BuiltinNormalExpressions = {
   '|>': {
     evaluate: (): never => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('|> is implemented in Dvala')
     },
     arity: toFixedArity(2),
@@ -40,6 +41,7 @@ export const functionalNormalExpression: BuiltinNormalExpressions = {
   },
   apply: {
     evaluate: (): never => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('apply is implemented in Dvala')
     },
     arity: { min: 2 },

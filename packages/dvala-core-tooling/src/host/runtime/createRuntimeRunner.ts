@@ -1,5 +1,11 @@
 import type { DvalaModule } from '@mojir/dvala-engine'
-import type { DvalaRunAsyncOptions, DvalaRunOptions, RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
+import type {
+  DvalaRunAsyncOptions,
+  DvalaRunOptions,
+  RuntimeHandlers,
+  RuntimeNodeEvalHook,
+  RuntimeRunResult,
+} from '@mojir/dvala-runtime'
 import { DvalaError } from '@mojir/dvala-types'
 import { createContextStack } from '@mojir/dvala-engine'
 import type { FileResolver } from '@mojir/dvala-engine'
@@ -30,6 +36,12 @@ interface CreateRuntimeRunnerOptions {
   scopeToGlobalContext: (scope?: Record<string, unknown>) => Context | undefined
   getAccumulatedSourceMap: () => SourceMap | undefined
   setAccumulatedSourceMap: (sourceMap: SourceMap | undefined) => void
+  /**
+   * Instance-level node-eval hook for `.dvala` coverage. When set, fires on every
+   * run (sync and async) in addition to any per-run `onNodeEval`. The host installs
+   * this when `createDvala({ coverage: true })`; it forces debug so source maps exist.
+   */
+  factoryOnNodeEval?: RuntimeNodeEvalHook
 }
 
 export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): RuntimeExecutionRunner {
@@ -63,12 +75,16 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
         prettyPrint: options.prettyPrint,
       })
 
+      // Instance-level coverage hook (createDvala({ coverage: true })). It forces
+      // debug on the instance, so source maps are already accumulated.
+      const onNodeEval = options.factoryOnNodeEval
+
       if (isDvalaBundle(source)) {
         const ast = source.ast
         if (effectHandlers) {
-          return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers))
+          return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers, onNodeEval))
         }
-        const result = evaluate(ast, contextStack)
+        const result = evaluate(ast, contextStack, onNodeEval)
         if (result instanceof Promise)
           throw new TypeError('Unexpected async result in run(). Use runAsync() for async operations.')
         return toJS(result)
@@ -78,10 +94,10 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
       options.emitTypeDiagnostics(ast)
 
       if (effectHandlers) {
-        return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers))
+        return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers, onNodeEval))
       }
 
-      const result = evaluate(ast, contextStack)
+      const result = evaluate(ast, contextStack, onNodeEval)
       if (result instanceof Promise) {
         throw new TypeError('Unexpected async result in run(). Use runAsync() for async operations.')
       }
@@ -95,7 +111,17 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
       assertNotPureWithHandlers(pure, effectHandlers)
 
       try {
-        const forceDebug = !!runOptions?.onNodeEval
+        // Merge the instance-level coverage hook with any per-run hook so both fire.
+        const perRunOnNodeEval = runOptions?.onNodeEval
+        const factoryOnNodeEval = options.factoryOnNodeEval
+        const onNodeEval: RuntimeNodeEvalHook =
+          factoryOnNodeEval && perRunOnNodeEval
+            ? (node, getContinuation) => {
+                void factoryOnNodeEval(node, getContinuation)
+                return perRunOnNodeEval(node, getContinuation)
+              }
+            : (factoryOnNodeEval ?? perRunOnNodeEval)
+        const forceDebug = !!onNodeEval
         const effectiveDebug = options.debug || forceDebug
         const contextStack = createContextStack({
           globalContext: options.scopeToGlobalContext(runOptions?.scope),
@@ -147,7 +173,7 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
           },
           !disableAutoCheckpoint,
           terminalSnapshot,
-          runOptions?.onNodeEval,
+          onNodeEval,
         )
         const sourceMap = options.getAccumulatedSourceMap()
         if (result.type === 'completed') {

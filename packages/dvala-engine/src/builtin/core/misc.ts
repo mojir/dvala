@@ -408,6 +408,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
   },
   raise: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('raise is implemented in Dvala')
     },
     arity: { min: 1, max: 2 },

@@ -3,7 +3,7 @@ import type { DvalaModule } from '@mojir/dvala-engine'
 import type { FileResolver } from '@mojir/dvala-engine'
 import type { ParseSource } from '@mojir/dvala-engine'
 import type { RuntimeHandlers, RuntimeRunResult } from '@mojir/dvala-runtime'
-import type { Ast } from '@mojir/dvala-types'
+import type { Ast, AstNode, SourceMap } from '@mojir/dvala-types'
 import { initCoreDvalaSources } from '@mojir/dvala-engine'
 import type { DvalaBundle } from '../bundler/interface'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from '../standaloneTooling'
@@ -11,6 +11,7 @@ import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } 
 import type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
 import { createRuntimeRunner } from './runtime/createRuntimeRunner'
 import { createAstBuilder } from './runtime/createAstBuilder'
+import { isGlobalDvalaCoverageEnabled, recordGlobalDvalaNode, setGlobalDvalaBuiltinSourceMap } from './dvalaCoverage'
 import { scopeToGlobalContext } from '@mojir/dvala-engine'
 import { prettyPrint } from '../prettyPrint'
 import { parseToAst } from '../parser'
@@ -73,6 +74,22 @@ export interface CreateDvalaOptions {
    * Only called when `typecheck: true`.
    */
   onTypeDiagnostic?: (diagnostic: TypeDiagnostic) => void
+  /**
+   * Collect `.dvala` coverage for this instance. When enabled, every `run`/`runAsync`
+   * call on this runner records evaluated node IDs (including builtin `.dvala` bodies),
+   * retrievable via `getCoverage()`. Forces `debug` on so source maps exist for
+   * attribution. Opt-in and off by default — `onNodeEval` per node is too costly for
+   * the default hot path. See `getCoverage`.
+   */
+  coverage?: boolean
+}
+
+/** Coverage data collected by a `coverage: true` runner — feed to `generateLcov` / `computeCoverageSummary`. */
+export interface DvalaCoverage {
+  /** nodeId → number of times evaluated, accumulated across every run on this instance. */
+  coverageMap: Map<number, number>
+  /** Accumulated source map (builtins + user programs); maps node IDs back to source. */
+  sourceMap?: SourceMap
 }
 
 export type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
@@ -87,6 +104,11 @@ export interface DvalaRunner {
     source: string,
     options?: { fileResolverBaseDir?: string; filePath?: string; fold?: boolean },
   ) => TypecheckResult
+  /**
+   * Returns the `.dvala` coverage accumulated by this instance, or `undefined`
+   * when the instance was not created with `coverage: true`.
+   */
+  getCoverage: () => DvalaCoverage | undefined
 }
 
 /**
@@ -100,7 +122,6 @@ const parseSource: ParseSource = (source, opts = {}) => {
 }
 
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
-  initCoreDvalaSources(parseSource)
   // Per-instance node ID counter — ensures unique IDs within this runner.
   // Can be overridden via options.nodeIdAllocator for cross-instance coordination.
   let nodeIdCounter = 0
@@ -111,7 +132,18 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const factoryDisableTimeTravel = options?.disableAutoCheckpoint ?? false
   const factoryFileResolver = options?.fileResolver
   const factoryFileResolverBaseDir = options?.fileResolverBaseDir
-  const debug = options?.debug ?? false
+  // Two coverage modes, deliberately decoupled:
+  //  - `coverage: true` (attributable opt-in): forces debug + builds a per-instance
+  //    map + source map, retrievable via getCoverage(). Changes debug-observable
+  //    behavior, so it's strictly opt-in.
+  //  - `DVALA_COVERAGE=1` (union baseline): attaches a record-only hook to EVERY
+  //    instance WITHOUT forcing debug — the hook only reads node[2], and the builtin
+  //    source map it needs is deterministic, so it's built once globally (below).
+  //    Decoupling from debug is what keeps the baseline from perturbing error
+  //    messages or leaking builtins into unrelated coverage summaries.
+  const explicitCoverage = options?.coverage ?? false
+  const globalCoverage = isGlobalDvalaCoverageEnabled()
+  const debug = (options?.debug ?? false) || explicitCoverage
   const typecheckEnabled = options?.typecheck ?? true
   const onTypeDiagnostic = options?.onTypeDiagnostic
   const registeredModules = modules ? [...modules.values()] : undefined
@@ -120,6 +152,43 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     cacheSize: options?.cache ?? 100,
     allocateNodeId,
   })
+
+  // Parse + register the core `.dvala` builtins, always sharing this instance's
+  // node-ID allocator so builtin nodeIds don't collide with the user program (and
+  // the [0, N) reservation holds in every instance — see initCoreDvalaSources).
+  //
+  // We build the builtin source map when EITHER coverage mode is active. It's the
+  // SAME parse that assigns dvalaImpl on the first instance, so its node IDs *and*
+  // structuralLeaf flags exactly match the executed builtin bodies — critical for
+  // the union baseline, since onNodeEval skips structural leaves using the executed
+  // node's flag, and a separately-parsed map could classify leaves differently
+  // (leaf classification depends on registry state at parse time) and report false
+  // uncovered/covered expressions.
+  const builtinSourceMap = initCoreDvalaSources(parseSource, {
+    debug: explicitCoverage || globalCoverage,
+    allocateNodeId,
+  })
+  if (builtinSourceMap) {
+    // Seed into the accumulated map ONLY for the attributable opt-in: builtins are a
+    // SEPARATE coverage surface, so a normal debug run (e.g. runTestFile measuring a
+    // user `.dvala` project) must not leak all builtin files into its summary.
+    if (explicitCoverage) astBuilder.setAccumulatedSourceMap(builtinSourceMap)
+    // Union baseline: register as the canonical builtin map (first writer wins — the
+    // first instance is the one that assigned dvalaImpl, so flags/IDs align).
+    if (globalCoverage) setGlobalDvalaBuiltinSourceMap(builtinSourceMap)
+  }
+
+  // Recorder. Fires on every run (sync + async). Writes to the per-instance map when
+  // the attributable opt-in is on, and/or to the process-global union map under the env.
+  const coverageMap = explicitCoverage ? new Map<number, number>() : undefined
+  const recordsCoverage = !!coverageMap || globalCoverage
+  const factoryOnNodeEval = recordsCoverage
+    ? (node: AstNode) => {
+        const id = node[2]
+        if (coverageMap) coverageMap.set(id, (coverageMap.get(id) ?? 0) + 1)
+        if (globalCoverage) recordGlobalDvalaNode(id)
+      }
+    : undefined
 
   function emitTypeDiagnostics(ast: Ast): void {
     if (!typecheckEnabled) return
@@ -144,7 +213,13 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       scopeToGlobalContext,
       getAccumulatedSourceMap: astBuilder.getAccumulatedSourceMap,
       setAccumulatedSourceMap: astBuilder.setAccumulatedSourceMap,
+      factoryOnNodeEval,
     }),
+
+    getCoverage(): DvalaCoverage | undefined {
+      if (!coverageMap) return undefined
+      return { coverageMap, sourceMap: astBuilder.getAccumulatedSourceMap() }
+    },
 
     getUndefinedSymbols(source: string, symbolsOptions?: { scope?: Record<string, unknown> }): Set<string> {
       const modulesList = modules ? [...modules.values()] : undefined

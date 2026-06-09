@@ -24,6 +24,7 @@ function calcMedian(vector: number[]): number {
 const vectorFunctions: BuiltinNormalExpressions = {
   movingFn: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('movingFn is implemented in Dvala')
     },
     arity: toFixedArity(3),
@@ -47,6 +48,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
   },
   runningFn: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('runningFn is implemented in Dvala')
     },
     arity: toFixedArity(2),

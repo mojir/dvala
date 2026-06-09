@@ -44,6 +44,7 @@ function assoc(coll: Coll, key: string | number, value: Any, sourceCodeInfo?: So
 export const collectionNormalExpression: BuiltinNormalExpressions = {
   filter: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('filter is implemented in Dvala')
     },
     arity: toFixedArity(2),
@@ -81,6 +82,7 @@ filter(
   },
   map: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('map is implemented in Dvala')
     },
     arity: { min: 2 },
@@ -110,6 +112,7 @@ filter(
   },
   reduce: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('reduce is implemented in Dvala')
     },
     arity: toFixedArity(3),

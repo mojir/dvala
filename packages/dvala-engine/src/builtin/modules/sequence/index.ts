@@ -15,6 +15,7 @@ import sequenceModuleSource from './sequence.dvala'
 const sequenceUtilsFunctions: BuiltinNormalExpressions = {
   mapcat: {
     evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
       throw new Error('mapcat is implemented in Dvala')
     },
     arity: toFixedArity(2),

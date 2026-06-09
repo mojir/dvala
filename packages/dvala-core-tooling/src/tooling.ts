@@ -96,7 +96,15 @@ export type { ReplBinding } from './shared/replCore'
 // bridge (`@mojir/dvala-runtime`-shape wrapper). These are the entry points
 // for anyone running Dvala source through the TS implementation.
 export { createDvala } from './host/createDvala'
-export type { CreateDvalaOptions, DvalaRunAsyncOptions, DvalaRunOptions, DvalaRunner } from './host/createDvala'
+export type {
+  CreateDvalaOptions,
+  DvalaCoverage,
+  DvalaRunAsyncOptions,
+  DvalaRunOptions,
+  DvalaRunner,
+} from './host/createDvala'
+// `.dvala` union-coverage baseline (DVALA_COVERAGE=1) — read by the vitest dump hook.
+export { getGlobalDvalaCoverage, isGlobalDvalaCoverageEnabled } from './host/dvalaCoverage'
 export { createPackageRuntimeBridge } from './host/runtime/createPackageRuntimeBridge'
 export type {
   CreatePackageRuntimeBridgeOptions,
