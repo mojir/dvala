@@ -427,5 +427,6 @@ export const convertModule: DvalaModule = {
   description: 'Unit conversions for length, weight, temperature, speed, and more.',
   functions: convertFunctions,
   source: convertModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/convert/convert.dvala',
   docs: moduleDocsFromFunctions(convertFunctions),
 }

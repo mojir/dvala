@@ -21,6 +21,14 @@ export interface DvalaModule {
    */
   source?: string
   /**
+   * Repo-relative path of the `.dvala` file `source` was loaded from
+   * (e.g. `packages/dvala-engine/src/builtin/modules/math/math.dvala`). Used only
+   * for `.dvala` coverage attribution — lets a `source` node's source-map position
+   * resolve back to its file (the module `name` is camelCase and can't be mapped to
+   * the kebab-case filename reliably). Optional; omit for user modules.
+   */
+  sourcePath?: string
+  /**
    * Docs for all functions in this module, including any defined in `source`.
    * The reference system uses this record as the sole source of truth for
    * function names and documentation. Not required for user-defined modules.

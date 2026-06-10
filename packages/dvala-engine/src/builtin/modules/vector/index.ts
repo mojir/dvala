@@ -512,5 +512,6 @@ export const vectorModule: DvalaModule = {
   description: 'Statistical functions: mean, median, stdev, quartiles, histograms, and outliers.',
   functions: vectorFunctions,
   source: vectorModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/vector/vector.dvala',
   docs: moduleDocs,
 }

@@ -715,5 +715,6 @@ export const collectionUtilsModule: DvalaModule = {
   description: 'Advanced collection operations: groupBy, frequencies, partition, and more.',
   functions: collectionUtilsFunctions,
   source: collectionModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/collection/collection.dvala',
   docs: moduleDocsFromFunctions(collectionUtilsFunctions),
 }

@@ -477,5 +477,6 @@ export const stringUtilsModule: DvalaModule = {
   description: 'String manipulation: pad, repeat, capitalize, camelCase, and word wrapping.',
   functions: stringUtilsFunctions,
   source: stringModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/string/string.dvala',
   docs: moduleDocsFromFunctions(stringUtilsFunctions),
 }

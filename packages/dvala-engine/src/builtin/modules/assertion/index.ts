@@ -387,5 +387,6 @@ export const assertModule: DvalaModule = {
   description: 'Runtime assertions with detailed error messages for testing and validation.',
   functions: assertNormalExpression,
   source: assertionModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/assertion/assertion.dvala',
   docs: moduleDocs,
 }

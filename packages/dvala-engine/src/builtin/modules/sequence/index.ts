@@ -837,5 +837,6 @@ export const sequenceUtilsModule: DvalaModule = {
   description: 'Sequence generation and transformation: iterate, unfold, windows, and chunks.',
   functions: sequenceUtilsFunctions,
   source: sequenceModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/sequence/sequence.dvala',
   docs: moduleDocsFromFunctions(sequenceUtilsFunctions),
 }

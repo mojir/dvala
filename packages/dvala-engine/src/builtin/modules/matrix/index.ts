@@ -270,5 +270,6 @@ export const matrixModule: DvalaModule = {
   description: 'Matrix algebra: multiplication, determinant, inverse, rank, and decomposition.',
   functions: matrixNormalExpression,
   source: matrixModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/matrix/matrix.dvala',
   docs: moduleDocs,
 }

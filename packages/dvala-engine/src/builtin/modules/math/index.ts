@@ -544,5 +544,6 @@ export const mathUtilsModule: DvalaModule = {
   description: 'Mathematical functions: trigonometry, logarithms, rounding, and constants.',
   functions: mathUtilsFunctions,
   source: mathModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/math/math.dvala',
   docs: moduleDocsFromFunctions(mathUtilsFunctions),
 }
