@@ -75,13 +75,6 @@ Phase 3's ship gate language already mentions "array indexing with `i` bounded b
 
 Most effect-soundness work has shipped; the remaining items are audit-and-pin-with-tests, not new design.
 
-> **Related but different class — replay determinism (not type-soundness):** the
-> built-in nondeterministic effects (`@dvala.random*`, `@dvala.time.now`) re-execute
-> on snapshot rewind/resume, so a replay that crosses one diverges from the original
-> run. That's a *runtime/snapshot-replay* soundness concern, not something the
-> typechecker catches — tracked separately in
-> [2026-06-10_effect-replay-determinism.md](2026-06-10_effect-replay-determinism.md).
-
 ## E. Coercion failures
 
 | Gap | Status |
