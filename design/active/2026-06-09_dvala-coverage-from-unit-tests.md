@@ -1,11 +1,11 @@
 # `.dvala` Coverage from the Unit Test Suite
 
-**Status:** Implemented (2026-06-09) — all 6 plan steps shipped; `pnpm run check` + e2e green.
+**Status:** Closed (2026-06-10) — shipped for **core** builtins in PR #250; `pnpm run check` + e2e green. Module `.dvala` coverage is a deliberate follow-up (see Known limitations).
 **Created:** 2026-06-09
 
-## Implementation status (2026-06-09)
+## Implementation status
 
-Built on branch `dvala-coverage-from-unit-tests`. Result: the 6 **core** builtin
+Merged in **PR #250**. Result: the 6 **core** builtin
 `.dvala` files report **216/216 lines (100%)** and **~489/491 expressions (~99.6%)**
 from the existing TS unit suite, as a separate `coverage-dvala/` report (LCOV + HTML +
 text), folded into `test:coverage` (`DVALA_COVERAGE=1`) and uploaded as its own CI
@@ -23,13 +23,22 @@ Open questions resolved:
 
 Known limitations / follow-ups:
 
-- **Scope is CORE builtins only.** `initCoreDvalaSources` loads only `core/*.dvala`; the
-  module `.dvala` files (`modules/*/*.dvala`, decision 6 wanted them too) are not yet
-  measured. The report's include glob is already `builtin/**/*.dvala`, ready for them.
+- **Scope is CORE builtins only — tracked follow-up (deferred 2026-06-10).**
+  `initCoreDvalaSources` loads only `core/*.dvala`; the module `.dvala` files
+  (`modules/*/*.dvala`, decision 6 wanted them too) are not yet measured. Extending
+  to modules is real engine work (they're parsed bare in the hot Import path —
+  [trampoline-evaluator.ts:830](../../packages/dvala-engine/src/evaluator/trampoline-evaluator.ts#L830) —
+  so it needs the same `{ debug, filePath, allocateNodeId }` wiring core got, plus
+  merging each module's source map into the union canonical and handling the
+  lazily-cached `_cachedNodes` determinism). Comparable in size to the original core
+  impl; closed core-only by decision rather than blocking on it. The report's include
+  glob is already `builtin/**/*.dvala`, ready for them.
 - **Denominator is stable (491);** a small residual **numerator** wobble (~±1%, e.g.
-  484↔489 of 491 hit) remains. It's the suite's own `isolate:false` inter-file
-  flakiness — a few builtin expressions are exercised only by flaky/order-sensitive
-  paths. The direction is safe (the union under-reports = false-negative only, never
+  484↔489 of 491 hit) remains. It tracks the suite's own `isolate:false`
+  nondeterminism. *(Investigated separately 2026-06-10: the one reproducible flake —
+  the typechecker effect-registry — was fixed; the coverage flicker's exact source
+  was left unpinned, since the single-thread discriminator was confounded by the
+  coverage dump's per-pid model. Treated as report-only noise.)* The direction is safe (the union under-reports = false-negative only, never
   false-positive) and any marker is confirmable deterministically via
   `createDvala({ coverage: true })`. It would only matter if the % were promoted to a
   CI gate (decision 5 = report-only); a gate would need an isolated coverage run or a
