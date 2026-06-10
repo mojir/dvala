@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { parse, parseToAst as parseProgramAst } from '@mojir/dvala-core-tooling'
 import { tokenize } from '@mojir/dvala-core-tooling'
 import { minifyTokenStream } from '@mojir/dvala-core-tooling'
@@ -75,7 +75,15 @@ beforeAll(() => {
   for (const mod of allBuiltinModules) {
     registerModuleType(mod.name, mod.functions, mod.docs)
   }
-  // Declare test effects used in effect set and handler tests
+})
+
+// Test effects used by the effect-set and handler tests. Re-declared per test (not
+// once in beforeAll) because every `dvala.typecheck(...)` pass calls
+// `resetUserEffects()`, which wipes user-declared effects from the shared registry.
+// Under reordering (e.g. --sequence.shuffle), a typecheck-running test can wipe these
+// before an effect-set test reads them — a flaky failure. Re-declaring before each
+// test makes the effect-set tests order-independent.
+beforeEach(() => {
   declareEffect('my.eff', Unknown, Unknown)
   declareEffect('log', Unknown, Unknown)
   declareEffect('fetch', Unknown, Unknown)
