@@ -587,5 +587,6 @@ export const gridModule: DvalaModule = {
   description: '2D grid operations: creation, transformation, transposition, and cell mapping.',
   functions: gridFunctions,
   source: gridModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/grid/grid.dvala',
   docs: moduleDocs,
 }

@@ -121,5 +121,6 @@ export const handlerModule: DvalaModule = {
   description: 'Utilities for creating and composing algebraic effect handlers.',
   functions: {},
   source: handlerModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/effectHandler/effectHandler.dvala',
   docs: { ...handlerDocs, ...chooseDocs },
 }

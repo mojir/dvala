@@ -225,5 +225,6 @@ export const functionalUtilsModule: DvalaModule = {
   description: 'Higher-order function utilities: compose, partial, memoize, and juxtapose.',
   functions: functionalUtilsNormalExpression,
   source: functionalModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/functional/functional.dvala',
   docs: moduleDocsFromFunctions(functionalUtilsNormalExpression),
 }

@@ -158,5 +158,6 @@ export const bitwiseUtilsModule: DvalaModule = {
   description: 'Bitwise utility functions for AND, OR, XOR, shift, and bit manipulation.',
   functions: bitwiseUtilsNormalExpression,
   source: bitwiseModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/bitwise/bitwise.dvala',
   docs: moduleDocsFromFunctions(bitwiseUtilsNormalExpression),
 }

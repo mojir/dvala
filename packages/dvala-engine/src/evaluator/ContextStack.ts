@@ -53,6 +53,13 @@ export class ContextStackImpl {
   public allocateNodeId?: () => number
   /** Whether debug mode (source map building) is active */
   public debug: boolean
+  /**
+   * Whether `.dvala` coverage collection is active. When true, builtin module
+   * sources are parsed with source maps (and merged) so module nodes are
+   * attributable — gated separately from `debug` so ordinary debug runs (e.g.
+   * runTestFile measuring a user project) don't pay the cost or leak builtins.
+   */
+  public coverage: boolean
   /** Host-supplied capability to compile source → Ast (severs runtime → parser). */
   public parseSource?: ParseSource
   /** Host-supplied capability to format AST → source for the `ast/prettyPrint` builtin. */
@@ -70,6 +77,7 @@ export class ContextStackImpl {
     resolvingFiles,
     allocateNodeId,
     debug,
+    coverage,
     parseSource,
     prettyPrint,
   }: {
@@ -83,6 +91,7 @@ export class ContextStackImpl {
     resolvingFiles?: Set<string>
     allocateNodeId?: () => number
     debug?: boolean
+    coverage?: boolean
     parseSource?: ParseSource
     prettyPrint?: PrettyPrint
   }) {
@@ -97,6 +106,7 @@ export class ContextStackImpl {
     this._resolvingFiles = resolvingFiles ?? new Set()
     this.allocateNodeId = allocateNodeId
     this.debug = debug ?? false
+    this.coverage = coverage ?? false
     this.parseSource = parseSource
     this.prettyPrint = prettyPrint
   }
@@ -205,6 +215,7 @@ export class ContextStackImpl {
       resolvingFiles: this._resolvingFiles,
       allocateNodeId: this.allocateNodeId,
       debug: this.debug,
+      coverage: this.coverage,
       parseSource: this.parseSource,
       prettyPrint: this.prettyPrint,
     })
@@ -341,6 +352,7 @@ export interface CreateContextStackOptions {
   currentFileDir?: string
   allocateNodeId?: () => number
   debug?: boolean
+  coverage?: boolean
   parseSource?: ParseSource
   prettyPrint?: PrettyPrint
 }
@@ -359,6 +371,7 @@ export function createContextStack(options: CreateContextStackOptions = {}): Con
     currentFileDir: options.currentFileDir,
     allocateNodeId: options.allocateNodeId,
     debug: options.debug,
+    coverage: options.coverage,
     parseSource: options.parseSource,
     prettyPrint: options.prettyPrint,
   })

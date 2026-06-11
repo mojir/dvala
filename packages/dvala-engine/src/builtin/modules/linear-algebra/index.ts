@@ -716,5 +716,6 @@ export const linearAlgebraModule: DvalaModule = {
   description: 'Vector and matrix operations: dot product, cross product, norms, and linear systems.',
   functions: linearAlgebraNormalExpression,
   source: linearAlgebraModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/linear-algebra/linear-algebra.dvala',
   docs: moduleDocs,
 }

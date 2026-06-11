@@ -1,21 +1,17 @@
-import type { SourceMap } from '@mojir/dvala-types'
-
 /**
- * Process-global `.dvala` coverage accumulator for the suite-wide UNION baseline.
+ * Process-global `.dvala` coverage accumulator for the suite-wide UNION baseline
+ * (`DVALA_COVERAGE=1`). Each `createDvala` instance, when coverage is active, records
+ * the *source spans* of evaluated builtin `.dvala` nodes here. A vitest setup file
+ * dumps this to disk at worker exit; a globalSetup teardown merges all workers' dumps
+ * (by span) and computes the report against a denominator parsed fresh from disk.
  *
- * When `DVALA_COVERAGE=1`, every `createDvala` instance auto-enables coverage and
- * records evaluated node IDs here (in addition to its own instance-level map). A
- * vitest setup file dumps this to disk at worker exit; a globalSetup teardown then
- * merges all workers' dumps into the separate `coverage-dvala/` report.
+ * Keyed by **source span** (path + start/end), NOT node ID: builtin module node IDs
+ * vary across instances (import order + which module set was registered + the per-
+ * module parse cache), so an ID-keyed cross-instance merge would conflate positions.
+ * Spans are stable across instances/workers. Core builtins could be ID-keyed (their
+ * IDs are deterministic) but are span-keyed too, so the whole union is uniform.
  *
- * Builtin node IDs are deterministic across instances (the [0, N) reservation in
- * initCoreDvalaSources), so summing counts keyed by node ID across all instances
- * and all workers yields a correct union for the builtin surface. User-program
- * nodes (IDs >= N) also land in the map but are filtered out at report time by the
- * builtin source map (which only carries positions for [0, N)).
- *
- * This module is intentionally DOM/Node-free (no `fs`): it only touches `process`
- * defensively for the env check, so it stays safe in browser bundles.
+ * DOM/Node-free (no `fs`): only touches `process` defensively for the env check.
  */
 
 /** True when the suite-wide union baseline is requested via `DVALA_COVERAGE=1`. */
@@ -23,24 +19,25 @@ export function isGlobalDvalaCoverageEnabled(): boolean {
   return typeof process !== 'undefined' && process.env?.DVALA_COVERAGE === '1'
 }
 
-const globalCoverageMap = new Map<number, number>()
-let globalBuiltinSourceMap: SourceMap | undefined
-
-/** Record one evaluation of a builtin/user node into the union map. */
-export function recordGlobalDvalaNode(nodeId: number): void {
-  globalCoverageMap.set(nodeId, (globalCoverageMap.get(nodeId) ?? 0) + 1)
+/** True for engine builtin `.dvala` source paths (core + modules). */
+export function isBuiltinDvalaPath(path: string): boolean {
+  return path.includes('packages/dvala-engine/src/builtin/') && path.endsWith('.dvala')
 }
 
-/**
- * Register the builtin source map. First writer wins — the first instance under the
- * env is the one that assigned dvalaImpl, so its map's node IDs and structuralLeaf
- * flags align with the executed builtin bodies. Later identical writes are ignored.
- */
-export function setGlobalDvalaBuiltinSourceMap(sourceMap: SourceMap): void {
-  globalBuiltinSourceMap ??= sourceMap
+/** Stable key for a builtin `.dvala` node's source span (0-based positions). */
+export function dvalaSpanKey(path: string, start: [number, number], end: [number, number]): string {
+  return `${path}\t${start[0]},${start[1]}\t${end[0]},${end[1]}`
 }
 
-/** Snapshot the accumulated union coverage for dumping at worker exit. */
-export function getGlobalDvalaCoverage(): { coverageMap: Map<number, number>; sourceMap: SourceMap | undefined } {
-  return { coverageMap: globalCoverageMap, sourceMap: globalBuiltinSourceMap }
+// span-key → number of times evaluated, accumulated across every instance in this worker.
+const globalHitSpans = new Map<string, number>()
+
+/** Record one evaluation of a builtin `.dvala` expression, keyed by source span. */
+export function recordGlobalDvalaSpan(key: string): void {
+  globalHitSpans.set(key, (globalHitSpans.get(key) ?? 0) + 1)
+}
+
+/** Snapshot the accumulated union hit spans for dumping at worker exit. */
+export function getGlobalDvalaHits(): Map<string, number> {
+  return globalHitSpans
 }

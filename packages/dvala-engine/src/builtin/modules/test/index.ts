@@ -83,6 +83,7 @@ export function createTestModule(collector: TestCollector): DvalaModule {
     description: 'Lightweight test framework with describe, it, and assertion helpers.',
     functions: testNormalExpressions,
     source: testModuleSource,
+    sourcePath: 'packages/dvala-engine/src/builtin/modules/test/test.dvala',
     docs: moduleDocs,
   }
 }

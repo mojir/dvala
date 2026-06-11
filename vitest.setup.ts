@@ -1,5 +1,5 @@
 import { afterAll, vi } from 'vitest'
-import { getGlobalDvalaCoverage, isGlobalDvalaCoverageEnabled } from '@mojir/dvala-core-tooling'
+import { getGlobalDvalaHits, isGlobalDvalaCoverageEnabled } from '@mojir/dvala-core-tooling'
 import { dumpWorkerCoverage } from '@mojir/dvala-test-framework'
 
 // Globally suppress console output during tests to keep test output clean.
@@ -18,7 +18,6 @@ vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
 // globalSetup teardown (separate, main process) can merge all workers' dumps.
 if (isGlobalDvalaCoverageEnabled()) {
   afterAll(() => {
-    const { coverageMap, sourceMap } = getGlobalDvalaCoverage()
-    dumpWorkerCoverage(coverageMap, sourceMap)
+    dumpWorkerCoverage(getGlobalDvalaHits())
   })
 }

@@ -82,5 +82,6 @@ export const macrosModule: DvalaModule = {
   description: 'Ready-to-use macros built in pure Dvala: tracing, debugging, conditionals, and control-flow sugar.',
   functions: {},
   source: macrosModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/macros/macros.dvala',
   docs: macroDocs,
 }

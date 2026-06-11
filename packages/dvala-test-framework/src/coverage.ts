@@ -215,7 +215,14 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
   }
 
   return [...byPath.entries()]
-    .filter(([filePath]) => !filter || matchesFilter(filePath, filter))
+    .filter(([filePath]) => {
+      if (filter) return matchesFilter(filePath, filter)
+      // No filter: a user-project coverage summary. Engine builtin `.dvala` files
+      // (core + modules) can land in a run's accumulated source map under coverage,
+      // but they're engine internals, not the user's project — exclude them. The
+      // separate `.dvala` builtin report passes an explicit include filter to get them.
+      return !(filePath.includes('packages/dvala-engine/src/builtin/') && filePath.endsWith('.dvala'))
+    })
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([filePath, byLine]) => {
       const lines = [...byLine.entries()].sort((a, b) => a[0] - b[0])

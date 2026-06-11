@@ -467,5 +467,6 @@ export const numberTheoryModule: DvalaModule = {
   description: 'Number theory sequences and predicates: primes, Fibonacci, Catalan, and more.',
   functions: combinatoricalNormalExpression,
   source: numberTheoryModuleSource,
+  sourcePath: 'packages/dvala-engine/src/builtin/modules/number-theory/number-theory.dvala',
   docs: moduleDocs,
 }

@@ -201,6 +201,18 @@ import type { Step } from './step'
 // Re-export for external use
 
 // ---------------------------------------------------------------------------
+// `.dvala` coverage: module-body parse-once cache
+// ---------------------------------------------------------------------------
+// Process-wide allocator for coverage-mode module parses. Yields a strictly
+// NEGATIVE node-ID range (-1, -2, …) that no instance allocator (>= 0) can ever
+// produce, so a module's body — parsed once and shared across instances under
+// coverage — can be merged into each instance's accumulated source map without
+// its node IDs colliding with the instance's own core/user nodes. IDs need only
+// be disjoint, not deterministic: union attribution is keyed by source span.
+let coverageNodeIdCounter = -1
+const allocateCoverageNodeId = (): number => coverageNodeIdCounter--
+
+// ---------------------------------------------------------------------------
 // Value-as-function helpers
 // ---------------------------------------------------------------------------
 
@@ -824,12 +836,53 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       // and modules with .source are resolved before reaching this trampoline path
       /* v8 ignore start */
       if (dvalaModule.source) {
-        // Cache parsed nodes on the module to avoid re-parsing (which would allocate new node IDs)
-        if (!dvalaModule._cachedNodes) {
-          const parseSource = asNonUndefined(env.parseSource, sourceCodeInfo)
-          dvalaModule._cachedNodes = parseSource(dvalaModule.source).body
+        let nodes: AstNode[]
+        if (env.coverage && dvalaModule.sourcePath) {
+          // `.dvala` coverage: the module body must be attributable to its source.
+          // Parse it ONCE per process into a coverage cache (`_coverageNodes` +
+          // `_coverageSourceMap`) using a dedicated NEGATIVE node-ID range
+          // (`allocateCoverageNodeId`), then reuse that cache in every instance.
+          // Negative IDs can never collide with an instance's own nodes (its
+          // allocator only yields >= 0), so the shared module map merges into each
+          // instance's accumulated source map without clobbering core/user
+          // positions — and we avoid re-parsing the (potentially huge) module file
+          // per instance, which otherwise pushes big modules past test timeouts.
+          // Gated on `coverage` (not `debug`) so ordinary debug runs keep the cheap
+          // `_cachedNodes` parse below.
+          if (!dvalaModule._coverageNodes) {
+            const parseSource = asNonUndefined(env.parseSource, sourceCodeInfo)
+            const moduleAst = parseSource(dvalaModule.source, {
+              debug: true,
+              filePath: dvalaModule.sourcePath,
+              allocateNodeId: allocateCoverageNodeId,
+            })
+            dvalaModule._coverageNodes = moduleAst.body
+            dvalaModule._coverageSourceMap = moduleAst.sourceMap
+            // Keep the non-coverage cache warm too. Other consumers (e.g. the
+            // type-checker's fold sandbox) get a bare `createContextStack` with no
+            // `parseSource` and rely on a prior run having populated `_cachedNodes`.
+            // Before coverage existed, the ordinary run did that; now the coverage
+            // branch must, or those consumers fail to import this module.
+            if (!dvalaModule._cachedNodes) dvalaModule._cachedNodes = parseSource(dvalaModule.source).body
+          }
+          nodes = dvalaModule._coverageNodes
+          // Merge the shared (read-only) module map into THIS instance's accumulated
+          // map, offsetting `source` indices but leaving the negative node IDs intact.
+          if (dvalaModule._coverageSourceMap && env.sourceMap) {
+            const sourceOffset = env.sourceMap.sources.length
+            env.sourceMap.sources.push(...dvalaModule._coverageSourceMap.sources)
+            for (const [nodeId, pos] of dvalaModule._coverageSourceMap.positions) {
+              env.sourceMap.positions.set(nodeId, { ...pos, source: pos.source + sourceOffset })
+            }
+          }
+        } else {
+          // Cache parsed nodes on the module to avoid re-parsing (which would allocate new node IDs)
+          if (!dvalaModule._cachedNodes) {
+            const parseSource = asNonUndefined(env.parseSource, sourceCodeInfo)
+            dvalaModule._cachedNodes = parseSource(dvalaModule.source).body
+          }
+          nodes = dvalaModule._cachedNodes
         }
-        const nodes = dvalaModule._cachedNodes
         const sourceEnv = env.create({})
         const mergeFrame: ImportMergeFrame = {
           type: 'ImportMerge',
