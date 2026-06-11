@@ -28,7 +28,7 @@ describe('parser', () => {
     })
   })
 
-  describe('do-body lambda coverage attribution', () => {
+  describe('source-map coverage attribution', () => {
     // A `do…end` used directly as a lambda body is unwrapped: its statements
     // become the function body and the `do` node is discarded from the AST, so
     // the evaluator never fires onNodeEval for it. Its source-map position is
@@ -64,6 +64,26 @@ describe('parser', () => {
       const doPos = [...sourceMap!.positions.values()].find(p => p.start[0] === 0 && p.start[1] === doCol)
       expect(doPos).toBeDefined()
       expect(doPos!.structuralLeaf).toBe(true)
+    })
+
+    // A spread element (`...expr`) is never evaluated as a node — array/object/call
+    // build frames evaluate its inner expression directly, so the wrapper never fires
+    // the coverage hook. It must be a structural leaf or it shows permanently
+    // uncovered (it was the stray `]`-positioned mark in collection.dvala).
+    it('marks a spread element as a structural leaf', () => {
+      const { body, sourceMap } = parseTokenStream(tokenizeSource('[1, ...xs]', true))
+      let spreadId: number | undefined
+      const walk = (v: unknown): void => {
+        if (Array.isArray(v)) {
+          if (v.length === 3 && v[0] === NodeTypes.Spread && typeof v[2] === 'number') spreadId = v[2]
+          v.forEach(walk)
+        } else if (v && typeof v === 'object') {
+          Object.values(v).forEach(walk)
+        }
+      }
+      walk(body)
+      expect(spreadId).toBeDefined()
+      expect(sourceMap!.positions.get(spreadId!)?.structuralLeaf).toBe(true)
     })
   })
 

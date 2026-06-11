@@ -36,6 +36,10 @@ const structuralLeafTypes = new Set<string>([
   NodeTypes.Reserved,
   NodeTypes.Effect,
   NodeTypes.Binding,
+  // Spread (`...expr`) is never evaluated as a node — array/object/call build
+  // frames evaluate its INNER expression (`spreadNode[1]`) directly, so the
+  // wrapper never fires the coverage hook. Its coverage is the inner expr's.
+  NodeTypes.Spread,
   'symbol',
   'rest',
   'object',
