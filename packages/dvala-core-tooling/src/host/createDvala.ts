@@ -11,7 +11,7 @@ import { typecheck as runTypecheck, type TypeDiagnostic, type TypecheckResult } 
 import type { DvalaRunAsyncOptions, DvalaRunOptions } from '@mojir/dvala-runtime'
 import { createRuntimeRunner } from './runtime/createRuntimeRunner'
 import { createAstBuilder } from './runtime/createAstBuilder'
-import { isGlobalDvalaCoverageEnabled, recordGlobalDvalaNode, setGlobalDvalaBuiltinSourceMap } from './dvalaCoverage'
+import { dvalaSpanKey, isBuiltinDvalaPath, isGlobalDvalaCoverageEnabled, recordGlobalDvalaSpan } from './dvalaCoverage'
 import { scopeToGlobalContext } from '@mojir/dvala-engine'
 import { prettyPrint } from '../prettyPrint'
 import { parseToAst } from '../parser'
@@ -169,24 +169,33 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     allocateNodeId,
   })
   if (builtinSourceMap) {
-    // Seed into the accumulated map ONLY for the attributable opt-in: builtins are a
-    // SEPARATE coverage surface, so a normal debug run (e.g. runTestFile measuring a
-    // user `.dvala` project) must not leak all builtin files into its summary.
-    if (explicitCoverage) astBuilder.setAccumulatedSourceMap(builtinSourceMap)
-    // Union baseline: register as the canonical builtin map (first writer wins — the
-    // first instance is the one that assigned dvalaImpl, so flags/IDs align).
-    if (globalCoverage) setGlobalDvalaBuiltinSourceMap(builtinSourceMap)
+    // Seed core builtins into the accumulated map under EITHER coverage mode, so the
+    // recorder (below) can resolve a builtin node's source span by id. This now also
+    // happens under the global env — builtins thus appear in this instance's accumulated
+    // map, but `computeCoverageSummary` excludes engine-builtin paths from a user-project
+    // summary by default, so runTestFile-style reports stay clean. Module builtins are
+    // merged into the same map lazily, at import time (trampoline Import path).
+    if (explicitCoverage || globalCoverage) astBuilder.setAccumulatedSourceMap(builtinSourceMap)
   }
 
-  // Recorder. Fires on every run (sync + async). Writes to the per-instance map when
-  // the attributable opt-in is on, and/or to the process-global union map under the env.
+  // Recorder. Fires on every run (sync + async). Writes to the per-instance id→count map
+  // for getCoverage() (attributable opt-in), and — under the global env — records the
+  // builtin node's SOURCE SPAN into the process-global union (span-keyed, robust to the
+  // module node-ID variance across instances).
   const coverageMap = explicitCoverage ? new Map<number, number>() : undefined
   const recordsCoverage = !!coverageMap || globalCoverage
   const factoryOnNodeEval = recordsCoverage
     ? (node: AstNode) => {
         const id = node[2]
         if (coverageMap) coverageMap.set(id, (coverageMap.get(id) ?? 0) + 1)
-        if (globalCoverage) recordGlobalDvalaNode(id)
+        if (globalCoverage) {
+          const sm = astBuilder.getAccumulatedSourceMap()
+          const pos = sm?.positions.get(id)
+          if (sm && pos && !pos.structuralLeaf) {
+            const src = sm.sources[pos.source]
+            if (src && isBuiltinDvalaPath(src.path)) recordGlobalDvalaSpan(dvalaSpanKey(src.path, pos.start, pos.end))
+          }
+        }
       }
     : undefined
 

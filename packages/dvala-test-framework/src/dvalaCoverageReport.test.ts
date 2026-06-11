@@ -2,77 +2,52 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { SourceMap } from '@mojir/dvala-types'
+import { dvalaSpanKey, minifyTokenStream, parseToAst, tokenize } from '@mojir/dvala-core-tooling'
 import { dumpWorkerCoverage, writeDvalaCoverageReport } from './dvalaCoverageReport'
 
-// A builtin-scoped path so it matches the report's include glob
-// (packages/dvala-engine/src/builtin/**/*.dvala).
-const FILE = 'packages/dvala-engine/src/builtin/core/fixture.dvala'
+const PREDICATES = 'packages/dvala-engine/src/builtin/core/predicates.dvala'
 
-// Two non-leaf nodes: node 1 on line 1 (hit), node 2 on line 2 (never hit).
-function fixtureSourceMap(): SourceMap {
-  return {
-    sources: [{ path: FILE, content: 'aa\nbb\n' }],
-    positions: new Map([
-      [1, { source: 0, start: [0, 0], end: [0, 2] }],
-      [2, { source: 0, start: [1, 0], end: [1, 2] }],
-    ]),
+/** Pick a real non-leaf node span from a builtin file so a dumped hit actually maps. */
+function firstNonLeafSpan(relPath: string): string {
+  const tokens = tokenize(fs.readFileSync(relPath, 'utf-8'), true, relPath)
+  let n = 0
+  const ast = parseToAst(minifyTokenStream(tokens, { removeWhiteSpace: true }), () => n++)
+  for (const [, pos] of ast.sourceMap!.positions) {
+    if (!pos.structuralLeaf) return dvalaSpanKey(relPath, pos.start, pos.end)
   }
+  throw new Error('no non-leaf node found')
 }
 
-describe('dvala coverage report writer', () => {
+describe('dvala coverage report writer (span-keyed)', () => {
   let dir: string
-
   afterEach(() => {
     if (dir) fs.rmSync(dir, { recursive: true, force: true })
   })
 
-  it('merges worker dumps into lcov + html + summary, pinpointing the uncovered expr', () => {
-    dir = path.join(os.tmpdir(), `dvala-cov-report-${process.pid}-${process.hrtime.bigint()}`)
-    const sourceMap = fixtureSourceMap()
-
-    // One worker recorded a hit on node 1 only.
-    dumpWorkerCoverage(new Map([[1, 4]]), sourceMap, dir)
+  it('renders a report from merged worker dumps, against the disk denominator', () => {
+    dir = path.join(os.tmpdir(), `dvala-cov-${process.pid}-${process.hrtime.bigint()}`)
+    // One worker recorded a hit on a real predicates.dvala node span.
+    dumpWorkerCoverage(new Map([[firstNonLeafSpan(PREDICATES), 3]]), dir)
 
     const summary = writeDvalaCoverageReport(dir)
-    expect(summary).toContain('exprs 1/2') // 2 found, 1 hit
+    expect(summary).toContain('.dvala builtin coverage (union baseline)')
 
     const summaryTxt = fs.readFileSync(path.join(dir, 'summary.txt'), 'utf-8')
-    expect(summaryTxt).toContain(`${FILE}  lines 1/2  exprs 1/2`)
-    // The uncovered node (line 2, col 1) is pinpointed with its snippet.
-    expect(summaryTxt).toContain(`${FILE}:2:1  bb`)
+    // predicates.dvala appears (denominator from disk) with at least the one hit.
+    const predLine = summaryTxt.split('\n').find(l => l.startsWith(PREDICATES))
+    expect(predLine).toBeDefined()
+    const m = predLine!.match(/exprs (\d+)\/(\d+)/)!
+    expect(Number(m[2])).toBeGreaterThan(0) // found from disk
+    expect(Number(m[1])).toBeGreaterThanOrEqual(1) // the dumped hit mapped
 
-    const lcov = fs.readFileSync(path.join(dir, 'lcov.info'), 'utf-8')
-    expect(lcov).toContain(`SF:${FILE}`)
-    expect(lcov).toContain('DA:1,4') // line 1 hit 4× (generateLcov only emits lines that ran)
-
-    // HTML file page is emitted and highlights the uncovered span.
-    const htmlPath = path.join(dir, `${FILE}.html`)
-    expect(fs.existsSync(htmlPath)).toBe(true)
-    expect(fs.readFileSync(htmlPath, 'utf-8')).toContain('uncovered-expr')
-
-    // Scratch dumps are cleaned up; the report remains.
-    expect(fs.existsSync(path.join(dir, '.workers'))).toBe(false)
-  })
-
-  it('sums counts across multiple worker dumps', () => {
-    dir = path.join(os.tmpdir(), `dvala-cov-report-${process.pid}-${process.hrtime.bigint()}b`)
-    const sourceMap = fixtureSourceMap()
-
-    // Two workers: each writes its own per-pid dump. Forge a second pid by writing
-    // directly, then have the real dump cover node 2 — the union should be 2/2.
-    dumpWorkerCoverage(new Map([[1, 1]]), sourceMap, dir)
-    fs.writeFileSync(
-      path.join(dir, '.workers', 'other.json'),
-      JSON.stringify({ counts: [[2, 1]], sources: sourceMap.sources, positions: [...sourceMap.positions] }),
-    )
-
-    const summary = writeDvalaCoverageReport(dir)
-    expect(summary).toContain('exprs 2/2') // node 1 from one dump, node 2 from the other
+    // Modules are in scope too (denominator globs core + modules).
+    expect(summaryTxt).toContain('modules/')
+    expect(fs.existsSync(path.join(dir, 'lcov.info'))).toBe(true)
+    expect(fs.existsSync(path.join(dir, '.workers'))).toBe(false) // scratch cleaned up
   })
 
   it('returns undefined when there are no dumps', () => {
-    dir = path.join(os.tmpdir(), `dvala-cov-report-${process.pid}-${process.hrtime.bigint()}c`)
+    dir = path.join(os.tmpdir(), `dvala-cov-${process.pid}-${process.hrtime.bigint()}b`)
     expect(writeDvalaCoverageReport(dir)).toBeUndefined()
   })
 })

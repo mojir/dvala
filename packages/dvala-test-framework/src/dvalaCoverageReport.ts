@@ -1,70 +1,66 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { SourceMap, SourceMapPosition } from '@mojir/dvala-types'
+import type { SourceMap } from '@mojir/dvala-types'
+import { dvalaSpanKey, minifyTokenStream, parseToAst, tokenize } from '@mojir/dvala-core-tooling'
 import { computeCoverageSummary, generateLcov } from './coverage'
 import { generateCoverageHtmlFiles } from './coverageHtml'
 import type { TestRunResult } from './result'
 
 /**
  * Report generation for the suite-wide `.dvala` builtin coverage UNION baseline
- * (`DVALA_COVERAGE=1`). The model: each vitest worker dumps its accumulated union
- * coverage to a JSON file at exit; after the run a globalSetup teardown merges all
- * dumps into a separate report under `coverage-dvala/` (distinct from the c8 TS
- * report under `coverage/`). Report-only — not a gate.
+ * (`DVALA_COVERAGE=1`), covering BOTH core and module `.dvala` files.
+ *
+ * The model: each vitest worker records the *source spans* of evaluated builtin
+ * `.dvala` nodes (span-keyed — robust to the node-ID variance of lazily-imported
+ * modules) and dumps them at worker exit. A globalSetup teardown merges all dumps,
+ * builds the "found" denominator by parsing every builtin `.dvala` file fresh from
+ * disk, maps the hit spans back onto that parse, and renders the report under
+ * `coverage-dvala/`. Report-only — not a gate.
  */
 
 /** Output directory for the rendered `.dvala` report (sibling of c8's `coverage/`). */
 export const DVALA_COVERAGE_DIR = path.resolve(process.cwd(), 'coverage-dvala')
-/** Scratch directory (under the report dir) for per-worker dumps; removed after the report. */
 const workersDir = (reportDir: string): string => path.join(reportDir, '.workers')
 
-/** Glob scope for the report — engine builtins only (see design decision 6). */
-const INCLUDE = ['packages/dvala-engine/src/builtin/**/*.dvala']
-
-interface WorkerDump {
-  counts: [number, number][]
-  sources: SourceMap['sources']
-  positions: [number, SourceMapPosition][]
-}
+/** Glob scope for the report — engine builtins (core + modules), excluding test files. */
+const BUILTIN_GLOB = 'packages/dvala-engine/src/builtin/**/*.dvala'
+const INCLUDE = [BUILTIN_GLOB]
 
 /**
- * Flush one worker's accumulated union coverage to its per-pid dump file.
- *
- * Counts are filtered to nodes present in the builtin source map, so user-program
- * node IDs (which collide across instances) never enter the union. The dump file is
- * keyed by pid and OVERWRITTEN on each call: the global map only grows, so the last
- * flush per worker is complete. This is called from a per-file `afterAll` (reliable,
- * unlike `process.on('exit')` whose timing vs. globalSetup teardown is unspecified
- * for pooled workers). Sync; no-op when there's nothing to report.
+ * Flush one worker's accumulated union hit-spans to its per-pid dump file. Keyed by
+ * pid and OVERWRITTEN on each call (the global span map only grows, so the last flush
+ * is complete). Called from a per-file `afterAll` — reliable, unlike
+ * `process.on('exit')` for pooled workers. Sync; no-op when nothing was recorded.
  */
-export function dumpWorkerCoverage(
-  coverageMap: Map<number, number>,
-  sourceMap: SourceMap | undefined,
-  reportDir: string = DVALA_COVERAGE_DIR,
-): void {
-  if (!sourceMap || coverageMap.size === 0) return
-
-  const counts: [number, number][] = []
-  for (const [id, count] of coverageMap) {
-    if (sourceMap.positions.has(id)) counts.push([id, count])
-  }
-  if (counts.length === 0) return
-
+export function dumpWorkerCoverage(hitSpans: Map<string, number>, reportDir: string = DVALA_COVERAGE_DIR): void {
+  if (hitSpans.size === 0) return
   const dir = workersDir(reportDir)
   fs.mkdirSync(dir, { recursive: true })
-  const dump: WorkerDump = {
-    counts,
-    sources: sourceMap.sources,
-    positions: [...sourceMap.positions],
-  }
-  fs.writeFileSync(path.join(dir, `${process.pid}.json`), JSON.stringify(dump))
+  fs.writeFileSync(path.join(dir, `${process.pid}.json`), JSON.stringify([...hitSpans]))
+}
+
+/** Parse one builtin `.dvala` file from disk into a single-source AST (with source map). */
+function parseBuiltinFile(relPath: string): { sourceMap: SourceMap; source: string } | undefined {
+  const source = fs.readFileSync(relPath, 'utf-8')
+  const tokens = tokenize(source, /* debug */ true, relPath)
+  const ast = parseToAst(
+    minifyTokenStream(tokens, { removeWhiteSpace: true }),
+    (() => {
+      let n = 0
+      return () => n++
+    })(),
+  )
+  if (!ast.sourceMap) return undefined
+  return { sourceMap: ast.sourceMap, source }
 }
 
 /**
- * Merge all worker dumps into a single report (LCOV + HTML + text summary) under
- * `coverage-dvala/`, then remove the scratch dumps. Returns a one-line summary, or
- * `undefined` when no dumps were produced (nothing exercised builtins). Idempotent
- * enough to run once from a teardown hook.
+ * Merge all worker dumps and render the report under `coverage-dvala/`. Returns a
+ * one-line summary, or `undefined` when no dumps were produced. The "found" set is
+ * built by parsing every builtin `.dvala` file fresh from disk (the denominator),
+ * then hit spans are mapped back onto that parse so the existing
+ * `computeCoverageSummary` machinery (line + expression coverage, uncovered-expr
+ * pinpointing) renders it.
  */
 export function writeDvalaCoverageReport(reportDir: string = DVALA_COVERAGE_DIR): string | undefined {
   const dumpsDir = workersDir(reportDir)
@@ -72,34 +68,52 @@ export function writeDvalaCoverageReport(reportDir: string = DVALA_COVERAGE_DIR)
   const files = fs.readdirSync(dumpsDir).filter(f => f.endsWith('.json'))
   if (files.length === 0) return undefined
 
-  const coverageMap = new Map<number, number>()
-  let sourceMap: SourceMap | undefined
+  // Merge hit spans (sum counts) across workers.
+  const hitSpans = new Map<string, number>()
   for (const file of files) {
-    const dump = JSON.parse(fs.readFileSync(path.join(dumpsDir, file), 'utf-8')) as WorkerDump
-    for (const [id, count] of dump.counts) {
-      coverageMap.set(id, (coverageMap.get(id) ?? 0) + count)
-    }
-    // The builtin source map is identical across workers — take the first.
-    sourceMap ??= { sources: dump.sources, positions: new Map(dump.positions) }
+    const entries = JSON.parse(fs.readFileSync(path.join(dumpsDir, file), 'utf-8')) as [string, number][]
+    for (const [key, count] of entries) hitSpans.set(key, (hitSpans.get(key) ?? 0) + count)
   }
-  if (!sourceMap) return undefined
+
+  // Build the denominator from disk: parse every builtin `.dvala` file, assembling a
+  // synthetic combined source map + a coverage map keyed by the parse's node IDs,
+  // populated from the hit spans. Then reuse computeCoverageSummary to render.
+  const builtinFiles = fs
+    .globSync(BUILTIN_GLOB, { cwd: process.cwd() })
+    .filter(f => !f.endsWith('.test.dvala'))
+    .sort()
+  const sources: SourceMap['sources'] = []
+  const positions: SourceMap['positions'] = new Map()
+  const coverageMap = new Map<number, number>()
+  for (const relPath of builtinFiles) {
+    const parsed = parseBuiltinFile(relPath)
+    if (!parsed) continue
+    const sourceOffset = sources.length
+    sources.push(...parsed.sourceMap.sources)
+    for (const pos of parsed.sourceMap.positions.values()) {
+      // Globally-unique id across files: offset by accumulated position count.
+      const id = positions.size
+      positions.set(id, { ...pos, source: pos.source + sourceOffset })
+      if (pos.structuralLeaf) continue
+      const src = parsed.sourceMap.sources[pos.source]
+      if (!src) continue
+      const count = hitSpans.get(dvalaSpanKey(src.path, pos.start, pos.end))
+      if (count) coverageMap.set(id, count)
+    }
+  }
+  const sourceMap: SourceMap = { sources, positions }
 
   const result: TestRunResult = { filePath: '<dvala-union>', results: [], coverageMap, sourceMap }
   const summaries = computeCoverageSummary([result], { include: INCLUDE, exclude: [] })
 
   fs.mkdirSync(reportDir, { recursive: true })
   fs.writeFileSync(path.join(reportDir, 'lcov.info'), generateLcov(coverageMap, sourceMap))
-
-  // HTML tree (relative builtin paths resolve against cwd inside the generator).
   for (const [rel, content] of generateCoverageHtmlFiles(summaries, process.cwd())) {
     const out = path.join(reportDir, rel)
     fs.mkdirSync(path.dirname(out), { recursive: true })
     fs.writeFileSync(out, content)
   }
 
-  // Text summary. For each file, the headline counts followed by the precise
-  // location (line:col) + snippet of every uncovered expression — the actionable
-  // signal, since uncovered exprs often sit on otherwise-covered lines.
   const lines = summaries.map(s => {
     const head = `${s.path}  lines ${s.linesHit}/${s.linesFound}  exprs ${s.exprsHit}/${s.exprsFound}`
     if (s.exprsHit === s.exprsFound) return head
@@ -107,12 +121,7 @@ export function writeDvalaCoverageReport(reportDir: string = DVALA_COVERAGE_DIR)
     return `${head}\n${detail}`
   })
   const totals = summaries.reduce(
-    (acc, s) => ({
-      lh: acc.lh + s.linesHit,
-      lf: acc.lf + s.linesFound,
-      eh: acc.eh + s.exprsHit,
-      ef: acc.ef + s.exprsFound,
-    }),
+    (a, s) => ({ lh: a.lh + s.linesHit, lf: a.lf + s.linesFound, eh: a.eh + s.exprsHit, ef: a.ef + s.exprsFound }),
     { lh: 0, lf: 0, eh: 0, ef: 0 },
   )
   const pct = (n: number, d: number) => (d === 0 ? '100' : ((100 * n) / d).toFixed(1))
@@ -120,11 +129,8 @@ export function writeDvalaCoverageReport(reportDir: string = DVALA_COVERAGE_DIR)
     `.dvala builtin coverage (union baseline) — ${summaries.length} file(s)\n` +
     `lines ${totals.lh}/${totals.lf} (${pct(totals.lh, totals.lf)}%)  ` +
     `exprs ${totals.eh}/${totals.ef} (${pct(totals.eh, totals.ef)}%)`
-  const summaryText = `${header}\n\n${lines.join('\n')}\n`
-  fs.writeFileSync(path.join(reportDir, 'summary.txt'), summaryText)
+  fs.writeFileSync(path.join(reportDir, 'summary.txt'), `${header}\n\n${lines.join('\n')}\n`)
 
-  // Clean up scratch dumps; leave the report in place.
   fs.rmSync(dumpsDir, { recursive: true, force: true })
-
   return header
 }

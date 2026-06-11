@@ -103,8 +103,13 @@ export type {
   DvalaRunOptions,
   DvalaRunner,
 } from './host/createDvala'
-// `.dvala` union-coverage baseline (DVALA_COVERAGE=1) — read by the vitest dump hook.
-export { getGlobalDvalaCoverage, isGlobalDvalaCoverageEnabled } from './host/dvalaCoverage'
+// `.dvala` union-coverage baseline (DVALA_COVERAGE=1) — read by the vitest dump hook + report.
+export {
+  dvalaSpanKey,
+  getGlobalDvalaHits,
+  isBuiltinDvalaPath,
+  isGlobalDvalaCoverageEnabled,
+} from './host/dvalaCoverage'
 export { createPackageRuntimeBridge } from './host/runtime/createPackageRuntimeBridge'
 export type {
   CreatePackageRuntimeBridgeOptions,

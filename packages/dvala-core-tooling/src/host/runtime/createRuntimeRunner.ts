@@ -65,20 +65,35 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
 
       assertNotPureWithHandlers(pure, effectHandlers)
 
+      // Instance-level coverage hook. When set (createDvala({ coverage: true }) or
+      // DVALA_COVERAGE=1) the `coverage` FLAG goes on the context stack so builtin
+      // module imports get coverage-parsed and merged into the accumulated source map
+      // (where the recorder resolves them). Crucially this does NOT force debug onto
+      // the USER program: the union baseline only attributes BUILTIN `.dvala` nodes,
+      // and debug-building the user program would perturb error messages (Location
+      // suffixes) and embed run-varying node IDs (breaking determinism checks).
+      // `options.debug` already captures explicit `coverage: true` (which DOES want a
+      // debug user program for getCoverage()), so we key user-program debug on it.
+      const onNodeEval = options.factoryOnNodeEval
+      const coverage = !!onNodeEval
+      const effectiveDebug = options.debug
+
       const contextStack = createContextStack({
         globalContext: options.scopeToGlobalContext(runOptions?.scope),
         modules: options.modules,
         pure,
         fileResolver: options.factoryFileResolver,
         currentFileDir: options.factoryFileResolverBaseDir,
+        allocateNodeId: effectiveDebug ? options.allocateNodeId : undefined,
+        debug: effectiveDebug,
+        coverage,
         parseSource: options.parseSource,
         prettyPrint: options.prettyPrint,
       })
-
-      // Instance-level coverage hook — set under `coverage: true` (which forces debug,
-      // so source maps are accumulated) or `DVALA_COVERAGE=1` (record-only, no forced
-      // debug — it only reads node[2] against the global canonical source map).
-      const onNodeEval = options.factoryOnNodeEval
+      if (coverage) {
+        const accumulated = options.getAccumulatedSourceMap()
+        if (accumulated) contextStack.sourceMap = accumulated
+      }
 
       if (isDvalaBundle(source)) {
         const ast = source.ast
@@ -91,7 +106,7 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
         return toJS(result)
       }
 
-      const ast = options.buildAst(source, runOptions?.filePath)
+      const ast = options.buildAst(source, runOptions?.filePath, effectiveDebug)
       options.emitTypeDiagnostics(ast)
 
       if (effectHandlers) {
@@ -122,8 +137,19 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
                 return perRunOnNodeEval(node, getContinuation)
               }
             : (factoryOnNodeEval ?? perRunOnNodeEval)
-        const forceDebug = !!onNodeEval
-        const effectiveDebug = options.debug || forceDebug
+        // Debug-build (and accumulate the source map of) the user/bundle program only
+        // when its OWN coverage is wanted: explicit `coverage: true` (via options.debug)
+        // or a per-run hook (runTestFile measuring a user project). The factory-only
+        // DVALA_COVERAGE baseline must NOT force user-program debug — it attributes only
+        // builtin `.dvala` nodes, and debugging the user program would perturb error
+        // messages and embed run-varying node IDs.
+        const forceDebug = options.debug || !!perRunOnNodeEval
+        const effectiveDebug = forceDebug
+        // Builtin module-source coverage parsing is gated on the FACTORY coverage hook
+        // (createDvala coverage / DVALA_COVERAGE), not a per-run onNodeEval — so
+        // runTestFile (which passes a per-run hook to measure a USER project) doesn't
+        // pull builtin modules into its run.
+        const coverage = !!factoryOnNodeEval
         const contextStack = createContextStack({
           globalContext: options.scopeToGlobalContext(runOptions?.scope),
           modules: options.modules,
@@ -132,6 +158,7 @@ export function createRuntimeRunner(options: CreateRuntimeRunnerOptions): Runtim
           currentFileDir: options.factoryFileResolverBaseDir,
           allocateNodeId: effectiveDebug ? options.allocateNodeId : undefined,
           debug: effectiveDebug,
+          coverage,
           parseSource: options.parseSource,
           prettyPrint: options.prettyPrint,
         })

@@ -1,7 +1,7 @@
 export const MODULE_DESCRIPTION_MAX_LENGTH = 120
 
 import type { BuiltinNormalExpressions, FunctionDocs } from '../interface'
-import type { AstNode } from '@mojir/dvala-types'
+import type { AstNode, SourceMap } from '@mojir/dvala-types'
 
 /**
  * Represents a Dvala module that can be imported dynamically.
@@ -36,6 +36,16 @@ export interface DvalaModule {
   docs?: Record<string, FunctionDocs>
   /** @internal Cached parsed AST nodes for the module source. */
   _cachedNodes?: AstNode[]
+  /**
+   * @internal Coverage-mode parse cache. Under `.dvala` coverage the module body
+   * is parsed ONCE per process with a dedicated negative node-ID range (so it can
+   * never collide with an instance's own >= 0 IDs) and reused across every
+   * instance — both the nodes and the source map are shared read-only. Distinct
+   * from `_cachedNodes`, which is the cheap non-coverage parse with no source map.
+   */
+  _coverageNodes?: AstNode[]
+  /** @internal Source map for `_coverageNodes` (negative node IDs → file positions). */
+  _coverageSourceMap?: SourceMap
 }
 
 /**
