@@ -1,4 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// This file calls `vi.resetModules()` (in loadWorker) which, under the suite's
+// `isolate: false`, mutates the worker-shared module registry. Reset + unstub
+// once more after the file so the NEXT test file inherits a clean registry —
+// otherwise a re-evaluated/leftover module instance flakes unrelated tests
+// (e.g. scratchBuffer's fileStorage). See vite.config.mts `isolate: false`.
+afterAll(() => {
+  vi.resetModules()
+  vi.unstubAllGlobals()
+})
 
 type WorkerMessage = Record<string, unknown>
 
