@@ -1,12 +1,10 @@
-name: Coverage (weekly)
+name: Coverage (manual)
 
-# Runs full code coverage on main once a week and uploads the report as an
-# artifact. PR-time CI runs without coverage for speed; this job exists so
-# aggregate coverage drift doesn't go silently unnoticed.
+# Runs full code coverage and uploads the report as an artifact. Triggered
+# manually (Actions tab → Run workflow, or `gh workflow run coverage.yml`) —
+# PR-time CI runs without coverage for speed, and coverage is tracked by hand
+# for now rather than on a schedule.
 on:
-  schedule:
-    # Mondays 06:00 UTC
-    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 jobs:
