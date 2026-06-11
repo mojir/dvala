@@ -104,6 +104,20 @@ export class ParserContext {
     }
   }
 
+  /**
+   * Mark a node's source-map position as a structural leaf. Used when a parsed
+   * node is unwrapped out of the final AST (e.g. a `do…end` block consumed as a
+   * lambda body — its statements are kept, the block node is discarded). Its
+   * position was already recorded by `allocateNodeId`, so coverage would count
+   * it as a found-but-never-evaluated expression; flagging it structuralLeaf
+   * drops it from coverage counting (the evaluator never fires onNodeEval for it
+   * either), keeping the found/hit sides consistent.
+   */
+  public markStructuralLeaf(nodeId: number): void {
+    const pos = this.sourceMap?.positions.get(nodeId)
+    if (pos) pos.structuralLeaf = true
+  }
+
   public advance(): void {
     if (this.builder) {
       this.advanceCst()

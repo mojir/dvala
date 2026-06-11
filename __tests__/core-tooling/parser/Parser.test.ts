@@ -28,6 +28,45 @@ describe('parser', () => {
     })
   })
 
+  describe('do-body lambda coverage attribution', () => {
+    // A `do…end` used directly as a lambda body is unwrapped: its statements
+    // become the function body and the `do` node is discarded from the AST, so
+    // the evaluator never fires onNodeEval for it. Its source-map position is
+    // already recorded, though — it must be flagged structuralLeaf so coverage
+    // doesn't count it as a found-but-never-evaluated expression. Regression for
+    // the red `do` keyword in the `.dvala` builtin coverage report.
+    it('marks the unwrapped do-block body as a structural leaf', () => {
+      const src = '(x) -> do x + 1; x + 2 end'
+      const { sourceMap } = parseTokenStream(tokenizeSource(src, true))
+      const doCol = src.indexOf('do') // single line, so column == index
+      const doPos = [...sourceMap!.positions.values()].find(p => p.start[0] === 0 && p.start[1] === doCol)
+      expect(doPos).toBeDefined()
+      expect(doPos!.structuralLeaf).toBe(true)
+    })
+
+    it('leaves a standalone do block evaluable (not a structural leaf)', () => {
+      const src = 'do 1; 2 end'
+      const { sourceMap } = parseTokenStream(tokenizeSource(src, true))
+      const doPos = [...sourceMap!.positions.values()].find(p => p.start[0] === 0 && p.start[1] === 0)
+      expect(doPos).toBeDefined()
+      expect(doPos!.structuralLeaf).toBeFalsy()
+    })
+
+    // The do-body unwrap happens in several parsers — lambdas, macros, and handler
+    // clause/transform bodies all discard the wrapping do node. Each must flag it.
+    it.each([
+      ['macro body', 'macro(x) -> do x; x end'],
+      ['handler clause body', 'handler @e(x) -> do x; x end end'],
+      ['handler transform body', 'handler transform x -> do x; x end end'],
+    ])('marks the unwrapped do-block as a structural leaf in a %s', (_label, src) => {
+      const { sourceMap } = parseTokenStream(tokenizeSource(src, true))
+      const doCol = src.indexOf(' do ') + 1
+      const doPos = [...sourceMap!.positions.values()].find(p => p.start[0] === 0 && p.start[1] === doCol)
+      expect(doPos).toBeDefined()
+      expect(doPos!.structuralLeaf).toBe(true)
+    })
+  })
+
   test('random samples0', () => {
     expect(() => getUndefinedSymbols('let { x, ...x } = {};')).toThrow(DvalaError)
   })

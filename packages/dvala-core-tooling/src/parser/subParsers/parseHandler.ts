@@ -109,6 +109,9 @@ export function parseHandler(ctx: ParserContext, shallow = false, linear = false
     if (isReservedSymbolToken(ctx.tryPeek(), 'do')) {
       const doNode = parseDo(ctx)
       body = doNode[1]
+      // Discarded do node — flag structuralLeaf so coverage doesn't count it as
+      // found-but-unhit. See ParserContext.markStructuralLeaf.
+      ctx.markStructuralLeaf(doNode[2])
     } else {
       body = [ctx.parseExpression()]
     }
@@ -159,6 +162,9 @@ export function parseHandler(ctx: ParserContext, shallow = false, linear = false
     if (isReservedSymbolToken(ctx.tryPeek(), 'do')) {
       const doNode = parseDo(ctx)
       transformBody = doNode[1]
+      // Discarded do node — flag structuralLeaf so coverage doesn't count it as
+      // found-but-unhit. See ParserContext.markStructuralLeaf.
+      ctx.markStructuralLeaf(doNode[2])
     } else {
       transformBody = [ctx.parseExpression()]
     }

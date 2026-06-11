@@ -79,6 +79,10 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
         )
       }
       const moduleName = param[1] as string
+      // The path Str node is discarded — the Import node carries moduleName directly.
+      // Flag its source-map position structuralLeaf so coverage doesn't count it as a
+      // found-but-unhit expression. See ParserContext.markStructuralLeaf.
+      ctx.markStructuralLeaf(param[2])
       const node = withSourceCodeInfo([NodeTypes.Import, moduleName, 0], symbolDebugInfo, ctx)
       ctx.setNodeEnd(node[2])
       return node

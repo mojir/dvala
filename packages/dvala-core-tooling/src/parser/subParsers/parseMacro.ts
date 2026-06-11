@@ -31,6 +31,11 @@ export function parseMacro(ctx: ParserContext): MacroNode {
   if (isReservedSymbolToken(ctx.peek(), 'do')) {
     const doNode = parseDo(ctx)
     bodyNodes = doNode[1]
+    // The do node is discarded (only its statements survive), so the evaluator
+    // never fires onNodeEval for it — flag its already-recorded source-map
+    // position a structural leaf so coverage doesn't count it as found-but-unhit.
+    // Mirrors the same unwrap in parseFunction. See ParserContext.markStructuralLeaf.
+    ctx.markStructuralLeaf(doNode[2])
   } else {
     bodyNodes = [ctx.parseExpression()]
   }
