@@ -167,6 +167,17 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const builtinSourceMap = initCoreDvalaSources(parseSource, {
     debug: explicitCoverage || globalCoverage,
     allocateNodeId,
+    // Union baseline: record the core builtins' init-time top-level coverage (root
+    // object + entries + lambda definitions). These execute once here, at instance
+    // construction — never during a `run` — so the run-time recorder below never sees
+    // them, and they'd show permanently uncovered (module builtins don't have this
+    // gap: they're import-evaluated during a run). Function bodies are unaffected —
+    // they still record when invoked.
+    recordSpan: globalCoverage
+      ? (path, start, end) => {
+          if (isBuiltinDvalaPath(path)) recordGlobalDvalaSpan(dvalaSpanKey(path, start, end))
+        }
+      : undefined,
   })
   if (builtinSourceMap) {
     // Seed core builtins into the accumulated map under EITHER coverage mode, so the
