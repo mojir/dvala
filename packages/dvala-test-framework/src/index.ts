@@ -194,7 +194,7 @@ function readDvalaFile(dvalaPath: string): string {
 export type { TestCaseResult, TestRunResult, TestSuiteResult } from './result'
 export { isSuccess, isSuiteSuccess } from './result'
 export type { CoverageFilter, FileCoverageSummary, UncoveredExpr } from './coverage'
-export { computeCoverageSummary, generateLcov, generateSuiteLcov } from './coverage'
+export { computeCoverageSummary, generateLcov, generateLcovFromSummaries, generateSuiteLcov } from './coverage'
 export { generateCoverageHtmlFiles } from './coverageHtml'
 export { DVALA_COVERAGE_DIR, dumpWorkerCoverage, writeDvalaCoverageReport } from './dvalaCoverageReport'
 export { formatConsole } from './formatConsole'

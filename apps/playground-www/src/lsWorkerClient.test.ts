@@ -1,6 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as LsWorkerClientModule from './lsWorkerClient'
 import type * as FileStorageModule from './fileStorage'
+
+// This file `vi.mock`s './fileStorage' and calls `vi.resetModules()` per test.
+// Under the suite's `isolate: false` the module registry is worker-shared, so
+// reset + restore once after the file to leave a clean registry for the next
+// file — otherwise the mocked/re-evaluated fileStorage leaks and flakes unrelated
+// tests (e.g. scratchBuffer). See vite.config.mts `isolate: false`.
+afterAll(() => {
+  vi.resetModules()
+  vi.restoreAllMocks()
+})
 
 type WorkerMessage = Record<string, unknown>
 

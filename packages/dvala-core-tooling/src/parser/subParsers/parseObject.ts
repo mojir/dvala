@@ -36,8 +36,10 @@ export function parseObject(ctx: ParserContext): ObjectNode {
       if (isTemplateStringToken(token)) {
         keyNode = parseTemplateString(ctx, token)
       } else if (isStringToken(token)) {
-        const stringNode = parseString(ctx, token)
-        keyNode = withSourceCodeInfo([NodeTypes.Str, stringNode[1], 0], token[2], ctx)
+        // Reuse parseString's node directly — re-wrapping its value in a fresh Str
+        // node orphaned the original (it kept a source-map position but never
+        // reached the AST, so coverage counted it as a found-but-unhit expression).
+        keyNode = parseString(ctx, token)
       } else if (isSymbolToken(token)) {
         const isQuoted = token[1].startsWith("'")
         const value = isQuoted ? stringFromQuotedSymbol(token[1]) : token[1]

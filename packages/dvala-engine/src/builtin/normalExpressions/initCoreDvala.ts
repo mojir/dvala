@@ -1,6 +1,6 @@
 import { createContextStack } from '../../evaluator/ContextStack'
 import { evaluate } from '../../evaluator/trampoline-evaluator'
-import type { Any } from '@mojir/dvala-types'
+import type { Any, AstNode } from '@mojir/dvala-types'
 import type { SourceMap } from '@mojir/dvala-types'
 import type { UserDefinedFunction } from '@mojir/dvala-types'
 import { isDvalaFunction } from '@mojir/dvala-types'
@@ -42,6 +42,17 @@ export interface InitCoreDvalaOptions {
    * after the builtins' range.
    */
   allocateNodeId?: () => number
+  /**
+   * Coverage recorder for the INIT-time evaluation below. The core builtins'
+   * top-level structure (the root object, its entries, lambda *definitions*) only
+   * ever executes here at startup — never during a `run` — so without recording it
+   * here it shows permanently uncovered, unlike module builtins (which are
+   * import-evaluated during a run with the recorder attached). Called once per
+   * evaluated non-leaf builtin node with its node id (for the per-instance id→count
+   * map) and its resolved source span (for the span-keyed union). Function *bodies*
+   * still get recorded the normal way, when invoked during runs.
+   */
+  recordBuiltinNode?: (nodeId: number, path: string, start: [number, number], end: [number, number]) => void
 }
 
 /**
@@ -56,7 +67,7 @@ export function initCoreDvalaSources(
   parseSource: ParseSource,
   options: InitCoreDvalaOptions = {},
 ): SourceMap | undefined {
-  const { debug = false, allocateNodeId } = options
+  const { debug = false, allocateNodeId, recordBuiltinNode } = options
   let builtinSourceMap: SourceMap | undefined
 
   // INVARIANT (load-bearing for coverage): the parse below is UNCONDITIONAL — every
@@ -97,7 +108,20 @@ export function initCoreDvalaSources(
     }
 
     const contextStack = createContextStack()
-    const result = evaluate(ast, contextStack) as Any
+    // Record init-time coverage of this file's top-level structure. Resolve each
+    // evaluated node's span via THIS file's source map (node IDs match — same parse)
+    // and hand it to the host recorder. Mirrors the host's run-time recorder skip of
+    // structural-leaf positions. Only attached when the host asked for coverage.
+    const onNodeEval =
+      recordBuiltinNode && ast.sourceMap
+        ? (node: AstNode): void => {
+            const pos = ast.sourceMap!.positions.get(node[2])
+            if (!pos || pos.structuralLeaf) return
+            const src = ast.sourceMap!.sources[pos.source]
+            if (src) recordBuiltinNode(node[2], src.path, pos.start, pos.end)
+          }
+        : undefined
+    const result = evaluate(ast, contextStack, onNodeEval) as Any
 
     if (result instanceof Promise) {
       throw new TypeError('Core dvala sources must be synchronous')

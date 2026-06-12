@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { SourceMap } from '@mojir/dvala-types'
 import { dvalaSpanKey, minifyTokenStream, parseToAst, tokenize } from '@mojir/dvala-core-tooling'
-import { computeCoverageSummary, generateLcov } from './coverage'
+import { computeCoverageSummary, generateLcovFromSummaries } from './coverage'
 import { generateCoverageHtmlFiles } from './coverageHtml'
 import type { TestRunResult } from './result'
 
@@ -107,7 +107,9 @@ export function writeDvalaCoverageReport(reportDir: string = DVALA_COVERAGE_DIR)
   const summaries = computeCoverageSummary([result], { include: INCLUDE, exclude: [] })
 
   fs.mkdirSync(reportDir, { recursive: true })
-  fs.writeFileSync(path.join(reportDir, 'lcov.info'), generateLcov(coverageMap, sourceMap))
+  // Derive lcov from the SAME summaries the HTML uses, so lcov.info and the rendered
+  // report agree line-for-line (continuation-filled + uncovered lines included).
+  fs.writeFileSync(path.join(reportDir, 'lcov.info'), generateLcovFromSummaries(summaries))
   for (const [rel, content] of generateCoverageHtmlFiles(summaries, process.cwd())) {
     const out = path.join(reportDir, rel)
     fs.mkdirSync(path.dirname(out), { recursive: true })

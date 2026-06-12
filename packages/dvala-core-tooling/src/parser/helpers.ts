@@ -36,6 +36,10 @@ const structuralLeafTypes = new Set<string>([
   NodeTypes.Reserved,
   NodeTypes.Effect,
   NodeTypes.Binding,
+  // Spread (`...expr`) is never evaluated as a node — array/object/call build
+  // frames evaluate its INNER expression (`spreadNode[1]`) directly, so the
+  // wrapper never fires the coverage hook. Its coverage is the inner expr's.
+  NodeTypes.Spread,
   'symbol',
   'rest',
   'object',
@@ -201,18 +205,23 @@ export function fromBinaryOperatorToNode(
       ctx.setNodeEnd(node[2])
       return node
     }
+    // For &&/||/??, the RIGHT operand runs conditionally (short-circuit). Make it a
+    // coverable unit even if it's a bare leaf, so it shows hit only when reached.
     case '&&': {
       const node = withSourceCodeInfo([NodeTypes.And, [left, right], 0] as AndNode, debugInfo, ctx)
+      ctx.clearStructuralLeaf(right[2])
       ctx.setNodeEnd(node[2])
       return node
     }
     case '||': {
       const node = withSourceCodeInfo([NodeTypes.Or, [left, right], 0], debugInfo, ctx)
+      ctx.clearStructuralLeaf(right[2])
       ctx.setNodeEnd(node[2])
       return node
     }
     case '??': {
       const node = withSourceCodeInfo([NodeTypes.Qq, [left, right], 0], debugInfo, ctx)
+      ctx.clearStructuralLeaf(right[2])
       ctx.setNodeEnd(node[2])
       return node
     }

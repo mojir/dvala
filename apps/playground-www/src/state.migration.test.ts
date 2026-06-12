@@ -31,6 +31,10 @@ beforeEach(() => {
 
 afterEach(() => {
   localStorage.clear()
+  // Leave a clean module registry for the next file — under the suite's
+  // `isolate: false` a leftover re-evaluated module instance flakes unrelated
+  // tests (e.g. scratchBuffer's fileStorage). See vite.config.mts.
+  vi.resetModules()
 })
 
 describe('Phase 1.5 step 23f silent wipe', () => {

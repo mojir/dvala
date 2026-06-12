@@ -34,6 +34,11 @@ export function parseIf(ctx: ParserContext, token: SymbolToken): IfNode {
 
   ctx.advance()
 
+  // then/else run conditionally — make bare-leaf arms coverable units so an
+  // untaken arm shows red, not neutral. No-op for non-leaf arms.
+  ctx.clearStructuralLeaf(thenExpression[2])
+  ctx.clearStructuralLeaf(elseExpression[2])
+
   const node = withSourceCodeInfo(
     [NodeTypes.If, [condition, thenExpression, elseExpression], 0],
     token[2],
@@ -70,6 +75,9 @@ function parseElseIf(ctx: ParserContext): IfNode {
       ctx.peekSourceCodeInfo(),
     )
   }
+
+  ctx.clearStructuralLeaf(thenExpression[2])
+  ctx.clearStructuralLeaf(elseExpression[2])
 
   const node = withSourceCodeInfo(
     [NodeTypes.If, [condition, thenExpression, elseExpression], 0],

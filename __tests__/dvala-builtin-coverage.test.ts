@@ -62,10 +62,47 @@ describe('.dvala builtin coverage', () => {
     expect(predHtml).toContain('class="partial"')
   })
 
+  it('records core builtins init-time top-level structure with no run', () => {
+    // The core builtins' top-level structure (root object, entries, lambda
+    // definitions) executes once at construction, not during a run. Without
+    // recording it there, getCoverage() would be empty until something runs and
+    // core .dvala roots would show permanently uncovered (the union baseline had
+    // this gap before initCoreDvalaSources gained recordBuiltinNode).
+    const dvala = createDvala({ coverage: true, typecheck: false })
+    const cov = dvala.getCoverage()!
+    expect(cov.coverageMap.size).toBeGreaterThan(0) // populated at construction, pre-run
+    const lcov = generateLcov(cov.coverageMap, cov.sourceMap!)
+    expect(lcov).toContain(`SF:${PREDICATES}`) // a core builtin appears without any run
+  })
+
   it('returns undefined coverage when not opted in', () => {
     const dvala = createDvala({ typecheck: false })
     dvala.run('isEven(2)')
     expect(dvala.getCoverage()).toBeUndefined()
+  })
+
+  // End-to-end branch-arm coverage: a bare-symbol arm carries no node the evaluator
+  // would normally record (Sym is skipped), so it's force-recorded when its branch is
+  // taken and is a coverable "found" node otherwise — making it green when taken and
+  // red when never taken, instead of an un-measurable neutral line.
+  it('records a bare-symbol else arm only when the else branch is taken', () => {
+    const armCount = (cond: string): number => {
+      const dvala = createDvala({ coverage: true, typecheck: false })
+      dvala.run(`do let q = 7; if ${cond} then 1 else q end end`)
+      const cov = dvala.getCoverage()!
+      const sm = cov.sourceMap!
+      const srcIdx = sm.sources.findIndex(s => s.content?.includes('else q'))
+      const content = sm.sources[srcIdx]!.content!
+      const col = content.indexOf('else q') + 'else '.length // single line → col == index
+      for (const [id, pos] of sm.positions) {
+        if (pos.source === srcIdx && pos.start[0] === 0 && pos.start[1] === col) {
+          return cov.coverageMap.get(id) ?? 0
+        }
+      }
+      throw new Error('else-arm node not found')
+    }
+    expect(armCount('false')).toBeGreaterThan(0) // else taken → arm recorded (green)
+    expect(armCount('true')).toBe(0) // else not taken → arm found but unhit (red)
   })
 
   // Guards the load-bearing invariant in initCoreDvalaSources: a coverage instance
@@ -83,6 +120,7 @@ describe('.dvala builtin coverage', () => {
 
     const cov = later.getCoverage()!
     let predicatesHits = 0
+    let isOddBodyHit = false
     for (const [nodeId, count] of cov.coverageMap) {
       if (count === 0) continue
       const pos = cov.sourceMap!.positions.get(nodeId)
@@ -91,10 +129,12 @@ describe('.dvala builtin coverage', () => {
       const src = cov.sourceMap!.sources[pos!.source]
       if (src?.path.endsWith('predicates.dvala')) {
         predicatesHits++
-        // isOdd's body lives on line 31 (0-based 30).
-        expect(pos!.start[0]).toBe(30)
+        // isOdd's body lives on line 31 (0-based 30) — the run-time hit must attribute
+        // there. Other predicates hits come from the init-time top-level structure.
+        if (pos!.start[0] === 30) isOddBodyHit = true
       }
     }
     expect(predicatesHits).toBeGreaterThan(0)
+    expect(isOddBodyHit).toBe(true)
   })
 })

@@ -75,6 +75,11 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
     const doNode = parseDo(ctx)
     // Plain do...end: unwrap body expressions for multi-statement lambdas.
     nodes = doNode[1]
+    // The do node is discarded from the AST (only its statements survive), so it
+    // never reaches the evaluator. Its source-map position was already recorded,
+    // though — flag it a structural leaf so coverage doesn't count it as a
+    // found-but-unhit expression. See ParserContext.markStructuralLeaf.
+    ctx.markStructuralLeaf(doNode[2])
   } else {
     nodes = [ctx.parseExpression()]
   }
@@ -149,6 +154,9 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
     const doNode = parseDo(ctx)
     // Plain do...end: unwrap body expressions.
     nodes = doNode[1]
+    // Discarded do node — flag its source-map position structuralLeaf so coverage
+    // doesn't count it as found-but-unhit. See ParserContext.markStructuralLeaf.
+    ctx.markStructuralLeaf(doNode[2])
   } else {
     nodes = [ctx.parseExpression()]
   }
