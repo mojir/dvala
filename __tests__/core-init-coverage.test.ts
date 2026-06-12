@@ -23,7 +23,7 @@ describe('core builtin init-time coverage', () => {
     initCoreDvalaSources(parseSource, {
       debug: true,
       allocateNodeId: () => nextId++,
-      recordSpan: (path, start) => recorded.push(`${path}:${start[0]}`),
+      recordBuiltinNode: (_nodeId, path, start) => recorded.push(`${path}:${start[0]}`),
     })
 
     // The root object of each core file opens at line 0 — it must be recorded.
@@ -33,7 +33,7 @@ describe('core builtin init-time coverage', () => {
     expect(recorded.length).toBeGreaterThan(10)
   })
 
-  it('does not call recordSpan when none is provided (default off)', () => {
+  it('does not call recordBuiltinNode when none is provided (default off)', () => {
     let nextId = 0
     // Just must not throw without a recorder.
     expect(() => initCoreDvalaSources(parseSource, { debug: true, allocateNodeId: () => nextId++ })).not.toThrow()

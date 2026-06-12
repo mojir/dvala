@@ -48,10 +48,11 @@ export interface InitCoreDvalaOptions {
    * ever executes here at startup — never during a `run` — so without recording it
    * here it shows permanently uncovered, unlike module builtins (which are
    * import-evaluated during a run with the recorder attached). Called once per
-   * evaluated non-leaf builtin node with its resolved source span. Function *bodies*
+   * evaluated non-leaf builtin node with its node id (for the per-instance id→count
+   * map) and its resolved source span (for the span-keyed union). Function *bodies*
    * still get recorded the normal way, when invoked during runs.
    */
-  recordSpan?: (path: string, start: [number, number], end: [number, number]) => void
+  recordBuiltinNode?: (nodeId: number, path: string, start: [number, number], end: [number, number]) => void
 }
 
 /**
@@ -66,7 +67,7 @@ export function initCoreDvalaSources(
   parseSource: ParseSource,
   options: InitCoreDvalaOptions = {},
 ): SourceMap | undefined {
-  const { debug = false, allocateNodeId, recordSpan } = options
+  const { debug = false, allocateNodeId, recordBuiltinNode } = options
   let builtinSourceMap: SourceMap | undefined
 
   // INVARIANT (load-bearing for coverage): the parse below is UNCONDITIONAL — every
@@ -112,12 +113,12 @@ export function initCoreDvalaSources(
     // and hand it to the host recorder. Mirrors the host's run-time recorder skip of
     // structural-leaf positions. Only attached when the host asked for coverage.
     const onNodeEval =
-      recordSpan && ast.sourceMap
+      recordBuiltinNode && ast.sourceMap
         ? (node: AstNode): void => {
             const pos = ast.sourceMap!.positions.get(node[2])
             if (!pos || pos.structuralLeaf) return
             const src = ast.sourceMap!.sources[pos.source]
-            if (src) recordSpan(src.path, pos.start, pos.end)
+            if (src) recordBuiltinNode(node[2], src.path, pos.start, pos.end)
           }
         : undefined
     const result = evaluate(ast, contextStack, onNodeEval) as Any

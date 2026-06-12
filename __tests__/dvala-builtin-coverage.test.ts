@@ -62,6 +62,19 @@ describe('.dvala builtin coverage', () => {
     expect(predHtml).toContain('class="partial"')
   })
 
+  it('records core builtins init-time top-level structure with no run', () => {
+    // The core builtins' top-level structure (root object, entries, lambda
+    // definitions) executes once at construction, not during a run. Without
+    // recording it there, getCoverage() would be empty until something runs and
+    // core .dvala roots would show permanently uncovered (the union baseline had
+    // this gap before initCoreDvalaSources gained recordBuiltinNode).
+    const dvala = createDvala({ coverage: true, typecheck: false })
+    const cov = dvala.getCoverage()!
+    expect(cov.coverageMap.size).toBeGreaterThan(0) // populated at construction, pre-run
+    const lcov = generateLcov(cov.coverageMap, cov.sourceMap!)
+    expect(lcov).toContain(`SF:${PREDICATES}`) // a core builtin appears without any run
+  })
+
   it('returns undefined coverage when not opted in', () => {
     const dvala = createDvala({ typecheck: false })
     dvala.run('isEven(2)')
@@ -83,6 +96,7 @@ describe('.dvala builtin coverage', () => {
 
     const cov = later.getCoverage()!
     let predicatesHits = 0
+    let isOddBodyHit = false
     for (const [nodeId, count] of cov.coverageMap) {
       if (count === 0) continue
       const pos = cov.sourceMap!.positions.get(nodeId)
@@ -91,10 +105,12 @@ describe('.dvala builtin coverage', () => {
       const src = cov.sourceMap!.sources[pos!.source]
       if (src?.path.endsWith('predicates.dvala')) {
         predicatesHits++
-        // isOdd's body lives on line 31 (0-based 30).
-        expect(pos!.start[0]).toBe(30)
+        // isOdd's body lives on line 31 (0-based 30) — the run-time hit must attribute
+        // there. Other predicates hits come from the init-time top-level structure.
+        if (pos!.start[0] === 30) isOddBodyHit = true
       }
     }
     expect(predicatesHits).toBeGreaterThan(0)
+    expect(isOddBodyHit).toBe(true)
   })
 })

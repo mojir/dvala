@@ -164,20 +164,27 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   // node's flag, and a separately-parsed map could classify leaves differently
   // (leaf classification depends on registry state at parse time) and report false
   // uncovered/covered expressions.
+  // Per-instance id→count coverage map for getCoverage() (attributable opt-in).
+  // Declared before initCoreDvalaSources so the init-time recorder can populate it
+  // with the core builtins' top-level structure, which only executes at construction.
+  const coverageMap = explicitCoverage ? new Map<number, number>() : undefined
+
   const builtinSourceMap = initCoreDvalaSources(parseSource, {
     debug: explicitCoverage || globalCoverage,
     allocateNodeId,
-    // Union baseline: record the core builtins' init-time top-level coverage (root
-    // object + entries + lambda definitions). These execute once here, at instance
-    // construction — never during a `run` — so the run-time recorder below never sees
-    // them, and they'd show permanently uncovered (module builtins don't have this
-    // gap: they're import-evaluated during a run). Function bodies are unaffected —
-    // they still record when invoked.
-    recordSpan: globalCoverage
-      ? (path, start, end) => {
-          if (isBuiltinDvalaPath(path)) recordGlobalDvalaSpan(dvalaSpanKey(path, start, end))
-        }
-      : undefined,
+    // Record the core builtins' init-time top-level coverage (root object + entries +
+    // lambda definitions). These execute once here, at instance construction — never
+    // during a `run` — so the run-time recorder below never sees them, and they'd show
+    // permanently uncovered (module builtins don't have this gap: they're
+    // import-evaluated during a run). Feeds BOTH the per-instance map (getCoverage) and
+    // the global union. Function bodies are unaffected — they still record when invoked.
+    recordBuiltinNode:
+      explicitCoverage || globalCoverage
+        ? (nodeId, path, start, end) => {
+            if (coverageMap) coverageMap.set(nodeId, (coverageMap.get(nodeId) ?? 0) + 1)
+            if (globalCoverage && isBuiltinDvalaPath(path)) recordGlobalDvalaSpan(dvalaSpanKey(path, start, end))
+          }
+        : undefined,
   })
   if (builtinSourceMap) {
     // Seed core builtins into the accumulated map under EITHER coverage mode, so the
@@ -193,7 +200,6 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   // for getCoverage() (attributable opt-in), and — under the global env — records the
   // builtin node's SOURCE SPAN into the process-global union (span-keyed, robust to the
   // module node-ID variance across instances).
-  const coverageMap = explicitCoverage ? new Map<number, number>() : undefined
   const recordsCoverage = !!coverageMap || globalCoverage
   const factoryOnNodeEval = recordsCoverage
     ? (node: AstNode) => {
