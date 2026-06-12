@@ -57,6 +57,25 @@ export function generateLcov(coverageMap: Map<number, number>, sourceMap: Source
 }
 
 /**
+ * Build an LCOV report from already-computed file summaries, so `lcov.info` reports
+ * exactly the lines the HTML annotates — continuation-filled lines and uncovered
+ * (0-hit) lines included. `generateLcov(coverageMap, sourceMap)` only emits the start
+ * lines of hit nodes, so it diverges from the rendered report; prefer this when a
+ * summary is already in hand.
+ */
+export function generateLcovFromSummaries(summaries: FileCoverageSummary[]): string {
+  const records: string[] = []
+  for (const s of summaries) {
+    if (!s.path || s.path === '<anonymous>') continue
+    const lines = [...s.lineHits.entries()].sort((a, b) => a[0] - b[0])
+    if (lines.length === 0) continue
+    const daLines = lines.map(([line, count]) => `DA:${line + 1},${count}`).join('\n')
+    records.push(['TN:', `SF:${s.path}`, daLines, `LH:${s.linesHit}`, `LF:${s.linesFound}`, 'end_of_record'].join('\n'))
+  }
+  return records.join('\n') + (records.length > 0 ? '\n' : '')
+}
+
+/**
  * Merge coverage results from multiple test files into a single LCOV report string.
  * Each test file has its own node ID space so we generate and concatenate per-file records.
  */
