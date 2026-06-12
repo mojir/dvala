@@ -30,6 +30,9 @@ export function parseMatch(ctx: ParserContext, token: SymbolToken): MatchNode {
     ctx.advance()
     const thenExpression = parseImplicitBlock(ctx, ['case', 'end'])
 
+    // A case body runs only when its case matches — make a bare-leaf body a
+    // coverable unit so an unmatched case shows red, not neutral.
+    ctx.clearStructuralLeaf(thenExpression[2])
     params.push([pattern, thenExpression, guard])
     if (isReservedSymbolToken(ctx.tryPeek(), 'end')) {
       break

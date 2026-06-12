@@ -59,6 +59,15 @@ export interface EvalStep {
   node: AstNode
   env: ContextStack
   k: ContinuationStack
+  /**
+   * Force the coverage hook to fire for this node even if it's a structural leaf.
+   * Set when a conditional construct steps into the arm it actually took (then/else
+   * branch, match case body, short-circuit operand) — so coverage can MEASURE that a
+   * bare-symbol arm (e.g. `else acc`) ran, instead of guessing from the enclosing
+   * branch's hit count. Honored only when a coverage recorder is attached
+   * (`SnapshotState.recordBranchArms`), so debugger stepping is unaffected.
+   */
+  forceRecord?: boolean
 }
 
 /**

@@ -1750,11 +1750,13 @@ function applySequence(frame: SequenceFrame, _value: Any, k: ContinuationStack):
 
 function applyIfBranch(frame: IfBranchFrame, value: Any, k: ContinuationStack): Step {
   const { thenNode, elseNode, env } = frame
+  // forceRecord: the arm we step into is the one that actually ran — record it for
+  // coverage even if it's a bare-leaf arm (e.g. `else acc`).
   if (value) {
-    return { type: 'Eval', node: thenNode, env, k }
+    return { type: 'Eval', node: thenNode, env, k, forceRecord: true }
   }
   if (elseNode) {
-    return { type: 'Eval', node: elseNode, env, k }
+    return { type: 'Eval', node: elseNode, env, k, forceRecord: true }
   }
   throw new TypeError('If AST requires an else branch', env.resolve(thenNode[2]))
 }
@@ -1781,7 +1783,8 @@ function applyMatch(frame: MatchFrame, value: Any, k: ContinuationStack): Step {
       context[name] = { value: val }
     }
     const newEnv = env.create(context)
-    return { type: 'Eval', node: cases[frame.index]![1], env: newEnv, k }
+    // forceRecord: this case body is the matched arm — record it even if it's a leaf.
+    return { type: 'Eval', node: cases[frame.index]![1], env: newEnv, k, forceRecord: true }
   }
 
   // phase === 'body' — body has been evaluated
@@ -1812,12 +1815,14 @@ function applyAnd(frame: AndFrame, value: Any, k: ContinuationStack): Step {
   if (index >= nodes.length) {
     return { type: 'Value', value, k }
   }
+  // forceRecord: operands beyond the first run conditionally (short-circuit) — record
+  // them so a bare-leaf operand is visible as hit only when actually reached.
   if (index === nodes.length - 1) {
     // Last node — no need for frame
-    return { type: 'Eval', node: nodes[index]!, env, k }
+    return { type: 'Eval', node: nodes[index]!, env, k, forceRecord: true }
   }
   const newFrame: AndFrame = { ...frame, index: index + 1 }
-  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k) }
+  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k), forceRecord: true }
 }
 
 function applyOr(frame: OrFrame, value: Any, k: ContinuationStack): Step {
@@ -1828,11 +1833,12 @@ function applyOr(frame: OrFrame, value: Any, k: ContinuationStack): Step {
   if (index >= nodes.length) {
     return { type: 'Value', value, k }
   }
+  // forceRecord: short-circuit operands run conditionally — record when reached.
   if (index === nodes.length - 1) {
-    return { type: 'Eval', node: nodes[index]!, env, k }
+    return { type: 'Eval', node: nodes[index]!, env, k, forceRecord: true }
   }
   const newFrame: OrFrame = { ...frame, index: index + 1 }
-  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k) }
+  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k), forceRecord: true }
 }
 
 function applyQq(frame: QqFrame, value: Any, k: ContinuationStack): Step {
@@ -1845,11 +1851,13 @@ function applyQq(frame: QqFrame, value: Any, k: ContinuationStack): Step {
   if (index >= nodes.length) {
     return { type: 'Value', value: null, k }
   }
+  // forceRecord: a `??` fallback operand runs only when the left side was null —
+  // record when reached so a bare-leaf fallback is visible as hit only then.
   if (index === nodes.length - 1) {
-    return { type: 'Eval', node: nodes[index]!, env, k }
+    return { type: 'Eval', node: nodes[index]!, env, k, forceRecord: true }
   }
   const newFrame: QqFrame = { ...frame, index: index + 1 }
-  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k) }
+  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k), forceRecord: true }
 }
 
 function applyTemplateStringBuild(frame: TemplateStringBuildFrame, value: Any, k: ContinuationStack): Step {
@@ -5864,8 +5872,14 @@ export function tick(
             t === NodeTypes.Special ||
             t === NodeTypes.Reserved ||
             t === NodeTypes.Effect
+          // Normally skip structural leaves. EXCEPTION: when the coverage path stepped
+          // into a conditional arm it actually took (forceRecord), fire even for a leaf
+          // arm — that's the only way to MEASURE whether e.g. `else acc` ran rather than
+          // guess from the enclosing branch's hit count. Gated on recordBranchArms so the
+          // debugger's leaf-skipping stepping is unchanged.
+          const fireForLeaf = step.forceRecord === true && snapshotState.recordBranchArms === true
           // Lazy — only allocate the Continuation object if the hook actually calls getContinuation().
-          if (!isStructuralLeaf) {
+          if (!isStructuralLeaf || fireForLeaf) {
             const result = snapshotState.onNodeEval(node, () => ({
               env,
               k,
@@ -6060,7 +6074,10 @@ function mergeSourceMap(contextStack: ContextStack, sourceMap: SourceMap | undef
  * stays inert; only the per-node coverage hook fires.
  */
 function coverageSnapshotState(onNodeEval: SnapshotState['onNodeEval']): SnapshotState {
-  return { snapshots: [], nextSnapshotIndex: 0, executionId: generateUUID(), onNodeEval }
+  // recordBranchArms: this is the coverage path, so MEASURE branch-arm execution
+  // (fire onNodeEval for forceRecord'd leaf arms). The debugger builds its own
+  // SnapshotState without this flag, so its leaf-skipping stepping is unchanged.
+  return { snapshots: [], nextSnapshotIndex: 0, executionId: generateUUID(), onNodeEval, recordBranchArms: true }
 }
 
 /**
@@ -6353,7 +6370,10 @@ async function runEffectLoop(
           ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
           ...(autoCheckpoint ? { autoCheckpoint } : {}),
           ...(terminalSnapshot ? { terminalSnapshot } : {}),
-          ...(onNodeEval ? { onNodeEval } : {}),
+          // A fresh run with an onNodeEval hook is the coverage path — measure
+          // branch-arm execution. (Debugger/resume supply their own snapshotState
+          // via the branch above, so their leaf-skipping stepping is unchanged.)
+          ...(onNodeEval ? { onNodeEval, recordBranchArms: true } : {}),
         }
 
   // Capture a snapshot at program start so time travel can rewind to the very beginning.

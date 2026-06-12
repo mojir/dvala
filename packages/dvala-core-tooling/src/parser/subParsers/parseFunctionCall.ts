@@ -174,18 +174,23 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
     const specialExpression: SpecialExpression = builtin.specialExpressions[type]
     assertNumberOfParams(specialExpression.arity, params.length, symbolSci)
     switch (type) {
+      // Operands beyond the first run conditionally (short-circuit) — make bare-leaf
+      // ones coverable units so they show hit only when reached.
       case specialExpressionTypes['||']: {
         const node = withSourceCodeInfo([NodeTypes.Or, params, 0], symbolDebugInfo, ctx) as OrNode
+        for (let i = 1; i < params.length; i++) ctx.clearStructuralLeaf(params[i]![2])
         ctx.setNodeEnd(node[2])
         return node
       }
       case specialExpressionTypes['&&']: {
         const node = withSourceCodeInfo([NodeTypes.And, params, 0], symbolDebugInfo, ctx) as AndNode
+        for (let i = 1; i < params.length; i++) ctx.clearStructuralLeaf(params[i]![2])
         ctx.setNodeEnd(node[2])
         return node
       }
       case specialExpressionTypes['??']: {
         const node = withSourceCodeInfo([NodeTypes.Qq, params, 0], symbolDebugInfo, ctx) as QqNode
+        for (let i = 1; i < params.length; i++) ctx.clearStructuralLeaf(params[i]![2])
         ctx.setNodeEnd(node[2])
         return node
       }

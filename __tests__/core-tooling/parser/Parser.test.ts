@@ -66,6 +66,27 @@ describe('parser', () => {
       expect(doPos!.structuralLeaf).toBe(true)
     })
 
+    // A bare-symbol conditional arm (`else acc`, `a && b`'s `b`) runs only when its
+    // branch is taken, so — unlike an unconditional leaf — it carries coverage signal
+    // and must be a first-class coverable unit (not a structural leaf), so it can show
+    // red when its branch is never taken. The condition / first operand stays a leaf.
+    it('treats conditional arms as coverable units, not structural leaves', () => {
+      const posAt = (src: string, ch: number) =>
+        [...parseTokenStream(tokenizeSource(src, true)).sourceMap!.positions.values()].find(
+          p => p.start[0] === 0 && p.start[1] === ch,
+        )
+      const ifSrc = 'if x then a else b end'
+      expect(posAt(ifSrc, ifSrc.indexOf(' a ') + 1)?.structuralLeaf).toBeFalsy() // then arm `a`
+      expect(posAt(ifSrc, ifSrc.indexOf(' b ') + 1)?.structuralLeaf).toBeFalsy() // else arm `b`
+      expect(posAt(ifSrc, 3)?.structuralLeaf).toBe(true) // condition `x` stays a leaf
+
+      // Short-circuit: RHS is conditional, LHS unconditional.
+      const andSrc = 'p && q'
+      expect(posAt(andSrc, 5)?.structuralLeaf).toBeFalsy() // `q` (RHS) coverable
+      expect(posAt(andSrc, 0)?.structuralLeaf).toBe(true) // `p` (LHS) stays a leaf
+      expect(posAt('p ?? q', 5)?.structuralLeaf).toBeFalsy() // `??` fallback coverable
+    })
+
     // A spread element (`...expr`) is never evaluated as a node — array/object/call
     // build frames evaluate its inner expression directly, so the wrapper never fires
     // the coverage hook. It must be a structural leaf or it shows permanently

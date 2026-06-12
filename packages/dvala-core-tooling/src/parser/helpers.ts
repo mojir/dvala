@@ -205,18 +205,23 @@ export function fromBinaryOperatorToNode(
       ctx.setNodeEnd(node[2])
       return node
     }
+    // For &&/||/??, the RIGHT operand runs conditionally (short-circuit). Make it a
+    // coverable unit even if it's a bare leaf, so it shows hit only when reached.
     case '&&': {
       const node = withSourceCodeInfo([NodeTypes.And, [left, right], 0] as AndNode, debugInfo, ctx)
+      ctx.clearStructuralLeaf(right[2])
       ctx.setNodeEnd(node[2])
       return node
     }
     case '||': {
       const node = withSourceCodeInfo([NodeTypes.Or, [left, right], 0], debugInfo, ctx)
+      ctx.clearStructuralLeaf(right[2])
       ctx.setNodeEnd(node[2])
       return node
     }
     case '??': {
       const node = withSourceCodeInfo([NodeTypes.Qq, [left, right], 0], debugInfo, ctx)
+      ctx.clearStructuralLeaf(right[2])
       ctx.setNodeEnd(node[2])
       return node
     }

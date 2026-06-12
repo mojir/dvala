@@ -144,6 +144,15 @@ export interface SnapshotState {
   onNodeEval?: (node: AstNode, getContinuation: () => Continuation) => void | Promise<void>
 
   /**
+   * When true, the trampoline also fires `onNodeEval` for structural-leaf nodes that
+   * a conditional construct stepped into (Eval steps flagged `forceRecord`) — so
+   * coverage can MEASURE whether a bare-symbol branch arm (e.g. `else acc`) ran.
+   * Set by the coverage path only; the debugger leaves it off so its stepping
+   * (which deliberately skips leaves) is unchanged.
+   */
+  readonly recordBranchArms?: boolean
+
+  /**
    * Program-level cleanup callbacks — registered by host effect handlers
    * via `ctx.onScopeExit` when there is no enclosing Dvala handler frame
    * to attach to. Fires at program completion (completed / halted / error)

@@ -81,6 +81,30 @@ describe('.dvala builtin coverage', () => {
     expect(dvala.getCoverage()).toBeUndefined()
   })
 
+  // End-to-end branch-arm coverage: a bare-symbol arm carries no node the evaluator
+  // would normally record (Sym is skipped), so it's force-recorded when its branch is
+  // taken and is a coverable "found" node otherwise — making it green when taken and
+  // red when never taken, instead of an un-measurable neutral line.
+  it('records a bare-symbol else arm only when the else branch is taken', () => {
+    const armCount = (cond: string): number => {
+      const dvala = createDvala({ coverage: true, typecheck: false })
+      dvala.run(`do let q = 7; if ${cond} then 1 else q end end`)
+      const cov = dvala.getCoverage()!
+      const sm = cov.sourceMap!
+      const srcIdx = sm.sources.findIndex(s => s.content?.includes('else q'))
+      const content = sm.sources[srcIdx]!.content!
+      const col = content.indexOf('else q') + 'else '.length // single line → col == index
+      for (const [id, pos] of sm.positions) {
+        if (pos.source === srcIdx && pos.start[0] === 0 && pos.start[1] === col) {
+          return cov.coverageMap.get(id) ?? 0
+        }
+      }
+      throw new Error('else-arm node not found')
+    }
+    expect(armCount('false')).toBeGreaterThan(0) // else taken → arm recorded (green)
+    expect(armCount('true')).toBe(0) // else not taken → arm found but unhit (red)
+  })
+
   // Guards the load-bearing invariant in initCoreDvalaSources: a coverage instance
   // created AFTER a non-debug instance (which won the idempotent dvalaImpl assignment
   // from a non-debug parse) must still attribute builtin hits to the right source +

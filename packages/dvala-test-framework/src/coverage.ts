@@ -225,6 +225,18 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
     })
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([filePath, byLine]) => {
+      // Continuation-line fill: a line with no found expression STARTING on it — a
+      // call's bare-symbol arg (`coll`) or a closing `);` — is covered by the smallest
+      // found node whose span CONTAINS it. That node ran, so every continuation line it
+      // spans ran too. Conditional arms are their own found nodes (they start on their
+      // line and own it precisely), so this never paints an untaken branch. Smallest
+      // span first → the tightest container wins; blank lines stay neutral.
+      fillContinuationLines(
+        byLine,
+        exprPosByPath.get(filePath),
+        exprHitsByPath.get(filePath),
+        sourceByPath.get(filePath),
+      )
       const lines = [...byLine.entries()].sort((a, b) => a[0] - b[0])
       const linesHit = lines.filter(([, count]) => count > 0).length
       const uncoveredLines = lines.filter(([, count]) => count === 0).map(([line]) => line + 1)
@@ -260,6 +272,37 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
         source,
       }
     })
+}
+
+/**
+ * Fill line coverage for continuation lines of multi-line expressions. A line that no
+ * found node STARTS on (e.g. a bare-symbol call arg on its own line, or a closing
+ * `);`) is attributed the hit count of the SMALLEST found node whose span contains it:
+ * that node executing means every continuation line it spans executed too. Branch arms
+ * are themselves found nodes that start on their own line, so they own their coverage
+ * directly and are never reached by this fill — no false positives. Blank lines are
+ * left neutral. Mutates `byLine` in place.
+ */
+function fillContinuationLines(
+  byLine: Map<number, number>,
+  exprPos: Map<number, SourceMapPosition> | undefined,
+  exprHits: Map<number, number> | undefined,
+  source: string | undefined,
+): void {
+  if (!exprPos || !exprHits) return
+  const srcLines = source?.split('\n')
+  // Smallest span first so the tightest containing node claims each continuation line.
+  const multiLine = [...exprPos.entries()]
+    .filter(([, pos]) => pos.end[0] > pos.start[0])
+    .sort(([, a], [, b]) => a.end[0] - a.start[0] - (b.end[0] - b.start[0]))
+  for (const [nodeId, pos] of multiLine) {
+    const count = exprHits.get(nodeId) ?? 0
+    for (let line = pos.start[0] + 1; line <= pos.end[0]; line++) {
+      if (byLine.has(line)) continue // a node starts here, or a tighter container already claimed it
+      if (srcLines && (srcLines[line] ?? '').trim() === '') continue // leave blank lines neutral
+      byLine.set(line, count)
+    }
+  }
 }
 
 /**

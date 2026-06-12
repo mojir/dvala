@@ -118,6 +118,20 @@ export class ParserContext {
     if (pos) pos.structuralLeaf = true
   }
 
+  /**
+   * Clear a node's structural-leaf flag, making it a first-class coverable unit.
+   * Used for the arms of conditional constructs (`if`/`match`/`&&`/`||`/`??`): a
+   * bare-symbol arm like `else acc` runs only when its branch is taken, so — unlike
+   * an unconditional leaf — it carries real coverage signal. Clearing the flag puts
+   * it in the coverage "found" set, so it shows uncovered (red) when its branch is
+   * never taken and covered (green) when it is (the evaluator records it via the
+   * `forceRecord` branch-arm path). No-op for non-leaf arms.
+   */
+  public clearStructuralLeaf(nodeId: number): void {
+    const pos = this.sourceMap?.positions.get(nodeId)
+    if (pos) delete pos.structuralLeaf
+  }
+
   public advance(): void {
     if (this.builder) {
       this.advanceCst()
