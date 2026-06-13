@@ -1,6 +1,6 @@
 # `.dvala` Coverage from the Unit Test Suite
 
-**Status:** Closed (2026-06-10) — shipped for **core** builtins in PR #250; `pnpm run check` + e2e green. Module `.dvala` coverage is a deliberate follow-up (see Known limitations).
+**Status:** ✅ Complete (archived 2026-06-13). Core builtins shipped in PR #250. The deferred follow-ups all shipped in **PR #253** (module `.dvala` coverage via a parse-once cache) and **PR #254** (init-time core coverage; discarded-node false-negative fixes — do-bodies / object keys / import paths / spread, guarded by a corpus-wide orphan scan; **branch-arm coverage measured** so a bare-symbol arm shows red/green; safe continuation-line fill; `lcov.info` aligned with the HTML). The "module coverage is a deferred follow-up" limitation below is therefore resolved.
 **Created:** 2026-06-09
 
 ## Implementation status
