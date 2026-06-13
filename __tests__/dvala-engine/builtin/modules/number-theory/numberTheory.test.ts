@@ -9,6 +9,26 @@ function runNth(code: string) {
   return dvala.run(`let nt = import("numberTheory"); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('number theory', () => {
+  // The array-backed *TakeWhile functions short-circuit on a false predicate (covered
+  // elsewhere); an always-true predicate exhausts the whole finite array, exercising the
+  // `i >= count` terminal-return branch that bounded predicates never reach.
+  describe('nth: TakeWhile exhaustion (always-true predicate)', () => {
+    it('returns the full finite sequence when the predicate never stops', () => {
+      for (const fn of [
+        'bellTakeWhile',
+        'catalanTakeWhile',
+        'mersenneTakeWhile',
+        'partitionTakeWhile',
+        'sylvesterTakeWhile',
+        'luckyTakeWhile',
+      ]) {
+        const result = runNth(`nth:${fn}(-> true)`) as unknown[]
+        expect(Array.isArray(result)).toBe(true)
+        expect(result.length).toBeGreaterThan(5) // exhausted the array, not an early stop
+      }
+    })
+  })
+
   describe('nth:isCoprime', () => {
     it('should return true if two numbers are coprime', () => {
       expect(runNth('nth:isCoprime(1, 1)')).toEqual(true)
