@@ -3620,3 +3620,35 @@ describe('parseTypeDeclaration — error branches', () => {
     expect(() => dvala.run('type Foo =')).toThrow('Expected type expression after "="')
   })
 })
+
+// Targeted coverage for module `.dvala` guard/branch paths the rest of the suite
+// doesn't reach (drives those files to 100% expression coverage).
+describe('.dvala module guard + branch coverage', () => {
+  it('collection: non-collection input hits each function’s Expected-collection guard', () => {
+    const names = 'filteri, mapi, reducei, reduceRight, reductionsi, isEvery, isAny, notAny, notEvery'
+    const calls = [
+      'filteri(42, isOdd)',
+      'mapi(42, (x, i) -> x)',
+      'reducei(42, (acc, x, i) -> acc, 0)',
+      'reduceRight(42, (acc, x) -> acc, 0)',
+      'reductionsi(42, (acc, x, i) -> acc, 0)',
+      'isEvery(42, isOdd)',
+      'isAny(42, isOdd)',
+      'notAny(42, isOdd)',
+      'notEvery(42, isOdd)',
+    ]
+    for (const call of calls) {
+      expect(() => dvalaFull.run(`let { ${names} } = import("collection"); ${call}`)).toThrow()
+    }
+  })
+
+  it('collection: updateIn creates the missing nested default object ({} branch)', () => {
+    expect(dvalaFull.run('let { updateIn } = import("collection"); updateIn({}, ["a", "b"], (x) -> 1)')).toEqual({
+      a: { b: 1 },
+    })
+  })
+
+  it('sequence: partitionBy on empty input returns [] (count == 0 branch)', () => {
+    expect(dvalaFull.run('let { partitionBy } = import("sequence"); partitionBy([], (x) -> x)')).toEqual([])
+  })
+})
