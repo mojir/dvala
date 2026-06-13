@@ -1,7 +1,14 @@
 # 100% Coverage of All `.dvala` Builtin Files
 
-**Status:** Approved — in progress (decisions locked 2026-06-13)
+**Status:** ✅ Achieved (2026-06-14) — all builtin `.dvala` at **100% lines + exprs** (5926/5926), deterministic across runs.
 **Created:** 2026-06-13
+
+## Outcome
+
+- **Deterministic coverage (prerequisite, unplanned):** the union report wobbled ±100 exprs run-to-run because per-worker dumps were keyed by `${pid}.json` and overwritten — vitest recycles workers and the OS reuses pids, so a fresh worker clobbered a dead one's dump. Fixed by a unique per-process dump id; the union is now identical across runs (a prerequisite for "100%" being meaningful, and for any future gate).
+- **Path to 100% was mostly tests + cleanup — the coverage-ignore directive was NOT needed.** Every gap resolved as: a TS test exercising a reachable guard (core/object mergeWith, core/collection map/filter, collection-module Expected-collection guards, sequence partitionBy, TakeWhile exhaustion), dead-code removal (core/object's arity-redundant guard; the abandoned `.dvala` `isPerfectSquare`/`isPerfectCube` lets), or trimming an unreachable internal-helper branch (`isPrime`/`isPerfectPower` `n<2`, where the public predicate is the correct TS impl). So decisions #1 (allow ignores) and #2 (`/* coverage-ignore-next */` syntax) were ultimately unused — the directive remains unbuilt; build it if a future genuinely-unreachable case appears.
+- **No gate** (decision #3): 100% is reached but not CI-enforced; can regress until a gate is added (now viable thanks to the deterministic fix).
+- **Deferred follow-up:** consolidating the number-theory predicate/sequence families from TS to `.dvala` (the "sequence slice" of minimize-KMP) — surfaced here but intentionally out of scope (behavior-changing migration).
 
 ## Goal
 

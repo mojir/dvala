@@ -239,3 +239,12 @@ Use the project skills and agents proactively — don't do manually what a skill
 ## Code Coverage
 
 When coding under `src/`, aim for 100% (or near 100%) code coverage for new code. Apply the boy scout principle — improve coverage on neighboring code when possible.
+
+### Builtin `.dvala` coverage is at 100% — keep it there
+
+Every engine builtin `.dvala` file (`packages/dvala-engine/src/builtin/**/*.dvala`) is at **100% line + expression** coverage, measured by the `DVALA_COVERAGE=1` union report (`pnpm run test:coverage` → `coverage-dvala/summary.txt` + HTML). The report is **deterministic** (per-process dump ids), so a clean run is exact. There is **no CI gate yet** — check it by hand when touching a builtin `.dvala`.
+
+When you add or change a builtin `.dvala` function:
+- Add a TS test that exercises every branch (including error guards — call with wrong-type args; `else`/short-circuit arms; loop terminal vs early-stop). Branch arms and continuation lines are measured precisely.
+- For genuinely-unreachable code, prefer **removing it** (dead) or proving it's reachable — don't leave it uncovered. A `/* coverage-ignore-next: <reason> */` directive is the agreed escape hatch *if ever needed*, but it has not been built (nothing has required it).
+- Re-run `pnpm run test:coverage` and confirm the file is still 100% in `coverage-dvala/summary.txt`.
