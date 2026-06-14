@@ -17,6 +17,8 @@ describe('collection functions', () => {
       expect(() => dvala.run('filter(+)')).toThrow(DvalaError)
       expect(() => dvala.run('filter()')).toThrow(DvalaError)
       expect(() => dvala.run('filter([1], isNumber 2)')).toThrow(DvalaError)
+      // Non-collection input hits the final "Expected collection" guard.
+      expect(() => dvala.run('filter(42, isNumber)')).toThrow(DvalaError)
     })
   })
 
@@ -48,6 +50,11 @@ describe('collection functions', () => {
       expect(() => dvala.run('map(+)')).toThrow(DvalaError)
       expect(() => dvala.run('map()')).toThrow(DvalaError)
       expect(() => dvala.run('map(1 isNumber)')).toThrow(DvalaError)
+      // Per-collection type-mismatch guards across the object/string/array branches.
+      expect(() => dvala.run('map({ a: 1 }, 42, +)')).toThrow(DvalaError) // extra coll not an object
+      expect(() => dvala.run('map("ab", 42, ++)')).toThrow(DvalaError) // extra coll not a string
+      expect(() => dvala.run('map("ab", "cd", (a, b) -> 1)')).toThrow(DvalaError) // mapped result not a string
+      expect(() => dvala.run('map([1, 2], 42, +)')).toThrow(DvalaError) // extra coll not an array
     })
   })
 

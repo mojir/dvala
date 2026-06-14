@@ -10,14 +10,6 @@
     else
       null
     end;
-    if count(objs) == 0 then
-      perform(
-        @dvala.error,
-        { message: "Expected at least one object argument" }
-      )
-    else
-      null
-    end;
     reduce(
       rest(objs),
       (result, obj) -> do

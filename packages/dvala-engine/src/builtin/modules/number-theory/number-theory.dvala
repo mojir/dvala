@@ -1,7 +1,5 @@
 do
-  let isPrime = (n) -> if n < 2 then
-    false
-  else if n == 2 then
+  let isPrime = (n) -> if n == 2 then
     true
   else if n % 2 == 0 then
     false
@@ -15,18 +13,6 @@ do
     end
   end;
 
-  let isPerfectSquare = (n) -> if n < 0 then
-    false
-  else
-    do
-      let s = floor(sqrt(n));
-      s * s == n;
-    end
-  end;
-  let isPerfectCube = (n) -> do
-    let c = round(sign(n) * abs(n) ^ (1 / 3));
-    c * c * c == n;
-  end;
   let sumProperDivisors = (n) -> if n <= 1 then
     0
   else
@@ -72,8 +58,6 @@ do
   end;
   let isPerfectPower = (n) -> if n == 1 then
     true
-  else if n < 2 then
-    false
   else
     loop(k = 2) -> if 2 ^ k > n then
       false

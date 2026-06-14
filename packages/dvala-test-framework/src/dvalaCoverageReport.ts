@@ -27,16 +27,26 @@ const BUILTIN_GLOB = 'packages/dvala-engine/src/builtin/**/*.dvala'
 const INCLUDE = [BUILTIN_GLOB]
 
 /**
- * Flush one worker's accumulated union hit-spans to its per-pid dump file. Keyed by
- * pid and OVERWRITTEN on each call (the global span map only grows, so the last flush
- * is complete). Called from a per-file `afterAll` — reliable, unlike
- * `process.on('exit')` for pooled workers. Sync; no-op when nothing was recorded.
+ * Unique per-worker-process dump id, generated once when this module is first loaded
+ * (i.e. once per worker process). The pid alone is NOT a safe key: vitest can recycle
+ * a worker process and the OS can reuse its pid, so a `${pid}.json` dump from a fresh
+ * worker would OVERWRITE a dead worker's dump and silently drop its recorded spans —
+ * the cause of run-to-run coverage wobble. A per-process nonce makes each worker's
+ * dump file distinct so the teardown merges them all.
+ */
+const DUMP_ID = `${process.pid}-${crypto.randomUUID()}`
+
+/**
+ * Flush one worker's accumulated union hit-spans to its dump file. Keyed by a unique
+ * per-process id (see DUMP_ID) and OVERWRITTEN on each call (the global span map only
+ * grows, so the last flush is complete). Called from a per-file `afterAll` — reliable,
+ * unlike `process.on('exit')` for pooled workers. Sync; no-op when nothing recorded.
  */
 export function dumpWorkerCoverage(hitSpans: Map<string, number>, reportDir: string = DVALA_COVERAGE_DIR): void {
   if (hitSpans.size === 0) return
   const dir = workersDir(reportDir)
   fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(path.join(dir, `${process.pid}.json`), JSON.stringify([...hitSpans]))
+  fs.writeFileSync(path.join(dir, `${DUMP_ID}.json`), JSON.stringify([...hitSpans]))
 }
 
 /** Parse one builtin `.dvala` file from disk into a single-source AST (with source map). */

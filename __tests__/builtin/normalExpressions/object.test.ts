@@ -171,6 +171,17 @@ describe('object functions', () => {
       })
     })
 
+    describe('mergeWith', () => {
+      it('samples', () => {
+        expect(dvala.run('mergeWith({a: 1}, {a: 2, b: 3}, +)')).toEqual({ a: 3, b: 3 })
+        // Guards: at least one object argument; the seed and every later arg must be
+        // objects (the non-function-last-arg guard is already covered elsewhere).
+        expect(() => dvala.run('mergeWith((a, b) -> a)')).toThrow(DvalaError) // no object arguments
+        expect(() => dvala.run('mergeWith(42, (a, b) -> a)')).toThrow(DvalaError) // seed not an object
+        expect(() => dvala.run('mergeWith({a: 1}, 42, (a, b) -> a)')).toThrow(DvalaError) // later arg not an object
+      })
+    })
+
     describe('selectKeys', () => {
       it('samples', () => {
         expect(dvala.run('selectKeys({a: 1, b: 2, c: 3}, ["a", "b"])')).toEqual({ a: 1, b: 2 })
