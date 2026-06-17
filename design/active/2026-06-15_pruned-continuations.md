@@ -83,44 +83,34 @@ sequenceFrame.index = 0
 
 Alternatively, create a new trimmed frame rather than mutating. Either way, evaluated nodes are dropped immediately after evaluation, not held until the sequence completes.
 
-### `MatchFrame` — drop cases after match
+### `MatchFrame` — closed, not a real problem
 
-Once a case matches (phase transitions from `matchValue` to `body`), drop all cases except the matched one:
+Empirically verified via the baseline benchmark: `MatchFrame` is consumed before body evaluation. By the time a suspension can occur inside a case body, the frame is already off the stack. Dead cases never persist in practice.
 
-```typescript
-// After match found at index i:
-matchFrame.cases = [matchFrame.cases[i]!]
-matchFrame.index = 0
-```
+### `IfBranchFrame` — closed, not a real problem
 
-The matched case body may still be needed (for guard re-entry or debugging). Unmatched cases are dead.
-
-### `IfBranchFrame` — drop unchosen branch at condition resolution
-
-In `applyIfBranch`, before returning the eval step for the chosen branch, the frame is consumed so this is naturally handled. No change needed unless the frame somehow persists (confirm with a test).
+Same finding: the frame is consumed by `applyIfBranch` before the chosen branch is evaluated. The window where both branches coexist on the stack (during condition evaluation) is narrow and always closed before a suspension can occur inside the branch.
 
 ### Serialization
 
-No changes needed if pruning happens at transition time. The serializer already faithfully records frame state.
+No changes needed. Pruning happens at transition time; the serializer faithfully records whatever is in the frame.
 
 ---
 
-## Open Questions
+## Decisions (locked)
 
-- Should we mutate frames in place or create new trimmed frames? Mutation is cheaper; new frames are easier to reason about.
-- Does anything outside the evaluator hold references to `SequenceFrame.nodes` that would break if the array is replaced? (closures capturing the frame, debug tooling, snapshot diffing)
-- Should pruning be togglable (e.g. disabled in debug mode to preserve full AST for error messages)?
-- Does `IfBranchFrame` actually persist in any real suspension scenario, or is the window always closed before a suspension can occur?
-- Are there other frame types with similar issues not covered here?
+1. **Mutate or new frame:** `applySequence` already creates a new frame (`{ ...frame, index: index + 1 }`), so pruning is a natural change to what that new frame contains — no separate mutation step needed.
+2. **Pruning is unconditional.** No debug-mode toggle. Debug tools should work from snapshots, not live frame internals.
+3. **External references:** Audited. `SequenceFrame` is only referenced inside `trampoline-evaluator.ts`, `suspension.ts`, and tests. Tests check `step.node` (the next node being evaluated), not the new frame's sliced `nodes` — safe.
+4. **`MatchFrame` and `IfBranchFrame`:** Closed. Not real problems in practice; removed from scope.
+5. **Scope:** `SequenceFrame` only. `And`/`Or`/`Qq`/`ArrayBuild`/`TemplateStringBuild` deferred until data shows they matter.
 
 ---
 
 ## Implementation Plan
 
-1. **Audit all frame types** — enumerate every frame that holds `AstNode` fields or arrays. Confirm which ones can carry past/unreachable AST beyond the three identified here.
-2. **Add a size measurement** — before changing anything, add a utility that measures continuation size (node count) at suspension time. Establish a baseline on representative programs.
-3. **Prune `SequenceFrame`** — slice `nodes` on each index advance. Add a test that confirms a module-heavy program produces a smaller continuation after executing past module definitions.
-4. **Prune `MatchFrame`** — drop unmatched cases after a match is found.
-5. **Verify `IfBranchFrame`** — confirm with a test whether both branches ever appear in a serialized continuation. Fix if they do.
-6. **Remeasure** — run the same size measurement from step 2. Record the reduction.
-7. **Confirm no semantic change** — full test suite must pass unchanged. Pruning is pure optimization; semantics must be identical.
+1. ~~**Audit all frame types**~~ — done. `SequenceFrame` is the only target.
+2. ~~**Add a size measurement / baseline**~~ — done. See `benchmarks/continuation-size-baseline.md` (92–98% dead in `k`).
+3. **Prune `SequenceFrame`** — in `applySequence`, change the new frame to carry only `nodes.slice(index + 1)` with `index: 0`. Add a test asserting that a sequence-heavy suspended program has fewer nodes in its continuation than it has top-level definitions.
+4. **Remeasure** — run `pnpm run benchmarks:continuation-size` and record the improvement.
+5. **Confirm no semantic change** — full test suite must pass unchanged. Pruning is pure optimization.

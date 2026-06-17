@@ -257,11 +257,9 @@ function renderMarkdown(rows: ScenarioResult[]): string {
   const commit = (() => { try { return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim() } catch { return 'unknown' } })()
   const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
-  lines.push('# Continuation size baseline (pre-pruning)')
+  lines.push('# Continuation size measurement')
   lines.push('')
   lines.push(`Captured at commit \`${commit}\` on ${date}.`)
-  lines.push('')
-  lines.push('Re-run after implementing pruned continuations to measure the improvement.')
   lines.push('')
   lines.push('**What "dead" means:** nodes already evaluated (in `SequenceFrame`, `AndFrame`, `OrFrame`,')
   lines.push('`QqFrame`, `ArrayBuildFrame`, `TemplateStringBuildFrame`), plus unmatched cases in')

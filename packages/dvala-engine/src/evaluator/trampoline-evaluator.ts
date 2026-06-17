@@ -1739,12 +1739,13 @@ function applySequence(frame: SequenceFrame, _value: Any, k: ContinuationStack):
     // All nodes evaluated — return the last value
     return { type: 'Value', value: _value, k }
   }
-  // More nodes to evaluate
-  const newFrame: SequenceFrame = { ...frame, index: index + 1 }
   if (index === nodes.length - 1) {
-    // Last node — no need for frame
+    // Last node — no frame needed
     return { type: 'Eval', node: nodes[index]!, env, k }
   }
+  // Prune: carry only the remaining future nodes so the continuation doesn't
+  // accumulate dead AST from already-evaluated definitions.
+  const newFrame: SequenceFrame = { ...frame, nodes: frame.nodes.slice(index + 1), index: 0 }
   return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k) }
 }
 
