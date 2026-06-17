@@ -48,6 +48,7 @@
     "dvala": "pnpm --filter @mojir/dvala-cli start",
     "benchmarks:pds": "rolldown -c rolldown.config.benchmarks.mjs && node benchmarks/build/pds-baseline.cjs",
     "benchmarks:run": "rolldown -c rolldown.config.benchmarks.mjs && node benchmarks/build/pipeline-baseline.cjs",
+    "benchmarks:continuation-size": "rolldown -c rolldown.config.benchmarks.mjs && node benchmarks/build/continuation-size-baseline.cjs",
     "install-hooks": "git config core.hooksPath .githooks && echo 'git hooks installed: core.hooksPath=.githooks'",
     "uninstall-hooks": "git config --unset core.hooksPath && echo 'git hooks uninstalled: core.hooksPath unset'",
     "demo": "node scripts/demo-link.mjs",

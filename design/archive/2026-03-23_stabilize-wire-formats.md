@@ -257,3 +257,37 @@ DvalaBundle {
 7. **Design bundle format** — define the container
 8. **Conformance suites** — golden files for all three formats
 9. **Freeze** — declare formats stable, tag specs
+
+---
+
+## Module System and Bundling
+
+*Added 2026-06-15 — captures design conclusions from the module system discussion.*
+
+### Three-tier module architecture
+
+Dvala modules fall into three tiers:
+
+1. **Kernel builtins** — the minimal set of primitives that cannot be expressed in Dvala itself (effect dispatch, core type machinery, fundamental operations). Always present, no declaration required. Must be kept as small as possible — the smaller the kernel, the smaller the surface that must be stable forever.
+2. **Standard modules** — official modules (`string`, `math`, `functional`, etc.) that ship with every Dvala host. Accessible by namespace prefix without any declaration — `math.sin(0)` is valid anywhere.
+3. **Third-party modules** — community or external modules. Same technical mechanism as standard modules; the distinction is curation and trust, not runtime treatment.
+
+### Always fat-bundle, tree-shaken
+
+A Dvala bundle embeds all its dependencies. There is no lean-bundle model where modules are resolved at load time. This keeps the runtime minimal — no module resolution infrastructure is needed in the kernel.
+
+Module code is tree-shaken at build time, so only reachable code is embedded. The "overhead" of embedding module code is small relative to the dominant artifact in a running Dvala program: the continuation.
+
+### The continuation is the dominant artifact
+
+Unlike a conventional program, a Dvala program in flight is a **continuation** — execution state, captured closures, effect handler stacks, accumulated snapshots. As execution progresses, the original module AST should be progressively discarded as branches are exhausted. A long-running program's bundle should actively shrink over its lifetime. Optimizing for module code size is optimizing the wrong thing.
+
+> **Current state:** This is aspirational. As of today, continuations carry unreachable state — all nodes in `SequenceFrame` past the current index, unchosen branches in `IfBranchFrame` during condition evaluation, unmatched cases in `MatchFrame`. Pruning this is tracked in `design/active/<date>_pruned-continuations.md`.
+
+### Content hashes are for identity, not resolution
+
+Content hashes identify and verify a bundle. They are not a runtime resolution mechanism. The question "is this the program I expect?" is answered by the bundle hash. The question "where do I find this module?" does not arise — everything is already in the bundle.
+
+### Kernel stability is wire format stability
+
+The kernel stability commitment and the wire format stability commitment are the same constraint. A serialized continuation is produced by the kernel; any kernel change that breaks existing continuations is a wire format break. This reinforces the argument for keeping the kernel as small as possible.

@@ -18,4 +18,10 @@ export default defineConfig([
     output: [{ file: 'benchmarks/build/pds-baseline.cjs', format: 'cjs', sourcemap: true }],
     plugins: [dvalaSourcePlugin()],
   },
+  {
+    input: 'benchmarks/continuation-size-baseline.ts',
+    external: ['node:fs', 'node:child_process'],
+    output: [{ file: 'benchmarks/build/continuation-size-baseline.cjs', format: 'cjs', sourcemap: true }],
+    plugins: [dvalaSourcePlugin()],
+  },
 ])
