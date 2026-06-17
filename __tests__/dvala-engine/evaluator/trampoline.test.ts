@@ -561,6 +561,30 @@ describe('applyFrame', () => {
         expect(listSize(step.k)).toBe(0) // no additional frame for last node
       }
     })
+
+    it('should prune dead nodes from the pushed frame', () => {
+      const nodes: NumberNode[] = [
+        [NodeTypes.Num, 1, 0], // index 0 — already evaluated
+        [NodeTypes.Num, 2, 0], // index 1 — being evaluated now
+        [NodeTypes.Num, 3, 0], // index 2 — future
+        [NodeTypes.Num, 4, 0], // index 3 — future
+      ]
+      const frame: SequenceFrame = {
+        type: 'Sequence',
+        nodes,
+        index: 1,
+        env: emptyEnv(),
+      }
+      const step = applyFrameSync(frame, 'ignored', null)
+      if (step.type !== 'Eval') throw new Error(`expected Eval step, got ${step.type}`)
+      expect(step.k).not.toBeNull()
+      // nodes[0] was evaluated before this call (index started at 1);
+      // nodes[1] is being evaluated in this step (step.node === nodes[1]).
+      // Only nodes[2] and nodes[3] are future work — the pushed frame carries only those.
+      const pushedFrame = step.k!.head as SequenceFrame
+      expect(pushedFrame.nodes).toEqual([nodes[2], nodes[3]])
+      expect(pushedFrame.index).toBe(0)
+    })
   })
 
   describe('andFrame', () => {
