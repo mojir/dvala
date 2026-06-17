@@ -1,10 +1,8 @@
 /**
- * Continuation size baseline — pre-pruning measurements.
+ * Continuation size measurement.
  *
- * Measures how much AST the current evaluator carries in suspended
- * continuations versus how much would survive pruning. This is the
- * baseline for comparing against after pruned continuations are
- * implemented.
+ * Measures how much AST the evaluator carries in suspended continuations —
+ * total size, dead nodes (already evaluated), and live nodes (reachable future).
  *
  * For each scenario, we report:
  *   - total-bytes     Total serialized blob size (JSON chars)
@@ -17,10 +15,11 @@
  *   - dead-pct        dead-nodes / total-nodes as a percentage
  *
  * Run:
- *   npx tsx --require ./scripts/tsx-dvala-loader.cjs benchmarks/continuation-size-baseline.ts
+ *   pnpm run benchmarks:continuation-size
  *
- * Produces: benchmarks/continuation-size-baseline.md
- * Re-run after implementing pruning to measure the improvement.
+ * Produces: benchmarks/continuation-size-current.md (current state snapshot).
+ * The hand-maintained benchmarks/continuation-size-baseline.md holds the
+ * before/after comparison table — do not overwrite it with this script.
  */
 
 import { execSync } from 'node:child_process'
@@ -56,6 +55,9 @@ interface ScenarioResult {
 // their `type` string field. Only counts top-level entries in `nodes`
 // (not sub-expression children) — this undercounts the real byte savings
 // but is deterministic and portable.
+//
+// Returns early after handling a known frame type to avoid double-counting
+// the `nodes`/`cases` field that was already counted explicitly.
 // ---------------------------------------------------------------------------
 
 const SEQUENCE_LIKE_FRAMES = new Set(['Sequence', 'And', 'Or', 'Qq', 'ArrayBuild', 'TemplateStringBuild'])
@@ -84,19 +86,19 @@ function accumulateFrameStats(value: unknown, stats: FrameStats, pool: Record<nu
     const frameType = obj['type']
 
     if (SEQUENCE_LIKE_FRAMES.has(frameType)) {
-      const rawNodes = obj['nodes']
-      const nodes = resolvePool(rawNodes, pool)
+      const nodes = resolvePool(obj['nodes'], pool)
       const index = obj['index']
       if (Array.isArray(nodes) && typeof index === 'number') {
         stats.totalNodes += nodes.length
         // nodes[0..index-1] have already been evaluated — dead
         stats.deadNodes += Math.min(index, nodes.length)
       }
+      // Return early: nodes were already counted; no frames nested inside AstNodes.
+      return
     }
 
     if (frameType === 'Match') {
-      const rawCases = obj['cases']
-      const cases = resolvePool(rawCases, pool)
+      const cases = resolvePool(obj['cases'], pool)
       const index = obj['index']
       const phase = obj['phase']
       if (Array.isArray(cases) && typeof index === 'number') {
@@ -107,6 +109,8 @@ function accumulateFrameStats(value: unknown, stats: FrameStats, pool: Record<nu
           stats.deadNodes += cases.length - 1 // all except current case
         }
       }
+      // Return early: cases were already counted.
+      return
     }
   }
 
@@ -204,46 +208,6 @@ async function measure(name: string, description: string, program: string): Prom
 }
 
 // ---------------------------------------------------------------------------
-// Scenarios
-// ---------------------------------------------------------------------------
-
-async function main(): Promise<void> {
-console.log('Measuring continuation sizes (pre-pruning baseline)…\n')
-
-const results: ScenarioResult[] = await Promise.all([
-  measure(
-    'sequence-10-lets',
-    '10 top-level let bindings, then suspend, then use one',
-    makeSequenceProgram(10),
-  ),
-  measure(
-    'sequence-25-lets',
-    '25 top-level let bindings, then suspend, then use one',
-    makeSequenceProgram(25),
-  ),
-  measure(
-    'sequence-50-lets',
-    '50 top-level let bindings, then suspend, then use one',
-    makeSequenceProgram(50),
-  ),
-  measure(
-    'nested-sequence (10 outer + 10 inner)',
-    'Outer sequence of 10 lets; inner do-block of 10 lets that suspends',
-    makeNestedSequenceProgram(10, 10),
-  ),
-  measure(
-    'match-5-cases (suspend in case 1)',
-    '5-case match; first case suspends — other 4 are dead',
-    makeMatchProgram(5),
-  ),
-  measure(
-    'match-10-cases (suspend in case 1)',
-    '10-case match; first case suspends — other 9 are dead',
-    makeMatchProgram(10),
-  ),
-])
-
-// ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 
@@ -254,7 +218,10 @@ function pct(dead: number, total: number): string {
 
 function renderMarkdown(rows: ScenarioResult[]): string {
   const lines: string[] = []
-  const commit = (() => { try { return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim() } catch { return 'unknown' } })()
+  const commit = (() => {
+    try { return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim() }
+    catch { return 'unknown' }
+  })()
   const date = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
   lines.push('# Continuation size measurement')
@@ -283,6 +250,8 @@ function renderMarkdown(rows: ScenarioResult[]): string {
   lines.push('### Snapshots (accumulated past states)')
   lines.push('')
   lines.push('Snapshots carry copies of earlier continuation states. Each suspension appends one.')
+  lines.push('Non-zero dead% here is expected: snapshots freeze the state at the moment of')
+  lines.push('suspension, before the pruned frame exists. This is not a pruning gap.')
   lines.push('')
   lines.push('| Scenario | Snapshot total nodes | Snapshot dead | Snapshot dead % |')
   lines.push('| --- | ---: | ---: | ---: |')
@@ -305,22 +274,62 @@ function renderMarkdown(rows: ScenarioResult[]): string {
   return lines.join('\n')
 }
 
-const md = renderMarkdown(results)
-writeFileSync('benchmarks/continuation-size-baseline.md', md)
+// ---------------------------------------------------------------------------
+// Scenarios
+// ---------------------------------------------------------------------------
 
-// Print summary to stdout
-console.log('Scenario'.padEnd(45), 'Bytes'.padStart(8), 'k dead'.padStart(10), 'k dead%'.padStart(8), 'snap dead'.padStart(10))
-console.log('-'.repeat(84))
-for (const r of results) {
-  console.log(
-    r.name.padEnd(45),
-    String(r.totalBytes).padStart(8),
-    `${r.kStats.deadNodes}/${r.kStats.totalNodes}`.padStart(10),
-    pct(r.kStats.deadNodes, r.kStats.totalNodes).padStart(8),
-    `${r.snapshotStats.deadNodes}/${r.snapshotStats.totalNodes}`.padStart(10),
-  )
-}
-console.log('\nWritten: benchmarks/continuation-size-baseline.md')
+async function main(): Promise<void> {
+  console.log('Measuring continuation sizes…\n')
+
+  const results: ScenarioResult[] = await Promise.all([
+    measure(
+      'sequence-10-lets',
+      '10 top-level let bindings, then suspend, then use one',
+      makeSequenceProgram(10),
+    ),
+    measure(
+      'sequence-25-lets',
+      '25 top-level let bindings, then suspend, then use one',
+      makeSequenceProgram(25),
+    ),
+    measure(
+      'sequence-50-lets',
+      '50 top-level let bindings, then suspend, then use one',
+      makeSequenceProgram(50),
+    ),
+    measure(
+      'nested-sequence (10 outer + 10 inner)',
+      'Outer sequence of 10 lets; inner do-block of 10 lets that suspends',
+      makeNestedSequenceProgram(10, 10),
+    ),
+    measure(
+      'match-5-cases (suspend in case 1)',
+      '5-case match; first case suspends — other 4 are dead',
+      makeMatchProgram(5),
+    ),
+    measure(
+      'match-10-cases (suspend in case 1)',
+      '10-case match; first case suspends — other 9 are dead',
+      makeMatchProgram(10),
+    ),
+  ])
+
+  const md = renderMarkdown(results)
+  writeFileSync('benchmarks/continuation-size-current.md', md)
+
+  // Print summary to stdout
+  console.log('Scenario'.padEnd(45), 'Bytes'.padStart(8), 'k dead'.padStart(10), 'k dead%'.padStart(8), 'snap dead'.padStart(10))
+  console.log('-'.repeat(84))
+  for (const r of results) {
+    console.log(
+      r.name.padEnd(45),
+      String(r.totalBytes).padStart(8),
+      `${r.kStats.deadNodes}/${r.kStats.totalNodes}`.padStart(10),
+      pct(r.kStats.deadNodes, r.kStats.totalNodes).padStart(8),
+      `${r.snapshotStats.deadNodes}/${r.snapshotStats.totalNodes}`.padStart(10),
+    )
+  }
+  console.log('\nWritten: benchmarks/continuation-size-current.md')
 }
 
 main().catch((err) => { console.error(err); process.exit(1) })

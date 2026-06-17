@@ -577,14 +577,13 @@ describe('applyFrame', () => {
       }
       const step = applyFrameSync(frame, 'ignored', null)
       expect(step.type).toBe('Eval')
-      if (step.type === 'Eval' && step.k !== null) {
-        const pushedFrame = step.k.head as SequenceFrame
-        // nodes[0] was evaluated before this call (index started at 1);
-        // nodes[1] is being evaluated in this step (step.node === nodes[1]).
-        // Only nodes[2] and nodes[3] are future work — the pushed frame carries only those.
-        expect(pushedFrame.nodes).toEqual([nodes[2], nodes[3]])
-        expect(pushedFrame.index).toBe(0)
-      }
+      expect(step.k).not.toBeNull()
+      // nodes[0] was evaluated before this call (index started at 1);
+      // nodes[1] is being evaluated in this step (step.node === nodes[1]).
+      // Only nodes[2] and nodes[3] are future work — the pushed frame carries only those.
+      const pushedFrame = (step as Extract<typeof step, { type: 'Eval' }>).k!.head as SequenceFrame
+      expect(pushedFrame.nodes).toEqual([nodes[2], nodes[3]])
+      expect(pushedFrame.index).toBe(0)
     })
   })
 

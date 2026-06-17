@@ -111,6 +111,6 @@ No changes needed. Pruning happens at transition time; the serializer faithfully
 
 1. ~~**Audit all frame types**~~ — done. `SequenceFrame` is the only target.
 2. ~~**Add a size measurement / baseline**~~ — done. See `benchmarks/continuation-size-baseline.md` (92–98% dead in `k`).
-3. **Prune `SequenceFrame`** — in `applySequence`, change the new frame to carry only `nodes.slice(index + 1)` with `index: 0`. Add a test asserting that a sequence-heavy suspended program has fewer nodes in its continuation than it has top-level definitions.
-4. **Remeasure** — run `pnpm run benchmarks:continuation-size` and record the improvement.
-5. **Confirm no semantic change** — full test suite must pass unchanged. Pruning is pure optimization.
+3. ~~**Prune `SequenceFrame`**~~ — done. `applySequence` now carries only `nodes.slice(index + 1)` with `index: 0`. Unit test added.
+4. ~~**Remeasure**~~ — done. 0% dead in `k`; 21–28% byte reduction. See `benchmarks/continuation-size-baseline.md`.
+5. ~~**Confirm no semantic change**~~ — done. 37 166 tests pass.

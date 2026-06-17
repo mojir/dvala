@@ -34,6 +34,8 @@ not sub-expression children — real byte savings are larger.
 ### Snapshots (accumulated past states)
 
 Snapshots carry copies of earlier continuation states. Each suspension appends one.
+Non-zero dead% here is expected: snapshots freeze the state at the moment of
+suspension, before the pruned frame exists. This is not a pruning gap.
 
 | Scenario | Snapshot total nodes | Snapshot dead | Snapshot dead % |
 | --- | ---: | ---: | ---: |
