@@ -134,6 +134,42 @@ describe('computeCoverageSummary continuation-line fill', () => {
   })
 })
 
+describe('computeCoverageSummary engine-builtin filtering', () => {
+  // A run whose coverage map holds both a user-project file and an engine builtin
+  // (the latter tracked under DVALA_COVERAGE). The builtin's relative path still
+  // matches a generic `**/*.dvala` include, so it must be filtered out explicitly.
+  const sourceMap: SourceMap = {
+    sources: [
+      { path: 'packages/dvala-engine/src/builtin/core/predicates.dvala', content: 'x\n' },
+      { path: '/proj/lib/a.dvala', content: 'y\n' },
+    ],
+    positions: new Map([
+      [1, { source: 0, start: [0, 0], end: [0, 1] }],
+      [2, { source: 1, start: [0, 0], end: [0, 1] }],
+    ]),
+  }
+  const coverageMap = new Map([
+    [1, 1],
+    [2, 1],
+  ])
+  const result = { filePath: 't', results: [], coverageMap, sourceMap }
+
+  it('excludes engine builtins from a project report with a generic include', () => {
+    const summaries = computeCoverageSummary([result], { include: ['**/*.dvala'], exclude: [], rootDir: '/proj' })
+    const paths = summaries.map(s => s.path)
+    expect(paths).toContain('/proj/lib/a.dvala')
+    expect(paths.some(p => p.includes('dvala-engine/src/builtin'))).toBe(false)
+  })
+
+  it('includes engine builtins when an include pattern explicitly targets them', () => {
+    const summaries = computeCoverageSummary([result], {
+      include: ['packages/dvala-engine/src/builtin/**/*.dvala'],
+      exclude: [],
+    })
+    expect(summaries.some(s => s.path.includes('dvala-engine/src/builtin'))).toBe(true)
+  })
+})
+
 describe('generateLcov', () => {
   it('produces a valid LCOV record from coverage data', async () => {
     const testPath = path.join(exampleProjectDir, 'tests', 'geometry.test.dvala')

@@ -131,10 +131,26 @@ export interface CoverageFilter {
 }
 
 /**
+ * Engine-internal builtin `.dvala` files (core + modules). These land in a run's
+ * accumulated coverage map under `DVALA_COVERAGE`, but they're engine internals —
+ * not part of a user's project — so they're excluded from a project summary unless
+ * an include pattern explicitly targets them (the `.dvala` builtin union report).
+ */
+function isEngineBuiltin(filePath: string): boolean {
+  return filePath.includes('packages/dvala-engine/src/builtin/') && filePath.endsWith('.dvala')
+}
+
+/**
  * Returns true if the given absolute file path matches the include patterns
  * and does not match the exclude patterns.
  */
 function matchesFilter(filePath: string, filter: CoverageFilter): boolean {
+  // A generic include like `**/*.dvala` would otherwise pull engine builtins into a
+  // user project's report (their relative paths still match the glob). Drop them
+  // unless a pattern explicitly names the builtin tree.
+  if (isEngineBuiltin(filePath) && !filter.include.some(p => p.includes('dvala-engine/src/builtin'))) {
+    return false
+  }
   const root = filter.rootDir ?? process.cwd()
   // Normalise to a relative path for glob matching
   const rel = filePath.startsWith(root) ? filePath.slice(root.length).replace(/^[\\/]/, '') : filePath
@@ -236,11 +252,8 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
   return [...byPath.entries()]
     .filter(([filePath]) => {
       if (filter) return matchesFilter(filePath, filter)
-      // No filter: a user-project coverage summary. Engine builtin `.dvala` files
-      // (core + modules) can land in a run's accumulated source map under coverage,
-      // but they're engine internals, not the user's project — exclude them. The
-      // separate `.dvala` builtin report passes an explicit include filter to get them.
-      return !(filePath.includes('packages/dvala-engine/src/builtin/') && filePath.endsWith('.dvala'))
+      // No filter: a user-project coverage summary — exclude engine internals.
+      return !isEngineBuiltin(filePath)
     })
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([filePath, byLine]) => {
