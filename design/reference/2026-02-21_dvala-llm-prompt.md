@@ -370,6 +370,10 @@ Core math is scalar-only. Use explicit lifting for collections, for example `map
 | `trunc(x)` | Truncate toward zero |
 | `min(a, b, ...)` / `min(vector)` | Minimum value |
 | `max(a, b, ...)` / `max(vector)` | Maximum value |
+| `sum(vector)` | Sum of all elements (0 if empty) |
+| `prod(vector)` | Product of all elements (1 if empty) |
+| `cumsum(vector)` | Cumulative sums (new vector) |
+| `cumprod(vector)` | Cumulative products (new vector) |
 
 ### Comparison / Logic
 
@@ -414,6 +418,10 @@ Core math is scalar-only. Use explicit lifting for collections, for example `map
 | `sort(seq, comparator?)` | Sorted (default: `compare`) |
 | `indexOf(seq, value)` | Index of value, or null |
 | `some(seq, fn)` | First element passing fn, or null |
+| `minIndex(vector)` | Index of min (earliest on ties; throws if empty) |
+| `maxIndex(vector)` | Index of max (earliest on ties; throws if empty) |
+| `sortIndices(vector)` | Indices that stably sort ascending |
+| `countValues(vector)` | `[value, count]` pairs, count desc then value asc |
 
 ### Array-specific
 
@@ -491,6 +499,12 @@ Core math is scalar-only. Use explicit lifting for collections, for example `map
 | `isFalse(x)` | Is x exactly isFalse |
 | `isPositiveInfinity(x)` | Is x +Infinity? |
 | `isNegativeInfinity(x)` | Is x -Infinity? |
+| `isIncreasing(vector)` | Non-decreasing? (true if <2 elements) |
+| `isDecreasing(vector)` | Non-increasing? (true if <2 elements) |
+| `isStrictlyIncreasing(vector)` | Strictly increasing? (true if <2 elements) |
+| `isStrictlyDecreasing(vector)` | Strictly decreasing? (true if <2 elements) |
+| `isMonotonic(vector)` | Non-decreasing or non-increasing? |
+| `isStrictlyMonotonic(vector)` | Strictly increasing or strictly decreasing? |
 
 ### Regular Expressions
 
@@ -550,7 +564,7 @@ sin(PI)
 
 **math**: `sin`, `asin`, `sinh`, `asinh`, `cos`, `acos`, `cosh`, `acosh`, `tan`, `atan`, `tanh`, `atanh`, `ln`, `log2`, `log10`, `toRad`, `toDeg`
 
-**vector**: `movingFn`, `runningFn`, `isMonotonic`, `isStrictlyMonotonic`, `isIncreasing`, `isDecreasing`, `isStrictlyIncreasing`, `isStrictlyDecreasing`, `mode`, `minIndex`, `maxIndex`, `sortIndices`, `countValues`, `linspace`, `ones`, `zeros`, `fill`, `generate`, `cumsum`, `cumprod`, `quartiles`, `percentile`, `quantile`, `histogram`, `ecdf`, `isOutliers`, `outliers`, `bincount`, `winsorize`, `mse`, `rmse`, `mae`, `smape`
+**vector**: `movingFn`, `runningFn`, `mode`, `linspace`, `ones`, `zeros`, `fill`, `generate`, `quartiles`, `percentile`, `quantile`, `histogram`, `ecdf`, `isOutliers`, `outliers`, `bincount`, `winsorize`, `mse`, `rmse`, `mae`, `smape`
 
 **sequence**: `mapcat`, `position`, `lastIndexOf`, `shift`, `splice`, `sortBy`, `take`, `takeLast`, `takeWhile`, `drop`, `dropLast`, `dropWhile`, `unshift`, `distinct`, `remove`, `removeAt`, `splitAt`, `splitWith`, `frequencies`, `groupBy`, `partition`, `partitionAll`, `partitionBy`, `isEndsWith`, `isStartsWith`, `interleave`, `interpose`
 
