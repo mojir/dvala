@@ -25,14 +25,38 @@ type TreeNode = FileNode | DirNode
  * The caller writes each entry into the coverage output directory.
  */
 export function generateCoverageHtmlFiles(summaries: FileCoverageSummary[], rootDir: string): Map<string, string> {
-  const tree = buildTree(summaries, rootDir)
+  // Root the report at the common ancestor of `rootDir` and every covered file.
+  // `path.relative(rootDir, file)` would otherwise emit `../` segments for files
+  // that live outside `rootDir` (e.g. a project that imports a sibling package),
+  // and those `../` paths escape the caller's output directory. Including
+  // `rootDir` in the ancestor caps the root at `rootDir` when all files are inside
+  // it, so this is a no-op for the common case.
+  const reportRoot = commonAncestor([rootDir, ...summaries.map(s => s.path)])
+  const tree = buildTree(summaries, reportRoot)
   const files = new Map<string, string>()
   files.set('style.css', CSS)
-  generatePages(tree.children, files, '', rootDir)
+  generatePages(tree.children, files, '', reportRoot)
   return files
 }
 
 // --- Tree builder ---
+
+/**
+ * Longest shared directory prefix of the given paths, returned absolute. Used as
+ * the report root so every file maps to a relative, non-escaping output path.
+ */
+function commonAncestor(paths: string[]): string {
+  const segmented = paths.map(p => path.resolve(p).split(path.sep))
+  const [first, ...others] = segmented
+  if (!first) return path.resolve('.')
+  let depth = first.length
+  for (const parts of others) {
+    let i = 0
+    while (i < depth && i < parts.length && parts[i] === first[i]) i += 1
+    depth = i
+  }
+  return first.slice(0, depth).join(path.sep) || path.sep
+}
 
 function buildTree(summaries: FileCoverageSummary[], rootDir: string): DirNode {
   const root: DirNode = { type: 'dir', name: '', children: [] }
