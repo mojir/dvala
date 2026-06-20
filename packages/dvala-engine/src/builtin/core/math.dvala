@@ -1,7 +1,7 @@
 {
   sum: (vector) -> do
     if !isVector(vector) then
-      perform(@dvala.error, "Expected a vector")
+      perform(@dvala.error, "Expected a vector, but got " ++ str(vector))
     else
       null
     end;
@@ -9,7 +9,7 @@
   end,
   prod: (vector) -> do
     if !isVector(vector) then
-      perform(@dvala.error, "Expected a vector")
+      perform(@dvala.error, "Expected a vector, but got " ++ str(vector))
     else
       null
     end;
@@ -17,7 +17,7 @@
   end,
   cumsum: (vector) -> do
     if !isVector(vector) then
-      perform(@dvala.error, "Expected a vector")
+      perform(@dvala.error, "Expected a vector, but got " ++ str(vector))
     else
       null
     end;
@@ -32,7 +32,7 @@
   end,
   cumprod: (vector) -> do
     if !isVector(vector) then
-      perform(@dvala.error, "Expected a vector")
+      perform(@dvala.error, "Expected a vector, but got " ++ str(vector))
     else
       null
     end;

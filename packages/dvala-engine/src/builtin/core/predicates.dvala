@@ -35,7 +35,7 @@
   isFalse: (x) -> x == false,
   isIncreasing: (vector) -> do
     if !isVector(vector) then
-      perform(@dvala.error, "Expected a vector")
+      perform(@dvala.error, "Expected a vector, but got " ++ str(vector))
     else
       null
     end;
@@ -52,7 +52,7 @@
   end,
   isDecreasing: (vector) -> do
     if !isVector(vector) then
-      perform(@dvala.error, "Expected a vector")
+      perform(@dvala.error, "Expected a vector, but got " ++ str(vector))
     else
       null
     end;
@@ -69,7 +69,7 @@
   end,
   isStrictlyIncreasing: (vector) -> do
     if !isVector(vector) then
-      perform(@dvala.error, "Expected a vector")
+      perform(@dvala.error, "Expected a vector, but got " ++ str(vector))
     else
       null
     end;
@@ -86,7 +86,7 @@
   end,
   isStrictlyDecreasing: (vector) -> do
     if !isVector(vector) then
-      perform(@dvala.error, "Expected a vector")
+      perform(@dvala.error, "Expected a vector, but got " ++ str(vector))
     else
       null
     end;
