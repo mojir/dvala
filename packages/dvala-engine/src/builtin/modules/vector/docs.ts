@@ -14,9 +14,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Returns the result of applying `fn` to each moving window of size `windowSize` in `arr`.',
     seeAlso: ['vector.runningFn', 'vector.movingMean'],
     examples: [
-      'let { sum, movingFn } = import("vector");\nmovingFn([1, 2, 3], 2, sum)',
-      'let { sum, movingFn } = import("vector");\nmovingFn([1, 2, 3], 1, sum)',
-      'let { sum, movingFn } = import("vector");\nmovingFn([1, 2, 3], 3, sum)',
+      'let { movingFn } = import("vector");\nmovingFn([1, 2, 3], 2, sum)',
+      'let { movingFn } = import("vector");\nmovingFn([1, 2, 3], 1, sum)',
+      'let { movingFn } = import("vector");\nmovingFn([1, 2, 3], 3, sum)',
     ],
   },
   runningFn: {
@@ -31,57 +31,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Returns the result of applying `b` to each element of `a`.',
     seeAlso: ['vector.movingFn', 'vector.runningMean'],
     examples: [
-      'let { sum, runningFn } = import("vector");\nrunningFn([1, 2, 3], sum)',
+      'let { runningFn } = import("vector");\nrunningFn([1, 2, 3], sum)',
       'let { runningFn } = import("vector");\nrunningFn([1, 2, 3], max)',
       'let { runningFn } = import("vector");\nrunningFn([1, 2, 3], min)',
-    ],
-  },
-  sum: {
-    type: '(Number[]) -> Number',
-    category: 'vector',
-    returns: { type: 'number' },
-    args: {
-      vector: { type: 'vector', description: 'The vector to sum.' },
-    },
-    variants: [{ argumentNames: ['vector'] }],
-    description: 'Returns the **sum** of all elements in the `vector`. Returns `0` for an empty vector.',
-    seeAlso: [
-      'vector.prod',
-      'vector.mean',
-      'vector.median',
-      'vector.movingSum',
-      'vector.centeredMovingSum',
-      'vector.runningSum',
-      'vector.cumsum',
-    ],
-    examples: [
-      'let { sum } = import("vector");\nsum([1, 2, 3, 4, 5])',
-      'let { sum } = import("vector");\nsum([1, -2, 3])',
-      'let { sum } = import("vector");\nsum([])',
-    ],
-  },
-  prod: {
-    type: '(Number[]) -> Number',
-    category: 'vector',
-    returns: { type: 'number' },
-    args: {
-      vector: { type: 'vector', description: 'The vector to multiply.' },
-    },
-    variants: [{ argumentNames: ['vector'] }],
-    description: 'Returns the **product** of all elements in the `vector`. Returns `1` for an empty vector.',
-    seeAlso: [
-      'vector.sum',
-      'vector.mean',
-      'vector.median',
-      'vector.movingProd',
-      'vector.centeredMovingProd',
-      'vector.runningProd',
-      'vector.cumprod',
-    ],
-    examples: [
-      'let { prod } = import("vector");\nprod([1, 2, 3, 4, 5])',
-      'let { prod } = import("vector");\nprod([1, -2, 3])',
-      'let { prod } = import("vector");\nprod([])',
     ],
   },
   mean: {
@@ -95,8 +47,8 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Returns the arithmetic **mean** of all elements in the `vector`. Throws for an empty vector.',
     seeAlso: [
       'vector.median',
-      'vector.sum',
-      'vector.prod',
+      'sum',
+      'prod',
       'vector.movingMean',
       'vector.centeredMovingMean',
       'vector.runningMean',
@@ -122,8 +74,8 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'Returns the **median** of all elements in the `vector`. For even-length vectors, returns the average of the two middle values. Throws for an empty vector.',
     seeAlso: [
       'vector.mean',
-      'vector.sum',
-      'vector.prod',
+      'sum',
+      'prod',
       'vector.movingMedian',
       'vector.centeredMovingMedian',
       'vector.runningMedian',
@@ -1349,7 +1301,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { movingSum } = import("vector");\nmovingSum([1, 2, 3, 4, 5], 3)',
       'let { movingSum } = import("vector");\nmovingSum([1, 2, 3, 4, 5], 5)',
     ],
-    seeAlso: ['vector.sum', 'vector.centeredMovingSum', 'vector.runningSum'],
+    seeAlso: ['sum', 'vector.centeredMovingSum', 'vector.runningSum'],
   },
   centeredMovingSum: {
     type: '(Number[], Number) -> Unknown[]',
@@ -1398,7 +1350,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { centeredMovingSum } = import("vector");\ncenteredMovingSum([1, 2, 3, 4, 5], 3, 0, 0)',
       'let { centeredMovingSum } = import("vector");\ncenteredMovingSum([1, 2, 3, 4, 5], 3, 10)',
     ],
-    seeAlso: ['vector.sum', 'vector.movingSum', 'vector.runningSum'],
+    seeAlso: ['sum', 'vector.movingSum', 'vector.runningSum'],
   },
   runningSum: {
     type: '(Number[]) -> Number[]',
@@ -1422,7 +1374,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { runningSum } = import("vector");\nrunningSum([1, 2, 3])',
       'let { runningSum } = import("vector");\nrunningSum([1, -2, -3])',
     ],
-    seeAlso: ['vector.sum', 'vector.movingSum', 'vector.centeredMovingSum', 'vector.cumsum'],
+    seeAlso: ['sum', 'vector.movingSum', 'vector.centeredMovingSum', 'cumsum'],
   },
   movingProd: {
     type: '(Number[], Number) -> Number[]',
@@ -1456,7 +1408,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { movingProd } = import("vector");\nmovingProd([1, 2, 3, 4, 5], 3)',
       'let { movingProd } = import("vector");\nmovingProd([1, 2, 3, 4, 5], 5)',
     ],
-    seeAlso: ['vector.prod', 'vector.centeredMovingProd', 'vector.runningProd'],
+    seeAlso: ['prod', 'vector.centeredMovingProd', 'vector.runningProd'],
   },
   centeredMovingProd: {
     type: '(Number[], Number) -> Unknown[]',
@@ -1504,7 +1456,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { centeredMovingProd } = import("vector");\ncenteredMovingProd([1, 2, 3, 4, 5], 3)',
       'let { centeredMovingProd } = import("vector");\ncenteredMovingProd([1, 2, 3, 4, 5], 3, 0, 0)',
     ],
-    seeAlso: ['vector.prod', 'vector.movingProd', 'vector.runningProd'],
+    seeAlso: ['prod', 'vector.movingProd', 'vector.runningProd'],
   },
   runningProd: {
     type: '(Number[]) -> Number[]',
@@ -1528,7 +1480,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { runningProd } = import("vector");\nrunningProd([1, 2, 3, 4, 5])',
       'let { runningProd } = import("vector");\nrunningProd([1, -2, -3])',
     ],
-    seeAlso: ['vector.prod', 'vector.movingProd', 'vector.centeredMovingProd', 'vector.cumprod'],
+    seeAlso: ['prod', 'vector.movingProd', 'vector.centeredMovingProd', 'cumprod'],
   },
   span: {
     type: '(Number[]) -> Number',
@@ -3172,200 +3124,6 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['vector.entropy', 'vector.movingEntropy', 'vector.centeredMovingEntropy'],
   },
-  isMonotonic: {
-    type: '(Number[]) -> Boolean',
-    category: 'vector',
-    description: 'Checks if a vector is monotonic.',
-    returns: {
-      type: 'boolean',
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'The vector to check.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { isMonotonic } = import("vector");\nisMonotonic([1, 2, 3])',
-      'let { isMonotonic } = import("vector");\nisMonotonic([1, 2, 2, 3])',
-      'let { isMonotonic } = import("vector");\nisMonotonic([3, 2, 1])',
-      'let { isMonotonic } = import("vector");\nisMonotonic([3, 2, 1, 1])',
-      'let { isMonotonic } = import("vector");\nisMonotonic([3, 2, 1, 2])',
-      'let { isMonotonic } = import("vector");\nisMonotonic([1])',
-      'let { isMonotonic } = import("vector");\nisMonotonic([])',
-    ],
-    seeAlso: ['vector.isStrictlyMonotonic', 'vector.isIncreasing', 'vector.isDecreasing'],
-  },
-  isStrictlyMonotonic: {
-    type: '(Number[]) -> Boolean',
-    category: 'vector',
-    description: 'Checks if a vector is strictly monotonic.',
-    returns: {
-      type: 'boolean',
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'The vector to check.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { isStrictlyMonotonic } = import("vector");\nisStrictlyMonotonic([1, 2, 3])',
-      'let { isStrictlyMonotonic } = import("vector");\nisStrictlyMonotonic([1, 2, 2, 3])',
-      'let { isStrictlyMonotonic } = import("vector");\nisStrictlyMonotonic([3, 2, 1])',
-      'let { isStrictlyMonotonic } = import("vector");\nisStrictlyMonotonic([3, 2, 1, 1])',
-      'let { isStrictlyMonotonic } = import("vector");\nisStrictlyMonotonic([3, 2, 1, 2])',
-      'let { isStrictlyMonotonic } = import("vector");\nisStrictlyMonotonic([1])',
-      'let { isStrictlyMonotonic } = import("vector");\nisStrictlyMonotonic([])',
-    ],
-    seeAlso: ['vector.isMonotonic', 'vector.isStrictlyIncreasing', 'vector.isStrictlyDecreasing'],
-  },
-  isIncreasing: {
-    type: '(Number[]) -> Boolean',
-    category: 'vector',
-    description: 'Checks if a vector is increasing.',
-    returns: {
-      type: 'boolean',
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'The vector to check.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { isIncreasing } = import("vector");\nisIncreasing([1, 2, 3])',
-      'let { isIncreasing } = import("vector");\nisIncreasing([1, 2, 2, 3])',
-      'let { isIncreasing } = import("vector");\nisIncreasing([3, 2, 1])',
-      'let { isIncreasing } = import("vector");\nisIncreasing([3, 2, 1, 1])',
-      'let { isIncreasing } = import("vector");\nisIncreasing([3, 2, 1, 2])',
-      'let { isIncreasing } = import("vector");\nisIncreasing([1])',
-      'let { isIncreasing } = import("vector");\nisIncreasing([])',
-    ],
-    seeAlso: [
-      'vector.isStrictlyIncreasing',
-      'vector.isDecreasing',
-      'vector.isStrictlyDecreasing',
-      'vector.isMonotonic',
-    ],
-  },
-  isDecreasing: {
-    type: '(Number[]) -> Boolean',
-    category: 'vector',
-    description: 'Checks if a vector is decreasing.',
-    returns: {
-      type: 'boolean',
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'The vector to check.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { isDecreasing } = import("vector");\nisDecreasing([1, 2, 3])',
-      'let { isDecreasing } = import("vector");\nisDecreasing([1, 2, 2, 3])',
-      'let { isDecreasing } = import("vector");\nisDecreasing([3, 2, 1])',
-      'let { isDecreasing } = import("vector");\nisDecreasing([3, 2, 1, 1])',
-      'let { isDecreasing } = import("vector");\nisDecreasing([3, 2, 1, 2])',
-      'let { isDecreasing } = import("vector");\nisDecreasing([1])',
-      'let { isDecreasing } = import("vector");\nisDecreasing([])',
-    ],
-    seeAlso: [
-      'vector.isStrictlyDecreasing',
-      'vector.isIncreasing',
-      'vector.isStrictlyIncreasing',
-      'vector.isMonotonic',
-    ],
-  },
-  isStrictlyIncreasing: {
-    type: '(Number[]) -> Boolean',
-    category: 'vector',
-    description: 'Checks if a vector is strictly increasing.',
-    returns: {
-      type: 'boolean',
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'The vector to check.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { isStrictlyIncreasing } = import("vector");\nisStrictlyIncreasing([1, 2, 3])',
-      'let { isStrictlyIncreasing } = import("vector");\nisStrictlyIncreasing([1, 2, 2, 3])',
-      'let { isStrictlyIncreasing } = import("vector");\nisStrictlyIncreasing([3, 2, 1])',
-      'let { isStrictlyIncreasing } = import("vector");\nisStrictlyIncreasing([3, 2, 1, 1])',
-      'let { isStrictlyIncreasing } = import("vector");\nisStrictlyIncreasing([3, 2, 1, 2])',
-      'let { isStrictlyIncreasing } = import("vector");\nisStrictlyIncreasing([1])',
-      'let { isStrictlyIncreasing } = import("vector");\nisStrictlyIncreasing([])',
-    ],
-    seeAlso: [
-      'vector.isIncreasing',
-      'vector.isDecreasing',
-      'vector.isStrictlyDecreasing',
-      'vector.isStrictlyMonotonic',
-    ],
-  },
-  isStrictlyDecreasing: {
-    type: '(Number[]) -> Boolean',
-    category: 'vector',
-    description: 'Checks if a vector is strictly decreasing.',
-    returns: {
-      type: 'boolean',
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'The vector to check.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { isStrictlyDecreasing } = import("vector");\nisStrictlyDecreasing([1, 2, 3])',
-      'let { isStrictlyDecreasing } = import("vector");\nisStrictlyDecreasing([1, 2, 2, 3])',
-      'let { isStrictlyDecreasing } = import("vector");\nisStrictlyDecreasing([3, 2, 1])',
-      'let { isStrictlyDecreasing } = import("vector");\nisStrictlyDecreasing([3, 2, 1, 1])',
-      'let { isStrictlyDecreasing } = import("vector");\nisStrictlyDecreasing([3, 2, 1, 2])',
-      'let { isStrictlyDecreasing } = import("vector");\nisStrictlyDecreasing([1])',
-      'let { isStrictlyDecreasing } = import("vector");\nisStrictlyDecreasing([])',
-    ],
-    seeAlso: [
-      'vector.isIncreasing',
-      'vector.isStrictlyIncreasing',
-      'vector.isDecreasing',
-      'vector.isStrictlyMonotonic',
-    ],
-  },
   mode: {
     type: '(Number[]) -> Number[]',
     category: 'vector',
@@ -3393,114 +3151,6 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { mode } = import("vector");\nmode([1, 2, 3, 2, 1, 2])',
     ],
     seeAlso: ['vector.mean', 'vector.median'],
-  },
-  minIndex: {
-    type: '(Number[]) -> Number',
-    category: 'vector',
-    description: 'Returns the index of the minimum value of all elements in the vector.',
-    returns: {
-      type: 'integer',
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'Non emtpy vector to calculate the minimum index of.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { minIndex } = import("vector");\nminIndex([1, 2, 3])',
-      'let { minIndex } = import("vector");\nminIndex([1, 1, 2, 3, 3])',
-      'let { minIndex } = import("vector");\nminIndex([1, 2, -3])',
-      'let { minIndex } = import("vector");\nminIndex([1, 2, 3, 4])',
-      'let { minIndex } = import("vector");\nminIndex([1, 2, -3, 4])',
-    ],
-    seeAlso: ['vector.maxIndex', 'min'],
-  },
-  maxIndex: {
-    type: '(Number[]) -> Number',
-    category: 'vector',
-    description: 'Returns the index of the maximum value of all elements in the vector.',
-    returns: {
-      type: 'integer',
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'Non emtpy vector to calculate the maximum index of.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { maxIndex } = import("vector");\nmaxIndex([1, 2, 3])',
-      'let { maxIndex } = import("vector");\nmaxIndex([1, 1, 2, 3, 3])',
-      'let { maxIndex } = import("vector");\nmaxIndex([1, 2, -3])',
-      'let { maxIndex } = import("vector");\nmaxIndex([1, 2, 3, 4])',
-      'let { maxIndex } = import("vector");\nmaxIndex([1, 2, -3, 4])',
-    ],
-    seeAlso: ['vector.minIndex', 'max'],
-  },
-  sortIndices: {
-    type: '(Number[]) -> Number[]',
-    category: 'vector',
-    description: 'Returns the indices of the elements in the vector sorted in ascending order.',
-    returns: {
-      type: 'vector',
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'Non emtpy vector to calculate the sorted indices of.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { sortIndices } = import("vector");\nsortIndices([1, 2, 3])',
-      'let { sortIndices } = import("vector");\nsortIndices([1, 1, 2, 3, 3])',
-      'let { sortIndices } = import("vector");\nsortIndices([1, 2, -3])',
-      'let { sortIndices } = import("vector");\nsortIndices([1, 2, 3, 4])',
-      'let { sortIndices } = import("vector");\nsortIndices([1, 2, -3, 4])',
-    ],
-    seeAlso: ['sort'],
-  },
-  countValues: {
-    type: '(Number[]) -> {String: Number}',
-    category: 'vector',
-    description: 'Counts the number of occurrences of each value in the vector.',
-    returns: {
-      type: 'number',
-      array: true,
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'Vector to count the values of.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { countValues } = import("vector");\ncountValues([1, 2, 3])',
-      'let { countValues } = import("vector");\ncountValues([1, 1, 2, 3, 3])',
-      'let { countValues } = import("vector");\ncountValues([1, 2, -3])',
-      'let { countValues } = import("vector");\ncountValues([1, 2, 2, 1, 3, 2, 4, 2, 1, 2, 2, 1, 3, 2, 4])',
-    ],
-    seeAlso: ['sequence.frequencies', 'vector.bincount'],
   },
   linspace: {
     type: '(Number, Number, Number) -> Number[]',
@@ -3534,58 +3184,6 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { linspace } = import("vector");\nlinspace(10, 20, 25)',
     ],
     seeAlso: ['range'],
-  },
-  cumsum: {
-    type: '(Number[]) -> Number[]',
-    category: 'vector',
-    description: 'Calculates the cumulative sum of a vector.',
-    returns: {
-      type: 'number',
-      array: true,
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'The vector to calculate the cumulative sum of.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { cumsum } = import("vector");\ncumsum([1, 2, 3])',
-      'let { cumsum } = import("vector");\ncumsum([1, 2, -3])',
-      'let { cumsum } = import("vector");\ncumsum([])',
-    ],
-    seeAlso: ['vector.cumprod', 'vector.sum', 'vector.runningSum'],
-  },
-  cumprod: {
-    type: '(Number[]) -> Number[]',
-    category: 'vector',
-    description: 'Calculates the cumulative product of a vector.',
-    returns: {
-      type: 'number',
-      array: true,
-    },
-    args: {
-      vector: {
-        type: 'vector',
-        description: 'The vector to calculate the cumulative product of.',
-      },
-    },
-    variants: [
-      {
-        argumentNames: ['vector'],
-      },
-    ],
-    examples: [
-      'let { cumprod } = import("vector");\ncumprod([1, 2, 3])',
-      'let { cumprod } = import("vector");\ncumprod([1, 2, -3, 0, 10])',
-      'let { cumprod } = import("vector");\ncumprod([])',
-    ],
-    seeAlso: ['vector.cumsum', 'vector.prod', 'vector.runningProd'],
   },
   quartiles: {
     type: '(Number[]) -> Number[]',
@@ -3871,7 +3469,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { bincount } = import("vector");\nbincount([1, 2, 3])',
       'let { bincount } = import("vector");\nbincount([1, 2, 2, 3, 3])',
     ],
-    seeAlso: ['vector.countValues', 'vector.histogram'],
+    seeAlso: ['countValues', 'vector.histogram'],
     hideOperatorForm: true,
   },
   winsorize: {

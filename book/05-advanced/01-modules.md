@@ -9,7 +9,7 @@ Dvala provides domain-specific function libraries as opt-in modules. Import them
 | `math` | `"math"` | Trig, logarithms, angle conversion |
 | `sequence` | `"sequence"` | `sortBy`, `distinct`, `groupBy`, `zip`, `partition` |
 | `collection` | `"collection"` | Deep access (`getIn`, `assocIn`), advanced aggregation |
-| `vector` | `"vector"` | Statistics for number arrays: `mean`, `sum`, `cumsum`, `stddev` |
+| `vector` | `"vector"` | Statistics for number arrays: `mean`, `median`, `stdev`, `percentile`, `histogram` |
 | `linearAlgebra` | `"linearAlgebra"` | Dot product, distance, normalization, matrix-vector ops |
 | `matrix` | `"matrix"` | Matrix multiply, determinant, inverse, transpose |
 | `string` | `"string"` | Padding, trimming, splitting with regex, case conversion |
@@ -79,7 +79,7 @@ Statistical functions for number arrays:
 
 ```dvala
 let vec = import("vector");
-vec.cumsum([1, 2, 3, 4]);
+vec.mean([1, 2, 3, 4]);
 ```
 
 ## Linear Algebra Module

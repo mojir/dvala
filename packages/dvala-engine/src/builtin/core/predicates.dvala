@@ -33,4 +33,75 @@
   isNotEmpty: (x) -> !(isNull(x)) && (count(x) > 0),
   isTrue: (x) -> x == true,
   isFalse: (x) -> x == false,
+  isIncreasing: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    let n = count(vector);
+    loop(i = 1) -> do
+      if i >= n then
+        true
+      else if nth(vector, i) >= nth(vector, i - 1) then
+        recur(i + 1)
+      else
+        false
+      end;
+    end;
+  end,
+  isDecreasing: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    let n = count(vector);
+    loop(i = 1) -> do
+      if i >= n then
+        true
+      else if nth(vector, i) <= nth(vector, i - 1) then
+        recur(i + 1)
+      else
+        false
+      end;
+    end;
+  end,
+  isStrictlyIncreasing: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    let n = count(vector);
+    loop(i = 1) -> do
+      if i >= n then
+        true
+      else if nth(vector, i) > nth(vector, i - 1) then
+        recur(i + 1)
+      else
+        false
+      end;
+    end;
+  end,
+  isStrictlyDecreasing: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    let n = count(vector);
+    loop(i = 1) -> do
+      if i >= n then
+        true
+      else if nth(vector, i) < nth(vector, i - 1) then
+        recur(i + 1)
+      else
+        false
+      end;
+    end;
+  end,
+  isMonotonic: (vector) -> isIncreasing(vector) || isDecreasing(vector),
+  isStrictlyMonotonic: (vector) -> isStrictlyIncreasing(vector) ||
+    isStrictlyDecreasing(vector),
 };

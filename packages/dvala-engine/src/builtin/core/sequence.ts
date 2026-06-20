@@ -420,7 +420,7 @@ some(
       variants: [{ argumentNames: ['seq'] }, { argumentNames: ['seq', 'fun'] }],
       description:
         'Returns a new sequence with the elements from `seq` sorted according to `fun`. If no `fun` is supplied, builtin `compare` will be used.',
-      seeAlso: ['sequence.sortBy', 'compare', 'reverse', 'vector.sortIndices'],
+      seeAlso: ['sequence.sortBy', 'compare', 'reverse', 'sortIndices'],
       examples: [
         '[3, 1, 2] sort (a, b) -> b - a',
         'sort([3, 1, 2])',
@@ -615,6 +615,86 @@ sort(
   -> $ > 3
 )`,
       ],
+    },
+  },
+  minIndex: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('minIndex is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Integer',
+      category: 'sequence',
+      returns: { type: 'integer' },
+      args: {
+        vector: { type: 'vector' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns the index of the smallest element in `vector`. If several elements share the minimum, the earliest index is returned. Throws for an empty vector.',
+      seeAlso: ['maxIndex', 'min', 'sortIndices'],
+      examples: ['minIndex([3, 1, 2])', 'minIndex([3, 1, 2, 1])', 'minIndex([5])'],
+    },
+  },
+  maxIndex: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('maxIndex is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Integer',
+      category: 'sequence',
+      returns: { type: 'integer' },
+      args: {
+        vector: { type: 'vector' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns the index of the largest element in `vector`. If several elements share the maximum, the earliest index is returned. Throws for an empty vector.',
+      seeAlso: ['minIndex', 'max', 'sortIndices'],
+      examples: ['maxIndex([1, 3, 2])', 'maxIndex([1, 3, 2, 3])', 'maxIndex([5])'],
+    },
+  },
+  sortIndices: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('sortIndices is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Integer[]',
+      category: 'sequence',
+      returns: { type: 'array' },
+      args: {
+        vector: { type: 'vector' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns the indices that would sort `vector` in ascending order. The sort is stable: indices of equal elements keep their original order. Returns `[]` for an empty vector.',
+      seeAlso: ['sort', 'minIndex', 'maxIndex', 'countValues'],
+      examples: ['sortIndices([30, 10, 20])', 'sortIndices([30, 10, 20, 10])', 'sortIndices([])'],
+    },
+  },
+  countValues: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('countValues is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> [Number, Integer][]',
+      category: 'sequence',
+      returns: { type: 'array' },
+      args: {
+        vector: { type: 'vector' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns `[value, count]` pairs for the distinct elements in `vector`, sorted by count descending and, for ties, by value ascending. Returns `[]` for an empty vector.',
+      seeAlso: ['sequence.frequencies', 'sortIndices', 'vector.bincount'],
+      examples: ['countValues([3, 1, 3, 2, 1, 1])', 'countValues([1, 2, 3])', 'countValues([])'],
     },
   },
 }

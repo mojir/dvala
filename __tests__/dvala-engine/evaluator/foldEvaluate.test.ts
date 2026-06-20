@@ -605,22 +605,22 @@ describe('evaluateNodeForFold — differential equivalence with normal evaluator
   // --- modules/vector ---
   describe('module: vector', () => {
     const cases: { src: string; expected: unknown }[] = [
-      { src: 'do let { sum } = import("vector"); sum([1, 2, 3]) end', expected: 6 },
-      { src: 'do let { prod } = import("vector"); prod([2, 3, 4]) end', expected: 24 },
+      { src: 'do sum([1, 2, 3]) end', expected: 6 },
+      { src: 'do prod([2, 3, 4]) end', expected: 24 },
       { src: 'do let { mean } = import("vector"); mean([2, 4, 6]) end', expected: 4 },
       { src: 'do let { median } = import("vector"); median([3, 1, 2]) end', expected: 2 },
-      { src: 'do let { minIndex } = import("vector"); minIndex([3, 1, 2]) end', expected: 1 },
-      { src: 'do let { maxIndex } = import("vector"); maxIndex([1, 3, 2]) end', expected: 1 },
-      { src: 'do let { cumsum } = import("vector"); cumsum([1, 2, 3]) end', expected: [1, 3, 6] },
-      { src: 'do let { cumprod } = import("vector"); cumprod([1, 2, 3]) end', expected: [1, 2, 6] },
-      { src: 'do let { isMonotonic } = import("vector"); isMonotonic([1, 2, 3]) end', expected: true },
-      { src: 'do let { isIncreasing } = import("vector"); isIncreasing([1, 2, 3]) end', expected: true },
+      { src: 'do minIndex([3, 1, 2]) end', expected: 1 },
+      { src: 'do maxIndex([1, 3, 2]) end', expected: 1 },
+      { src: 'do cumsum([1, 2, 3]) end', expected: [1, 3, 6] },
+      { src: 'do cumprod([1, 2, 3]) end', expected: [1, 2, 6] },
+      { src: 'do isMonotonic([1, 2, 3]) end', expected: true },
+      { src: 'do isIncreasing([1, 2, 3]) end', expected: true },
       {
-        src: 'do let { isStrictlyIncreasing } = import("vector"); isStrictlyIncreasing([1, 2, 2]) end',
+        src: 'do isStrictlyIncreasing([1, 2, 2]) end',
         expected: false,
       },
       { src: 'do let { linspace } = import("vector"); linspace(0, 1, 5) end', expected: [0, 0.25, 0.5, 0.75, 1] },
-      { src: 'do let { sortIndices } = import("vector"); sortIndices([30, 10, 20]) end', expected: [1, 2, 0] },
+      { src: 'do sortIndices([30, 10, 20]) end', expected: [1, 2, 0] },
     ]
 
     for (const { src, expected } of cases) {

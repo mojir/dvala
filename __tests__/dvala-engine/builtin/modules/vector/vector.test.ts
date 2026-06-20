@@ -13,116 +13,12 @@ function runVec(code: string): unknown {
 }
 
 describe('vector functions', () => {
-  describe('vec:isMonotonic', () => {
-    it('should determine if a vector is monotonic', () => {
-      expect(runVec('vec:isMonotonic([1, 2, 3])')).toEqual(true)
-      expect(runVec('vec:isMonotonic([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:isMonotonic([1, 2, 3, 4])')).toEqual(true)
-      expect(runVec('vec:isMonotonic([4, 3, 2, 1])')).toEqual(true)
-      expect(runVec('vec:isMonotonic([4, 3, 2, 1, 1, 1])')).toEqual(true)
-      expect(runVec('vec:isMonotonic([])')).toEqual(true)
-    })
-  })
-  describe('vec:isStrictlyMonotonic', () => {
-    it('should determine if a vector is monotonic', () => {
-      expect(runVec('vec:isStrictlyMonotonic([1, 2, 3])')).toEqual(true)
-      expect(runVec('vec:isStrictlyMonotonic([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:isStrictlyMonotonic([1, 2, 3, 4])')).toEqual(true)
-      expect(runVec('vec:isStrictlyMonotonic([4, 3, 2, 1])')).toEqual(true)
-      expect(runVec('vec:isStrictlyMonotonic([4, 3, 2, 1, 1, 1])')).toEqual(false)
-      expect(runVec('vec:isStrictlyMonotonic([])')).toEqual(true)
-    })
-  })
-  describe('vec:isIncreasing', () => {
-    it('should determine if a vector is monotonic increasing', () => {
-      expect(runVec('vec:isIncreasing([1, 2, 3])')).toEqual(true)
-      expect(runVec('vec:isIncreasing([1, 2, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:isIncreasing([1, 2, 2, 3, 4])')).toEqual(true)
-      expect(runVec('vec:isIncreasing([4, 3, 2, 1])')).toEqual(false)
-      expect(runVec('vec:isIncreasing([])')).toEqual(true)
-    })
-  })
-  describe('vec:isDecreasing', () => {
-    it('should determine if a vector is monotonic decreasing', () => {
-      expect(runVec('vec:isDecreasing([1, 2, 2, 3])')).toEqual(false)
-      expect(runVec('vec:isDecreasing([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:isDecreasing([1, 2, 3, 4])')).toEqual(false)
-      expect(runVec('vec:isDecreasing([4, 3, 2, 2, 1])')).toEqual(true)
-      expect(runVec('vec:isDecreasing([4, 4, 3, 2, 2, 1])')).toEqual(true)
-      expect(runVec('vec:isDecreasing([])')).toEqual(true)
-    })
-  })
-  describe('vec:isStrictlyIncreasing', () => {
-    it('should determine if a vector is strictly monotonic increasing', () => {
-      expect(runVec('vec:isStrictlyIncreasing([1, 2, 3])')).toEqual(true)
-      expect(runVec('vec:isStrictlyIncreasing([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:isStrictlyIncreasing([1, 2, 3, 4])')).toEqual(true)
-      expect(runVec('vec:isStrictlyIncreasing([1, 1, 2, 3, 4])')).toEqual(false)
-      expect(runVec('vec:isStrictlyIncreasing([4, 3, 2, 1])')).toEqual(false)
-      expect(runVec('vec:isStrictlyIncreasing([])')).toEqual(true)
-    })
-  })
-  describe('vec:isStrictlyDecreasing', () => {
-    it('should determine if a vector is strictly monotonic decreasing', () => {
-      expect(runVec('vec:isStrictlyDecreasing([1, 2, 3])')).toEqual(false)
-      expect(runVec('vec:isStrictlyDecreasing([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:isStrictlyDecreasing([1, 2, 3, 4])')).toEqual(false)
-      expect(runVec('vec:isStrictlyDecreasing([4, 3, 2, 1])')).toEqual(true)
-      expect(runVec('vec:isStrictlyDecreasing([4, 3, 3, 2, 1])')).toEqual(false)
-      expect(runVec('vec:isStrictlyDecreasing([])')).toEqual(true)
-    })
-  })
   describe('vec:mode', () => {
     it('should calculate the mode of a vector', () => {
       expect(runVec('vec:mode([1, 2, 3])')).toEqual([1, 2, 3])
       expect(runVec('vec:mode([1, 2, 2, 3])')).toEqual([2])
       expect(runVec('vec:mode([0])')).toEqual([0])
       expect(() => runVec('vec:mode([])')).toThrowError(DvalaError)
-    })
-  })
-  describe('vec:minIndex', () => {
-    it('should find the index of the minimum value in a vector', () => {
-      expect(runVec('vec:minIndex([1, 2, 3])')).toEqual(0)
-      expect(runVec('vec:minIndex([3, 2, 1])')).toEqual(2)
-      expect(runVec('vec:minIndex([0])')).toEqual(0)
-      expect(() => runVec('vec:minIndex([])')).toThrowError(DvalaError)
-    })
-  })
-  describe('vec:maxIndex', () => {
-    it('should find the index of the maximum value in a vector', () => {
-      expect(runVec('vec:maxIndex([1, 2, 3])')).toEqual(2)
-      expect(runVec('vec:maxIndex([3, 2, 1])')).toEqual(0)
-      expect(runVec('vec:maxIndex([0])')).toEqual(0)
-      expect(() => runVec('vec:maxIndex([])')).toThrowError(DvalaError)
-    })
-  })
-  describe('vec:sortIndices', () => {
-    it('should sort the indices of a vector', () => {
-      expect(runVec('vec:sortIndices([1, 2, 3])')).toEqual([0, 1, 2])
-      expect(runVec('vec:sortIndices([3, 2, 1])')).toEqual([2, 1, 0])
-      expect(runVec('vec:sortIndices([0])')).toEqual([0])
-      expect(runVec('vec:sortIndices([])')).toEqual([])
-    })
-  })
-  describe('vec:countValues', () => {
-    it('should count the occurrences of each value in a vector', () => {
-      expect(runVec('vec:countValues([1, 2, 3])')).toEqual([
-        [1, 1],
-        [2, 1],
-        [3, 1],
-      ])
-      expect(runVec('vec:countValues([1, 2, 2, 3])')).toEqual([
-        [2, 2],
-        [1, 1],
-        [3, 1],
-      ])
-      expect(runVec('vec:countValues([0])')).toEqual([[0, 1]])
-      expect(runVec('vec:countValues([])')).toEqual([])
-      expect(runVec('vec:countValues([1, 2, 3, 1])')).toEqual([
-        [1, 2],
-        [2, 1],
-        [3, 1],
-      ])
     })
   })
   describe('vec:linspace', () => {
@@ -132,25 +28,6 @@ describe('vector functions', () => {
       expect(() => runVec('vec:linspace(1, 10, -1)')).toThrowError(DvalaError)
       expect(runVec('vec:linspace(1, 10, 1)')).toEqual([1])
       expect(() => runVec('vec:linspace(1, 10)')).toThrowError(DvalaError)
-    })
-  })
-  describe('vec:cumsum', () => {
-    it('should calculate the cumulative sum of a vector', () => {
-      expect(runVec('vec:cumsum([1, 2, 3])')).toEqual([1, 3, 6])
-      expect(runVec('vec:cumsum([1, -2, 3])')).toEqual([1, -1, 2])
-      expect(runVec('vec:cumsum([-1, -2, -3])')).toEqual([-1, -3, -6])
-      expect(runVec('vec:cumsum([0])')).toEqual([0])
-      expect(runVec('vec:cumsum([])')).toEqual([])
-    })
-  })
-  describe('vec:cumprod', () => {
-    it('should calculate the cumulative product of a vector', () => {
-      expect(runVec('vec:cumprod([1, 2, 3])')).toEqual([1, 2, 6])
-      expect(runVec('vec:cumprod([1, -2, 3])')).toEqual([1, -2, -6])
-      expect(runVec('vec:cumprod([1, 0, 1])')).toEqual([1, 0, 0])
-      expect(runVec('vec:cumprod([-1, -2, -3])')).toEqual([-1, 2, -6])
-      expect(runVec('vec:cumprod([0])')).toEqual([0])
-      expect(runVec('vec:cumprod([])')).toEqual([])
     })
   })
   describe('vec:quartiles', () => {

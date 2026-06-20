@@ -94,4 +94,98 @@
     let sorted = mergeSort(arr);
     if isStr then join(sorted, "") else sorted end;
   end,
+  minIndex: (vector) -> do
+    if !isVector(vector) || isEmpty(vector) then
+      perform(@dvala.error, "Expected a non empty vector")
+    else
+      null
+    end;
+    // loop (not range) keeps the running index an Integer, as nth requires.
+    let n = count(vector);
+    loop(i = 1, best = 0) -> do
+      if i >= n then
+        best
+      else if nth(vector, i) < nth(vector, best) then
+        recur(i + 1, i)
+      else
+        recur(i + 1, best)
+      end;
+    end;
+  end,
+  maxIndex: (vector) -> do
+    if !isVector(vector) || isEmpty(vector) then
+      perform(@dvala.error, "Expected a non empty vector")
+    else
+      null
+    end;
+    let n = count(vector);
+    loop(i = 1, best = 0) -> do
+      if i >= n then
+        best
+      else if nth(vector, i) > nth(vector, best) then
+        recur(i + 1, i)
+      else
+        recur(i + 1, best)
+      end;
+    end;
+  end,
+  sortIndices: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    // Build an Integer index array via loop, then sort it by the values it points at.
+    let n = count(vector);
+    let indices =
+      loop(i = 0, acc = []) -> do
+        if i >= n then acc else recur(i + 1, push(acc, i)) end;
+      end;
+    sort(indices, (a, b) -> nth(vector, a) - nth(vector, b));
+  end,
+  countValues: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    // Linear search for an existing pair, returning an Integer index (or -1).
+    let findIdx = (pairs, val) -> do
+      let m = count(pairs);
+      loop(j = 0) -> do
+        if j >= m then
+          -1
+        else if first(nth(pairs, j)) == val then
+          j
+        else
+          recur(j + 1)
+        end;
+      end;
+    end;
+    // Tally each value into [value, count] pairs, preserving first-seen order.
+    let n = count(vector);
+    let pairs =
+      loop(i = 0, acc = []) -> do
+        if i >= n then
+          acc
+        else
+          do
+            let val = nth(vector, i);
+            let idx = findIdx(acc, val);
+            let nextAcc =
+              if idx == -1 then
+                push(acc, [val, 1])
+              else
+                assoc(acc, idx, [val, nth(nth(acc, idx), 1) + 1])
+              end;
+            recur(i + 1, nextAcc);
+          end
+        end;
+      end;
+    // Sort by count descending, breaking ties by value ascending.
+    sort(pairs, (a, b) -> do
+      let countDiff = nth(b, 1) - nth(a, 1);
+      if countDiff != 0 then countDiff else nth(a, 0) - nth(b, 0) end;
+    end);
+  end,
 };

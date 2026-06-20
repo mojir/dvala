@@ -1,0 +1,48 @@
+{
+  sum: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    reduce(vector, +, 0);
+  end,
+  prod: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    reduce(vector, *, 1);
+  end,
+  cumsum: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    reduce(
+      vector,
+      (acc, val) -> do
+        let prev = if isEmpty(acc) then 0 else last(acc) end;
+        push(acc, prev + val);
+      end,
+      []
+    );
+  end,
+  cumprod: (vector) -> do
+    if !isVector(vector) then
+      perform(@dvala.error, "Expected a vector")
+    else
+      null
+    end;
+    reduce(
+      vector,
+      (acc, val) -> do
+        let prev = if isEmpty(acc) then 1 else last(acc) end;
+        push(acc, prev * val);
+      end,
+      []
+    );
+  end,
+};
