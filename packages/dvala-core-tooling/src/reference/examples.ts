@@ -1544,7 +1544,7 @@ let analysis = {
       count: last(row),
     }),
     runningMean: map(vec.runningMean(take(clean, 8)), r3),
-    cumulativeSum: vec.cumsum(take(clean, 6)),
+    cumulativeSum: cumsum(take(clean, 6)),
   },
   geometry: {
     v1,

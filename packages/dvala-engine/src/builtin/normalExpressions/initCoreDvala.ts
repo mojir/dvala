@@ -10,6 +10,7 @@ import collectionSource from '../core/collection.dvala'
 import sequenceSource from '../core/sequence.dvala'
 import functionalSource from '../core/functional.dvala'
 import errorSource from '../core/error.dvala'
+import mathSource from '../core/math.dvala'
 import objectSource from '../core/object.dvala'
 import predicatesSource from '../core/predicates.dvala'
 import { normalExpressions } from '.'
@@ -19,6 +20,7 @@ const coreDvalaSources: Record<string, string> = {
   error: errorSource,
   sequence: sequenceSource,
   functional: functionalSource,
+  math: mathSource,
   object: objectSource,
   predicates: predicatesSource,
 }

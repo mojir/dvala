@@ -438,7 +438,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['xs'] }, { argumentNames: ['vector'] }],
       description: 'Returns the smallest value. Accepts either multiple numbers or a single vector of numbers.',
-      seeAlso: ['max', 'vector.span', 'vector.minIndex'],
+      seeAlso: ['max', 'vector.span', 'minIndex'],
       examples: ['2 min 3', 'min(2, 0, 1)', 'min(2, -1, 1)', 'min([2, 0, -1])', '12 min 14'],
     },
   },
@@ -468,7 +468,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['xs'] }, { argumentNames: ['vector'] }],
       description: 'Returns the largest value. Accepts either multiple numbers or a single vector of numbers.',
-      seeAlso: ['min', 'vector.span', 'vector.maxIndex'],
+      seeAlso: ['min', 'vector.span', 'maxIndex'],
       examples: ['2 max 3', 'max(2, 0, 1)', 'max(2, -1, 1)', 'max([2, 0, -1])', '4 max 2'],
     },
   },
@@ -507,6 +507,100 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         'The `sign` function returns the sign of a number: `-1` for negative, `0` for zero, and `1` for positive.',
       seeAlso: ['abs'],
       examples: ['sign(-2.3)', 'sign(-0)', 'sign(0)', 'sign(12312)', 'sign(-2)'],
+    },
+  },
+  sum: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('sum is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Number',
+      category: 'math',
+      returns: { type: 'number' },
+      args: {
+        vector: { type: 'vector', description: 'The vector to sum.' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description: 'Returns the **sum** of all elements in `vector`. Returns `0` for an empty vector.',
+      seeAlso: [
+        'prod',
+        'cumsum',
+        'vector.mean',
+        'vector.median',
+        'vector.movingSum',
+        'vector.centeredMovingSum',
+        'vector.runningSum',
+      ],
+      examples: ['sum([1, 2, 3, 4, 5])', 'sum([1, -2, 3])', 'sum([])'],
+    },
+  },
+  prod: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('prod is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Number',
+      category: 'math',
+      returns: { type: 'number' },
+      args: {
+        vector: { type: 'vector', description: 'The vector to multiply.' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description: 'Returns the **product** of all elements in `vector`. Returns `1` for an empty vector.',
+      seeAlso: [
+        'sum',
+        'cumprod',
+        'vector.mean',
+        'vector.median',
+        'vector.movingProd',
+        'vector.centeredMovingProd',
+        'vector.runningProd',
+      ],
+      examples: ['prod([1, 2, 3, 4, 5])', 'prod([1, -2, 3])', 'prod([])'],
+    },
+  },
+  cumsum: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('cumsum is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Number[]',
+      category: 'math',
+      returns: { type: 'array' },
+      args: {
+        vector: { type: 'vector' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns the **cumulative sum** of `vector`: a new vector where each element is the sum of all preceding elements and itself. Returns `[]` for an empty vector.',
+      seeAlso: ['sum', 'cumprod', 'vector.runningSum'],
+      examples: ['cumsum([1, 2, 3, 4])', 'cumsum([1, -2, 3])', 'cumsum([])'],
+    },
+  },
+  cumprod: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('cumprod is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Number[]',
+      category: 'math',
+      returns: { type: 'array' },
+      args: {
+        vector: { type: 'vector' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns the **cumulative product** of `vector`: a new vector where each element is the product of all preceding elements and itself. Returns `[]` for an empty vector.',
+      seeAlso: ['prod', 'cumsum', 'vector.runningProd'],
+      examples: ['cumprod([1, 2, 3, 4])', 'cumprod([1, -2, 3])', 'cumprod([])'],
     },
   },
 }

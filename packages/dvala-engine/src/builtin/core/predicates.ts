@@ -585,4 +585,133 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
+
+  isIncreasing: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('isIncreasing is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Boolean',
+      category: 'predicate',
+      returns: { type: 'boolean' },
+      args: { vector: { type: 'vector' } },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns `true` if `vector` is non-decreasing (each element is greater than or equal to the previous one). Vectors with fewer than two elements are `true`.',
+      seeAlso: ['isDecreasing', 'isStrictlyIncreasing', 'isMonotonic'],
+      examples: ['isIncreasing([1, 2, 2, 3])', 'isIncreasing([1, 3, 2])', 'isIncreasing([5])', 'isIncreasing([])'],
+    },
+  },
+
+  isDecreasing: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('isDecreasing is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Boolean',
+      category: 'predicate',
+      returns: { type: 'boolean' },
+      args: { vector: { type: 'vector' } },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns `true` if `vector` is non-increasing (each element is less than or equal to the previous one). Vectors with fewer than two elements are `true`.',
+      seeAlso: ['isIncreasing', 'isStrictlyDecreasing', 'isMonotonic'],
+      examples: ['isDecreasing([3, 2, 2, 1])', 'isDecreasing([3, 1, 2])', 'isDecreasing([5])', 'isDecreasing([])'],
+    },
+  },
+
+  isStrictlyIncreasing: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('isStrictlyIncreasing is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Boolean',
+      category: 'predicate',
+      returns: { type: 'boolean' },
+      args: { vector: { type: 'vector' } },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns `true` if `vector` is strictly increasing (each element is greater than the previous one). Vectors with fewer than two elements are `true`.',
+      seeAlso: ['isStrictlyDecreasing', 'isIncreasing', 'isStrictlyMonotonic'],
+      examples: [
+        'isStrictlyIncreasing([1, 2, 3])',
+        'isStrictlyIncreasing([1, 2, 2])',
+        'isStrictlyIncreasing([5])',
+        'isStrictlyIncreasing([])',
+      ],
+    },
+  },
+
+  isStrictlyDecreasing: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('isStrictlyDecreasing is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Boolean',
+      category: 'predicate',
+      returns: { type: 'boolean' },
+      args: { vector: { type: 'vector' } },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns `true` if `vector` is strictly decreasing (each element is less than the previous one). Vectors with fewer than two elements are `true`.',
+      seeAlso: ['isStrictlyIncreasing', 'isDecreasing', 'isStrictlyMonotonic'],
+      examples: [
+        'isStrictlyDecreasing([3, 2, 1])',
+        'isStrictlyDecreasing([2, 2, 1])',
+        'isStrictlyDecreasing([5])',
+        'isStrictlyDecreasing([])',
+      ],
+    },
+  },
+
+  isMonotonic: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('isMonotonic is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Boolean',
+      category: 'predicate',
+      returns: { type: 'boolean' },
+      args: { vector: { type: 'vector' } },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns `true` if `vector` is monotonic, i.e. either non-decreasing or non-increasing. Vectors with fewer than two elements are `true`.',
+      seeAlso: ['isStrictlyMonotonic', 'isIncreasing', 'isDecreasing'],
+      examples: ['isMonotonic([1, 2, 3])', 'isMonotonic([3, 2, 1])', 'isMonotonic([1, 3, 2])', 'isMonotonic([5])'],
+    },
+  },
+
+  isStrictlyMonotonic: {
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('isStrictlyMonotonic is implemented in Dvala')
+    },
+    arity: toFixedArity(1),
+    docs: {
+      type: '(Number[]) -> Boolean',
+      category: 'predicate',
+      returns: { type: 'boolean' },
+      args: { vector: { type: 'vector' } },
+      variants: [{ argumentNames: ['vector'] }],
+      description:
+        'Returns `true` if `vector` is strictly monotonic, i.e. either strictly increasing or strictly decreasing. Vectors with fewer than two elements are `true`.',
+      seeAlso: ['isMonotonic', 'isStrictlyIncreasing', 'isStrictlyDecreasing'],
+      examples: [
+        'isStrictlyMonotonic([1, 2, 3])',
+        'isStrictlyMonotonic([3, 2, 1])',
+        'isStrictlyMonotonic([1, 2, 2])',
+        'isStrictlyMonotonic([5])',
+      ],
+    },
+  },
 }

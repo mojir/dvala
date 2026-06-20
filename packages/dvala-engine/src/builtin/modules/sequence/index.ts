@@ -470,7 +470,7 @@ l`,
       variants: [{ argumentNames: ['seq'] }],
       description:
         'Returns an object from distinct items in `seq` to the number of times they appear. Note that all items in `seq` must be valid object keys i.e. strings.',
-      seeAlso: ['sequence.groupBy', 'sequence.distinct', 'vector.countValues'],
+      seeAlso: ['sequence.groupBy', 'sequence.distinct', 'countValues'],
       examples: [
         'let su = import("sequence"); su.frequencies(["Albert", "Mojir", "Nina", "Mojir"])',
         'let su = import("sequence"); su.frequencies("Pneumonoultramicroscopicsilicovolcanoconiosis")',

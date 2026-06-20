@@ -94,20 +94,18 @@ describe('array functions', () => {
 
   describe('runningFn', () => {
     it('samples', () => {
-      expect(dvala.run('let { sum, runningFn } = import("vector"); runningFn([1, 2, 3], sum)')).toEqual([1, 3, 6])
+      expect(dvala.run('let { runningFn } = import("vector"); runningFn([1, 2, 3], sum)')).toEqual([1, 3, 6])
       expect(() => dvala.run('let { runningFn } = import("vector"); runningFn(1)')).toThrow(DvalaError)
-      expect(() => dvala.run('let { sum, runningFn } = import("vector"); runningFn(1, sum)')).toThrow(DvalaError)
-      expect(() => dvala.run('let { sum, runningFn } = import("vector"); runningFn(1, sum, null)')).toThrow(DvalaError)
+      expect(() => dvala.run('let { runningFn } = import("vector"); runningFn(1, sum)')).toThrow(DvalaError)
+      expect(() => dvala.run('let { runningFn } = import("vector"); runningFn(1, sum, null)')).toThrow(DvalaError)
     })
   })
   describe('movingFn', () => {
     it('samples', () => {
-      expect(dvala.run('let { sum, movingFn } = import("vector"); movingFn([1, 2, 3], 2, sum)')).toEqual([3, 5])
-      expect(dvala.run('let { sum, movingFn } = import("vector"); movingFn([1, 2, 3], 1, sum)')).toEqual([1, 2, 3])
-      expect(dvala.run('let { sum, movingFn } = import("vector"); movingFn([1, 2, 3], 3, sum)')).toEqual([6])
-      expect(() => dvala.run('let { sum, movingFn } = import("vector"); movingFn([1, 2, 3], 4, sum)')).toThrow(
-        DvalaError,
-      )
+      expect(dvala.run('let { movingFn } = import("vector"); movingFn([1, 2, 3], 2, sum)')).toEqual([3, 5])
+      expect(dvala.run('let { movingFn } = import("vector"); movingFn([1, 2, 3], 1, sum)')).toEqual([1, 2, 3])
+      expect(dvala.run('let { movingFn } = import("vector"); movingFn([1, 2, 3], 3, sum)')).toEqual([6])
+      expect(() => dvala.run('let { movingFn } = import("vector"); movingFn([1, 2, 3], 4, sum)')).toThrow(DvalaError)
       expect(() => dvala.run('let { movingFn } = import("vector"); movingFn(1)')).toThrow(DvalaError)
       expect(() => dvala.run('let { movingFn } = import("vector"); movingFn(1, 2)')).toThrow(DvalaError)
       expect(() => dvala.run('let { movingFn } = import("vector"); movingFn(1, 2, null)')).toThrow(DvalaError)
