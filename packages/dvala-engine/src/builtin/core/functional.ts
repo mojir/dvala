@@ -1,4 +1,3 @@
-import type { Any } from '@mojir/dvala-types'
 import type { CompFunction, ConstantlyFunction, FunctionLike } from '@mojir/dvala-types'
 import { toAny } from '../../utils'
 import { getArityFromFunction, toFixedArity } from '@mojir/dvala-types'
@@ -76,8 +75,9 @@ apply(
   },
 
   identity: {
-    evaluate: ([value]): Any => {
-      return toAny(value)
+    evaluate: (): never => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('identity is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {

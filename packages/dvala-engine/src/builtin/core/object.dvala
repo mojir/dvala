@@ -5,7 +5,7 @@
     if !(isFunction(fn)) then
       perform(
         @dvala.error,
-        { message: str("Expected function, got: ", type(fn)) }
+        { message: str("Expected function, got: ", typeOf(fn)) }
       )
     else
       null
@@ -16,7 +16,7 @@
         if !(isObject(obj)) then
           perform(
             @dvala.error,
-            { message: str("Expected object, got: ", type(obj)) }
+            { message: str("Expected object, got: ", typeOf(obj)) }
           )
         else
           null
@@ -38,13 +38,152 @@
         if !(isObject(f)) then
           perform(
             @dvala.error,
-            { message: str("Expected object, got: ", type(f)) }
+            { message: str("Expected object, got: ", typeOf(f)) }
           )
         else
           null
         end;
         f;
       end
+    );
+  end,
+  find: (obj, key) -> do
+    if !(isObject(obj)) then
+      perform(
+        @dvala.error,
+        { message: str("Expected object, got: ", typeOf(obj)) }
+      )
+    else
+      null
+    end;
+    if !(isString(key)) then
+      perform(
+        @dvala.error,
+        { message: str("Expected string, got: ", typeOf(key)) }
+      )
+    else
+      null
+    end;
+    if contains(obj, key) then [key, get(obj, key)] else null end;
+  end,
+  merge: (...objs) -> do
+    if count(objs) == 0 then
+      null
+    else
+      do
+        let f = first(objs);
+        if !(isObject(f)) then
+          perform(
+            @dvala.error,
+            { message: str("Expected object, got: ", typeOf(f)) }
+          )
+        else
+          null
+        end;
+        reduce(
+          rest(objs),
+          (result, obj) -> do
+            if !(isObject(obj)) then
+              perform(
+                @dvala.error,
+                { message: str("Expected object, got: ", typeOf(obj)) }
+              )
+            else
+              null
+            end;
+            reduce(
+              keys(obj),
+              (res, key) -> assoc(res, key, get(obj, key)),
+              result
+            );
+          end,
+          f
+        );
+      end
+    end;
+  end,
+  zipmap: (keyList, valueList) -> do
+    if !(isArray(keyList)) then
+      perform(
+        @dvala.error,
+        { message: str("Expected array, got: ", typeOf(keyList)) }
+      )
+    else
+      null
+    end;
+    if !(isArray(valueList)) then
+      perform(
+        @dvala.error,
+        { message: str("Expected array, got: ", typeOf(valueList)) }
+      )
+    else
+      null
+    end;
+    // assertStringArray: every key must be a string (the whole list, not just used keys).
+    let keyCount = count(keyList);
+    loop(i = 0) -> do
+      if i >= keyCount then
+        null
+      else if isString(nth(keyList, i)) then
+        recur(i + 1)
+      else
+        perform(
+          @dvala.error,
+          {
+            message: str("Expected string key, got: ", typeOf(nth(keyList, i))),
+          }
+        )
+      end;
+    end;
+    let n = min(keyCount, count(valueList));
+    loop(i = 0, acc = {}) -> do
+      if i >= n then
+        acc
+      else
+        recur(i + 1, assoc(acc, nth(keyList, i), nth(valueList, i)))
+      end;
+    end;
+  end,
+  selectKeys: (obj, keyList) -> do
+    if !(isArray(keyList)) then
+      perform(
+        @dvala.error,
+        { message: str("Expected array, got: ", typeOf(keyList)) }
+      )
+    else
+      null
+    end;
+    let keyCount = count(keyList);
+    loop(i = 0) -> do
+      if i >= keyCount then
+        null
+      else if isString(nth(keyList, i)) then
+        recur(i + 1)
+      else
+        perform(
+          @dvala.error,
+          {
+            message: str("Expected string key, got: ", typeOf(nth(keyList, i))),
+          }
+        )
+      end;
+    end;
+    if !(isObject(obj)) then
+      perform(
+        @dvala.error,
+        { message: str("Expected object, got: ", typeOf(obj)) }
+      )
+    else
+      null
+    end;
+    reduce(
+      keyList,
+      (acc, key) -> if contains(obj, key) then
+        assoc(acc, key, get(obj, key))
+      else
+        acc
+      end,
+      {}
     );
   end,
 };
