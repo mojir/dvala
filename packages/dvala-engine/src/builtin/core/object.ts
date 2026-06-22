@@ -1,10 +1,8 @@
-import type { Any, Arr, Obj } from '@mojir/dvala-types'
-import { assertArray, assertStringArray } from '@mojir/dvala-types'
+import type { Any, Arr } from '@mojir/dvala-types'
 import { assertObj } from '@mojir/dvala-types'
-import { asString, assertString } from '@mojir/dvala-types'
-import { collHasKey, toAny } from '../../utils'
+import { assertString } from '@mojir/dvala-types'
 import { toFixedArity } from '@mojir/dvala-types'
-import { PersistentMap, PersistentVector } from '@mojir/dvala-types'
+import { PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const objectNormalExpression: BuiltinNormalExpressions = {
@@ -76,12 +74,9 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
   },
 
   find: {
-    evaluate: ([obj, key], sourceCodeInfo): Arr | null => {
-      assertObj(obj, sourceCodeInfo)
-      assertString(key, sourceCodeInfo)
-      if (collHasKey(obj, key)) return PersistentVector.from([key, obj.get(key)])
-
-      return null
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('find is implemented in Dvala')
     },
     arity: toFixedArity(2),
     docs: {
@@ -135,21 +130,9 @@ o`,
   },
 
   merge: {
-    evaluate: (params, sourceCodeInfo): Any => {
-      if (params.size === 0) return null
-
-      const [first, ...rest] = params
-      assertObj(first, sourceCodeInfo)
-
-      return rest.reduce((result: Obj, obj) => {
-        assertObj(obj, sourceCodeInfo)
-        // Fold all entries of obj into result via assoc
-        let merged = result
-        for (const [k, v] of obj) {
-          merged = merged.assoc(k, v)
-        }
-        return merged
-      }, first)
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('merge is implemented in Dvala')
     },
     arity: { min: 0 },
     docs: {
@@ -206,19 +189,9 @@ If no arguments are provided \`null\` is returned.`,
   },
 
   zipmap: {
-    evaluate: ([keys, values], sourceCodeInfo): Any => {
-      assertStringArray(keys, sourceCodeInfo)
-      assertArray(values, sourceCodeInfo)
-
-      const length = Math.min(keys.size, values.size)
-
-      let result: Obj = PersistentMap.empty()
-
-      for (let i = 0; i < length; i += 1) {
-        const key = asString(keys.get(i), sourceCodeInfo)
-        result = result.assoc(key, toAny(values.get(i)))
-      }
-      return result
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('zipmap is implemented in Dvala')
     },
     arity: toFixedArity(2),
     docs: {
@@ -242,15 +215,9 @@ If no arguments are provided \`null\` is returned.`,
   },
 
   selectKeys: {
-    evaluate: ([obj, keys], sourceCodeInfo): Any => {
-      assertStringArray(keys, sourceCodeInfo)
-      assertObj(obj, sourceCodeInfo)
-
-      let result: Obj = PersistentMap.empty()
-      for (const key of keys) {
-        if (typeof key === 'string' && collHasKey(obj, key)) result = result.assoc(key, toAny(obj.get(key)))
-      }
-      return result
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('selectKeys is implemented in Dvala')
     },
     arity: toFixedArity(2),
     docs: {

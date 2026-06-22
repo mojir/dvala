@@ -1,9 +1,8 @@
 import type { Any, Arr, Seq } from '@mojir/dvala-types'
 import { assertCharArray } from '@mojir/dvala-types'
-import { asAny, assertAny, assertSeq } from '@mojir/dvala-types'
+import { assertSeq } from '@mojir/dvala-types'
 import { assertNumber } from '@mojir/dvala-types'
-import { assertString } from '@mojir/dvala-types'
-import { deepEqual, toAny } from '../../utils'
+import { toAny } from '../../utils'
 import { toFixedArity } from '@mojir/dvala-types'
 import { isPersistentVector, PersistentVector } from '@mojir/dvala-types'
 import type { BuiltinNormalExpressions } from '../interface'
@@ -126,19 +125,9 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     },
   },
   indexOf: {
-    evaluate: ([seq, value], sourceCodeInfo): number | null => {
-      assertAny(value, sourceCodeInfo)
-      if (seq === null) return null
-
-      assertSeq(seq, sourceCodeInfo)
-      if (typeof seq === 'string') {
-        assertString(value, sourceCodeInfo)
-        const index = seq.indexOf(value)
-        return index !== -1 ? index : null
-      } else {
-        const index = [...seq].findIndex(item => deepEqual(asAny(item, sourceCodeInfo), value))
-        return index !== -1 ? index : null
-      }
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('indexOf is implemented in Dvala')
     },
     arity: toFixedArity(2),
     docs: {
@@ -204,14 +193,9 @@ l`,
     },
   },
   rest: {
-    evaluate: ([seq], sourceCodeInfo): Arr | string => {
-      assertSeq(seq, sourceCodeInfo)
-      if (isPersistentVector(seq)) {
-        if (seq.size <= 1) return PersistentVector.empty()
-
-        return PersistentVector.from([...seq].slice(1))
-      }
-      return seq.substring(1)
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('rest is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -235,16 +219,9 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
     },
   },
   next: {
-    evaluate: ([seq], sourceCodeInfo): Arr | string | null => {
-      assertSeq(seq, sourceCodeInfo)
-      if (isPersistentVector(seq)) {
-        if (seq.size <= 1) return null
-
-        return PersistentVector.from([...seq].slice(1))
-      }
-      if (seq.length <= 1) return null
-
-      return seq.substring(1)
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('next is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -291,13 +268,9 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
     },
   },
   second: {
-    evaluate: ([seq], sourceCodeInfo): Any => {
-      if (seq === null) return null
-
-      assertSeq(seq, sourceCodeInfo)
-      if (typeof seq === 'string') return toAny(seq[1])
-
-      return toAny(seq.get(1))
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('second is implemented in Dvala')
     },
     arity: toFixedArity(1),
     docs: {
@@ -438,13 +411,9 @@ sort(
     },
   },
   take: {
-    evaluate: ([input, n], sourceCodeInfo): Seq => {
-      assertNumber(n, sourceCodeInfo)
-      assertSeq(input, sourceCodeInfo)
-      const num = Math.max(Math.ceil(n), 0)
-      if (isPersistentVector(input)) return PersistentVector.from([...input].slice(0, num))
-
-      return input.slice(0, num)
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('take is implemented in Dvala')
     },
     arity: toFixedArity(2),
     docs: {
@@ -470,16 +439,9 @@ sort(
     },
   },
   takeLast: {
-    evaluate: ([array, n], sourceCodeInfo): Seq => {
-      assertSeq(array, sourceCodeInfo)
-      assertNumber(n, sourceCodeInfo)
-      const num = Math.max(Math.ceil(n), 0)
-      if (isPersistentVector(array)) {
-        const from = array.size - num
-        return PersistentVector.from([...array].slice(from))
-      }
-      const from = array.length - num
-      return array.slice(from)
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('takeLast is implemented in Dvala')
     },
     arity: toFixedArity(2),
     docs: {
@@ -499,13 +461,9 @@ sort(
     },
   },
   drop: {
-    evaluate: ([input, n], sourceCodeInfo): Seq => {
-      assertNumber(n, sourceCodeInfo)
-      const num = Math.max(Math.ceil(n), 0)
-      assertSeq(input, sourceCodeInfo)
-      if (isPersistentVector(input)) return PersistentVector.from([...input].slice(num))
-
-      return input.slice(num)
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('drop is implemented in Dvala')
     },
     arity: toFixedArity(2),
     docs: {
@@ -525,16 +483,9 @@ sort(
     },
   },
   dropLast: {
-    evaluate: ([array, n], sourceCodeInfo): Seq => {
-      assertSeq(array, sourceCodeInfo)
-      assertNumber(n, sourceCodeInfo)
-      const num = Math.max(Math.ceil(n), 0)
-      if (isPersistentVector(array)) {
-        const from = array.size - num
-        return PersistentVector.from([...array].slice(0, from))
-      }
-      const from = array.length - num
-      return array.slice(0, from)
+    evaluate: () => {
+      /* v8 ignore next -- migrated to .dvala; this TS stub never executes */
+      throw new Error('dropLast is implemented in Dvala')
     },
     arity: toFixedArity(2),
     docs: {

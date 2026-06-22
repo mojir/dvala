@@ -186,4 +186,52 @@
       end
     end;
   end,
+  second: (seq) -> nth(seq, 1),
+  rest: (seq) -> slice(seq, 1),
+  next: (seq) -> do
+    let r = slice(seq, 1);
+    if isEmpty(r) then null else r end;
+  end,
+  take: (seq, n) -> slice(seq, 0, max(ceil(n), 0)),
+  drop: (seq, n) -> slice(seq, max(ceil(n), 0)),
+  takeLast: (seq, n) -> slice(seq, count(seq) - max(ceil(n), 0)),
+  dropLast: (seq, n) -> slice(seq, 0, count(seq) - max(ceil(n), 0)),
+  indexOf: (seq, value) -> do
+    if isNull(seq) then
+      null
+    else if isString(seq) then
+      do
+        // String search matches a substring (mirrors JS String.indexOf).
+        let n = count(seq);
+        let m = count(value);
+        if m == 0 then
+          0
+        else
+          loop(i = 0) -> do
+            if i + m > n then
+              null
+            else if slice(seq, i, i + m) == value then
+              i
+            else
+              recur(i + 1)
+            end;
+          end
+        end;
+      end
+    else
+      do
+        // Array search: first element structurally equal to `value`.
+        let n = count(seq);
+        loop(i = 0) -> do
+          if i >= n then
+            null
+          else if nth(seq, i) == value then
+            i
+          else
+            recur(i + 1)
+          end;
+        end;
+      end
+    end;
+  end,
 };
