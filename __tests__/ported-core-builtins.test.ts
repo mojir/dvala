@@ -40,6 +40,9 @@ describe('ported core builtins', () => {
       expect(dvala.run('indexOf("hello", "x")')).toBe(null)
       expect(dvala.run('indexOf("hello", "")')).toBe(0) // empty substring -> 0
       expect(dvala.run('indexOf(null, 1)')).toBe(null)
+      // A string seq needs a string needle — non-strings throw (not silently null).
+      expect(() => dvala.run('indexOf("abc", ["x"])')).toThrow()
+      expect(() => dvala.run('indexOf("abc", 5)')).toThrow()
     })
 
     it('find returns [key, value] or null and guards its inputs', () => {

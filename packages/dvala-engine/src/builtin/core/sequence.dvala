@@ -201,7 +201,16 @@
       null
     else if isString(seq) then
       do
-        // String search matches a substring (mirrors JS String.indexOf).
+        // String search matches a substring (mirrors JS String.indexOf), which
+        // requires a string needle — reject non-strings rather than returning null.
+        if !(isString(value)) then
+          perform(
+            @dvala.error,
+            { message: str("Expected string, got: ", typeOf(value)) }
+          )
+        else
+          null
+        end;
         let n = count(seq);
         let m = count(value);
         if m == 0 then
